@@ -85,6 +85,13 @@ class ReeBill(Base):
                 self.customer.account, self.sequence, self.version, 'issued' if
                 self.issued else unissued, len(self.utilbills))
 
+    def document_id_for_utilbill(self, utilbill):
+        '''Returns the id (string) of the "frozen" utility bill document in
+        Mongo corresponding to the given utility bill which is attached to this
+        reebill. This will be None if this reebill is unissued.'''
+        return next(ubrb.document_id for ubrb in self.utilbill_reebills if
+                ubrb.utilbill == utilbill)
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -1022,3 +1029,5 @@ if __name__ == '__main__':
     print ub.reebills
     rb = session.query(ReeBill).first()
     print rb.utilbills
+
+    print rb.document_id_for_utilbill(ub)
