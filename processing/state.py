@@ -81,8 +81,9 @@ class ReeBill(Base):
         self.version = version
 
     def __repr__(self):
-        return '<ReeBill(account=%s, sequence=%s, version=%s, issued=%s)>' \
-                % (self.customer, self.sequence, self.version, self.issued)
+        return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
+                self.customer.account, self.sequence, self.version, 'issued' if
+                self.issued else unissued, len(self.utilbills))
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
