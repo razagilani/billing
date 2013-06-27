@@ -43,6 +43,9 @@ class Customer(Base):
     name = Column(String)
     discountrate = Column(Float, nullable=False)
     latechargerate = Column(Float, nullable=False)
+    # this can be null for existing accounts because accounts only use the
+    # template document for their first-ever utility bill
+    utilbill_template_id = Column(String)
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
             utilbill_template_id):
