@@ -68,6 +68,12 @@ class ReeBill(Base):
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
+    # the 'utilbill_reebill' property already exists due to the "backref" of
+    # 'UtilbillReebill'. this association_proxy uses that property to define
+    # the 'utilbill' property based on it. this makes it so ReeBill.utilbills
+    # means [ubrb.utilbill for ubrb in ReeBill.utilbill_reebills]
+    utilbills = association_proxy('utilbill_reebills', 'utilbill')
+
     def __init__(self, customer, sequence, version=0):
         self.customer = customer
         self.sequence = sequence
@@ -75,16 +81,8 @@ class ReeBill(Base):
         self.version = version
 
     def __repr__(self):
-        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
-                % (self.customer, self.sequence, self.max_version, self.issued)
-
-## SQLAlchemy table object to be used in creating the association between the
-## UtilBill and ReeBill classes below
-#utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
-        #Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
-        #Column('reebill_id', Integer, ForeignKey('reebill.id')),
-        #Column('document_id', String)
-#)
+        return '<ReeBill(account=%s, sequence=%s, version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.version, self.issued)
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -95,16 +93,10 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     document_id = Column(String)
 
-    # example code shows class coressponding to the association table having a
-    # relationship to one of the related classes.
-    # Order and Item are associated by OrderItem. Order has a 'relationship' to
-    # OrderItem and an 'association_proxy' to Item via OrderItem. OrderItem has
-    # only a 'relationship' to Item. Item has no relationships at all.
-    # I don't know why that is but to replicate it the chain should be Utilbill
-    # --> UtilbillReebill --> Reebill. But maybe more is needed when the
-    # relationship should be bidirectional; example code shows only
-    # order.items, not item.orders.
-    reebills = relationship(ReeBill)
+    # only a relationship to 'ReeBill' needs to be defined here because
+    # 'UtilBill' has defined one via the 'backref' of its relationship to
+    # 'UtilbillReebill'
+    reebill = relationship(ReeBill, backref='utilbill_reebills')
 
     def __init__(self, utilbill_id, reebill_id, document_id=None):
         self.utilbill_id = utilbill_id
@@ -134,16 +126,21 @@ class UtilBill(Base):
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
     utilbill_reebills = relationship('UtilbillReebill',
-            backref='utilbill_reebills')
+            backref='utilbill')
 
     # "association proxy" that defines the 'reebills' property as a "view" of
-    # the underlying property 'utilbill_reebills'
+    # the underlying property 'utilbill_reebills'.
+    # docs:
     # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
-    # TODO despite the documentation I have no idea what the second argument,
-    # "attr", means here
-    # for usage example, see
+    # example code:
     # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
-    reebills = association_proxy('utilbill_reebills', 'reebills')
+    # the 1st argument to 'association_proxy' is the name of the property of
+    # this class that is a relationship to the intermediate class
+    # (UtilbillReebill). the 2nd argument is the name of the property of the
+    # intermediate class whose value becomes the value of each element of this
+    # property's value. i.e., this makes it so that "UtilBill.reebills" is
+    # another way of saying [ur.reebill for ur in UtilBill.utilbill_reebills]
+    reebills = association_proxy('utilbill_reebills', 'reebill')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -1018,4 +1015,9 @@ if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
     s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
     session = s.session()
-    print session.query(Customer).all()
+    print session.query(Customer).count(), 'customers found'
+
+    ub = session.query(UtilBill).first()
+    print ub.reebills
+    rb = session.query(ReeBill).first()
+    print rb.utilbills
