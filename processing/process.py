@@ -100,8 +100,8 @@ class Process(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        # (TODO it would be better to get these from the utility bill upload
-        # form)
+        # TODO get utility name and rate class as arguments instead of from
+        # template: see https://www.pivotaltracker.com/story/show/52495771
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
@@ -568,7 +568,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
-        session.add(ReeBill(customer, 1, 0, utilbills=[utilbill]))
+        session.add(ReeBill(customer, 1, version=0, utilbills=[utilbill]))
 
     
     def create_next_reebill(self, session, account):
@@ -672,6 +672,9 @@ class Process(object):
             '_id': ObjectId(),
             'start': date_to_datetime(start),
             'end': date_to_datetime(end),
+             # update the document's "account" field just in case it's wrong or
+             # two accounts are sharing the same template document
+            'account': account,
         })
 
         # generate predicted UPRS
