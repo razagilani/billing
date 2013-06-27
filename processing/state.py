@@ -83,12 +83,12 @@ class ReeBill(Base):
         self.sequence = sequence
         self.issued = 0
         self.version = version
-        self.utilbills = []
+        self.utilbills = utilbills
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
                 self.customer.account, self.sequence, self.version, 'issued' if
-                self.issued else unissued, len(self.utilbills))
+                self.issued else 'unissued', len(self.utilbills))
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
