@@ -1166,11 +1166,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
             utilbill_a_1 = UtilBill(
-                    self.state_db.get_customer(session, acc_a), state=0, 'gas',
+                    self.state_db.get_customer(session, acc_a), 0, 'gas',
                     'washgas', period_start=date(2013,1,1),
                     period_end=date(2013,2,1))
             utilbill_b_1 = UtilBill(
-                    self.state_db.get_customer(session, acc_b), state=0, 'gas',
+                    self.state_db.get_customer(session, acc_b), 0, 'gas',
                     'washgas', period_start=date(2013,1,1),
                     period_end=date(2013,2,5))
             utilbill_c_1 = UtilBill(
@@ -1236,7 +1236,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create reebill #2 for A
             utilbill_a_2 = UtilBill(
                     self.state_db.get_customer(session, acc_a), 0, 'gas',
-                    'washgas' period_start=date(2013,2,1),
+                    'washgas', period_start=date(2013,2,1),
                     period_end=date(2013,3,1))
             session.add(utilbill_a_2)
             reebill_a_2 = self.process.roll_bill(session, reebill_a_1)
@@ -1276,7 +1276,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # because weight decreases quickly with distance.
             session.add(UtilBill(
                     self.state_db.get_customer(session, acc_b),
-                    0, 'gas', 'washgas' period_start=date(2013,2,5),
+                    0, 'gas', 'washgas', period_start=date(2013,2,5),
                     period_end=date(2013,3,5)))
             reebill_b_2 = self.process.roll_bill(session, reebill_b_1)
             uprs_b_2 = self.rate_structure_dao.load_uprs(acc_b, 2, 0,
@@ -1363,7 +1363,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
             customer = self.state_db.get_customer(session, account)
-            session.add(UtilBill(customer, 0, 'gas', 'washgas'
+            session.add(UtilBill(customer, 0, 'gas', 'washgas',
                     period_start=date(2012,1,1), period_end=date(2012,2,1),
                     reebill=None))
 
@@ -1448,7 +1448,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 cprs_ids.append(str(cprs['_id']))
 
                 session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                        'washgas' str(utilbill['_id']), str(uprs['_id']),
+                        'washgas', str(utilbill['_id']), str(uprs['_id']),
                         str(cprs['_id']), period_start=start, period_end=end,
                         total_charges=100,
                         date_received=datetime.utcnow().date()))
