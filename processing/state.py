@@ -125,6 +125,7 @@ class UtilBill(Base):
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
+    utility = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
@@ -167,7 +168,7 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, service, period_start=None,
+    def __init__(self, customer, state, service, utility, period_start=None,
             period_end=None, total_charges=0, date_received=None,
             processed=False, reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
