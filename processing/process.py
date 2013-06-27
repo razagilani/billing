@@ -197,7 +197,7 @@ class Process(object):
         was no file or it could not be found. Raises a ValueError if the
         utility bill cannot be deleted.'''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        if utilbill.has_reebills:
+        if utilbill.reebills != []:
             raise ValueError("Can't delete an attached utility bill.")
 
         # OK to delete now.
