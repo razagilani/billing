@@ -568,7 +568,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
-        session.add(ReeBill(customer, 1, 0, [utilbill]))
+        session.add(ReeBill(customer, 1, 0, utilbills=[utilbill]))
 
     
     def create_next_reebill(self, session, account):
@@ -706,8 +706,8 @@ class Process(object):
 
         # create new row in MySQL
         session.add(UtilBill(self.state_db.get_customer(session, account),
-                state, service, utility, rate_class, doc['_id'], uprs['_id'],
-                cprs['_id'], period_start=start, period_end=end, total_charges=0,
+                state, service, utility, rate_class, doc_id=doc['_id'], uprs_id=uprs['_id'],
+                cprs_id=cprs['_id'], period_start=start, period_end=end, total_charges=0,
                 date_received=datetime.utcnow().date()))
 
         # save all 3 mongo documents

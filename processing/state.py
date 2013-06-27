@@ -59,6 +59,7 @@ class Customer(Base):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \
                 % (self.name, self.account, self.discountrate)
 
+
 class ReeBill(Base):
     __tablename__ = 'reebill'
 
@@ -77,11 +78,12 @@ class ReeBill(Base):
     # means [ubrb.utilbill for ubrb in ReeBill._utilbill_reebills]
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    def __init__(self, customer, sequence, version=0):
+    def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
         self.version = version
+        self.utilbills = []
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
@@ -94,6 +96,7 @@ class ReeBill(Base):
         reebill. This will be None if this reebill is unissued.'''
         return next(ubrb.document_id for ubrb in self._utilbill_reebills if
                 ubrb.utilbill == utilbill)
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -118,6 +121,7 @@ class UtilbillReebill(Base):
         return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
                 self.utilbill_id, self.reebill_id, self.document_id)
 
+
 class UtilBill(Base):
     __tablename__ = 'utilbill'
 
@@ -126,6 +130,7 @@ class UtilBill(Base):
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
     utility = Column(String, nullable=False)
+    rate_class = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
@@ -168,9 +173,10 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, service, utility, period_start=None,
-            period_end=None, total_charges=0, date_received=None,
-            processed=False, reebill=None):
+    def __init__(self, customer, state, service, utility, rate_class,
+            period_start=None, period_end=None, doc_id=None, uprs_id=None,
+            cprs_id=None, total_charges=0, date_received=None, processed=False,
+            reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -178,11 +184,16 @@ class UtilBill(Base):
         self.customer = customer
         self.state = state
         self.service = service
+        self.utility = utility
+        self.rate_class = rate_class
         self.period_start = period_start
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
         self.processed = processed
+        self.document_id = doc_id
+        self.uprs_document_id = uprs_id
+        self.cprs_document_id = cprs_id
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
     @property
@@ -192,6 +203,7 @@ class UtilBill(Base):
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
+
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -235,6 +247,7 @@ class Payment(Base):
                 % (self.customer, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
+
 # NOTE this is a view
 class StatusDaysSince(Base):
     __tablename__ = 'status_days_since'
@@ -248,6 +261,7 @@ class StatusDaysSince(Base):
     def __init__(self, account, dayssince):
         self.account = account
         self.dayssince = dayssince
+
     def __repr__(self):
         return '<StatusDaysSince(%s, %s)>' \
                 % (self.account, self.dayssince)

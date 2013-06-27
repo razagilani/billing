@@ -1448,9 +1448,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 cprs_ids.append(str(cprs['_id']))
 
                 session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                        'washgas', str(utilbill['_id']), str(uprs['_id']),
-                        str(cprs['_id']), period_start=start, period_end=end,
-                        total_charges=100,
+                        'washgas', 'DC Non Residential Non Heat',
+                        doc_id=str(utilbill['_id']), uprs_id=str(uprs['_id']),
+                        cprs_id=str(cprs['_id']), period_start=start,
+                        period_end=end, total_charges=100,
                         date_received=datetime.utcnow().date()))
             
             # create reebills #0 and #1
@@ -1636,11 +1637,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # add 2 utility bills to MySQL
             u1 = UtilBill(customer, 0, 'gas', 'washgas',
-                    period_start=date(2013,1,1), period_end=date(2013,2,1),
-                    reebill=None)
+                    'DC Non Residential Non Heat', period_start=date(2013,1,1),
+                    period_end=date(2013,2,1), reebill=None)
             u2 = UtilBill(customer, 0, 'gas', 'washgas',
-                    period_start=date(2013,2,1), period_end=date(2013,3,1),
-                    reebill=None)
+                    'DC Non Residential Non Heat', period_start=date(2013,2,1),
+                    period_end=date(2013,3,1), reebill=None)
             session.add(u1)
             session.add(u2)
 
