@@ -146,14 +146,6 @@ class Process(object):
         customer = session.query(Customer).filter(Customer.account==account) \
                 .one()
 
-        ## new utility bill that will be uploaded (if it's allowed)
-        #new_utilbill = UtilBill(customer, state, service,
-                #period_start=begin_date, period_end=end_date,
-                #date_received=date_received)
-        # NOTE: if new_utilbill is created here, but not added, much less
-        # committed, it appears as a result in the query below, triggering an
-        # error message. 26147819
-
         # get existing bills matching dates and service
         # (there should be at most one, but you never know)
         existing_bills = session.query(UtilBill) \
