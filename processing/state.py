@@ -71,8 +71,8 @@ class ReeBill(Base):
     # the 'utilbill_reebill' property already exists due to the "backref" of
     # 'UtilbillReebill'. this association_proxy uses that property to define
     # the 'utilbill' property based on it. this makes it so ReeBill.utilbills
-    # means [ubrb.utilbill for ubrb in ReeBill.utilbill_reebills]
-    utilbills = association_proxy('utilbill_reebills', 'utilbill')
+    # means [ubrb.utilbill for ubrb in ReeBill._utilbill_reebills]
+    utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
     def __init__(self, customer, sequence, version=0):
         self.customer = customer
@@ -89,7 +89,7 @@ class ReeBill(Base):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this
         reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.document_id for ubrb in self.utilbill_reebills if
+        return next(ubrb.document_id for ubrb in self._utilbill_reebills if
                 ubrb.utilbill == utilbill)
 
 class UtilbillReebill(Base):
@@ -104,7 +104,7 @@ class UtilbillReebill(Base):
     # only a relationship to 'ReeBill' needs to be defined here because
     # 'UtilBill' has defined one via the 'backref' of its relationship to
     # 'UtilbillReebill'
-    reebill = relationship(ReeBill, backref='utilbill_reebills')
+    reebill = relationship(ReeBill, backref='_utilbill_reebills')
 
     def __init__(self, utilbill_id, reebill_id, document_id=None):
         self.utilbill_id = utilbill_id
@@ -133,11 +133,11 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-    utilbill_reebills = relationship('UtilbillReebill',
+    _utilbill_reebills = relationship('UtilbillReebill',
             backref='utilbill')
 
     # "association proxy" that defines the 'reebills' property as a "view" of
-    # the underlying property 'utilbill_reebills'.
+    # the underlying property '_utilbill_reebills'.
     # docs:
     # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
     # example code:
@@ -147,8 +147,8 @@ class UtilBill(Base):
     # (UtilbillReebill). the 2nd argument is the name of the property of the
     # intermediate class whose value becomes the value of each element of this
     # property's value. i.e., this makes it so that "UtilBill.reebills" is
-    # another way of saying [ur.reebill for ur in UtilBill.utilbill_reebills]
-    reebills = association_proxy('utilbill_reebills', 'reebill')
+    # another way of saying [ur.reebill for ur in UtilBill._utilbill_reebills]
+    reebills = association_proxy('_utilbill_reebills', 'reebill')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
