@@ -2896,7 +2896,7 @@ class BillToolBridge:
                 # issued reebills attached to them
                 # TODO should become editable all the time; issued reebills
                 # store all relevant history in their own document
-                ('editable', (not ub.has_reebills or not any(r.issued for r in
+                ('editable', (ub.reebills == [] or not any(r.issued for r in
                         ub.reebills)))
             ]) for rb, ub in zip(mongo_reebills, utilbills)]
 

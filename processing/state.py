@@ -196,10 +196,6 @@ class UtilBill(Base):
         self.cprs_document_id = cprs_id
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
-    @property
-    def has_reebill(self):
-        return self.reebill != None
-
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
