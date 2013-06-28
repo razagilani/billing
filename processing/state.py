@@ -112,9 +112,9 @@ class UtilbillReebill(Base):
     # 'UtilbillReebill'
     reebill = relationship(ReeBill, backref='_utilbill_reebills')
 
-    def __init__(self, utilbill_id, reebill_id, document_id=None):
-        self.utilbill_id = utilbill_id
-        self.reebill_id = reebill_id
+    def __init__(self, utilbill, reebill, document_id=None):
+        self.utilbill = utilbill
+        self.reebill = reebill
         self.document_id = document_id
 
     def __repr__(self):
@@ -1037,11 +1037,24 @@ if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
     s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
     session = s.session()
-    print session.query(Customer).count(), 'customers found'
+    #print session.query(Customer).count(), 'customers found'
 
-    ub = session.query(UtilBill).first()
-    print ub.reebills
-    rb = session.query(ReeBill).first()
-    print rb.utilbills
+    #ub = session.query(UtilBill).first()
+    #print ub.reebills
+    #rb = session.query(ReeBill).first()
+    #print rb.utilbills
 
-    print rb.document_id_for_utilbill(ub)
+    #print rb.document_id_for_utilbill(ub)
+
+    #customer = session.query(Customer).first()
+
+    # this fails because the 'creator' of ReeBill.utilbills (an
+    # AssociationProxy object) is the class 'UtilbillReebill', not 'UtilBill'
+    # as might be expected.
+    #rb.utilbills.append(UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
+            #'NONRES HEAT'))
+    c = session.query(Customer).first()
+    r = ReeBill(c, 100, version=0, utilbills=[])
+    u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
+    print u.reebills
+    u.reebills.append(r)

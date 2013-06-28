@@ -570,6 +570,10 @@ class Process(object):
         # add row in MySQL
         session.add(ReeBill(customer, 1, version=0, utilbills=[utilbill]))
 
+        # TODO
+        # both ReeBill(..., utilbills=[utilbill]) and separately calling ReeBill.utilbills.append(utilbill) fail because the 'creator' of ReeBill.utilbills (an AssociationProxy object) is 'UtilbillReebill', not 'UtilBill' as might be expected.
+        # see https://www.pivotaltracker.com/story/show/52504147
+
     
     def create_next_reebill(self, session, account):
         '''Creates the successor to the highest-sequence state.ReeBill for
