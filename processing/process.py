@@ -280,6 +280,9 @@ class Process(object):
                     present_reebill.payment_received + \
                     present_reebill.total_adjustment
 
+        # include manually applied adjustment
+        present_reebill.balance_forward += present_reebill.manual_adjustment
+
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
             # set late charge and include it in balance_due
@@ -290,6 +293,7 @@ class Process(object):
             # ignore late charge
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
+
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
