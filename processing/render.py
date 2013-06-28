@@ -626,7 +626,7 @@ class ReebillRenderer:
 
         # populate adjustments
         manual_adjustments = reebill.manual_adjustment
-        other_adjustments = reebill.total_adjustment - reebill.manual_adjustment
+        other_adjustments = reebill.total_adjustment
         adjustments = [
             [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(manual_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])],
             [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(other_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])]
@@ -855,10 +855,7 @@ class ReebillRenderer:
 
         # render the document    
         doc.setProgressCallBack(progress)
-        try:
-            doc.build(Elements)
-        except Exception as e:
-            print str(e)
+        doc.build(Elements)
 
 # remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
