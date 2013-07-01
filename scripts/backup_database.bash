@@ -1,7 +1,7 @@
 #!/bin/bash
 
 USAGE="
-Usage: $0 SQLPASSWORD ENVNAME
+Usage: $0 ENVNAME SQLPASSWORD
      Creates a backup of the specified database
      MYSQLPASSWORD -- mysql admin password
      ENVNAME -- parameter specifying the environment to be backed up (e.g. stage, dev).
@@ -14,8 +14,8 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-MYSQLPASSWORD=$1
-DBENV=$2
+MYSQLPASSWORD=$2
+DBENV=$1
 
 # backup 
 now=`date +"%Y%m%d"`
