@@ -157,7 +157,15 @@ class UtilBill(Base):
     # intermediate class whose value becomes the value of each element of this
     # property's value. i.e., this makes it so that "UtilBill.reebills" is
     # another way of saying [ur.reebill for ur in UtilBill._utilbill_reebills]
-    reebills = association_proxy('_utilbill_reebills', 'reebill')
+    reebills = association_proxy('_utilbill_reebills', 'reebill',
+            creator=lambda r: UtilbillReebill(self, r))
+            # creator should be a function that creates a UtilBillReebill
+            # instance with the given ReeBill and the UtilBill on which this is
+            # being called (and document_id None). TODO but self is not
+            # available in class scope--how can this be accomplished? (moving
+            # it into instance scope via __init__ doesn't work:
+            # "AttributeError: 'AssociationProxy' object has no attribute
+            # 'append'")
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -1058,3 +1066,24 @@ if __name__ == '__main__':
     u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
     print u.reebills
     u.reebills.append(r)
+
+    # notes on association_proxy troubles:
+    # - it is possible to append a new UtilbillReebill to r._utilbill_reebills;
+    # this gets u into reebill.utilbills and r into u.reebills
+    # - changing relationships so UtilbillReebill has relationship to both
+    # UtilBill and ReeBill (and both have association_proxy to each other) does
+    # not seem to affect anything
+    # questions:
+    # is 'creator' normally automatically set to the right thing?
+    # why is 'creator' called when something gets appended, instead of just adding the value to the list?
+    #
+    # suppose A has a relationship with C by way of B. an association_proxy
+    # A.cs of A to B.c allows you to refer to A.cs when you really mean [b.c
+    # for b in a.bs]. when you append to a.cs, a 'creator' must be used because you are not REALLY
+    # appending to a list of Cs; you are creating a new instance of B (with the
+    # particular c) and adding that onto A.bs. the creator is a callable that
+    # produces an instance of B from the instance of C that you are trying to
+    # append. The default creator is B (class treated as a callable, i.e.
+    # calling __init__), and this works when B.__init__ has only one argument,
+    # which is the instance of C. But when it has more than one argument, an
+    # explicit creator must be specified.
