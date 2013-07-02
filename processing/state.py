@@ -72,10 +72,57 @@ class ReeBill(Base):
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
-    # the 'utilbill_reebill' property already exists due to the "backref" of
-    # 'UtilbillReebill'. this association_proxy uses that property to define
-    # the 'utilbill' property based on it. this makes it so ReeBill.utilbills
-    # means [ubrb.utilbill for ubrb in ReeBill._utilbill_reebills]
+    # TODO figure out SQLAlchemy cascade setting
+    _utilbill_reebills = relationship('UtilbillReebill', backref='reebill')
+
+    # 'utilbills' is a sqlalchemy.ext.associationproxy.AssociationProxy, which
+    # allows users of the ReeBill class to get and set the 'utilbills'
+    # attribute (a list of UtilBills) as if ReeBill had a direct relationship
+    # to UtilBill, while it is actually an indirect relationship mediated by
+    # the UtilBillReebill class (corresponding to the utilbill_reebill table).
+    # 'utilbills' is said to be a "view" of the underlying attribute
+    # '_utilbill_reebills' (a list of UtilbillReebill objects, which ReeBill
+    # has because of the 'backref' in UtilbillReebill.reebill). in other words,
+    # if 'r' is a ReeBill, 'r.utilbills' is another way of saying [ur.utilbill
+    # for ur in r._utilbill_reebills] (except that it is both readable and
+    # writable).
+    # 
+    # the 1st argument to 'association_proxy' is the name of the attribute of
+    # this class containing instances of the intermediate class (UtilbillReebill).
+    # the 2nd argument is the name of the property of the intermediate class
+    # whose value becomes the value of each element of this property's value.
+    #
+    # documentation:
+    # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
+    # AssociationProxy code:
+    # https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/ext/associationproxy.py
+    # example code (showing only one-directional relationship):
+    # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
+    #
+    # NOTE on why there is no corresponding 'UtilBill.reebills' attribute: each
+    # 'AssociationProxy' has a 'creator', which is a callable that creates a
+    # new instance of the intermediate class whenver an instance of the
+    # "target" class is appended to the list (in this case, a new instance of
+    # 'UtilbillReebill' to hold each UtilBill). the default 'creator' is just
+    # the intermediate class itself, which works when that class' constructor
+    # has only one argument and that argument is the target class instance. in
+    # this case the 'creator' is 'UtilbillReebill' and its __init__ takes one
+    # UtilBill as its argument. if there were a bidirectional relationship
+    # where 'UtilBill' also had a 'reebills' attribute,
+    # UtilbillReebill.__init__ would have to take both a UtilBill and a ReeBill
+    # as arguments, so a 'creator' would have to be explicitly specified. for
+    # ReeBill it would be something like
+    #     creator=lambda u: UtilbillReebill(u, self)
+    # and for UtilBill,
+    #     creator=lambda r: UtilbillReebill(self, r)
+    # but this will not actually work because 'self' is not available in class
+    # scope; there is no instance of UtilBill or ReeBill at the time this code
+    # is executed. it also does not work to move the code into __init__ and
+    # assign the 'utilbills' attribute to a particular ReeBill instance or vice
+    # versa. there may be a way to make SQLAlchemy do this (probably not with
+    # "declarative" class-definition style; maybe by switching to "classical"
+    # style?) but i decided it was sufficient to have a one-directional
+    # relationship from ReeBill to UtilBill but not in the other direction.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
     def __init__(self, customer, sequence, version=0, utilbills=[]):
@@ -103,18 +150,15 @@ class UtilbillReebill(Base):
     many-to-many relationship between "utilbill" and "reebill".'''
     __tablename__ = 'utilbill_reebill'
 
-    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
 
-    # only a relationship to 'ReeBill' needs to be defined here because
-    # 'UtilBill' has defined one via the 'backref' of its relationship to
-    # 'UtilbillReebill'
-    reebill = relationship(ReeBill, backref='_utilbill_reebills')
+    # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill
+    utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
-    def __init__(self, utilbill, reebill, document_id=None):
+    def __init__(self, utilbill, document_id=None):
         self.utilbill = utilbill
-        self.reebill = reebill
         self.document_id = document_id
 
     def __repr__(self):
@@ -142,30 +186,6 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-    _utilbill_reebills = relationship('UtilbillReebill',
-            backref='utilbill')
-
-    # "association proxy" that defines the 'reebills' property as a "view" of
-    # the underlying property '_utilbill_reebills'.
-    # docs:
-    # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
-    # example code:
-    # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
-    # the 1st argument to 'association_proxy' is the name of the property of
-    # this class that is a relationship to the intermediate class
-    # (UtilbillReebill). the 2nd argument is the name of the property of the
-    # intermediate class whose value becomes the value of each element of this
-    # property's value. i.e., this makes it so that "UtilBill.reebills" is
-    # another way of saying [ur.reebill for ur in UtilBill._utilbill_reebills]
-    reebills = association_proxy('_utilbill_reebills', 'reebill',
-            creator=lambda r: UtilbillReebill(self, r))
-            # creator should be a function that creates a UtilBillReebill
-            # instance with the given ReeBill and the UtilBill on which this is
-            # being called (and document_id None). TODO but self is not
-            # available in class scope--how can this be accomplished? (moving
-            # it into instance scope via __init__ doesn't work:
-            # "AttributeError: 'AssociationProxy' object has no attribute
-            # 'append'")
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -1064,8 +1084,8 @@ if __name__ == '__main__':
     c = session.query(Customer).first()
     r = ReeBill(c, 100, version=0, utilbills=[])
     u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
-    print u.reebills
-    u.reebills.append(r)
+    print u._utilbill_reebills
+    r.utilbills.append(r)
 
     # notes on association_proxy troubles:
     # - it is possible to append a new UtilbillReebill to r._utilbill_reebills;
@@ -1087,3 +1107,9 @@ if __name__ == '__main__':
     # calling __init__), and this works when B.__init__ has only one argument,
     # which is the instance of C. But when it has more than one argument, an
     # explicit creator must be specified.
+    #
+    #
+    # Alternate idea: there doesn't need to be a bidirectional relationship;
+    # ReeBill.utilbills is necessary but UtilBill.reebills is not. (We only
+    # need to know if a utilbill has any reebills, which can be accomplished by
+    # a has_reebills method that checks if  _utilbill_reebills is empty).
