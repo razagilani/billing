@@ -240,6 +240,8 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'name', mapping: 'name'},
+            {name: 'rate_structure', mapping: 'rate_structure'},
+            {name: 'utility', mapping: 'utility'},
             {name: 'account', mapping: 'account'},
             {name: 'period_start', mapping: 'period_start'},
             {name: 'period_end', mapping: 'period_end'},
@@ -277,6 +279,8 @@ function reeBillReady() {
         fields: [
         {name: 'name'},
         {name: 'account'},
+        {name: 'rate_structure'},
+        {name: 'utility'},
         {
             name: 'period_start', 
             type: 'date',
@@ -351,11 +355,12 @@ function reeBillReady() {
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel({
-        columns:[{
+        columns:[
+            {
                 id: 'name',
                 header: 'Name',
                 dataIndex: 'name',
-                width:250,
+                hidden: true,
             },
             {
                 id: 'service',
@@ -363,7 +368,7 @@ function reeBillReady() {
                 dataIndex: 'service',
                 editable: true,
                 editor: new Ext.form.TextField({}),
-                width: 50,
+                width: 70,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
@@ -371,7 +376,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
@@ -379,7 +384,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             {
                 id: 'total_charges',
@@ -387,16 +392,33 @@ function reeBillReady() {
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 90,
             },{
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
-                width: 30,
+                width: 70,
             },
             {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
+                width: 150,
+            },
+            {
+                id: 'utility',
+                header: 'Utility',
+                dataIndex: 'utility',
+                editable: true,
+                editor: new Ext.form.TextField({}),
+                width: 150,
+            },
+            {
+                id: 'rate_structure',
+                header: 'Rate Structure',
+                dataIndex: 'rate_structure',
+                editable: true,
+                editor: new Ext.form.TextField({}),
             },
         ],
     });
@@ -443,14 +465,11 @@ function reeBillReady() {
         //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
+        autoExpandColumn: 'rate_structure',
         frame: true,
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Utility Bills',
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
@@ -531,7 +550,7 @@ function reeBillReady() {
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
         if (!e.record.data.editable) {
-            Ext.Msg.alert("Utility bill data cannot be edited once associated to a ReeBill.");
+            Ext.Msg.alert("Utility bill data cannot be edited once associated to an issued ReeBill.");
             return false;
         }
 
@@ -737,6 +756,7 @@ function reeBillReady() {
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
+            {name: 'ree_quantity'},
             {name: 'ree_value'},
             {name: 'prior_balance'},
             {name: 'payment_received'},
@@ -846,18 +866,22 @@ function reeBillReady() {
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
+        /* NOTE: "width" is absolute column width in pixels, and one column
+         * must not be given a width (i.e. must expand to take up all available
+         * space) or else column width will not work properly (maybe Ext tries
+         * to distribute the space proportionally). */
             {
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
-                width: 40,
+                width: 70,
                 renderer: reeBillGridRenderer,
             },{
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
-                width: 60,
+                width: 90,
                 renderer: reeBillGridRenderer,
             //},{
                 //header: 'Total Error',
@@ -898,10 +922,17 @@ function reeBillReady() {
                 align: 'right',
                 renderer: reeBillGridRenderer,
             },{
+                header: 'RE&E',
+                sortable: false,
+                dataIndex: 'ree_quantity',
+                width: 70,
+                align: 'right',
+                renderer: reeBillGridRenderer,
+            },{
                 header: 'RE&E Value',
                 sortable: false,
                 dataIndex: 'ree_value',
-                width: 65,
+                width: 90,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -936,7 +967,7 @@ function reeBillReady() {
                 header: 'RE&E Charges',
                 sortable: false,
                 dataIndex: 'ree_charges',
-                width: 65,
+                //width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -1010,6 +1041,7 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
+                    ubRegisterGrid.getSelectionModel().clearSelections();
                 },
             },
         }),
@@ -1019,10 +1051,6 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'ReeBills',
     });
 
@@ -1532,6 +1560,7 @@ function reeBillReady() {
     var rollOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/roll',
         disableCaching: true,
+        timeout: 120000, // 2 minutes
     });
     rollOperationConn.autoAbort = true;
     function rollOperation()
@@ -1732,14 +1761,14 @@ function reeBillReady() {
     ////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////
-    // Measured Usage Tab
+    // Meters and Registers Tab
     //
     //
     // create a panel to which we can dynamically add/remove components
     // this panel is later added to the viewport so that it may be rendered
 
 
-    function configureUBMeasuredUsagesForms(account, sequence, usages)
+    /*function configureUBMeasuredUsagesForms(account, sequence, usages)
     {
         var ubMeasuredUsagesTab = tabPanel.getItem('ubMeasuredUsagesTab');
 
@@ -1998,35 +2027,415 @@ function reeBillReady() {
 
         ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
         ubMeasuredUsagesTab.doLayout();
-    }
+    }*/
+    var ubRegisterToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                id: 'ubNewRegisterBtn',
+                iconCls: 'icon-add',
+                text: 'New',
+                disabled: false,
+                handler: function() {
+                    ubRegisterGrid.stopEditing();
 
+                    var ubRegisterType = ubRegisterGrid.getStore().recordType;
+                    var defaultData = 
+                        {
+                        };
+                    var r = new ubRegisterType(defaultData);
+                    
+                    ubRegisterStore.add([r]);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                id: 'ubRemoveRegisterBtn',
+                iconCls: 'icon-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    ubRegisterGrid.stopEditing();
+                    var s = ubRegisterGrid.getSelectionModel().getSelected();
+                    ubRegisterStore.remove(s);
+                }
+            }
+        ]
+    });
+    
+    var initialUBRegister = {
+        rows: [],
+        total: 0
+    };
+    
+    var ubRegisterReader = new Ext.data.JsonReader({
+        root: 'rows',
+        totalProperty: 'total',
+        fields: [
+            {name: 'id', mapping: 'id'},
+            {name: 'service', mapping: 'service'},
+            {name: 'meter_id', mapping: 'meter_id'},
+            {name: 'register_id', mapping: 'register_id'},
+            {name: 'type', mapping: 'type'},
+            {name: 'binding', mapping: 'binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+        ],
+    });
+
+    var ubRegisterWriter = new Ext.data.JsonWriter({
+        encode: true,
+        writeAllFields: false,
+        listful: true,
+    });
+
+    var ubRegisterStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/utilbill_registers'
+    });
+    ubRegisterStoreProxyConn.autoAbort = true;
+    ubRegisterStoreProxyConn.disableCaching = true;
+
+    var ubRegisterStoreProxy = new Ext.data.HttpProxy(ubRegisterStoreProxyConn);
+
+    var ubRegisterStore = new Ext.data.Store({
+        proxy: ubRegisterStoreProxy,
+        reader: ubRegisterReader,
+        writer: ubRegisterWriter,
+        autoSave: true,
+        remoteSort: true,
+        data: initialUBRegister,
+    });
+    
+    ubRegisterStore.on('beforeload', function(store, options) {
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+        ubRegisterGrid.getSelectionModel().clearSelections();
+        options.params.account = selected_account;
+        options.params.sequence = selected_sequence;
+        // set the current selection into the store's baseParams
+        store.baseParams.account = selected_account;
+        store.baseParams.sequence = selected_sequence;
+        ubRegisterGrid.setDisabled(true);
+        ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
+    });
+
+    ubRegisterStore.on('load', function(store, record, options) {
+        ubRegisterGrid.setDisabled(false);
+        o = ubRegisterReader.jsonData
+        if (o.current_selected_id !== undefined) {
+            ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(o.current_selected_id))
+        }
+    });
+
+    ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.account = selected_account;
+        options.params.sequence = selected_sequence;
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    ubRegisterStore.on('write', function(store, action, result, res, rs) {
+        ubRegisterGrid.getSelectionModel().clearSelections();
+        ubRegisterStore.loadData(res.raw, false);
+        if (res.raw.current_selected_id !== undefined) {
+            ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(res.raw.current_selected_id))
+        }
+    });
+
+    ubRegisterStore.on('remove', function(store, record, index) {
+        ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
+        intervalMeterFormPanel.setDisabled(true);
+    });
+    
+    ubRegisterColModel = new Ext.grid.ColumnModel({
+        columns:[
+            {
+                id: 'service',
+                header: 'Service',
+                dataIndex: 'service',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 70,
+            },
+            {
+                id: 'meter_id',
+                header: 'Meter ID',
+                dataIndex: 'meter_id',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 100,
+            },
+            {
+                id: 'register_id',
+                header: 'Register ID',
+                dataIndex: 'register_id',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 100,
+            },
+            {
+                id: 'type',
+                header: 'Type',
+                dataIndex: 'type',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 70,
+            },
+            {
+                id: 'binding',
+                header: 'RSI Binding',
+                dataIndex: 'binding',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 100,
+            },
+            {
+                id: 'quantity',
+                header: 'Quantity',
+                dataIndex: 'quantity',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 70,
+            },
+            {
+                id: 'quantity_units',
+                header: 'Units',
+                dataIndex: 'quantity_units',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 70,
+            },
+            {
+                id: 'description',
+                header: 'Description',
+                dataIndex: 'description',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+            },
+        ],
+    });
+
+    var ubRegisterGrid = new Ext.grid.EditorGridPanel({
+        colModel: ubRegisterColModel,
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            moveEditorOnEnter: false,
+            listeners: {
+                rowdeselect: function(selModel, index, record) {
+                    ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
+                    intervalMeterFormPanel.setDisabled(true);
+                },
+                rowselect: function(selModel, index, record) {
+                    ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(ubRegisterGrid.disableEditing);
+                    intervalMeterFormPanel.setDisabled(ubRegisterGrid.disableEditing);
+                },
+            },
+        }),
+        tbar: ubRegisterToolbar,
+        store: ubRegisterStore,
+        enableColumnMove: false,
+        frame: true,
+        animCollapse: false,
+        stripeRows: true,
+        autoExpandColumn: 'description',
+        title: 'Utility Bill Registers',
+        clicksToEdit: 2,
+        flex: 1,
+        disableEditing: true,
+        setEditable: function(editable) {
+            this.disableEditing = !editable
+            ubRegisterToolbar.find('id','ubNewRegisterBtn')[0].setDisabled(!editable);
+            ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(!editable);
+            intervalMeterFormPanel.setDisabled(!editable);
+        },
+    });
+
+    ubRegisterGrid.on('beforeedit', function(e) {
+        if (e.grid.disableEditing) {
+            return false
+        }
+        return true
+    });
+
+    var intervalMeterFormPanel = new Ext.form.FormPanel({
+        id: 'interval-meter-csv-field',
+        title: 'Upload Interval Meter CSV',
+        fileUpload: true,
+        url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
+        frame:true,
+        //bodyStyle: 'padding: 10px 10px 0 10px;',
+        labelWidth: 175,
+        flex: 0,
+        disabled: true,
+        defaults: {
+            anchor: '95%',
+            //allowBlank: false,
+            msgTarget: 'side'
+        },
+        items: [
+            //file_chooser - defined in FileUploadField.js
+            {
+                xtype: 'fileuploadfield',
+                emptyText: 'Select a file to upload',
+                name: 'csv_file',
+                fieldLabel: 'CSV File',
+                buttonText: 'Choose file...',
+                buttonCfg: { width:80 },
+                allowBlank: true
+            },{
+                xtype: 'fieldset',
+                title: 'Mapping',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    {
+                        xtype: 'textfield',
+                        name: 'timestamp_column',
+                        fieldLabel: "Timestamp Column",
+                        value: "A",
+                    },{
+                        xtype: 'combo',
+                        mode: 'local',
+                        value: "%Y-%m-%d %H:%M:%S",
+                        //forceSelection: true,
+                        editable: true,
+                        triggerAction: 'all',
+                        fieldLabel: "Timestamp Format",
+                        name: 'timestamp_format',
+                        hiddenName: 'timestamp_format',
+                        displayField: 'name',
+                        valueField: 'value',
+                        store: new Ext.data.JsonStore({
+                            fields: ['name', 'value'],
+                            data: [
+                                {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
+                                {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
+                                {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
+                                {name: '%Y-%m-%dT%H:%M:%SZ',value: '%Y-%m-%dT%H:%M:%SZ'}
+                            ]
+                        })
+                    },{
+                        xtype: 'textfield',
+                        name: 'energy_column',
+                        fieldLabel: "Metered Energy Column",
+                        value: "B",
+                    },{
+                        xtype: 'combo',
+                        mode: 'local',
+                        value: 'kwh',
+                        triggerAction: 'all',
+                        forceSelection: true,
+                        editable: false,
+                        fieldLabel: 'Metered Energy Units',
+                        name: 'energy_unit',
+                        hiddenName: 'energy_unit',
+                        displayField: 'name',
+                        valueField: 'value',
+                        store: new Ext.data.JsonStore({
+                            fields : ['name', 'value'],
+                            data : [
+                                {name : 'kWh', value: 'kwh'},
+                                {name : 'BTU', value: 'btu'},
+                            ]
+                        })
+                    }
+                ],
+            },
+        ],
+        buttons: [
+            new Ext.Button({
+                text: 'Reset',
+                handler: function() {
+                    this.findParentByType(Ext.form.FormPanel).getForm().reset();
+                }
+            }),
+            new Ext.Button({
+                text: 'Submit',
+                handler: function () {
+                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+                    if (! formPanel.getForm().isValid()) {
+                        Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+                        return;
+                    }
+                    //formPanel.getForm().setValues({
+                    //'account': selected_account,
+                    //'sequence': selected_sequence,
+                    //'interval-meter-csv-field': 'new value',
+                    //});
+                    formPanel.getForm().submit({
+                        params: {
+                            'account': selected_account,
+                            'sequence': selected_sequence,
+                            'register_identifier': ubRegisterGrid.getSelectionModel().getSelected().data.register_id,
+                        }, 
+                        waitMsg:'Saving...',
+                        failure: function(form, action) {
+                            switch (action.failureType) {
+                            case Ext.form.Action.CLIENT_INVALID:
+                                Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                                break;
+                            case Ext.form.Action.CONNECT_FAILURE:
+                                Ext.Msg.alert('Failure', 'Ajax communication failed');
+                                break;
+                            case Ext.form.Action.SERVER_INVALID:
+                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                            default:
+                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                            }
+                        },
+                        success: function(form, action) {
+                            //
+                        }
+                    })
+                }
+            }),
+        ],
+    });
+    
     //
-    // Instantiate the Utility Bill Measured Usages panel
+    // Instantiate the Utility Bill Meters and Registers panel
     //
     var ubMeasuredUsagesPanel = new Ext.Panel({
         id: 'ubMeasuredUsagesTab',
-        title: 'Measured Usage',
+        title: 'Meters and Registers',
         disabled: usagePeriodsPanelDisabled,
         layout: 'vbox',
-        // all children inherit flex
-        flex: 1,
         layoutConfig : {
             pack : 'start',
             align : 'stretch',
         },
-        items: null // configureUBMeasuredUsagesForm sets this
+        items: [ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+    });
+
+    ubMeasuredUsagesPanel.on('activate', function(panel) {
+        ubRegisterStore.reload();
     });
 
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
-    ubMeasuredUsagesPanel.on('activate', function (panel) {
+    /*ubMeasuredUsagesPanel.on('activate', function (panel) {
 
         // because this tab is being displayed, demand the form that it contain 
         // be populated
         // disable it during load, the datastore re-enables when loaded.
         ubMeasuredUsagesPanel.setDisabled(true);
 
-        // get the measured usage dates for each service
+        // get the meter read dates for each service
         ubMeasuredUsagesDataConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
@@ -2056,7 +2465,7 @@ function reeBillReady() {
             },
             disableCaching: true,
         });
-    });
+    });*/
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -4479,7 +4888,7 @@ function reeBillReady() {
             },{
                 id: 'exportButton',
                 iconCls: 'icon-application-go',
-                // TODO:25227403 - export on account at a time 
+                // TODO:25227403 - export one account at a time 
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: 'Export All Utility Bills to XLS',
@@ -4775,7 +5184,7 @@ function reeBillReady() {
                         params: { 
                           'name': newNameField.getValue(),
                           'account': newAccountField.getValue(),
-                          'template_account': newAccountTemplateCombo.getValue(),
+                          'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
                           'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
@@ -5087,6 +5496,7 @@ function reeBillReady() {
 
     var journalStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/journal',
+        timeout: 60000,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -5113,7 +5523,7 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'event'},
             {name: 'msg'},
-            {name: 'extra'},
+            //{name: 'extra'},
         ],
     });
 
@@ -5127,8 +5537,6 @@ function reeBillReady() {
     });
 
     journalStore.on('beforeload', function (store, options) {
-
-        // disable the grid before it loads
         journalGrid.setDisabled(true);
 
         // The Ext API is not clear on the relationship between options and baseParams
@@ -5175,7 +5583,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                hidden: true,
+                //hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
@@ -5343,7 +5751,7 @@ function reeBillReady() {
     var journalPanel = new Ext.Panel({
         id: 'journalTab',
         title: 'Journal',
-        disabled: true,
+        disabled: journalPanelDisabled,
         xtype: 'panel',
         layout: 'vbox',
         layoutConfig : {
@@ -5479,7 +5887,7 @@ function reeBillReady() {
     // "Estimated Revenue" grid
 
     var revenueProxyConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/estimated_revenue_report',
+        url: 'http://' + location.host + '/reebill/get_estimated_revenue_data',
         timeout: 60000,
     });
     revenueProxyConn.autoAbort = true;
@@ -5611,6 +6019,83 @@ function reeBillReady() {
         }),
     });
 
+    // reebill export XLS report (with date ranges)
+
+    var reebillExportComboBox = new Ext.form.ComboBox({
+        store: newAccountTemplateStore,
+        fieldLabel: 'Account',
+        displayField:'account', //will be submitted by default, by a form post
+        valueField:'name', //must get at this with a myStore.getValue() call
+        typeAhead: true,
+        triggerAction: 'all',
+        emptyText:'All',
+        selectOnFocus:true,
+        readOnly: false,
+        width: 500,
+    });
+   
+    // date fields
+    var reebillExportStartDateField = new Ext.form.DateField({
+        fieldLabel: 'Begin Date',
+        name: 'begin_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportEndDateField = new Ext.form.DateField({
+        fieldLabel: 'End Date',
+        name: 'end_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportSubmitButton = new Ext.Button({
+        text: 'Download XLS',
+        handler: function(b, e) {
+            //You cannot simply call saveForm, because it needs to be able to find its parent.
+            //Using 'this' as the scope tells it that it is not just in an anonymus function.
+            saveForm(b, e, function(b,e) {
+                //TODO: redirect (or something) to trigger a download of the spreadsheet that gets returned by the WSGI method
+            })
+        },
+    });
+
+    var reebillExportPanel = new Ext.form.FormPanel({
+        id: 'reebillExportPanel',
+        url: 'http://'+location.host+'/reebill/reebill_details_xls',
+        labelwidth: 120,
+        frame: true,
+        title: "Export ReeBill XLS",
+        border: false,
+        defaults: {
+            anchor: '95%',
+            xtype: 'textfield',
+        },
+        defaultType: 'textfield',
+        items: [
+            {
+                xtype: 'fieldset',
+                id: 'reebillExportPanelForm',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    reebillExportComboBox,
+                    reebillExportStartDateField,
+                    reebillExportEndDateField,
+                ],
+            },
+        ],
+        buttons: [
+            reebillExportSubmitButton,
+            ]
+
+    });
+
+
     //
     // Instantiate the Report panel
     //
@@ -5620,7 +6105,7 @@ function reeBillReady() {
         disabled: reportPanelDisabled,
         //xtype: 'panel',
         layout: 'accordion',
-        items: [reconciliationGrid, revenueGrid],
+        items: [reconciliationGrid, revenueGrid, reebillExportPanel],
     });
 
     ///////////////////////////////////////////
@@ -5726,7 +6211,6 @@ function reeBillReady() {
             },{
                 id: 'mailto',
                 header: 'Recipients',
-                columnWidth: 1,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'mailto',
@@ -5943,6 +6427,7 @@ function reeBillReady() {
         defaultText: 'No REE Bill Selected',
         id: 'statusbar',
         statusAlign: 'right', // the magic config
+        
         items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
     });
 
@@ -6074,8 +6559,8 @@ function reeBillReady() {
 
         if (account == null) {
             /* no account selected */
-            journalPanel.setDisabled(true);
             updateStatusbar(null, null, null)
+            journalGrid.setTitle('Journal Entries for All Accounts');
             return;
         }
 
@@ -6124,7 +6609,6 @@ function reeBillReady() {
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
-        configureUBMeasuredUsagesForms(null, null, null);
         configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
@@ -6191,8 +6675,9 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
-                    (record.data.issued == false && record.data.max_version > 0 &&
-                    (prevRecord == null || prevRecord.data.issued == true))));
+                                        (record.data.issued == false && record.data.max_version > 0 &&
+                                         (prevRecord == null || prevRecord.data.issued == true))));
+            ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
         }

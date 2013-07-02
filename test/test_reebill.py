@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
-from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
