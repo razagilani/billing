@@ -286,20 +286,7 @@ class ReebillRenderer:
         #billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
         billingAddressF = Frame(78, 600, 390, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
-        # 2/3
-
-        if self.current_template is not 'teva':
-            # graph one frame
-            graphOneF = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
-
-            # graph two frame
-            graphTwoF = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
-
-            # graph three frame
-            graphThreeF = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
-
-            # graph four frame
-            graphFourF = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphFour', showBoundary=_showBoundaries)
+        # 2/3 (removed)
 
         # 3/3
 
@@ -332,10 +319,7 @@ class ReebillRenderer:
 
 
         # build page container for flowables to populate
-        if self.current_template is not 'teva':
-            firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF, motdF])
-        else:
-            firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF, motdF])
+        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF, motdF])
         #
 
         # page two frames
@@ -433,144 +417,144 @@ class ReebillRenderer:
         # statistics
 
 
-        if self.current_template is not 'teva':
-            st = reebill.statistics
+        #if self.current_template is not 'teva':
+            #st = reebill.statistics
 
-            # populate graph one
+            ## populate graph one
 
-            # Construct period consumption/production ratio graph
-            # TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
-            renewableUtilization = st.get('renewable_utilization', "n/a")
-            conventionalUtilization = st.get('conventional_utilization', "n/a")
-            data = [renewableUtilization if renewableUtilization is not None else 0,
-                conventionalUtilization if conventionalUtilization is not None else 0]
-            labels = ["Renewable", "Conventional"]
-            c = PieChart(10*270, 10*127)
-            c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+            ## Construct period consumption/production ratio graph
+            ## TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
+            #renewableUtilization = st.get('renewable_utilization', "n/a")
+            #conventionalUtilization = st.get('conventional_utilization', "n/a")
+            #data = [renewableUtilization if renewableUtilization is not None else 0,
+                #conventionalUtilization if conventionalUtilization is not None else 0]
+            #labels = ["Renewable", "Conventional"]
+            #c = PieChart(10*270, 10*127)
+            #c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
 
-            # Configure the labels using CDML to include the icon images
-            c.setLabelFormat("{label} {percent|1}%")
+            ## Configure the labels using CDML to include the icon images
+            #c.setLabelFormat("{label} {percent|1}%")
 
 
-            c.setColors2(DataColor, [0x007437,0x5a8f47]) 
-            c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
-            c.setData(data, labels)
-            c.setLabelStyle('Inconsolata.ttf', 64)
-            image_filename = "utilization-%s.png" % datetime.now()
-            image_path = os.path.join(self.temp_directory, image_filename)
-            c.makeChart(image_path)
+            #c.setColors2(DataColor, [0x007437,0x5a8f47]) 
+            #c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
+            #c.setData(data, labels)
+            #c.setLabelStyle('Inconsolata.ttf', 64)
+            #image_filename = "utilization-%s.png" % datetime.now()
+            #image_path = os.path.join(self.temp_directory, image_filename)
+            #c.makeChart(image_path)
            
-            Elements.append(Image(image_path, 270*.9, 127*.9))
-            Elements.append(UseUpSpace())
+            #Elements.append(Image(image_path, 270*.9, 127*.9))
+            #Elements.append(UseUpSpace())
 
 
 
-            # populate graph two 
+            ## populate graph two 
             
-            # construct period environmental benefit
+            ## construct period environmental benefit
 
-            periodRenewableConsumed = st.get('renewable_consumed', 0)
-            periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
+            #periodRenewableConsumed = st.get('renewable_consumed', 0)
+            #periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
 
-            periodPoundsCO2Offset = st.get('co2_offset', 0)
-            periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
+            #periodPoundsCO2Offset = st.get('co2_offset', 0)
+            #periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
             
-            environmentalBenefit = [
-                [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-                [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
-                [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
-            ]
+            #environmentalBenefit = [
+                #[Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+                #[Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
+                #[Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
+            #]
 
-            t = Table(environmentalBenefit, [180,90])
-            t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+            #t = Table(environmentalBenefit, [180,90])
+            #t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
-            Elements.append(t)
-            Elements.append(UseUpSpace())
+            #Elements.append(t)
+            #Elements.append(UseUpSpace())
 
 
-            # populate graph three 
+            ## populate graph three 
             
-            # construct system life cumulative numbers table
+            ## construct system life cumulative numbers table
 
-            total_renewable_consumed = st.get('total_renewable_consumed', 0)
-            total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
-            total_co2_offset = st.get('total_co2_offset', 0)
-            total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
+            #total_renewable_consumed = st.get('total_renewable_consumed', 0)
+            #total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
+            #total_co2_offset = st.get('total_co2_offset', 0)
+            #total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
 
-            total_trees = st.get('total_trees', 0)
-            total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
+            #total_trees = st.get('total_trees', 0)
+            #total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
 
-            systemLife = [
-                [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-                [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
-                [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
-                [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
-                [Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
-            ]
+            #systemLife = [
+                #[Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+                #[Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
+                #[Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
+                #[Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
+                #[Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
+            #]
 
-            t = Table(systemLife, [180,90])
-            t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+            #t = Table(systemLife, [180,90])
+            #t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
-            Elements.append(t)
-            Elements.append(Spacer(100,20))
+            #Elements.append(t)
+            #Elements.append(Spacer(100,20))
             
-            # build string for trees:
-            # each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
-            if float(total_trees) <= 10:
-                tree_images = float(total_trees)
-                tree_label = 'Trees'
-            else:
-                tree_images = float(total_trees) / 10.0
-                tree_label = 'Tens of Trees'
-            # number of whole trees to show is the floor of tree_images; the fractional
-            # tree image that is shown (if any) is determined by the fractional part of
-            # tree_images
-            tree_image_fraction, whole_tree_images = math.modf(tree_images)
-            whole_tree_images = int(whole_tree_images)
-            # round the fractional part to the nearest tenth, and convert it into a string
-            # (so it's now one of the digits 0-9)
-            tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
+            ## build string for trees:
+            ## each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
+            #if float(total_trees) <= 10:
+                #tree_images = float(total_trees)
+                #tree_label = 'Trees'
+            #else:
+                #tree_images = float(total_trees) / 10.0
+                #tree_label = 'Tens of Trees'
+            ## number of whole trees to show is the floor of tree_images; the fractional
+            ## tree image that is shown (if any) is determined by the fractional part of
+            ## tree_images
+            #tree_image_fraction, whole_tree_images = math.modf(tree_images)
+            #whole_tree_images = int(whole_tree_images)
+            ## round the fractional part to the nearest tenth, and convert it into a string
+            ## (so it's now one of the digits 0-9)
+            #tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
 
 
-            treeString = ""
-            while (whole_tree_images) > 0:
-                treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images", "tree3.png") +"\"/>"
-                whole_tree_images -= 1
+            #treeString = ""
+            #while (whole_tree_images) > 0:
+                #treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images", "tree3.png") +"\"/>"
+                #whole_tree_images -= 1
 
-            if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
+            #if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
 
-            Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
+            #Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
 
-            Elements.append(Spacer(100,5))
-            Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
+            #Elements.append(Spacer(100,5))
+            #Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
 
-            Elements.append(UseUpSpace())
+            #Elements.append(UseUpSpace())
 
 
-            # populate graph four 
+            ## populate graph four 
             
-            # construct annual production graph
-            data = []
-            labels = []
-            for period in (st.get('consumption_trend',[])):
-                labels.append(str(period.get("month")))
-                data.append(float(period.get("quantity")))
+            ## construct annual production graph
+            #data = []
+            #labels = []
+            #for period in (st.get('consumption_trend',[])):
+                #labels.append(str(period.get("month")))
+                #data.append(float(period.get("quantity")))
 
-            c = XYChart(10*270, 10*127)
-            c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
-            c.setColors2(DataColor, [0x9bbb59, 0xff0000]) 
-            c.addBarLayer(data)
-            c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-            c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
-            c.yAxis().setTickDensity(100)
-            c.yAxis().setTitle("Therms", 'Inconsolata.ttf', 52)
-            c.xAxis().setLabels(labels)
-            c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
-            image_filename = "Graph4-%s.png" % datetime.now()
-            c.makeChart(os.path.join(self.temp_directory,image_filename))    
+            #c = XYChart(10*270, 10*127)
+            #c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
+            #c.setColors2(DataColor, [0x9bbb59, 0xff0000]) 
+            #c.addBarLayer(data)
+            #c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+            #c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
+            #c.yAxis().setTickDensity(100)
+            #c.yAxis().setTitle("Therms", 'Inconsolata.ttf', 52)
+            #c.xAxis().setLabels(labels)
+            #c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
+            #image_filename = "Graph4-%s.png" % datetime.now()
+            #c.makeChart(os.path.join(self.temp_directory,image_filename))    
 
-            Elements.append(Image(os.path.join(self.temp_directory,image_filename), 270*.9, 127*.9))
-            Elements.append(UseUpSpace())
+            #Elements.append(Image(os.path.join(self.temp_directory,image_filename), 270*.9, 127*.9))
+            #Elements.append(UseUpSpace())
 
 
         # populate summary background

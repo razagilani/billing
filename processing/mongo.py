@@ -211,21 +211,10 @@ class MongoReebill(object):
                 for shadow_register in self.shadow_registers(service):
                     self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
-            # zero out statistics section
-            self.reebill_dict['statistics'] = {
-                "conventional_consumed": 0,
-                "renewable_consumed": 0,
-                "renewable_utilization": 0,
-                "conventional_utilization": 0,
-                "renewable_produced": 0,
-                "co2_offset": 0,
-                "total_savings": Decimal("0.00"),
-                "total_renewable_consumed": 0,
-                "total_renewable_produced": 0,
-                "total_trees": 0,
-                "total_co2_offset": 0,
-                "consumption_trend": [],
-            }
+            # if "statistics" section exists in the bill, remove it
+            if 'statistics' in self.reebill_dict:
+                del self.reebill_dict['statistics']
+
 
     def convert_to_new_account(self, account):
         # TODO: the existence of this function is a symptom of ugly design.
@@ -456,15 +445,6 @@ class MongoReebill(object):
     @motd.setter
     def motd(self, value):
         self.reebill_dict['message'] = value
-
-    @property
-    def statistics(self):
-        '''Returns a dictionary of the information that goes in the
-        "statistics" section of reebill.'''
-        return self.reebill_dict['statistics']
-    @statistics.setter
-    def statistics(self, value):
-        self.reebill_dict['statistics'].update(value)
 
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property

@@ -300,7 +300,6 @@ class Process(object):
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
         
-        self.calculate_statistics(prior_reebill, present_reebill)
 
 
     def copy_actual_charges(self, reebill):
@@ -333,6 +332,10 @@ class Process(object):
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
+        if 'statistics' in new_reebill.reebill_dict:
+            print '************* YES'
+        else:
+            print '************* NO'
         new_reebill.sequence += 1
         # Update the new reebill's periods to the periods identified in the StateDB
         for ub in utilbills:
@@ -836,165 +839,8 @@ class Process(object):
             #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
             # NOTE that the reebill has not been modified at all
-
-
-    def calculate_statistics(self, prior_reebill, reebill):
-        """ Period Statistics for the input bill period are determined here
-        from the total energy usage contained in the registers. Cumulative
-        statistics are determined by adding period statistics to the past
-        cumulative statistics """ 
-        # the trailing bill where totals are obtained
-        #prev_bill = self.reebill_dao.load_reebill(prior_reebill.account, int(prior_reebill.sequence)-1)
-        prev_bill = prior_reebill
-
-        # the current bill where accumulated values are stored
-        #next_bill = self.reebill_dao.load_reebill(reebill.account, int(reebill.sequence))
-        next_bill = reebill
-
-        # determine the renewable and conventional energy across all services by converting all registers to BTUs
-        # TODO these conversions should be treated in a utility class
-        def normalize(units, total):
-            if (units.lower() == "kwh"):
-                # 1 kWh = 3413 BTU
-                return total * Decimal("3413")
-            elif (units.lower() == "therms" or units.lower() == "ccf"):
-                # 1 therm = 100000 BTUs
-                return total * Decimal("100000")
-            else:
-                raise Exception("Units '" + units + "' not supported")
-
-
-        # total renewable energy
-        re = Decimal("0.0")
-        # total conventional energy
-        ce = Decimal("0.0")
-
-        # CO2 is fuel dependent
-        co2 = Decimal("0.0")
-        # TODO these conversions should be treated in a utility class
-        def calcco2(units, total):
-            if (units.lower() == "kwh"):
-                return total * Decimal("1.297")
-            elif (units.lower() == "therms" or units.lower() == "ccf"):
-                return total * Decimal("13.46")
-            else:
-                raise Exception("Units '" + units + "' not supported")
-
-        for meters in next_bill.meters.itervalues():                        
-            for meter in meters:
-                for register in meter['registers']:
-                    units = register['quantity_units']
-                    total = register['quantity']
-                    if register['shadow'] == True:
-                        re += normalize(units, total)
-                        co2 += calcco2(units, total)
-                    else:
-                        ce += normalize(units, total)
-        next_stats = next_bill.statistics
-        prev_stats = prev_bill.statistics
-
-        # determine re to ce utilization ratio
-        if re + ce > 0:
-            re_utilization = Decimal(str(re / (re + ce)))\
-                    .quantize(Decimal('.00'), rounding=ROUND_UP)
-            ce_utilization = Decimal(str(ce / (re + ce)))\
-                        .quantize(Decimal('.00'), rounding=ROUND_DOWN)
-        else:
-            re_utilization = 0
-            ce_utilization = 0
-
-        # update utilization stats
-        next_stats['renewable_utilization'] = re_utilization
-        next_stats['conventional_utilization'] = ce_utilization
-
-        # determine cumulative savings
-
-        # update cumulative savings
-        next_stats['total_savings'] = prev_stats['total_savings'] + next_bill.ree_savings
-
-        # set renewable consumed
-        next_stats['renewable_consumed'] = re
-
-        next_stats['total_renewable_consumed'] = prev_stats['renewable_consumed'] + re
-
-        # set conventional consumed
-        next_stats['conventional_consumed'] = ce
-
-        next_stats['total_conventional_consumed'] = prev_stats['conventional_consumed'] + ce
-
-        # set CO2
-        next_stats['co2_offset'] = co2
-
-        # determine and set cumulative CO2
-        next_stats['total_co2_offset'] =  prev_stats['total_co2_offset'] + co2
-
-        # externalize this calculation to utilities
-        next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
-        
-
-        if self.splinter is not None:
-            # fill in data for "Monthly Renewable Energy Consumption" graph
-
-            # objects for getting olap data
-            olap_id = self.nexus_util.olap_id(reebill.account)
-            try:
-                install = self.splinter.get_install_obj_for(olap_id)
-            except ValueError as ve:
-                print >> sys.stderr, ('Cannot lookup install %s, '
-                        'statistics not completely calculated for %s-%s') % (
-                        olap_id, reebill.account, reebill.sequence)
-            else:
-                bill_year, bill_month = dateutils.estimate_month(
-                        next_bill.period_begin,
-                        next_bill.period_end)
-                next_stats['consumption_trend'] = []
-
-                # get month of first billing date
-                first_bill_date = self.reebill_dao \
-                        .get_first_bill_date_for_account(reebill.account)
-                first_bill_year = first_bill_date.year
-                first_bill_month = first_bill_date.month
-
-                # get month of "install commissioned"
-                commissioned_year = install.install_commissioned.year
-                commissioned_month = install.install_commissioned.month
-
-                for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-                    # the graph shows 0 energy for months before the first bill
-                    # month or the install_commissioned month, whichever is later,
-                    # even if data were collected during that time. however, the
-                    # graph shows ALL the renewable energy sold during the first
-                    # month, including energy sold before the start of the first
-                    # billing period or the install_commissioned date.
-                    if (year, month) < max((commissioned_year, commissioned_month),
-                            (first_bill_year, first_bill_month)):
-                        renewable_energy_btus = 0
-                    else:
-                        # get billing data from OLAP (instead of
-                        # DataHandler.get_single_chunk_for_range()) for speed only.
-                        # we insist that data should be available during the month of
-                        # first billing and all following months; if get_data_for_month()
-                        # fails, that's a real error that we shouldn't ignore.
-                        # (but, inexplicably, that's not true: we bill webster
-                        # house (10019) starting in october 2011 but its first
-                        # monthly olap doc is in november.)
-                        try:
-                            renewable_energy_btus = self.monguru.get_data_for_month(install, year,
-                                    month).energy_sold
-                            if (renewable_energy_btus is None):
-                                renewable_energy_btus = 0
-                        except (ValueError, AttributeError) as e:
-                            print >> sys.stderr, ('Missing olap document for %s, '
-                                    '%s-%s: skipped, but the graph will be wrong') % (
-                                    install.name, year, month)
-                            renewable_energy_btus = 0
-
-                    therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
-                    next_stats['consumption_trend'].append({
-                        'month': calendar.month_abbr[month],
-                        'quantity': therms
-                    })
              
+
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
