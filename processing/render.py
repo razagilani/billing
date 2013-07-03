@@ -30,11 +30,11 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 #
 # for chart graphics
 #
-import pychartdir
+#import pychartdir
 #  Activate ChartDirector License
-pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
+#pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
-from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
+#from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
 from billing.processing import mongo
 
 # Unused
