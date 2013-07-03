@@ -3701,7 +3701,7 @@ function reeBillReady() {
                     var r = new UPRSRSIType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = URSRSIStore.indexOf(selection); // TODO looks like wrong store is being used here
+                    var insertionPoint = UPRSRSIStore.indexOf(selection);
                     UPRSRSIStore.insert(insertionPoint + 1, r);
                     UPRSRSIGrid.startEditing(insertionPoint +1,1);
                     
