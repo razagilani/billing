@@ -310,6 +310,7 @@ example_reebill = {
 		"sa_street1" : "3501 13TH ST NW #WH"
 	},
 	"total_adjustment" : 0,
+	"manual_adjustment" : 0,
 	"ree_savings" : 118.42,
 	"statistics" : {
 		"renewable_utilization" : 0.26,
