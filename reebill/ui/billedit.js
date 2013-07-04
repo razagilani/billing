@@ -3701,7 +3701,7 @@ function reeBillReady() {
                     var r = new UPRSRSIType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = URSRSIStore.indexOf(selection);
+                    var insertionPoint = UPRSRSIStore.indexOf(selection);
                     UPRSRSIStore.insert(insertionPoint + 1, r);
                     UPRSRSIGrid.startEditing(insertionPoint +1,1);
                     
@@ -3790,263 +3790,263 @@ function reeBillReady() {
 
 
     // the URS
-    var initialURSRSI = {
-        rows: [
-        ]
-    };
+    //var initialURSRSI = {
+        //rows: [
+        //]
+    //};
 
-    var URSRSIReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
+    //var URSRSIReader = new Ext.data.JsonReader({
+        //// metadata configuration options:
+        //// there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        ////idProperty: 'id',
+        ////root: 'rows',
+
+        //// the fields config option will internally create an Ext.data.Record
+        //// constructor that provides mapping for reading the record data objects
+        //fields: [
+            //// map Record's field to json object's key of same name
+            //{name: 'uuid', mapping: 'uuid'},
+            //{name: 'rsi_binding', mapping: 'rsi_binding'},
+            //{name: 'description', mapping: 'description'},
+            //{name: 'quantity', mapping: 'quantity'},
+            //{name: 'quantityunits', mapping: 'quantityunits'},
+            //{name: 'rate', mapping: 'rate'},
+            //{name: 'rateunits', mapping: 'rateunits'},
+            //{name: 'roundrule', mapping:'roundrule'},
+            //{name: 'total', mapping: 'total'},
+        //]
+    //});
+
+    //var URSRSIWriter = new Ext.data.JsonWriter({
+        //encode: true,
+        //// write all fields, not just those that changed
+        //writeAllFields: true 
+    //});
+
+    //var URSRSIStoreProxyConn = new Ext.data.Connection({
+        //url: 'http://'+location.host+'/reebill/ursrsi',
+        //disableCaching: true,
+    //});
+    //URSRSIStoreProxyConn.autoAbort = true;
+
+    //var URSRSIStoreProxy = new Ext.data.HttpProxy(URSRSIStoreProxyConn);
+
+    //var URSRSIStore = new Ext.data.JsonStore({
+        //proxy: URSRSIStoreProxy,
+        //reader: URSRSIReader,
+        //writer: URSRSIWriter,
+        //// or, autosave must be used to save each action
+        //autoSave: true,
+        //// won't be updated when combos change, so do this in event
+        //// perhaps also can be put in the options param for the ajax request
+        //baseParams: { account:selected_account, sequence: selected_sequence},
+        //data: initialURSRSI,
         //root: 'rows',
+        //idProperty: 'uuid',
+        //fields: [
+            //{name: 'uuid'},
+            //{name: 'rsi_binding'},
+            //{name: 'description'},
+            //{name: 'quantity'},
+            //{name: 'quantityunits'},
+            //{name: 'rate'},
+            //{name: 'rateunits'},
+            //{name: 'roundrule'},
+            //{name: 'total'},
+        //],
+    //});
 
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'uuid', mapping: 'uuid'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
+    //URSRSIStore.on('save', function (store, batch, data) {
+    //});
 
-    var URSRSIWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
+    //URSRSIStore.on('beforeload', function (store, options) {
 
-    var URSRSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/ursrsi',
-        disableCaching: true,
-    });
-    URSRSIStoreProxyConn.autoAbort = true;
+        ////URSRSIGrid.setDisabled(true);
 
-    var URSRSIStoreProxy = new Ext.data.HttpProxy(URSRSIStoreProxyConn);
+        ////options.params.account = selected_account;
+        ////options.params.sequence = selected_sequence;
+        ////options.params.service = Ext.getCmp('service_for_charges').getValue();
+        //URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        //URSRSIStore.setBaseParam("account", selected_account);
+        //URSRSIStore.setBaseParam("sequence", selected_sequence);
+    //});
 
-    var URSRSIStore = new Ext.data.JsonStore({
-        proxy: URSRSIStoreProxy,
-        reader: URSRSIReader,
-        writer: URSRSIWriter,
-        // or, autosave must be used to save each action
-        autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:selected_account, sequence: selected_sequence},
-        data: initialURSRSI,
-        root: 'rows',
-        idProperty: 'uuid',
-        fields: [
-            {name: 'uuid'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantityunits'},
-            {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
-            {name: 'total'},
-        ],
-    });
+    //// fired when the datastore has completed loading
+    //URSRSIStore.on('load', function (store, records, options) {
+        //// the grid is disabled by the panel that contains it  
+        //// prior to loading, and must be enabled when loading is complete
+        //// the datastore enables when it is done loading
+        ////URSRSIGrid.setDisabled(false);
+    //});
 
-    URSRSIStore.on('save', function (store, batch, data) {
-    });
+    //// grid's data store callback for when data is edited
+    //// when the store backing the grid is edited, enable the save button
+    //URSRSIStore.on('update', function(){
 
-    URSRSIStore.on('beforeload', function (store, options) {
+        //// disallow editing of the URS
+        ////URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+    //});
 
-        URSRSIGrid.setDisabled(true);
+    //URSRSIStore.on('beforesave', function() {
+    //});
 
-        //options.params.account = selected_account;
-        //options.params.sequence = selected_sequence;
-        //options.params.service = Ext.getCmp('service_for_charges').getValue();
-        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        URSRSIStore.setBaseParam("account", selected_account);
-        URSRSIStore.setBaseParam("sequence", selected_sequence);
-    });
+    //var URSRSIColModel = new Ext.grid.ColumnModel(
+    //{
+        //columns: [
+            //{
+                //header: 'UUID',
+                //sortable: true,
+                //dataIndex: 'uuid',
+                //editable: false,
+                //editor: new Ext.form.TextField({allowBlank: false}),
+                //hidden: true,
+            //},{
+                //header: 'RSI Binding',
+                //sortable: true,
+                //dataIndex: 'rsi_binding',
+                //// no editor disallows edits
+                ////editor: new Ext.form.TextField({allowBlank: false})
+            //},{
+                //header: 'Description',
+                //sortable: true,
+                //dataIndex: 'description',
+            //},{
+                //header: 'Quantity',
+                //sortable: true,
+                //dataIndex: 'quantity',
+            //},{
+                //header: 'Units',
+                //sortable: true,
+                //dataIndex: 'quantityunits',
+            //},{
+                //header: 'Rate',
+                //sortable: true,
+                //dataIndex: 'rate',
+            //},{
+                //header: 'Units',
+                //sortable: true,
+                //dataIndex: 'rateunits',
+            //},{
+                //header: 'Round Rule',
+                //sortable: true,
+                //dataIndex: 'roundrule',
+            //},{
+                //header: 'Total', 
+                //sortable: true, 
+                //dataIndex: 'total', 
+                //summaryType: 'sum',
+                //align: 'right',
+            //}
+        //]
+    //});
 
-    // fired when the datastore has completed loading
-    URSRSIStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
-        URSRSIGrid.setDisabled(false);
-    });
+    //var URSRSIToolbar = new Ext.Toolbar({
+        //items: [
+            //{
+                //xtype: 'button',
+                //// ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                //id: 'URSRSIInsertBtn',
+                //iconCls: 'icon-add',
+                //text: 'Insert',
+                //disabled: true,
+                //handler: function()
+                //{
+                    //URSRSIGrid.stopEditing();
 
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    URSRSIStore.on('update', function(){
+                    //// grab the current selection - only one row may be selected per singlselect configuration
+                    //var selection = URSRSIGrid.getSelectionModel().getSelected();
 
-        // disallow editing of the URS
-        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-    });
-
-    URSRSIStore.on('beforesave', function() {
-    });
-
-    var URSRSIColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'UUID',
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                editor: new Ext.form.TextField({allowBlank: false}),
-                hidden: true,
-            },{
-                header: 'RSI Binding',
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                // no editor disallows edits
-                //editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-            },{
-                header: 'Quantity',
-                sortable: true,
-                dataIndex: 'quantity',
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'quantityunits',
-            },{
-                header: 'Rate',
-                sortable: true,
-                dataIndex: 'rate',
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'rateunits',
-            },{
-                header: 'Round Rule',
-                sortable: true,
-                dataIndex: 'roundrule',
-            },{
-                header: 'Total', 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-            }
-        ]
-    });
-
-    var URSRSIToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'URSRSIInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-                    URSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = URSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var URSRSIType = URSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
-                    var r = new URSRSIType(defaultData);
+                    //// make the new record
+                    //var URSRSIType = URSRSIGrid.getStore().recordType;
+                    //var defaultData = 
+                    //{
+                    //};
+                    //var r = new URSRSIType(defaultData);
         
-                    // select newly inserted record
-                    var insertionPoint = URSRSIStore.indexOf(selection);
-                    URSRSIStore.insert(insertionPoint + 1, r);
-                    URSRSIGrid.startEditing(insertionPoint +1,1);
+                    //// select newly inserted record
+                    //var insertionPoint = URSRSIStore.indexOf(selection);
+                    //URSRSIStore.insert(insertionPoint + 1, r);
+                    //URSRSIGrid.startEditing(insertionPoint +1,1);
                     
-                    // An inserted record must be saved 
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'URSRSIRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    URSRSIGrid.stopEditing();
+                    //// An inserted record must be saved 
+                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+                //}
+            //},{
+                //xtype: 'tbseparator'
+            //},{
+                //xtype: 'button',
+                //// ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                //id: 'URSRSIRemoveBtn',
+                //iconCls: 'icon-delete',
+                //text: 'Remove',
+                //disabled: true,
+                //handler: function()
+                //{
+                    //URSRSIGrid.stopEditing();
 
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = URSRSIGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        URSRSIStore.remove(r);
-                    }
-                    URSRSIStore.save(); 
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
-                }
-            },{
-                xtype:'tbseparator'
-            },/*{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'URSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+                    //// TODO single row selection only, test allowing multirow selection
+                    //var s = URSRSIGrid.getSelectionModel().getSelections();
+                    //for(var i = 0, r; r = s[i]; i++)
+                    //{
+                        //URSRSIStore.remove(r);
+                    //}
+                    //URSRSIStore.save(); 
+                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+                //}
+            //},{
+                //xtype:'tbseparator'
+            //},[>{
+                //xtype: 'button',
+                //// places reference to this button in grid.  
+                //id: 'URSRSISaveBtn',
+                //iconCls: 'icon-save',
+                //text: 'Save',
+                //disabled: true,
+                //handler: function()
+                //{
+                    //// disable the save button for the save attempt.
+                    //// is there a closer place for this to the actual button click due to the possibility of a double
+                    //// clicked button submitting two ajax requests?
+                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
 
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    URSRSIGrid.stopEditing();
+                    //// stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    //URSRSIGrid.stopEditing();
 
-                    URSRSIStore.save(); 
-                }
-            }*/
-        ]
-    });
+                    //URSRSIStore.save(); 
+                //}
+            //}*/
+        //]
+    //});
 
-    var URSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: URSRSIToolbar,
-        colModel: URSRSIColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: URSRSIStore,
-        enableColumnMove: true,
-        frame: true,
-        collapsible: false,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Utility Global',
-        clicksToEdit: 2
-    });
+    //var URSRSIGrid = new Ext.grid.EditorGridPanel({
+        //tbar: URSRSIToolbar,
+        //colModel: URSRSIColModel,
+        //selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        //store: URSRSIStore,
+        //enableColumnMove: true,
+        //frame: true,
+        //collapsible: false,
+        //animCollapse: false,
+        //stripeRows: true,
+        //viewConfig: {
+            //// doesn't seem to work
+            //forceFit: true,
+        //},
+        //title: 'Utility Global',
+        //clicksToEdit: 2
+    //});
 
-    URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
+    //URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+        //// if a selection is made, allow it to be removed
+        //// if the selection was deselected to nothing, allow no 
+        //// records to be removed.
 
-        // disallow editing of the URS
-        //URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+        //// disallow editing of the URS
+        ////URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
-        // if there was a selection, allow an insertion
-        //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    });
+        //// if there was a selection, allow an insertion
+        ////URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
+    //});
   
 
     //
@@ -4069,12 +4069,12 @@ function reeBillReady() {
             layout: 'fit',
             split: true,
             items: [UPRSRSIGrid]
-        },{
-            region:'south',
-            layout: 'fit',
-            split: true,
-            height: 275,
-            items: [URSRSIGrid]
+        //},{
+            //region:'south',
+            //layout: 'fit',
+            //split: true,
+            //height: 275,
+            //items: [URSRSIGrid]
         }]
     });
 
@@ -4086,7 +4086,7 @@ function reeBillReady() {
         // be populated
         CPRSRSIStore.reload();
 
-        URSRSIStore.reload();
+        //URSRSIStore.reload();
 
         UPRSRSIStore.reload();
 
@@ -6613,7 +6613,7 @@ function reeBillReady() {
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
-        URSRSIStore.loadData({rows: 0, success: true});
+        //URSRSIStore.loadData({rows: 0, success: true});
         UPRSRSIStore.loadData({rows: 0, success: true});
 
         updateStatusbar(account, null, null);
