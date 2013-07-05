@@ -1690,24 +1690,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'gas', 'DC Non Residential Non Heat', date(2013,1,1),
                     date(2013,2,1))
 
-            # utility bill MySQL row and Mongo document should be created, with
-            # an _id matching the MySQL row
+            # utility bill MySQL row and Mongo document should be created, and
+            # the document's _id should match document_id in the MySQL row
             all_utilbills = session.query(UtilBill).all()
             self.assertEqual(1, len(all_utilbills))
             ub = all_utilbills[0]
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill( ub)
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(ub)
             self.assertEqual(utilbill_doc['_id'], ObjectId(ub.document_id))
 
-            # real utility bill document should look like the template, except
-            # its _id should be different, it has different dates, and it will
-            # have no charges (all charges in the template get removed because
-            # the UPRS and CPRS are empty)
+            # the utility bill document should look like the template, except
+            # its _id should be different, it has different period dates, and
+            # it will have no charges (all charges in the template get removed
+            # because the UPRS and CPRS are empty)
             self.assertDocumentsEqualExceptKeys(utilbill_doc,
                     utilbill_template, '_id', 'start', 'end', 'chargegroups')
             self.assertNotEqual(utilbill_doc['_id'],
                     ObjectId(utilbill_template['_id']))
-            self.assertEquals(date(2013,1,1), utilbill_doc['start'].date())
-            self.assertEquals(date(2013,2,1), utilbill_doc['end'].date())
+            self.assertEquals(date(2013,1,1), utilbill_doc['start'])
+            self.assertEquals(date(2013,2,1), utilbill_doc['end'])
             self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
 
             # UPRS and CPRS documents should be created and be empty
