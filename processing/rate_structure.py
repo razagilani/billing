@@ -208,9 +208,18 @@ class RateStructureDAO(object):
                 ignore=ignore)
         }
 
-    def _load_combined_rs_dict(self, utilbill):
+    def _load_combined_rs_dict(self, utilbill, reebill=None):
         '''Returns a dictionary of combined rate structure (derived from URS,
-        UPRS, and CPRS) belonging to the given state.UtilBill.'''
+        UPRS, and CPRS) belonging to the given state.UtilBill.
+        
+        If 'reebill' is None, this is based on the "current" UPRS and CPRS
+        documents, i.e. the ones whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is based on the UPRS and CPRS documents for
+        the version of the utility bill associated with the current
+        reebill--either the same as the "current" ones if the reebill is
+        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
+        if the reebill is issued.'''
         # load the URS
         urs = self.load_urs(utilbill.utility, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end)
@@ -228,7 +237,7 @@ class RateStructureDAO(object):
             del urs_reg['uuid']
 
         # load the UPRS
-        uprs = self.load_uprs_for_statedb_utilbill(utilbill)
+        uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
 
         # remove the mongo key, because the requester already has this
         # information and we do not want application code depending on the
@@ -242,7 +251,7 @@ class RateStructureDAO(object):
                 del uprs_rate['uuid']
 
         # load the CPRS
-        cprs = self.load_cprs_for_statedb_utilbill(utilbill)
+        cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -292,10 +301,20 @@ class RateStructureDAO(object):
         # the URS has been thoroughly overridden by the UPRS and CPRS
         return urs
 
-    def load_rate_structure(self, utilbill):
+    def load_rate_structure(self, utilbill, reebill=None):
         '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
-        the given state.UtilBill.'''
-        return RateStructure(self._load_combined_rs_dict(utilbill))
+        the given state.UtilBill.
+        
+        If 'reebill' is None, this is based on the "current" UPRS and CPRS
+        documents, i.e. the ones whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is based on the UPRS and CPRS documents for
+        the version of the utility bill associated with the current
+        reebill--either the same as the "current" ones if the reebill is
+        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
+        if the reebill is issued.'''
+        return RateStructure(self._load_combined_rs_dict(utilbill,
+                reebill=reebill))
     
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
             period_end=None):
