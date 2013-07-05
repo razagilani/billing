@@ -677,7 +677,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # when utilbill is attached to reebill, deletion should fail
             self.process.create_first_reebill(session, utilbill)
             first_reebill = session.query(ReeBill).one()
-            assert utilbill.reebills == [first_reebill]
+            assert first_reebill.utilbills == [utilbill]
+            assert utilbill.is_attached()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill.id)
 
@@ -710,7 +711,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # test deletion of a Skyline-estimated utility bill (no file)
             self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1), None, 'no file name')
+                    date(2013,3,1), date(2013,4,1), None, 'no file name',
+                    state=UtilBill.SkylineEstimated)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
                     date(2013,3,1), date(2013,4,1)).id)
