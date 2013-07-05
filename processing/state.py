@@ -230,6 +230,11 @@ class UtilBill(Base):
         self.uprs_document_id = uprs_id
         self.cprs_document_id = cprs_id
 
+    def is_attached(self):
+        '''Returns True if this UtilBill has any ReeBills, False otherwise.
+        Note that this method can't be used in a SQLAlchemy filter'''
+        return len(self._utilbill_reebills) > 0
+
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
@@ -1082,7 +1087,8 @@ if __name__ == '__main__':
     c = session.query(Customer).first()
     r = ReeBill(c, 100, version=0)#, utilbills=[])
     u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
-    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills
+    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills, u.is_attached()
     ur = UtilbillReebill(u)
     u._utilbill_reebills.append(ur)
-    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills
+    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills, u.is_attached()
+
