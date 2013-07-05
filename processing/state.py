@@ -119,17 +119,17 @@ class ReeBill(Base):
     # scope; there is no instance of UtilBill or ReeBill at the time this code
     # is executed. it also does not work to move the code into __init__ and
     # assign the 'utilbills' attribute to a particular ReeBill instance or vice
-    # versa. there may be a way to make SQLAlchemy do this (probably not with
-    # "declarative" class-definition style; maybe by switching to "classical"
-    # style?) but i decided it was sufficient to have a one-directional
-    # relationship from ReeBill to UtilBill but not in the other direction.
+    # versa. there may be a way to make SQLAlchemy do this (maybe by switching
+    # to "classical" class-definition style?) but i decided it was sufficient
+    # (for now) to have only a one-directional relationship from ReeBill to
+    # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    def __init__(self, customer, sequence, version=0, utilbills=[]):
+    def __init__(self, customer, sequence, version=0):#, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
-        self.utilbills = utilbills
+        #self.utilbills = utilbills
         self.issued = 0
 
     def __repr__(self):
@@ -158,11 +158,18 @@ class UtilbillReebill(Base):
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
     def __init__(self, utilbill, document_id=None):
+        # UtilbillReebill has only 'utilbill' in its __init__ because the
+        # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
+        # 'utilbill' argument is actually a ReeBill, ReeBill's relationship to
+        # UtilbillReebill will cause a stack overflow in SQLAlchemy code
+        # (without this check).
+        assert isinstance(utilbill, UtilBill)
+
         self.utilbill = utilbill
         self.document_id = document_id
 
     def __repr__(self):
-        return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
+        return 'UtilbillReebill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
                 self.utilbill_id, self.reebill_id, self.document_id)
 
 
@@ -222,7 +229,6 @@ class UtilBill(Base):
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
         self.cprs_document_id = cprs_id
-        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
@@ -1065,51 +1071,19 @@ if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
     s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
     session = s.session()
-    #print session.query(Customer).count(), 'customers found'
+    print session.query(Customer).count(), 'customers found'
+    
+    ub = session.query(UtilBill).first()
+    rb = session.query(ReeBill).first()
+    print rb.utilbills
+    print rb.document_id_for_utilbill(ub)
 
-    #ub = session.query(UtilBill).first()
-    #print ub.reebills
-    #rb = session.query(ReeBill).first()
-    #print rb.utilbills
+    customer = session.query(Customer).first()
 
-    #print rb.document_id_for_utilbill(ub)
-
-    #customer = session.query(Customer).first()
-
-    # this fails because the 'creator' of ReeBill.utilbills (an
-    # AssociationProxy object) is the class 'UtilbillReebill', not 'UtilBill'
-    # as might be expected.
-    #rb.utilbills.append(UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-            #'NONRES HEAT'))
     c = session.query(Customer).first()
-    r = ReeBill(c, 100, version=0, utilbills=[])
+    r = ReeBill(c, 100, version=0)#, utilbills=[])
     u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
-    print u._utilbill_reebills
-    r.utilbills.append(r)
-
-    # notes on association_proxy troubles:
-    # - it is possible to append a new UtilbillReebill to r._utilbill_reebills;
-    # this gets u into reebill.utilbills and r into u.reebills
-    # - changing relationships so UtilbillReebill has relationship to both
-    # UtilBill and ReeBill (and both have association_proxy to each other) does
-    # not seem to affect anything
-    # questions:
-    # is 'creator' normally automatically set to the right thing?
-    # why is 'creator' called when something gets appended, instead of just adding the value to the list?
-    #
-    # suppose A has a relationship with C by way of B. an association_proxy
-    # A.cs of A to B.c allows you to refer to A.cs when you really mean [b.c
-    # for b in a.bs]. when you append to a.cs, a 'creator' must be used because you are not REALLY
-    # appending to a list of Cs; you are creating a new instance of B (with the
-    # particular c) and adding that onto A.bs. the creator is a callable that
-    # produces an instance of B from the instance of C that you are trying to
-    # append. The default creator is B (class treated as a callable, i.e.
-    # calling __init__), and this works when B.__init__ has only one argument,
-    # which is the instance of C. But when it has more than one argument, an
-    # explicit creator must be specified.
-    #
-    #
-    # Alternate idea: there doesn't need to be a bidirectional relationship;
-    # ReeBill.utilbills is necessary but UtilBill.reebills is not. (We only
-    # need to know if a utilbill has any reebills, which can be accomplished by
-    # a has_reebills method that checks if  _utilbill_reebills is empty).
+    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills
+    ur = UtilbillReebill(u)
+    u._utilbill_reebills.append(ur)
+    print u._utilbill_reebills, r._utilbill_reebills, r.utilbills
