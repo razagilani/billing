@@ -338,8 +338,10 @@ class RateStructureDAO(object):
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a UPRS document for the given state.Utilbill.
+
         If 'reebill' is None, this is the "current" document, i.e. the one
         whose _id is in the utilbill table.
+
         If a ReeBill is given, this is the UPRS document for the version of the
         utility bill associated with the current reebill--either the same as
         the "current" one if the reebill is unissued, or a frozen one (whose
@@ -351,8 +353,10 @@ class RateStructureDAO(object):
 
     def load_cprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a CPRS document for the given state.Utilbill.
+
         If 'reebill' is None, this is the "current" document, i.e. the one
         whose _id is in the utilbill table.
+
         If a ReeBill is given, this is the CPRS document for the version of the
         utility bill associated with the current reebill--either the same as
         the "current" one if the reebill is unissued, or a frozen one (whose
