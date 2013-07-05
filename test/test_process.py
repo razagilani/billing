@@ -656,8 +656,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # left), file moved to trash directory
             new_path = self.process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
-            self.assertEquals([self.reebill_dao.load_utilbill_template(session, account)],
-                    self.reebill_dao.load_utilbills())
+            self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
                     account, start, end)
