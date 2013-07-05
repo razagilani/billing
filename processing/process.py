@@ -38,6 +38,14 @@ import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
+# number of days allowed between two non-Hypothetical utility bills before
+# Hypothetical utility bills will be added between them.
+# this was added to make the behavior of "hypothetical" utility bills less
+# irritating, but really, they should never exist or at least never be stored
+# in the database as if they were actual bills.
+# see https://www.pivotaltracker.com/story/show/30083239
+MAX_GAP_DAYS = 10
+
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
         The idea here is that this class is instantiated with the data
@@ -130,7 +138,10 @@ class Process(object):
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
-        if original_last_end is not None and begin_date > original_last_end:
+        # NOTE hypothetical bills are not created if the gap is small enough
+        if original_last_end is not None and begin_date > original_last_end \
+                and original_last_end - begin_date >  \
+                timedelta(days=MAX_GAP_DAYS):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, utility, rate_class, original_last_end,
                     begin_date)
