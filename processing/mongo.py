@@ -181,6 +181,7 @@ class MongoReebill(object):
             "actual_total" : 0,
             "due_date" : None,
             "total_adjustment" : 0,
+            "manual_adjustment" : 0,
             "ree_savings" : 0,
             "statistics" : {
                 "renewable_utilization" : 0,
