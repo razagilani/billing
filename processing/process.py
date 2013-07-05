@@ -762,25 +762,13 @@ class Process(object):
         max_version = self.state_db.max_version(session, account, sequence)
         reebill_doc = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
-
-        # duplicate rate structure (CPRS and UPRS)
-        reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
-                .filter(ReeBill.sequence == sequence)\
-                .filter(ReeBill.version == max_version).one()
-        for utilbill in reebill.utilbills:
-            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
-            utilbill.uprs_id = uprs['_id'] = ObjectId()
-            utilbill.cprs_id = cprs['_id'] = ObjectId()
-            # TODO save at end of function in case of failure
-            self.rate_structure_dao.save_rs(uprs)
-            self.rate_structure_dao.save_rs(cprs)
-
-        # increment max version in mysql
-        self.state_db.increment_version(session, account, sequence)
-
         reebill_doc.version = max_version + 1
+
+        # increment max version in mysql: this adds a new reebill row with an
+        # incremented version number, the same assocation to utility bills but
+        # null document_id, uprs_id, and cprs_id in the utilbill_reebill table,
+        # meaning its utility bills are the current ones.
+        reebill = self.state_db.increment_version(session, account, sequence)
 
         # replace utility bill documents with the "current" ones
         # (note that utility bill subdocuments in the reebill get updated in
