@@ -661,8 +661,7 @@ class Process(object):
             predecessor = self.state_db.get_last_real_utilbill(session, account,
                     end, service=service, utility=utility, rate_class=rate_class)
             doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
-                    predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
             cprs['_id'] = ObjectId()
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
