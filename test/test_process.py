@@ -1737,7 +1737,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             session.query(UtilBill).one() # verify there's only one
             reebill = session.query(ReeBill).one()
             self.assertEqual([utilbill], reebill.utilbills)
-            self.assertEqual([reebill], utilbill.reebills)
+            self.assertTrue(utilbill.is_attached())
+            # since there's no UtilBill.reebills, can't directly see what
+            # reebills this utility bill has, but can check which reebills have
+            # this utility bill, and there should be only one
+            self.assertEqual([reebill], session.query(ReeBill)
+                    .filter(ReeBill.utilbills.contains(utilbill)).all())
 
             # TODO check reebill document contents
             # (this is already partially handled by
