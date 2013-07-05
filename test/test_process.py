@@ -581,9 +581,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,2,1), bills[1].period_start)
             self.assertEqual(date(2012,3,1), bills[1].period_end)
 
-            # 3rd bill without a file ("skyline estimated")
+            # 3rd bill "Skyline estimated", without a file
             self.process.upload_utility_bill(session, account, service,
-                    date(2012,3,1), date(2012,4,1), None, None)
+                    date(2012,3,1), date(2012,4,1), None, None,
+                    state=UtilBill.SkylineEstimated)
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
             bills = [a for a in reversed(bills)]
