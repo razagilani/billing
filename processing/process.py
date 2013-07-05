@@ -590,11 +590,16 @@ class Process(object):
         # find successor to every utility bill belonging to the reebill, along
         # with its mongo document. note theat this includes Hypothetical
         # utility bills.
+        # NOTE as far as i know, you can't filter SQLAlchemy objects by methods
+        # or by properties that do not correspond to db columns. so, there is
+        # no way to tell if a utility bill has reebills except by filtering
+        # _utilbill_reebills.
+        # see 
         new_utilbills, new_utilbill_docs = [], []
         for utilbill in last_reebill_row.utilbills:
             successor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
-                .filter(not_(UtilBill.reebills.any()))\
+                .filter(not_(UtilBill._utilbill_reebills.any()))\
                 .filter(UtilBill.service == utilbill.service)\
                 .filter(UtilBill.utility == utilbill.utility)\
                 .filter(UtilBill.period_start >= utilbill.period_end)\
