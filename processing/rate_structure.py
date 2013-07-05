@@ -364,7 +364,10 @@ class RateStructureDAO(object):
                 .filter(UtilBill.state != UtilBill.Hypothetical)
         result = []
         for utilbill in utilbills:
-            doc = self.load_uprs_for_statedb_utilbill(utilbill)
+            # load UPRS document for the current version of this utility bill
+            # (it never makes sense to use a frozen utility bill's URPS here
+            # because the only UPRSs that should count are "current" ones)
+            doc = self.load_uprs_for_utilbill(utilbill)
             # only include RS docs that correspond to a current utility bill
             # (not one belonging to a reebill that has been corrected); this
             # will be subtly broken until old versions of utility bills are

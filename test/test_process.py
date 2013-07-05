@@ -1120,6 +1120,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_roll_rs_prediction(self):
         '''Basic test of rate structure prediction when rolling bills.'''
+        # TODO this test doesn't even need reebills; just create utility bills
+
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
