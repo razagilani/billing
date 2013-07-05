@@ -559,11 +559,14 @@ class StateDB(object):
     # TODO rename to something like "create_next_version"
     def increment_version(self, session, account, sequence):
         '''Creates a new reebill with version number 1 greater than the highest
-        existing version for the given account and sequence. The utility
-        bill(s) of the new version are the same as those of its predecessor,
-        but utility bill, UPRS, and CPRS document_ids are cleared from the
-        utilbill_reebill table, meaning that the new reebill's
-        utilbill/UPRS/CPRS documents are the current ones.'''
+        existing version for the given account and sequence.
+        
+        The utility bill(s) of the new version are the same as those of its
+        predecessor, but utility bill, UPRS, and CPRS document_ids are cleared
+        from the utilbill_reebill table, meaning that the new reebill's
+        utilbill/UPRS/CPRS documents are the current ones.
+        
+        Returns the new state.ReeBill object.'''
         # highest existing version must be issued
         current_max_version_reebill = self.get_reebill(session, account,
                 sequence)
@@ -579,6 +582,7 @@ class StateDB(object):
             ur.document_id, ur.uprs_id, ur.cprs_id = None, None, None
 
         session.add(new_reebill)
+        return new_reebill
 
     def get_unissued_corrections(self, session, account):
         '''Returns a list of (sequence, version) pairs for bills that have
