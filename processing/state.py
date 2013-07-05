@@ -938,8 +938,7 @@ class StateDB(object):
             # make a UtilBill
             # note that all 3 Mongo documents are None
             utilbill = UtilBill(customer, UtilBill.Hypothetical, service,
-                    utility, rate_class, None, None, None, period_start=start,
-                    period_end=end)
+                    utility, rate_class, period_start=start, period_end=end)
             # put it in the database
             session.add(utilbill)
 
