@@ -473,7 +473,7 @@ class StateDB(object):
         reebill = self.get_reebill(session, account, sequence)
 
         for utilbill in utilbills:
-            utilbill.reebills.append(reebill)
+            reebill.utilbills.append(utilbill)
             utilbill.processed = True
 
     # TODO this will become obsolete now that reebills can't exist without
@@ -487,8 +487,7 @@ class StateDB(object):
         try:
             reebill = self.get_reebill(session, account, sequence,
                     version='max')
-            num_utilbills = session.query(UtilBill)\
-                    .filter(UtilBill.reebills.contains(reebill)).count()
+            num_utilbills = len(reebill.utilbills)
         except NoResultFound:
             if nonexistent is not None:
                 return nonexistent
