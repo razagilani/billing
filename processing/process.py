@@ -140,7 +140,7 @@ class Process(object):
         # hypothetical bills to cover the gap
         # NOTE hypothetical bills are not created if the gap is small enough
         if original_last_end is not None and begin_date > original_last_end \
-                and original_last_end - begin_date >  \
+                and begin_date - original_last_end > \
                 timedelta(days=MAX_GAP_DAYS):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, utility, rate_class, original_last_end,
