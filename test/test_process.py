@@ -391,15 +391,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # corresponding to them from example_data. (this is the same way
             # the user would manually add RSIs and charges when processing the
             # first bill for a given rate structure.)
-            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             uprs['rates'] = example_data.get_uprs_dict()['rates']
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
-            utilbill_doc['chargegroups'] = example_data.get_utilbill_dict('99999')['chargegroups']
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+                    utilbill)
+            utilbill_doc['chargegroups'] = example_data.get_utilbill_dict(
+                    '99999')['chargegroups']
             self.rate_structure_dao.save_rs(uprs)
             self.reebill_dao._save_utilbill(utilbill_doc)
 
             # also add some charges to the CPRS to test overriding of UPRS by CPRS
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
             cprs['rates'] = example_data.get_cprs_dict()['rates']
             self.rate_structure_dao.save_rs(cprs)
 
@@ -1563,7 +1565,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                     'january.pdf')
             utilbill_jan = session.query(UtilBill).one()
-            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                     utilbill_jan)
             uprs['rates'] = example_data.get_uprs_dict()['rates']
             utilbill_jan_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
@@ -1709,8 +1711,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
 
             # UPRS and CPRS documents should be created and be empty
-            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(ub)
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(ub)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(ub)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(ub)
             self.assertDocumentsEqualExceptKeys(uprs, {'type': 'UPRS',
                     'rates': []}, '_id')
             self.assertDocumentsEqualExceptKeys(cprs, {'type': 'CPRS',
