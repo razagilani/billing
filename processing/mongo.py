@@ -1418,8 +1418,13 @@ class ReebillDAO:
             raise NoSuchBillException("No utility bill template for %s" %
                     customer)
         assert docs.count() == 1
-        return docs[0]
-        return self._load_utilbill_by_id(customer.utilbill_template_id)
+        utilbill_doc = docs[0]
+
+        # convert types
+        utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
+        utilbill_doc = convert_datetimes(utilbill_doc)
+
+        return utilbill_doc
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
