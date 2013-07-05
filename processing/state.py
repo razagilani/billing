@@ -125,11 +125,11 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    def __init__(self, customer, sequence, version=0):#, utilbills=[]):
+    def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
-        #self.utilbills = utilbills
+        self.utilbills = utilbills
         self.issued = 0
 
     def __repr__(self):
