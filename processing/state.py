@@ -1073,7 +1073,8 @@ class StateDB(object):
 
 if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
-    s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
+    s = StateDB(host='localhost', database='skyline_dev', user='dev',
+            password='dev')
     session = s.session()
     print session.query(Customer).count(), 'customers found'
     
@@ -1085,8 +1086,9 @@ if __name__ == '__main__':
     customer = session.query(Customer).first()
 
     c = session.query(Customer).first()
-    r = ReeBill(c, 100, version=0)#, utilbills=[])
-    u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT', period_start=date(2013,1,1), period_end=date(2013,2,1))
+    r = ReeBill(c, 100, version=0, utilbills=[])
+    u = UtilBill(c, UtilBill.Complete, 'gas', 'washgas', 'NONRES HEAT',
+            period_start=date(2013,1,1), period_end=date(2013,2,1))
     print u._utilbill_reebills, r._utilbill_reebills, r.utilbills, u.is_attached()
     ur = UtilbillReebill(u)
     u._utilbill_reebills.append(ur)
