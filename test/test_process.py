@@ -1201,9 +1201,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # predicted UPRSs. so, insert some RSIs into them. A gets only one
             # RSI, SYSTEM_CHARGE, while B and C get two others,
             # DISTRIBUTION_CHARGE and PGC.
-            uprs_a = example_data.get_uprs_dict(acc_a, 1)
-            uprs_b = example_data.get_uprs_dict(acc_b, 1)
-            uprs_c = example_data.get_uprs_dict(acc_c, 1)
+            uprs_a = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_a)
+                    .one())
+            uprs_b = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_b)
+                    .one())
+            uprs_c = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_c)
+                    .one())
             uprs_a['rates'] = [
                 {
                     "rsi_binding" : "SYSTEM_CHARGE",
@@ -1245,26 +1251,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.rate_structure_dao.save_rs(uprs_b)
             self.rate_structure_dao.save_rs(uprs_c)
 
-            # create reebill #2 for A
-            utilbill_a_2 = UtilBill(
-                    self.state_db.get_customer(session, acc_a), 0, 'gas',
-                    'washgas', period_start=date(2013,2,1),
-                    period_end=date(2013,3,1))
-            session.add(utilbill_a_2)
-            reebill_a_2 = self.process.roll_bill(session, reebill_a_1)
+            # create utility bill and reebill #2 for A
+            self.process.upload_utility_bill(session, acc_a, 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO('February 2013 A'),
+                    'february-a.pdf', total=0, state=UtilBill.Complete)
+            self.process.create_next_reebill(session, acc_a)
 
             # the UPRS of A's reebill #2 should match B and C, i.e. it should
             # contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE, because
             # together the other two have greater weight than A's reebill #1
-            uprs_a_2 = self.rate_structure_dao.load_uprs(acc_a, 2, 0,
-                    reebill_a_2.utility_name_for_service('gas'),
-                    reebill_a_2.rate_structure_name_for_service('gas'))
+            uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_a,
+                    period_start=date(2013,2,1)).one())
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
                     set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
 
             # make sure A's reebill #2 is computable after rolling (even though
             # RSIs have changed, meaning some of the original charges may not
             # have corresponding RSIs and had to be removed)
+            reebill_a_1 = self.reebill_dao.load_reebill(acc_a, 1)
+            reebill_a_2 = self.reebill_dao.load_reebill(acc_a, 2)
             self.process.compute_bill(session, reebill_a_1, reebill_a_2) 
 
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
@@ -1286,18 +1292,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # roll B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
             # the latter are more numerous, but A-1 should outweigh them
             # because weight decreases quickly with distance.
-            session.add(UtilBill(
-                    self.state_db.get_customer(session, acc_b),
-                    0, 'gas', 'washgas', period_start=date(2013,2,5),
-                    period_end=date(2013,3,5)))
-            reebill_b_2 = self.process.roll_bill(session, reebill_b_1)
-            uprs_b_2 = self.rate_structure_dao.load_uprs(acc_b, 2, 0,
-                    reebill_b_2.utility_name_for_service('gas'),
-                    reebill_b_2.rate_structure_name_for_service('gas'))
+            self.process.upload_utility_bill(session, acc_b, 'gas',
+                    date(2013,2,5), date(2013,3,5), StringIO('February 2013 B'),
+                    'february-b.pdf', total=0, state=UtilBill.Complete)
+            self.process.create_next_reebill(session, acc_b)
+            uprs_b_2 = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_b,
+                    period_start=date(2013,2,5)).one())
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
-            # TODO why is this test looking at uprs_a_2 instead of uprs_b_2? is
-            # that a typo or is there a reason behind it?
 
             # https://www.pivotaltracker.com/story/show/47134189
             ## B-2 and its utility bill should not contain any charges that
