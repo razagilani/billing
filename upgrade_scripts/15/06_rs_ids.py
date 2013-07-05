@@ -16,10 +16,14 @@ cur.execute("""alter table utilbill add column uprs_document_id varchar(24)""")
 cur.execute("""alter table utilbill add column cprs_document_id varchar(24)""")
 cur.execute("""alter table customer add column utilbill_template_id varchar(24) not null""")
 
+# also add uprs_id and cprs_id to utilbill_reebill table
+cur.execute("""alter table utilbill_reebill add column uprs_document_id varchar(24)""")
+cur.execute("""alter table utilbill_reebill add column cprs_document_id varchar(24)""")
+
 cur.execute("begin")
 
-cur.execute("select customer.account, reebill.sequence, reebill.version, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
-for account, sequence, version, utilbill_id in cur.fetchall():
+cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
+for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
     print account, sequence, version, utilbill_id
     # find CPRS and UPRS docs
     cprs_query = {
@@ -66,6 +70,14 @@ for account, sequence, version, utilbill_id in cur.fetchall():
             (cprs['_id'], utilbill_id))
     cur.execute("update utilbill set uprs_document_id = '%s' where id = %s" %
             (uprs['_id'], utilbill_id))
+
+    # put RS document ids in utilbill_reebill table only if the reebill is
+    # issued
+    if issued:
+        cur.execute(("update utilbill_reebill set uprs_document_id = '%s', "
+            "cprs_document_id = '%s' where reebill_id = %s"
+            " and utilbill_id = %s") % (uprs['_id'],
+            cprs['_id'], reebill_id, utilbill_id))
 
     db.ratestructure.save(cprs)
     db.ratestructure.save(uprs)
