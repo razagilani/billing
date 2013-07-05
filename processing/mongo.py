@@ -1382,24 +1382,30 @@ class ReebillDAO:
         result = convert_datetimes(result)
         return result
 
-    def load_doc_for_statedb_utilbill(self, utilbill_row):
+    def load_doc_for_statedb_utilbill(self, utilbill, reebill=None):
         '''Returns the Mongo utility bill document corresponding to the given
-        state.UtilBill object.'''
+        state.UtilBill object.
+
+        If 'reebill' is None, this is the "current" document, i.e. the one
+        whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is the document for the version of the
+        utility bill associated with the current reebill--either the same as
+        the "current" one if the reebill is unissued, or a frozen one (whose
+        _id is in the utilbill_reebill table) if the reebill is issued.'''
         # empty document_ids are legitimate because "hypothetical" utility
         # bills do not have a document
         # empty document_ids should not be possible, once the db is cleaned up
         # (there's already a "not null" constraint for 'document_id' but the
         # default value is "")
-        if utilbill_row.document_id in (None, ''):
-            raise ValueError("Utility bill lacks document_id: %s" %
-                    utilbill_row)
-        try:
-            return self._load_utilbill_by_id(utilbill_row.document_id)
-        except NoSuchBillException:
-            raise NoSuchBillException(("No utility bill document found in %s"
-                    " corresponding to %s") % utilbill_row)
+        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
+                is None:
+            return self._load_utilbill_by_id(utilbill.document_id)
+        return self._load_utilbill_by_id(
+                reebill.document_id_for_utilbill(utilbill))
 
     def delete_doc_for_statedb_utilbill(self, utilbill_row):
+        # TODO add reebill argument here like above?
         '''Deletes the Mongo utility bill document corresponding to the given
         state.UtilBill object.'''
         result = self.utilbills_collection.remove({
