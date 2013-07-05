@@ -574,6 +574,13 @@ class RateStructure(object):
                 raise Exception("RSI descriptor required.\n%s" % rsi)
             self.__dict__[rsi.rsi_binding] = rsi
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def bind_register_readings(self, register_readings):
         '''Takes the list of register dictionaries from a reebill, and for each
@@ -665,6 +672,17 @@ class Register(object):
         if not 'inclusions' in reg_data:
             self.inclusions = [{'fromhour': 0, 'tohour': 23, 'weekday':[1,2,3,4,5,6,7]}]
             self.exclusions = []
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for k, v in self.__dict__.iteritems():
+            if not hasattr(other, k) or getattr(other, k) != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
 
     @property
     def register_binding(self):
@@ -789,6 +807,26 @@ class RateStructureItem(object):
         self.evaluated_total = False
         self.evaluated_quantity = False
         self.evaluated_rate = False
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for k, v in self.__dict__.iteritems():
+            # _rate_structures do not have to be the same (comparing them would
+            # result in stack overflow because they are compared by their
+            # RateStructureItems). this could be done if it were determined
+            # what the important characteristics of RateStructures are, but
+            # they could absolutely any key/value pairs in addition to
+            # evaluated_total, evaluated_quantity, evaluated_rate. see
+            # https://www.pivotaltracker.com/story/show/52931715
+            if k == '_rate_structure':
+                continue
+            if not hasattr(other, k) or getattr(other, k) != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @property
     def rsi_binding(self):
