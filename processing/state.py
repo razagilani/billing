@@ -153,6 +153,8 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
+    uprs_document_id = Column(String)
+    cprs_document_id = Column(String)
 
     # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
