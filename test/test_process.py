@@ -1483,29 +1483,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_first_reebill(session, utilbill)
 
             # delete the reebill: should succeed, because it's not issued
-            # TODO this fails with mysterious error
-            # AssertionError: Dependency rule tried to blank-out primary key
-            # column 'utilbill_reebill.reebill_id' on instance '<UtilbillReebill
-            # at 0x32ebf10>'
-            # maybe related to cascade deletion?
             self.process.delete_reebill(session, account, 1)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
 
-            # re-create it, attach it to a utility bill, and issue: can't be
-            # deleted
+            # re-create it
             self.process.create_first_reebill(session, utilbill)
             assert self.state_db.listSequences(session, account) == [1]
             
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
+            b = self.reebill_dao.load_reebill(account, 1, 0)
             meter = b.meters_for_service('gas')[0]
             b.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
             self.reebill_dao.save_reebill(b)
 
+            # issue it: it should not be deletable
             self.process.issue(session, account, 1)
-            utilbills = self.state_db.utilbills_for_reebill(session, account, 1)
-            
+            import ipdb; ipdb.set_trace()
+            utilbills = self.state_db.get_reebill(session, account, 1,
+                    0).utilbills
             assert len(utilbills) == 1
             u = utilbills[0]
             assert (u.customer.account, u.reebills[0].sequence) == (account, 1)
