@@ -72,8 +72,22 @@ class ReeBill(Base):
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
-    # TODO figure out SQLAlchemy cascade setting
-    _utilbill_reebills = relationship('UtilbillReebill', backref='reebill')
+    _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
+            # 'cascade' controls how all insert/delete operations are
+            # propagated from the "parent" (ReeBill) to the "child"
+            # (UtilbillReebill). UtilbillReebill should be deleted if its
+            # ReeBill AND its UtilBill are deleted (though for
+            # application-logic reasons the ReeBill will always be deleted
+            # first). docs:
+            # http://docs.sqlalchemy.org/en/rel_0_8/orm/relationships.html#sqlalchemy.orm.relationship
+            # http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#cascades
+            # "delete" here means that if a ReeBill is deleted, its
+            # UtilbillReebill is also deleted. it doesn't matter if the
+            # UtilbillReebill has a UtilBill, because there is no delete
+            # cascade from UtilbillReebill to UtilBill.
+            # NOTE: the "utilbill_reebill" table also has ON DELETE CASCADE in
+            # the db
+            cascade='delete')
 
     # 'utilbills' is a sqlalchemy.ext.associationproxy.AssociationProxy, which
     # allows users of the ReeBill class to get and set the 'utilbills'
@@ -165,7 +179,9 @@ class UtilbillReebill(Base):
     uprs_document_id = Column(String)
     cprs_document_id = Column(String)
 
-    # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill
+    # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill.
+    # there is no delete cascade in this 'relationship' because a UtilBill
+    # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
     def __init__(self, utilbill, document_id=None):
