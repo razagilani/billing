@@ -1475,29 +1475,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
-            # create sequence 0 template in mongo (will be needed below)
-            template = example_data.get_reebill(account, 0)
-            self.reebill_dao.save_reebill(template)
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
+            # create utility bill and first reebill, for January 2012
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
+            utilbill = session.query(UtilBill).one()
+            self.process.create_first_reebill(session, utilbill)
 
-            customer = self.state_db.get_customer(session, account)
-            session.add(UtilBill(customer, 0, 'gas', 'washgas',
-                    period_start=date(2012,1,1), period_end=date(2012,2,1),
-                    reebill=None))
-
-            # create sequence 1 version 0, for January 2012, not issued
-            b = self.process.roll_bill(session, template)
-
-            # delete it
+            # delete the reebill: should succeed, because it's not issued
+            # TODO this fails with mysterious error
+            # AssertionError: Dependency rule tried to blank-out primary key
+            # column 'utilbill_reebill.reebill_id' on instance '<UtilbillReebill
+            # at 0x32ebf10>'
+            # maybe related to cascade deletion?
             self.process.delete_reebill(session, account, 1)
-            self.assertEqual([], self.state_db.listSequences(session, account))
-            self.assertRaises(NoSuchBillException, self.reebill_dao.load_reebill,
-                    account, 1, version=0)
-
+            self.assertRaises(NoSuchBillException,
+                    self.reebill_dao.load_reebill, account, 1, version=0)
 
             # re-create it, attach it to a utility bill, and issue: can't be
             # deleted
-            b = self.process.roll_bill(session, template)
+            self.process.create_first_reebill(session, utilbill)
             assert self.state_db.listSequences(session, account) == [1]
             
             # update the meter like the user normally would
@@ -1523,7 +1520,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
                     1))
             
-
             self.process.new_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
             assert not self.state_db.is_issued(session, account, 1)
