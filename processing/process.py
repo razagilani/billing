@@ -749,7 +749,8 @@ class Process(object):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
         max_version number in MySQL. Returns the new reebill object.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
 
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
@@ -1308,10 +1309,6 @@ class Process(object):
                 sequence - 1, version=0):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
-        # TODO complain if utility bills have not been attached yet
-        if not self.state_db.is_attached(session, account, sequence):
-            raise NotAttachable(("Can't issue reebill %s-%s: it must "
-                    "be attached first") % (account, sequence))
 
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1330,10 +1327,11 @@ class Process(object):
         # save in mongo
         # NOTE frozen utility bills should already exist (created by
         # attach_utilbills)--so they're not being created here
-        self.reebill_dao.save_reebill(reebill)
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
+
 
     def reebill_report_altitude(self, session):
         accounts = self.state_db.listAccounts(session)
