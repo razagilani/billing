@@ -349,7 +349,7 @@ class RateStructureDAO(object):
         if reebill is None or reebill.document_id_for_utilbill(utilbill) \
                 is None:
             return self._load_rs_by_id(utilbill.uprs_document_id)
-        return self._load_rs_by_id(reebill.document_id_for_utilbill(utilbill))
+        return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
 
     def load_cprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a CPRS document for the given state.Utilbill.
@@ -364,7 +364,7 @@ class RateStructureDAO(object):
         if reebill is None or reebill.document_id_for_utilbill(utilbill) \
                 is None:
             return self._load_rs_by_id(utilbill.cprs_document_id)
-        return self._load_rs_by_id(reebill.document_id_for_utilbill(utilbill))
+        return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
 
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id.'''
