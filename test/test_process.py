@@ -768,12 +768,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     if doc['_id'] == ObjectId(utilbill.document_id))
             self.assertNotIn('sequence', editable_utilbill_doc)
             self.assertNotIn('version', editable_utilbill_doc)
+            self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
             # reebill should be associated with the utility bill via
             # utilbill_reebill, and there is no frozen document id in the
             # utilbill_reebill table
             self.assertEquals(1, len(utilbill._utilbill_reebills))
             self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
+            self.assertEquals(None,
+                    utilbill._utilbill_reebills[0].uprs_document_id)
+            self.assertEquals(None,
+                    utilbill._utilbill_reebills[0].cprs_document_id)
             reebill = self.reebill_dao.load_reebill(acc, 1)
             self.assertEqual(1, len(reebill._utilbills))
             self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
@@ -807,15 +813,30 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertIn(ObjectId(utilbill._utilbill_reebills[0].document_id),
                     all_ids)
 
-            reebill = self.reebill_dao.load_reebill(acc, 1)
-            self.assertEqual(1, len(reebill._utilbills))
-            self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
+            reebill = session.query(ReeBill).one()
+            reebill_doc = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEqual(1, len(reebill_doc._utilbills))
+            self.assertEqual(1, len(reebill_doc.reebill_dict['utilbills']))
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].document_id),
-                    reebill._utilbills[0]['_id'])
+                    reebill_doc._utilbills[0]['_id'])
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].document_id),
-                    reebill.reebill_dict['utilbills'][0]['id'])
+                    reebill_doc.reebill_dict['utilbills'][0]['id'])
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill,
+                    reebill=reebill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill,
+                    reebill=reebill)
+            self.assertNotEqual(ObjectId(utilbill.uprs_document_id),
+                    uprs['_id'])
+            self.assertNotEqual(ObjectId(utilbill.cprs_document_id),
+                    cprs['_id'])
+            self.assertEqual(
+                    ObjectId(utilbill._utilbill_reebills[0].uprs_document_id),
+                    uprs['_id'])
+            self.assertEqual(
+                    ObjectId(utilbill._utilbill_reebills[0].cprs_document_id),
+                    cprs['_id'])
 
             # modify editable utility bill document so its meter read dates are
             # different from both its period and the frozen document's meter read
@@ -836,7 +857,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
 
             # create new version of 1
-            import ipdb; ipdb.set_trace()
             new_reebill_doc = self.process.new_version(session, acc, 1)
             new_reebill = self.state_db.get_reebill(session, acc, 1, version=1)
 
