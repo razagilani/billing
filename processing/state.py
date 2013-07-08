@@ -115,11 +115,7 @@ class ReeBill(Base):
     #     creator=lambda u: UtilbillReebill(u, self)
     # and for UtilBill,
     #     creator=lambda r: UtilbillReebill(self, r)
-    # but this will not actually work because 'self' is not available in class
-    # scope; there is no instance of UtilBill or ReeBill at the time this code
-    # is executed. it also does not work to move the code into __init__ and
-    # assign the 'utilbills' attribute to a particular ReeBill instance or vice
-    # versa. there may be a way to make SQLAlchemy do this (maybe by switching
+    # but this will not actually work because 'self' is not available in class # scope; there is no instance of UtilBill or ReeBill at the time this code # is executed. it also does not work to move the code into __init__ and # assign the 'utilbills' attribute to a particular ReeBill instance or vice # versa. there may be a way to make SQLAlchemy do this (maybe by switching
     # to "classical" class-definition style?) but i decided it was sufficient
     # (for now) to have only a one-directional relationship from ReeBill to
     # UtilBill.
@@ -144,6 +140,19 @@ class ReeBill(Base):
         return next(ubrb.document_id for ubrb in self._utilbill_reebills if
                 ubrb.utilbill == utilbill)
 
+    def uprs_id_for_utilbill(self, utilbill):
+        '''Returns the id (string) of the "frozen" UPRS document in Mongo
+        corresponding to the given utility bill which is attached to this
+        reebill. This will be None if this reebill is unissued.'''
+        return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
+                if ubrb.utilbill == utilbill)
+
+    def cprs_id_for_utilbill(self, utilbill):
+        '''Returns the id (string) of the "frozen" CPRS document in Mongo
+        corresponding to the given utility bill which is attached to this
+        reebill. This will be None if this reebill is unissued.'''
+        return next(ubrb.cprs_document_id for ubrb in self._utilbill_reebills
+                if ubrb.utilbill == utilbill)
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
