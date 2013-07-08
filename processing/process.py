@@ -771,11 +771,14 @@ class Process(object):
         # meaning its utility bills are the current ones.
         reebill = self.state_db.increment_version(session, account, sequence)
 
-        # replace utility bill documents with the "current" ones
-        # (note that utility bill subdocuments in the reebill get updated in
-        # 'compute_bill' below)
+        # replace utility bill documents with the "current" ones, and update
+        # "hypothetical" utility bill data in the reebill document to match
+        # (note that utility bill subdocuments in the reebill also get updated
+        # in 'compute_bill' below, but 'fetch_oltp_data' won't work unless they
+        # are updated)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
                 for u in reebill.utilbills]
+        reebill_doc.update_utilbill_subdocs()
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
@@ -1311,23 +1314,27 @@ class Process(object):
                     "predecessor has not been issued.") % (account, sequence))
 
         # set issue date and due date in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.issue_date = issue_date
-        reebill.due_date = issue_date + timedelta(days=30)
+        reebill_document = self.reebill_dao.load_reebill(account, sequence)
+        reebill_document.issue_date = issue_date
+        reebill_document.due_date = issue_date + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
         # TODO: should this be replaced with a call to compute_bill() to just
         # make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
-        lc = self.get_late_charge(session, reebill)
+        lc = self.get_late_charge(session, reebill_document)
         if lc is not None:
-            reebill.late_charges = lc
+            reebill_document.late_charges = lc
 
-        # save in mongo
-        # NOTE frozen utility bills should already exist (created by
-        # attach_utilbills)--so they're not being created here
-        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+        # save in mongo, creating a new frozen utility bill document, and put
+        # that document's _id in the utilbill_reebill table
+        # NOTE this only works when the reebill has one utility bill
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        assert len(reebill._utilbill_reebills) == 1
+        frozen_document_id = self.reebill_dao.save_reebill(reebill_document,
+                freeze_utilbills=True)
+        reebill._utilbill_reebills[0].document_id = frozen_document_id
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
