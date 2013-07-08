@@ -756,9 +756,35 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO creating new version of reebill should fail until it's
             # issued
 
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
+            # there should be two utility bill documents: the account's
+            # template, an an editable utility bill attached to the current
+            # reebill
+            utilbill = session.query(UtilBill).one()
+            all_utilbill_docs = self.reebill_dao.load_utilbills()
+            self.assertEquals(2, len(all_utilbill_docs))
+            self.assertIn(ObjectId(utilbill.customer.utilbill_template_id),
+                    [d['_id'] for d in all_utilbill_docs])
+            editable_utilbill_doc = next(doc for doc in all_utilbill_docs
+                    if doc['_id'] == ObjectId(utilbill.document_id))
+            self.assertNotIn('sequence', editable_utilbill_doc)
+            self.assertNotIn('version', editable_utilbill_doc)
+
+            # reebill should be associated with the utility bill via
+            # utilbill_reebill, and there is no frozen document id in the
+            # utilbill_reebill table
+            self.assertEquals(1, len(utilbill._utilbill_reebills))
+            self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
             reebill = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEqual(1, len(reebill._utilbills))
+            self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
+            self.assertEqual(ObjectId(utilbill.document_id),
+                    reebill._utilbills[0]['_id'])
+            self.assertEqual(reebill._utilbills[0]['_id'],
+                    reebill.reebill_dict['utilbills'][0]['id'])
+
+            # update the meter like the user normally would
+            # "This is required for process.new_version =>
+            # fetch_bill_data.fetch_oltp_data" (???)
             meter = reebill.meters_for_service('gas')[0]
             reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
                     date(2012,1,1))
@@ -766,6 +792,30 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # issue reebill
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
+
+            # there should now be 3 utility bill documents: the template, an
+            # editable document whose _id is the document_id of the utility
+            # bill in MySQL, and a frozen one whose _id is the document_id in
+            # the utilbill_reebill row associating the utility bill with the
+            # reebill
+            all_ids = [doc['_id'] for doc in self.reebill_dao.load_utilbills()]
+            self.assertEquals(3, len(all_ids))
+            self.assertIn(ObjectId(utilbill.customer.utilbill_template_id),
+                    all_ids)
+            self.assertIn(ObjectId(utilbill.document_id), all_ids)
+            self.assertEquals(1, len(utilbill._utilbill_reebills))
+            self.assertIn(ObjectId(utilbill._utilbill_reebills[0].document_id),
+                    all_ids)
+
+            reebill = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEqual(1, len(reebill._utilbills))
+            self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
+            self.assertEqual(
+                    ObjectId(utilbill._utilbill_reebills[0].document_id),
+                    reebill._utilbills[0]['_id'])
+            self.assertEqual(
+                    ObjectId(utilbill._utilbill_reebills[0].document_id),
+                    reebill.reebill_dict['utilbills'][0]['id'])
 
             # modify editable utility bill document so its meter read dates are
             # different from both its period and the frozen document's meter read
@@ -780,12 +830,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao._save_utilbill(editable_utilbill)
             # find the expected total energy (produced by MockSplinter) if this
             # period is used. it is extremely unlikely to exactly match the total
-            # energy that would be produced for a different period(especially
+            # energy that would be produced for a different period (especially
             # because the length is different).
             correct_energy_amount_therms = sum([hour_of_energy(h) for h in
                     cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
 
             # create new version of 1
+            import ipdb; ipdb.set_trace()
             new_reebill_doc = self.process.new_version(session, acc, 1)
             new_reebill = self.state_db.get_reebill(session, acc, 1, version=1)
 

@@ -357,6 +357,7 @@ class MongoReebill(object):
                 del u['version']
             u['_id'] = handle['id'] = bson.ObjectId()
 
+    # TODO: is this method obsolete?
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
         references to them, and removes "sequence" and "version" keys if
