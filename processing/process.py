@@ -1332,9 +1332,23 @@ class Process(object):
         # NOTE this only works when the reebill has one utility bill
         reebill = self.state_db.get_reebill(session, account, sequence)
         assert len(reebill._utilbill_reebills) == 1
-        frozen_document_id = self.reebill_dao.save_reebill(reebill_document,
+        frozen_utilbill_id = self.reebill_dao.save_reebill(reebill_document,
                 freeze_utilbills=True)
-        reebill._utilbill_reebills[0].document_id = frozen_document_id
+        reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
+
+        # also duplicate UPRS and CPRS, storing the new _ids in MySQL
+        # ('save_reebill' can't do it because ReeBillDAO deals only with bill
+        # documents)
+        frozen_uprs_id, frozen_cprs_id = ObjectId(), ObjectId()
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                reebill.utilbills[0])
+        cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+                reebill.utilbills[0])
+        uprs['_id'], cprs['_id'] = frozen_uprs_id, frozen_cprs_id
+        self.rate_structure_dao.save_rs(uprs)
+        self.rate_structure_dao.save_rs(cprs)
+        reebill._utilbill_reebills[0].uprs_document_id = frozen_uprs_id
+        reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
