@@ -1723,53 +1723,11 @@ class ReebillDAO:
         self.utilbills_collection.save(ub_doc, safe=True)
         
     def delete_reebill(self, account, sequence, version):
-        # load reebill in order to find utility bills
-        reebill = self.load_reebill(account, sequence, version)
-
-        # first ensure that each utility bill can be found and the reebill can
-        # be found (to help keep this operation atomic)
-        for u in reebill._utilbills:
-            self.utilbills_collection.find({'_id': bson_convert(u['_id'])})
-        self.reebills_collection.find({
-            '_id.account': account,
-            '_id.sequence': sequence,
-            '_id.version': version,
-        })
-
-        # remove each utility bill, then the reebill
-        for u in reebill._utilbills:
-            # if this is a frozen utility bill, delete it
-            if 'sequence' in u:
-                result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
-
-            # if this is an editable utility bill, delete it only if the
-            # reebill's version is 0. (the editable document is retained for
-            # version > 0 so new versions can still be created after this
-            # version is removed.) this also deletes the "editable version of"
-            # the frozen utility bill above, if any.
-            #
-            # (NOTE it is not actually possible to identify the "editable
-            # version of" a given frozen utility bill because the keys can
-            # change; see
-            # https://www.pivotaltracker.com/projects/397621#!/stories/37521779)
-            if version == 0:
-                q = {
-                    'account': account,
-                    'service': u['service'],
-                    'utility': u['utility'],
-                    'start': None if u['start'] is None
-                            else date_to_datetime(u['start']),
-                    'end': None if u['end'] is None
-                            else date_to_datetime(u['end']),
-                    'sequence': {'$exists': False},
-                    'version': {'$exists': False},
-                }
-                result = self.utilbills_collection.remove(q, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
-
+        '''Deletes the reebill document given by 'account', 'sequence',
+        'version'. Does not check if the reebill has been issued. No utility
+        bill documents are deleted, even if there are frozen utility bill
+        documents for this reebill, because only issued reebills have those and
+        issued reebills should not be deleted.'''
         result = self.reebills_collection.remove({
             '_id.account': account,
             '_id.sequence': sequence,
