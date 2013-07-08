@@ -171,8 +171,10 @@ class UtilbillReebill(Base):
         self.document_id = document_id
 
     def __repr__(self):
-        return 'UtilbillReebill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
-                self.utilbill_id, self.reebill_id, self.document_id)
+        return (('UtilbillReebill(utilbill_id=%s, reebill_id=%s, '
+                'document_id=%s, uprs_document_id=%s, cprs_document_id=%s)')
+                % (self.utilbill_id, self.reebill_id, self.document_id,
+                self.uprs_document_id, self.cprs_document_id))
 
 
 class UtilBill(Base):
