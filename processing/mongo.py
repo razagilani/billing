@@ -1591,14 +1591,19 @@ class ReebillDAO:
         document is replaced.
 
         'freeze_utilbills' should be used when issuing a reebill for the first
-        time (an original or a correction). This creates immutable copies of
-        the utility bill documents with new _ids and puts the reebill's
-        sequence and version in them.
+        time (an original or a correction). This creates "frozen" (immutable)
+        copies of the utility bill documents with new _ids and puts the
+        reebill's sequence and version in them. This document serves as a
+        permanent archive of the utility bill document as it was at the time of
+        issuing, and its _id should go in the "document_id" column of the
+        "utilbill_reebill" table in MySQL.
         
-        Replacing an already-issued reebill (as determined by StateDB, using
-        the rule that all versions except the highest are issued) or its
+        Replacing an already-issued reebill (as determined by StateDB) or its
         utility bills is forbidden unless 'force' is True (this should only be
-        used for testing).'''
+        used for testing).
+        
+        Returns the _id of the frozen utility bill if 'freeze_utilbills' is
+        True, or None otherwise.'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         # TODO 38459029
@@ -1606,22 +1611,24 @@ class ReebillDAO:
         session = self.state_db.session()
         issued = self.state_db.is_issued(session, reebill.account,
                 reebill.sequence, version=reebill.version, nonexistent=False)
-        attached = self.state_db.is_attached(session, reebill.account,
-                reebill.sequence, nonexistent=False)
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
-        if (issued or attached) and freeze_utilbills:
-            raise IssuedBillError("Can't freeze utility bills because this "
-                    "reebill is attached or issued; frozen utility bills "
-                    "should already exist")
         
+        # there will only be a return value if 'freeze_utilbills' is True
+        return_value = None
+
+        # NOTE returning the _id of the new frozen utility bill can only work
+        # if there is only one utility bill; otherwise some system is needed to
+        # specify which _id goes with which utility bill in MySQL
+        if len(reebill._utilbills) > 1:
+            raise NotImplementedError('Multiple services not yet supported')
+
         for utilbill_handle in reebill.reebill_dict['utilbills']:
             utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
             if freeze_utilbills:
-                # this reebill is being attached (usually right before
-                # issuing): convert the utility bills into frozen copies by
-                # putting "sequence" and "version" keys in the utility
-                # bill, and changing its _id to a new one
+                # convert the utility bills into frozen copies by putting
+                # "sequence" and "version" keys in the utility bill, and
+                # changing its _id to a new one
                 old_id = utilbill_doc['_id']
                 new_id = bson.objectid.ObjectId()
 
@@ -1636,12 +1643,15 @@ class ReebillDAO:
                 # utility bill and replace the old utility bill document with the new one
                 utilbill_handle['id'] = new_id
                 reebill._set_utilbill_for_id(old_id, utilbill_doc)
+                return_value = new_id
             else:
                 self._save_utilbill(utilbill_doc, force=force)
 
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
         self.reebills_collection.save(reebill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
+
+        return return_value
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
