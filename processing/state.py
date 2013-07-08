@@ -247,6 +247,8 @@ class UtilBill(Base):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
 
+    def is_attached(self):
+        return len(self._utilbill_reebills) > 0
 
 class Payment(Base):
     __tablename__ = 'payment'
