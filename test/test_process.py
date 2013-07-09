@@ -1593,21 +1593,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         date(2012, i+1, 1), date(2012, i+2, 1),
                         StringIO('a utility bill'), 'filename.pdf')
             
-            # create first reebill
+            # create 1st reebill and issue it
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
-            one = self.reebill_dao.load_reebill(acc, 1)
+            self.process.issue(session, acc, 1)
 
-            self.process.issue(session, acc, one.sequence)
-            one = self.reebill_dao.load_reebill(acc, one.sequence)
-
+            # create 2nd reebill
             self.process.create_next_reebill(session, acc)
-            two = self.reebill_dao.load_reebill(acc, 2)
-            self.process.issue(session, acc, two.sequence)
-            two = self.reebill_dao.load_reebill(acc, two.sequence)
 
-            # issue reebill #1 and correct it with an adjustment of 100
-            #self.process.issue(session, acc, 1)
+            # make a correction on reebill #1, producing an adjustment of 100
+            one = self.reebill_dao.load_reebill(acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
             # this change must be saved in Mongo, because compute_bill() ->
@@ -1615,12 +1610,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # from Mongo and compares them to calculate the adjustment
             self.reebill_dao.save_reebill(one_corrected)
 
+            two = self.reebill_dao.load_reebill(acc, 2)
             self.process.compute_bill(session, one, two)
-            #self.process.compute_bill(session, two, three)
 
-            # only 'two' should get an adjustment ('one' is a correction, so it
-            # can't have adjustments, and 'three' is not the earliest unissued
-            # bill)
+            # only 'two' should get an adjustment; 'one' is a correction, so it
+            # can't have adjustments
             self.assertEquals(0, one.total_adjustment)
             self.assertEquals(100, two.total_adjustment)
 
