@@ -1579,42 +1579,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(1, u.reebills[0].sequence)
 
     def test_adjustment(self):
-        '''Test that adjustment from a correction is applied to (only) the
+        '''Tests that adjustment from a correction is applied to (only) the
         earliest unissued bill.'''
         acc = '99999'
 
         with DBSession(self.state_db) as session:
             customer = self.state_db.get_customer(session, acc)
             
-            # save utility bills and rate structures in mongo and MySQL
+            # create 3 utility bills: Jan, Feb, Mar
             utilbill_ids, uprs_ids, cprs_ids = [], [], []
             for i in range(3):
-                start, end = date(2012,1+i,1), date(2012,i+2,2)
-                self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-                utilbill = example_data.get_utilbill_dict(acc, start=start,
-                        end=end, utility='washgas', service='gas')
-                uprs = example_data.get_uprs_dict()
-                cprs = example_data.get_uprs_dict()
-                utilbill = example_data.get_utilbill_dict(acc, start=start,
-                        end=end, utility='washgas', service='gas')
-                self.reebill_dao._save_utilbill(utilbill)
-                self.rate_structure_dao.save_rs(uprs)
-                self.rate_structure_dao.save_rs(cprs)
-                utilbill_ids.append(str(utilbill['_id']))
-                uprs_ids.append(str(uprs['_id']))
-                cprs_ids.append(str(cprs['_id']))
-
-                session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                        'washgas', 'DC Non Residential Non Heat',
-                        doc_id=str(utilbill['_id']), uprs_id=str(uprs['_id']),
-                        cprs_id=str(cprs['_id']), period_start=start,
-                        period_end=end, total_charges=100,
-                        date_received=datetime.utcnow().date()))
+                self.process.upload_utility_bill(session, acc, 'gas',
+                        date(2012, i+1, 1), date(2012, i+2, 1),
+                        StringIO('a utility bill'), 'filename.pdf')
             
-            # create reebills #0 and #1
-            zero = example_data.get_reebill(acc, 0)
-            self.reebill_dao.save_reebill(zero)
-            one = self.process.roll_bill(session, zero)
+            # create first reebill
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
+            one = self.reebill_dao.load_reebill(acc, 1)
 
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
@@ -1624,7 +1606,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, one.sequence)
             one = self.reebill_dao.load_reebill(acc, one.sequence)
 
-            two = self.process.roll_bill(session, one)
+            self.process.create_next_reebill(session, acc)
+            two = self.reebill_dao.load_reebill(acc, 2)
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
             meter = two.meters_for_service('gas')[0]
