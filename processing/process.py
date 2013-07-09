@@ -950,23 +950,19 @@ class Process(object):
 
 
     def create_new_account(self, session, account, name, discount_rate,
-            late_charge_rate,
-            #billing_address, service_address,
+            late_charge_rate, billing_address, service_address,
             template_account):
         '''Creates a new account with utility bill template copied from the
         last utility bill of 'template_account' (which must have at least one
         utility bill).
         
+        'billing_address' and 'service_address' are dictionaries containing the
+        addresses for the utility bill. The address format should be the
+        utility bill address format (see top of mongo.py for conversion
+        functions). Note that there are no ReeBill billing/service addresses
+        currently; see https://www.pivotaltracker.com/story/show/47749247
+
         Returns the new state.Customer.'''
-
-        # TODO include addresses; this comment goes in docstring:
-        #'billing_address' and 'service_address' are dictionaries containing the
-        #addresses for the utility bill. The address format should be the
-        #utility bill address format (see top of mongo.py for conversion
-        #functions). Note that there are no ReeBill billing/service addresses
-        #currently; see https://www.pivotaltracker.com/story/show/47749247
-
-        result = self.state_db.account_exists(session, account)
         if self.state_db.account_exists(session, account):
             raise ValueError("Account %s already exists" % account)
 
@@ -994,11 +990,32 @@ class Process(object):
                 new_id)
         session.add(new_customer)
 
-        # save utilbill document template in Mongo with new account, _id, and
-        # "total"
-        # TODO what is 'total' anyway? should it be removed?
-        # see https://www.pivotaltracker.com/story/show/53093021
-        utilbill_doc.update({'_id': new_id, 'account': account, 'total': 0})
+        # save utilbill document template in Mongo with new account, _id,
+        # addresses, and "total"
+        utilbill_doc.update({
+            '_id': new_id, 'account': account,
+
+            # TODO what is 'total' anyway? should it be removed?
+            # see https://www.pivotaltracker.com/story/show/53093021
+            'total': 0,
+
+            # keys listed explicitly to document the schema and validate the
+            # address dictionaries passed in by the caller
+            'billing_address': {
+                'addressee': billing_address['addressee'],
+                'street': billing_address['street'],
+                'city': billing_address['city'],
+                'state': billing_address['state'],
+                'postal_code': billing_address['postal_code'],
+            },
+            'service_address': {
+                'addressee': service_address['addressee'],
+                'street': service_address['street'],
+                'city': service_address['city'],
+                'state': service_address['state'],
+                'postal_code': service_address['postal_code'],
+            },
+        })
         self.reebill_dao._save_utilbill(utilbill_doc)
 
         return new_customer
