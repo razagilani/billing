@@ -14,5 +14,4 @@ for reebill in db.reebills.find():
         # reebill schema is OK
         utilbill['billing_address'] = reebill['billing_address']
         utilbill['service_address'] = reebill['billing_address']
-        
-       db.utilbills.save(utilbill)
+        db.utilbills.save(utilbill)
