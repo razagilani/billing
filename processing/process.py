@@ -326,7 +326,7 @@ class Process(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-        if prior_reebill is not None and present_reebill == 0 \
+        if prior_reebill is not None and present_reebill.version == 0 \
                 and self.state_db.is_issued(session, prior_reebill.account,
                 prior_reebill.sequence, version=0, nonexistent=False):
             present_reebill.total_adjustment = self.get_total_adjustment(
