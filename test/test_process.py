@@ -1598,21 +1598,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .order_by(UtilBill.period_start).first())
             one = self.reebill_dao.load_reebill(acc, 1)
 
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = one.meters_for_service('gas')[0]
-            one.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            self.reebill_dao.save_reebill(one)
             self.process.issue(session, acc, one.sequence)
             one = self.reebill_dao.load_reebill(acc, one.sequence)
 
             self.process.create_next_reebill(session, acc)
             two = self.reebill_dao.load_reebill(acc, 2)
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = two.meters_for_service('gas')[0]
-            two.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            self.reebill_dao.save_reebill(two)
             self.process.issue(session, acc, two.sequence)
             two = self.reebill_dao.load_reebill(acc, two.sequence)
 
