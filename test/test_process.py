@@ -183,17 +183,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # set customer late charge rate
             self.state_db.get_customer(session, acc).latechargerate = .34
 
-            # create bill 0 (template) and its utility bill and rate structure
-            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0,
-                    start=date(2011,12,31), end=date(2012,1,1)))
-            bill0 = self.reebill_dao.load_reebill(acc, 0)
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), 100,
-                    datetime.utcnow().date())
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-
-            # create bill 1, with no late charge (and its rate structures)
-            bill1 = self.process.roll_bill(session, bill0)
+            # create utility bill and first reebill, with no late charge
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
+            self.process.create_first_reebill(session,
+                    session.query(UtilBill).one())
+            bill1 = self.reebill_dao.load_reebill(acc, 1)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
@@ -204,9 +200,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,2,1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(2012,2,2)))
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 1))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
@@ -222,18 +215,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill.
-            self.process.compute_bill(session, bill0, bill1)
+            self.process.compute_bill(session, None, bill1)
  
             # but compute_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1, force=True)
 
-            # create bill 2
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,2,1), date(2012,3,1), 100,
-                    datetime.utcnow().date())
-            bill2 = self.process.roll_bill(session, bill1)
+            # create 2nd utility bill and reebill
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                    'february.pdf')
+            self.process.create_next_reebill(session, acc)
+            bill2 = self.reebill_dao.load_reebill(acc, 2)
             bill2.balance_due = Decimal('200.')
 
             # bill2's late charge should be 0 before bill1's due date, and
