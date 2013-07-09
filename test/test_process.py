@@ -47,6 +47,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_create_new_account(self):
 
+        billing_address = {
+            'addressee': 'Andrew Mellon',
+            'street': '1785 Massachusetts Ave.',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20036',
+        }
+        service_address = {
+            'addressee': 'Skyline Innovations',
+            'street': '1785 Massachusetts Ave.',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20036',
+        }
+
         with DBSession(self.state_db) as session:
             # NOTE template account "99999" already exists.
             # store its template utility bill to check whether it was modified later
@@ -55,7 +70,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create new account "88888" based on template account "99999"
             self.process.create_new_account(session, '88888', 'New Account',
-                    0.6, 0.2, '99999')
+                    0.6, 0.2, billing_address, service_address, '99999')
 
             # check MySQL customer
             customer = self.state_db.get_customer(session, '88888')
@@ -109,26 +124,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual({'All Charges': []},
                     utilbill_doc['chargegroups'])
             self.assertEqual(0, utilbill_doc['total'])
-            # TODO check billing address, service address. note that reebill
-            # addresses are rebill utility bill addresses but this will change;
-            # see
-            # https://www.pivotaltracker.com/story/show/47749247
-            #self.assertEqual({
-                        #u'addressee' : u'College Park Car Wash',
-                        #u'street' : u'7106 Ridgewood Ave',
-                        #u'city' : u'Chevy Chase',
-                        #u'state' : u'MD',
-                        #u'postalcode' : u'20815-5148',
-                    #},
-                    #utilbill_doc['billingaddress'])
-            #self.assertEqual({
-                        #u'addressee' : u'College Park Car Wash',
-                        #u'street' : u'7106 Ridgewood Ave',
-                        #u'city' : u'Chevy Chase',
-                        #u'state' : u'MD',
-                        #u'postalcode' : u'20815-5148',
-                    #},
-                    #utilbill_doc['serviceaddress'])
+            self.assertEqual(billing_address, utilbill_doc['billing_address'])
+            self.assertEqual(service_address, utilbill_doc['service_address'])
 
             # check reebill and its document
             self.assertEqual(1, reebill.sequence)
@@ -164,9 +161,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill_doc.prior_balance)
             self.assertEqual(0, reebill_doc.hypothetical_total)
             self.assertEqual(0, reebill_doc.balance_forward)
-            # TODO billing address, service address
+            # NOTE that reebill addresses are rebill utility bill addresses but
+            # this will change; see
+            # https://www.pivotaltracker.com/story/show/47749247
+            self.assertEqual(billing_address, reebill_doc.billing_address)
+            self.assertEqual(service_address, reebill_doc.service_address)
 
-            # TODO Mongo rate structure documents
+            # TODO check Mongo rate structure documents
 
             # check that template account's utility bill and reebill was not
             # modified
