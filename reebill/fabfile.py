@@ -21,8 +21,8 @@ fabapi.env.roledefs = {
 
 # how do keys get mapped to hosts? Works like magic.
 fabapi.env.key_filename = [
-    os.path.expanduser('~/ec2keys/reebill-atsite.pem'),
-    os.path.expanduser('~/ec2keys/tyrell-prod.pem')
+    os.path.expanduser('~/Dropbox/IT/ec2keys/reebill-atsite.pem'),
+    os.path.expanduser('~/Dropbox/IT/ec2keys/tyrell-prod.pem')
 ]
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -193,7 +193,7 @@ def deploy():
         print green("Deploying current release")
 
 
-    environment = fabops.prompt("Environment?", default="stage")
+    environment = fabops.prompt("Environment?", default="stage27")
     if environment[0:4] == "prod":
         clobber = fabops.prompt(red("Clobber production?"), default="No")
         if clobber.lower() != "yes":
