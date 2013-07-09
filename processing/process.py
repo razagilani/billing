@@ -67,11 +67,6 @@ class Process(object):
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
 
-    def new_account(self, session, name, account, discount_rate, late_charge_rate):
-        new_customer = Customer(name, account, discount_rate, late_charge_rate)
-        session.add(new_customer)
-        return new_customer
-
     def upload_utility_bill(self, session, account, service, begin_date,
             end_date, bill_file, file_name, total=0, state=UtilBill.Complete):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
@@ -956,62 +951,45 @@ class Process(object):
 
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, template_account):
-        '''Returns MySQL Customer object.'''
-        # TODO don't roll by copying https://www.pivotaltracker.com/story/show/36805917
+        '''Creates a new account with utility bill template copied from the
+        last utility bill of 'template_account'. This account must have at
+        least one utility bill. Returns the new state.Customer.'''
         result = self.state_db.account_exists(session, account)
-        if result is True:
-            raise ValueError("Account exists")
+        if self.state_db.account_exists(session, account):
+            raise ValueError("Account %s already exists" % account)
 
-        # create row for new customer in MySQL
-        customer = self.new_account(session, name, account, discount_rate,
-                late_charge_rate)
+        template_last_sequence = self.state_db.last_sequence(session,
+                template_account)
 
-        template_last_sequence = self.state_db.last_sequence(session, template_account)
+        # load document of last utility bill from template account (or its own
+        # template utility bill document if there are no real ones) to become
+        # the template utility bill for this account; update its account and
+        # _id
+        template_account_last_utilbill = session.query(UtilBill)\
+                .join(Customer).filter(Customer.account==template_account)\
+                .order_by(desc(UtilBill.period_end)).first()
+        if template_account_last_utilbill is None:
+            utilbill_doc = self.reebill_dao.load_utilbill_template(session,
+                    template_account)
+        else:
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+                    template_account_last_utilbill)
 
-        #TODO 22598787 use the active version of the template_account
-        reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
+        # create row for new customer in MySQL, with new utilbill document
+        # template _id
+        new_id = ObjectId()
+        new_customer = Customer(name, account, discount_rate, late_charge_rate,
+                new_id)
+        session.add(new_customer)
 
-        reebill.convert_to_new_account(account)
-        # This 'copy' is set to sequence zero which acts as a 'template' 
-        reebill.sequence = 0
-        reebill.version = 0
-        for utilbill in reebill._utilbills:
-            utilbill['sequence'] = 0
-            utilbill['version'] = 0
-        reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
-        reebill.billing_address = {}
-        reebill.service_address = {}
-        reebill.bill_recipients = []
-        reebill.last_recipients = []
-        reebill.late_charge_rate = late_charge_rate
+        # save utilbill document template in Mongo with new account, _id, and
+        # "total"
+        # TODO what is 'total' anyway? should it be removed?
+        # see https://www.pivotaltracker.com/story/show/53093021
+        utilbill_doc.update({'_id': new_id, 'account': account, 'total': 0})
+        self.reebill_dao._save_utilbill(utilbill_doc)
 
-        # reset the reebill's fields to 0/blank/etc.
-        reebill.clear()
-        reebill.discount_rate = self.state_db.discount_rate(session, account)
-        reebill.late_charge_rate = self.state_db.late_charge_rate(session,
-                account)
-
-        # create template reebill in mongo for this new account
-        self.reebill_dao.save_reebill(reebill)
-
-        # TODO: 22597151 refactor
-        # for each service, duplicate the CPRS
-        for service in reebill.services:
-            utility_name = reebill.utility_name_for_service(service)
-            rate_structure_name = reebill.rate_structure_name_for_service(service)
-
-            # load current CPRS of the template account
-            # TODO: 22598787
-            cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
-                0, utility_name, rate_structure_name)
-            if cprs is None:
-                raise ValueError("No current CPRS")
-
-            # save the CPRS for the new reebill
-            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
-                reebill.version, utility_name, rate_structure_name, cprs)
-
-        return customer
+        return new_customer
 
 
     ## TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
