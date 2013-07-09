@@ -25,6 +25,28 @@ from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
+# utility bill-to-reebill address schema converters
+# also remember that utilbill and reebill use different names for these
+
+def utilbill_billing_address_to_reebill_address(billing_address):
+    '''Transforms Rich's utility bill billing address schema to his reebill
+    address schema (which is the same for both kinds of addresses).'''
+    return {
+        ('ba_postal_code' if key == 'postalcode'
+            else ('ba_street1' if key == 'street'
+                else 'ba_' + key)): value
+        for (key, value) in billing_address.iteritems()
+    }
+
+def utilbill_billing_address_to_reebill_address(service_address):
+    '''Transforms Rich's utility bill service address schema to his reebill
+    address schema (which is the same for both kinds of addresses).'''
+    return {
+        ('sa_postal_code' if key == 'postalcode'
+            else ('sa_street1' if key == 'street'
+                else 'sa_' + key)): value
+        for (key, value) in service_address.iteritems()
+    }
 
 # type-conversion functions
 
@@ -223,19 +245,12 @@ class MongoReebill(object):
             # bill for now). see
             # https://www.pivotaltracker.com/story/show/47749247
 
-            # transform from Rich's utility bill address schema to his reebill one
-            "billing_address" : {
-                    ('ba_postal_code' if key == 'postalcode'
-                        else ('ba_street1' if key == 'street'
-                            else 'ba_' + key)): value
-                    for (key, value) in
-                    utilbill['billingaddress'].iteritems()},
-            "service_address" : {
-                    ('sa_postal_code' if key == 'postalcode'
-                        else ('sa_street1' if key == 'street'
-                            else 'sa_' + key)): value
-                    for (key, value) in
-                    utilbill['serviceaddress'].iteritems()}
+            # transform from Rich's utility bill address schema to his reebill
+            # one and convert key names
+            "billing_address": utilbill_billing_address_to_reebill_address(
+                    utilbill['billingaddress']),
+            "service_address": utilbill_service_address_to_reebill_address(
+                    utilbill['serviceaddress']),
         }
         return MongoReebill(reebill_doc, utilbill_docs)
 
