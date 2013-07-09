@@ -950,10 +950,22 @@ class Process(object):
 
 
     def create_new_account(self, session, account, name, discount_rate,
-            late_charge_rate, template_account):
+            late_charge_rate,
+            #billing_address, service_address,
+            template_account):
         '''Creates a new account with utility bill template copied from the
-        last utility bill of 'template_account'. This account must have at
-        least one utility bill. Returns the new state.Customer.'''
+        last utility bill of 'template_account' (which must have at least one
+        utility bill).
+        
+        Returns the new state.Customer.'''
+
+        # TODO include addresses; this comment goes in docstring:
+        #'billing_address' and 'service_address' are dictionaries containing the
+        #addresses for the utility bill. The address format should be the
+        #utility bill address format (see top of mongo.py for conversion
+        #functions). Note that there are no ReeBill billing/service addresses
+        #currently; see https://www.pivotaltracker.com/story/show/47749247
+
         result = self.state_db.account_exists(session, account)
         if self.state_db.account_exists(session, account):
             raise ValueError("Account %s already exists" % account)

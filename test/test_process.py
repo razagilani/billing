@@ -109,7 +109,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual({'All Charges': []},
                     utilbill_doc['chargegroups'])
             self.assertEqual(0, utilbill_doc['total'])
-            # TODO check service address, billing address
+            # TODO check billing address, service address. note that reebill
+            # addresses are rebill utility bill addresses but this will change;
+            # see
+            # https://www.pivotaltracker.com/story/show/47749247
+            #self.assertEqual({
+                        #u'addressee' : u'College Park Car Wash',
+                        #u'street' : u'7106 Ridgewood Ave',
+                        #u'city' : u'Chevy Chase',
+                        #u'state' : u'MD',
+                        #u'postalcode' : u'20815-5148',
+                    #},
+                    #utilbill_doc['billingaddress'])
+            #self.assertEqual({
+                        #u'addressee' : u'College Park Car Wash',
+                        #u'street' : u'7106 Ridgewood Ave',
+                        #u'city' : u'Chevy Chase',
+                        #u'state' : u'MD',
+                        #u'postalcode' : u'20815-5148',
+                    #},
+                    #utilbill_doc['serviceaddress'])
 
             # check reebill and its document
             self.assertEqual(1, reebill.sequence)
