@@ -127,7 +127,7 @@ example_utilbill = {
         ]
     },
     "service_address" : {
-        "postalcode" : "20010",
+        "postal_code" : "20010",
         "city" : "Washington",
         "state" : "DC",
         "addressee" : "Monroe Towers",
@@ -153,7 +153,7 @@ example_utilbill = {
     "total" : 743.49,
     "rate_structure_binding" : "DC Non Residential Non Heat",
     "billing_address" : {
-        "postalcode" : "20910",
+        "postal_code" : "20910",
         "city" : "Silver Spring",
         "state" : "MD",
         "addressee" : "Managing Member Monroe Towers",
