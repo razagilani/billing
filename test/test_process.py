@@ -258,15 +258,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2013,1,1)))
 
-
-            # this should be unnecessary now that meter read date is filled in
-            # using utility bill period end date
-            ## update the meter like the user normally would
-            ## This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            #meter = bill1.meters_for_service('gas')[0]
-            #bill1.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            #self.reebill_dao.save_reebill(bill1, force=True)
-
             # late charge should be based on the version with the least total
             # of the bill from which it derives. on 2013-01-15, make a version
             # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
