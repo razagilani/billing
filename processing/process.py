@@ -743,7 +743,7 @@ class Process(object):
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
-        max_version number in MySQL. Returns the new reebill object.'''
+        max_version number in MySQL. Returns the new MongoReebill object.'''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
 
