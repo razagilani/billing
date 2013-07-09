@@ -303,11 +303,11 @@ example_reebill = {
 	"actual_total" : 743.49,
 	"due_date" : null,
 	"service_address" : {
-		"sa_city" : "Washington",
-		"sa_state" : "DC",
-		"sa_addressee" : "Monroe Towers",
-		"sa_postal_code" : "20010",
-		"sa_street1" : "3501 13TH ST NW #WH"
+		"city" : "Washington",
+		"state" : "DC",
+		"addressee" : "Monroe Towers",
+		"postal_code" : "20010",
+		"street" : "3501 13TH ST NW #WH"
 	},
 	"total_adjustment" : 0,
 	"manual_adjustment" : 0,
@@ -347,11 +347,11 @@ example_reebill = {
 	"balance_forward" : 1027.79,
 	"period_begin" : ISODate("2011-11-12T00:00:00Z"),
 	"billing_address" : {
-		"ba_addressee" : "Managing Member Monroe Towers",
-		"ba_state" : "MD",
-		"ba_city" : "Silver Spring",
-		"ba_street1" : "3501 13TH ST NW LLC",
-		"ba_postal_code" : "20910"
+		"addressee" : "Managing Member Monroe Towers",
+		"state" : "MD",
+		"city" : "Silver Spring",
+		"street" : "3501 13TH ST NW LLC",
+		"postal_code" : "20910"
 	}
 }
 
