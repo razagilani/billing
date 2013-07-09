@@ -38,7 +38,7 @@ def utilbill_billing_address_to_reebill_address(billing_address):
         for (key, value) in billing_address.iteritems()
     }
 
-def utilbill_billing_address_to_reebill_address(service_address):
+def utilbill_service_address_to_reebill_address(service_address):
     '''Transforms Rich's utility bill service address schema to his reebill
     address schema (which is the same for both kinds of addresses).'''
     return {
