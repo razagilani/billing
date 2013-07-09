@@ -245,12 +245,23 @@ class MongoReebill(object):
             # bill for now). see
             # https://www.pivotaltracker.com/story/show/47749247
 
-            # transform from Rich's utility bill address schema to his reebill
-            # one and convert key names
-            "billing_address": utilbill_billing_address_to_reebill_address(
-                    utilbill['billingaddress']),
-            "service_address": utilbill_service_address_to_reebill_address(
-                    utilbill['serviceaddress']),
+            # copy addresses from utility bill
+            # specifying keys explicitly to provide validation and to document
+            # the schema
+            "billing_address": {
+                'addressee': utilbill['billing_address']['addressee'],
+                'street': utilbill['billing_address']['street'],
+                'city': utilbill['billing_address']['city'],
+                'state': utilbill['billing_address']['state'],
+                'postal_code': utilbill['billing_address']['postal_code'],
+            },
+            "service_address": {
+                'addressee': utilbill['service_address']['addressee'],
+                'street': utilbill['service_address']['street'],
+                'city': utilbill['service_address']['city'],
+                'state': utilbill['service_address']['state'],
+                'postal_code': utilbill['service_address']['postal_code'],
+            },
         }
         return MongoReebill(reebill_doc, utilbill_docs)
 
