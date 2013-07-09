@@ -1300,34 +1300,34 @@ function reeBillReady() {
             items: [
                 {
                     xtype: 'textfield',
-                    id: 'ba_addressee',
+                    id: 'addressee',
                     fieldLabel: 'Addressee',
-                    name: 'ba_addressee',
-                    //value: addresses['billing_address']['ba_addressee'],
+                    name: 'addressee',
+                    //value: addresses['billing_address']['addressee'],
                 },{
                     xtype: 'textfield',
-                    id: 'ba_street1',
+                    id: 'street',
                     fieldLabel: 'Street',
-                    name: 'ba_street1',
-                    //value: addresses['billing_address']['ba_street1'],
+                    name: 'street',
+                    //value: addresses['billing_address']['street'],
                 },{
                     xtype: 'textfield',
-                    id: 'ba_city',
+                    id: 'city',
                     fieldLabel: 'City',
-                    name: 'ba_city',
-                    //value: addresses['billing_address']['ba_city'],
+                    name: 'city',
+                    //value: addresses['billing_address']['city'],
                 },{
                     xtype: 'textfield',
-                    id: 'ba_state',
+                    id: 'state',
                     fieldLabel: 'State',
-                    name: 'ba_state',
-                    //value: addresses['billing_address']['ba_state'],
+                    name: 'state',
+                    //value: addresses['billing_address']['state'],
                 },{
                     xtype: 'textfield',
-                    id: 'ba_postal_code',
+                    id: 'postal_code',
                     fieldLabel: 'Postal Code',
-                    name: 'ba_postal_code',
-                    //value: addresses['billing_address']['ba_postal_code'],
+                    name: 'postal_code',
+                    //value: addresses['billing_address']['postal_code'],
                 },
             ]
         },{
@@ -1340,34 +1340,34 @@ function reeBillReady() {
             items: [
                 {
                     xtype: 'textfield',
-                    id: 'sa_addressee',
+                    id: 'addressee',
                     fieldLabel: 'Addressee',
-                    name: 'sa_addressee',
-                    //value: addresses['service_address']['sa_addressee'],
+                    name: 'addressee',
+                    //value: addresses['service_address']['addressee'],
                 },{
                     xtype: 'textfield',
-                    id: 'sa_street1',
+                    id: 'street',
                     fieldLabel: 'Street',
-                    name: 'sa_street1',
-                    //value: addresses['service_address']['sa_street1'],
+                    name: 'street',
+                    //value: addresses['service_address']['street'],
                 },{
                     xtype: 'textfield',
-                    id: 'sa_city',
+                    id: 'city',
                     fieldLabel: 'City',
-                    name: 'sa_city',
-                    //value: addresses['service_address']['sa_city'],
+                    name: 'city',
+                    //value: addresses['service_address']['city'],
                 },{
                     xtype: 'textfield',
-                    id: 'sa_state',
+                    id: 'state',
                     fieldLabel: 'State',
-                    name: 'sa_state',
-                    //value: addresses['service_address']['sa_state'],
+                    name: 'state',
+                    //value: addresses['service_address']['state'],
                 },{
                     xtype: 'textfield',
-                    id: 'sa_postal_code',
+                    id: 'postal_code',
                     fieldLabel: 'Postal Code',
-                    name: 'sa_postal_code',
-                    //value: addresses['service_address']['sa_postal_code'],
+                    name: 'postal_code',
+                    //value: addresses['service_address']['postal_code'],
                 },
             ]
         },
@@ -1431,17 +1431,17 @@ function reeBillReady() {
                         Ext.getCmp('discount_rate').setValue(jsonData['discount_rate']);
                         Ext.getCmp('late_charge_rate').setValue(jsonData['late_charge_rate']);
 
-                        Ext.getCmp('ba_addressee').setValue(jsonData['billing_address']['ba_addressee']);
-                        Ext.getCmp('ba_street1').setValue(jsonData['billing_address']['ba_street1']);
-                        Ext.getCmp('ba_city').setValue(jsonData['billing_address']['ba_city']);
-                        Ext.getCmp('ba_state').setValue(jsonData['billing_address']['ba_state']);
-                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['ba_postal_code']);
+                        Ext.getCmp('addressee').setValue(jsonData['billing_address']['addressee']);
+                        Ext.getCmp('street').setValue(jsonData['billing_address']['street']);
+                        Ext.getCmp('city').setValue(jsonData['billing_address']['city']);
+                        Ext.getCmp('state').setValue(jsonData['billing_address']['state']);
+                        Ext.getCmp('postal_code').setValue(jsonData['billing_address']['postal_code']);
 
-                        Ext.getCmp('sa_addressee').setValue(jsonData['service_address']['sa_addressee']);
-                        Ext.getCmp('sa_street1').setValue(jsonData['service_address']['sa_street1']);
-                        Ext.getCmp('sa_city').setValue(jsonData['service_address']['sa_city']);
-                        Ext.getCmp('sa_state').setValue(jsonData['service_address']['sa_state']);
-                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['sa_postal_code']);
+                        Ext.getCmp('addressee').setValue(jsonData['service_address']['addressee']);
+                        Ext.getCmp('street').setValue(jsonData['service_address']['street']);
+                        Ext.getCmp('city').setValue(jsonData['service_address']['city']);
+                        Ext.getCmp('state').setValue(jsonData['service_address']['state']);
+                        Ext.getCmp('postal_code').setValue(jsonData['service_address']['postal_code']);
 
                         accountInfoFormPanel.doLayout();
                     } 
@@ -5108,29 +5108,29 @@ function reeBillReady() {
                 items: [
                     {
                         xtype: 'textfield',
-                        id: 'new_ba_addressee',
+                        id: 'new_addressee',
                         fieldLabel: 'Addressee',
-                        name: 'new_ba_addressee',
+                        name: 'new_addressee',
                     },{
                         xtype: 'textfield',
-                        id: 'new_ba_street1',
+                        id: 'new_street',
                         fieldLabel: 'Street',
-                        name: 'new_ba_street1',
+                        name: 'new_street',
                     },{
                         xtype: 'textfield',
-                        id: 'new_ba_city',
+                        id: 'new_city',
                         fieldLabel: 'City',
-                        name: 'new_ba_city',
+                        name: 'new_city',
                     },{
                         xtype: 'textfield',
-                        id: 'new_ba_state',
+                        id: 'new_state',
                         fieldLabel: 'State',
-                        name: 'new_ba_state',
+                        name: 'new_state',
                     },{
                         xtype: 'textfield',
-                        id: 'new_ba_postal_code',
+                        id: 'new_postal_code',
                         fieldLabel: 'Postal Code',
-                        name: 'new_ba_postal_code',
+                        name: 'new_postal_code',
                     },
                 ]
             },{
@@ -5144,29 +5144,29 @@ function reeBillReady() {
                 items: [
                     {
                         xtype: 'textfield',
-                        id: 'new_sa_addressee',
+                        id: 'new_addressee',
                         fieldLabel: 'Addressee',
-                        name: 'new_sa_addressee',
+                        name: 'new_addressee',
                     },{
                         xtype: 'textfield',
-                        id: 'new_sa_street1',
+                        id: 'new_street',
                         fieldLabel: 'Street',
-                        name: 'new_sa_street1',
+                        name: 'new_street',
                     },{
                         xtype: 'textfield',
-                        id: 'new_sa_city',
+                        id: 'new_city',
                         fieldLabel: 'City',
-                        name: 'new_sa_city',
+                        name: 'new_city',
                     },{
                         xtype: 'textfield',
-                        id: 'new_sa_state',
+                        id: 'new_state',
                         fieldLabel: 'State',
-                        name: 'new_sa_state',
+                        name: 'new_state',
                     },{
                         xtype: 'textfield',
-                        id: 'new_sa_postal_code',
+                        id: 'new_postal_code',
                         fieldLabel: 'Postal Code',
-                        name: 'new_sa_postal_code',
+                        name: 'new_postal_code',
                     },
                 ]
             },
@@ -5187,16 +5187,16 @@ function reeBillReady() {
                           'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
-                          'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
-                          'ba_street1': Ext.getCmp('new_ba_street1').getValue(),
-                          'ba_city': Ext.getCmp('new_ba_city').getValue(),
-                          'ba_state': Ext.getCmp('new_ba_state').getValue(),
-                          'ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
-                          'sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
-                          'sa_street1': Ext.getCmp('new_sa_street1').getValue(),
-                          'sa_city': Ext.getCmp('new_sa_city').getValue(),
-                          'sa_state': Ext.getCmp('new_sa_state').getValue(),
-                          'sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
+                          'addressee': Ext.getCmp('new_addressee').getValue(),
+                          'street': Ext.getCmp('new_street').getValue(),
+                          'city': Ext.getCmp('new_city').getValue(),
+                          'state': Ext.getCmp('new_state').getValue(),
+                          'postal_code': Ext.getCmp('new_postal_code').getValue(),
+                          'addressee': Ext.getCmp('new_addressee').getValue(),
+                          'street': Ext.getCmp('new_street').getValue(),
+                          'city': Ext.getCmp('new_city').getValue(),
+                          'state': Ext.getCmp('new_state').getValue(),
+                          'postal_code': Ext.getCmp('new_postal_code').getValue(),
                         },
                         success: function(result, request) {
                             var jsonData = null;
