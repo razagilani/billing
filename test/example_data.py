@@ -126,7 +126,7 @@ example_utilbill = {
             }
         ]
     },
-    "serviceaddress" : {
+    "service_address" : {
         "postalcode" : "20010",
         "city" : "Washington",
         "state" : "DC",
@@ -152,7 +152,7 @@ example_utilbill = {
     ],
     "total" : 743.49,
     "rate_structure_binding" : "DC Non Residential Non Heat",
-    "billingaddress" : {
+    "billing_address" : {
         "postalcode" : "20910",
         "city" : "Silver Spring",
         "state" : "MD",
