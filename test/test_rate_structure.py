@@ -47,7 +47,7 @@ class RateStructureTest(TestCaseWithSetup):
         # save reebill in in mysql; reebill_dao needs that to get max_version
         # for loading
         with DBSession(self.state_db) as session:
-            self.state_db.new_rebill(session, account, sequence)
+            self.state_db.new_reebill(session, account, sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # load probable rate structure

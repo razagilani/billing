@@ -1,6 +1,7 @@
 '''Miscellaneous code used by test cases.'''
 import unittest
 from datetime import date, datetime, timedelta
+from copy import deepcopy
 
 class TestCase(unittest.TestCase):
     '''Extra assert methods.'''
@@ -21,3 +22,13 @@ class TestCase(unittest.TestCase):
             else:
                 self.assertEquals(v, v2)
 
+    def assertDocumentsEqualExceptKeys(self, d1, d2, *keys_to_exclude):
+        '''Asserts that two Mongo documents (dictionaries) are the same except
+        for keys in 'keys_to_exclude' (which don't necessarily have to be
+        present in the documents.'''
+        d1, d2 = deepcopy(d1), deepcopy(d2)
+        for key in keys_to_exclude:
+            for d in (d1, d2):
+                if key in d:
+                    del d[key]
+        self.assertEqual(d1, d2)
