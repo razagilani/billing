@@ -1,4 +1,4 @@
-'''Replace utility bill "billingaddress" and "serviceaddress" fields with "billing_address" and "service_address" from reebill documents, using the same schema as in reebills.'''
+'''Replace utility bill "billing_address" and "service_address" fields with "billing_address" and "service_address" from reebill documents, using the same schema as in reebills.'''
 from pymongo import Connection
 from sys import stderr
 db = Connection('localhost')['skyline-dev']
@@ -14,17 +14,5 @@ for reebill in db.reebills.find():
         # reebill schema is OK
         utilbill['billing_address'] = reebill['billing_address']
         utilbill['service_address'] = reebill['billing_address']
-        try:
-            del utilbill['billingaddress']
-        except KeyError:
-            print >> stderr, 'utility bill has no billingaddress:', reebill['_id']
-        else:
-            print 'ok', rebill['_id']
-        try:
-            del utilbill['serviceaddress']
-        except KeyError:
-            print >> stderr, 'utility bill has no serviceaddress:', reebill['_id']
-        else:
-            print 'ok', rebill['_id']
         
-        #db.utilbills.save(utilbill)
+       db.utilbills.save(utilbill)
