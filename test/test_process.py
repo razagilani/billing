@@ -1082,71 +1082,42 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_late_charge_correction(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # save rate structures for the bills
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-            #self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
+            # 2 utility bills
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                    'february.pdf')
 
-            #utilbill = example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1))
-            #self.reebill_dao._save_utilbill(utilbill)
-            #utilbill = example_data.get_utilbill_dict(acc, start=date(2012,2,1), end=date(2012,3,1))
-            #self.reebill_dao._save_utilbill(utilbill)
-
-            # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
-            zero = example_data.get_reebill(acc, 0, start=date(2011,12,31),
-                    end=date(2012,1,1)) # template
-            self.reebill_dao.save_reebill(zero)
-
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), 100,
-                    datetime.utcnow().date())
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,2,1), date(2012,3,1), 100,
-                    datetime.utcnow().date())
-
-            #one = example_data.get_reebill(acc, 1, start=date(2012,1,1),
-            #        end=date(2012,2,1))
-            #two0 = example_data.get_reebill(acc, 2, start=date(2012,2,1),
-            #        end=date(2012,3,1))
-            one = self.process.roll_bill(session, zero)
+            # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
+            # (so it's 10 days late)
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
+            one = self.reebill_dao.load_reebill(acc, 1)
             one.balance_due = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = one.meters_for_service('gas')[0]
-            one.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
             self.reebill_dao.save_reebill(one)
-            self.process.issue(session, acc, one.sequence, issue_date=datetime.utcnow().date() - timedelta(40))
-            one = self.reebill_dao.load_reebill(acc, one.sequence)
-
-            two = self.process.roll_bill(session, one)
-            two.balance_due = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = two.meters_for_service('gas')[0]
-            two.set_meter_read_date('gas', meter['identifier'], date(2012,3,1), date(2012,2,1))
-            self.reebill_dao.save_reebill(two)
-            #self.process.issue(session, acc, two.sequence)
-            #self.state_db.new_reebill(session, acc, 1)
-            #self.state_db.new_reebill(session, acc, 2)
+            self.process.issue(session, acc, 1,
+                    issue_date=datetime.utcnow().date() - timedelta(40))
             
-            #self.process.attach_utilbills(session, acc, 1)
+            # 2nd reebill, which will get a late charge from the 1st
+            self.process.create_next_reebill(session, acc)
 
-            # bind & compute 2nd reebill
+            # "bind REE" in 2nd reebill
             # (it needs energy data only so its correction will have the same
-            # energy in it; only the late charge will differ)
+            # energy in it as the original version; only the late charge will
+            # differ)
             two = self.reebill_dao.load_reebill(acc, 2)
-            two.late_charge_rate = .5
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
                     two)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
+            two.late_charge_rate = .5
             self.process.compute_bill(session, one, two)
             self.assertEqual(50, two.late_charges)
 
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two)
-            #self.process.attach_utilbills(session, acc, two.sequence)
             self.process.issue(session, acc, two.sequence)
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
