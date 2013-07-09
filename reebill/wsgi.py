@@ -715,8 +715,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
-                    ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-                    sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code, **kwargs):
+                    addressee, street, city, state, postal_code,
+                    addressee, street, city, state, postal_code, **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
@@ -724,19 +724,19 @@ class BillToolBridge:
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
-            ba['ba_addressee'] = ba_addressee
-            ba['ba_street1'] = ba_street1
-            ba['ba_city'] = ba_city
-            ba['ba_state'] = ba_state
-            ba['ba_postal_code'] = ba_postal_code
+            ba['addressee'] = addressee
+            ba['street'] = street
+            ba['city'] = city
+            ba['state'] = state
+            ba['postal_code'] = postal_code
             reebill.billing_address = ba
             
             sa = {}
-            sa['sa_addressee'] = sa_addressee
-            sa['sa_street1'] = sa_street1
-            sa['sa_city'] = sa_city
-            sa['sa_state'] = sa_state
-            sa['sa_postal_code'] = sa_postal_code
+            sa['addressee'] = addressee
+            sa['street'] = street
+            sa['city'] = city
+            sa['state'] = state
+            sa['postal_code'] = postal_code
             reebill.service_address = sa
             self.reebill_dao.save_reebill(reebill)
             # record account creation
@@ -1002,7 +1002,7 @@ class BillToolBridge:
                                              "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
-            merge_fields["sa_street1"] = mongo_reebill.service_address.get("sa_street1","")
+            merge_fields["street"] = mongo_reebill.service_address.get("street","")
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
@@ -1057,7 +1057,7 @@ class BillToolBridge:
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address.get("sa_street1","")
+            merge_fields["street"] = most_recent_bill.service_address.get("street","")
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
@@ -1349,19 +1349,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 actual_row = [row['account'], row['sequence'], row['version'],
@@ -1418,19 +1418,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
@@ -2203,19 +2203,19 @@ class BillToolBridge:
         account_info = {}
 
         account_info['billing_address'] = {
-            'ba_addressee': ba['ba_addressee'] if 'ba_addressee' in ba else '',
-            'ba_street1': ba['ba_street1'] if 'ba_street1' in ba else '',
-            'ba_city': ba['ba_city'] if 'ba_city' in ba else '',
-            'ba_state': ba['ba_state'] if 'ba_state' in ba else '',
-            'ba_postal_code': ba['ba_postal_code'] if 'ba_postal_code' in ba else '',
+            'addressee': ba['addressee'] if 'addressee' in ba else '',
+            'street': ba['street'] if 'street' in ba else '',
+            'city': ba['city'] if 'city' in ba else '',
+            'state': ba['state'] if 'state' in ba else '',
+            'postal_code': ba['postal_code'] if 'postal_code' in ba else '',
         }
 
         account_info['service_address'] = {
-            'sa_addressee': sa['sa_addressee'] if 'sa_addressee' in sa else '',
-            'sa_street1': sa['sa_street1'] if 'sa_street1' in sa else '',
-            'sa_city': sa['sa_city'] if 'sa_city' in sa else '',
-            'sa_state': sa['sa_state'] if 'sa_state' in sa else '',
-            'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
+            'addressee': sa['addressee'] if 'addressee' in sa else '',
+            'street': sa['street'] if 'street' in sa else '',
+            'city': sa['city'] if 'city' in sa else '',
+            'state': sa['state'] if 'state' in sa else '',
+            'postal_code': sa['postal_code'] if 'postal_code' in sa else '',
         }
 
         try:
@@ -2236,16 +2236,16 @@ class BillToolBridge:
     @json_exception
     def set_account_info(self, account, sequence,
         discount_rate, late_charge_rate,
-        ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-        sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
+        addressee, street, city, state, postal_code,
+        addressee, street, city, state, postal_code,
         **kwargs):
         """
         Update account information
         """
         if not account or not sequence \
         or not discount_rate \
-        or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
-        or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
+        or not addressee or not street or not city or not state or not postal_code \
+        or not addressee or not street or not city or not state or not postal_code:
             raise ValueError("Bad Parameter Value")
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2265,18 +2265,18 @@ class BillToolBridge:
         ba = {}
         sa = {}
         
-        ba['ba_addressee'] = ba_addressee
-        ba['ba_street1'] = ba_street1
-        ba['ba_city'] = ba_city
-        ba['ba_state'] = ba_state
-        ba['ba_postal_code'] = ba_postal_code
+        ba['addressee'] = addressee
+        ba['street'] = street
+        ba['city'] = city
+        ba['state'] = state
+        ba['postal_code'] = postal_code
         reebill.billing_address = ba
 
-        sa['sa_addressee'] = sa_addressee
-        sa['sa_street1'] = sa_street1
-        sa['sa_city'] = sa_city
-        sa['sa_state'] = sa_state
-        sa['sa_postal_code'] = sa_postal_code
+        sa['addressee'] = addressee
+        sa['street'] = street
+        sa['city'] = city
+        sa['state'] = state
+        sa['postal_code'] = postal_code
         reebill.service_address = sa
 
         # set disabled services (services not mentioned in the request are

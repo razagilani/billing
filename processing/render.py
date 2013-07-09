@@ -412,9 +412,9 @@ class ReebillRenderer:
         Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
         sa = stringify(reebill.service_address)
-        Elements.append(Paragraph(sa.get('sa_addressee', ""), styles['BillField']))
-        Elements.append(Paragraph(sa.get('sa_street1',""), styles['BillField']))
-        Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postal_code', ""))), styles['BillField']))
+        Elements.append(Paragraph(sa.get('addressee', ""), styles['BillField']))
+        Elements.append(Paragraph(sa.get('street',""), styles['BillField']))
+        Elements.append(Paragraph(" ".join((sa.get('city', ""), sa.get('state', ""), sa.get('postal_code', ""))), styles['BillField']))
         Elements.append(UseUpSpace())
 
         # populate special instructions
@@ -424,9 +424,9 @@ class ReebillRenderer:
         # populate billing address
         Elements.append(Spacer(100,20))
         ba = stringify(reebill.billing_address)
-        Elements.append(Paragraph(ba.get('ba_addressee', ""), styles['BillFieldLg']))
-        Elements.append(Paragraph(ba.get('ba_street1', ""), styles['BillFieldLg']))
-        Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postal_code',""))), styles['BillFieldLg']))
+        Elements.append(Paragraph(ba.get('addressee', ""), styles['BillFieldLg']))
+        Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
+        Elements.append(Paragraph(" ".join((ba.get('city', ""), ba.get('state', ""), ba.get('postal_code',""))), styles['BillFieldLg']))
         Elements.append(UseUpSpace())
 
 

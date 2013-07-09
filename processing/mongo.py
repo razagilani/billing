@@ -526,9 +526,8 @@ class MongoReebill(object):
         self.reebill_dict['service_address'] = value
 
     def service_address_formatted(self):
-        #return '%(sa_street1), %(sa_city), %(sa_state)'.format(**self.reebill_dict['service_address'])
         try:
-            return '%(sa_street1)s, %(sa_city)s, %(sa_state)s' % self.reebill_dict['service_address']
+            return '%(street)s, %(city)s, %(state)s' % self.reebill_dict['service_address']
         except KeyError as e:
             print >> sys.stderr, 'Reebill %s-%s-%s service address lacks key "%s"' \
                     % (self.account, self.sequence, self.version, e)
