@@ -20,7 +20,7 @@ from billing.processing import state
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state, fetch_bill_data
-from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
@@ -45,7 +45,7 @@ class Process(object):
     config = None
     
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, splinter=None):
+            nexus_util, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -54,6 +54,7 @@ class Process(object):
         self.nexus_util = nexus_util
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
+        self.logger = logger
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
@@ -481,7 +482,7 @@ class Process(object):
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
         fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, verbose=True)
+                self.nexus_util.olap_id(account), reebill)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
         self.compute_bill(session, predecessor, reebill)
@@ -732,11 +733,6 @@ class Process(object):
         self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
-            # process the actual charges across all services
-            self.bindrs(reebill)
-
-    # TODO remove (move to bind_rate_structure)
-    def bindrs(self, reebill):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -1066,7 +1062,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1115,7 +1111,7 @@ class Process(object):
 
         return rows, totalCount
 
-    def reebill_report(self, session):
+    def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
         totalCount = 0
@@ -1126,9 +1122,16 @@ class Process(object):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
+                # if the user has chosen a begin and/or end date *and* this
+                # reebill falls outside of its bounds, skip to the next one
+                have_period_dates = begin_date or end_date
+                reebill_begins_in_this_period = begin_date and reebill.period_begin >= begin_date
+                reebill_ends_in_this_period = end_date and reebill.period_end <= end_date
+                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
+                if have_period_dates and not reebill_in_this_period:
+                    continue
 
                 row = {}
-
                 # iterate the payments and find the ones that apply. 
                 if (reebill.period_begin is not None and reebill.period_end is not None):
                     applicable_payments = filter(lambda x: x.date_applied >
@@ -1151,7 +1154,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1235,6 +1238,10 @@ class Process(object):
                     rows.append(row)
                     totalCount += 1
 
+            # TODO: why is this here? it seems that what it's doing is ensuring
+            # there is alwas at least one row present in 'rows', but why isn't
+            # it inside of an 'if/else' block to ensure that the empty row is
+            # only present when no other results are returned?
             row = {}
             row['account'] = None
             row['sequence'] = None
@@ -1266,6 +1273,12 @@ class Process(object):
         return rows, totalCount
 
     def summary_ree_charges(self, session, accounts, all_names):
+        def total_ree_in_reebills(self, reebills):
+            total_energy = Decimal(0)
+            for reebill in reebills:
+                total_energy += reebill.total_renewable_energy()
+            return total_energy
+        
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
@@ -1294,37 +1307,6 @@ class Process(object):
 
         return rows
 
-    # TODO 20991629: maybe we should move this into ReeBill, because it should know how to report its data?
-    def total_ree_in_reebill(self, reebill):
-        """ Returns energy in Therms """
-
-        total_energy = Decimal(0)
-
-        services = reebill.services
-        for service in services:
-            registers = reebill.shadow_registers(service)
-            # 20977305 - treat registers the same
-            if service.lower() == 'gas':
-                # add up all registers and normalize energy to BTU
-                # gotta check units
-                for register in registers:
-                    if 'quantity' in register:
-                        total_energy += register['quantity']
-            elif service.lower() == 'electric':
-                # add up only total register and normalize energy
-                for register in registers:
-                    if 'type' in register and register['type'] == 'total':
-                        # 1kWh =  29.30722 Th
-                        total_energy += (register['quantity'] / Decimal("29.30722"))
-
-        return total_energy
-
-    def total_ree_in_reebills(self, reebills):
-        total_energy = Decimal(0)
-        for reebill in reebills:
-            total_energy += self.total_ree_in_reebill(reebill)
-        return total_energy
-        
     def sequences_for_approximate_month(self, session, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or

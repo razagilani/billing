@@ -17,8 +17,7 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB
-from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from decimal import Decimal
 from billing.util.dictutils import deep_map
@@ -416,7 +415,7 @@ class ProcessTest(TestCaseWithSetup):
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        self.process.bindrs(bill1)
+        self.process.bind_rate_structure(bill1)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -1148,6 +1147,28 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
+            # new customers also need to be in nexus for 'fetch_oltp_data' to
+            # work (using mock Skyliner)
+            self.nexus_util._customers.extend([
+                {
+                    'billing': 'aaaaa',
+                    'olap': 'a-1',
+                    'casualname': 'Customer A',
+                    'primus': '1 A St.',
+                },
+                {
+                    'billing': 'bbbbb',
+                    'olap': 'b-1',
+                    'casualname': 'Customer B',
+                    'primus': '1 B St.',
+                },
+                {
+                    'billing': 'ccccc',
+                    'olap': 'c-1',
+                    'casualname': 'Customer C',
+                    'primus': '1 C St.',
+                },
+            ])
 
             # save default rate structure documents all 3 accounts
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
