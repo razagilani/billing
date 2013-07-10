@@ -967,57 +967,38 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999', 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 0))
             base_date = date(2012,1,1)
             dates = [base_date + timedelta(days=30*x) for x in xrange(5)]
             for n in xrange(4):
-                self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    dates[n], dates[n+1], 100,
-                    datetime.utcnow().date())
-                #self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, dates[n], dates[n+1]))
+                self.process.upload_utility_bill(session, acc, 'gas',
+                        dates[n], dates[n+1], StringIO('a utility bill'),
+                        'filename.pdf')
             
-            zero = example_data.get_reebill(acc, 0)
-            zero.ree_charges = 100
-            self.reebill_dao.save_reebill(zero)
-
-            one = self.process.roll_bill(session, zero)
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
+            one = self.reebill_dao.load_reebill(acc, 1)
             one.ree_charges = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = one.meters_for_service('gas')[0]
-            one.set_meter_read_date('gas', meter['identifier'], one.period_end, one.period_begin)
             self.reebill_dao.save_reebill(one)
-            self.process.issue(session, acc, one.sequence)
+            self.process.issue(session, acc, 1)
             one = self.reebill_dao.load_reebill(acc, one.sequence)
 
-            two = self.process.roll_bill(session, one)
+            self.process.create_next_reebill(session, acc)
+            two = self.reebill_dao.load_reebill(acc, 2)
             two.ree_charges = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = two.meters_for_service('gas')[0]
-            two.set_meter_read_date('gas', meter['identifier'], two.period_end, two.period_begin)
             self.reebill_dao.save_reebill(two)
             self.process.issue(session, acc, two.sequence)
             two = self.reebill_dao.load_reebill(acc, two.sequence)
 
-            three = self.process.roll_bill(session, two)
+            self.process.create_next_reebill(session, acc)
+            three = self.reebill_dao.load_reebill(acc, 3)
             three.ree_charges = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = three.meters_for_service('gas')[0]
-            three.set_meter_read_date('gas', meter['identifier'], three.period_end, three.period_begin)
             self.reebill_dao.save_reebill(three)
             self.process.issue(session, acc, three.sequence)
             three = self.reebill_dao.load_reebill(acc, three.sequence)
 
-            four = self.process.roll_bill(session, three)
+            self.process.create_next_reebill(session, acc)
+            four = self.reebill_dao.load_reebill(acc, 4)
             four.ree_charges = 100
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = four.meters_for_service('gas')[0]
-            four.set_meter_read_date('gas', meter['identifier'], four.period_end, four.period_begin)
             self.reebill_dao.save_reebill(four)
 
             # no unissued corrections yet
