@@ -155,18 +155,18 @@ class MongoReebill(object):
     '''
 
     @classmethod
-    def get_utilbill_subdoc(cls, utilbill):
+    def get_utilbill_subdoc(cls, utilbill_doc):
         '''Returns a a dictionary that is the subdocument of a reebill document
         representing the "hypothetical" version of the given utility bill
         document.'''
         return {
-            'id': utilbill['_id'],
+            'id': utilbill_doc['_id'],
             'shadow_registers': reduce(operator.add,
-                    [m['registers'] for m in utilbill['meters']], []),
+                    [m['registers'] for m in utilbill_doc['meters']], []),
             # NOTE hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
             # computed
-            'hypothetical_chargegroups': utilbill['chargegroups'],
+            'hypothetical_chargegroups': utilbill_doc['chargegroups'],
             'ree_charges': 0,
             'ree_savings': 0,
             'ree_value': 0
