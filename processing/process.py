@@ -590,8 +590,8 @@ class Process(object):
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
 
         # find successor to every utility bill belonging to the reebill, along
-        # with its mongo document. note theat this includes Hypothetical
-        # utility bills.
+        # with its mongo document. note theat Hypothetical utility bills are
+        # excluded.
         # NOTE as far as i know, you can't filter SQLAlchemy objects by methods
         # or by properties that do not correspond to db columns. so, there is
         # no way to tell if a utility bill has reebills except by filtering
@@ -609,6 +609,9 @@ class Process(object):
             if successor == None:
                 raise NoSuchBillException(("Couldn't find an unattached "
                 "successor to %s") % utilbill)
+            if successor.state == UtilBill.Hypothetical:
+                raise NoSuchBillException(('The next utility bill is '
+                    '"hypothetical" so a reebill can\'t be based on it'))
             new_utilbills.append(successor)
             new_utilbill_docs.append(
                     self.reebill_dao.load_doc_for_statedb_utilbill(successor))
@@ -658,78 +661,90 @@ class Process(object):
 #            return False
         ignore_function = lambda uprs: False
 
-        # look for the last utility bill with the same account, service, and
-        # rate class, (i.e. the last-ending before 'end'), ignoring
-        # Hypothetical ones. copy its mongo document and CPRS.
-        # TODO pass this predecessor in from upload_utility_bill?
-        # see https://www.pivotaltracker.com/story/show/51749487
-        try:
-            predecessor = self.state_db.get_last_real_utilbill(session, account,
-                    end, service=service, utility=utility, rate_class=rate_class)
-            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs['_id'] = ObjectId()
-        except NoSuchBillException:
-            # if this is the first bill ever for the account (or all the
-            # existing ones are Hypothetical), use template for the utility
-            # bill document, and create new empty CPRS
-            doc = self.reebill_dao.load_utilbill_template(session, account)
-            # template document should have the same service/utility/rate class
-            # as this one; multiple services are not supported since there
-            # would need to be more than one template
-            assert doc['service'] == service
-            assert doc['utility'] == utility
-            assert doc['rate_structure_binding'] == rate_class
-            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
-        doc.update({
-            '_id': ObjectId(),
-            'start': date_to_datetime(start),
-            'end': date_to_datetime(end),
-             # update the document's "account" field just in case it's wrong or
-             # two accounts are sharing the same template document
-            'account': account,
-        })
+        # if this is a non-Hypothetical utility bill, generate utility bill,
+        # UPRS, and CPRS documents and save them in Mongo
+        if state == UtilBill.Hypothetical:
+            doc, uprs, cprs = None, None, None
 
-        # generate predicted UPRS
-        uprs = self.rate_structure_dao.get_probable_uprs(session,
-                utility, service, rate_class, start, end,
-                ignore=ignore_function)
-        uprs['_id'] = ObjectId()
+            # create new row in MySQL with null _ids
+            session.add(UtilBill(self.state_db.get_customer(session, account),
+                    state, service, utility, rate_class, period_start=start,
+                    period_end=end, doc_id=None, uprs_id=None, cprs_id=None,
+                    total_charges=0, date_received=datetime.utcnow().date()))
+        else:
+            # look for the last utility bill with the same account, service, and
+            # rate class, (i.e. the last-ending before 'end'), ignoring
+            # Hypothetical ones. copy its mongo document and CPRS.
+            # TODO pass this predecessor in from upload_utility_bill?
+            # see https://www.pivotaltracker.com/story/show/51749487
+            try:
+                predecessor = self.state_db.get_last_real_utilbill(session, account,
+                        end, service=service, utility=utility, rate_class=rate_class)
+                doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+                cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
+                cprs['_id'] = ObjectId()
+            except NoSuchBillException:
+                # if this is the first bill ever for the account (or all the
+                # existing ones are Hypothetical), use template for the utility
+                # bill document, and create new empty CPRS
+                doc = self.reebill_dao.load_utilbill_template(session, account)
+                # template document should have the same service/utility/rate class
+                # as this one; multiple services are not supported since there
+                # would need to be more than one template
+                assert doc['service'] == service
+                assert doc['utility'] == utility
+                assert doc['rate_structure_binding'] == rate_class
+                cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+            doc.update({
+                '_id': ObjectId(),
+                'start': date_to_datetime(start),
+                'end': date_to_datetime(end),
+                 # update the document's "account" field just in case it's wrong or
+                 # two accounts are sharing the same template document
+                'account': account,
+            })
 
-        # remove charges that don't correspond to any RSI binding (because
-        # their corresponding RSIs were not part of the predicted rate structure)
-        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                cprs['rates']}
+            # generate predicted UPRS
+            uprs = self.rate_structure_dao.get_probable_uprs(session,
+                    utility, service, rate_class, start, end,
+                    ignore=ignore_function)
+            uprs['_id'] = ObjectId()
 
-        for group, charges in doc['chargegroups'].iteritems():
-            i = 0
-            while i < len(charges):
-                charge = charges[i]
-                # if the charge matches a valid RSI binding, mark that
-                # binding as matched; if not, delete the charge
-                if charge['rsi_binding'] in valid_bindings:
-                    valid_bindings[charge['rsi_binding']] = True
-                    i += 1
-                else:
-                    charges.pop(i)
-            # NOTE empty chargegroup is not removed because the user might
-            # want to add charges to it again
+            # remove charges that don't correspond to any RSI binding (because
+            # their corresponding RSIs were not part of the predicted rate structure)
+            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                    cprs['rates']}
 
-        # TODO add a charge for every RSI that doesn't have a charge, i.e.
-        # the ones whose value in 'valid_bindings' is False.
-        # we can't do this yet because we don't know what group it goes in.
-        # see https://www.pivotaltracker.com/story/show/43797365
+            for group, charges in doc['chargegroups'].iteritems():
+                i = 0
+                while i < len(charges):
+                    charge = charges[i]
+                    # if the charge matches a valid RSI binding, mark that
+                    # binding as matched; if not, delete the charge
+                    if charge['rsi_binding'] in valid_bindings:
+                        valid_bindings[charge['rsi_binding']] = True
+                        i += 1
+                    else:
+                        charges.pop(i)
+                # NOTE empty chargegroup is not removed because the user might
+                # want to add charges to it again
 
-        # create new row in MySQL
-        session.add(UtilBill(self.state_db.get_customer(session, account),
-                state, service, utility, rate_class, doc_id=doc['_id'], uprs_id=uprs['_id'],
-                cprs_id=cprs['_id'], period_start=start, period_end=end, total_charges=0,
-                date_received=datetime.utcnow().date()))
+            # TODO add a charge for every RSI that doesn't have a charge, i.e.
+            # the ones whose value in 'valid_bindings' is False.
+            # we can't do this yet because we don't know what group it goes in.
+            # see https://www.pivotaltracker.com/story/show/43797365
 
-        # save all 3 mongo documents
-        self.rate_structure_dao.save_rs(uprs)
-        self.rate_structure_dao.save_rs(cprs)
-        self.reebill_dao._save_utilbill(doc)
+            # save all 3 mongo documents
+            self.rate_structure_dao.save_rs(uprs)
+            self.rate_structure_dao.save_rs(cprs)
+            self.reebill_dao._save_utilbill(doc)
+
+            # create new row in MySQL with _ids from doc, uprs, cprs
+            session.add(UtilBill(self.state_db.get_customer(session, account),
+                    state, service, utility, rate_class, period_start=start,
+                    period_end=end, doc_id=doc['_id'], uprs_id=uprs['_id'],
+                    cprs_id=cprs['_id'], total_charges=0,
+                    date_received=datetime.utcnow().date()))
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
