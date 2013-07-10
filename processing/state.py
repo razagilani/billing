@@ -261,8 +261,10 @@ class UtilBill(Base):
         self.cprs_document_id = cprs_id
 
     def __repr__(self):
-        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
-                % (self.customer, self.service, self.period_start, self.period_end)
+        return ('<UtilBill(customer=<%s>, service=%s, period_start=%s, '
+                'period_end=%s, state=%s, %s reebills)>') % (
+                self.customer.account, self.service, self.period_start,
+                self.period_end, self.state, len(self._utilbill_reebills))
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
