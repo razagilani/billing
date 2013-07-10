@@ -133,6 +133,48 @@ class NexusUtil(object):
             ]))
         return result
 
+class MockNexusUtil(object):
+    def __init__(self, customers):
+        self._customers = customers
+
+    def _get(self, from_type, name, to_type):
+        try:
+            customer = next(c for c in self._customers if c[from_type] == name)
+        except StopIteration:
+            # NOTE real NexusUtil doesn't report errors this way, or at all
+            raise ValueError("Couldn't find %s id for %s id '%s'" % (to_type,
+                from_type, name))
+        return customer[to_type]
+
+    def olap_id(self, bill_account):
+        return self._get('billing', bill_account, 'olap')
+
+    def olap_id_from_primus_id(self, address):
+        return self._get('primus', bill_account, 'olap')
+
+    def primus_id_from_olap_id(self, olapid):
+        return self._get('olap', bill_account, 'primus')
+
+    def billing_id(self, olap_id):
+        return self._get('olap', bill_account, 'billing')
+
+    def all(self, system, system_id):
+        customer = next(c for c in self._customers if c[system] == name)
+        return customer
+
+    def fast_all(self, system, system_id):
+        return self.all(system, system_id)
+
+    def all_names_for_accounts(self, accounts, key=lambda x:x):
+        return dict([
+            (account, self.fast_all('billing', key(account)))
+                for account in accounts
+        ])
+
+    def get_non_billing_customers(self):
+        # TODO maybe put in some fake customer names
+        return {}
+
 if __name__ == "__main__":
     parser = OptionParser()
 
