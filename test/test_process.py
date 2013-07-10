@@ -1143,11 +1143,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(reebill_1.period_begin, date(2013,4,4))
             self.assertEqual(reebill_1.period_end, date(2013,5,2))
 
-            # reebill should be computable after rolling
+            # reebill should be computable
             self.process.compute_bill(session, None, reebill_1) 
 
             self.process.issue(session, account, 1)
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
+
+            # another reebill
+            self.process.create_next_reebill(session, account)
+            reebills = session.query(ReeBill).order_by(ReeBill.id).all()
+            utilbills = session.query(UtilBill)\
+                    .order_by(UtilBill.period_start).all()
+            self.assertEquals([utilbills[0]], reebills[0].utilbills)
+            self.assertEquals([utilbills[1]], reebills[1].utilbills)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
@@ -1161,21 +1169,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert hypo_utilbill.state == UtilBill.Hypothetical
             assert later_utilbill.state == UtilBill.Complete
 
-            # The next utility bill isn't estimated or final, so rolling should fail
-            ### TODO fails here--attaching reebill to hypothetical utility bill
-            ### is allowed but probably should not be; see
-            ### https://www.pivotaltracker.com/story/show/52159363
-            self.assertRaises(NotUniqueException,
+            # The next utility bill isn't estimated or final, so
+            # create_next_reebill should fail
+            self.assertRaises(NoSuchBillException,
                     self.process.create_next_reebill, session, account)
 
-            # Set hypo_utilbill to Utility Estimated, save it, and then we
-            # should be able to roll on it
-            hypo_utilbill.state = UtilBill.UtilityEstimated;
-            target_utilbill = session.merge(hypo_utilbill)
+            # replace 'hypo_utilbill' with a UtilityEstimated one, so it has a
+            # document and a reebill can be attached to it
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,6,3), date(2013,7,1), StringIO('June 2013'),
+                    'june.pdf', state=UtilBill.UtilityEstimated)
+            formerly_hypo_utilbill = session.query(UtilBill)\
+                    .order_by(UtilBill.period_start).all()[2]
+            assert formerly_hypo_utilbill.state == UtilBill.UtilityEstimated
 
-            reebill_2 = self.process.roll_bill(session, reebill_1)
-            self.assertEqual(reebill_2.period_begin, target_utilbill.period_start)
-            self.assertEqual(reebill_2.period_end, target_utilbill.period_end)
+            self.process.create_next_reebill(session, account)
+            reebill_1 = self.reebill_dao.load_reebill(account, 1)
+            self.process.create_next_reebill(session, account)
+            reebill_2 = self.reebill_dao.load_reebill(account, 2)
             self.process.compute_bill(session, reebill_1, reebill_2) 
 
             self.process.issue(session, account, reebill_2.sequence)
@@ -1187,37 +1198,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             later_utilbill.period_end += timedelta(days=5)
             later_utilbill = session.merge(later_utilbill)
 
-            with self.assertRaises(Exception) as context:
-                self.process.roll_bill(session, reebill_2)
-            self.assertTrue(re.match(re_time_gap, str(context.exception)))
-
-            # Shift it back to a 1 day (therefore acceptable) gap, which should make it work
-            later_utilbill.period_start -= timedelta(days=4)
-            later_utilbill.period_end -= timedelta(days=4)
-            target_utilbill = session.merge(later_utilbill)
-
-            self.process.roll_bill(session, reebill_2)
-
-            reebill_3 = self.reebill_dao.load_reebill(account, 3)
-            self.assertEqual(reebill_3.period_begin, target_utilbill.period_start)
-            self.assertEqual(reebill_3.period_end, target_utilbill.period_end)
-            self.process.compute_bill(session, reebill_2, reebill_3) 
+            # can't create another reebill because there are no more utility
+            # bills
+            with self.assertRaises(NoSuchBillException) as context:
+                self.process.create_next_reebill(session, account)
 
             # TODO: Test multiple services
 
-            # MySQL reebill
-            customer = self.state_db.get_customer(session, '99999')
-            mysql_reebill = self.state_db.get_reebill(session, '99999', 3)
-            self.assertEquals(3, mysql_reebill.sequence)
-            self.assertEquals(customer.id, mysql_reebill.customer_id)
-            self.assertEquals(False, mysql_reebill.issued)
-            self.assertEquals(0, mysql_reebill.version)
-            self.assertEquals(0,
-                    session.query(sqlalchemy.func.max(ReeBill.version))\
-                    .filter(ReeBill.customer==customer)\
-                    .filter(ReeBill.sequence==3).one()[0])
-
-            # TODO ...
 
     def test_roll_rs_prediction(self):
         '''Basic test of rate structure prediction when rolling bills.'''

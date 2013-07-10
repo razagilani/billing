@@ -18,7 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.state import Customer
+from billing.processing.state import Customer, UtilBill
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -1419,6 +1419,12 @@ class ReebillDAO:
         utility bill associated with the current reebill--either the same as
         the "current" one if the reebill is unissued, or a frozen one (whose
         _id is in the utilbill_reebill table) if the reebill is issued.'''
+        if utilbill.state == UtilBill.Hypothetical:
+            assert utilbill.document_id == None
+            assert utilbill.uprs_id == None
+            assert utilbill.cprs_id == None
+            raise ValueError('No document for hypothetical utilty bill: %s'
+                    % utilbill)
         # empty document_ids are legitimate because "hypothetical" utility
         # bills do not have a document
         # empty document_ids should not be possible, once the db is cleaned up
