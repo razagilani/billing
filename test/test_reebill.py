@@ -84,18 +84,18 @@ class ReebillTest(TestCaseWithSetup):
         # note that address schema as returned by MongoReebill is very
         # different from the utility bill schema that it came from
         self.assertEquals({
-            "ba_city" : "Silver Spring",
-            "ba_state" : "MD",
-            "ba_addressee" : "Managing Member Monroe Towers",
-            "ba_postal_code" : "20910",
-            "ba_street1" : "3501 13TH ST NW LLC"
+            "city" : u"Silver Spring",
+            "state" : u"MD",
+            "addressee" : u"Managing Member Monroe Towers",
+            "postal_code" : u"20910",
+            "street" : u"3501 13TH ST NW LLC"
         }, reebill.billing_address)
         self.assertEquals({
-            "sa_addressee" : "Monroe Towers",
-            "sa_state" : "DC",
-            "sa_city" : "Washington",
-            "sa_street1" : "3501 13TH ST NW #WH",
-            "sa_postal_code" : "20010"
+            "addressee" : u"Monroe Towers",
+            "state" : u"DC",
+            "city" : u"Washington",
+            "street" : u"3501 13TH ST NW #WH",
+            "postal_code" : u"20010"
         }, reebill.service_address)
 
         # NOTE "statistics" is not tested because it will go away
