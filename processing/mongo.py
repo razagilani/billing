@@ -1440,6 +1440,9 @@ class ReebillDAO:
         # TODO add reebill argument here like above?
         '''Deletes the Mongo utility bill document corresponding to the given
         state.UtilBill object.'''
+        if utilbill_row._utilbill_reebills != []:
+            raise ValueError(("Can't delete a utility bill that has "
+                    "reebills associated with it"))
         result = self.utilbills_collection.remove({
                 '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
         if result['err'] is not None or result['n'] == 0:
@@ -1767,6 +1770,8 @@ class ReebillDAO:
         if result['err'] is not None or result['n'] == 0:
             raise MongoError(result)
 
+    # TODO remove this method; this should be determined by looking at utility
+    # bills in MySQL
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
@@ -1792,6 +1797,8 @@ class ReebillDAO:
 
         return MongoReebill(reebill_result, utilbill_result).period_begin
 
+    # TODO remove this method; this should be determined by looking at utility
+    # bills in MySQL
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
@@ -1804,6 +1811,8 @@ class ReebillDAO:
             return None
         return MongoReebill(result).issue_date
 
+    # TODO remove this method; this should be determined by looking at reebills
+    # in MySQL
     def last_sequence(self, account):
         '''Returns the sequence of the last reebill for the given account, or 0
         if no reebills were found. This is different from
