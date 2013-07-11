@@ -21,6 +21,7 @@ DBENV=$1
 now=`date +"%Y%m%d"`
 cd /tmp
 
+# unbounded file creation if backup script starts accidently running more than once a day as is want to happen in cron
 if [ -d "${now}reebill-$DBENV" ]; then
     hour=`date +"%H-%M"`
     mv ${now}reebill-$DBENV ${now}reebill-$DBENV-${hour}
