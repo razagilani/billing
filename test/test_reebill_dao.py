@@ -317,36 +317,36 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
                 other_utilbill)
 
     def test_delete_reebill(self):
-        with DBSession(self.state_db) as session:
-            # save reebill (with utility bills)
-            b = example_data.get_reebill('99999', 1)
-            self.reebill_dao.save_reebill(b)
-            self.state_db.new_reebill(session, '99999', 1)
+        '''Tests deleting an unissued reebill document, which has no frozen
+        utility bill documents associated with it.'''
+        # save reebill (with utility bills)
+        b = example_data.get_reebill('99999', 1)
+        self.reebill_dao.save_reebill(b)
 
-            # reebill and utility bills should be in mongo. there are 2 utility
-            # bills because of the template document that is already there.
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999',
-                    version=0)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(
-                    account='99999')
-            self.assertEquals(1, len(all_reebills))
-            self.assertEquals(2, len(all_utilbill_docs))
+        # reebill and utility bills should be in mongo. there are 2 utility
+        # bills because of the template document that is already there.
+        all_reebills = self.reebill_dao.load_reebills_in_period('99999',
+                version=0)
+        all_utilbill_docs = self.reebill_dao.load_utilbills(
+                account='99999')
+        self.assertEquals(1, len(all_reebills))
+        self.assertEquals(2, len(all_utilbill_docs))
 
-            # delete
-            self.reebill_dao.delete_reebill('99999', 1, 0)
+        # delete reebill
+        self.reebill_dao.delete_reebill('99999', 1, 0)
 
-            # both reebill and utilbills should be gone. ensure that the
-            # utility bill left is the template.
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999',
-                    version=0)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(
-                    account='99999')
-            self.assertEquals(0, len(all_reebills))
-            self.assertEquals(1, len(all_utilbill_docs))
-            self.assertEquals(ObjectId('000000000000000000000001'),
-                    all_utilbill_docs[0]['_id'])
+        # reebill should be gone, and utilbills should not.
+        all_reebills = self.reebill_dao.load_reebills_in_period('99999',
+                version=0)
+        all_utilbill_docs = self.reebill_dao.load_utilbills(
+                account='99999')
+        self.assertEquals(0, len(all_reebills))
+        self.assertEquals(2, len(all_utilbill_docs)) # includes template
+        self.assertEquals(ObjectId('000000000000000000000001'),
+                all_utilbill_docs[0]['_id'])
 
-            # save reebill and utility bills again
+    def test_delete_reebill_attached(self):
+            # save reebill and utility bill documents
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
 
