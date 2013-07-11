@@ -2,6 +2,7 @@ import unittest
 import pymongo
 import sqlalchemy
 import copy
+from StringIO import StringIO
 from datetime import date, datetime, timedelta
 from billing.util import dateutils
 from billing.processing import mongo
@@ -22,19 +23,22 @@ class ReebillTest(TestCaseWithSetup):
     def test_utilbill_periods(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # a reebill
-            b = example_data.get_reebill(acc, 1)
-            self.reebill_dao.save_reebill(b)
-            self.state_db.new_reebill(session, acc, 1)
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            self.process.create_first_reebill(session,
+                    session.query(UtilBill).one())
+            b = self.reebill_dao.load_reebill(acc, 1)
 
             # function to check that the utility bill matches the reebill's
             # reference to it
             def check():
                 # reebill should be loadable
                 reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
-                # there should be one utilbill document
+                # there should be two utilbill documents: the account's
+                # template and new one
                 all_utilbills = self.reebill_dao.load_utilbills()
-                self.assertEquals(1, len(all_utilbills))
+                self.assertEquals(2, len(all_utilbills))
                 # all its _id fields dates should match the reebill's reference
                 # to it
                 self.assertEquals(reebill._utilbills[0]['_id'],
