@@ -34,6 +34,8 @@ current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
 
+# if there is a tarball, it is because either it was previously downloaded or is on the server that created it.  Messy.
+# furthermore, the precondition is that there is no backup file, so if this is run on the server, it will attempt to scp it. More mess. Rich.
 if [ -f $tarball ]
 then
     # TODO don't rely on presence of the tarball to determine whether the mongodump
@@ -55,6 +57,7 @@ mongorestore --drop --db skyline-$TOENV --collection users ${now}users_mongo/sky
 mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_mongo/skyline-prod/utilbills.bson
 
 # delete local bill files and replace with destaged copy
+# TODO: 53161679  this is a really bad thing to do on tyrell-prod in staging, since prod is on the same host! (ie what if this is called with prod in $TOENV
 rm -fr /db-$TOENV/*
 cp -r db-prod/* /db-$TOENV
 
