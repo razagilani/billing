@@ -42,6 +42,7 @@ rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovatio
 rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}utilbills_mongo . 
 
 # apparently only root can restore the database
+mysql -uroot -p$MYSQLPASSWORD -e "create database if not exists skyline_${TOENV};"
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
 # restore mongo collections
