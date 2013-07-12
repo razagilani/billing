@@ -332,8 +332,7 @@ class MongoReebill(object):
         bills, i.e. charges that are being charged to the customer's account on
         this bill's issue date. (This includes the late charge, which depends
         on another bill for its value but belongs to the bill on which it
-        appears.) This total is what should be used to calculate the adjustment
-        produced by the difference between two versions of a bill.'''
+        appears.)'''
         # if/when more charges are added (e.g. "value-added charges") they
         # should be included here
         return self.ree_charges + (self.late_charges if 'late_charges' in

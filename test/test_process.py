@@ -1648,7 +1648,83 @@ class ProcessTest(TestCaseWithSetup):
         self.assertEqual(None, u1.reebill)
         self.assertNotEqual(None, u2.reebill)
 
+    def test_payment_correction(self):
+        '''Tests the new method of correcting payment-entry errors, i.e. adding a
+        payment whose "date applied" is the same as the old payment that was wrong,
+        then making a correction on the bill to which it is applied, and getting an
+        adjustment because adjustments are now based on 'balance_due', not
+        'total'.'''
+        with DBSession(self.state_db) as session:
+            # setup
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999', 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 0))
+            self.reebill_dao.save_reebill(example_data.get_reebill('99999', 0))
 
+            # create & issue 1st reebill on Feb 15 (it can't have any payments
+            # in it)
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            template = self.reebill_dao.load_reebill('99999', 0)
+            self.process.roll_bill(session, template,
+                    utility_bill_date=date(2013,1,1))
+            reebill_1 = self.reebill_dao.load_reebill('99999', 1)
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id('99999'), reebill_1)
+            self.process.compute_bill(session, template, reebill_1)
+            self.assertEqual(0, reebill_1.payment_received)
+            self.reebill_dao.save_reebill(reebill_1)
+            self.process.issue(session, '99999', 1, issue_date=date(2013,2,15))
+            reebill_1 = self.reebill_dao.load_reebill('99999', 1)
+
+            # roll 2nd reebill, add a payment of $100 on Feb 16, and issue that
+            # bill on March 15
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
+                    'february.pdf')
+            reebill_2 = self.process.roll_bill(session, reebill_1)
+            self.state_db.create_payment(session, '99999', date(2013,2,16),
+                    'original payment', 100, date_received=date(2013,2,16))
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id('99999'), reebill_2)
+            self.process.compute_bill(session, reebill_1, reebill_2)
+            self.assertEqual(100, reebill_2.payment_received)
+            self.reebill_dao.save_reebill(reebill_2)
+            self.process.issue(session, '99999', 2, issue_date=date(2013,3,15))
+            reebill_2 = self.reebill_dao.load_reebill('99999', 2)
+
+            # roll 3rd reebill
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2013,3,1), date(2013,4,1), StringIO('March 2013'),
+                    'march.pdf')
+            reebill_3 = self.process.roll_bill(session, reebill_2)
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id('99999'), reebill_3)
+            self.process.compute_bill(session, reebill_2, reebill_3)
+
+            # suppose the customer really paid $150 on Feb 16, but only $100
+            # was recorded. to correct this, add a new payment of $50 received
+            # on Mar 20, but applied on Feb 16
+            self.state_db.create_payment(session, '99999', date(2013,2,16),
+                    'correction', 50, date_received=datetime(2013,3,20))
+            self.process.compute_bill(session, reebill_2, reebill_3)
+
+            # the new payment should not apply to reebill 3
+            self.assertEqual(0, reebill_3.payment_received)
+            self.assertEqual(0, reebill_3.total_adjustment)
+
+            # but it should apply to reebill 2, after a correction is made
+            self.process.new_version(session, '99999', 2)
+            reebill_2_corrected = self.reebill_dao.load_reebill('99999', 2)
+            self.assertEqual(150, reebill_2_corrected.payment_received)
+            self.assertEqual(0, reebill_2.total_adjustment)
+
+            # and that should result in an adjustment of -$50 on reebill 3
+            self.process.compute_bill(session, reebill_2, reebill_3)
+            self.assertEqual(-50, reebill_3.total_adjustment)
+
+            
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()
