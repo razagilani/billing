@@ -307,8 +307,8 @@ class Payment(Base):
         }
 
     def __repr__(self):
-        return '<Payment(%s, %s, %s, %s, %s)>' \
-                % (self.customer, self.date_received, \
+        return '<Payment(%s, received=%s, applied=%s, %s, %s)>' \
+                % (self.customer.account, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
 
@@ -1033,11 +1033,19 @@ class StateDB(object):
         return result
 
     def create_payment(self, session, account, date_applied, description,
-            credit):
-        '''Adds a new payment, returns the new Payment object.'''
+            credit, date_received=None):
+        '''Adds a new payment, returns the new Payment object. By default,
+        'date_received' is the current datetime in UTC when this method is
+        called; only override this for testing purposes.'''
+        # NOTE a default value for 'date_received' can't be specified as a
+        # default argument in the method signature because it would only get
+        # evaluated once at the time this module was imported, which means its
+        # value would be the same every time this method is called.
+        if date_received is None:
+            date_received = datetime.utcnow().date()
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
-        new_payment = Payment(customer, datetime.utcnow(), date_applied,
+        new_payment = Payment(customer, date_received, date_applied,
                 description, credit)
         session.add(new_payment)
         return new_payment
@@ -1078,7 +1086,7 @@ class StateDB(object):
     def get_total_payment_since(self, session, account, start,
             end=datetime.utcnow().date()):
         '''Returns sum of all account's payments applied on or after 'start'
-        and before 'end' (today by default), as a Decimal. If 'start' is none,
+        and before 'end' (today by default), as a Decimal. If 'start' is None,
         the beginning of the interval extends to the beginning of time.'''
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
