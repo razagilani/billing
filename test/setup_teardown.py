@@ -17,16 +17,14 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB
-from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
-from decimal import Decimal
 from billing.util.dictutils import deep_map
 import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru
-from billing.util.nexus_util import NexusUtil
+from billing.util.nexus_util import MockNexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
@@ -40,7 +38,7 @@ class TestCaseWithSetup(unittest.TestCase):
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil.'''
         # clear SQLAlchemy mappers so StateDB can be instantiated again
-        sqlalchemy.orm.clear_mappers()
+        #sqlalchemy.orm.clear_mappers()
 
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]
@@ -96,6 +94,10 @@ port = 27017
         session.add(customer)
         session.commit()
 
+        # set up logger, but ingore all log output
+        logger = logging.getLogger('test')
+        logger.addHandler(logging.NullHandler())
+
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',
             'database': 'test',
@@ -105,15 +107,22 @@ port = 27017
             'port': 27017
         })
         self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
-                27017, 'test', self.reebill_dao)
+                27017, 'test', self.reebill_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
 
-        self.nexus_util = NexusUtil('nexus')
+        self.nexus_util = MockNexusUtil([
+            {
+                'billing': '99999',
+                'olap': 'example-1',
+                'casualname': 'Example',
+                'primus': '1785 Massachusetts Ave.',
+            },
+        ])
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
-                self.splinter)
+                self.splinter, logger=logger)
 
     def tearDown(self):
         '''Clears out databases.'''
