@@ -534,7 +534,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             shadow_registers = reebill1.shadow_registers('gas')
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
             hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
+
+            # NOTE numbers in charges that were loaded from Mongo are all
+            # Decimals. i think they did not need to be Decimals above because
+            # the bill was computed without being saved and re-loaded, which is
+            # not normally done. (?) my conclusion is that there is a bug in
+            # bind_rate_structure which causes charges to be floats, but this
+            # never matters because the bill is always saved into Mongo and
+            # loaded out again before the values are accessed.
             
+            # also NOTE that Decimal(11.2) == 11.2 but Decimal('11.2') does
+            # not. 'assertAlmostEqual' could be used to compare the first two
+            # if it worked on Decimals, but it only works on floats.
+
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SYSTEM_CHARGE'][0]
