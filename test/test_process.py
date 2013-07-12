@@ -1480,10 +1480,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.delete_reebill(session, account, 1)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
+            self.assertEquals([], session.query(ReeBill).all())
+            self.assertEquals([utilbill], session.query(UtilBill).all())
 
             # re-create it
             self.process.create_first_reebill(session, utilbill)
-            assert self.state_db.listSequences(session, account) == [1]
+            reebill = session.query(ReeBill).one()
+            self.assertEquals([1], self.state_db.listSequences(session,
+                account))
+            self.assertEquals([utilbill], reebill.utilbills)
             
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
@@ -1494,23 +1499,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # issue it: it should not be deletable
             self.process.issue(session, account, 1)
-            import ipdb; ipdb.set_trace()
-            utilbills = self.state_db.get_reebill(session, account, 1,
-                    0).utilbills
-            assert len(utilbills) == 1
-            u = utilbills[0]
-            assert (u.customer.account, u.reebills[0].sequence) == (account, 1)
+            self.assertEqual(1, reebill.issued)
+            self.assertEqual([utilbill], reebill.utilbills)
+            self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
             b = self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                     session, account, 1)
 
             # create a new verison and delete it, returning to just version 0
             # (versioning requires a cprs)
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 1))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
-                    1))
-            
             self.process.new_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
             assert not self.state_db.is_issued(session, account, 1)
@@ -1522,9 +1519,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO this will have to change. see
             # https://www.pivotaltracker.com/story/show/31629749
             utilbills = self.state_db.list_utilbills(session, account)[0].all()
-            assert len(utilbills) == 1; u = utilbills[0]
-            self.assertEquals(account, u.reebills[0].customer.account)
-            self.assertEquals(1, u.reebills[0].sequence)
+            self.assertEqual([utilbill], reebill.utilbills)
+            self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
 
     def test_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
