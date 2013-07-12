@@ -713,9 +713,11 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
-                    addressee, street, city, state, postal_code,
-                    addressee, street, city, state, postal_code, **kwargs):
+    def new_account(self, name, account, discount_rate, late_charge_rate,
+            template_account, billing_addressee, billing_street, billing_city,
+            billing_state, billing_postal_code, service_addressee,
+            service_street, service_city, service_state, service_postal_code,
+            **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
@@ -723,19 +725,19 @@ class BillToolBridge:
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
-            ba['addressee'] = addressee
-            ba['street'] = street
-            ba['city'] = city
-            ba['state'] = state
-            ba['postal_code'] = postal_code
+            ba['addressee'] = billing_addressee
+            ba['street'] = billing_street
+            ba['city'] = billing_city
+            ba['state'] = billing_state
+            ba['postal_code'] = billing_postal_code
             reebill.billing_address = ba
             
             sa = {}
-            sa['addressee'] = addressee
-            sa['street'] = street
-            sa['city'] = city
-            sa['state'] = state
-            sa['postal_code'] = postal_code
+            sa['addressee'] = service_addressee
+            sa['street'] = service_street
+            sa['city'] = service_city
+            sa['state'] = service_state
+            sa['postal_code'] = service_postal_code
             reebill.service_address = sa
             self.reebill_dao.save_reebill(reebill)
             # record account creation
