@@ -30,7 +30,7 @@ fi
 mkdir ${now}reebill-$DBENV
 cd  ${now}reebill-$DBENV
 #P4IMvFI9DRTd
-mysqldump -uroot -p$MYSQLPASSWORD --database skyline_$DBENV > ${now}billing_mysql.dmp
+mysqldump -uroot -p$MYSQLPASSWORD skyline_$DBENV > ${now}billing_mysql.dmp
 mongodump --db skyline-$DBENV --collection ratestructure --out ${now}ratestructure_mongo
 mongodump --db skyline-$DBENV --collection reebills --out ${now}reebills_mongo
 mongodump --db skyline-$DBENV --collection utilbills --out ${now}utilbills_mongo
