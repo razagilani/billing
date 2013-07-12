@@ -1,11 +1,11 @@
 #!/bin/bash -v
 
 USAGE="
-Usage: $0 MYSQLPASSWORD PRODHOST TOENV
+Usage: $0 PRODHOST TOENV MYSQLPASSWORD
      De-stages production ReeBill data to the specified environment.
-     MYSQLPASSWORD -- local mysql admin password
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
+     MYSQLPASSWORD -- local mysql admin password
      "
 
 # All SaaS environments (yourhost.yourdomain.com) are additionally named within the *.skylineinnovations.net DNS namespace
@@ -18,9 +18,9 @@ if [ $# -ne 3 ]; then
     exit 1
 fi
 
-MYSQLPASSWORD=$1
-PRODHOST=$2 
-TOENV=$3
+MYSQLPASSWORD=$3
+PRODHOST=$1 
+TOENV=$2
 
 # Script to restore development MySQL, Mongo collections, and filesystem from
 # backups on tyrell-prod. Based on billing/reebill/admin/destage.bash.
@@ -32,6 +32,8 @@ ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
+
+#rsync -ahz --exclude 'db_prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
 rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}billing_mysql.dmp . 
 rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}ratestructure_mongo . 
 rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}reebills_mongo . 
@@ -40,6 +42,7 @@ rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovatio
 rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}utilbills_mongo . 
 
 # apparently only root can restore the database
+mysql -uroot -p$MYSQLPASSWORD -e "create database if not exists skyline_${TOENV};"
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
 # restore mongo collections
