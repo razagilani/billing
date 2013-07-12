@@ -544,59 +544,58 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # loaded out again before the values are accessed.
             
             # also NOTE that Decimal(11.2) == 11.2 but Decimal('11.2') does
-            # not. 'assertAlmostEqual' could be used to compare the first two
-            # if it worked on Decimals, but it only works on floats.
+            # not.
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SYSTEM_CHARGE'][0]
-            self.assertEquals(11.2, system_charge['total'])
+            self.assertEquals(Decimal('11.2'), system_charge['total'])
 
             # right-of-way fee
             row_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'RIGHT_OF_WAY'][0]
-            self.assertAlmostEqual(0.03059 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(0.03059 * hypothetical_quantity),
                     row_charge['total'], places=2) # TODO OK to be so inaccurate?
             
             # sustainable energy trust fund
             setf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SETF'][0]
-            self.assertAlmostEqual(0.01399 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(0.01399 * hypothetical_quantity),
                     setf_charge['total'], places=1) # TODO OK to be so inaccurate?
 
             # energy assistance trust fund
             eatf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'EATF'][0]
-            self.assertAlmostEqual(0.006 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(0.006 * hypothetical_quantity),
                     eatf_charge['total'], places=2)
 
             # delivery tax
             delivery_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'DELIVERY_TAX'][0]
-            self.assertAlmostEqual(0.07777 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(0.07777 * hypothetical_quantity),
                     delivery_tax['total'], places=2)
 
             # peak usage charge
             peak_usage_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'PUC'][0]
-            self.assertEquals(23.14, peak_usage_charge['total'])
+            self.assertEquals(Decimal('23.14'), peak_usage_charge['total'])
 
             # distribution charge
             distribution_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'DISTRIBUTION_CHARGE'][0]
-            self.assertAlmostEqual(.2935 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(.2935 * hypothetical_quantity),
                     distribution_charge['total'], places=1)
             
             # purchased gas charge
             purchased_gas_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'PGC'][0]
-            self.assertAlmostEqual(.7653 * hypothetical_quantity,
+            self.assertAlmostEqual(Decimal(.7653 * hypothetical_quantity),
                     purchased_gas_charge['total'], places=2)
 
             # sales tax: depends on all of the above
             sales_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SALES_TAX'][0]
-            self.assertAlmostEqual(0.06 * float(system_charge['total'] +
+            self.assertAlmostEqual(Decimal('0.06') * (system_charge['total'] +
                     distribution_charge['total'] + purchased_gas_charge['total'] +
                     row_charge['total'] + peak_usage_charge['total'] +
                     setf_charge['total'] + eatf_charge['total'] +
