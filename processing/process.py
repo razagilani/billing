@@ -504,7 +504,7 @@ class Process(object):
                     version=max_version)
             prev_version = self.reebill_dao.load_reebill(account, seq,
                     max_version-1)
-            adjustment = latest_version.total - prev_version.total
+            adjustment = latest_version.balance_due - prev_version.balance_due
             result.append((seq, max_version, adjustment))
         return result
 
