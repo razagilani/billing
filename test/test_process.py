@@ -1490,14 +1490,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     account))
             self.assertEquals([utilbill], reebill.utilbills)
             
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            b = self.reebill_dao.load_reebill(account, 1, 0)
-            meter = b.meters_for_service('gas')[0]
-            b.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
-                    date(2012,1,1))
-            self.reebill_dao.save_reebill(b)
-
             # issue it: it should not be deletable
             self.process.issue(session, account, 1)
             self.assertEqual(1, reebill.issued)
