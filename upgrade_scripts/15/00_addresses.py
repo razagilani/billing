@@ -22,7 +22,10 @@ for reebill in db.reebills.find():
         print >> stderr, 'utility bills not found:', reebill['_id']
 
     for utilbill in utilbills:
-        # reebill schema is OK
-        utilbill['billing_address'] = reebill['billing_address']
-        utilbill['service_address'] = reebill['billing_address']
+        # save in utility bill AND reebill
+        utilbill['billing_address'] = billing_address
+        utilbill['service_address'] = service_address
+        reebill['billing_address'] = billing_address
+        reebill['service_address'] = service_address
         db.utilbills.save(utilbill)
+        db.reebills.save(reebill)
