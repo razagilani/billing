@@ -24,6 +24,35 @@ from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
+def utilbill_billing_address_to_reebill_address(billing_address):
+    '''Transforms Rich's utility bill billing address schema to his reebill
+    address schema (which is the same for both kinds of addresses).'''
+    return {
+        ('ba_postal_code' if key == 'postalcode'
+            else ('ba_street1' if key == 'street'
+                else 'ba_' + key)): value
+        for (key, value) in billing_address.iteritems()
+    }
+
+def utilbill_service_address_to_reebill_address(service_address):
+    '''Transforms Rich's utility bill service address schema to his reebill
+    address schema (which is the same for both kinds of addresses).'''
+    return {
+        ('sa_postal_code' if key == 'postalcode'
+            else ('sa_street1' if key == 'street'
+                else 'sa_' + key)): value
+        for (key, value) in service_address.iteritems()
+    }
+
+
+def reebill_address_to_utilbill_address(address):
+    '''Transforms any reebill address to utility bill address.'''
+    return {
+            (key[3:-1] if key[-7:] == 'street1'
+                else ('postal_code' if key[3:] == 'postal_code'
+                    else key[3:])): value
+        for (key, value) in address.iteritems()
+    }
 
 # type-conversion functions
 
@@ -395,6 +424,7 @@ class MongoReebill(object):
         except KeyError as e:
             print >> sys.stderr, 'Reebill %s-%s-%s service address lacks key "%s"' \
                     % (self.account, self.sequence, self.version, e)
+            print >> sys.stderr, self.reebill_dict['service_address']
             return '?'
 
     @property
