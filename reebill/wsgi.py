@@ -1147,6 +1147,18 @@ class BillToolBridge:
     def retrieve_account_status(self, start, limit, **kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
+        # this function is used below to format the "Utility Service Address"
+        # grid column
+        def format_service_address(utilbill_doc):
+            try:
+                return '%(street)s, %(city)s, %(state)s' % utilbill_doc['service_address']
+            except KeyError as e:
+                print >> sys.stderr, 'Utility bill for %s from %s to %s lacks key "%s"' \
+                        % (utilbill_doc['account'], utilbill_doc['start'],
+                                utilbill_doc['end'], e)
+                print >> sys.stderr, utilbill_doc['service_address']
+                return '?'
+
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         if not start or not limit:
@@ -1183,12 +1195,10 @@ class BillToolBridge:
                 reebill = self.reebill_dao.load_reebill(status.account,
                         self.state_db.last_issued_sequence(session, status.account))
 
-                #utility_service_addresses = ', '.join(
-                        #u['service_address'].get('street', '?') for u in
-                        #reebill._utilbills)
-                # NOTE "utility service address" is currently coming from the
-                # reebill document, but this should change
-                utility_service_addresses = reebill.service_address_formatted()
+                # get service address from utility bill document, convert JSON
+                # to string using the function above
+                utility_service_addresses = format_service_address(
+                        reebill._utilbills[0])
 
                 last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
                         not None else 'Never Issued'
