@@ -18,9 +18,186 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
-from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
+
+'''Note that these objects have additional properties besides the ones defined
+here, due to relationships defined in state.py.'''
+
+Base = declarative_base()
+
+class Customer(Base):
+    __tablename__ = 'customer'
+
+    id = Column(Integer, primary_key=True)
+    account = Column(String, nullable=False)
+    name = Column(String)
+    discountrate = Column(Float, nullable=False)
+    latechargerate = Column(Float, nullable=False)
+
+    def __init__(self, name, account, discount_rate, late_charge_rate):
+        self.name = name
+        self.account = account
+        self.discountrate = discount_rate
+        self.latechargerate = late_charge_rate
+
+    def __repr__(self):
+        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
+                % (self.name, self.account, self.discountrate)
+
+class ReeBill(Base):
+    __tablename__ = 'rebill'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    issued = Column(Integer, nullable=False)
+    max_version = Column(Integer, nullable=False)
+
+    customer = relationship("Customer", backref=backref('reebills',
+            order_by=id))
+
+    def __init__(self, customer, sequence, max_version=0):
+        self.customer = customer
+        self.sequence = sequence
+        self.issued = 0
+        self.max_version = max_version
+
+    def __repr__(self):
+        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.max_version, self.issued)
+
+class UtilBill(Base):
+    __tablename__ = 'utilbill'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    rebill_id = Column(Integer, ForeignKey('rebill.id'))
+    state = Column(Integer, nullable=False)
+    service = Column(String, nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    total_charges = Column(Float)
+    date_received = Column(Date)
+    processed = Column(Integer, nullable=False)
+
+    customer = relationship("Customer", backref=backref('utilbills',
+            order_by=id))
+    reebill = relationship("ReeBill", backref=backref('utilbill',
+            lazy='joined', order_by=id))
+
+    # utility bill states:
+    # 0. Complete: actual non-estimated utility bill.
+    # 1. Utility estimated: actual utility bill whose contents were estimated by
+    # the utility (and which will be corrected later to become Complete).
+    # 2. Skyline estimated: a bill that is known to exist (and whose dates are
+    # correct) but whose contents were estimated by Skyline.
+    # 3. Hypothetical: Skyline supposes that there is probably a bill during a
+    # certain time period and estimates what its contents would be if it existed.
+    # Such a bill may not really exist (since we can't even know how many bills
+    # there are in a given period of time), and if it does exist, its actual dates
+    # will probably be different than the guessed ones.
+    # TODO 38385969: not sure this strategy is a good idea
+    Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
+
+    def __init__(self, customer, state, service, period_start=None,
+            period_end=None, total_charges=0, date_received=None, processed=False,
+            reebill=None):
+        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
+        UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
+        # utility bill objects also have an 'id' property that SQLAlchemy
+        # automatically adds from the database column
+        self.customer = customer
+        self.state = state
+        self.service = service
+        self.period_start = period_start
+        self.period_end = period_end
+        self.total_charges = total_charges
+        self.date_received = date_received
+        self.processed = processed
+        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
+
+    @property
+    def has_reebill(self):
+        return self.reebill != None
+
+    def __repr__(self):
+        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
+                % (self.customer, self.service, self.period_start, self.period_end)
+
+#class UtilBillReeBill(object):
+    #'''Class corresponding to the "utilbill_reebill" table which represents the
+    #many-to-many relationship between "utilbill" and "reebill".'''
+    #def __init__(self, utilbill_id, reebill_id, document_id=None):
+        #self.utilbill_id = utilbill_id
+        #self.reebill_id = reebill_id
+        #self.document_id = document_id
+
+    #def __repr__(self):
+        #return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
+                #self.utilbill_id, self.reebill_id, self.document_id)
+
+class Payment(Base):
+    __tablename__ = 'payment'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    date_received = Column(Date, nullable=False)
+    date_applied = Column(Date, nullable=False)
+    description = Column(String)
+    credit = Column(Float)
+
+    customer = relationship("Customer", backref=backref('payments',
+            order_by=id))
+
+    '''date_received is the datetime when Skyline recorded the payment.
+    date_applied is the date that the payment is "for", from the customer's
+    perspective. Normally these are on the same day, but an error in an old
+    payment can be corrected by entering a new payment with the same
+    date_applied as the old one, whose credit is the true amount minus the
+    previously-entered amount.'''
+    def __init__(self, customer, date_received, date_applied, description,
+            credit):
+        self.customer = customer
+        self.date_received = date_received # datetime
+        self.date_applied = date_applied   # date
+        self.description = description
+        self.credit = credit
+
+    def to_dict(self):
+        return {
+            'id': self.id, 
+            'date_received': self.date_received,
+            'date_applied': self.date_applied,
+            'description': self.description,
+            'credit': self.credit,
+            'editable': datetime.utcnow() - self.date_received < timedelta(hours=24)
+        }
+
+    def __repr__(self):
+        return '<Payment(%s, received=%s, applied=%s, %s, %s)>' \
+                % (self.customer.account, self.date_received, \
+                        self.date_applied, self.description, self.credit)
+
+class StatusDaysSince(Base):
+    __tablename__ = 'status_days_since'
+
+    # NOTE it seems that SQLAlchemy requires at least one column to be
+    # identified as a "primary key" even though the table doesn't really have a
+    # primary key in the db.
+    account = Column(String, primary_key=True)
+    dayssince = Column(Integer)
+
+    def __init__(self, account, dayssince):
+        self.account = account
+        self.dayssince = dayssince
+
+    def __repr__(self):
+        return '<StatusDaysSince(%s, %s)>' \
+                % (self.account, self.dayssince)
+
 
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
@@ -122,7 +299,8 @@ def guess_utilbills_and_end_date(session, account, start_date):
     return probable_end_date, [u for u in utilbills_after_start_date if
             u.period_end <= probable_end_date]
 
-class StateDB:
+
+class StateDB(object):
 
     config = None
 
@@ -131,33 +309,6 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
-        self.engine = engine
-        metadata = MetaData(engine)
-
-        # table objects loaded automatically from database
-        status_days_since_view = Table('status_days_since', metadata, autoload=True)
-        status_unbilled_view = Table('status_unbilled', metadata, autoload=True)
-        utilbill_table = Table('utilbill', metadata, autoload=True)
-        reebill_table = Table('rebill', metadata, autoload=True)
-        customer_table = Table('customer', metadata, autoload=True)
-        payment_table = Table('payment', metadata, autoload=True)
-
-        # mappings
-        mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
-        mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
-        mapper(Customer, customer_table, properties={
-                    'utilbills': relationship(UtilBill, backref='customer'),
-                    'reebills': relationship(ReeBill, backref='customer')
-                })
-        mapper(ReeBill, reebill_table)
-        mapper(UtilBill, utilbill_table, properties={
-                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
-                })
-        mapper(Payment, payment_table, properties={
-                    'customer': relationship(Customer, backref='payment')
-                })
-
 
         # To turn logging on
         import logging
@@ -165,12 +316,12 @@ class StateDB:
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
-        # session
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
         # wrapped by scoped_session for thread contextualization
         # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
-        self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
+        self.session = scoped_session(sessionmaker(bind=engine,
+                autoflush=True))
 
     def get_customer(self, session, account):
         return session.query(Customer).filter(Customer.account==account).one()
@@ -499,24 +650,18 @@ class StateDB:
         return slice, count
 
     def listAllIssuableReebillInfo(self, session, **kwargs):
-        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery('unissued')
-        minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
-        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.rebill_id == ReeBill.id)
-
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery()
+        min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges)\
+                .filter(UtilBill.rebill_id == ReeBill.id)\
+                .filter(ReeBill.sequence == min_sequence.c.sequence)\
+                .filter(ReeBill.customer_id == min_sequence.c.customer_id)\
+                .filter(UtilBill.customer_id == Customer.id)
         slice = query.order_by(asc(Customer.account)).all()
-        count = query.count()
-        return slice, count
-
-    def list_issued_utilbills_for_account(self, session, account):
-        utilbill_info_table = session.query(UtilBill.id, UtilBill.total_charges, UtilBill.service, UtilBill.period_start, UtilBill.period_end, UtilBill.rebill_id, Customer.account).filter(Customer.id == UtilBill.customer_id, Customer.account == account).subquery("utilbill_info")
-        Utilbill_info = utilbill_info_table.c
-        matching_utilbills = session.query(Utilbill_info.account, ReeBill.sequence, ReeBill.max_version, Utilbill_info.id, Utilbill_info.service, Utilbill_info.period_start, Utilbill_info.period_end).filter(Utilbill_info.rebill_id == ReeBill.id, ReeBill.issued == 1)
-        first_date = None
-        last_date = None
-        if matching_utilbills.count() > 0:
-            first_date = matching_utilbills.order_by(Utilbill_info.period_start)[0].period_start
-            last_date = matching_utilbills.order_by(Utilbill_info.period_end)[-1].period_end
-        return (matching_utilbills.all(), first_date, last_date)
+        return slice, query.count()
 
     def reebills(self, session, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
@@ -652,7 +797,7 @@ class StateDB:
             begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
-        states (see comment in db_objects.UtilBill for explanation of utility
+        states (see comment in UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
@@ -690,7 +835,7 @@ class StateDB:
             # one, replace that bill
             # TODO 38385969: is this really a good idea?
             # (we can compare with '>' because states are ordered from "most
-            # final" to least (see db_objects.UtilBill)
+            # final" to least (see UtilBill)
             bills_to_replace = existing_bills.filter(UtilBill.state > state)
 
             if list(bills_to_replace) == []:
@@ -752,11 +897,19 @@ class StateDB:
                 session.delete(hb)
 
     def create_payment(self, session, account, date_applied, description,
-            credit):
-        '''Adds a new payment, returns the new Payment object.'''
+            credit, date_received=None):
+        '''Adds a new payment, returns the new Payment object. By default,
+        'date_received' is the current datetime in UTC when this method is
+        called; only override this for testing purposes.'''
+        # NOTE a default value for 'date_received' can't be specified as a
+        # default argument in the method signature because it would only get
+        # evaluated once at the time this module was imported, which means its
+        # value would be the same every time this method is called.
+        if date_received is None:
+            date_received = datetime.utcnow().date()
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
-        new_payment = Payment(customer, datetime.utcnow(), date_applied,
+        new_payment = Payment(customer, date_received, date_applied,
                 description, credit)
         session.add(new_payment)
         return new_payment
@@ -797,7 +950,7 @@ class StateDB:
     def get_total_payment_since(self, session, account, start,
             end=datetime.utcnow().date()):
         '''Returns sum of all account's payments applied on or after 'start'
-        and before 'end' (today by default), as a Decimal. If 'start' is none,
+        and before 'end' (today by default), as a Decimal. If 'start' is None,
         the beginning of the interval extends to the beginning of time.'''
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
@@ -830,13 +983,8 @@ class StateDB:
 
         return result
 
-    def retrieve_status_unbilled(self, session, start, limit):
-        # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusUnbilled).with_lockmode("read")
-
-        # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
-
-        count = query.count()
-
-        return slice, count
+if __name__ == '__main__':
+    # verify that SQLAlchemy setup is working
+    s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
+    session = s.session()
+    print session.query(Customer).all()

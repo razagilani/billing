@@ -33,7 +33,7 @@ from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
-from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -41,7 +41,7 @@ from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated
+from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 
 
@@ -132,6 +132,7 @@ def json_exception(method):
     '''Decorator for exception handling in methods trigged by Ajax requests.'''
     @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
+        #print >> sys.stderr, '*************', method, args
         try:
             return method(btb_instance, *args, **kwargs)
         except Exception as e:
@@ -328,7 +329,8 @@ class BillToolBridge:
             rsdb_config_section['host'],
             rsdb_config_section['port'],
             rsdb_config_section['database'],
-            self.reebill_dao
+            self.reebill_dao,
+            logger=self.logger
         )
 
         # configure journal:
@@ -385,7 +387,7 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
             self.process = process.Process(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
+                    self.splinter, logger=self.logger)
         else:
             self.process = process.Process(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, None, None)
@@ -401,8 +403,13 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
+        # TODO: allow the log to be viewed in the UI
+        self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
+        self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
@@ -449,10 +456,12 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
         with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
+            # TODO 45793037: not really a json file until now
             items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
             return self.dumps({
                 'success': True,
@@ -464,41 +473,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, start, limit, **kwargs):
-        '''Handles AJAX request for data to fill estimated revenue report
-        grid.''' 
-        with DBSession(self.state_db) as session:
-            start, limit = int(start), int(limit)
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            data = er.report(session)
-
-            # build list of rows from report data
-            rows = []
-            for account in sorted(data.keys(),
-                    # 'total' first
-                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
-                row = {'account': 'Total' if account == 'total' else account}
-                for month in data[account].keys():
-                    # show error message instead of value if there was one
-                    if 'error' in data[account][month]:
-                        value = 'ERROR: %s' % data[account][month]['error']
-                    elif 'value' in data[account][month]:
-                        value = '%.2f' % data[account][month]['value']
-
-                    row.update({
-                        'revenue_%s_months_ago' % (monthmath.current_utc() - month): {
-                            'value': value,
-                            'estimated': data[account][month].get('estimated', False)
-                        }
-                    })
-                rows.append(row)
-                #print rows
+    def get_estimated_revenue_data(self, start, limit, **kwargs):
+        '''Handles AJAX request for data to fill estimated revenue report grid.'''
+        start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.json')) as json_file:
+            items = ju.loads(json_file.read())['rows']
             return self.dumps({
                 'success': True,
-                'rows': rows[start:start+limit],
-                'results': len(rows) 
+                'rows': items[start:start+limit],
+                'results': len(items) # total number of items
             })
 
     @cherrypy.expose
@@ -508,19 +492,15 @@ class BillToolBridge:
     def estimated_revenue_xls(self, **kwargs):
         '''Responds with the data from the estimated revenue report in the form
         of an Excel spreadsheet.'''
-        with DBSession(self.state_db) as session:
-            spreadsheet_name =  'estimated_revenue.xls'
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            buf = StringIO()
-            er.write_report_xls(session, buf)
+        spreadsheet_name =  'estimated_revenue.xls'
 
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.xls')) as xls_file:
             # set headers for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+            return xls_file.read()
 
     ###########################################################################
     # authentication functions
@@ -644,7 +624,7 @@ class BillToolBridge:
             except:
                 print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (
                         e, traceback.format_exc())
-            return self.dumps({'success': False, 'errors':{'reason': str(e),
+            return self.dumps({'success': False, 'code':2, 'errors':{'reason': str(e),
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -733,29 +713,31 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
-                    ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-                    sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code, **kwargs):
+    def new_account(self, name, account, discount_rate, late_charge_rate,
+            template_account, ba_addressee, ba_street, ba_city,
+            billing_state, billing_postal_code, service_addressee,
+            service_street, service_city, service_state, service_postal_code,
+            **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, 0)
+            reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
-            ba['ba_addressee'] = ba_addressee
-            ba['ba_street1'] = ba_street1
-            ba['ba_city'] = ba_city
-            ba['ba_state'] = ba_state
-            ba['ba_postal_code'] = ba_postal_code
+            ba['addressee'] = ba_addressee
+            ba['street'] = ba_street
+            ba['city'] = ba_city
+            ba['state'] = ba_state
+            ba['postal_code'] = ba_postal_code
             reebill.billing_address = ba
             
             sa = {}
-            sa['sa_addressee'] = sa_addressee
-            sa['sa_street1'] = sa_street1
-            sa['sa_city'] = sa_city
-            sa['sa_state'] = sa_state
-            sa['sa_postal_code'] = sa_postal_code
+            sa['addressee'] = sa_addressee
+            sa['street'] = sa_street
+            sa['city'] = sa_city
+            sa['state'] = sa_state
+            sa['postal_code'] = sa_postal_code
             reebill.service_address = sa
             self.reebill_dao.save_reebill(reebill)
             # record account creation
@@ -840,7 +822,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def upload_interval_meter_csv(self, account, sequence, csv_file,
-            timestamp_column, timestamp_format, energy_column, energy_unit, meter_identifier, **args):
+            timestamp_column, timestamp_format, energy_column, energy_unit, register_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
@@ -859,7 +841,7 @@ class BillToolBridge:
         # extract data from the file (assuming the format of AtSite's
         # example files)
         fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=meter_identifier,
+                meter_identifier=register_identifier,
                 timestamp_column=timestamp_column,
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
@@ -902,7 +884,7 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'errors': {'reason':
+            return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
         with DBSession(self.state_db) as session:
@@ -1020,7 +1002,7 @@ class BillToolBridge:
                                              "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
-            merge_fields["sa_street1"] = mongo_reebill.service_address.get("sa_street1","")
+            merge_fields["street"] = mongo_reebill.service_address.get("street","")
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
@@ -1075,7 +1057,7 @@ class BillToolBridge:
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address.get("sa_street1","")
+            merge_fields["street"] = most_recent_bill.service_address.get("street","")
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
@@ -1100,7 +1082,6 @@ class BillToolBridge:
         name_dicts = sorted(all_accounts_all_names.iteritems())
 
         return name_dicts
-
 
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
@@ -1323,9 +1304,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill_details_xls(self, **args):
+    def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
+        #prep date strings from client
+        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        begin_date = make_date(begin_date)
+        end_date = make_date(end_date)
+        #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report(session, begin_date,
+                                                           end_date)
 
             buf = StringIO()
 
@@ -1362,19 +1349,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 actual_row = [row['account'], row['sequence'], row['version'],
@@ -1431,19 +1418,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
@@ -1489,10 +1476,13 @@ class BillToolBridge:
     @random_wait
     @authenticate
     @json_exception
-    def excel_export(self, account=None, **kwargs):
-        '''Responds with an excel spreadsheet containing all actual charges for
-        all utility bills for the given account, or every account (1 per sheet)
-        if 'account' is not given.'''
+    def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges for all
+        utility bills for the given account, or every account (1 per sheet) if
+        'account' is not given, or all utility bills for the account(s) filtered
+        by time, if 'start_date' and/or 'end_date' are given.
+        '''
         with DBSession(self.state_db) as session:
             if account is not None:
                 spreadsheet_name = account + '.xls'
@@ -1503,7 +1493,8 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account)
+            exporter.export(session, buf, account, start_date=start_date,
+                            end_date=end_date)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
@@ -2029,6 +2020,8 @@ class BillToolBridge:
                     except: pass
                     try: row_dict['actual_total'] = mongo_reebill.actual_total
                     except: pass
+                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy()
+                    except: pass
                     try: row_dict['ree_value'] = mongo_reebill.ree_value
                     except: pass
                     try: row_dict['prior_balance'] = mongo_reebill.prior_balance
@@ -2210,19 +2203,19 @@ class BillToolBridge:
         account_info = {}
 
         account_info['billing_address'] = {
-            'ba_addressee': ba['ba_addressee'] if 'ba_addressee' in ba else '',
-            'ba_street1': ba['ba_street1'] if 'ba_street1' in ba else '',
-            'ba_city': ba['ba_city'] if 'ba_city' in ba else '',
-            'ba_state': ba['ba_state'] if 'ba_state' in ba else '',
-            'ba_postal_code': ba['ba_postal_code'] if 'ba_postal_code' in ba else '',
+            'addressee': ba['addressee'] if 'addressee' in ba else '',
+            'street': ba['street'] if 'street' in ba else '',
+            'city': ba['city'] if 'city' in ba else '',
+            'state': ba['state'] if 'state' in ba else '',
+            'postal_code': ba['postal_code'] if 'postal_code' in ba else '',
         }
 
         account_info['service_address'] = {
-            'sa_addressee': sa['sa_addressee'] if 'sa_addressee' in sa else '',
-            'sa_street1': sa['sa_street1'] if 'sa_street1' in sa else '',
-            'sa_city': sa['sa_city'] if 'sa_city' in sa else '',
-            'sa_state': sa['sa_state'] if 'sa_state' in sa else '',
-            'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
+            'addressee': sa['addressee'] if 'addressee' in sa else '',
+            'street': sa['street'] if 'street' in sa else '',
+            'city': sa['city'] if 'city' in sa else '',
+            'state': sa['state'] if 'state' in sa else '',
+            'postal_code': sa['postal_code'] if 'postal_code' in sa else '',
         }
 
         try:
@@ -2243,16 +2236,16 @@ class BillToolBridge:
     @json_exception
     def set_account_info(self, account, sequence,
         discount_rate, late_charge_rate,
-        ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-        sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
+        ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
+        sa_addressee, sa_street, sa_city, sa_state, sa_postal_code,
         **kwargs):
         """
         Update account information
         """
         if not account or not sequence \
         or not discount_rate \
-        or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
-        or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
+        or not addressee or not street or not city or not state or not postal_code \
+        or not addressee or not street or not city or not state or not postal_code:
             raise ValueError("Bad Parameter Value")
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2272,18 +2265,18 @@ class BillToolBridge:
         ba = {}
         sa = {}
         
-        ba['ba_addressee'] = ba_addressee
-        ba['ba_street1'] = ba_street1
-        ba['ba_city'] = ba_city
-        ba['ba_state'] = ba_state
-        ba['ba_postal_code'] = ba_postal_code
+        ba['addressee'] = ba_addressee
+        ba['street'] = ba_street
+        ba['city'] = ba_city
+        ba['state'] = ba_state
+        ba['postal_code'] = ba_postal_code
         reebill.billing_address = ba
 
-        sa['sa_addressee'] = sa_addressee
-        sa['sa_street1'] = sa_street1
-        sa['sa_city'] = sa_city
-        sa['sa_state'] = sa_state
-        sa['sa_postal_code'] = sa_postal_code
+        sa['addressee'] = ba_addressee
+        sa['street'] = ba_street
+        sa['city'] = ba_city
+        sa['state'] = ba_state
+        sa['postal_code'] = ba_postal_code
         reebill.service_address = sa
 
         # set disabled services (services not mentioned in the request are
@@ -2556,7 +2549,123 @@ class BillToolBridge:
 
     ################
     # Handle measuredUsages
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def utilbill_registers(self, account, sequence, **args):
+        """
+        """
+        if not account or not sequence:
+            raise ValueError("Bad Parameter Value")
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        # It is possible that there is no reebill for the requested measured usages
+        # if this is the case, return no usages.  
+        # This is done so that the UI can configure itself with no data for the
+        # requested measured usage
+        if reebill is None:
+            # TODO: 40161259 must return success field
+            return self.dumps({'success': True, 'meters':[], 'total':0})
 
+        meters = reebill.meters
+        registers = []
+        for service, meter_list in meters.items():
+            for meter in meter_list:
+                meter_id = meter['identifier']
+                for register in meter['registers']:
+                    if not register['shadow']:
+                        row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
+                        row['type'] = register.get('type', '')
+                        row['binding'] = register.get('register_binding', '')
+                        row['description'] = register.get('description', '')
+                        row['quantity'] = register.get('quantity', 0)
+                        row['quantity_units'] = register.get('quantity_units','')
+                        registers.append(row)
+            
+        if args['xaction'] == 'read':
+            toRet = {'success':True, "rows":registers, 'total':len(registers)}
+            for r in registers:
+                if 'current_selected_id' in args and r['id'] == args['current_selected_id']:
+                    toRet['current_selected_id'] = r['id']
+            return self.dumps(toRet)
+        rows = json.loads(args['rows'])
+        if type(rows) is not list:
+            rows = [rows]
+        toSelect = None
+        if args['xaction'] == 'create':
+            for row in rows:
+                if not row.has_key('service'):
+                    row['service'] = reebill.services[0]
+                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
+                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                meter_id, new_reg = reebill.new_register(row['service'], row.get('meter_id', None), row.get('register_id', None))
+                if not row.has_key('meter_id'):
+                    row['meter_id'] = meter_id
+                if not row.has_key('register_id'):
+                    row['register_id'] = new_reg['identifier']
+                row['id'] = row['service']+'/'+row['meter_id']+'/'+row['register_id']
+                row['type'] = ''
+                row['binding'] = ''
+                row['description'] = ''
+                row['quantity'] = 0
+                row['quantity_units'] = ''
+                registers.append(row)
+            toSelect = rows[0]['id']
+        if args['xaction'] == 'update' or args['xaction'] == 'create':
+            regs = []
+            for row in rows:
+                reg = next((r for r in registers if r['id'] == row['id']), None)
+                old_id = row['id']
+                old_ids = old_id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                if reg is None:
+                    raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
+                reg.update(row)
+                new_service = row.get('service', old_service).lower()
+                reg['service'] = new_service
+                new_meter = row.get('meter_id', old_meter)
+                new_register = row.get('register_id', old_register)
+                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
+                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                if new_service != old_service or new_meter != old_meter or new_register != old_register:
+                    meter = reebill._meter(new_service, new_meter)
+                    if meter is not None:
+                        for _r in meter['registers']:
+                            if _r['identifier'] == new_register:
+                                raise ValueError('Register with id %s for meter %s for service %s already exists' %(new_register, new_meter, new_service))
+                if new_service != old_service or new_meter != old_meter:
+                    reebill.delete_register(old_service, old_meter, old_register)
+                    reebill.new_register(new_service, new_meter, old_register)
+                    old_service = new_service
+                    old_meter = new_meter
+                new_dict = {}
+                new_dict['identifier'] = reg['register_id']
+                new_dict['description'] = reg['description']
+                new_dict['type'] = reg['type']
+                new_dict['register_binding'] = reg['binding']
+                new_dict['quantity'] = reg['quantity']
+                new_dict['quantity_units'] = reg['quantity_units']
+                reebill.update_register(old_service, old_meter, old_register, new_dict)
+                reg['id'] = reg['service']+'/'+reg['meter_id']+'/'+reg['register_id']
+                if 'current_selected_id' in args and old_id == args['current_selected_id'] and toSelect is None:
+                    toSelect = reg['id']
+        if args['xaction'] == 'destroy':
+            for id in rows:
+                old_ids = id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                reebill.delete_register(old_service, old_meter, old_register)
+                registers[:] = [r for r in registers if r['id'] != id]
+        reebill.set_meter_dates_from_utilbills()
+        self.reebill_dao.save_reebill(reebill)
+        toRet = {'success':True, "rows":registers, 'total':len(registers)}
+        if toSelect is not None:
+            toRet['current_selected_id'] = toSelect
+        return self.dumps(toRet)
+    
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2600,7 +2709,7 @@ class BillToolBridge:
 
         meters = reebill.meters
         # TODO: 40161259 must return success field
-        return self.dumps({"meters":meters})
+        return self.dumps({'success':True, "meters":meters})
 
     @cherrypy.expose
     @random_wait
@@ -2675,27 +2784,33 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
-        for entry in journal_entries:
-            # TODO 29715501 replace user identifier with user name
-            # (UserDAO.load_user() currently requires a password to load a
-            # user, but we just want to translate an indentifier into a
-            # name)
-
-            # put a string containing all non-standard journal entry data
-            # in an 'extra' field for display in the browser
-            extra_data = copy.deepcopy(entry)
-            del extra_data['account']
-            if 'sequence' in extra_data:
-                del extra_data['sequence']
-            del extra_data['date']
-            if 'event' in extra_data:
-                del extra_data['event']
-            if 'user' in extra_data:
-                del extra_data['user']
-            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+#        for entry in journal_entries:
+#            # TODO 29715501 replace user identifier with user name
+#            # (UserDAO.load_user() currently requires a password to load a
+#            # user, but we just want to translate an indentifier into a
+#            # name)
+#
+#            # put a string containing all non-standard journal entry data in an
+#            # 'extra' field for display in the browser, because the UI can't
+#            # have column to handle any key that might appear in any event.
+#            # disabled for now because the client doesn't actually show the
+#            #"extra" data.
+#            # TODO processing the entries in this way is slow when loading entries
+#            # for all accounts. (yes, "paging" will be needed when the number of
+#            # entries gets REALLY large but the real problem here is bad code,
+#            # which should be fixed first. mongo aggregation is probably the
+#            # simplest way to do it and it's fast.)
+#            extra_data = copy.deepcopy(entry)
+#            del extra_data['account']
+#            if 'sequence' in extra_data:
+#                del extra_data['sequence']
+#            del extra_data['date']
+#            if 'event' in extra_data:
+#                del extra_data['event']
+#            if 'user' in extra_data:
+#                del extra_data['user']
+#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':journal_entries})
@@ -2741,10 +2856,10 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             # names for utilbill states in the UI
             state_descriptions = {
-                db_objects.UtilBill.Complete: 'Final',
-                db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
-                db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                db_objects.UtilBill.Hypothetical: 'Missing'
+                state.UtilBill.Complete: 'Final',
+                state.UtilBill.UtilityEstimated: 'Utility Estimated',
+                state.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                state.UtilBill.Hypothetical: 'Missing'
             }
 
             if not start or not limit or not account:
@@ -2754,6 +2869,8 @@ class BillToolBridge:
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+            state_reebills = [ub.reebill for ub in utilbills]
+            mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
 
             full_names = self.full_names_of_accounts([account])
             full_name = full_names[0] if full_names else account
@@ -2764,6 +2881,8 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_name),
+                ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
                 # capitalize service name
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
@@ -2774,7 +2893,7 @@ class BillToolBridge:
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
                 ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for i, ub in enumerate(utilbills)]
+            ]) for rb, ub in zip(mongo_reebills,utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
@@ -2836,6 +2955,9 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
+                new_utility = rows['utility']
+                new_ratestructure = rows['rate_structure']
+
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2843,14 +2965,22 @@ class BillToolBridge:
                 # find utilbill in mysql
                 utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
+                reebill = None
+                mongo_reebill = None
+                if utilbill.has_reebill:
+                    reebill = utilbill.reebill
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+
+                if reebill is None and (new_utility != '' or new_ratestructure != ''):
+                    raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
                 # utility bills that have issued reebills shouldn't be editable
                 if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
                 # SkylineEstimated (2) and Hypothetical (3) ones don't.)
-                if utilbill.state < db_objects.UtilBill.SkylineEstimated:
+                if utilbill.state < state.UtilBill.SkylineEstimated:
                     self.billUpload.move_utilbill_file(utilbill.customer.account,
                             # don't trust the client to say what the original dates were
                             # TODO don't pass dates into BillUpload as strings
@@ -2861,10 +2991,16 @@ class BillToolBridge:
 
                 # change dates in Mongo if needed
                 if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    reebill = self.reebill_dao.load_reebill(utilbill.reebill.customer.account, utilbill.reebill.sequence)
-                    reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
-                    reebill.set_meter_dates_from_utilbills()
-                    self.reebill_dao.save_reebill(reebill)
+                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                    mongo_reebill.set_meter_dates_from_utilbills()
+                    self.reebill_dao.save_reebill(mongo_reebill)
+
+                #update utility and ratestructure names
+                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
+                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
+                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
+                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
+                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
@@ -2898,8 +3034,8 @@ class BillToolBridge:
                 print ids
                 for utilbill_id in ids:
                     # load utilbill to get its dates and service
-                    utilbill = session.query(db_objects.UtilBill)\
-                            .filter(db_objects.UtilBill.id == utilbill_id).one()
+                    utilbill = session.query(state.UtilBill)\
+                            .filter(state.UtilBill.id == utilbill_id).one()
                     start, end = utilbill.period_start, utilbill.period_end
                     service = utilbill.service
 
@@ -3240,10 +3376,22 @@ if __name__ == '__main__':
             'tools.sessions.timeout': 240
         },
     }
-    cherrypy.config.update({ 'server.socket_host': bridge.config.get("http", "socket_host"),
-                             'server.socket_port': int(bridge.config.get("http", "socket_port")),
-                             })
-    cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.config.update({
+        'server.socket_host': bridge.config.get("http", "socket_host"),
+        'server.socket_port': int(bridge.config.get("http", "socket_port")),
+    })
+    #cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.quickstart(bridge,
+            # cherrypy doc refers to this as 'script_name': "a string
+            # containing the 'mount point' of the application'", i.e. the URL
+            # corresponding to the method 'index' above and prefixed to the
+            # URLs corresponding to the other methods
+            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
+            "/",
+            config = local_conf)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
+            stream=sys.stdout)
 else:
     # WSGI Mode
     cherrypy.config.update({
