@@ -46,6 +46,7 @@ else
 fi
 
 tar xzf $tarball
+cd ${now}reebill-prod
 
 # apparently only root can restore the database
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
