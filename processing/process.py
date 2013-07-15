@@ -1273,7 +1273,7 @@ class Process(object):
         return rows, totalCount
 
     def summary_ree_charges(self, session, accounts, all_names):
-        def total_ree_in_reebills(self, reebills):
+        def total_ree_in_reebills(reebills):
             total_energy = Decimal(0)
             for reebill in reebills:
                 total_energy += reebill.total_renewable_energy()
@@ -1288,7 +1288,7 @@ class Process(object):
             hypothetical_total = Decimal(sum([reebill.hypothetical_total for reebill in reebills]))
             total_energy = Decimal(0)
             average_ree_rate = Decimal(0)
-            total_energy = self.total_ree_in_reebills(reebills)
+            total_energy = total_ree_in_reebills(reebills)
 
             if total_energy != Decimal(0):
                 average_ree_rate = (hypothetical_total - actual_total)/total_energy
