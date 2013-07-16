@@ -1653,10 +1653,6 @@ class ProcessTest(TestCaseWithSetup):
         https://www.pivotaltracker.com/story/show/53434901.'''
         account = '99999'
 
-        # setup occurs in a separate transaction separate from the part that
-        # triggers the bug, because there is an exception that causes it to get
-        # rolled back (and because these operations occur in multiple
-        # transaction when ReeBill is used in real life)
         with DBSession(self.state_db) as session:
             # save RS/utilbill/reebill documents and create reebill and utility
             # bill in MySQL
@@ -1710,15 +1706,11 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(0, self.state_db.max_version(session, account,
                     1))
 
-
+        # try to create a new version again: it should succeed, even though
+        # there was a KeyError due to a missing RSI when computing the bill
         with DBSession(self.state_db) as session:
-            # try to create a new version again: it should fail with the same
-            # error as above when computing the bill
             self.process.new_version(session, account, 1)
-
-        # now the transaction is over and did not get committed, so the maximum
-        # version should be 0
-        self.assertEquals(0, self.state_db.max_version(session, account, 1))
+        self.assertEquals(1, self.state_db.max_version(session, account, 1))
 
 
 if __name__ == '__main__':
