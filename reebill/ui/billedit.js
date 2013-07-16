@@ -3410,13 +3410,13 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'roundrule',
                 editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Total', 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.TextField({allowBlank: true})
+            //},{
+                //header: 'Total', 
+                //sortable: true, 
+                //dataIndex: 'total', 
+                //summaryType: 'sum',
+                //align: 'right',
+                //editor: new Ext.form.TextField({allowBlank: true})
             }
         ]
     });
@@ -3668,13 +3668,13 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'roundrule',
                 editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Total', 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.TextField({allowBlank: true})
+            //},{
+                //header: 'Total', 
+                //sortable: true, 
+                //dataIndex: 'total', 
+                //summaryType: 'sum',
+                //align: 'right',
+                //editor: new Ext.form.TextField({allowBlank: true})
             }
         ]
     });
