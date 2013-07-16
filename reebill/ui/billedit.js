@@ -1058,209 +1058,6 @@ function reeBillReady() {
     });
 
 
-    /////////////////////////////////////////////////////
-    // Functions for ReeBill Structure Editor event
-
-    var editReeBillStructureDataConn = new Ext.data.Connection({
-    });
-    editReeBillStructureDataConn.autoAbort = true;
-    editReeBillStructureDataConn.disableCaching = true;
-
-    // uses ajax to edit reebill structure
-    // three operations use this: insert a new node, delete a node and edit a node
-    // for the edit a node operation, the newly edited value is also passed in
-    function editReeBillStructureNode(action, new_text)
-    {
-        var cmp = Ext.getCmp('reeBillEditorTree');
-        var selNode = cmp.getSelectionModel().getSelectedNode();
-        if (selNode == null || selNode.parentNode == null) {
-            Ext.Msg.alert("No node selected.")
-            return; 
-        }
-
-        // so that we can track the parent in case selNode is to be removed 
-        var parentNode = selNode.parentNode;
-
-        // determine if we have enough information to act on this node
-        if (!("service" in selNode.attributes && "account" in selNode.attributes 
-            && "sequence" in selNode.attributes && "node_type" in selNode.attributes
-            && "node_key" in selNode.attributes && "text" in selNode.attributes)) {
-
-            Ext.Msg.alert("Selected node uneditable.")
-            return;
-        }
-
-        // TODO: 22792659 disabled widgets have to be reenabled if there is an exception 
-        cmp.disable();
-
-        editReeBillStructureDataConn.request({
-            url: 'http://'+location.host+'/reebill/' + action,
-            params: { 
-                // note, we dont pass in selNode.id. This is because the unique id's
-                // are only used by the client side gui code.
-                'service': selNode.attributes.service,
-                'account': selNode.attributes.account,
-                'sequence': selNode.attributes.sequence,
-                'node_type': selNode.attributes.node_type,
-                'node_key': selNode.attributes.node_key,
-                // if a new value was passed in, update to this new value
-                'text': new_text == null ? selNode.attributes.text : new_text,
-            },
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        // handle failure here if necessary
-                    } else {
-                        if (action == 'insert_reebill_sibling_node') {
-                            var newNode = jsonData.node
-                            // TreePanel will fire insert event
-                            parentNode.appendChild(newNode);
-                        } else if (action == 'delete_reebill_node') {
-                            selNode.remove(true);
-                        } else if (action == 'update_reebill_node') {
-                            var updatedNode = jsonData.node
-                            parentNode.replaceChild(updatedNode,selNode);  
-                        }
-                    }
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                }
-
-                cmp.enable();
-                // TODO:  22827425 expand after edit - seems an exception is thrown in ext here
-                //parentNode.expandChildNodes();
-            },
-            failure: function () {
-                Ext.Msg.alert("Edit ReeBill Request Failed.");
-                cmp.enable();
-            }
-        });
-    }
-
-    function configureReeBillEditor(account, sequence)
-    {
-
-        var reeBillTab = tabPanel.getItem('reeBillTab');
-
-        var reeBillEditorTree = Ext.getCmp('reeBillEditorTree');
-
-        // lazily create it if it does not exist
-        if (reeBillEditorTree === undefined) {
-
-            var reeBillEditorTreeToolbar = new Ext.Toolbar({
-                
-                items: [
-                    {
-                        xtype: 'button',
-
-                        // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
-                        id: 'nodeInsertBtn',
-                        iconCls: 'icon-add',
-                        text: 'Insert',
-                        disabled: false,
-                        handler: function() {
-                            editReeBillStructureNode('insert_reebill_sibling_node', null);
-                        },
-                    },{
-                        xtype: 'tbseparator'
-                    },{
-                        xtype: 'button',
-                        // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
-                        id: 'nodeRemoveBtn',
-                        iconCls: 'icon-delete',
-                        text: 'Remove',
-                        disabled: false,
-                        handler: function() {
-                            editReeBillStructureNode('delete_reebill_node', null);
-                        },
-                    }
-                ]
-            });
-
-            onTreeNodeDblClick = function(n) {
-                reeBillEditorTreeEditor.editNode = n;
-                reeBillEditorTreeEditor.startEdit(n.ui.textNode);
-            }
-
-            var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({
-                //dataUrl:'http://'+location.host+'/reebill/reebill_structure_editor',
-                dataUrl:'http://'+location.host+'/reebill/reebill_structure',
-                // defaults to true
-                clearOnLoad: true,
-            });
-
-            reeBillEditorTree = new Ext.tree.TreePanel({
-                id: 'reeBillEditorTree',
-                title: 'ReeBill Structure Editor',
-                frame: true,
-                animate: true, 
-                autoScroll: true,
-                loader: reeBillEditorTreeLoader,
-                enableDD: false,
-                containerScroll: true,
-                autoWidth: true,
-                dropConfig: {appendOnly: true},
-                tbar: reeBillEditorTreeToolbar,
-                listeners: {
-                    dblclick: onTreeNodeDblClick,
-                }
-            });
-
-            
-            // add a tree sorter in folder mode
-            new Ext.tree.TreeSorter(reeBillEditorTree, {folderSort:true});
-            
-            // set the root node
-            var reeBillEditorTreeRoot = new Ext.tree.AsyncTreeNode({
-                id:'reeBillEditorTreeRoot',
-                text: 'ReeBill', 
-                draggable:false, // disable root node dragging
-            });
-
-            reeBillEditorTree.setRootNode(reeBillEditorTreeRoot);
-
-            //this causes the treeloader to fire a request
-            //since we want to lazily create things, don't fire a load request
-            //reeBillEditorTreeRoot.expand(false, /*no anim*/ false);
-
-            onTreeEditComplete = function(treeEditor, n, o) {
-                //o - oldValue
-                //n - newValue
-                editReeBillStructureNode('update_reebill_node', n)
-            }
-
-            var reeBillEditorTreeEditor = new Ext.tree.TreeEditor(reeBillEditorTree, {}, {
-                cancelOnEsc: true,
-                completeOnEnter: true,
-                selectOnFocus: true,
-                allowBlank: false,
-                listeners: {
-                    complete: onTreeEditComplete
-                }
-            });
-
-            reeBillTab.add(reeBillEditorTree);
-        }
-
-        var loader = reeBillEditorTree.getLoader();
-
-        // cancel ajax if it is running
-        if (loader.isLoading()) {
-            console.log("Aborting structure editor ajax");
-            loader.abort();
-        }
-
-        // widgets have been lazily instantiated, now go load them.
-        loader.baseParams.account = selected_account;
-        loader.baseParams.sequence = selected_sequence;
-        loader.load(reeBillEditorTree.root);
-
-    }
-
-
-
     var accountInfoDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/account_info',
     });
@@ -5020,49 +4817,6 @@ function reeBillReady() {
         allowBlank: false,
     });
 
-    var billStructureTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
-    var billStructureTree = new Ext.tree.TreePanel({
-        title: 'Bill Structure Browser',
-        frame: true,
-        animate:true, 
-        autoScroll:true,
-        loader: billStructureTreeLoader,
-        enableDD:true,
-        containerScroll: true,
-        border: true,
-        //width: 250,
-        //height: 300,
-        autoWidth: true,
-        dropConfig: {appendOnly:true}
-    });
-    
-    // add a tree sorter in folder mode
-    new Ext.tree.TreeSorter(billStructureTree, {folderSort:true});
-    
-    // set the root node
-    var billStructureRoot = new Ext.tree.AsyncTreeNode({
-        text: 'ReeBill', 
-        draggable:false, // disable root node dragging
-        id:'bill_structure_root'
-    });
-    billStructureTree.setRootNode(billStructureRoot);
-    
-    billStructureRoot.expand(false, /*no anim*/ false);
-
-    // event to link the account selection changes to reload structure tree
-    newAccountTemplateCombo.on('select', function(combobox, record, index) {
-        billStructureTree.enable();
-        billStructureTree.getLoader().dataUrl = 'http://'+location.host+'/reebill/reebill_structure';
-        billStructureTree.getLoader().baseParams.account = newAccountTemplateCombo.getValue();
-        //billStructureTree.getLoader().baseParams.sequence = null; 
-        billStructureTree.getLoader().load(billStructureTree.root);
-        billStructureRoot.expand(true, true);
-        
-    });
-
-    billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
-    });
-    
     var moreAccountsCheckbox = new Ext.form.Checkbox({
         id: "newAccountCheckbox",
         boxLabel: "Make another account",
@@ -5170,7 +4924,6 @@ function reeBillReady() {
                     },
                 ]
             },
-            billStructureTree, 
         ],
         buttons: [
             moreAccountsCheckbox,
@@ -6609,7 +6362,6 @@ function reeBillReady() {
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
-        configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
@@ -6697,7 +6449,6 @@ function reeBillReady() {
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
-            configureReeBillEditor(null, null);
             Ext.getCmp('service_for_charges').getStore().removeAll();
             Ext.getCmp('service_for_charges').clearValue();
             Ext.getCmp('service_for_charges').setDisabled(true);
@@ -6718,7 +6469,6 @@ function reeBillReady() {
         //deleteButton.setDisabled(sequenceRecord.get('committed'))
         
         // TODO:23046181 abort connections in progress
-        configureReeBillEditor(selected_account, selected_sequence);
         services = record.data.services;
         for (var i = 0;i < services.length;i++) {
             services[i] = [services[i]];
