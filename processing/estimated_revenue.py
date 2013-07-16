@@ -181,7 +181,7 @@ class EstimatedRevenue(object):
     def report_table(self, session, failfast=False):
         '''Returns a Tablib table of the data produced in report().'''
         report = self.report(session, failfast=failfast)
-        table = tablib.Dataset()
+        table = tablib.Dataset(title='Estimated Revenue')
         table.headers = ['Account'] + [str(month) for month in months_of_past_year()]
 
         for account in sorted(report.keys()):
