@@ -32,11 +32,15 @@ ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
-if [ -z $RSYNC ] || [ $RSYNC != '-n' ]
+if [ -z $RSYNC ] || [ $RSYNC != '-n' ] 
+then # -n not given
+    rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
+elif [ ! -d ${now}reebill-prod ] # -n given, dir doesnt exist
 then
     rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
+    echo "Downloading file one time, future use with -n will use this download."
 else
-    echo "Skipping file download due to -n flag"
+    echo "Not Downloading file, already exists"
 fi
 cd ${now}reebill-prod
 
