@@ -713,9 +713,11 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
-                    ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-                    sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code, **kwargs):
+    def new_account(self, name, account, discount_rate, late_charge_rate,
+            template_account, ba_addressee, ba_street, ba_city,
+            billing_state, billing_postal_code, service_addressee,
+            service_street, service_city, service_state, service_postal_code,
+            **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
@@ -723,19 +725,19 @@ class BillToolBridge:
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
-            ba['ba_addressee'] = ba_addressee
-            ba['ba_street1'] = ba_street1
-            ba['ba_city'] = ba_city
-            ba['ba_state'] = ba_state
-            ba['ba_postal_code'] = ba_postal_code
+            ba['addressee'] = ba_addressee
+            ba['street'] = ba_street
+            ba['city'] = ba_city
+            ba['state'] = ba_state
+            ba['postal_code'] = ba_postal_code
             reebill.billing_address = ba
             
             sa = {}
-            sa['sa_addressee'] = sa_addressee
-            sa['sa_street1'] = sa_street1
-            sa['sa_city'] = sa_city
-            sa['sa_state'] = sa_state
-            sa['sa_postal_code'] = sa_postal_code
+            sa['addressee'] = sa_addressee
+            sa['street'] = sa_street
+            sa['city'] = sa_city
+            sa['state'] = sa_state
+            sa['postal_code'] = sa_postal_code
             reebill.service_address = sa
             self.reebill_dao.save_reebill(reebill)
             # record account creation
@@ -1000,7 +1002,7 @@ class BillToolBridge:
                                              "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
-            merge_fields["sa_street1"] = mongo_reebill.service_address.get("sa_street1","")
+            merge_fields["street"] = mongo_reebill.service_address.get("street","")
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
@@ -1055,7 +1057,7 @@ class BillToolBridge:
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address.get("sa_street1","")
+            merge_fields["street"] = most_recent_bill.service_address.get("street","")
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
@@ -1145,6 +1147,18 @@ class BillToolBridge:
     def retrieve_account_status(self, start, limit, **kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
+        # this function is used below to format the "Utility Service Address"
+        # grid column
+        def format_service_address(utilbill_doc):
+            try:
+                return '%(street)s, %(city)s, %(state)s' % utilbill_doc['service_address']
+            except KeyError as e:
+                print >> sys.stderr, 'Utility bill for %s from %s to %s lacks key "%s"' \
+                        % (utilbill_doc['account'], utilbill_doc['start'],
+                                utilbill_doc['end'], e)
+                print >> sys.stderr, utilbill_doc['service_address']
+                return '?'
+
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         if not start or not limit:
@@ -1181,12 +1195,10 @@ class BillToolBridge:
                 reebill = self.reebill_dao.load_reebill(status.account,
                         self.state_db.last_issued_sequence(session, status.account))
 
-                #utility_service_addresses = ', '.join(
-                        #u['service_address'].get('street', '?') for u in
-                        #reebill._utilbills)
-                # NOTE "utility service address" is currently coming from the
-                # reebill document, but this should change
-                utility_service_addresses = reebill.service_address_formatted()
+                # get service address from utility bill document, convert JSON
+                # to string using the function above
+                utility_service_addresses = format_service_address(
+                        reebill._utilbills[0])
 
                 last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
                         not None else 'Never Issued'
@@ -1347,19 +1359,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 actual_row = [row['account'], row['sequence'], row['version'],
@@ -1416,19 +1428,19 @@ class BillToolBridge:
             for row in rows:
                 ba = row['billing_address']
                 bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
+                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
+                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
+                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
                 )
                 sa = row['service_address']
                 service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
+                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
+                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
+                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
                 )
 
                 writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
@@ -2201,19 +2213,19 @@ class BillToolBridge:
         account_info = {}
 
         account_info['billing_address'] = {
-            'ba_addressee': ba['ba_addressee'] if 'ba_addressee' in ba else '',
-            'ba_street1': ba['ba_street1'] if 'ba_street1' in ba else '',
-            'ba_city': ba['ba_city'] if 'ba_city' in ba else '',
-            'ba_state': ba['ba_state'] if 'ba_state' in ba else '',
-            'ba_postal_code': ba['ba_postal_code'] if 'ba_postal_code' in ba else '',
+            'addressee': ba['addressee'] if 'addressee' in ba else '',
+            'street': ba['street'] if 'street' in ba else '',
+            'city': ba['city'] if 'city' in ba else '',
+            'state': ba['state'] if 'state' in ba else '',
+            'postal_code': ba['postal_code'] if 'postal_code' in ba else '',
         }
 
         account_info['service_address'] = {
-            'sa_addressee': sa['sa_addressee'] if 'sa_addressee' in sa else '',
-            'sa_street1': sa['sa_street1'] if 'sa_street1' in sa else '',
-            'sa_city': sa['sa_city'] if 'sa_city' in sa else '',
-            'sa_state': sa['sa_state'] if 'sa_state' in sa else '',
-            'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
+            'addressee': sa['addressee'] if 'addressee' in sa else '',
+            'street': sa['street'] if 'street' in sa else '',
+            'city': sa['city'] if 'city' in sa else '',
+            'state': sa['state'] if 'state' in sa else '',
+            'postal_code': sa['postal_code'] if 'postal_code' in sa else '',
         }
 
         try:
@@ -2234,16 +2246,16 @@ class BillToolBridge:
     @json_exception
     def set_account_info(self, account, sequence,
         discount_rate, late_charge_rate,
-        ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
-        sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
+        ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
+        sa_addressee, sa_street, sa_city, sa_state, sa_postal_code,
         **kwargs):
         """
         Update account information
         """
         if not account or not sequence \
         or not discount_rate \
-        or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
-        or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
+        or not addressee or not street or not city or not state or not postal_code \
+        or not addressee or not street or not city or not state or not postal_code:
             raise ValueError("Bad Parameter Value")
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2263,18 +2275,18 @@ class BillToolBridge:
         ba = {}
         sa = {}
         
-        ba['ba_addressee'] = ba_addressee
-        ba['ba_street1'] = ba_street1
-        ba['ba_city'] = ba_city
-        ba['ba_state'] = ba_state
-        ba['ba_postal_code'] = ba_postal_code
+        ba['addressee'] = ba_addressee
+        ba['street'] = ba_street
+        ba['city'] = ba_city
+        ba['state'] = ba_state
+        ba['postal_code'] = ba_postal_code
         reebill.billing_address = ba
 
-        sa['sa_addressee'] = sa_addressee
-        sa['sa_street1'] = sa_street1
-        sa['sa_city'] = sa_city
-        sa['sa_state'] = sa_state
-        sa['sa_postal_code'] = sa_postal_code
+        sa['addressee'] = ba_addressee
+        sa['street'] = ba_street
+        sa['city'] = ba_city
+        sa['state'] = ba_state
+        sa['postal_code'] = ba_postal_code
         reebill.service_address = sa
 
         # set disabled services (services not mentioned in the request are
@@ -3117,247 +3129,6 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def reebill_structure(self, account, sequence=None, **args):
-        if not account:
-            raise ValueError("Bad Parameter Value: account")
-        with DBSession(self.state_db) as session:
-            if sequence is None:
-                sequence = self.state_db.last_sequence(session, account)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            if reebill:
-
-                services = reebill.services
-
-                # construct utilbill parts
-                tree = []
-                node_index = 0
-                for service in reebill.services:
-                    utility = reebill.utility_name_for_service(service)
-                    rate_structure = reebill.rate_structure_name_for_service(service)
-                    chargegroups_model = reebill.chargegroups_model_for_service(service)
-                    meters = reebill.meters_for_service(service)
-
-                    utility_node = {
-                        'id': str(UUID.uuid1()), 
-                        'leaf': True,
-                        'text': utility,
-                    }
-
-                    ratestructure_node = {
-                        'id': str(UUID.uuid1()), 
-                        'leaf': True,
-                        'text': rate_structure,
-                    }
-
-                    meter_nodes = []
-                    for meter in meters:
-                        register_nodes = []
-                        for register in meter['registers']:
-                            if register['shadow'] is True:
-                                continue
-                            register_nodes.append({
-                                'id': str(UUID.uuid1()),
-                                'leaf': True,
-                                'text': register['identifier'],
-                                'service': service,
-                                'account': account, 
-                                'sequence': sequence, 
-                                'node_type': 'register',
-                                'node_key': register['identifier']
-                            })
-                        meter_nodes.append({
-                            'id': str(UUID.uuid1()),
-                            'text': meter['identifier'],
-                            'children': register_nodes,
-                            'service': service,
-                            'account': account, 
-                            'sequence': sequence, 
-                            'node_type': 'meter',
-                            'node_key': meter['identifier']
-                        })
-
-                    meters_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': 'Meters',
-                        'children': meter_nodes
-                    }
-
-                    chargegroup_names_nodes = []
-                    for group in chargegroups_model:
-                        chargegroup_names_nodes.append({
-                            'id': str(UUID.uuid1()),
-                            'text':group,
-                            'leaf': True
-                        })
-
-                    chargegroups_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': 'Charge Groups',
-                        'children': chargegroup_names_nodes
-                    }
-
-                    utilbill_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': service,
-                        'children': [utility_node, ratestructure_node, chargegroups_node, meters_node]
-                    }
-                    tree.append(utilbill_node)
-
-                # we want to return success to ajax call and then load the tree in page
-                #return self.dumps({'success':True, 'reebill_structure':tree});
-                # but the TreeLoader doesn't abide by the above ajax packet
-                # TODO: 40161259 must return success field
-                return self.dumps(tree);
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
-            if not service or not account or not sequence or not node_type or not node_key:
-                raise ValueError("Bad Parameter Value")
-            with DBSession(self.state_db) as session:
-                reebill = self.reebill_dao.load_reebill(account, sequence)
-
-                # node insertions are done by selecting a sibling node and creating
-                # a new node based on the context of that selection.
-
-                new_node = None
-                if node_type == 'meter':
-                    # in the case of inserting a meter, we simply need to know
-                    # for which service the meter will be created since meters
-
-                    new_meter = reebill.new_meter(service)
-                    # both an actual and shadow register get created (actual, shadow)
-                    new_registers = reebill.new_register(service, new_meter['identifier'])
-
-                    register_nodes = [{
-                        'id': str(UUID.uuid4()),
-                        'leaf': True,
-                        'text': new_registers[0]['identifier'],
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'register',
-                        'node_key': new_registers[0]['identifier'],
-                    }]
-                    new_node = {
-                        'id': str(UUID.uuid4()),
-                        'text': new_meter['identifier'],
-                        'children': register_nodes,
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'meter',
-                        'node_key': new_meter['identifier'], 
-                    }
-                elif node_type == 'register':
-                    # in the case of inserting a register, we need to find
-                    # the parent of the currently selected register node
-                    meter = reebill.meter_for_register(service, node_key)
-                    new_registers = reebill.new_register(service, meter['identifier'])
-                    new_node = {
-                        'id': str(UUID.uuid4()),
-                        'leaf': True,
-                        'text': new_registers[0]['identifier'],
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'register',
-                        'node_key': new_registers[0]['identifier'],
-                    }
-                self.reebill_dao.save_reebill(reebill)
-                return self.dumps({'success': True, 'node':new_node })
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
-        if not service or not account or not sequence or not node_type or not node_key or not text:
-            raise ValueError("Bad Parameter Value")
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            if reebill:
-                if node_type == 'meter':
-                    # retrieve this meter based on node_key
-                    reebill.delete_meter(service, node_key)
-                elif node_type == 'register':
-                    raise Exception("finish me")
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps({'success': True })
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
-        if not service or not account or not sequence or not node_type or not node_key or not text:
-            raise ValueError("Bad Parameter Value")
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            updated_node = None
-            if reebill:
-                if node_type == 'meter':
-
-                    # retrieve this meter based on node_key
-                    reebill.set_meter_identifier(service, node_key, text)
-
-                    # now that it has been changed, retrieve it with the new name
-                    meter = reebill.meter(service, text)
-
-                    # get the children of this meter
-                    register_nodes = []
-                    for register in meter['registers']:
-                        if register['shadow'] is True:
-                            continue
-                        register_nodes.append({
-                            'id': str(UUID.uuid1()),
-                            'leaf': True,
-                            'text': register['identifier'],
-                            'service': service,
-                            'account': account, 
-                            'sequence': sequence, 
-                            'node_type': 'register',
-                            'node_key': register['identifier']
-                        })
-                    updated_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': meter['identifier'],
-                        'children': register_nodes,
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'meter',
-                        'node_key': meter['identifier'], 
-                    }
-                    # update the meter fields
-                elif node_type == 'register':
-                    # retrieve this meter based on node_key
-                    reebill.set_register_identifier(service, node_key, text)
-
-                    # now that it has been changed, retrieve it with the new name
-                    register = reebill.actual_register(service, text)
-
-                    updated_node = {
-                        'id': str(UUID.uuid1()),
-                        'leaf': True,
-                        'text': register['identifier'],
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'register',
-                        'node_key': register['identifier'], 
-                    }
-
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps({'success': True, 'node':updated_node})
-
-        
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
 bridge = BillToolBridge()
 
