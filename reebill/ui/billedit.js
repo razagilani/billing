@@ -5466,7 +5466,7 @@ function reeBillReady() {
     var journalEntryField = new Ext.form.TextArea({
         fieldLabel: 'Journal',
         name: 'entry',
-        height: 100,
+        anchor: '100%',
         allowBlank: false,
     });
     var journalEntryAccountField = new Ext.form.Hidden({
@@ -5497,18 +5497,27 @@ function reeBillReady() {
         url: 'http://'+location.host+'/reebill/save_journal_entry',
         frame: true,
         border: false,
-        width: 400,
         height: 200,
-        layout: 'hbox',
-        // defaults: {
-        //     layout: 'form'
-        // },
+        layout: 'anchor',
+        anchor: '100%',
+
         items: [
             journalEntryField, 
-            journalEntryResetButton,
-            journalEntrySubmitButton,
             journalEntryAccountField,
-            journalEntrySequenceField
+            journalEntrySequenceField,
+
+            // a panel containing the buttons so they can be horizontal
+            {
+                xtype: 'panel',
+                layout: 'hbox',
+                layoutConfig : {
+                    pack : 'end'
+                },
+                items: [
+                    journalEntryResetButton,
+                    journalEntrySubmitButton,
+                ],
+            }
         ],
         // hideLabels: false,
         // labelAlign: 'left',   // or 'right' or 'top'
@@ -5525,21 +5534,27 @@ function reeBillReady() {
         title: 'Journal',
         disabled: journalPanelDisabled,
         xtype: 'panel',
+
         layout: 'vbox',
         layoutConfig : {
             align : 'stretch',
             pack : 'start'
         },
-        //items: [journalGrid, ],
+
         items: [
             {
                 xtype: 'panel',
                 title: 'Add a Note',
+
+                layout: 'anchor',
+                anchor: '95%',
+                align : 'stretch',
+                pack : 'start',
+
                 items: [
                     //{xtype: 'tbtext', text: 'Journal Entry'},
                     journalFormPanel,
                 ],
-                layout: 'hbox',
                 layoutConfig: {
                     align: 'stretch',
                     pack : 'start'
