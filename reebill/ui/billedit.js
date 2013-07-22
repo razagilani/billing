@@ -5463,10 +5463,10 @@ function reeBillReady() {
     // Set up the journal memo widget
     //
     // account field
-    var journalEntryField = new Ext.form.TextField({
+    var journalEntryField = new Ext.form.TextArea({
         fieldLabel: 'Journal',
         name: 'entry',
-        width: 300,
+        height: 100,
         allowBlank: false,
     });
     var journalEntryAccountField = new Ext.form.Hidden({
@@ -5498,6 +5498,7 @@ function reeBillReady() {
         frame: true,
         border: false,
         width: 400,
+        height: 200,
         layout: 'hbox',
         // defaults: {
         //     layout: 'form'
@@ -5529,7 +5530,24 @@ function reeBillReady() {
             align : 'stretch',
             pack : 'start'
         },
-        items: [journalGrid, ]
+        //items: [journalGrid, ],
+        items: [
+            {
+                xtype: 'panel',
+                title: 'Add a Note',
+                items: [
+                    //{xtype: 'tbtext', text: 'Journal Entry'},
+                    journalFormPanel,
+                ],
+                layout: 'hbox',
+                layoutConfig: {
+                    align: 'stretch',
+                    pack : 'start'
+                },
+                height: 200,
+            },
+            journalGrid,
+        ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -6199,7 +6217,8 @@ function reeBillReady() {
         id: 'statusbar',
         statusAlign: 'right', // the magic config
         
-        items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
+        //items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
+        items: [],
     });
 
     ////////////////////////////////////////////////////////////////////////////
