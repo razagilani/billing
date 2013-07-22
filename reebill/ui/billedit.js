@@ -2538,31 +2538,41 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },{
                 xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'aChargesSaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
+                id: 'aChargesAddGroupBtn',
+                iconCls: 'icon-add',
+                text: 'Add Group',
+                enabled: true,
+                handler: function() {
+                    Ext.Msg.prompt('Add Charge Group',
+                            'New charge group name:', function(btn, groupName) {
+                        if(btn != 'ok')
+                            return;
+                        var ChargeItemType = aChargesGrid.getStore().recordType;
+                        var c = new ChargeItemType({
+                            chargegroup: groupName,
+                            description: 'enter description',
+                            quantity: 0,
+                            quantity_units: 'kWh',
+                            rate: 0,
+                            rate_units: 'dollars',
+                            total: 0,
+                        });
+            
+                        // create new record
+                        aChargesStore.insert(aChargesStore.getTotalCount(), c);
 
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    aChargesGrid.stopEditing();
-
-                    aChargesStore.save(); 
-
-                }
-            },*/{
-                xtype:'tbseparator'
+                        // select newly inserted record
+                        aChargesGrid.getView().refresh();
+                        aChargesGrid.getSelectionModel().selectRow(
+                                aChargesStore.getTotalCount() - 1);
+                    }
+                )
             }
-        ]
-    });
+        },
+    ]
+});
 
 
     var aChargesGrid = new Ext.grid.EditorGridPanel({
