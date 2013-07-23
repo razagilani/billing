@@ -906,7 +906,7 @@ class StateDB(object):
         # evaluated once at the time this module was imported, which means its
         # value would be the same every time this method is called.
         if date_received is None:
-            date_received = datetime.utcnow().date()
+            date_received = datetime.utcnow()
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         new_payment = Payment(customer, date_received, date_applied,
