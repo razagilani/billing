@@ -3455,6 +3455,7 @@ function reeBillReady() {
                 width: 100,
             },{
                 header: 'Quantity',
+                id: 'quantity',
                 sortable: true,
                 dataIndex: 'quantity',
                 editor: new Ext.form.TextField({allowBlank: true}),
@@ -3580,6 +3581,7 @@ function reeBillReady() {
     var UPRSRSIGrid = new Ext.grid.EditorGridPanel({
         tbar: UPRSRSIToolbar,
         colModel: UPRSRSIColModel,
+        autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: UPRSRSIStore,
         enableColumnMove: true,
