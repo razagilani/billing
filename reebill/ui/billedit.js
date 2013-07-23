@@ -2538,31 +2538,41 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },{
                 xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'aChargesSaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
+                id: 'aChargesAddGroupBtn',
+                iconCls: 'icon-add',
+                text: 'Add Group',
+                enabled: true,
+                handler: function() {
+                    Ext.Msg.prompt('Add Charge Group',
+                            'New charge group name:', function(btn, groupName) {
+                        if(btn != 'ok')
+                            return;
+                        var ChargeItemType = aChargesGrid.getStore().recordType;
+                        var c = new ChargeItemType({
+                            chargegroup: groupName,
+                            description: 'enter description',
+                            quantity: 0,
+                            quantity_units: 'kWh',
+                            rate: 0,
+                            rate_units: 'dollars',
+                            total: 0,
+                        });
+            
+                        // create new record
+                        aChargesStore.insert(aChargesStore.getTotalCount(), c);
 
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    aChargesGrid.stopEditing();
-
-                    aChargesStore.save(); 
-
-                }
-            },*/{
-                xtype:'tbseparator'
+                        // select newly inserted record
+                        aChargesGrid.getView().refresh();
+                        aChargesGrid.getSelectionModel().selectRow(
+                                aChargesStore.getTotalCount() - 1);
+                    }
+                )
             }
-        ]
-    });
+        },
+    ]
+});
 
 
     var aChargesGrid = new Ext.grid.EditorGridPanel({
@@ -3171,42 +3181,50 @@ function reeBillReady() {
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
                 hidden: true,
+                width: 50,
             },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
                 editable: true,
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 150,
             },{
                 header: 'Description',
                 sortable: true,
                 dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             },{
                 header: 'Quantity',
+                id: 'quantity',
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Rate',
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
                 dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             //},{
                 //header: 'Total', 
                 //sortable: true, 
@@ -3300,6 +3318,7 @@ function reeBillReady() {
     var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
         tbar: CPRSRSIToolbar,
         colModel: CPRSRSIColModel,
+        autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: CPRSRSIStore,
         enableColumnMove: true,
@@ -3307,10 +3326,6 @@ function reeBillReady() {
         collapsible: false,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
@@ -3429,42 +3444,51 @@ function reeBillReady() {
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
                 hidden: true,
+                width: 50,
             },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
                 editable: true,
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 150,
             },{
                 header: 'Description',
                 sortable: true,
                 dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             },{
                 header: 'Quantity',
+                id: 'quantity',
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                // no "width": expand to take up all available space
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Rate',
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
                 dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             //},{
                 //header: 'Total', 
                 //sortable: true, 
@@ -3562,6 +3586,7 @@ function reeBillReady() {
     var UPRSRSIGrid = new Ext.grid.EditorGridPanel({
         tbar: UPRSRSIToolbar,
         colModel: UPRSRSIColModel,
+        autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: UPRSRSIStore,
         enableColumnMove: true,
@@ -3569,10 +3594,6 @@ function reeBillReady() {
         collapsible: false,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
@@ -5445,10 +5466,10 @@ function reeBillReady() {
     // Set up the journal memo widget
     //
     // account field
-    var journalEntryField = new Ext.form.TextField({
+    var journalEntryField = new Ext.form.TextArea({
         fieldLabel: 'Journal',
         name: 'entry',
-        width: 300,
+        anchor: '100%',
         allowBlank: false,
     });
     var journalEntryAccountField = new Ext.form.Hidden({
@@ -5479,17 +5500,27 @@ function reeBillReady() {
         url: 'http://'+location.host+'/reebill/save_journal_entry',
         frame: true,
         border: false,
-        width: 400,
-        layout: 'hbox',
-        // defaults: {
-        //     layout: 'form'
-        // },
+        height: 200,
+        layout: 'anchor',
+        anchor: '100%',
+
         items: [
             journalEntryField, 
-            journalEntryResetButton,
-            journalEntrySubmitButton,
             journalEntryAccountField,
-            journalEntrySequenceField
+            journalEntrySequenceField,
+
+            // a panel containing the buttons so they can be horizontal
+            {
+                xtype: 'panel',
+                layout: 'hbox',
+                layoutConfig : {
+                    pack : 'end'
+                },
+                items: [
+                    journalEntryResetButton,
+                    journalEntrySubmitButton,
+                ],
+            }
         ],
         // hideLabels: false,
         // labelAlign: 'left',   // or 'right' or 'top'
@@ -5506,12 +5537,35 @@ function reeBillReady() {
         title: 'Journal',
         disabled: journalPanelDisabled,
         xtype: 'panel',
+
         layout: 'vbox',
         layoutConfig : {
             align : 'stretch',
             pack : 'start'
         },
-        items: [journalGrid, ]
+
+        items: [
+            {
+                xtype: 'panel',
+                title: 'Add a Note',
+
+                layout: 'anchor',
+                anchor: '95%',
+                align : 'stretch',
+                pack : 'start',
+
+                items: [
+                    //{xtype: 'tbtext', text: 'Journal Entry'},
+                    journalFormPanel,
+                ],
+                layoutConfig: {
+                    align: 'stretch',
+                    pack : 'start'
+                },
+                height: 200,
+            },
+            journalGrid,
+        ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -6181,7 +6235,8 @@ function reeBillReady() {
         id: 'statusbar',
         statusAlign: 'right', // the magic config
         
-        items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
+        //items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
+        items: [],
     });
 
     ////////////////////////////////////////////////////////////////////////////
