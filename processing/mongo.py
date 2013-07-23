@@ -910,7 +910,7 @@ class MongoReebill(object):
         # complain if any existing meter has the same identifier
         for meter in utilbill['meters']:
             if meter['identifier'] == new_identifier:
-                raise Exception("Duplicate Identifier")
+                raise ValueError("Duplicate Identifier")
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         meter['identifier'] = new_identifier
@@ -925,7 +925,7 @@ class MongoReebill(object):
         for meter in utilbill['meters']:
             for register in meter['registers']:
                 if register['identifier'] == new_identifier:
-                    raise Exception("Duplicate Identifier")
+                    raise ValueError("Duplicate Identifier")
 
         # actual register in utilbill
         for meter in utilbill['meters']:
@@ -960,7 +960,7 @@ class MongoReebill(object):
         elif len(actual_register) ==1:
             return actual_register[0]
         else:
-            raise Exception("More than one actual register named %s"
+            raise ValueError("More than one actual register named %s"
                     % identifier)
 
     def actual_registers(self, service):
@@ -1018,12 +1018,12 @@ class MongoReebill(object):
                         # TODO physical constants must be global
                         quantity /= Decimal('100000.0')
                     else:
-                        raise Exception('unknown energy unit %s' %
+                        raise ValueError('unknown energy unit %s' %
                                 register['quantity_units'])
                     # set the quantity
                     register['quantity'] = quantity
                     return
-        raise Exception('No register found with identifier "%s"' % quantity)
+        raise ValueError('No register found with identifier "%s"' % quantity)
 
     def utility_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)['utility']
@@ -1065,11 +1065,14 @@ class MongoReebill(object):
                     total_therms += quantity * ccf_conversion_factor
                 else:
                     # TODO: 28825375 - need the conversion factor for this
-                    raise Exception(("Register contains gas measured "
-                        "in ccf: can't convert that into energy "
-                        "without the multiplier."))
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                        "in ccf: energy value is wrong; time to implement "
+                        "https://www.pivotaltracker.com/story/show/28825375")\
+                        % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
             else:
-                raise Exception('Unknown energy unit: "%s"' % \
+                raise ValueError('Unknown energy unit: "%s"' % \
                         register['quantity_units'])
         return total_therms
 
