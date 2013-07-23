@@ -1296,23 +1296,29 @@ class BillToolBridge:
         if not start or not limit:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
-            accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
-            account_names = self.all_names_of_accounts([account for account in accounts])
+            accounts, totalCount = self.state_db.list_accounts(session,
+                    int(start), int(limit))
+            account_names = self.all_names_of_accounts([account for account in
+                    accounts])
             rows = self.process.summary_ree_charges(session, accounts, account_names)
             for row in rows:
-                outstanding_balance = self.process.get_outstanding_balance(session, row['account'])
+                outstanding_balance = self.process.get_outstanding_balance(session,
+                        row['account'])
                 days_since_due_date = None
                 if outstanding_balance > 0:
                     payments = self.state_db.payments(session, row['account'])
                     if payments:
                         last_payment_date = payments[-1].date_received
-                        reebills_since = self.reebill_dao.load_reebills_in_period(row['account'], 'any', last_payment_date, date.today())
+                        reebills_since = self.reebill_dao.load_reebills_in_period(
+                                row['account'], 'any', last_payment_date, date.today())
                         if reebills_since and reebills_since[0].due_date:
-                            days_since_due_date = (date.today() - reebills_since[0].due_date).days
+                            days_since_due_date = (date.today() -
+                                    reebills_since[0].due_date).days
                 
                 row.update({'outstandingbalance': '$%.2f' % outstanding_balance,
                            'days_late': days_since_due_date})
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows,
+                    'results':totalCount})
 
     @cherrypy.expose
     @random_wait
