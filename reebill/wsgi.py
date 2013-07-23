@@ -865,6 +865,10 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             for sequence in range(sequence, self.state_db.last_sequence(session,
                     account) + 1):
+                # update "hypothetical charges" to match actual charges"
+                # TODO this should be done inside compute_bill
+                self.copyactual(account, sequence)
+
                 # use version 0 of the predecessor to show the real account
                 # history (prior balance, payment received, balance forward)
                 mongo_reebill = self.reebill_dao.load_reebill(account,
@@ -2356,6 +2360,7 @@ class BillToolBridge:
         flattened_charges = reebill.actual_chargegroups_flattened(service)
 
         if xaction == "read":
+            self.copyactual(account, sequence)
             return self.dumps({'success': True, 'rows': flattened_charges})
 
         elif xaction == "update":
@@ -2441,13 +2446,15 @@ class BillToolBridge:
         if reebill is None:
             return self.dumps({'success':True, 'rows':[]})
 
+        # update hypothetical charges to match actual
+        self.copyactual(account, sequence)
+
         flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows': flattened_charges})
 
         elif xaction == "update":
-
             rows = json.loads(kwargs["rows"])
 
             # single edit comes in not in a list
