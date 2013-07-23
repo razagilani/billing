@@ -18,7 +18,7 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
@@ -144,7 +144,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    date_received = Column(Date, nullable=False)
+    date_received = Column(DateTime, nullable=False)
     date_applied = Column(Date, nullable=False)
     description = Column(String)
     credit = Column(Float)
