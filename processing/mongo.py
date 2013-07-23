@@ -1085,9 +1085,12 @@ class MongoReebill(object):
                     total_therms += quantity * ccf_conversion_factor
                 else:
                     # TODO: 28825375 - need the conversion factor for this
-                    raise ValueError(("Register contains gas measured "
-                        "in ccf: can't convert that into energy "
-                        "without the multiplier."))
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                        "in ccf: energy value is wrong; time to implement "
+                        "https://www.pivotaltracker.com/story/show/28825375")\
+                        % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
             else:
                 raise ValueError('Unknown energy unit: "%s"' % \
                         register['quantity_units'])
