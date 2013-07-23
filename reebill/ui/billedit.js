@@ -5458,7 +5458,7 @@ function reeBillReady() {
             forceFit: true,
         },
         // this is actually set in loadReeBillUIForAccount()
-        title: 'Journal Entries for Account ' + selected_account,
+        title: 'Journal Entries for All Accounts',
         clicksToEdit: 2
     });
 
