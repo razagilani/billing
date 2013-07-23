@@ -3181,42 +3181,50 @@ function reeBillReady() {
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
                 hidden: true,
+                width: 50,
             },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
                 editable: true,
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 150,
             },{
                 header: 'Description',
                 sortable: true,
                 dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             },{
                 header: 'Quantity',
+                id: 'quantity',
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Rate',
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
                 dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 100,
             //},{
                 //header: 'Total', 
                 //sortable: true, 
@@ -3310,6 +3318,7 @@ function reeBillReady() {
     var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
         tbar: CPRSRSIToolbar,
         colModel: CPRSRSIColModel,
+        autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: CPRSRSIStore,
         enableColumnMove: true,
@@ -3317,10 +3326,6 @@ function reeBillReady() {
         collapsible: false,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
@@ -3589,10 +3594,6 @@ function reeBillReady() {
         collapsible: false,
         animCollapse: false,
         stripeRows: true,
-        //viewConfig: {
-            //// doesn't seem to work
-            //forceFit: true,
-        //},
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
