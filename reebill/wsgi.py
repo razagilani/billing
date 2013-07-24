@@ -34,6 +34,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing.state import UtilBill
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -2785,7 +2786,8 @@ class BillToolBridge:
             total_charges_as_float = float(total_charges)
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
+            UtilBill.validate_utilbill_period(begin_date_as_date,
+                    end_date_as_date)
 
             try:
                 self.process.upload_utility_bill(session, account, service,
@@ -2939,15 +2941,6 @@ class BillToolBridge:
                 the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
             return self.dumps({'success':True, 'date': the_datetime})
 
-    def validate_utilbill_period(self, start, end):
-        '''Raises an exception if the dates 'start' and 'end' are unreasonable
-        as a utility bill period: "reasonable" means start < end and (end -
-        start) < 1 year.'''
-        if start >= end:
-            raise Exception('Utility bill start date must precede end.')
-        if (end - start).days > 365:
-            raise Exception('Utility billing period lasts longer than a year?!')
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2984,7 +2977,8 @@ class BillToolBridge:
 
 
                 # check that new dates are reasonable
-                self.validate_utilbill_period(new_period_start, new_period_end)
+                UtilBill.validate_utilbill_period(new_period_start,
+                        new_period_end)
 
                 # find utilbill in mysql
                 utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)

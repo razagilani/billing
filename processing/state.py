@@ -88,6 +88,16 @@ class UtilBill(Base):
     reebill = relationship("ReeBill", backref=backref('utilbill',
             lazy='joined', order_by=id))
 
+    @classmethod
+    def validate_utilbill_period(self, start, end):
+        '''Raises an exception if the dates 'start' and 'end' are unreasonable
+        as a utility bill period: "reasonable" means start < end and (end -
+        start) < 1 year.'''
+        if start >= end:
+            raise Exception('Utility bill start date must precede end.')
+        if (end - start).days > 365:
+            raise Exception('Utility billing period lasts longer than a year?!')
+
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
