@@ -62,7 +62,7 @@ class Process(object):
         session.add(new_customer)
         return new_customer
 
-    def update_utilbill(self, session, utilbill_id, period_start=None,
+    def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             ratestructure=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose

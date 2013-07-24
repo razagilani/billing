@@ -2871,57 +2871,6 @@ class BillToolBridge:
         return self.dumps({'success':True})
 
  
-    # TODO merge into utilbill_grid(); this is not called by the front-end anymore
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def listUtilBills(self, start, limit, account, **args):
-        '''Handles AJAX call to populate Ext grid of utility bills.'''
-        with DBSession(self.state_db) as session:
-            # names for utilbill states in the UI
-            state_descriptions = {
-                state.UtilBill.Complete: 'Final',
-                state.UtilBill.UtilityEstimated: 'Utility Estimated',
-                state.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                state.UtilBill.Hypothetical: 'Missing'
-            }
-
-            if not start or not limit or not account:
-                raise ValueError("Bad Parameter Value")
-
-            # result is a list of dictionaries of the form {account: account
-            # number, name: full name, period_start: date, period_end: date,
-            # sequence: reebill sequence number (if present)}
-            utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
-            state_reebills = [ub.reebill for ub in utilbills]
-            mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
-
-            full_names = self.full_names_of_accounts([account])
-            full_name = full_names[0] if full_names else account
-
-            rows = [dict([
-                # TODO: sending real database ids to the client a security
-                # risk; these should be encrypted
-                ('id', ub.id),
-                ('account', ub.customer.account),
-                ('name', full_name),
-                ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
-                ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
-                # capitalize service name
-                ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
-                ('period_start', ub.period_start),
-                ('period_end', ub.period_end),
-                ('total_charges', ub.total_charges),
-                ('sequence', ub.reebill.sequence if ub.reebill else None),
-                ('state', state_descriptions[ub.state]),
-                # utility bill rows are only editable if they don't have a
-                # reebill attached to them
-                ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for rb, ub in zip(mongo_reebills,utilbills)]
-
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
-    
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2952,9 +2901,46 @@ class BillToolBridge:
         wants to read data and "update" when a cell in the grid was edited.'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                # for just reading, forward the request to the old function that
-                # was doing this
-                return self.listUtilBills(**kwargs)
+                account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
+                # names for utilbill states in the UI
+                state_descriptions = {
+                    state.UtilBill.Complete: 'Final',
+                    state.UtilBill.UtilityEstimated: 'Utility Estimated',
+                    state.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                    state.UtilBill.Hypothetical: 'Missing'
+                }
+
+                # result is a list of dictionaries of the form {account: account
+                # number, name: full name, period_start: date, period_end: date,
+                # sequence: reebill sequence number (if present)}
+                utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+                state_reebills = [ub.reebill for ub in utilbills]
+                mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
+
+                full_names = self.full_names_of_accounts([account])
+                full_name = full_names[0] if full_names else account
+
+                rows = [dict([
+                    # TODO: sending real database ids to the client a security
+                    # risk; these should be encrypted
+                    ('id', ub.id),
+                    ('account', ub.customer.account),
+                    ('name', full_name),
+                    ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                    ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                    # capitalize service name
+                    ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
+                    ('period_start', ub.period_start),
+                    ('period_end', ub.period_end),
+                    ('total_charges', ub.total_charges),
+                    ('sequence', ub.reebill.sequence if ub.reebill else None),
+                    ('state', state_descriptions[ub.state]),
+                    # utility bill rows are only editable if they don't have a
+                    # reebill attached to them
+                    ('editable', (not ub.has_reebill or not ub.reebill.issued))
+                ]) for rb, ub in zip(mongo_reebills,utilbills)]
+
+                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
             elif xaction == 'update':
                 # ext sends a dict if there is one row, a list of dicts if
                 # there are more than one. but in this case only one row can be
@@ -2965,7 +2951,7 @@ class BillToolBridge:
                 # value. yes, that means you can never set a value to ''.
                 args = {k: (None if v == '' else v) for (k, v) in rows.iteritems()}
 
-                self.process.update_utilbill(session, args['id'],
+                self.process.update_utilbill_metadata(session, args['id'],
                     period_start = datetime.strptime(args['period_start'],
                             dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date(),
                     period_end = datetime.strptime(args['period_end'],
