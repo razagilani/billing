@@ -2913,9 +2913,11 @@ class BillToolBridge:
                 # result is a list of dictionaries of the form {account: account
                 # number, name: full name, period_start: date, period_end: date,
                 # sequence: reebill sequence number (if present)}
-                utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+                utilbills, totalCount = self.state_db.list_utilbills(session,
+                        account, int(start), int(limit))
                 state_reebills = [ub.reebill for ub in utilbills]
-                mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
+                mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account,
+                        rb.sequence) if rb else None for rb in state_reebills]
 
                 full_names = self.full_names_of_accounts([account])
                 full_name = full_names[0] if full_names else account
@@ -2926,10 +2928,14 @@ class BillToolBridge:
                     ('id', ub.id),
                     ('account', ub.customer.account),
                     ('name', full_name),
-                    ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
-                    ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                    ('utility', rb.utility_name_for_service(ub.service) if
+                            ub.service is not None and rb is not None else ''),
+                    ('rate_structure',
+                            rb.rate_structure_name_for_service(ub.service) if
+                            ub.service is not None and rb is not None else ''),
                     # capitalize service name
-                    ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
+                    ('service', 'Unknown' if ub.service is None else
+                            ub.service[0].upper() + ub.service[1:]),
                     ('period_start', ub.period_start),
                     ('period_end', ub.period_end),
                     ('total_charges', ub.total_charges),
@@ -2940,7 +2946,8 @@ class BillToolBridge:
                     ('editable', (not ub.has_reebill or not ub.reebill.issued))
                 ]) for rb, ub in zip(mongo_reebills,utilbills)]
 
-                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+                return self.dumps({'success': True, 'rows':rows,
+                        'results':totalCount})
             elif xaction == 'update':
                 # ext sends a dict if there is one row, a list of dicts if
                 # there are more than one. but in this case only one row can be
