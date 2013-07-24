@@ -2009,10 +2009,26 @@ function reeBillReady() {
                 id: 'quantity_units',
                 header: 'Units',
                 dataIndex: 'quantity_units',
-                editable: true,
-                sortable: false,
-                editor: new Ext.form.TextField({allowBlank: false}),
                 width: 70,
+                sortable: true,
+                editor: new Ext.form.ComboBox({
+                    typeAhead: true,
+                    triggerAction: 'all',
+                    // transform the data already specified in html
+                    //transform: 'light',
+                    lazyRender: true,
+                    listClass: 'x-combo-list-small',
+                    mode: 'local',
+                    store: new Ext.data.ArrayStore({
+                        fields: [
+                            'displayText'
+                        ],
+                        // TODO: externalize these units
+                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                    }),
+                    valueField: 'displayText',
+                    displayField: 'displayText'
+                })
             },
             {
                 id: 'description',
