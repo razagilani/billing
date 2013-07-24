@@ -442,6 +442,7 @@ class RateStructureDAO(object):
                                 '_id.utility_name':old_utility,
                                 '_id.rate_structure_name':old_name,
                                 '_id.type':'CPRS'})
+
     def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
         Rate Structure document in Mongo.'''

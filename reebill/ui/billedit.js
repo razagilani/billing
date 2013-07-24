@@ -253,8 +253,7 @@ function reeBillReady() {
 
     var utilbillWriter = new Ext.data.JsonWriter({
         encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: false,
     });
 
     var utilbillStoreDataConn = new Ext.data.Connection({

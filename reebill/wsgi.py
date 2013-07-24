@@ -2953,22 +2953,22 @@ class BillToolBridge:
                 # ext sends a dict if there is one row, a list of dicts if
                 # there are more than one. but in this case only one row can be
                 # edited at a time
-                rows = ju.loads(kwargs['rows'])
+                row = ju.loads(kwargs['rows'])
 
-                # rows uses '' (empty string) to represent NOT changing a
-                # value. yes, that means you can never set a value to ''.
-                args = {k: (None if v == '' else v) for (k, v) in rows.iteritems()}
-
-                self.process.update_utilbill_metadata(session, args['id'],
-                    period_start = datetime.strptime(args['period_start'],
-                            dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date(),
-                    period_end = datetime.strptime(args['period_end'],
-                            dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date(),
-                    service = args['service'].lower(),
-                    total_charges = args['total_charges'],
-                    utility = args['utility'],
-                    ratestructure = args['rate_structure'],
-                )
+                kwargs = {}
+                for k, v in row.iteritems():
+                    # NOTE Ext-JS uses '' (empty string) to represent not
+                    # changing a value. yes, that means you can never set a
+                    # value to ''.
+                    if v == '':
+                        pass
+                    elif k in ('period_start', 'period_end'):
+                        kwargs[k] = datetime.strptime(v)
+                    elif k == 'service':
+                        kwargs[k] = v.lower()
+                    elif k != 'id':
+                        kwargs[k] = v
+                self.process.update_utilbill_metadata(session, row['id'], **kwargs)
 
                 return self.dumps({'success': True})
 
