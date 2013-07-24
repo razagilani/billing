@@ -2969,7 +2969,8 @@ class BillToolBridge:
                 # only certain data can be updated.
                 # parse data from the client
 
-                # ext sends a dict if there is one row, a list of dicts if there are more than one
+                # ext sends a dict if there is one row, a list of dicts if
+                # there are more than one
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
                 new_period_start = datetime.strptime(rows['period_start'],
@@ -2992,7 +2993,8 @@ class BillToolBridge:
                 mongo_reebill = None
                 if utilbill.has_reebill:
                     reebill = utilbill.reebill
-                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                    mongo_reebill = self.reebill_dao.load_reebill(
+                            reebill.customer.account, reebill.sequence)
 
                 if reebill is None and (new_utility != '' or new_ratestructure != ''):
                     raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
@@ -3013,17 +3015,29 @@ class BillToolBridge:
                             new_period_start, new_period_end)
 
                 # change dates in Mongo if needed
-                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                if (utilbill.period_start != new_period_start \
+                        or utilbill.period_end != new_period_end) \
+                        and utilbill.has_reebill:
+                    mongo_reebill.set_utilbill_period_for_service(utilbill.service,
+                            (new_period_start, new_period_end))
                     mongo_reebill.set_meter_dates_from_utilbills()
                     self.reebill_dao.save_reebill(mongo_reebill)
 
-                #update utility and ratestructure names
-                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
-                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
-                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
-                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
-                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
+                # update utility and ratestructure names
+                if mongo_reebill is not None \
+                        and mongo_reebill.utility_name_for_service(utilbill.service) \
+                        != new_utility \
+                        or mongo_reebill.rate_structure_name_for_service(
+                                utilbill.service) != new_ratestructure:
+                    old_utility = mongo_reebill.utility_name_for_service(
+                            utilbill.service)
+                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(
+                            utilbill.service)
+                    self.reebill_dao.update_utility_and_rs(mongo_reebill,
+                            utilbill.service, new_utility, new_ratestructure)
+                    self.ratestructure_dao.update_rs_name(utilbill.customer.account,
+                            reebill.sequence, reebill.max_version, old_utility,
+                            old_ratestructure, new_utility, new_ratestructure)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
