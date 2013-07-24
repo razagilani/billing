@@ -62,6 +62,108 @@ class Process(object):
         session.add(new_customer)
         return new_customer
 
+    def update_utilbill(self, session, utilbill_id, period_start=None,
+            period_end=None, service=None, total_charges=None, utility=None,
+            ratestructure=None):
+        '''Update various fields in MySQL and Mongo for the utility bill whose
+        MySQL id is 'utilbill_id'. Fields that are not None get updated to new
+        values while other fields are unaffected.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+
+        # save period dates for use in moving the utility bill file at the end
+        # of this method
+        old_period_start, old_period_end = utilbill.period_start, period_end
+
+        # load MySQL reebill, if any, and its Mongo document
+        if utilbill.has_reebill:
+            reebill = utilbill.reebill
+            mongo_reebill = self.reebill_dao.load_reebill(
+                    reebill.customer.account, reebill.sequence)
+            # utility bills that have issued reebills shouldn't be editable
+            if utilbill.reebill.issued:
+                raise ValueError(("Can't edit utility bills that are attached "
+                        "to an issued reebill."))
+
+        # for total charges, it doesn't matter whether a reebill exists
+        if total_charges is not None:
+            utilbill.total_charges = total_charges
+
+        # for service and period dates, a reebill must be updated if it does
+        # exist
+
+        if service is not None:
+            if utilbill.has_reebill:
+                mongo_reebill._get_utilbill_for_service(utilbill.service)\
+                        ['service'] = service
+            utilbill.service = service
+            
+        if period_start is not None:
+            UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
+            utilbill.period_start = period_start
+            if utilbill.has_reebill:
+                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
+                        (period_start, utilbill.period_end))
+                mongo_reebill.set_meter_dates_from_utilbills()
+
+        if period_end is not None:
+            UtilBill.validate_utilbill_period(utilbill.period_start, period_end)
+            utilbill.period_end = period_end
+            if utilbill.has_reebill:
+                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
+                        (utilbill.period_start, period_end))
+                mongo_reebill.set_meter_dates_from_utilbills()
+
+        # for utility and rate structure name, a reebill must exist
+
+        if utility is not None:
+            if not utilbill.has_reebill:
+                raise ValueError(("Can't assign a utility/rate structure name "
+                        "to an unattached utility bill"))
+            # NOTE utility name, RS name are not yet stored in Mongo
+            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
+                    utilbill.service)
+            self.reebill_dao.update_utility_and_rs(mongo_reebill,
+                    utilbill.service, utility, old_ratestructure)
+
+        if ratestructure is not None:
+            if not utilbill.has_reebill:
+                raise ValueError(("Can't assign a utility/rate structure name "
+                        "to an unattached utility bill"))
+            # NOTE utility name, RS name are not yet stored in Mongo
+            old_utility = mongo_reebill.utility_name_for_service(
+                    utilbill.service)
+            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
+                    utilbill.service)
+            self.reebill_dao.update_utility_and_rs(mongo_reebill,
+                    utilbill.service, old_utility, ratestructure)
+            self.rate_structure_dao.update_rs_name(utilbill.customer.account,
+                    int(reebill.sequence), int(reebill.max_version), old_utility,
+                    old_ratestructure, old_utility, ratestructure)
+
+        # delete any Hypothetical utility bills that were created to cover gaps
+        # that no longer exist
+        self.state_db.trim_hypothetical_utilbills(session,
+                utilbill.customer.account, utilbill.service)
+
+        # finally, un-rollback-able operations: move the file, if there is one,
+        # and save in Mongo. (only utility bills that are Complete (0) or
+        # UtilityEstimated (1) have files; SkylineEstimated (2) and
+        # Hypothetical (3) ones don't.)
+        if utilbill.state < state.UtilBill.SkylineEstimated:
+            self.billupload.move_utilbill_file(utilbill.customer.account,
+                    # don't trust the client to say what the original dates were
+                    # TODO don't pass dates into BillUpload as strings
+                    # https://www.pivotaltracker.com/story/show/24869817
+                    old_period_start,
+                    old_period_end,
+                    # dates in destination file name are the new ones
+                    period_start or utilbill.period_start,
+                    period_end or utilbill.period_end)
+        if utilbill.has_reebill:
+            self.reebill_dao.save_reebill(mongo_reebill)
+
+
     def upload_utility_bill(self, session, account, service, begin_date,
                 end_date, bill_file, file_name, total=0):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
