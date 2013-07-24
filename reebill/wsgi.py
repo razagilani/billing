@@ -801,9 +801,9 @@ class BillToolBridge:
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
-            raise Exception("OLTP is not integrated")
+            raise ValueError("OLTP is not integrated")
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            raise Exception("Nexus is not integrated")
+            raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -931,7 +931,7 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             if reebill is None:
-                raise Exception('No reebill for account %s, sequence %s')
+                raise NoSuchBillException('No reebill for account %s, sequence %s')
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
@@ -1574,7 +1574,7 @@ class BillToolBridge:
         
         with DBSession(self.state_db) as session:
             if self.state_db.is_issued(session, account, sequence):
-                raise Exception("Cannot edit rate structure for an issued bill")
+                raise ValueError("Cannot edit rate structure for an issued bill")
             
         if xaction == "update":
 
@@ -3000,7 +3000,7 @@ class BillToolBridge:
                     raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
                 # utility bills that have issued reebills shouldn't be editable
                 if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
+                    raise ValueError("Can't edit utility bills that are attached to an issued reebill.")
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
@@ -3056,7 +3056,7 @@ class BillToolBridge:
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
-                raise Exception('utilbill_grid() does not accept xaction "create"')
+                raise ValueError('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
                 account = kwargs["account"]
