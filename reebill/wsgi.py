@@ -34,6 +34,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing.state import UtilBill
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -801,9 +802,9 @@ class BillToolBridge:
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
-            raise Exception("OLTP is not integrated")
+            raise ValueError("OLTP is not integrated")
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            raise Exception("Nexus is not integrated")
+            raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -931,7 +932,7 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             if reebill is None:
-                raise Exception('No reebill for account %s, sequence %s')
+                raise NoSuchBillException('No reebill for account %s, sequence %s')
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
@@ -1574,7 +1575,7 @@ class BillToolBridge:
         
         with DBSession(self.state_db) as session:
             if self.state_db.is_issued(session, account, sequence):
-                raise Exception("Cannot edit rate structure for an issued bill")
+                raise ValueError("Cannot edit rate structure for an issued bill")
             
         if xaction == "update":
 
@@ -2785,7 +2786,8 @@ class BillToolBridge:
             total_charges_as_float = float(total_charges)
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
+            UtilBill.validate_utilbill_period(begin_date_as_date,
+                    end_date_as_date)
 
             try:
                 self.process.upload_utility_bill(session, account, service,
@@ -2939,15 +2941,6 @@ class BillToolBridge:
                 the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
             return self.dumps({'success':True, 'date': the_datetime})
 
-    def validate_utilbill_period(self, start, end):
-        '''Raises an exception if the dates 'start' and 'end' are unreasonable
-        as a utility bill period: "reasonable" means start < end and (end -
-        start) < 1 year.'''
-        if start >= end:
-            raise Exception('Utility bill start date must precede end.')
-        if (end - start).days > 365:
-            raise Exception('Utility billing period lasts longer than a year?!')
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2963,86 +2956,32 @@ class BillToolBridge:
                 # was doing this
                 return self.listUtilBills(**kwargs)
             elif xaction == 'update':
-                # TODO move out of BillToolBridge, make into its own function
-                # so it's testable
-
-                # only certain data can be updated.
-                # parse data from the client
-
-                # ext sends a dict if there is one row, a list of dicts if there are more than one
+                # ext sends a dict if there is one row, a list of dicts if
+                # there are more than one. but in this case only one row can be
+                # edited at a time
                 rows = ju.loads(kwargs['rows'])
-                utilbill_id = rows['id']
-                new_period_start = datetime.strptime(rows['period_start'],
-                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                new_period_end = datetime.strptime(rows['period_end'],
-                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                new_service = rows['service'].lower()
-                new_total_charges = rows['total_charges']
-                new_utility = rows['utility']
-                new_ratestructure = rows['rate_structure']
 
+                # rows uses '' (empty string) to represent NOT changing a
+                # value. yes, that means you can never set a value to ''.
+                args = {k: (None if v == '' else v) for (k, v) in rows.iteritems()}
 
-                # check that new dates are reasonable
-                self.validate_utilbill_period(new_period_start, new_period_end)
-
-                # find utilbill in mysql
-                utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-
-                reebill = None
-                mongo_reebill = None
-                if utilbill.has_reebill:
-                    reebill = utilbill.reebill
-                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-
-                if reebill is None and (new_utility != '' or new_ratestructure != ''):
-                    raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
-                # utility bills that have issued reebills shouldn't be editable
-                if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
-
-                # move the file, if there is one. (only utility bills that are
-                # Complete (0) or UtilityEstimated (1) have files;
-                # SkylineEstimated (2) and Hypothetical (3) ones don't.)
-                if utilbill.state < state.UtilBill.SkylineEstimated:
-                    self.billUpload.move_utilbill_file(utilbill.customer.account,
-                            # don't trust the client to say what the original dates were
-                            # TODO don't pass dates into BillUpload as strings
-                            # https://www.pivotaltracker.com/story/show/24869817
-                            utilbill.period_start,
-                            utilbill.period_end,
-                            new_period_start, new_period_end)
-
-                # change dates in Mongo if needed
-                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
-                    mongo_reebill.set_meter_dates_from_utilbills()
-                    self.reebill_dao.save_reebill(mongo_reebill)
-
-                #update utility and ratestructure names
-                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
-                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
-                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
-                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
-                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
-
-                # change dates in MySQL
-                utilbill.period_start = new_period_start
-                utilbill.period_end = new_period_end
-                utilbill.total_charges = new_total_charges
-
-                # delete any estimated utility bills that were created to
-                # cover gaps that no longer exist
-                self.state_db.trim_hypothetical_utilbills(session,
-                        utilbill.customer.account, utilbill.service)
-
-                # update service in MySQL
-                utilbill.service = new_service
+                self.process.update_utilbill(session, args['id'],
+                    period_start = datetime.strptime(args['period_start'],
+                            dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date(),
+                    period_end = datetime.strptime(args['period_end'],
+                            dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date(),
+                    service = args['service'].lower(),
+                    total_charges = args['total_charges'],
+                    utility = args['utility'],
+                    ratestructure = args['rate_structure'],
+                )
 
                 return self.dumps({'success': True})
+
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
-                raise Exception('utilbill_grid() does not accept xaction "create"')
+                raise ValueError('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
                 account = kwargs["account"]
