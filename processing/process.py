@@ -64,7 +64,7 @@ class Process(object):
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
-            ratestructure=None):
+            rate_structure=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -73,7 +73,7 @@ class Process(object):
 
         # save period dates for use in moving the utility bill file at the end
         # of this method
-        old_period_start, old_period_end = utilbill.period_start, period_end
+        old_start, old_end = utilbill.period_start, utilbill.period_end
 
         # load MySQL reebill, if any, and its Mongo document
         if utilbill.has_reebill:
@@ -126,7 +126,7 @@ class Process(object):
             self.reebill_dao.update_utility_and_rs(mongo_reebill,
                     utilbill.service, utility, old_ratestructure)
 
-        if ratestructure is not None:
+        if rate_structure is not None:
             if not utilbill.has_reebill:
                 raise ValueError(("Can't assign a utility/rate structure name "
                         "to an unattached utility bill"))
@@ -136,10 +136,10 @@ class Process(object):
             old_ratestructure = mongo_reebill.rate_structure_name_for_service(
                     utilbill.service)
             self.reebill_dao.update_utility_and_rs(mongo_reebill,
-                    utilbill.service, old_utility, ratestructure)
+                    utilbill.service, old_utility, rate_structure)
             self.rate_structure_dao.update_rs_name(utilbill.customer.account,
                     int(reebill.sequence), int(reebill.max_version), old_utility,
-                    old_ratestructure, old_utility, ratestructure)
+                    old_ratestructure, old_utility, rate_structure)
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
@@ -155,8 +155,7 @@ class Process(object):
                     # don't trust the client to say what the original dates were
                     # TODO don't pass dates into BillUpload as strings
                     # https://www.pivotaltracker.com/story/show/24869817
-                    old_period_start,
-                    old_period_end,
+                    old_start, old_end,
                     # dates in destination file name are the new ones
                     period_start or utilbill.period_start,
                     period_end or utilbill.period_end)
