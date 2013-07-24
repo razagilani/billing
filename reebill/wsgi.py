@@ -1158,10 +1158,11 @@ class BillToolBridge:
             try:
                 return '%(street)s, %(city)s, %(state)s' % utilbill_doc['service_address']
             except KeyError as e:
-                print >> sys.stderr, 'Utility bill for %s from %s to %s lacks key "%s"' \
-                        % (utilbill_doc['account'], utilbill_doc['start'],
-                                utilbill_doc['end'], e.message)
-                print >> sys.stderr, utilbill_doc['service_address']
+                self.logger.error(('Utility bill service address for %s '
+                        'from %s to %s lacks key "%s": %s') % (
+                                utilbill_doc['account'], utilbill_doc['start'],
+                                utilbill_doc['end'], e.message,
+                                utilbill_doc['service_address']))
                 return '?'
 
         # call getrows to actually query the database; return the result in
