@@ -29,6 +29,7 @@ from skyliner.splinter import Splinter
 #TODO don't rely on test code, if we are, it isn't test code
 from skyliner import mock_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
+from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
@@ -1328,7 +1329,7 @@ class BillToolBridge:
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
         #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE) if x else None
         begin_date = make_date(begin_date)
         end_date = make_date(end_date)
         #write out spreadsheet(s)
@@ -2963,7 +2964,8 @@ class BillToolBridge:
                     if v == '':
                         pass
                     elif k in ('period_start', 'period_end'):
-                        kwargs[k] = datetime.strptime(v)
+                        kwargs[k] = datetime.strptime(v,
+                                ISO_8601_DATETIME_WITHOUT_ZONE).date()
                     elif k == 'service':
                         kwargs[k] = v.lower()
                     elif k != 'id':
