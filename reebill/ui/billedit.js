@@ -6045,9 +6045,17 @@ function reeBillReady() {
                 editor: new Ext.form.TextField({
                     //regex: issuableMailListRegex,
                 }),
+                renderer: function(v, params, record)
+                {
+                    if (Ext.isEmpty(record.data.mailto))
+                    {
+                        return "<i>Enter a recipient for this bill before issuing</i>";
+                    }
+                    return record.data.mailto;
+                }
             },{
                 id: 'util_total',
-                header: 'Utility Bill Total',
+                header: 'Total From Utility Bill',
                 width: 140,
                 sortable: false,
                 groupable: false,
@@ -6060,7 +6068,7 @@ function reeBillReady() {
                 },
             },{
                 id: 'reebill_total',
-                header: 'Projected Total w/o REE',
+                header: 'Computed Total',
                 width: 140,
                 sortable: false,
                 groupable: false,
