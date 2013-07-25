@@ -6045,6 +6045,14 @@ function reeBillReady() {
                 editor: new Ext.form.TextField({
                     //regex: issuableMailListRegex,
                 }),
+                renderer: function(v, params, record)
+                {
+                    if (Ext.isEmpty(record.data.mailto))
+                    {
+                        return "<i>Enter a recipient for this bill before issuing</i>";
+                    }
+                    return record.data.mailto;
+                }
             },{
                 id: 'util_total',
                 header: 'Total From Utility Bill',
