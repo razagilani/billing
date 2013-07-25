@@ -14,7 +14,6 @@ something else (ls /usr/lib to find out what).
 3. Make sure the following Python packages are installed in your ReeBill
 virtualenv:
     reportlab
-    ChartDirector (needs to be installed via non-standard hack)
     PIL (used by reportlab, but not installed when you pip install reportlab)
 
 TODO: merge this into any development-environment setup documentation that may
