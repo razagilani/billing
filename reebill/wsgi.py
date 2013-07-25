@@ -2715,13 +2715,6 @@ class BillToolBridge:
             # get dictionaries describing all registers in all utility bills
             registers = reebill.get_all_actual_registers_json()
 
-            # insert an "id" key that uniquely identifies these objects,
-            # used by the client
-            for register_dict in registers:
-                register_dict['id'] = '/'.join([register_dict['service'],
-                        register_dict['meter_id'],
-                        register_dict['register_id']]),
-
             result = {'success': True, "rows": registers,
                     'total': len(registers)}
 
@@ -2751,12 +2744,6 @@ class BillToolBridge:
             # get dictionaries describing all registers in all utility bills
             registers = reebill.get_all_actual_registers_json()
 
-            # insert an "id" key that uniquely identifies these objects,
-            # used by the client
-            for register_dict in registers:
-                register_dict['id'] = '/'.join([register_dict['service'],
-                        register_dict['meter_id'],
-                        register_dict['register_id']]),
             result = {'success': True, "rows": registers,
                     'total': len(registers)}
 
