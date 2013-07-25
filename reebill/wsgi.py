@@ -2756,7 +2756,6 @@ class BillToolBridge:
 
             return self.dumps(result)
 
-
         if xaction == 'update':
             meters = reebill.meters
             registers = []
@@ -2813,7 +2812,7 @@ class BillToolBridge:
                 if 'current_selected_id' in kwargs and old_id == kwargs['current_selected_id'] and toSelect is None:
                     toSelect = reg['id']
 
-        if kwargs['xaction'] == 'destroy':
+        if xaction == 'destroy':
             meters = reebill.meters
             registers = []
             for service, meter_list in meters.items():
