@@ -2951,12 +2951,14 @@ class BillToolBridge:
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
             elif xaction == 'update':
-                # ext sends a dict if there is one row, a list of dicts if
-                # there are more than one. but in this case only one row can be
-                # edited at a time
+                # ext sends a JSON object if there is one row, a list of
+                # objects if there are more than one. but in this case only one
+                # row can be edited at a time
                 row = ju.loads(kwargs['rows'])
 
-                kwargs = {}
+                # convert JSON key/value pairs into arguments for
+                # Process.update_utilbill_metadata below
+                update_args = {}
                 for k, v in row.iteritems():
                     # NOTE Ext-JS uses '' (empty string) to represent not
                     # changing a value. yes, that means you can never set a
@@ -2964,13 +2966,15 @@ class BillToolBridge:
                     if v == '':
                         pass
                     elif k in ('period_start', 'period_end'):
-                        kwargs[k] = datetime.strptime(v,
+                        update_args[k] = datetime.strptime(v,
                                 ISO_8601_DATETIME_WITHOUT_ZONE).date()
                     elif k == 'service':
-                        kwargs[k] = v.lower()
+                        update_args[k] = v.lower()
                     elif k != 'id':
-                        kwargs[k] = v
-                self.process.update_utilbill_metadata(session, row['id'], **kwargs)
+                        update_args[k] = v
+
+                self.process.update_utilbill_metadata(session, row['id'],
+                        **update_args)
 
                 return self.dumps({'success': True})
 
