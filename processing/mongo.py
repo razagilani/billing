@@ -995,6 +995,29 @@ class MongoReebill(object):
                 result.extend(meter['registers'])
         return result
 
+    def get_all_actual_registers_json(self):
+        '''Returns a list of dictionaries describing non-shadow registers of
+        all meters in all utility bills. (The "actual" in the name has nothing
+        to do with "actual charges".)'''
+        result = []
+        for utilbill in self._utilbills:
+            for meter in utilbill['meters']:
+                for register in meter['registers']:
+                    # compensate for unpredictable database schema by inserting ''
+                    # for missing keys
+                    print '>>>>>>>>>', meter, '<<<<<<<<', register
+                    result.append({
+                        'meter_id': meter['identifier'],
+                        'register_id': register['identifier'],
+                        'service': utilbill['service'],
+                        'type': register.get('type', ''),
+                        'binding': register.get('binding', ''),
+                        'description': register.get('description', ''),
+                        'quantity': register.get('quantity', 0),
+                        'quantity_units': register.get('quantity_units', ''),
+                    })
+        return result
+
     def set_actual_register_quantity(self, identifier, quantity):
         '''Sets the value 'quantity' in the first register subdictionary whose
         identifier is 'identifier' to 'quantity'. Raises an exception if no
