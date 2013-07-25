@@ -1005,7 +1005,6 @@ class MongoReebill(object):
                 for register in meter['registers']:
                     # compensate for unpredictable database schema by inserting ''
                     # for missing keys
-                    print '>>>>>>>>>', meter, '<<<<<<<<', register
                     result.append({
                         'meter_id': meter['identifier'],
                         'register_id': register['identifier'],
@@ -1015,6 +1014,13 @@ class MongoReebill(object):
                         'description': register.get('description', ''),
                         'quantity': register.get('quantity', 0),
                         'quantity_units': register.get('quantity_units', ''),
+
+                        # insert an "id" key that uniquely identifies these
+                        # objects. this is used by client code; TODO consider
+                        # moving into wsgi.py or somewhere else, but currently
+                        # inserting the "id" here is the simplest
+                        'id' : '%s/%s/%s' % (utilbill['service'],
+                                meter['identifier'], register['identifier'])
                     })
         return result
 
