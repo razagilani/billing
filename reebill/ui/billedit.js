@@ -448,7 +448,7 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
-                    //utilbillGridStore.reload();
+                   //utilbillGridStore.reload();
                 }
             }]
         }),
@@ -609,7 +609,11 @@ function reeBillReady() {
         menu: new Ext.menu.Menu({
             items: [
                 // these items will render as dropdown menu items when the arrow is clicked:
-                {text: 'Roll Period', handler: rollOperation},
+                {text: 'Roll Period', handler: function(){
+                    //Ext.Msg.show({title: "Please wait while new ReeBill is created", closable: false});
+                    rollOperation();
+                    }
+                },
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: computeBillOperation},
                 //{text: 'Attach Utility Bills to Reebill', handler: attachOperation},
@@ -1369,6 +1373,7 @@ function reeBillReady() {
                     rollOperationConn.request({
                     params: {account: selected_account, start_date: service_start_date},
                     success: function(result, request) {
+                        Ext.Msg.hide();
                         var jsonData = null;
                         try {
                             jsonData = Ext.util.JSON.decode(result.responseText);
@@ -6068,7 +6073,7 @@ function reeBillReady() {
                 },
             },{
                 id: 'difference',
-                header: '% Difference',
+                header: '$ Difference',
                 width: 125,
                 sortable: true,
                 groupable: false,
@@ -6077,7 +6082,7 @@ function reeBillReady() {
                 editor: new Ext.form.NumberField(),
                 renderer: function(v, params, record)
                 {
-                    return Ext.util.Format.number(record.data.difference * 100,'0.00')+"%";
+                    return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
                 },
             },
         ],
