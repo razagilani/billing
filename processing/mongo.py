@@ -1018,7 +1018,8 @@ class MongoReebill(object):
                         # insert an "id" key that uniquely identifies these
                         # objects. this is used by client code; TODO consider
                         # moving into wsgi.py or somewhere else, but currently
-                        # inserting the "id" here is the simplest
+                        # inserting the "id" here is the simplest and avoids
+                        # repetition
                         'id' : '%s/%s/%s' % (utilbill['service'],
                                 meter['identifier'], register['identifier'])
                     })
