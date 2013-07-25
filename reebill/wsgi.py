@@ -2740,42 +2740,37 @@ class BillToolBridge:
         if type(rows) is not list:
             rows = [rows]
 
-        if kwargs['xaction'] == 'create':
-            meters = reebill.meters
-            registers = []
-            for service, meter_list in meters.items():
-                for meter in meter_list:
-                    meter_id = meter['identifier']
-                    for register in meter['registers']:
-                        if not register['shadow']:
-                            row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
-                            row['type'] = register.get('type', '')
-                            row['binding'] = register.get('register_binding', '')
-                            row['description'] = register.get('description', '')
-                            row['quantity'] = register.get('quantity', 0)
-                            row['quantity_units'] = register.get('quantity_units','')
-                            registers.append(row)
-
+        if xaction == 'create':
             for row in rows:
-                if not row.has_key('service'):
-                    row['service'] = reebill.services[0]
-                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
-                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
-                meter_id, new_reg = reebill.new_register(row['service'], row.get('meter_id', None), row.get('register_id', None))
-                if not row.has_key('meter_id'):
-                    row['meter_id'] = meter_id
-                if not row.has_key('register_id'):
-                    row['register_id'] = new_reg['identifier']
-                row['id'] = row['service']+'/'+row['meter_id']+'/'+row['register_id']
-                row['type'] = ''
-                row['binding'] = ''
-                row['description'] = ''
-                row['quantity'] = 0
-                row['quantity_units'] = ''
-                registers.append(row)
-            toSelect = rows[0]['id']
+                if '/' in row.get('meter_id','') + row.get('register_id',''):
+                    raise ValueError(('Cannot use a \'/\' in a meter or '
+                            'register identifier'))
+                meter_id, new_reg = reebill.new_register(reebill.services[0],
+                        row.get('meter_id', None), row.get('register_id', None))
+               
+            # get dictionaries describing all registers in all utility bills
+            registers = reebill.get_all_actual_registers_json()
 
-        if kwargs['xaction'] == 'update' or kwargs['xaction'] == 'create':
+            # insert an "id" key that uniquely identifies these objects,
+            # used by the client
+            for register_dict in registers:
+                register_dict['id'] = '/'.join([register_dict['service'],
+                        register_dict['meter_id'],
+                        register_dict['register_id']]),
+            result = {'success': True, "rows": registers,
+                    'total': len(registers)}
+
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
+
+            return self.dumps(result)
+
+
+        if xaction == 'update':
             meters = reebill.meters
             registers = []
             for service, meter_list in meters.items():
