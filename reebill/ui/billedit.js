@@ -342,15 +342,15 @@ function reeBillReady() {
 
     utilbillGridStore.on('exception', function(dataProxy, type, action,
                 options, response, arg) {
-        if (type == 'remote' && action == 'destroy' && response.success !=
-                true) {
-            Ext.Msg.alert('Error', response.raw.errors.reason + " " +
-                    response.raw.errors.details);
-        } else {
+        // 54000111, removed the issue specific error logging
+        //if (type == 'remote' && action == 'destroy' && response.success !=
+        //        true) {
+        Ext.Msg.alert('Error', response.raw.errors.reason + " " + response.raw.errors.details);
+        //} else {
             // catch-all for other errors
-            Ext.Msg.alert('Error', "utilbillGridStore error: type "+type
-                +", action "+action+", response "+response);
-        }
+        //    Ext.Msg.alert('Error', "utilbillGridStore error: type "+type
+        //        +", action "+action+", response "+response);
+        //}
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel({
@@ -448,7 +448,16 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
-                   //utilbillGridStore.reload();
+
+                    utilbillGrid.getStore.load();
+                    //utilbillGridStore.reload({
+                    //    scope: this,
+                    //    callback: function(r, op, success){
+                    //       Ext.Msg.alert("Updated!"); 
+                    //    }
+                    //});
+
+                   // utilbillGrid.getView().refresh();
                 }
             }]
         }),
@@ -1366,7 +1375,7 @@ function reeBillReady() {
     function rollOperation()
     {
         tabPanel.setDisabled(true);
-
+        Ext.Msg.show({title: "Please wait while new ReeBill is created", closable: false});
         if(reeBillStore.getTotalCount() == 0) {
             Ext.Msg.prompt('Service Start Date', 'Enter the date (YYYY-MM-DD) on which your utility service(s) started', function (btn, service_start_date) {
                 if(btn == 'ok') {
@@ -1391,6 +1400,7 @@ function reeBillReady() {
                             Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                         } finally {
                             tabPanel.setDisabled(false);
+                            Ext.Msg.hide();
                         }
                     },
                     failure: function(result, request) {
@@ -1400,11 +1410,13 @@ function reeBillReady() {
                             Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                         } finally {
                             tabPanel.setDisabled(false);
+                            Ext.Msg.hide();
                         }
                     },
                     });
                 } else {
                     tabPanel.setDisabled(false);
+                    Ext.Msg.hide();
                 };
             });
         }
@@ -1430,6 +1442,7 @@ function reeBillReady() {
                         Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                     } finally {
                         tabPanel.setDisabled(false);
+                        Ext.Msg.hide();
                     }
                 },
                 failure: function(result, request) {
@@ -1439,6 +1452,7 @@ function reeBillReady() {
                         Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                     } finally {
                         tabPanel.setDisabled(false);
+                        Ext.Msg.hide();
                     }
                 },
             });
@@ -4785,7 +4799,6 @@ function reeBillReady() {
         }),
     });
 
-
     ///////////////////////////////////////
     // Create New Account 
     var newAccountTemplateStoreProxyConn = new Ext.data.Connection({
@@ -5063,7 +5076,7 @@ function reeBillReady() {
         title: 'Accounts',
         disabled: accountsPanelDisabled,
         layout: 'accordion',
-        items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
+        items: [accountGrid, accountReeValueGrid, newAccountFormPanel, ]
     });
 
     ///////////////////////////////////////////////////////////////////////////
