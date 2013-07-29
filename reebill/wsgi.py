@@ -2579,7 +2579,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def utilbill_registers(self, account, sequence, **args):
+    def utilbill_registers_old(self, account, sequence, **args):
         """
         """
         if not account or not sequence:
@@ -2692,6 +2692,155 @@ class BillToolBridge:
             toRet['current_selected_id'] = toSelect
         return self.dumps(toRet)
     
+    ################
+    # Handle measuredUsages
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def utilbill_registers(self, account, sequence, xaction, **kwargs):
+        '''Handles AJAX requests to read and write data for the "Utility Bill
+        Registers" grid in the "Meters and Registers" tab. 'account',
+        'sequence' identify the reebill whose utility bill is being edited.
+        Ext-JS uses 'xaction' to specify which CRUD operation is being
+        performed (create, read, update, destroy).'''
+        # load reebilld document from mongo; there will always be one because
+        # the grid is only visible when one is selected
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        toSelect = None
+
+            
+        if xaction == 'read':
+            # get dictionaries describing all registers in all utility bills
+            registers = reebill.get_all_actual_registers_json()
+
+            result = {'success': True, "rows": registers,
+                    'total': len(registers)}
+
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
+
+            return self.dumps(result)
+
+        # the "rows" argument is only given when xaction is "create", "update",
+        # or "destroy"
+        rows = json.loads(kwargs['rows'])
+        if type(rows) is not list:
+            rows = [rows]
+
+        if xaction == 'create':
+            for row in rows:
+                if '/' in row.get('meter_id','') + row.get('register_id',''):
+                    raise ValueError(('Cannot use a \'/\' in a meter or '
+                            'register identifier'))
+                meter_id, new_reg = reebill.new_register(reebill.services[0],
+                        row.get('meter_id', None), row.get('register_id', None))
+               
+            # get dictionaries describing all registers in all utility bills
+            registers = reebill.get_all_actual_registers_json()
+
+            result = {'success': True, "rows": registers,
+                    'total': len(registers)}
+
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
+
+            return self.dumps(result)
+
+        if xaction == 'update':
+            meters = reebill.meters
+            registers = []
+            for service, meter_list in meters.items():
+                for meter in meter_list:
+                    meter_id = meter['identifier']
+                    for register in meter['registers']:
+                        if not register['shadow']:
+                            row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
+                            row['type'] = register.get('type', '')
+                            row['binding'] = register.get('register_binding', '')
+                            row['description'] = register.get('description', '')
+                            row['quantity'] = register.get('quantity', 0)
+                            row['quantity_units'] = register.get('quantity_units','')
+                            registers.append(row)
+
+            regs = []
+            for row in rows:
+                reg = next((r for r in registers if r['id'] == row['id']), None)
+                old_id = row['id']
+                old_ids = old_id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                if reg is None:
+                    raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
+                reg.update(row)
+                new_service = row.get('service', old_service).lower()
+                reg['service'] = new_service
+                new_meter = row.get('meter_id', old_meter)
+                new_register = row.get('register_id', old_register)
+                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
+                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                if new_service != old_service or new_meter != old_meter or new_register != old_register:
+                    meter = reebill._meter(new_service, new_meter)
+                    if meter is not None:
+                        for _r in meter['registers']:
+                            if _r['identifier'] == new_register:
+                                raise ValueError('Register with id %s for meter %s for service %s already exists' %(new_register, new_meter, new_service))
+                if new_service != old_service or new_meter != old_meter:
+                    reebill.delete_register(old_service, old_meter, old_register)
+                    reebill.new_register(new_service, new_meter, old_register)
+                    old_service = new_service
+                    old_meter = new_meter
+                new_dict = {}
+                new_dict['identifier'] = reg['register_id']
+                new_dict['description'] = reg['description']
+                new_dict['type'] = reg['type']
+                new_dict['register_binding'] = reg['binding']
+                new_dict['quantity'] = reg['quantity']
+                new_dict['quantity_units'] = reg['quantity_units']
+                reebill.update_register(old_service, old_meter, old_register, new_dict)
+                reg['id'] = reg['service']+'/'+reg['meter_id']+'/'+reg['register_id']
+                if 'current_selected_id' in kwargs and old_id == kwargs['current_selected_id'] and toSelect is None:
+                    toSelect = reg['id']
+
+        if xaction == 'destroy':
+            meters = reebill.meters
+            registers = []
+            for service, meter_list in meters.items():
+                for meter in meter_list:
+                    meter_id = meter['identifier']
+                    for register in meter['registers']:
+                        if not register['shadow']:
+                            row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
+                            row['type'] = register.get('type', '')
+                            row['binding'] = register.get('register_binding', '')
+                            row['description'] = register.get('description', '')
+                            row['quantity'] = register.get('quantity', 0)
+                            row['quantity_units'] = register.get('quantity_units','')
+                            registers.append(row)
+            for id in rows:
+                old_ids = id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                reebill.delete_register(old_service, old_meter, old_register)
+                registers[:] = [r for r in registers if r['id'] != id]
+        reebill.set_meter_dates_from_utilbills()
+        self.reebill_dao.save_reebill(reebill)
+        toRet = {'success':True, "rows":registers, 'total':len(registers)}
+        if toSelect is not None:
+            toRet['current_selected_id'] = toSelect
+        return self.dumps(toRet)
+
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2951,12 +3100,14 @@ class BillToolBridge:
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
             elif xaction == 'update':
-                # ext sends a dict if there is one row, a list of dicts if
-                # there are more than one. but in this case only one row can be
-                # edited at a time
+                # ext sends a JSON object if there is one row, a list of
+                # objects if there are more than one. but in this case only one
+                # row can be edited at a time
                 row = ju.loads(kwargs['rows'])
 
-                kwargs = {}
+                # convert JSON key/value pairs into arguments for
+                # Process.update_utilbill_metadata below
+                update_args = {}
                 for k, v in row.iteritems():
                     # NOTE Ext-JS uses '' (empty string) to represent not
                     # changing a value. yes, that means you can never set a
@@ -2964,13 +3115,15 @@ class BillToolBridge:
                     if v == '':
                         pass
                     elif k in ('period_start', 'period_end'):
-                        kwargs[k] = datetime.strptime(v,
+                        update_args[k] = datetime.strptime(v,
                                 ISO_8601_DATETIME_WITHOUT_ZONE).date()
                     elif k == 'service':
-                        kwargs[k] = v.lower()
+                        update_args[k] = v.lower()
                     elif k != 'id':
-                        kwargs[k] = v
-                self.process.update_utilbill_metadata(session, row['id'], **kwargs)
+                        update_args[k] = v
+
+                self.process.update_utilbill_metadata(session, row['id'],
+                        **update_args)
 
                 return self.dumps({'success': True})
 
