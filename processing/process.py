@@ -12,6 +12,7 @@ import calendar
 from optparse import OptionParser
 from decimal import *
 import operator
+import traceback
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -20,7 +21,7 @@ from billing.processing import state
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state, fetch_bill_data
-from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
@@ -45,7 +46,7 @@ class Process(object):
     config = None
     
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, splinter=None):
+            nexus_util, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -54,11 +55,113 @@ class Process(object):
         self.nexus_util = nexus_util
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
+        self.logger = logger
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
         session.add(new_customer)
         return new_customer
+
+    def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
+            period_end=None, service=None, total_charges=None, utility=None,
+            rate_structure=None):
+        '''Update various fields in MySQL and Mongo for the utility bill whose
+        MySQL id is 'utilbill_id'. Fields that are not None get updated to new
+        values while other fields are unaffected.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+
+        # save period dates for use in moving the utility bill file at the end
+        # of this method
+        old_start, old_end = utilbill.period_start, utilbill.period_end
+
+        # load MySQL reebill, if any, and its Mongo document
+        if utilbill.has_reebill:
+            reebill = utilbill.reebill
+            mongo_reebill = self.reebill_dao.load_reebill(
+                    reebill.customer.account, reebill.sequence)
+            # utility bills that have issued reebills shouldn't be editable
+            if utilbill.reebill.issued:
+                raise ValueError(("Can't edit utility bills that are attached "
+                        "to an issued reebill."))
+
+        # for total charges, it doesn't matter whether a reebill exists
+        if total_charges is not None:
+            utilbill.total_charges = total_charges
+
+        # for service and period dates, a reebill must be updated if it does
+        # exist
+
+        if service is not None:
+            if utilbill.has_reebill:
+                mongo_reebill._get_utilbill_for_service(utilbill.service)\
+                        ['service'] = service
+            utilbill.service = service
+            
+        if period_start is not None:
+            UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
+            utilbill.period_start = period_start
+            if utilbill.has_reebill:
+                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
+                        (period_start, utilbill.period_end))
+                mongo_reebill.set_meter_dates_from_utilbills()
+
+        if period_end is not None:
+            UtilBill.validate_utilbill_period(utilbill.period_start, period_end)
+            utilbill.period_end = period_end
+            if utilbill.has_reebill:
+                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
+                        (utilbill.period_start, period_end))
+                mongo_reebill.set_meter_dates_from_utilbills()
+
+        # for utility and rate structure name, a reebill must exist
+
+        if utility is not None:
+            if not utilbill.has_reebill:
+                raise ValueError(("Can't assign a utility/rate structure name "
+                        "to an unattached utility bill"))
+            # NOTE utility name, RS name are not yet stored in Mongo
+            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
+                    utilbill.service)
+            self.reebill_dao.update_utility_and_rs(mongo_reebill,
+                    utilbill.service, utility, old_ratestructure)
+
+        if rate_structure is not None:
+            if not utilbill.has_reebill:
+                raise ValueError(("Can't assign a utility/rate structure name "
+                        "to an unattached utility bill"))
+            # NOTE utility name, RS name are not yet stored in Mongo
+            old_utility = mongo_reebill.utility_name_for_service(
+                    utilbill.service)
+            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
+                    utilbill.service)
+            self.reebill_dao.update_utility_and_rs(mongo_reebill,
+                    utilbill.service, old_utility, rate_structure)
+            self.rate_structure_dao.update_rs_name(utilbill.customer.account,
+                    int(reebill.sequence), int(reebill.max_version), old_utility,
+                    old_ratestructure, old_utility, rate_structure)
+
+        # delete any Hypothetical utility bills that were created to cover gaps
+        # that no longer exist
+        self.state_db.trim_hypothetical_utilbills(session,
+                utilbill.customer.account, utilbill.service)
+
+        # finally, un-rollback-able operations: move the file, if there is one,
+        # and save in Mongo. (only utility bills that are Complete (0) or
+        # UtilityEstimated (1) have files; SkylineEstimated (2) and
+        # Hypothetical (3) ones don't.)
+        if utilbill.state < state.UtilBill.SkylineEstimated:
+            self.billupload.move_utilbill_file(utilbill.customer.account,
+                    # don't trust the client to say what the original dates were
+                    # TODO don't pass dates into BillUpload as strings
+                    # https://www.pivotaltracker.com/story/show/24869817
+                    old_start, old_end,
+                    # dates in destination file name are the new ones
+                    period_start or utilbill.period_start,
+                    period_end or utilbill.period_end)
+        if utilbill.has_reebill:
+            self.reebill_dao.save_reebill(mongo_reebill)
+
 
     def upload_utility_bill(self, session, account, service, begin_date,
                 end_date, bill_file, file_name, total=0):
@@ -475,16 +578,39 @@ class Process(object):
         # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
-        # re-bind and compute
+        # re-bind and compute, logging errors but continuing. this is because
+        # if the editable utility bill is in an un-computable state, or
+        # something is wrong with the energy data, a new version can never be
+        # created. see https://www.pivotaltracker.com/story/show/53434901
+
         # recompute, using sequence predecessor to compute balance forward and
         # prior balance. this is always version 0, because we want those values
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, verbose=True)
+        try:
+            fetch_bill_data.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id(account), reebill)
+        except Exception as e:
+            # TODO: catching Exception is awful and horrible and terrible and
+            # you should never do it, except when you can't think of any other
+            # way to accomplish the same thing
+            self.logger.error(("In Process.new_version, couldn't fetch_oltp_data "
+                    "in new version %s of reebill %s-%s: %s\n%s") % (
+                    reebill.version, reebill.account, reebill.sequence, e,
+                    traceback.format_exc()))
+
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
-        self.compute_bill(session, predecessor, reebill)
+        try:
+            self.compute_bill(session, predecessor, reebill)
+        except Exception as e:
+            # TODO: catching Exception is awful and horrible and terrible and
+            # you should never do it, except when you can't think of any other
+            # way to accomplish the same thing
+            self.logger.error(("In Process.new_version, couldn't compute new "
+                    "version %s of reebill %s-%s: %s\n%s") % (
+                    reebill.version, reebill.account, reebill.sequence, e,
+                    traceback.format_exc()))
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
@@ -732,11 +858,6 @@ class Process(object):
         self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
-            # process the actual charges across all services
-            self.bindrs(reebill)
-
-    # TODO remove (move to bind_rate_structure)
-    def bindrs(self, reebill):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -1066,7 +1187,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1115,7 +1236,7 @@ class Process(object):
 
         return rows, totalCount
 
-    def reebill_report(self, session):
+    def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
         totalCount = 0
@@ -1126,9 +1247,16 @@ class Process(object):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
+                # if the user has chosen a begin and/or end date *and* this
+                # reebill falls outside of its bounds, skip to the next one
+                have_period_dates = begin_date or end_date
+                reebill_begins_in_this_period = begin_date and reebill.period_begin >= begin_date
+                reebill_ends_in_this_period = end_date and reebill.period_end <= end_date
+                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
+                if have_period_dates and not reebill_in_this_period:
+                    continue
 
                 row = {}
-
                 # iterate the payments and find the ones that apply. 
                 if (reebill.period_begin is not None and reebill.period_end is not None):
                     applicable_payments = filter(lambda x: x.date_applied >
@@ -1151,7 +1279,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1235,6 +1363,10 @@ class Process(object):
                     rows.append(row)
                     totalCount += 1
 
+            # TODO: why is this here? it seems that what it's doing is ensuring
+            # there is alwas at least one row present in 'rows', but why isn't
+            # it inside of an 'if/else' block to ensure that the empty row is
+            # only present when no other results are returned?
             row = {}
             row['account'] = None
             row['sequence'] = None
@@ -1266,6 +1398,12 @@ class Process(object):
         return rows, totalCount
 
     def summary_ree_charges(self, session, accounts, all_names):
+        def total_ree_in_reebills(reebills):
+            total_energy = Decimal(0)
+            for reebill in reebills:
+                total_energy += reebill.total_renewable_energy()
+            return total_energy
+        
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
@@ -1275,7 +1413,7 @@ class Process(object):
             hypothetical_total = Decimal(sum([reebill.hypothetical_total for reebill in reebills]))
             total_energy = Decimal(0)
             average_ree_rate = Decimal(0)
-            total_energy = self.total_ree_in_reebills(reebills)
+            total_energy = total_ree_in_reebills(reebills)
 
             if total_energy != Decimal(0):
                 average_ree_rate = (hypothetical_total - actual_total)/total_energy
@@ -1294,37 +1432,6 @@ class Process(object):
 
         return rows
 
-    # TODO 20991629: maybe we should move this into ReeBill, because it should know how to report its data?
-    def total_ree_in_reebill(self, reebill):
-        """ Returns energy in Therms """
-
-        total_energy = Decimal(0)
-
-        services = reebill.services
-        for service in services:
-            registers = reebill.shadow_registers(service)
-            # 20977305 - treat registers the same
-            if service.lower() == 'gas':
-                # add up all registers and normalize energy to BTU
-                # gotta check units
-                for register in registers:
-                    if 'quantity' in register:
-                        total_energy += register['quantity']
-            elif service.lower() == 'electric':
-                # add up only total register and normalize energy
-                for register in registers:
-                    if 'type' in register and register['type'] == 'total':
-                        # 1kWh =  29.30722 Th
-                        total_energy += (register['quantity'] / Decimal("29.30722"))
-
-        return total_energy
-
-    def total_ree_in_reebills(self, reebills):
-        total_energy = Decimal(0)
-        for reebill in reebills:
-            total_energy += self.total_ree_in_reebill(reebill)
-        return total_energy
-        
     def sequences_for_approximate_month(self, session, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or

@@ -17,8 +17,7 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB
-from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from decimal import Decimal
 from billing.util.dictutils import deep_map
@@ -416,7 +415,7 @@ class ProcessTest(TestCaseWithSetup):
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        self.process.bindrs(bill1)
+        self.process.bind_rate_structure(bill1)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -1148,6 +1147,28 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
+            # new customers also need to be in nexus for 'fetch_oltp_data' to
+            # work (using mock Skyliner)
+            self.nexus_util._customers.extend([
+                {
+                    'billing': 'aaaaa',
+                    'olap': 'a-1',
+                    'casualname': 'Customer A',
+                    'primus': '1 A St.',
+                },
+                {
+                    'billing': 'bbbbb',
+                    'olap': 'b-1',
+                    'casualname': 'Customer B',
+                    'primus': '1 B St.',
+                },
+                {
+                    'billing': 'ccccc',
+                    'olap': 'c-1',
+                    'casualname': 'Customer C',
+                    'primus': '1 C St.',
+                },
+            ])
 
             # save default rate structure documents all 3 accounts
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
@@ -1626,6 +1647,70 @@ class ProcessTest(TestCaseWithSetup):
         # only u1 should be attached to the reebill
         self.assertEqual(None, u1.reebill)
         self.assertNotEqual(None, u2.reebill)
+
+    def test_uncomputable_correction_bug(self):
+        '''Regresssion test for
+        https://www.pivotaltracker.com/story/show/53434901.'''
+        account = '99999'
+
+        with DBSession(self.state_db) as session:
+            # save RS/utilbill/reebill documents and create reebill and utility
+            # bill in MySQL
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
+            reebill_template = example_data.get_reebill(account, 0, version=0,
+                    start=date(2012,12,1), end=date(2013,1,1))
+            self.reebill_dao.save_reebill(reebill_template)
+            session.add(UtilBill(customer=self.state_db.get_customer(session,
+                    account), state=0, service='gas',
+                    period_start=date(2013,1,1), period_end=date(2013,2,1),
+                    reebill=None))
+            self.process.roll_bill(session, reebill_template,
+                    utility_bill_date=date(2013,1,1))
+            reebill_doc = self.reebill_dao.load_reebill(account, 1)
+
+            # bind, compute, issue
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id(account), reebill_doc,
+                    use_olap=True)
+            self.process.compute_bill(session, reebill_template, reebill_doc)
+            self.process.issue(session, account, 1)
+
+            # create new version
+            self.process.new_version(session, account, 1)
+            self.assertEquals(1, self.state_db.max_version(session, account,
+                    1))
+
+            # put it in an un-computable state by adding a charge without an RSI
+            reebill_correction_doc = self.reebill_dao.load_reebill(account, 1,
+                    version=1)
+            reebill_correction_doc._utilbills[0]['chargegroups']\
+                    ['All Charges'].append({
+                        'rsi_binding': 'NO_RSI',
+                        "description" : "Can't compute this",
+                        "quantity" : 1,
+                        "quantity_units" : "",
+                        "rate" : 11.2,
+                        "rate_units" : "dollars",
+                        "total" : 11.2,
+                        "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
+                    })
+            with self.assertRaises(KeyError) as context:
+                self.process.compute_bill(session, reebill_template,
+                        reebill_correction_doc)
+            self.reebill_dao.save_reebill(reebill_correction_doc)
+
+            # delete the new version
+            self.process.delete_reebill(session, account, 1)
+            self.assertEquals(0, self.state_db.max_version(session, account,
+                    1))
+
+        # try to create a new version again: it should succeed, even though
+        # there was a KeyError due to a missing RSI when computing the bill
+        with DBSession(self.state_db) as session:
+            self.process.new_version(session, account, 1)
+        self.assertEquals(1, self.state_db.max_version(session, account, 1))
 
 
 if __name__ == '__main__':

@@ -77,7 +77,7 @@ def mail(recipients, merge_fields, bill_path, bill_files):
 
     # outer container, attachments declare their type
     container = MIMEMultipart()
-    container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["sa_street1"])
+    container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["street"])
     container['From'] = from_user
     container['To'] = u', '.join(recipients)
 

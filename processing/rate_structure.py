@@ -16,6 +16,7 @@ import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
+from copy import deepcopy
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -23,11 +24,6 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
 RSI_PRESENCE_THRESHOLD = 0.5
-
-def euclidean_distance(p1, p2):
-    delta_begin = abs(p1[0] - p2[0]).days
-    delta_end = abs(p1[1] - p2[1]).days
-    return sqrt(delta_begin**2 + delta_end**2)
 
 def manhattan_distance(p1, p2):
     # note that 15-day offset is a 30-day distance, 30-day offset is a
@@ -80,7 +76,8 @@ class RateStructureDAO(object):
     processing information.
     '''
 
-    def __init__(self, host, port, database, reebill_dao, **kwargs):
+    def __init__(self, host, port, database, reebill_dao, logger=None,
+            **kwargs):
         # TODO **kwargs == bad and should go away
         '''kwargs catches extra junk from config dictionary unpacked into
         constructor arguments.'''
@@ -92,11 +89,13 @@ class RateStructureDAO(object):
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
         self.reebill_dao = reebill_dao
+        self.logger = logger
 
     def _get_probable_rsis(self, utility, service, rate_structure_name, period,
             distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
-            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
+            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
+            verbose=False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
         will be empty if no guess could be made. 'threshold' is the minimum
@@ -157,13 +156,15 @@ class RateStructureDAO(object):
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
         result = []
-        print 'Predicted RSIs for %s %s %s - %s' % (utility,
-                rate_structure_name, period[0], period[1])
-        print '%35s %s %s' % ('binding:', 'weight:', 'normalized weight %:')
+        if verbose:
+            self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
+                    rate_structure_name, period[0], period[1]))
+            self.logger.info('%35s %s %s' % ('binding:', 'weight:', 'normalized weight %:'))
         for binding, weight in scores.iteritems():
             normalized_weight = weight / total_weight[binding] if \
                     total_weight[binding] != 0 else 0
-            print '%35s %f %5d' % (binding, weight, 100 * normalized_weight)
+            if self.logger:
+                self.logger.info('%35s %f %5d' % (binding, weight, 100 * normalized_weight))
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
@@ -174,8 +175,8 @@ class RateStructureDAO(object):
                     rate = rsi_dict['rate']
                     quantity = closest_occurrence[binding][1]['quantity']
                 except KeyError:
-                    pass
-                    #print >> sys.stderr, 'malformed RSI:', rsi_dict
+                    if self.logger:
+                        self.logger.error('malformed RSI:' + rsi_dict)
                 result.append({
                     'rsi_binding': binding,
                     'rate': rate,
@@ -415,6 +416,32 @@ class RateStructureDAO(object):
         '''Easy way to save rate structure without unnecessary arguments.'''
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
+
+    def update_rs_name(self, account, sequence, version, old_utility, old_name, new_utility, new_name):
+        uprs = self.load_uprs(account, sequence, version, old_utility, old_name)
+        cprs = self.load_cprs(account, sequence, version, old_utility, old_name)
+        new_uprs = deepcopy(uprs)
+        new_uprs['_id']['utility_name'] = new_utility
+        new_uprs['_id']['rate_structure_name'] = new_name
+        new_cprs = deepcopy(cprs)
+        new_cprs['_id']['utility_name'] = new_utility
+        new_cprs['_id']['rate_structure_name'] = new_name
+        new_uprs = bson_convert(deepcopy(new_uprs))
+        new_cprs = bson_convert(deepcopy(new_cprs))
+        self.collection.save(new_uprs)
+        self.collection.save(new_cprs)
+        self.collection.remove({'_id.account':account,
+                                '_id.sequence':int(sequence),
+                                '_id.version':int(version),
+                                '_id.utility_name':old_utility,
+                                '_id.rate_structure_name':old_name,
+                                '_id.type':'UPRS'})
+        self.collection.remove({'_id.account':account,
+                                '_id.sequence':int(sequence),
+                                '_id.version':int(version),
+                                '_id.utility_name':old_utility,
+                                '_id.rate_structure_name':old_name,
+                                '_id.type':'CPRS'})
 
     def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
