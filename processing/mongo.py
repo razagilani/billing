@@ -167,8 +167,9 @@ class MongoReebill(object):
 
     # TODO 36805917 clear() can go away when ReeBills can be constructed
     def clear(self):
-        '''Code for clearing out fields of newly-rolled rebill (moved from
-        __init__, called by Process.roll_bill). TODO remove this.'''
+        '''Code for clearing out fields of newly-rolled rebill and its utility
+        bill documents (moved from __init__, called by Process.roll_bill). TODO
+        remove this.'''
         # set start date of each utility bill in this reebill to the end date
         # of the previous utility bill for that service
         #for service in self.services:
