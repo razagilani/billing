@@ -2697,6 +2697,17 @@ class BillToolBridge:
         'sequence' identify the reebill whose utility bill is being edited.
         Ext-JS uses 'xaction' to specify which CRUD operation is being
         performed (create, read, update, destroy).'''
+        # rows in the grid are identified by an "id" consisting of the utility
+        # bill service name, meter id, and register id separated by '/'. thus
+        # '/' is forbidden in service names, meter ids, and register ids.
+        def validate_id(id):
+            if not re.match('.*/.*/.*'):
+                raise ValueError('Invalid register row id: "%s"' % id)
+        def validate_id_components(*components):
+            if any('/' in c for c in components):
+                raise ValueError(('Service names and meter/register ids must '
+                        'not contain "/"'))
+
         # load reebilld document from mongo; there will always be one because
         # the grid is only visible when one is selected
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2727,10 +2738,8 @@ class BillToolBridge:
 
         if xaction == 'create':
             for row in rows:
-                # validate "id" in row
-                if '/' in row.get('meter_id','') + row.get('register_id',''):
-                    raise ValueError(('Cannot use a \'/\' in a meter or '
-                            'register identifier'))
+                validate_id_components(row.get('meter_id',''),
+                        row.get('register_id',''))
                 # create the new register (ignoring return value)
                 reebill.new_register(reebill.services[0],
                         row.get('meter_id', None), row.get('register_id',
@@ -2749,9 +2758,14 @@ class BillToolBridge:
             if 'current_selected_id' in kwargs:
                 result['current_selected_id'] = kwargs['current_selected_id']
 
+            self.reebill_dao.save_reebill(reebill)
             return self.dumps(result)
 
         if xaction == 'update':
+            # for update, client sends a complete JSON representation of the
+            # grid rows to be updated (including all fields whether updated or
+            # not)
+
             meters = reebill.meters
             registers = []
             for service, meter_list in meters.items():
@@ -2772,8 +2786,7 @@ class BillToolBridge:
                 reg = next((r for r in registers if r['id'] == row['id']), None)
                 old_id = row['id']
                 old_ids = old_id.split('/')
-                if len(old_ids) != 3:
-                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                validate_id(old_id)
                 old_service, old_meter, old_register = old_ids
                 if reg is None:
                     raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
@@ -2782,8 +2795,7 @@ class BillToolBridge:
                 reg['service'] = new_service
                 new_meter = row.get('meter_id', old_meter)
                 new_register = row.get('register_id', old_register)
-                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
-                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                validate_id_components(row.get('meter_id', ''), row.get('register_id'), '')
                 if new_service != old_service or new_meter != old_meter or new_register != old_register:
                     meter = reebill._meter(new_service, new_meter)
                     if meter is not None:
