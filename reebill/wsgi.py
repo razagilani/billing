@@ -716,8 +716,9 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def new_account(self, name, account, discount_rate, late_charge_rate,
-            template_account, ba_addressee, ba_street, ba_city, sa_addressee,
-            sa_street, sa_city, sa_state, sa_postal_code, **kwargs):
+            template_account, ba_addressee, ba_street, ba_city, ba_state,
+            ba_postal_code, sa_addressee, sa_street, sa_city, sa_state,
+            sa_postal_code, **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
