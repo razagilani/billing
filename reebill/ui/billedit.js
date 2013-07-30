@@ -1368,18 +1368,19 @@ function reeBillReady() {
     function rollOperation()
     {
         tabPanel.setDisabled(true);
-        Ext.Msg.show({title: "Please wait while new ReeBill is created", closable: false});
+        var waitMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait, creating new ReeBill"});
+        waitMask.show();
         if(reeBillStore.getTotalCount() == 0) {
             Ext.Msg.prompt('Service Start Date', 'Enter the date (YYYY-MM-DD) on which your utility service(s) started', function (btn, service_start_date) {
                 if(btn == 'ok') {
                     rollOperationConn.request({
                     params: {account: selected_account, start_date: service_start_date},
                     success: function(result, request) {
-                        Ext.Msg.hide();
                         var jsonData = null;
                         try {
                             jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == false) {
+                                waitMask.hide();
                                 Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                             } else {
                                 reeBillGrid.getSelectionModel().clearSelections();
@@ -1390,26 +1391,27 @@ function reeBillReady() {
                                 }});
                             }
                         } catch (err) {
+                            waitMask.hide();
                             Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                         } finally {
                             tabPanel.setDisabled(false);
-                            Ext.Msg.hide();
+                            waitMask.hide();
                         }
                     },
                     failure: function(result, request) {
+                        waitMask.hide();
                         try {
                             Ext.MessageBox.alert('Server Error', result.responseText);
                         } catch (err) {
                             Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                         } finally {
                             tabPanel.setDisabled(false);
-                            Ext.Msg.hide();
                         }
                     },
                     });
                 } else {
                     tabPanel.setDisabled(false);
-                    Ext.Msg.hide();
+                    waitMask.hide();
                 };
             });
         }
@@ -1422,6 +1424,7 @@ function reeBillReady() {
                     try {
                         jsonData = Ext.util.JSON.decode(result.responseText);
                         if (jsonData.success == false) {
+                            waitMask.hide();
                             Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                         } else {
                             reeBillGrid.getSelectionModel().clearSelections();
@@ -1432,20 +1435,21 @@ function reeBillReady() {
                             }});
                         }
                     } catch (err) {
+                        waitMask.hide();
                         Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                     } finally {
                         tabPanel.setDisabled(false);
-                        Ext.Msg.hide();
+                        waitMask.hide();
                     }
                 },
                 failure: function(result, request) {
+                    waitMsg.hide();
                     try {
                         Ext.MessageBox.alert('Server Error', result.responseText);
                     } catch (err) {
                         Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                     } finally {
                         tabPanel.setDisabled(false);
-                        Ext.Msg.hide();
                     }
                 },
             });
