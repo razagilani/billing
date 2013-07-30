@@ -4994,7 +4994,7 @@ function reeBillReady() {
                           'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
-                          'ba_addressee': Ext.getCmp('new_addressee').getValue(),
+                          'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
                           'ba_street': Ext.getCmp('new_ba_street').getValue(),
                           'ba_city': Ext.getCmp('new_ba_city').getValue(),
                           'ba_state': Ext.getCmp('new_ba_state').getValue(),
