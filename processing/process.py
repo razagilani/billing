@@ -787,18 +787,16 @@ class Process(object):
         customer = self.new_account(session, name, account, discount_rate,
                 late_charge_rate)
 
-        template_last_sequence = self.state_db.last_sequence(session, template_account)
-
         #TODO 22598787 use the active version of the template_account
-        reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
+        template_last_sequence = self.state_db.last_sequence(session,
+                template_account)
+        reebill = self.reebill_dao.load_reebill(template_account,
+                template_last_sequence, 0)
 
         reebill.convert_to_new_account(account)
-        # This 'copy' is set to sequence zero which acts as a 'template' 
-        reebill.sequence = 0
-        reebill.version = 0
+        reebill.sequence, reebill.version = 0, 0
         for utilbill in reebill._utilbills:
-            utilbill['sequence'] = 0
-            utilbill['version'] = 0
+            utilbill['sequence'], utilbill['version'] = 0, 0
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
@@ -806,7 +804,7 @@ class Process(object):
         reebill.last_recipients = []
         reebill.late_charge_rate = late_charge_rate
 
-        # reset the reebill's fields to 0/blank/etc.
+        # set the reebill's other fields to 0/blank/etc.
         reebill.clear()
         reebill.discount_rate = self.state_db.discount_rate(session, account)
         reebill.late_charge_rate = self.state_db.late_charge_rate(session,
@@ -823,13 +821,15 @@ class Process(object):
 
             # load current CPRS of the template account
             # TODO: 22598787
-            cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
-                0, utility_name, rate_structure_name)
+            cprs = self.rate_structure_dao.load_cprs(template_account,
+                    template_last_sequence, 0, utility_name,
+                    rate_structure_name)
             if cprs is None:
                 raise ValueError("No current CPRS")
 
             # save the CPRS for the new reebill
-            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
+            self.rate_structure_dao.save_cprs(reebill.account,
+                    reebill.sequence,
                 reebill.version, utility_name, rate_structure_name, cprs)
 
         return customer
