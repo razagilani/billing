@@ -2703,13 +2703,12 @@ class BillToolBridge:
 
         toSelect = None
 
-            
         if xaction == 'read':
             # get dictionaries describing all registers in all utility bills
-            registers = reebill.get_all_actual_registers_json()
+            registers_json = reebill.get_all_actual_registers_json()
 
-            result = {'success': True, "rows": registers,
-                    'total': len(registers)}
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
 
             # client sends "current_selected_id" to identify which row is
             # selected in the grid; if this key is present, server must also
@@ -2728,17 +2727,20 @@ class BillToolBridge:
 
         if xaction == 'create':
             for row in rows:
+                # validate "id" in row
                 if '/' in row.get('meter_id','') + row.get('register_id',''):
                     raise ValueError(('Cannot use a \'/\' in a meter or '
                             'register identifier'))
-                meter_id, new_reg = reebill.new_register(reebill.services[0],
-                        row.get('meter_id', None), row.get('register_id', None))
+                # create the new register (ignoring return value)
+                reebill.new_register(reebill.services[0],
+                        row.get('meter_id', None), row.get('register_id',
+                        None))
                
             # get dictionaries describing all registers in all utility bills
-            registers = reebill.get_all_actual_registers_json()
+            registers_json = reebill.get_all_actual_registers_json()
 
-            result = {'success': True, "rows": registers,
-                    'total': len(registers)}
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
 
             # client sends "current_selected_id" to identify which row is
             # selected in the grid; if this key is present, server must also
