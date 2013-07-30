@@ -2264,12 +2264,6 @@ class BillToolBridge:
         """
         Update account information
         """
-        if not account or not sequence \
-        or not discount_rate \
-        or not addressee or not street or not city or not state or not postal_code \
-        or not addressee or not street or not city or not state or not postal_code:
-            raise ValueError("Bad Parameter Value")
-
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # TODO: 27042211 numerical types
