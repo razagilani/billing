@@ -242,6 +242,7 @@ class MongoReebill(object):
                     self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
             # zero out statistics section
+            # TODO "statistics" will go away
             self.reebill_dict['statistics'] = {
                 "conventional_consumed": 0,
                 "renewable_consumed": 0,
@@ -258,7 +259,7 @@ class MongoReebill(object):
             }
 
     def convert_to_new_account(self, account):
-        # TODO: the existence of this function is a symptom of ugly design.
+        # TODO: the existence of this function is a symptom of bad design.
         # figure out how to make it go away if possible.
         # https://www.pivotaltracker.com/story/show/37798427
         '''Sets the account of this reebill and all its utility bills to
@@ -281,7 +282,9 @@ class MongoReebill(object):
         '''Replaces _ids in utility bill documents and the reebill document's
         references to them, and removed "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
-        rolling to create copies of the utility bills.'''
+        rolling to create copies of the utility bills. Does not need to be
+        called when creating a new account because 'convert_to_new_account'
+        also does this.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
             utilbill_doc = self._get_utilbill_for_handle(utilbill_handle)
             new_id = bson.objectid.ObjectId()
