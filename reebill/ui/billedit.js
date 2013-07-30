@@ -311,12 +311,12 @@ function reeBillReady() {
     utilbillGridStore.on('update', function(){
         //utilbillGrid.getTopToolbar().findById('utilbillSaveBtn').setDisabled(false);
     });
-
+    
     utilbillGridStore.on('beforesave', function() {
         // TODO: 26013493 not sure this needs to be set here - should save to last set params
         //utilbillGridStore.setBaseParam("account", selected_account);
     });
-
+    
     // event for when the store loads, for when it is paged
     utilbillGridStore.on('beforeload', function(store, options) {
 
@@ -448,16 +448,9 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
-
-                    utilbillGrid.getStore.load();
-                    //utilbillGridStore.reload({
-                    //    scope: this,
-                    //    callback: function(r, op, success){
-                    //       Ext.Msg.alert("Updated!"); 
-                    //    }
-                    //});
-
-                   // utilbillGrid.getView().refresh();
+                  //  utilbillGridStore.reload({callback: function(records, options, success){
+                  //      utilbillGrid.refresh();
+                  //  }});
                 }
             }]
         }),
@@ -4650,7 +4643,8 @@ function reeBillReady() {
         totalProperty: 'results',
         //pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
+        //autoLoad: {params:{start: 0, limit: 25}},
+        autoLoad: false,
         reader: accountReeValueReader,
         fields: [
             {name: 'account'},
@@ -5173,11 +5167,10 @@ function reeBillReady() {
 
     var differenceThresholdField = new Ext.ux.form.SpinnerField({
       id: 'differencethresholdmenu',
-      fieldLabel: '% Difference Allowed between Utility Bill and ReeBill',
+      fieldLabel: '$ Difference Allowed between Utility Bill and ReeBill',
       name: 'differencethreshold',
       value: DEFAULT_DIFFERENCE_THRESHOLD,
-      minValue: .01,
-      maxValue: 100,
+      minValue: 0,
       allowDecimals: true,
       decimalPrecision: 2,
       incrementValue: 1,
@@ -5192,7 +5185,7 @@ function reeBillReady() {
     var thresholdFormPanel = new Ext.FormPanel({
       labelWidth: 240, // label settings here cascade unless overridden
       frame: true,
-      title: '% Difference Allowed between Utility Bill and ReeBill',
+      title: '$ Difference Allowed between Utility Bill and ReeBill',
       bodyStyle: 'padding:5px 5px 0',
       //width: 610,
       defaults: {width: 435},
