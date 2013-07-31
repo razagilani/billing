@@ -1096,7 +1096,7 @@ class MongoReebill(object):
                         'register_id': register['identifier'],
                         'service': utilbill['service'],
                         'type': register.get('type', ''),
-                        'binding': register.get('binding', ''),
+                        'binding': register.get('register_binding', ''),
                         'description': register.get('description', ''),
                         'quantity': register.get('quantity', 0),
                         'quantity_units': register.get('quantity_units', ''),
