@@ -1,4 +1,10 @@
 #!/usr/bin/python
+'''
+Some graphs that Dan made because Rich thought they would be useful but were
+never used for anything. Depends on ChartDirector because that was our
+"official" chart library, but that is no longer used. Could easily be converted
+to Matplotlib, Fusion Charts etc.
+'''
 import sys
 import argparse
 import pychartdir
