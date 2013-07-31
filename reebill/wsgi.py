@@ -59,7 +59,7 @@ sys.stdout = sys.stderr
 pprint.pprint(os.environ)
 pprint.pprint(sys.path)
 pprint.pprint(sys.prefix)
-pp = pprint.PrettyPrinter(indent=4)
+pp = pprint.PrettyPrinter(indent=1).pprint
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
 class Debugger:
@@ -2767,32 +2767,37 @@ class BillToolBridge:
             # contains the service, meter id, and register id BEFORE the user
             # edited them.
 
+            result = {'success': True}
+
             for row in rows:
                 # extract keys needed to identify the register being updated
                 # from the "id" field sent by the client
                 orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
 
-                # modify the register using every field except "id"
+                # modify the register using every field in 'row' except "id"
+                # (getting back values necessary to tell the client which row
+                # should be selected)
                 del row['id']
-                reebill.update_register(orig_service, orig_meter_id,
+                new_service, new_meter_id, new_reg_id = \
+                        reebill.update_register(orig_service, orig_meter_id,
                         orig_reg_id, **row)
+
+                # if this row was selected before, tell the client it should
+                # still be selected, specifying the row by its new "id"
+                if kwargs.get('current_selected_id') == '%s/%s/%s' % (
+                        orig_service, orig_meter_id, orig_reg_id):
+                    result['current_selected_id'] = '%s/%s/%s' % (new_service,
+                            new_meter_id, new_reg_id)
 
             # update utility bill period dates to match meter id because the
             # meter read dates may have changed
             reebill.set_meter_dates_from_utilbills()
 
-            # get dictionaries describing all registers in all utility bills
             registers_json = reebill.get_all_actual_registers_json()
-
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
-
-            # client sends "current_selected_id" to identify which row is
-            # selected in the grid; if this key is present, server must also
-            # include "current_selected_id" in the response to indicate that
-            # the same row is still selected
-            if 'current_selected_id' in kwargs:
-                result['current_selected_id'] = kwargs['current_selected_id']
+            result.update({
+                'rows': registers_json,
+                'total': len(registers_json)
+            })
 
             self.reebill_dao.save_reebill(reebill)
             return self.dumps(result)
