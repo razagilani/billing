@@ -2697,12 +2697,9 @@ class BillToolBridge:
         'sequence' identify the reebill whose utility bill is being edited.
         Ext-JS uses 'xaction' to specify which CRUD operation is being
         performed (create, read, update, destroy).'''
-        ## rows in the grid are identified by an "id" consisting of the utility
-        ## bill service name, meter id, and register id separated by '/'. thus
-        ## '/' is forbidden in service names, meter ids, and register ids.
-        #def validate_id(id):
-            #if not re.match('.*/.*/.*', id):
-                #raise ValueError('Invalid register row id: "%s"' % id)
+        # rows in the grid are identified by an "id" consisting of the utility
+        # bill service name, meter id, and register id separated by '/'. thus
+        # '/' is forbidden in service names, meter ids, and register ids.
         def validate_id_components(*components):
             if any('/' in c for c in components):
                 raise ValueError(('Service names and meter/register ids must '
@@ -2808,9 +2805,12 @@ class BillToolBridge:
             return self.dumps(result)
 
         if xaction == 'destroy':
+            assert len(rows) == 1
+            id_of_row_to_delete = rows[0]
+
             # extract keys needed to identify the register being updated
-            # from the "id" field sent by the client
-            orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+            orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                    .split('/')
             reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
 
             # NOTE there is no "current_selected_id" because the formerly
