@@ -824,10 +824,12 @@ class MongoReebill(object):
                 ub['meters'][:] = [meter for meter in ub['meters'] if meter['identifier'] != identifier]
 
     def _new_meter(self, service, identifier=None):
+        if any(m['identifier'] == identifier for m in
+                self._get_utilbill_for_service( service)['meters']):
+            raise ValueError('Meter %s for service %s already exists' % (
+                    identifier, service))
         if identifier is None:
             identifier = str(UUID.uuid4())
-        if self._meter(service, identifier) is not None:
-            raise ValueError('Meter %s for service %s already exists' %(identifier, service))
         new_meter = {
             'identifier': identifier,
             'present_read_date': None,

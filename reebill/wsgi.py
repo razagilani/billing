@@ -2697,12 +2697,12 @@ class BillToolBridge:
         'sequence' identify the reebill whose utility bill is being edited.
         Ext-JS uses 'xaction' to specify which CRUD operation is being
         performed (create, read, update, destroy).'''
-        # rows in the grid are identified by an "id" consisting of the utility
-        # bill service name, meter id, and register id separated by '/'. thus
-        # '/' is forbidden in service names, meter ids, and register ids.
-        def validate_id(id):
-            if not re.match('.*/.*/.*', id):
-                raise ValueError('Invalid register row id: "%s"' % id)
+        ## rows in the grid are identified by an "id" consisting of the utility
+        ## bill service name, meter id, and register id separated by '/'. thus
+        ## '/' is forbidden in service names, meter ids, and register ids.
+        #def validate_id(id):
+            #if not re.match('.*/.*/.*', id):
+                #raise ValueError('Invalid register row id: "%s"' % id)
         def validate_id_components(*components):
             if any('/' in c for c in components):
                 raise ValueError(('Service names and meter/register ids must '
@@ -2731,9 +2731,11 @@ class BillToolBridge:
             return self.dumps(result)
 
         # the "rows" argument is only given when xaction is "create", "update",
-        # or "destroy"
+        # or "destroy". it's a list if there are multiple rows (though in
+        # practice there is only one because only one row of the grid can be
+        # created/edited/deleted at a time).
         rows = json.loads(kwargs['rows'])
-        if type(rows) is not list:
+        if not isinstance(rows, list):
             rows = [rows]
 
         if xaction == 'create':
@@ -2774,6 +2776,9 @@ class BillToolBridge:
                 # from the "id" field sent by the client
                 orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
 
+                validate_id_components(row.get('meter_id',''),
+                        row.get('register_id',''))
+
                 # modify the register using every field in 'row' except "id"
                 # (getting back values necessary to tell the client which row
                 # should be selected)
@@ -2803,34 +2808,19 @@ class BillToolBridge:
             return self.dumps(result)
 
         if xaction == 'destroy':
-            meters = reebill.meters
-            registers = []
-            for service, meter_list in meters.items():
-                for meter in meter_list:
-                    meter_id = meter['identifier']
-                    for register in meter['registers']:
-                        if not register['shadow']:
-                            row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
-                            row['type'] = register.get('type', '')
-                            row['binding'] = register.get('register_binding', '')
-                            row['description'] = register.get('description', '')
-                            row['quantity'] = register.get('quantity', 0)
-                            row['quantity_units'] = register.get('quantity_units','')
-                            registers.append(row)
-            for id in rows:
-                old_ids = id.split('/')
-                if len(old_ids) != 3:
-                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
-                old_service, old_meter, old_register = old_ids
-                reebill.delete_register(old_service, old_meter, old_register)
-                registers[:] = [r for r in registers if r['id'] != id]
+            # extract keys needed to identify the register being updated
+            # from the "id" field sent by the client
+            orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+            reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
 
-            reebill.set_meter_dates_from_utilbills()
+            # NOTE there is no "current_selected_id" because the formerly
+            # selected row was deleted
+            registers_json = reebill.get_all_actual_registers_json()
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
+
             self.reebill_dao.save_reebill(reebill)
-            toret = {'success':true, "rows":registers, 'total':len(registers)}
-            if toselect is not none:
-                toret['current_selected_id'] = toselect
-            return self.dumps(toRet)
+            return self.dumps(result)
 
         raise ValueError('Unknown xaction "%s"' % xaction)
 
