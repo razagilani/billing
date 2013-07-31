@@ -2697,12 +2697,9 @@ class BillToolBridge:
         'sequence' identify the reebill whose utility bill is being edited.
         Ext-JS uses 'xaction' to specify which CRUD operation is being
         performed (create, read, update, destroy).'''
-        ## rows in the grid are identified by an "id" consisting of the utility
-        ## bill service name, meter id, and register id separated by '/'. thus
-        ## '/' is forbidden in service names, meter ids, and register ids.
-        #def validate_id(id):
-            #if not re.match('.*/.*/.*', id):
-                #raise ValueError('Invalid register row id: "%s"' % id)
+        # rows in the grid are identified by an "id" consisting of the utility
+        # bill service name, meter id, and register id separated by '/'. thus
+        # '/' is forbidden in service names, meter ids, and register ids.
         def validate_id_components(*components):
             if any('/' in c for c in components):
                 raise ValueError(('Service names and meter/register ids must '
