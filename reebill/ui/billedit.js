@@ -5501,7 +5501,7 @@ function reeBillReady() {
     var journalEntryField = new Ext.form.TextArea({
         fieldLabel: 'Journal',
         name: 'entry',
-        anchor: '100%',
+        flex: 1,
         allowBlank: false,
     });
     var journalEntryAccountField = new Ext.form.Hidden({
@@ -5532,9 +5532,13 @@ function reeBillReady() {
         url: 'http://'+location.host+'/reebill/save_journal_entry',
         frame: true,
         border: false,
-        //height: 200,
-        layout: 'anchor',
-        anchor: '100%',
+        height: 100,
+        layout: 'vbox',
+        anchor: '100% 100%',
+        layoutConfig : {
+            align: 'stretch',
+            pack : 'start'
+        },
 
         items: [
             journalEntryField, 
