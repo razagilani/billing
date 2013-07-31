@@ -241,25 +241,13 @@ class MongoReebill(object):
                 for shadow_register in self.shadow_registers(service):
                     self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
-            # zero out statistics section
-            # TODO "statistics" will go away
-            self.reebill_dict['statistics'] = {
-                "conventional_consumed": 0,
-                "renewable_consumed": 0,
-                "renewable_utilization": 0,
-                "conventional_utilization": 0,
-                "renewable_produced": 0,
-                "co2_offset": 0,
-                "total_savings": Decimal("0.00"),
-                "total_renewable_consumed": 0,
-                "total_renewable_produced": 0,
-                "total_trees": 0,
-                "total_co2_offset": 0,
-                "consumption_trend": [],
-            }
+            # if "statistics" section exists in the bill, remove it
+            if 'statistics' in self.reebill_dict:
+                del self.reebill_dict['statistics']
+
 
     def convert_to_new_account(self, account):
-        # TODO: the existence of this function is a symptom of bad design.
+        # TODO: the existence of this function is a symptom of ugly design.
         # figure out how to make it go away if possible.
         # https://www.pivotaltracker.com/story/show/37798427
         '''Sets the account of this reebill and all its utility bills to
@@ -282,7 +270,7 @@ class MongoReebill(object):
         '''Replaces _ids in utility bill documents and the reebill document's
         references to them, and removed "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
-        rolling to create copies of the utility bills. Does not need to be
+        rolling to create copies of the utility bills. does not need to be
         called when creating a new account because 'convert_to_new_account'
         also does this.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
@@ -489,15 +477,6 @@ class MongoReebill(object):
     @motd.setter
     def motd(self, value):
         self.reebill_dict['message'] = value
-
-    @property
-    def statistics(self):
-        '''Returns a dictionary of the information that goes in the
-        "statistics" section of reebill.'''
-        return self.reebill_dict['statistics']
-    @statistics.setter
-    def statistics(self, value):
-        self.reebill_dict['statistics'].update(value)
 
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
@@ -816,6 +795,7 @@ class MongoReebill(object):
         meter = next(meter for meter in self._get_utilbill_for_service(
                 service)['meters'] if meter['identifier'] == identifier)
         return meter
+        return meter
 
     def _delete_meter(self, service, identifier):
         ub = self._get_utilbill_for_service(service)
@@ -829,7 +809,7 @@ class MongoReebill(object):
             raise ValueError('Meter %s for service %s already exists' % (
                     identifier, service))
         if identifier is None:
-            identifier = str(UUID.uuid4())
+            identifier = 'Insert meter ID here'
         new_meter = {
             'identifier': identifier,
             'present_read_date': None,
@@ -860,24 +840,24 @@ class MongoReebill(object):
         if meter is None:
             meter = self._new_meter(service, meter_identifier)
         if identifier is None:
-            identifier = str(UUID.uuid4())
+            identifier = 'Insert register ID here'
         new_actual_register = {
-            "description" : "No description",
+            "description" : "Insert description",
             "quantity" : 0,
             "quantity_units" : "No Units",
             "shadow" : False,
             "identifier" : identifier,
             "type" : "total",
-            "register_binding": "No Binding"
+            "register_binding": "Insert register binding here"
         }
         new_shadow_register = {
-            "description" : "No description",
+            "description" : "Insert description",
             "quantity" : 0,
-            "quantity_units" : "No Units",
+            "quantity_units" : "Therms",
             "shadow" : True,
             "identifier" : identifier,
             "type" : "total",
-            "register_binding": "No Binding"
+            "register_binding": "Insert register binding here"
         }
 
         for reg in  meter['registers']:
