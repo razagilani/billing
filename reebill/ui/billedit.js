@@ -5532,7 +5532,7 @@ function reeBillReady() {
         url: 'http://'+location.host+'/reebill/save_journal_entry',
         frame: true,
         border: false,
-        height: 200,
+        //height: 200,
         layout: 'anchor',
         anchor: '100%',
 
@@ -5582,7 +5582,7 @@ function reeBillReady() {
                 title: 'Add a Note',
 
                 layout: 'anchor',
-                anchor: '95%',
+                anchor: '100%',
                 align : 'stretch',
                 pack : 'start',
 
@@ -5594,7 +5594,7 @@ function reeBillReady() {
                     align: 'stretch',
                     pack : 'start'
                 },
-                height: 200,
+                //height: 200,
             },
             journalGrid,
         ],
