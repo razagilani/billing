@@ -1371,8 +1371,10 @@ function reeBillReady() {
         var waitMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait, creating new ReeBill"});
         waitMask.show();
         if(reeBillStore.getTotalCount() == 0) {
+            waitMask.hide();
             Ext.Msg.prompt('Service Start Date', 'Enter the date (YYYY-MM-DD) on which your utility service(s) started', function (btn, service_start_date) {
                 if(btn == 'ok') {
+                    waitMask.show();
                     rollOperationConn.request({
                     params: {account: selected_account, start_date: service_start_date},
                     success: function(result, request) {
