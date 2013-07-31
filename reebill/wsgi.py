@@ -2789,8 +2789,8 @@ class BillToolBridge:
                     result['current_selected_id'] = '%s/%s/%s' % (new_service,
                             new_meter_id, new_reg_id)
 
-            # update utility bill period dates to match meter id because the
-            # meter read dates may have changed
+            # update meter read dates to match utility bill period dates in
+            # case they changed (they didn't, because the UI can't specify this)
             reebill.set_meter_dates_from_utilbills()
 
             registers_json = reebill.get_all_actual_registers_json()
