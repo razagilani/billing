@@ -925,6 +925,10 @@ class MongoReebill(object):
         if binding is not None:
             register['register_binding'] = binding
 
+        # update shadow registers in reebill document to match utility bill
+        # documents
+        self._update_shadow_registers()
+
         return service or original_service, meter['identifier'], \
                 register['identifier']
 
@@ -976,12 +980,20 @@ class MongoReebill(object):
         for handle in self.reebill_dict['utilbills']:
             shadow_registers = handle['shadow_registers']
             for shadow_register in shadow_registers:
-                if not any([[r['identifier'] == shadow_register['identifier']
-                        for r in m['registers']]
-                        for m in u['meters']]
-                        for u in self._utilbills):
-                    shadow_registers.remove(shadow_register)
 
+                # NOTE this loop is an example of prioritizing clarity over
+                # efficiency: since there is no "goto", a lot of if statements
+                # are required to break out of these loops after a match is
+                # found, but who cares about a few extra iterations?
+                has_a_match = False
+                for u in self._utilbills:
+                    for m in u['meters']:
+                        if any(r['identifier'] == shadow_register['identifier']
+                                for r in m['registers']):
+                            has_a_match = True
+
+                if not has_a_match:
+                    shadow_registers.remove(shadow_register)
 
     def set_meter_dates_from_utilbills(self):
         '''Set the meter read dates to the start and end dates of the
