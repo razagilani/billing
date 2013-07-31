@@ -10,11 +10,6 @@ Install Python packages
     pip install -r billing/skyliner/requirements.txt
     pip install -r billing/requirements.txt
 
-Install ChartDirector
-    Download
-        http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
-    Extract, copy directory into ~/skyline/, then add2virtualenv ~/skyline/ChartDirector/lib/
-
 Create Skyliner config file
     cp billing/skyliner/cfg_tmpl.yaml billing/skyliner/config.yaml
 
@@ -126,13 +121,13 @@ login user with virtualenv
 staging user
 
 source /var/local/reebill-stage/bin/activate
-export PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+export PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages
 cd /var/local/reebill-stage
 
 production user
 
 source /var/local/reebill-prod/bin/activate
-export PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
+export PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages
 cd /var/local/reebill-prod
 
 Configure Apache2 
@@ -211,7 +206,7 @@ Configure Apache2
 
         WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/wsgi.py
 
-        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 /var/local/reebill-prod/lib/python2.7/site-packages
         WSGIApplicationGroup %{GLOBAL}
 
         WSGIProcessGroup reebill-prod
@@ -293,44 +288,6 @@ turn on virtualenv
 pip install -r [above file]
 
     
-
-Chart Director 'pychartdir'
-
-    http://www.advsofteng.com/download.html
-    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
-    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
-
-    Chart Director is installed by:
-        tar xvf chartdir_python_linux.tar
-        mv ChartDirector ~/.virtualenvs/billing/lib/python2.7/site-packages (or to global site-packages if no virtualenv)
-        Then add python path to virtual host WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
-    Fonts have to be copied?
-
-Details on installing ChartDirector:
-
-    wget http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
-    tar xvzf chartdir_python_linux_64.tar.gz 
-    mv ChartDirector/ ~/.virtualenvs/billing/lib/python2.7/site-packages/
-    cd workspace-skyline/
-    cp billing/reebill/ui/fonts/* ~/.virtualenvs/billing/lib/python2.7/site-packages/ChartDirector/lib/fonts/
-
-    The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
-    There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
-        For example, 
-            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector
-            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
-            cp ChartDirector/lib/* /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
-    (ToDo: figure out if there is anything wrong with manually copying to dist-packages as well as how to get python to find it without having to set the path manually)
-    PYTHONPATH must point to .../ChartDirector/lib or the location to where it was copied
-    This is accomplished by adding python path to WSGIDaemonProcess directive in Apache2 .../ChartDirector/lib
-    For example:
-        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=10 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
-
-    Ensure ReeBill fonts are included for Chart Director:
-        Manually add third party fonts to the ChartDirector font directory /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts
-        For example, sudo cp billing/reebill/ui/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
-        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
-
 
 MySQL
 
@@ -521,13 +478,14 @@ CRON
 
 Necessary cron jobs for running ReeBill
 
-The python path for cron jobs should be .:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/
+The python path for cron jobs should be .
+[Formerly .:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/, when the ChartDirector package was manually insalled in a non-standard way]
 
 python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages
 
 
 
@@ -538,7 +496,7 @@ It is important to note that backup_prod.bash creates a file in /tmp that is use
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
+PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages
 MAILTO=randrews@skylineinnovations.com
 
 # m h  dom mon dow   command
@@ -553,7 +511,7 @@ It is important that the staging environment de-stages production data.
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages
 MAILTO=randrews@skylineinnovations.com
 
 # m h  dom mon dow   command
@@ -607,7 +565,7 @@ ReeBill Apache Configuration Details
 
                 WSGIScriptAlias /reebill /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/wsgi.py
 
-                WSGIDaemonProcess reebill-stage user=reebill-stage group=reebill-stage processes=1 threads=10 python-path=/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-stage/lib/python2.6/site-packages
+                WSGIDaemonProcess reebill-stage user=reebill-stage group=reebill-stage processes=1 threads=10 python-path=/var/local/reebill-stage/lib/python2.6/site-packages
 
             WSGIProcessGroup reebill-stage
 
@@ -637,7 +595,7 @@ ReeBill Apache Configuration Details
                 CustomLog /var/log/apache2/reebill-access.log combined
 
                 WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/wsgi.py
-                WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
+                WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline
                 WSGIProcessGroup billtool
 
             </VirtualHost>
@@ -674,7 +632,7 @@ ReeBill Apache Configuration Details
                 CustomLog /var/log/apache2/reebill-access.log combined
 
                 WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/wsgi.py
-                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline:/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
+                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline:/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
                 WSGIProcessGroup reebill
                 WSGIApplicationGroup %{GLOBAL}
 
@@ -829,29 +787,9 @@ The ReeBill project is a good one to start with, since it's arguably the most co
         $ add2virtualenv /[home]/[workspace]/skyline /[home]/[workspace]/skyline/billing
 
 
-	Install ChartDirector
-	---------------------
-	Currently, this is used only by ReeBill, but this process is generalizable to installing other Python packages without using PIP, if needed.
-
-	- Navigate to http://www.advsofteng.com/download.html
-	- Download the proper version (chartdir_python_linux_64.tar.gz for 64-bit Linux)
-
-	Extract the file in your workspace.
-
-	$ tar xzf chartdir_python_linux_64.tar.gz
-
-	Add the directory to your python path
-
-        $ workon billing
-	$ add2virtualenv /[home]/[workspace]/ChartDirector/lib
-
-        Last, copy the reebill fonts into the chartdirector lib:
-        $ cp -r /[home]/[workspace]/skyline/billing/reebill/ui/fonts /[home]/[workspace]/ChartDirector/lib
-
-
-        Install ext-js-3.3.1
-        --------------------
-        Get the tar archive from someone else, and extract it in the billing/reebill/ui folder.
+    Install ext-js-3.3.1
+    --------------------
+    Get the tar archive from someone else, and extract it in the billing/reebill/ui folder.
         
 
 	Set Up Apache Configuration
@@ -871,12 +809,11 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 	- Use dev to denote a development configuration, rather than prod for production
 	- Make sure to run the WSGI script as your own user and group
 	- Make sure the paths for the additional Python paths are correct. If you are using virtualenvwrapper, then be sure to copy down paths from that app's virtualenv (e.g., /home/<user>/.virtualenvs/<appname>/lib/python2.7/site-packages/)
-	- An additional path needs to be set for ChartDirector, targeting its lib directory
 	- Double-check where the log for that web app is being stored and what it's called
 
 	Consider the following WSGIDaemonProcess statement for a user 'jones':
 
-	WSGIDaemonProcess reebill-dev user=jones group=jones processes=1 threads=1 python-path=/home/jones/.virtualenvs/billing//lib/python2.7/site-packages/ChartDirector/lib/:/home/jones/.virtualenvs/billing//lib/python2.7/site-packages/
+	WSGIDaemonProcess reebill-dev user=jones group=jones processes=1 threads=1 python-path=/home/jones/.virtualenvs/billing//lib/python2.7/site-packages/
 
 	$ sudo a2ensite skyline (or, sudo a2ensite reebill-dev)
 	$ sudo apache2ctl restart
