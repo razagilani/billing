@@ -2701,7 +2701,7 @@ class BillToolBridge:
         # bill service name, meter id, and register id separated by '/'. thus
         # '/' is forbidden in service names, meter ids, and register ids.
         def validate_id(id):
-            if not re.match('.*/.*/.*'):
+            if not re.match('.*/.*/.*', id):
                 raise ValueError('Invalid register row id: "%s"' % id)
         def validate_id_components(*components):
             if any('/' in c for c in components):
@@ -2762,62 +2762,40 @@ class BillToolBridge:
             return self.dumps(result)
 
         if xaction == 'update':
-            # for update, client sends a complete JSON representation of the
-            # grid rows to be updated (including all fields whether updated or
-            # not)
+            # for update, client sends a JSON representation of the grid rows,
+            # containing only the fields to be updated, plus an "id" field that
+            # contains the service, meter id, and register id BEFORE the user
+            # edited them.
 
-            meters = reebill.meters
-            registers = []
-            for service, meter_list in meters.items():
-                for meter in meter_list:
-                    meter_id = meter['identifier']
-                    for register in meter['registers']:
-                        if not register['shadow']:
-                            row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
-                            row['type'] = register.get('type', '')
-                            row['binding'] = register.get('register_binding', '')
-                            row['description'] = register.get('description', '')
-                            row['quantity'] = register.get('quantity', 0)
-                            row['quantity_units'] = register.get('quantity_units','')
-                            registers.append(row)
-
-            regs = []
             for row in rows:
-                reg = next((r for r in registers if r['id'] == row['id']), None)
-                old_id = row['id']
-                old_ids = old_id.split('/')
-                validate_id(old_id)
-                old_service, old_meter, old_register = old_ids
-                if reg is None:
-                    raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
-                reg.update(row)
-                new_service = row.get('service', old_service).lower()
-                reg['service'] = new_service
-                new_meter = row.get('meter_id', old_meter)
-                new_register = row.get('register_id', old_register)
-                validate_id_components(row.get('meter_id', ''), row.get('register_id'), '')
-                if new_service != old_service or new_meter != old_meter or new_register != old_register:
-                    meter = reebill._meter(new_service, new_meter)
-                    if meter is not None:
-                        for _r in meter['registers']:
-                            if _r['identifier'] == new_register:
-                                raise ValueError('Register with id %s for meter %s for service %s already exists' %(new_register, new_meter, new_service))
-                if new_service != old_service or new_meter != old_meter:
-                    reebill.delete_register(old_service, old_meter, old_register)
-                    reebill.new_register(new_service, new_meter, old_register)
-                    old_service = new_service
-                    old_meter = new_meter
-                new_dict = {}
-                new_dict['identifier'] = reg['register_id']
-                new_dict['description'] = reg['description']
-                new_dict['type'] = reg['type']
-                new_dict['register_binding'] = reg['binding']
-                new_dict['quantity'] = reg['quantity']
-                new_dict['quantity_units'] = reg['quantity_units']
-                reebill.update_register(old_service, old_meter, old_register, new_dict)
-                reg['id'] = reg['service']+'/'+reg['meter_id']+'/'+reg['register_id']
-                if 'current_selected_id' in kwargs and old_id == kwargs['current_selected_id'] and toSelect is None:
-                    toSelect = reg['id']
+                # extract keys needed to identify the register being updated
+                # from the "id" field sent by the client
+                orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+
+                # modify the register using every field except "id"
+                del row['id']
+                reebill.update_register(orig_service, orig_meter_id,
+                        orig_reg_id, **row)
+
+            # update utility bill period dates to match meter id because the
+            # meter read dates may have changed
+            reebill.set_meter_dates_from_utilbills()
+
+            # get dictionaries describing all registers in all utility bills
+            registers_json = reebill.get_all_actual_registers_json()
+
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
+
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
+
+            self.reebill_dao.save_reebill(reebill)
+            return self.dumps(result)
 
         if xaction == 'destroy':
             meters = reebill.meters
@@ -2841,12 +2819,15 @@ class BillToolBridge:
                 old_service, old_meter, old_register = old_ids
                 reebill.delete_register(old_service, old_meter, old_register)
                 registers[:] = [r for r in registers if r['id'] != id]
-        reebill.set_meter_dates_from_utilbills()
-        self.reebill_dao.save_reebill(reebill)
-        toRet = {'success':True, "rows":registers, 'total':len(registers)}
-        if toSelect is not None:
-            toRet['current_selected_id'] = toSelect
-        return self.dumps(toRet)
+
+            reebill.set_meter_dates_from_utilbills()
+            self.reebill_dao.save_reebill(reebill)
+            toret = {'success':true, "rows":registers, 'total':len(registers)}
+            if toselect is not none:
+                toret['current_selected_id'] = toselect
+            return self.dumps(toRet)
+
+        raise ValueError('Unknown xaction "%s"' % xaction)
 
     @cherrypy.expose
     @random_wait

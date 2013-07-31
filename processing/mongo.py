@@ -810,8 +810,11 @@ class MongoReebill(object):
         return meters
 
     def _meter(self, service, identifier):
-        meter = next((meter for meter in self._get_utilbill_for_service(service)['meters'] if
-                meter['identifier'] == identifier), None)
+        '''Returns the first meter found with the given identifier in the first
+        utility bill document found with the given service. Raises
+        StopIteration if none was found.'''
+        meter = next(meter for meter in self._get_utilbill_for_service(
+                service)['meters'] if meter['identifier'] == identifier)
         return meter
 
     def _delete_meter(self, service, identifier):
@@ -885,25 +888,93 @@ class MongoReebill(object):
                 .append(new_shadow_register)
         return (meter_identifier, new_actual_register)
 
-    def update_register(self, service, meter_identifier, register_identifier, new_dict):
-        meter = self._meter(service, meter_identifier)
-        if meter is None:
-            raise ValueError('No meter found with ID %s for service %s' %(meter_identifier, service))
-        register = next((r for r in meter['registers'] if r['identifier'] == register_identifier), None)
-        if register is None:
-            raise ValueError('No register found with ID %s for meter %s for service %s' %(register_identifier, meter_identifier, service))
-        register.update(new_dict)
-        shadows = self._get_handle_for_service(service)['shadow_registers']
-        shadow_register = next((r for r in shadows if r['identifier'] == register_identifier), None)
-        if shadow_register is None:
-            shadows.append(copy.deepcopy(register))
-        shadow_register = next((r for r in shadows if r['identifier'] == register_identifier), None)
-        shadow_register.update(register)
-        shadow_register['quantity'] = 0
-        shadow_register['shadow'] = True
+    def update_register(self, original_service, original_meter_id,
+            original_register_id, service=None, meter_id=None, register_id=None,
+            description=None, quantity=None, quantity_units=None, type=None,
+            register_binding=None):
+        '''In the utility bill given by 'original_service', updates fields in
+        the register given by 'original_register_id' in the meter given by
+        'original_meter_id'. Also updates "shadow registers" in the reebill
+        document to match.'''
+        # find the meter, and the register within the meter
+        meter = self._meter(original_service, original_meter_id)
+        register = next(r for r in meter['registers'] if r['identifier'] ==
+                original_register_id)
+
+        if service is not None:
+            # NOTE this method will be rewritten before multiple services are
+            # supported anyway
+            raise NotImplementedError(('Moving a register from one utility '
+                'bill to another is not supported. You can delete the '
+                'register and create a new one.'))
+        if meter_id is not None:
+            meter['identifier'] = meter_id
+        if description is not None:
+            register['description'] = description
+        if quantity is not None:
+            register['quantity'] = quantity
+        if description is not None:
+            register['description'] = description
+        if quantity_units is not None:
+            register['quantity_units'] = quantity_units
+        if register_id is not None:
+            register['identifier'] = register_id
+        if type is not None:
+            register['type'] = type
+
+
+    def _update_shadow_registers(self):
+        '''Refreshes list of "shadow_registers" dictionaries in this reebill
+        document to match the utility bill documents. This should be called
+        whenever _utilbills changes or a register is modified.'''
+        # NOTE the fields typically found in a "shadow register" dictionary
+        # are: "identifier", "quantity", "quantity_units", 'description" (a
+        # subset of the fields typically found in a register in a utility bill
+        # document). the only really necessary fields among these are are
+        # "identifier" and "quanity", because their only purpose is represent
+        # the quantity a register would have had in a hypothetical situation
+        # (and quantity should not be updated because it is the only field in
+        # which a shadow register should differ from its corresponding actual
+        # register.) however, for consistency, all these fields will continue to
+        # be updated--except "quantity", which should not be updated to match)
+        for u in self._utilbills:
+            handle = self._get_handle_for_service(u['service'])
+            for m in u['meters']:
+                for r in m['registers']:
+                    try:
+                        # shadow register dictionary already exists; update its
+                        # fields other than "identifier" and "quantity" (though
+                        # this is superfluous)
+                        shadow_register = next(s for s in
+                                handle['shadow_registers'] if s['identifier']
+                                == r['identifier'])
+                        shadow_register.update({
+                            'quantity_units': r['quantity_units'],
+                            'description': r['description'],
+                        })
+                    except StopIteration:
+                        # shadow register dictionary does not exist; create it
+                        handle['shadow_registers'].append({
+                            'identifier': r['identifier'],
+                            'quantity': 0,
+                            'quantity_units': r['quantity_units'],
+                            'description': r['description'],
+                        })
+
+        # cull any unnecessary shadow registers
+        for handle in self.reebill_dict['utilbills']:
+            shadow_registers = handle['shadow_registers']
+            for shadow_register in shadow_registers:
+                if not any([[r['identifier'] == shadow_register['identifier']
+                        for r in m['registers']]
+                        for m in u['meters']]
+                        for u in self._utilbills):
+                    shadow_registers.remove(shadow_register)
+
 
     def set_meter_dates_from_utilbills(self):
-        '''Set the meter read dates to the start and end dates of the associated utilbill.'''
+        '''Set the meter read dates to the start and end dates of the
+        associated utilbill.'''
         for service in self.services:
             for meter in self.meters_for_service(service):
                 start, end = self.utilbill_period_for_service(service)
