@@ -2808,9 +2808,12 @@ class BillToolBridge:
             return self.dumps(result)
 
         if xaction == 'destroy':
+            assert len(rows) == 1
+            id_of_row_to_delete = rows[0]
+
             # extract keys needed to identify the register being updated
-            # from the "id" field sent by the client
-            orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+            orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                    .split('/')
             reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
 
             # NOTE there is no "current_selected_id" because the formerly
