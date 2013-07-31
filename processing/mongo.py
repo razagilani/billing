@@ -809,7 +809,7 @@ class MongoReebill(object):
             raise ValueError('Meter %s for service %s already exists' % (
                     identifier, service))
         if identifier is None:
-            identifier = str(UUID.uuid4())
+            identifier = 'Insert meter ID here'
         new_meter = {
             'identifier': identifier,
             'present_read_date': None,
@@ -840,24 +840,24 @@ class MongoReebill(object):
         if meter is None:
             meter = self._new_meter(service, meter_identifier)
         if identifier is None:
-            identifier = str(UUID.uuid4())
+            identifier = 'Insert register ID here'
         new_actual_register = {
-            "description" : "No description",
+            "description" : "Insert description",
             "quantity" : 0,
             "quantity_units" : "No Units",
             "shadow" : False,
             "identifier" : identifier,
             "type" : "total",
-            "register_binding": "No Binding"
+            "register_binding": "Insert register binding here"
         }
         new_shadow_register = {
-            "description" : "No description",
+            "description" : "Insert description",
             "quantity" : 0,
-            "quantity_units" : "No Units",
+            "quantity_units" : "Therms",
             "shadow" : True,
             "identifier" : identifier,
             "type" : "total",
-            "register_binding": "No Binding"
+            "register_binding": "Insert register binding here"
         }
 
         for reg in  meter['registers']:
