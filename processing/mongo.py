@@ -891,11 +891,12 @@ class MongoReebill(object):
     def update_register(self, original_service, original_meter_id,
             original_register_id, service=None, meter_id=None, register_id=None,
             description=None, quantity=None, quantity_units=None, type=None,
-            register_binding=None):
+            binding=None):
         '''In the utility bill given by 'original_service', updates fields in
         the register given by 'original_register_id' in the meter given by
         'original_meter_id'. Also updates "shadow registers" in the reebill
-        document to match.'''
+        document to match. Returns the new service, meter identifier, and
+        register_identifier of the register.'''
         # find the meter, and the register within the meter
         meter = self._meter(original_service, original_meter_id)
         register = next(r for r in meter['registers'] if r['identifier'] ==
@@ -921,22 +922,28 @@ class MongoReebill(object):
             register['identifier'] = register_id
         if type is not None:
             register['type'] = type
+        if binding is not None:
+            register['register_binding'] == binding
+
+        return service or original_service, meter['identifier'], \
+                register['identifier']
 
 
     def _update_shadow_registers(self):
-        '''Refreshes list of "shadow_registers" dictionaries in this reebill
+        '''Refreshes list of "shadow_register" dictionaries in this reebill
         document to match the utility bill documents. This should be called
         whenever _utilbills changes or a register is modified.'''
         # NOTE the fields typically found in a "shadow register" dictionary
-        # are: "identifier", "quantity", "quantity_units", 'description" (a
-        # subset of the fields typically found in a register in a utility bill
-        # document). the only really necessary fields among these are are
-        # "identifier" and "quanity", because their only purpose is represent
-        # the quantity a register would have had in a hypothetical situation
-        # (and quantity should not be updated because it is the only field in
-        # which a shadow register should differ from its corresponding actual
-        # register.) however, for consistency, all these fields will continue to
-        # be updated--except "quantity", which should not be updated to match)
+        # are: "identifier", "quantity", "quantity_units", 'description", and
+        # "register_binding" (a subset of the fields typically found in a
+        # register in a utility bill document). the only really necessary
+        # fields among these are are "identifier" and "quanity", because their
+        # only purpose is represent the quantity a register would have had in a
+        # hypothetical situation (and quantity should not be updated because it
+        # is the only field in which a shadow register should differ from its
+        # corresponding actual register.) however, for consistency, all these
+        # fields will continue to be updated--except "quantity", which should
+        # not be updated to match)
         for u in self._utilbills:
             handle = self._get_handle_for_service(u['service'])
             for m in u['meters']:
@@ -951,6 +958,8 @@ class MongoReebill(object):
                         shadow_register.update({
                             'quantity_units': r['quantity_units'],
                             'description': r['description'],
+                            'register_binding': r['register_binding'],
+                            'type': r['type'],
                         })
                     except StopIteration:
                         # shadow register dictionary does not exist; create it
@@ -959,6 +968,8 @@ class MongoReebill(object):
                             'quantity': 0,
                             'quantity_units': r['quantity_units'],
                             'description': r['description'],
+                            'register_binding': r['register_binding'],
+                            'type': r['type'],
                         })
 
         # cull any unnecessary shadow registers
