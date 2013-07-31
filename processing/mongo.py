@@ -923,7 +923,7 @@ class MongoReebill(object):
         if type is not None:
             register['type'] = type
         if binding is not None:
-            register['register_binding'] == binding
+            register['register_binding'] = binding
 
         return service or original_service, meter['identifier'], \
                 register['identifier']
