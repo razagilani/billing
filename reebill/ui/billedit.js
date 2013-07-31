@@ -2,7 +2,7 @@
 //Ext.QuickTips.init();
 
 var DEFAULT_RESOLUTION = 100;
-var DEFAULT_DIFFERENCE_THRESHOLD = 1.0;
+var DEFAULT_DIFFERENCE_THRESHOLD = 10;
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.

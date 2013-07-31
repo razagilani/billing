@@ -2128,7 +2128,7 @@ class BillToolBridge:
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
                     row_dict['reebill_total'] = mongo_reebill.actual_total
                     try:
-                        row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
+                        row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
                     except DivisionByZero:
                         row_dict['difference'] = Decimal('Infinity')
                     except InvalidOperation:
