@@ -1391,6 +1391,13 @@ function reeBillReady() {
                                 reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                     reeBillGrid.getSelectionModel().selectFirstRow();
                                 }});
+
+                                utilbillGridStore.setDefaultSort('sequence', 'DESC');
+                                pageSize = utilbillGrid.getBottomToolbar().pageSize;
+                                utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                    utilbillGrid.getSelectionModel().selectFirstRow();
+                                    utilbillGridStore.setDefaultSort('period_end', 'DESC');
+                                }});
                             }
                         } catch (err) {
                             waitMask.hide();
@@ -1399,6 +1406,7 @@ function reeBillReady() {
                             tabPanel.setDisabled(false);
                             waitMask.hide();
                         }
+
                     },
                     failure: function(result, request) {
                         waitMask.hide();
@@ -1434,6 +1442,14 @@ function reeBillReady() {
                             pageSize = reeBillGrid.getBottomToolbar().pageSize;
                             reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                 reeBillGrid.getSelectionModel().selectFirstRow();
+                            }});
+
+                            utilbillGrid.getSelectionModel().clearSelections();
+                            utilbillGridStore.setDefaultSort('sequence', 'DESC');
+                            pageSize = utilbillGrid.getBottomToolbar().pageSize;
+                            utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                utilbillGrid.getSelectionModel().selectFirstRow();
+                                utilbillGridStore.setDefaultSort('period_end', 'DESC');
                             }});
                         }
                     } catch (err) {
