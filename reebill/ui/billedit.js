@@ -1331,7 +1331,7 @@ function reeBillReady() {
     });
     bindREEOperationConn.autoAbort = true;
     function bindREEOperation() {
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Gatherind data; please wait" });
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Gathering data; please wait" });
         waitMask.show();
 
         bindREEOperationConn.request({
