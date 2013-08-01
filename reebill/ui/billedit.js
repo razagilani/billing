@@ -67,9 +67,7 @@ function reeBillReady() {
                         if (jsonData.code == 1) {
                             // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
                             // of which there may be many.
-                            if (ReeBill.LoginWindow.hidden) {
-                                ReeBill.LoginWindow.show();
-                            }
+                            window.location.href = 'http://'+location.host+'/reebill/logout'
                         } else {
                             //console.log(jsonData);
                         }
