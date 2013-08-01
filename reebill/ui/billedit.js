@@ -681,14 +681,15 @@ function reeBillReady() {
         iconCls: 'icon-add',
         disabled: true,
         handler: function() {
-            Ext.Msg.show({title: "Please wait while new versions are created", closable: false});
+            var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Creating new versions; please wait" });
+            waitMask.show();
             newVersionConn.request({
                 url: 'http://'+location.host+'/reebill/new_reebill_version',
 
                 params: { account: selected_account, sequence: selected_sequence },
                 success: function(result, request) {
                     var jsonData = Ext.util.JSON.decode(result.responseText);
-                    Ext.Msg.hide();
+                    waitMask.hide();
                     if (jsonData.success == true) {
                         reeBillStore.reload();
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
@@ -698,7 +699,7 @@ function reeBillReady() {
                     }
                 },
                 failure: function() {
-                    Ext.Msg.hide();
+                    waitMask.hide();
                     Ext.MessageBox.alert('Ajax failure', 'new_reebill_version request failed');
                 },
             });
@@ -1330,7 +1331,8 @@ function reeBillReady() {
     });
     bindREEOperationConn.autoAbort = true;
     function bindREEOperation() {
-        Ext.Msg.show({title: "Gathering data; please wait", closable: false});
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Gatherind data; please wait" });
+        waitMask.show();
 
         bindREEOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
@@ -1341,7 +1343,7 @@ function reeBillReady() {
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        Ext.Msg.hide()
+                        waitMask.hide();
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -1368,7 +1370,7 @@ function reeBillReady() {
     function rollOperation()
     {
         tabPanel.setDisabled(true);
-        var waitMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait, creating new ReeBill"});
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Creating new reebill; please wait" });
         waitMask.show();
         if(reeBillStore.getTotalCount() == 0) {
             waitMask.hide();
@@ -1461,7 +1463,7 @@ function reeBillReady() {
                     }
                 },
                 failure: function(result, request) {
-                    waitMsg.hide();
+                    waitMask.hide();
                     try {
                         Ext.MessageBox.alert('Server Error', result.responseText);
                     } catch (err) {
