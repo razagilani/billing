@@ -434,10 +434,6 @@ class Process(object):
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
-        if 'statistics' in new_reebill.reebill_dict:
-            print '************* YES'
-        else:
-            print '************* NO'
         new_reebill.sequence += 1
         # Update the new reebill's periods to the periods identified in the StateDB
         for ub in utilbills:
