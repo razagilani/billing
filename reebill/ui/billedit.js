@@ -1336,12 +1336,11 @@ function reeBillReady() {
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
                 var jsonData = null;
+                waitMask.hide();
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        waitMask.hide();
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -1349,6 +1348,7 @@ function reeBillReady() {
                 }
             },
             failure: function(result, request) {
+                waitMask.hide();
                 try {
                     Ext.MessageBox.alert('Server Error', result.responseText);
                 } catch (err) {
