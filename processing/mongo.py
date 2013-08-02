@@ -843,7 +843,7 @@ class MongoReebill(object):
             identifier = 'Insert register ID here'
         new_actual_register = {
             "description" : "Insert description",
-            "quantity" : 0,
+            "quantity" : Decimal(0),
             "quantity_units" : "No Units",
             "shadow" : False,
             "identifier" : identifier,
@@ -852,7 +852,7 @@ class MongoReebill(object):
         }
         new_shadow_register = {
             "description" : "Insert description",
-            "quantity" : 0,
+            "quantity" : Decimal(0),
             "quantity_units" : "Therms",
             "shadow" : True,
             "identifier" : identifier,
@@ -895,7 +895,7 @@ class MongoReebill(object):
         if description is not None:
             register['description'] = description
         if quantity is not None:
-            register['quantity'] = quantity
+            register['quantity'] = Decimal(str(quantity))
         if description is not None:
             register['description'] = description
         if quantity_units is not None:
@@ -951,7 +951,7 @@ class MongoReebill(object):
                         # shadow register dictionary does not exist; create it
                         handle['shadow_registers'].append({
                             'identifier': r['identifier'],
-                            'quantity': 0,
+                            'quantity': Decimal(0),
                             'quantity_units': r['quantity_units'],
                             'description': r['description'],
                             'register_binding': r['register_binding'],
