@@ -121,10 +121,15 @@ class Process(object):
                 raise ValueError(("Can't assign a utility/rate structure name "
                         "to an unattached utility bill"))
             # NOTE utility name, RS name are not yet stored in Mongo
+            old_utility = mongo_reebill.utility_name_for_service(
+                    utilbill.service)
             old_ratestructure = mongo_reebill.rate_structure_name_for_service(
                     utilbill.service)
             self.reebill_dao.update_utility_and_rs(mongo_reebill,
                     utilbill.service, utility, old_ratestructure)
+            self.rate_structure_dao.update_rs_name(utilbill.customer.account,
+                    int(reebill.sequence), int(reebill.max_version), old_utility,
+                    old_ratestructure, utility, old_ratestructure)
 
         if rate_structure is not None:
             if not utilbill.has_reebill:
