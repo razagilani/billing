@@ -891,7 +891,48 @@ class MongoReebill(object):
                 'bill to another is not supported. You can delete the '
                 'register and create a new one.'))
         if meter_id is not None:
-            meter['identifier'] = meter_id
+            # meter id is being updated, and there is an existing meter with
+            # the given id, the register must be removed from its old meter and
+            # inserted into that meter. if there is no meter with that id, the
+            # id of the meter containing the register can be changed.
+            try:
+                existing_meter_with_new_id = self._meter(original_service,
+                        meter_id)
+                # insert register in new meter
+                self.new_register(original_service, meter_identifier=
+                        existing_meter_with_new_id['identifier'],
+                        identifier=original_register_id)
+                # remove register from old meter
+                self.delete_register(original_service, original_meter_id,
+                        original_register_id)
+            except StopIteration:
+                # if there are any other registers in the same meter, a new
+                # meter must be created. if not, the meter id can just be
+                # changed.
+                if len(meter['registers']) > 1:
+                    # create new meter
+                    new_meter = self._new_meter(original_service,
+                            identifier=meter_id)
+                    # insert register in new meter
+                    self.new_register(original_service,
+                            meter_identifier=meter_id,
+                            identifier=original_register_id)
+                    # remove register from old meter
+                    self.delete_register(original_service, original_meter_id,
+                            original_register_id)
+                else:
+                    meter['identifier'] = meter_id
+            #else:
+                ## NOTE this stuff goes in an "else" block instead of above in
+                ## "try" in case StopIteration can be raised by any of the lines
+                ## in this block
+                ## insert register in new meter
+                #self.new_register(original_service, meter_identifier=
+                        #existing_meter_with_new_id['identifier'],
+                        #identifier=original_register_id)
+                ## remove register from old meter
+                #self.delete_register(original_service, original_meter_id,
+                        #original_register_id)
         if description is not None:
             register['description'] = description
         if quantity is not None:
