@@ -362,7 +362,7 @@ class StateDB(object):
         modify any databases.'''
         if not utilbills:
             # TODO this error message sucks
-            raise BillStateError('No utility bills passed')
+            raise BillStateError('No utility bills found')
         non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
             raise BillStateError('No utility bills to attach because the %s services '
@@ -376,7 +376,7 @@ class StateDB(object):
         whose services are not in 'suspended_services'. The utility bills are
         marked as processed.'''
         if not utilbills:
-            raise BillStateError('No utility bills passed')
+            raise BillStateError('No utility bills found')
 
         non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
