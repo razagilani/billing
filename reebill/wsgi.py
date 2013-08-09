@@ -266,6 +266,7 @@ class BillToolBridge:
             self.config.set('reebillrendering', 'teva_accounts', '')
 
             # reebill reconciliation
+            # TODO 54911020 /tmp is a really bad default
             DEFAULT_RECONCILIATION_LOG_DIRECTORY = '/tmp'
             DEFAULT_RECONCILIATION_REPORT_DIRECTORY = '/tmp'
             self.config.add_section('reebillreconciliation')
