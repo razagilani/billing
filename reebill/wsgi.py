@@ -266,6 +266,7 @@ class BillToolBridge:
             self.config.set('reebillrendering', 'teva_accounts', '')
 
             # reebill reconciliation
+            # TODO 54911020 /tmp is a really bad default
             DEFAULT_RECONCILIATION_LOG_DIRECTORY = '/tmp'
             DEFAULT_RECONCILIATION_REPORT_DIRECTORY = '/tmp'
             self.config.add_section('reebillreconciliation')
@@ -369,6 +370,7 @@ class BillToolBridge:
                         'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
+                        #'nexus_host': self.config.get('skyline_backend', 'nexus_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
@@ -378,6 +380,7 @@ class BillToolBridge:
                     'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
+                    #'nexus_host': self.config.get('skyline_backend', 'nexus_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
@@ -1328,7 +1331,7 @@ class BillToolBridge:
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
         #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE) if x else None
+        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE).date() if x else None
         begin_date = make_date(begin_date)
         end_date = make_date(end_date)
         #write out spreadsheet(s)
