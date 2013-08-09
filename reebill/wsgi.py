@@ -1329,7 +1329,7 @@ class BillToolBridge:
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
         #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE) if x else None
+        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE).date() if x else None
         begin_date = make_date(begin_date)
         end_date = make_date(end_date)
         #write out spreadsheet(s)
