@@ -1562,7 +1562,8 @@ class BillToolBridge:
             utilbill = next(u for u in reebill.utilbills if u.service.lower() ==
                     service)
 
-            rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(utilbill)
+            rate_structure = self.ratestructure_dao.load_cprs_for_utilbill(
+                    utilbill)
             rates = rate_structure["rates"]
 
             if xaction == "read":
@@ -1609,15 +1610,7 @@ class BillToolBridge:
                     rsi.clear()
                     rsi.update(row)
 
-                self.ratestructure_dao.save_cprs(
-                    reebill.account, 
-                    reebill.sequence, 
-                    reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
-
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 result = self.compute_bill(account, sequence)
@@ -1633,14 +1626,7 @@ class BillToolBridge:
                 #new_rate['rsi_binding'] = orphaned binding
                 rates.append(new_rate)
 
-                self.ratestructure_dao.save_cprs(
-                    reebill.account, 
-                    reebill.sequence, 
-                    reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 self.compute_bill(account, sequence)
@@ -1668,14 +1654,7 @@ class BillToolBridge:
 
                     rates.remove(rsi)
 
-                self.ratestructure_dao.save_cprs(
-                    reebill.account, 
-                    reebill.sequence, 
-                    reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 self.compute_bill(account, sequence)
@@ -1744,12 +1723,7 @@ class BillToolBridge:
                     rsi.clear()
                     rsi.update(row)
 
-                self.ratestructure_dao.save_uprs(
-                    reebill.account, reebill.sequence, reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 self.compute_bill(account, sequence)
@@ -1764,12 +1738,7 @@ class BillToolBridge:
                 #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
 
-                self.ratestructure_dao.save_uprs(
-                    reebill.account, reebill.sequence, reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 self.compute_bill(account, sequence)
@@ -1797,12 +1766,7 @@ class BillToolBridge:
 
                     rates.remove(rsi)
 
-                self.ratestructure_dao.save_uprs(
-                    reebill.account, reebill.sequence, reebill.version,
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    rate_structure
-                )
+                self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
                 self.compute_bill(account, sequence)
