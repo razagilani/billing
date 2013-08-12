@@ -2942,7 +2942,8 @@ class BillToolBridge:
                 # sequence: reebill sequence number (if present)}
                 utilbills, totalCount = self.state_db.list_utilbills(session,
                         account, int(start), int(limit))
-                state_reebills = [ub.reebill for ub in utilbills]
+                # NOTE does not support multiple reebills per utility bill
+                state_reebills = [ub._utilbill_reebills[0].reebill for ub in utilbills]
                 mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account,
                         rb.sequence) if rb else None for rb in state_reebills]
 
@@ -2966,12 +2967,14 @@ class BillToolBridge:
                     ('period_start', ub.period_start),
                     ('period_end', ub.period_end),
                     ('total_charges', ub.total_charges),
-                    ('sequence', ub.reebill.sequence if ub.reebill else None),
+                    # NOTE does not support multiple reebills per utility bill
+                    ('sequence', ub._utilbill_reebills[0].reebill.sequence if
+                            ub.is_attached() else None),
                     ('state', state_descriptions[ub.state]),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
-                    ('editable', (not ub.has_reebill or not ub.reebill.issued))
-                ]) for rb, ub in zip(mongo_reebills,utilbills)]
+                    ('editable', not ub.is_attached())
+                ]) for rb, ub in zip(mongo_reebills, utilbills)]
 
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
