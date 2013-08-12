@@ -48,16 +48,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_create_new_account(self):
         billing_address = {
             'addressee': 'Andrew Mellon',
-            'street': '1785 Massachusetts Ave.',
-            'city': 'Washington',
-            'state': 'DC',
-            'postal_code': '20036', }
-        service_address = {
-            'addressee': 'Skyline Innovations',
-            'street': '1785 Massachusetts Ave.',
+            'street': '1785 Massachusetts Ave. NW',
             'city': 'Washington',
             'state': 'DC',
             'postal_code': '20036',
+        }
+        service_address = {
+            'addressee': 'Skyline Innovations',
+            'street': '1606 20th St. NW',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20009',
         }
 
         with DBSession(self.state_db) as session:
@@ -1795,27 +1796,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         account = '99999'
 
         with DBSession(self.state_db) as session:
-            # save RS/utilbill/reebill documents and create reebill and utility
-            # bill in MySQL
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
-            reebill_template = example_data.get_reebill(account, 0, version=0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            self.reebill_dao.save_reebill(reebill_template)
-            session.add(UtilBill(customer=self.state_db.get_customer(session,
-                    account), state=0, service='gas',
-                    period_start=date(2013,1,1), period_end=date(2013,2,1),
-                    reebill=None))
-            self.process.roll_bill(session, reebill_template,
-                    utility_bill_date=date(2013,1,1))
+            # create reebill and utility bill
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            utilbill = session.query(UtilBill).filter_by(
+                    customer=self.state_db.get_customer(session, account)).one()
+            self.process.create_first_reebill(session, utilbill)
             reebill_doc = self.reebill_dao.load_reebill(account, 1)
 
             # bind, compute, issue
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), reebill_doc,
                     use_olap=True)
-            self.process.compute_bill(session, reebill_template, reebill_doc)
+            self.process.compute_bill(session, None, reebill_doc)
             self.process.issue(session, account, 1)
 
             # create new version
@@ -1838,7 +1832,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
             with self.assertRaises(KeyError) as context:
-                self.process.compute_bill(session, reebill_template,
+                self.process.compute_bill(session, None,
                         reebill_correction_doc)
             self.reebill_dao.save_reebill(reebill_correction_doc)
 
