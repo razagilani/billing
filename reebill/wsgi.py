@@ -1557,140 +1557,129 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         service = service.lower()
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested rate structure 
-        # if this is the case, return no rate structure.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested rate structure 
-        if reebill is None:
-            return self.dumps({'success':True})
-
-        rate_structure = self.ratestructure_dao.load_cprs(
-            reebill.account, 
-            reebill.sequence, 
-            reebill.version,
-            reebill.utility_name_for_service(service),
-            reebill.rate_structure_name_for_service(service)
-        )
-
-        rates = rate_structure["rates"]
-
-        if xaction == "read":
-            return self.dumps({'success': True, 'rows':rates})
-        
         with DBSession(self.state_db) as session:
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            utilbill = next(u for u in reebill.utilbills if u.service.lower() ==
+                    service)
+
+            rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(utilbill)
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return self.dumps({'success': True, 'rows':rates})
+            
+                
             if self.state_db.is_issued(session, account, sequence):
                 raise ValueError("Cannot edit rate structure for an issued bill")
-            
-        if xaction == "update":
 
-            rows = json.loads(kwargs["rows"])
+            if xaction == "update":
 
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
+                rows = json.loads(kwargs["rows"])
 
-            # process list of edits
-            # TODO: RateStructure DAO should do CRUD ops
-            for row in rows:
-                # identify the RSI UUID of the posted data
-                rsi_uuid = row['uuid']
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
 
-                # identify the rsi, and update it with posted data
-                matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                # process list of edits
+                # TODO: RateStructure DAO should do CRUD ops
+                for row in rows:
+                    # identify the RSI UUID of the posted data
+                    rsi_uuid = row['uuid']
 
-                # eliminate attributes that have empty strings or None as these mustn't 
-                # be added to the RSI so the RSI knows to compute for those values
-                for k,v in row.items():
-                    if v is None or v == "":
-                        del row[k]
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                # now that blank values are removed, ensure that required fields were sent from client 
-                if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
 
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                rsi.clear()
-                rsi.update(row)
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
+
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
 
-            # 23417235 temporary hack
-            result = self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                result = self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
-        elif xaction == "create":
+            elif xaction == "create":
 
-            # TODO: 27315653 allow more than one RSI to be created
+                # TODO: 27315653 allow more than one RSI to be created
 
-            new_rate = {"uuid": str(UUID.uuid1())}
-            # should find an unbound charge item, and use its binding since an RSI
-            # might be made after a charge item is created
-            #new_rate['rsi_binding'] = orphaned binding
-            rates.append(new_rate)
+                new_rate = {"uuid": str(UUID.uuid1())}
+                # should find an unbound charge item, and use its binding since an RSI
+                # might be made after a charge item is created
+                #new_rate['rsi_binding'] = orphaned binding
+                rates.append(new_rate)
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True, 'rows':new_rate})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True, 'rows':new_rate})
 
-        elif xaction == "destroy":
+            elif xaction == "destroy":
 
-            uuids = json.loads(kwargs["rows"])
+                uuids = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
 
-            # process list of removals
-            for rsi_uuid in uuids:
+                # process list of removals
+                for rsi_uuid in uuids:
 
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
 
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                rates.remove(rsi)
+                    rates.remove(rsi)
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
@@ -1703,136 +1692,121 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested rate structure 
-        # if this is the case, return no rate structure.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested rate structure 
-        if reebill is None:
-            return self.dumps({'success':True})
-
-        utility_name = reebill.utility_name_for_service(service)
-        rs_name = reebill.rate_structure_name_for_service(service)
-        (effective, expires) = reebill.utilbill_period_for_service(service)
-        rate_structure = self.ratestructure_dao.load_uprs(account, sequence,
-                reebill.version, utility_name, rs_name)
-
-        # It is possible the a UPRS does not exist for the utility billing period.
-        # If this is the case, create it
-        if rate_structure is None:
-            raise Exception("Could not load UPRS for %s, %s %s to %s" %
-                    (utility_name, rs_name, effective, expires) )
-
-        rates = rate_structure["rates"]
-
-        if xaction == "read":
-            return self.dumps({'success': True, 'rows':rates})
-        
         with DBSession(self.state_db) as session:
-            if self.state_db.is_issued(session, account, sequence):
-                raise Exception("Cannot edit rate structure for an issued bill")
+            reebill = self.state_db.get_reebill(session, account, sequence)
+
+            # NOTE does not support multiple utility bills per reebill
+            rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(
+                    reebill.utilbills[0])
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return self.dumps({'success': True, 'rows':rates})
             
-        if xaction == "update":
+            with DBSession(self.state_db) as session:
+                if self.state_db.is_issued(session, account, sequence):
+                    raise Exception("Cannot edit rate structure for an issued bill")
+                
+            if xaction == "update":
 
-            rows = json.loads(kwargs["rows"])
+                rows = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
 
-            # process list of edits
-            for row in rows:
+                # process list of edits
+                for row in rows:
 
-                # identify the RSI descriptor of the posted data
-                rsi_uuid = row['uuid']
+                    # identify the RSI descriptor of the posted data
+                    rsi_uuid = row['uuid']
 
-                # identify the rsi, and update it with posted data
-                matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                # eliminate attributes that have empty strings or None as these mustn't 
-                # be added to the RSI so the RSI knows to compute for those values
-                for k,v in row.items():
-                    if v is None or v == "":
-                        del row[k]
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
 
-                # now that blank values are removed, ensure that required fields were sent from client 
-                if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                rsi.clear()
-                rsi.update(row)
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_uprs(
+                    reebill.account, reebill.sequence, reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
-        elif xaction == "create":
+            elif xaction == "create":
 
-            # TODO: 27315653 allow more than one RSI to be created
+                # TODO: 27315653 allow more than one RSI to be created
 
-            new_rate = {"uuid": str(UUID.uuid1())}
-            # find an oprhan binding and set it here
-            #new_rate['rsi_binding'] = "Temporary RSI Binding"
-            rates.append(new_rate)
+                new_rate = {"uuid": str(UUID.uuid1())}
+                # find an oprhan binding and set it here
+                #new_rate['rsi_binding'] = "Temporary RSI Binding"
+                rates.append(new_rate)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_uprs(
+                    reebill.account, reebill.sequence, reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True, 'rows':new_rate})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True, 'rows':new_rate})
 
-        elif xaction == "destroy":
+            elif xaction == "destroy":
 
-            uuids = json.loads(kwargs["rows"])
+                uuids = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
 
-            # process list of removals
-            for rsi_uuid in uuids:
+                # process list of removals
+                for rsi_uuid in uuids:
 
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
 
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                rates.remove(rsi)
+                    rates.remove(rsi)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_uprs(
+                    reebill.account, reebill.sequence, reebill.version,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
