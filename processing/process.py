@@ -510,7 +510,6 @@ class Process(object):
                 present_reebill.balance_forward = prior_reebill.balance_due - \
                         present_reebill.payment_received + \
                         present_reebill.total_adjustment
-            self.calculate_statistics(prior_reebill, present_reebill)
 
         # include manually applied adjustment
         present_reebill.balance_forward += present_reebill.manual_adjustment
