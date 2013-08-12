@@ -19,7 +19,7 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
@@ -223,6 +223,15 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+    @classmethod
+    def validate_utilbill_period(self, start, end):
+        '''Raises an exception if the dates 'start' and 'end' are unreasonable
+        as a utility bill period: "reasonable" means start < end and (end -
+        start) < 1 year.'''
+        if start >= end:
+            raise Exception('Utility bill start date must precede end.')
+        if (end - start).days > 365:
+            raise Exception('Utility billing period lasts longer than a year?!')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -274,7 +283,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    date_received = Column(Date, nullable=False)
+    date_received = Column(DateTime, nullable=False)
     date_applied = Column(Date, nullable=False)
     description = Column(String)
     credit = Column(Float)
@@ -483,7 +492,7 @@ class StateDB(object):
         modify any databases.'''
         if not utilbills:
             # TODO this error message sucks
-            raise BillStateError('No utility bills passed')
+            raise BillStateError('No utility bills found')
         non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
             raise BillStateError('No utility bills to attach because the %s services '
@@ -497,7 +506,7 @@ class StateDB(object):
         whose services are not in 'suspended_services'. The utility bills are
         marked as processed.'''
         if not utilbills:
-            raise BillStateError('No utility bills passed')
+            raise BillStateError('No utility bills found')
 
         non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
