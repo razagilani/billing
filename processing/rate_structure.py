@@ -387,6 +387,18 @@ class RateStructureDAO(object):
                 .filter(UtilBill.state != UtilBill.Hypothetical)
         result = []
         for utilbill in utilbills:
+            # ignore utility bills that are 'SkylineEstimated' or
+            # 'Hypothetical'
+            if utilbill.state >= UtilBill.SkylineEstimated:
+                continue
+            if utilbill.uprs_document_id is None:
+                self.logger.warning(('ingoring utility bill for %(account)s '
+                    'from %(start)s to %(end)s: has state %(state)s but lacks '
+                    'uprs_document_id') % {'state': utilbill.state,
+                    'account': utilbill.customer.account, 'start':
+                    utilbill.period_start, 'end': utilbill.period_end})
+                continue
+                            
             # load UPRS document for the current version of this utility bill
             # (it never makes sense to use a frozen utility bill's URPS here
             # because the only UPRSs that should count are "current" ones)
