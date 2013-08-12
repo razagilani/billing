@@ -1615,6 +1615,7 @@ class ReebillDAO:
         given by 'account'.'''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
+        assert customer.utilbill_template_id not in (None, '')
         docs = self.utilbills_collection.find({
                 '_id': bson.ObjectId(customer.utilbill_template_id)})
         if docs.count() == 0:
