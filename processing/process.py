@@ -910,7 +910,16 @@ class Process(object):
                 self.nexus_util.olap_id(account), reebill_doc)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0) if sequence > 1 else None
-        self.compute_bill(session, predecessor, reebill_doc)
+        try:
+            self.compute_bill(session, predecessor, reebill_doc)
+        except Exception as e:
+            # TODO: catching Exception is awful and horrible and terrible and
+            # you should never do it, except when you can't think of any other
+            # way to accomplish the same thing
+            self.logger.error(("In Process.new_version, couldn't compute new "
+                    "version %s of reebill %s-%s: %s\n%s") % (
+                    reebill_doc.version, reebill_doc.account,
+                    reebill_doc.sequence, e, traceback.format_exc()))
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill_doc)
