@@ -225,9 +225,8 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         # conversions happen when it's loaded out of mongo too)
         ub = example_data.get_utilbill_dict(u'99999', start=date(1900,1,1),
                 end=date(1900,2,1), utility=u'washgas', service=u'gas')
-        ub = deep_map(lambda x: x.date() if isinstance(x, datetime) else x, ub)
-        ub = deep_map(float_to_decimal, ub)
 
+        self.maxDiff = None
         self.assertDocumentsEqualExceptKeys(ub,
                 self.reebill_dao.load_utilbill('99999', 'gas', 'washgas',
                 date(1900,1,1), date(1900,2,1)), '_id', 'chargegroups')
