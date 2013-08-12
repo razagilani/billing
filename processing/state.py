@@ -223,6 +223,7 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+
     @classmethod
     def validate_utilbill_period(self, start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
