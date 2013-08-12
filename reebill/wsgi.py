@@ -962,9 +962,12 @@ class BillToolBridge:
 
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
-            predecessor = self.reebill_dao.load_reebill(account,
-                    unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
+            if unissued_sequence == 1:
+                predecessor = None
+            else:
+                predecessor = self.reebill_dao.load_reebill(account,
+                        unissued_sequence - 1, version=0)
             self.process.compute_bill(session, predecessor, reebill)
             self.process.issue(session, account, unissued_sequence)
 

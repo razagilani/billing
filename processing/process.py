@@ -446,7 +446,7 @@ class Process(object):
         else:
             present_reebill.total_adjustment = Decimal(0)
 
-        if prior_reebill == None:
+        if prior_reebill is None:
             # this is the first reebill
             assert present_reebill.sequence == 1
 
