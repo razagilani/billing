@@ -826,10 +826,14 @@ class StateDB(object):
         reebills = session.query(ReeBill)\
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
+        #tuples = sorted([(r.customer.account, r.sequence,
+                ## 'total_charges' of all utility bills attached to each reebill
+                #session.query(func.sum(UtilBill.total_charges))\
+                        #.filter(UtilBill.reebills.contains(r)).one()[0])
+                #for r in reebills.all()],
+        # 'total_charges' of all utility bills attached to each reebill
         tuples = sorted([(r.customer.account, r.sequence,
-                # 'total_charges' of all utility bills attached to each reebill
-                session.query(func.sum(UtilBill.total_charges))\
-                        .filter(UtilBill.reebills.contains(r)).one()[0])
+                sum(u.total_charges for u in r.utilbills))
                 for r in reebills.all()],
                 # sort by account ascending; worry about performance later
                 # (maybe when sort order is actually configurable)
