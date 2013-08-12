@@ -46,7 +46,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         #super(ProcessTest, self).__init__(methodName)
 
     def test_create_new_account(self):
-billing_address = { 'addressee': 'Andrew Mellon', 'street': '1785 Massachusetts Ave.', 'city': 'Washington', 'state': 'DC', 'postal_code': '20036', } service_address = {
+        billing_address = {
+            'addressee': 'Andrew Mellon',
+            'street': '1785 Massachusetts Ave.',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20036', }
+        service_address = {
             'addressee': 'Skyline Innovations',
             'street': '1785 Massachusetts Ave.',
             'city': 'Washington',
