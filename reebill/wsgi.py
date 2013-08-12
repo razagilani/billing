@@ -24,6 +24,7 @@ import re
 import md5
 import operator
 from StringIO import StringIO
+from itertools import chain
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
@@ -2884,7 +2885,8 @@ class BillToolBridge:
                 utilbills, totalCount = self.state_db.list_utilbills(session,
                         account, int(start), int(limit))
                 # NOTE does not support multiple reebills per utility bill
-                state_reebills = [ub._utilbill_reebills[0].reebill for ub in utilbills]
+                state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
+                        ub._utilbill_reebills] for ub in utilbills)
                 mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account,
                         rb.sequence) if rb else None for rb in state_reebills]
 
