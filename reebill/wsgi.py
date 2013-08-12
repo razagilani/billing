@@ -769,31 +769,43 @@ class BillToolBridge:
 
         # 1st transaction: roll
         with DBSession(self.state_db) as session:
-            lastSequence = self.state_db.last_sequence(session, account)
-            reebill = self.reebill_dao.load_reebill(account, lastSequence)
-            new_reebill = self.process.roll_bill(session, reebill, start_date)
-            self.reebill_dao.save_reebill(new_reebill)
+            last_seq = self.state_db.last_sequence(session, account)
+            if last_seq == 0:
+                utilbill = session.query(UtilBill).join(Customer)\
+                        .filter(UtilBill.customer_id == customer.id)\
+                        .filter_by(account=account)\
+                        .filter(UtilBill.period_start >= start_date)\
+                        .order_by(UtilBill.period_start).first()
+                self.process.create_first_reebill(session, utilbill)
+            else:
+                self.process.create_next_reebill(session, account)
+            new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq +
+                    1)
+
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence)
+                    account, last_seq + 1)
             # Process.roll includes attachment
+            # TODO "attached" is no longer a useful event;
+            # see https://www.pivotaltracker.com/story/show/55044870
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
+                account, last_seq + 1, new_reebill_doc.version)
 
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
         with DBSession(self.state_db) as session:
-            new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_reebill, use_olap=True, verbose=True)
-            self.reebill_dao.save_reebill(new_reebill)
+                    new_reebill_doc, use_olap=True, verbose=True)
+            self.reebill_dao.save_reebill(new_reebill_doc)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
+                account, new_reebill_doc.sequence, new_reebill_doc.version)
             
-            self.process.compute_bill(session, reebill, new_reebill)
-            self.reebill_dao.save_reebill(new_reebill)
+            predecessor = self.reebill_dao.load_reebill(account, last_seq,
+                    version=0)
+            self.process.compute_bill(session, predecessor, new_reebill_doc)
+            self.reebill_dao.save_reebill(new_reebill_doc)
 
             return self.dumps({'success': True})
 
