@@ -55,11 +55,15 @@ def daily_average_energy(reebill_dao, account, day, service='gas',
         elif quantity_unit == 'kwh':
             total_therms += quantity / Decimal(.0341214163)
         elif quantity_unit == 'ccf':
-            raise Exception(("Register contains gas measured "
-                "in ccf: can't convert that into energy "
-                "without the multiplier."))
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                "in ccf: energy value is wrong; time to implement "
+                "https://www.pivotaltracker.com/story/show/28825375") % (
+                account, reebill.sequence, self.version)
+            # assume conversion factor is 1
+            total_therms += quantity
         else:
-            raise Exception('Unknown energy unit: "%s"' % \
+            raise ValueError('Unknown energy unit: "%s"' % \
                     register['quantity_units'])
 
     # convert therms into the caller's preferred energy unit
