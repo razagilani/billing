@@ -178,7 +178,7 @@ class RateStructureDAO(object):
                     quantity = closest_occurrence[binding][1]['quantity']
                 except KeyError:
                     if self.logger:
-                        self.logger.error('malformed RSI:' + rsi_dict)
+                        self.logger.error('malformed RSI: %s' % rsi_dict)
                 result.append({
                     'rsi_binding': binding,
                     'rate': rate,
