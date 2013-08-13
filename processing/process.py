@@ -13,7 +13,7 @@ from optparse import OptionParser
 from decimal import *
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
-from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 import operator
 from bson import ObjectId
 import traceback
@@ -189,6 +189,7 @@ class Process(object):
         utility bills will be added to cover the gap between this bill's period
         and the previous newest or oldest one respectively. The total of all
         charges on the utility bill may be given.'''
+        # validate arguments
         if end_date <= begin_date:
             raise ValueError("Start date %s must precede end date %s" %
                     (begin_date, end_date))
@@ -217,6 +218,8 @@ class Process(object):
         # edit it after uploading.
         # TODO get utility name and rate class as arguments instead of from
         # template: see https://www.pivotaltracker.com/story/show/52495771
+        # (don't try to improve this code because it will go away when these
+        # parameters are passed in from the client)
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
@@ -237,11 +240,36 @@ class Process(object):
                 raise IOError('File upload failed: %s %s %s' % (file_name,
                     begin_date, end_date))
 
-        # record the bill in state DB
-        self.record_utilbill_in_database(session, account, utility,
-                service, rate_class, begin_date, end_date, total,
-                date_received=datetime.utcnow().date(),
-                state=state)
+        # delete any existing bill with same service and period but less-final
+        # state
+        customer = self.state_db.get_customer(session, account)
+        bill_to_replace = self._find_replaceable_utility_bill(session,
+                customer, service, begin_date, end_date)
+        if bill_to_replace is not None:
+            session.delete(bill_to_replace)
+
+        # create new UtilBill document (it does not have any mongo document
+        # _ids yet but these are created below)
+        # NOTE SQLAlchemy automatically adds this UtilBill to the session, so
+        # calling session.add() is superfluous; see
+        # https://www.pivotaltracker.com/story/show/26147819
+        new_utilbill = UtilBill(customer, state, service, utility, rate_class,
+                period_start=begin_date, period_end=end_date,
+                total_charges=total, date_received=datetime.utcnow().date())
+
+        # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
+        # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
+        # which has no documents)
+        session.add(new_utilbill)
+        if state < UtilBill.Hypothetical:
+            doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
+                    new_utilbill)
+            new_utilbill.document_id = doc['_id']
+            new_utilbill.uprs_document_id = uprs['_id']
+            new_utilbill.cprs_document_id = cprs['_id']
+            self.reebill_dao._save_utilbill(doc)
+            self.rate_structure_dao.save_rs(uprs)
+            self.rate_structure_dao.save_rs(cprs)
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -253,59 +281,137 @@ class Process(object):
                     service, utility, rate_class, original_last_end,
                     begin_date)
 
-    def record_utilbill_in_database(self, session, account, utility, service,
-            rate_class, begin_date, end_date, total_charges, date_received,
-            state=UtilBill.Complete):
-        '''Inserts a row into the utilbill table when a utility bill file has
-        been uploaded. The bill is Complete by default but can can have other
-        states (see comment in state.UtilBill for explanation of utility
-        bill states). The bill is initially marked as un-processed.'''
-        # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account) \
-                .one()
+    def _find_replaceable_utility_bill(self, session, customer, service, start, end):
+        '''Returns exactly one state.UtilBill that should be replaced by
+        'new_utilbill' which is about to be uploaded (i.e. has the same
+        customer, period, and service, but a less-final state). Returns None if
+        there is no such bill. A NotUniqueException is raised if more than one
+        utility bill matching these criteria is found.
+        
+        Note: customer, service, start, end are passed in instead of a new
+        UtilBill because SQLAlchemy automatically adds any UtilBill that is
+        instantiated to the session, which breaks the test for matching utility
+        bills that already exist.'''
+        # TODO 38385969: is this really a good idea?
 
         # get existing bills matching dates and service
         # (there should be at most one, but you never know)
-        existing_bills = session.query(UtilBill) \
-                .filter(UtilBill.customer_id==customer.id) \
-                .filter(UtilBill.service==service) \
-                .filter(UtilBill.period_start==begin_date) \
-                .filter(UtilBill.period_end==end_date)
+        existing_bills = session.query(UtilBill)\
+                .filter_by(customer=customer)\
+                .filter_by(service=service)\
+                .filter_by(period_start=start)\
+                .filter_by(period_end=end)
+        try:
+            existing_bill = existing_bills.one()
+        except NoResultFound:
+            return None
+        except MultipleResultsFound:
+            raise NotUniqueException(("Can't upload a bill for dates %s, %s "
+                    "because there are already %s of them") % (begin_date,
+                    end_date, len(list(existing_bills))))
 
-        if list(existing_bills) == []:
-            # nothing to replace; just upload the bill
+        # now there is one existing bill with the same dates. if state is
+        # "more final" than an existing non-final bill that matches this
+        # one, that bill should be replaced with the new one
+        # (states can be compared with '<=' because they're ordered from
+        # "most final" to least--see state.UtilBill)
+        if existing_bill.state <= state:
+            # TODO this error message is kind of obscure
+            raise NotUniqueException(("Can't upload a utility bill for "
+                "dates %s, %s because one already exists with a more final"
+                " state than %s") % (start, end, state))
 
-            self.create_new_utility_bill(session, account, utility, service,
-                    rate_class, begin_date, end_date, total=total_charges,
-                    state=state)
+        return existing_bill
 
-        elif len(list(existing_bills)) > 1:
-            raise NotUniqueException(("Can't upload a bill for dates %s, %s because"
-                    " there are already %s of them") % (begin_date, end_date,
-                    len(list(existing_bills))))
-        else:
-            # now there is one existing bill with the same dates. if state is
-            # "more final" than an existing non-final bill that matches this
-            # one, replace that bill
-            # TODO 38385969: is this really a good idea?
-            # (we can compare with '>' because states are ordered from "most
-            # final" to least (see state.UtilBill)
-            bills_to_replace = existing_bills.filter(UtilBill.state > state)
 
-            if list(bills_to_replace) == []:
-                # TODO this error message is kind of obscure
-                raise NotUniqueException(("Can't upload a utility bill for "
-                    "dates %s, %s because one already exists with a more final"
-                    " state than %s") % (begin_date, end_date, state))
-                    
-            bill_to_replace = bills_to_replace.one()
-                
-            # now there is exactly one bill with the same dates and its state is
-            # less final than the one being uploaded, so replace it.
-            session.delete(bill_to_replace)
-            self.create_new_utility_bill(session, account, utility, service,
-                    rate_class, begin_date, end_date, total=total_charges,
-                    state=state)
+    def _generate_docs_for_new_utility_bill(self, session, utilbill):
+        '''Returns utility bill doc, UPRS doc, CPRS doc for the given
+        StateDB.UtilBill which is about to be added to the database, using the
+        last utility bill with the same account, service, and rate class, or
+        the account's template if no such bill exists. 'utilbill' must be at
+        most 'SkylineEstimated', 'Hypothetical' because 'Hypothetical' utility
+        bills have no documents. No database changes are made.'''
+        assert utilbill.state < UtilBill.Hypothetical
+
+#        def ignore_function(uprs):
+#            # ignore UPRSs of un-attached utility bills, and utility bills whose
+#            # reebill sequence is 0, which are meaningless
+#            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+#                return True
+#            # ignore UPRSs belonging to a utility bill whose reebill version is
+#            # less than the maximum version (because they may be wrong, and to
+#            # prevent multiple-counting)
+#            if self.state_db.max_version(session, uprs['_id']['account'],
+#                    uprs['_id']['sequence']):
+#                return True
+#            return False
+
+        # look for the last utility bill with the same account, service, and
+        # rate class, (i.e. the last-ending before 'end'), ignoring
+        # Hypothetical ones. copy its mongo document and CPRS.
+        # TODO pass this predecessor in from upload_utility_bill?
+        # see https://www.pivotaltracker.com/story/show/51749487
+        try:
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                    utilbill.customer.account, utilbill.period_end,
+                    service=utilbill.service, utility=utilbill.utility,
+                    rate_class=utilbill.rate_class)
+            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
+            cprs['_id'] = ObjectId()
+        except NoSuchBillException:
+            # if this is the first bill ever for the account (or all the
+            # existing ones are Hypothetical), use template for the utility
+            # bill document, and create new empty CPRS
+            doc = self.reebill_dao.load_utilbill_template(session,
+                    utilbill.customer.account)
+            # template document should have the same service/utility/rate class
+            # as this one; multiple services are not supported since there
+            # would need to be more than one template
+            assert doc['service'] == utilbill.service
+            assert doc['utility'] == utilbill.utility
+            assert doc['rate_structure_binding'] == utilbill.rate_class
+            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+        doc.update({
+            '_id': ObjectId(),
+            'start': date_to_datetime(utilbill.period_start),
+            'end': date_to_datetime(utilbill.period_end),
+             # update the document's "account" field just in case it's wrong or
+             # two accounts are sharing the same template document
+            'account': utilbill.customer.account,
+        })
+
+        # generate predicted UPRS
+        uprs = self.rate_structure_dao.get_probable_uprs(session,
+                utilbill.utility, utilbill.service, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end,
+                ignore=lambda uprs: False)
+        uprs['_id'] = ObjectId()
+
+        # remove charges that don't correspond to any RSI binding (because
+        # their corresponding RSIs were not part of the predicted rate structure)
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                cprs['rates']}
+        for group, charges in doc['chargegroups'].iteritems():
+            i = 0
+            while i < len(charges):
+                charge = charges[i]
+                # if the charge matches a valid RSI binding, mark that
+                # binding as matched; if not, delete the charge
+                if charge['rsi_binding'] in valid_bindings:
+                    valid_bindings[charge['rsi_binding']] = True
+                    i += 1
+                else:
+                    charges.pop(i)
+            # NOTE empty chargegroup is not removed because the user might
+            # want to add charges to it again
+
+        # TODO add a charge for every RSI that doesn't have a charge, i.e.
+        # the ones whose value in 'valid_bindings' is False.
+        # we can't do this yet because we don't know what group it goes in.
+        # see https://www.pivotaltracker.com/story/show/43797365
+
+        return doc, uprs, cprs
 
 
     def delete_utility_bill(self, session, utilbill_id):
@@ -751,111 +857,6 @@ class Process(object):
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
 
-
-    def create_new_utility_bill(self, session, account, utility, service,
-            rate_class, start, end, total=0, state=UtilBill.Complete):
-        '''Creates a new utility bill based on the state.UtilBill
-        'predecessor', with period dates 'start', 'end'. (This is the
-        lowest-level method for creating utility bills; it's called called by
-        record_utilbill_in_database, which is called by upload_utility_bill)'''
-#        def ignore_function(uprs):
-#            # ignore UPRSs of un-attached utility bills, and utility bills whose
-#            # reebill sequence is 0, which are meaningless
-#            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
-#                return True
-#            # ignore UPRSs belonging to a utility bill whose reebill version is
-#            # less than the maximum version (because they may be wrong, and to
-#            # prevent multiple-counting)
-#            if self.state_db.max_version(session, uprs['_id']['account'],
-#                    uprs['_id']['sequence']):
-#                return True
-#            return False
-        ignore_function = lambda uprs: False
-
-        # if this is a non-Hypothetical utility bill, generate utility bill,
-        # UPRS, and CPRS documents and save them in Mongo
-        if state == UtilBill.Hypothetical:
-            doc, uprs, cprs = None, None, None
-
-            # create new row in MySQL with null _ids
-            session.add(UtilBill(self.state_db.get_customer(session, account),
-                    state, service, utility, rate_class, period_start=start,
-                    period_end=end, doc_id=None, uprs_id=None, cprs_id=None,
-                    total_charges=0, date_received=datetime.utcnow().date()))
-        else:
-            # look for the last utility bill with the same account, service, and
-            # rate class, (i.e. the last-ending before 'end'), ignoring
-            # Hypothetical ones. copy its mongo document and CPRS.
-            # TODO pass this predecessor in from upload_utility_bill?
-            # see https://www.pivotaltracker.com/story/show/51749487
-            try:
-                predecessor = self.state_db.get_last_real_utilbill(session, account,
-                        end, service=service, utility=utility, rate_class=rate_class)
-                doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
-                cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-                cprs['_id'] = ObjectId()
-            except NoSuchBillException:
-                # if this is the first bill ever for the account (or all the
-                # existing ones are Hypothetical), use template for the utility
-                # bill document, and create new empty CPRS
-                doc = self.reebill_dao.load_utilbill_template(session, account)
-                # template document should have the same service/utility/rate class
-                # as this one; multiple services are not supported since there
-                # would need to be more than one template
-                assert doc['service'] == service
-                assert doc['utility'] == utility
-                assert doc['rate_structure_binding'] == rate_class
-                cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
-            doc.update({
-                '_id': ObjectId(),
-                'start': date_to_datetime(start),
-                'end': date_to_datetime(end),
-                 # update the document's "account" field just in case it's wrong or
-                 # two accounts are sharing the same template document
-                'account': account,
-            })
-
-            # generate predicted UPRS
-            uprs = self.rate_structure_dao.get_probable_uprs(session,
-                    utility, service, rate_class, start, end,
-                    ignore=ignore_function)
-            uprs['_id'] = ObjectId()
-
-            # remove charges that don't correspond to any RSI binding (because
-            # their corresponding RSIs were not part of the predicted rate structure)
-            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                    cprs['rates']}
-
-            for group, charges in doc['chargegroups'].iteritems():
-                i = 0
-                while i < len(charges):
-                    charge = charges[i]
-                    # if the charge matches a valid RSI binding, mark that
-                    # binding as matched; if not, delete the charge
-                    if charge['rsi_binding'] in valid_bindings:
-                        valid_bindings[charge['rsi_binding']] = True
-                        i += 1
-                    else:
-                        charges.pop(i)
-                # NOTE empty chargegroup is not removed because the user might
-                # want to add charges to it again
-
-            # TODO add a charge for every RSI that doesn't have a charge, i.e.
-            # the ones whose value in 'valid_bindings' is False.
-            # we can't do this yet because we don't know what group it goes in.
-            # see https://www.pivotaltracker.com/story/show/43797365
-
-            # save all 3 mongo documents
-            self.rate_structure_dao.save_rs(uprs)
-            self.rate_structure_dao.save_rs(cprs)
-            self.reebill_dao._save_utilbill(doc)
-
-            # create new row in MySQL with _ids from doc, uprs, cprs
-            session.add(UtilBill(self.state_db.get_customer(session, account),
-                    state, service, utility, rate_class, period_start=start,
-                    period_end=end, doc_id=doc['_id'], uprs_id=uprs['_id'],
-                    cprs_id=cprs['_id'], total_charges=0,
-                    date_received=datetime.utcnow().date()))
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
