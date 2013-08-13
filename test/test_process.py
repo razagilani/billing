@@ -1718,6 +1718,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual([reebill], [ur.reebill for ur in u1._utilbill_reebills])
         self.assertEqual([], [ur.reebill for ur in u2._utilbill_reebills])
 
+    @unittest.skip("OTBE")
     def test_create_new_utility_bill(self):
         '''Tests the method Process.create_new_utility_bill. Since this is no
         longer used by itself, maybe it should become private and not have a
@@ -1769,9 +1770,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         (in MySQL and Mongo) attached to a particular utility bill, using the
         account's utility bill document template.'''
         with DBSession(self.state_db) as session:
-            self.process.create_new_utility_bill(session, '99999', 'washgas',
-                    'gas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1))
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
             
