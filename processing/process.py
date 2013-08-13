@@ -10,7 +10,7 @@ import datetime
 from datetime import date, datetime, timedelta
 import calendar
 from optparse import OptionParser
-from decimal import *
+from decimal import * # BAD
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -244,7 +244,7 @@ class Process(object):
         # state
         customer = self.state_db.get_customer(session, account)
         bill_to_replace = self._find_replaceable_utility_bill(session,
-                customer, service, begin_date, end_date)
+                customer, service, begin_date, end_date, state)
         if bill_to_replace is not None:
             session.delete(bill_to_replace)
 
@@ -281,7 +281,8 @@ class Process(object):
                     service, utility, rate_class, original_last_end,
                     begin_date)
 
-    def _find_replaceable_utility_bill(self, session, customer, service, start, end):
+    def _find_replaceable_utility_bill(self, session, customer, service, start,
+            end, state):
         '''Returns exactly one state.UtilBill that should be replaced by
         'new_utilbill' which is about to be uploaded (i.e. has the same
         customer, period, and service, but a less-final state). Returns None if

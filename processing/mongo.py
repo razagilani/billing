@@ -2,7 +2,7 @@
 import sys
 import datetime
 from datetime import date, time, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_EVEN
 import pymongo
 import bson # part of pymongo package
 import functools
