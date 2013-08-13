@@ -333,19 +333,6 @@ class Process(object):
         bills have no documents. No database changes are made.'''
         assert utilbill.state < UtilBill.Hypothetical
 
-#        def ignore_function(uprs):
-#            # ignore UPRSs of un-attached utility bills, and utility bills whose
-#            # reebill sequence is 0, which are meaningless
-#            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
-#                return True
-#            # ignore UPRSs belonging to a utility bill whose reebill version is
-#            # less than the maximum version (because they may be wrong, and to
-#            # prevent multiple-counting)
-#            if self.state_db.max_version(session, uprs['_id']['account'],
-#                    uprs['_id']['sequence']):
-#                return True
-#            return False
-
         # look for the last utility bill with the same account, service, and
         # rate class, (i.e. the last-ending before 'end'), ignoring
         # Hypothetical ones. copy its mongo document and CPRS.
