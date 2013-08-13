@@ -701,7 +701,7 @@ class Process(object):
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
 
         # find successor to every utility bill belonging to the reebill, along
-        # with its mongo document. note theat Hypothetical utility bills are
+        # with its mongo document. note that Hypothetical utility bills are
         # excluded.
         # NOTE as far as i know, you can't filter SQLAlchemy objects by methods
         # or by properties that do not correspond to db columns. so, there is
