@@ -197,7 +197,7 @@ class Process(object):
                 "1 year") % (start, end))
         if bill_file is None and state in (UtilBill.UtilityEstimated,
                 UtilBill.Complete):
-            raise ValueError(("Bill file is required for a complete or "
+            raise ValueError(("A file is required for a complete or "
                     "utility-estimated utility bill"))
         if bill_file is not None and state in (UtilBill.Hypothetical,
                 UtilBill.SkylineEstimated):

@@ -2756,8 +2756,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def upload_utility_bill(self, account, service, begin_date, end_date, total_charges,
-            file_to_upload, **args):
+    def upload_utility_bill(self, account, service, begin_date, end_date,
+            total_charges, file_to_upload, **args):
+        '''Handles AJAX request to create a new utility bill from the "Upload
+        Utility Bill" form. If 'file_to_upload' None, the utility bill state
+        will be 'SkylineEstimated'; otherwise it will be 'Complete'. Currently,
+        there is no way to specify a 'UtilityEstimated' state in the UI.'''
         with DBSession(self.state_db) as session:
             if not account or not begin_date or not end_date or not total_charges or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
@@ -2770,11 +2774,17 @@ class BillToolBridge:
             UtilBill.validate_utilbill_period(begin_date_as_date,
                     end_date_as_date)
 
+            # NOTE 'file_to_upload.file' is always a CherryPy object; if no
+            # file was specified, 'file_to_upload.file' will be None
+
             try:
                 self.process.upload_utility_bill(session, account, service,
                         begin_date_as_date, end_date_as_date,
-                        file_to_upload.file, file_to_upload.filename if
-                        file_to_upload else None, total=total_charges_as_float)
+                        file_to_upload.file,
+                        file_to_upload.filename if file_to_upload else None,
+                        total=total_charges_as_float,
+                        state=UtilBill.Complete if file_to_upload.file
+                        else UtilBill.SkylineEstimated)
             except IOError:
                 self.logger.error('file upload failed:', begin_date, end_date,
                         file_to_upload.filename)
