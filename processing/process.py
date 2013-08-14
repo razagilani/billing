@@ -238,7 +238,7 @@ class Process(object):
                     end_date, bill_file, file_name)
             if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
-                    begin_date, end_date))
+                        begin_date, end_date))
 
         # delete any existing bill with same service and period but less-final
         # state
