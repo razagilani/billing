@@ -1179,14 +1179,19 @@ class BillToolBridge:
             rows = []
             for i, status in enumerate(statuses):
 
-                # load highest version of last issued reebill to get data out of it
-                reebill = self.reebill_dao.load_reebill(status.account,
-                        self.state_db.last_issued_sequence(session, status.account))
+                last_issued_sequence = self.state_db.last_issued_sequence(
+                        session, status.account)
+                if last_issued_sequence == 0:
+                    utility_service_addresses = ''
+                else:
+                    # load highest version of last issued reebill to get data out of it
+                    reebill = self.reebill_dao.load_reebill(status.account,
+                            self.state_db.last_issued_sequence(session, status.account))
 
-                # get service address from utility bill document, convert JSON
-                # to string using the function above
-                utility_service_addresses = format_service_address(
-                        reebill._utilbills[0])
+                    # get service address from utility bill document, convert JSON
+                    # to string using the function above
+                    utility_service_addresses = format_service_address(
+                            reebill._utilbills[0])
 
                 last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
                         not None else 'Never Issued'
