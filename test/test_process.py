@@ -454,7 +454,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # above documents
             rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
-            self.process.bind_rate_structure(reebill1, rate_structure)
+            reebill1.compute_charges(rate_structure)
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
