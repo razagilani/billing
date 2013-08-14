@@ -8,8 +8,6 @@ db = pymongo.Connection('localhost')['skyline-dev']
 
 # iterate through all unissued version-0 reebill documents
 for reebill in db.reebills.find({'_id.version': 0, 'issue_date': None}):
-    if (reebill['_id']['account'], reebill['_id']['sequence']) == ('10007', 34):
-        import ipdb; ipdb.set_trace()
 
     for utilbill_subdoc in reebill['utilbills']:
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
