@@ -2854,7 +2854,7 @@ class BillToolBridge:
                     # NOTE does not support multiple reebills per utility bill
                     'sequence': ub._utilbill_reebills[0].reebill.sequence if
                             ub.is_attached() else None,
-                    'state', ub.state_name(),
+                    'state': ub.state_name(),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
                     'editable': not ub.is_attached()
