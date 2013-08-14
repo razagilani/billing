@@ -248,6 +248,14 @@ class UtilBill(Base):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
+    # human-readable names for utilbill states (used in UI)
+    _state_descriptions = {
+        Complete: 'Final',
+        UtilityEstimated: 'Utility Estimated',
+        SkylineEstimated: 'Skyline Estimated',
+        Hypothetical: 'Missing'
+    }
+
     def __init__(self, customer, state, service, utility, rate_class,
             period_start=None, period_end=None, doc_id=None, uprs_id=None,
             cprs_id=None, total_charges=0, date_received=None, processed=False,
@@ -269,6 +277,9 @@ class UtilBill(Base):
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
         self.cprs_document_id = cprs_id
+
+    def state_name(self):
+        return self.__class__._state_descriptions[self.state]
 
     def __repr__(self):
         return ('<UtilBill(customer=<%s>, service=%s, period_start=%s, '
