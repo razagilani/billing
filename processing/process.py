@@ -459,7 +459,7 @@ class Process(object):
                 .filter(ReeBill.version == present_reebill.version).one()
         for utilbill in reebill_row.utilbills:
             rs = self.rate_structure_dao.load_rate_structure(utilbill)
-            self.bind_rate_structure(present_reebill, rs)
+            present_reebill.compute_charges(rs)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -1039,112 +1039,6 @@ class Process(object):
 
         #self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
-    def bind_rate_structure(self, reebill, the_rate_structure):
-        """This function binds a rate structure against the actual and
-        hypothetical charges found in a bill. If and RSI specifies information
-        no in the bill, it is added to the bill. If the bill specifies
-        information in a charge that is not in the RSI, the charge is left
-        untouched."""
-        account, sequence = reebill.account, reebill.sequence
-
-        # process rate structures for all services
-        for service in reebill.services:
-            #
-            # All registers for all meters in a given service are made available
-            # to the rate structure for the given service.
-            # Registers that are not to be used by the rate structure should
-            # simply not have an rsi_binding.
-            #
-
-            # actual
-
-            # copy rate structure because it gets destroyed during use
-            rate_structure = copy.deepcopy(the_rate_structure)
-
-            # get non-shadow registers in the reebill
-            actual_register_readings = reebill.actual_registers(service)
-
-            #print "loaded rate structure"
-            #pp(rate_structure)
-
-            #print "loaded actual register readings"
-            #pp(actual_register_readings)
-
-            # copy the quantity of each non-shadow register in the reebill to
-            # the corresponding register dictionary in the rate structure
-            # ("apply the registers from the reebill to the probable rate structure")
-            rate_structure.bind_register_readings(actual_register_readings)
-
-            #print "rate structure with bound registers"
-            #pp(rate_structure)
-
-            # get all utility charges from the reebill's utility bill (in the
-            # form of a group name -> [list of charges] dictionary). for each
-            # charge, find the corresponding rate structure item (the one that
-            # matches its "rsi_binding") and copy the values of "description",
-            # "quantity", "quantity_units", "rate", and "rate_units" in that
-            # RSI to the charge
-            # ("process actual charges with non-shadow meter register totals")
-            # ("iterate over the charge groups, binding the reebill charges to
-            # its associated RSI")
-            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
-            for charges in actual_chargegroups.values():
-                rate_structure.bind_charges(charges)
-
-            # (original comment "don't have to set this because we modified the
-            # actual_chargegroups" is false--we modified the rate structure
-            # items, but left the charges in the bill unchanged. as far as i
-            # can tell this line of code has no effect)
-            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-            # hypothetical charges
-
-            # re-copy rate structure because it gets destroyed during use
-            rate_structure = copy.deepcopy(the_rate_structure)
-
-            # get shadow and non-shadow registers in the reebill
-            actual_register_readings = reebill.actual_registers(service)
-            shadow_register_readings = reebill.shadow_registers(service)
-
-            # "add the shadow register totals to the actual register, and re-process"
-
-            # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
-            # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
-            # renewable energy - then the rate is calculated incorrectly.  This is because
-            # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
-            # one way for actual charge computation and another way for hypothetical charge
-            # computation.
-
-            # for each shadow register dictionary: add its quantity to the
-            # quantity of the corresponding non-shadow register
-            registers_to_bind = copy.deepcopy(shadow_register_readings)
-            for shadow_reading in registers_to_bind:
-                for actual_reading in actual_register_readings:
-                    if actual_reading['identifier'] == shadow_reading['identifier']:
-                        shadow_reading['quantity'] += actual_reading['quantity']
-                # TODO: throw exception when registers mismatch
-
-            # copy the quantity of each register dictionary in the reebill to
-            # the corresponding register dictionary in the rate structure
-            # ("apply the combined registers from the reebill to the probable
-            # rate structure")
-            rate_structure.bind_register_readings(registers_to_bind)
-
-            # for each hypothetical charge in the reebill, copy the values of
-            # "description", "quantity", "quantity_units", "rate", and
-            # "rate_units" from the corresponding rate structure item to the
-            # charge
-            # ("process hypothetical charges with shadow and non-shadow meter register totals")
-            # ("iterate over the charge groups, binding the reebill charges to its associated RSI")
-            hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
-            for chargegroup, charges in hypothetical_chargegroups.items():
-                rate_structure.bind_charges(charges)
-
-            # don't have to set this because we modified the hypothetical_chargegroups
-            #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-
-            # NOTE that the reebill has not been modified at all
-             
 
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
