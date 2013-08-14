@@ -2844,28 +2844,28 @@ class BillToolBridge:
                 full_names = self.full_names_of_accounts([account])
                 full_name = full_names[0] if full_names else account
 
-                rows = [dict([
+                rows = [{
                     # TODO: sending real database ids to the client a security
                     # risk; these should be encrypted
-                    ('id', ub.id),
-                    ('account', ub.customer.account),
-                    ('name', full_name),
-                    ('utility', ub.utility),
-                    ('rate_structure', ub.rate_class),
+                    'id': ub.id,
+                    'account': ub.customer.account,
+                    'name': full_name,
+                    'utility': ub.utility,
+                    'rate_structure': ub.rate_class,
                     # capitalize service name
-                    ('service', 'Unknown' if ub.service is None else
-                            ub.service[0].upper() + ub.service[1:]),
-                    ('period_start', ub.period_start),
-                    ('period_end', ub.period_end),
-                    ('total_charges', ub.total_charges),
+                    'service': 'Unknown' if ub.service is None else
+                           ub.service[0].upper() + ub.service[1:],
+                    'period_start': ub.period_start,
+                    'period_end': ub.period_end,
+                    'total_charges': ub.total_charges,
                     # NOTE does not support multiple reebills per utility bill
-                    ('sequence', ub._utilbill_reebills[0].reebill.sequence if
-                            ub.is_attached() else None),
-                    ('state', state_descriptions[ub.state]),
+                    'sequence': ub._utilbill_reebills[0].reebill.sequence if
+                            ub.is_attached() else None,
+                    'state': state_descriptions[ub.state],
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
-                    ('editable', not ub.is_attached())
-                ]) for ub in utilbills]
+                    'editable': not ub.is_attached()
+                } for ub in utilbills]
 
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
