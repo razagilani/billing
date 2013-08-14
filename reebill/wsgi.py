@@ -2840,8 +2840,6 @@ class BillToolBridge:
                 # NOTE does not support multiple reebills per utility bill
                 state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
                         ub._utilbill_reebills] for ub in utilbills)
-                mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account,
-                        rb.sequence) if rb else None for rb in state_reebills]
 
                 full_names = self.full_names_of_accounts([account])
                 full_name = full_names[0] if full_names else account
@@ -2852,11 +2850,8 @@ class BillToolBridge:
                     ('id', ub.id),
                     ('account', ub.customer.account),
                     ('name', full_name),
-                    ('utility', rb.utility_name_for_service(ub.service) if
-                            ub.service is not None and rb is not None else ''),
-                    ('rate_structure',
-                            rb.rate_structure_name_for_service(ub.service) if
-                            ub.service is not None and rb is not None else ''),
+                    ('utility', ub.utility),
+                    ('rate_structure', ub.rate_class),
                     # capitalize service name
                     ('service', 'Unknown' if ub.service is None else
                             ub.service[0].upper() + ub.service[1:]),
@@ -2870,7 +2865,7 @@ class BillToolBridge:
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
                     ('editable', not ub.is_attached())
-                ]) for rb, ub in zip(mongo_reebills, utilbills)]
+                ]) for ub in utilbills]
 
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
