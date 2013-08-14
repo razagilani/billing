@@ -487,57 +487,6 @@ class StateDB(object):
     def get_utilbill_by_id(self, session, ubid):
         return session.query(UtilBill).filter(UtilBill.id==ubid).one()
 
-    def try_to_attach_utilbills(self, session, account, sequence, utilbills,
-            suspended_services=[]):
-        '''Raises an exception if 'attach_utilbills' would fail, does not
-        modify any databases.'''
-        if not utilbills:
-            # TODO this error message sucks
-            raise BillStateError('No utility bills found')
-        non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
-        if not non_suspended_utilbills:
-            raise BillStateError('No utility bills to attach because the %s services '
-                    ' are suspended' % ', '.join(suspended_services))
-
-    # TODO move to process.py?
-    def attach_utilbills(self, session, account, sequence, utilbills, suspended_services=[]):
-        '''Records in MySQL the association between the reebill given by
-        'account', 'sequence' and all utilbills belonging to that customer
-        whose entire periods are within the date interval [start, end] and
-        whose services are not in 'suspended_services'. The utility bills are
-        marked as processed.'''
-        if not utilbills:
-            raise BillStateError('No utility bills found')
-
-        non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
-        if not non_suspended_utilbills:
-            raise BillStateError('No utility bills to attach because the %s services'\
-                    ' are suspended' % ', '.join(suspended_services))
-        
-        reebill = self.get_reebill(session, account, sequence)
-
-        for utilbill in utilbills:
-            reebill.utilbills.append(utilbill)
-            utilbill.processed = True
-
-    # TODO this will become obsolete now that reebills can't exist without
-    # being attached
-    def is_attached(self, session, account, sequence, nonexistent=None):
-        '''Returns True iff the the highest version of the reebill given by
-        account, sequence has utility bills attached to it in MySQL. If
-        'nonexistent' is given, that value will be returned if the reebill is
-        not present in the state database (e.g. False when you want
-        non-existent bills to be treated as unissued).'''
-        try:
-            reebill = self.get_reebill(session, account, sequence,
-                    version='max')
-            num_utilbills = len(reebill.utilbills)
-        except NoResultFound:
-            if nonexistent is not None:
-                return nonexistent
-            raise
-        return num_utilbills >= 1
-
     def utilbills_for_reebill(self, session, account, sequence, version='max'):
         '''Returns all utility bills for the reebill given by account,
         sequence, version (highest version by default).'''

@@ -1018,29 +1018,6 @@ class Process(object):
         return new_customer
 
 
-    ## TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    #def attach_utilbills(self, session, reebill, utilbills):
-        #'''Freeze utilbills from the previous reebill into a new reebill.
-
-        #This affects only the Mongo document.'''
-        #if self.state_db.is_attached(session, reebill.account, reebill.sequence):
-            #raise NotAttachable(("Can't attach reebill %s-%s: it already has utility "
-                    #"bill(s) attached") % (reebill.account, reebill.sequence))
-        ##reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        ## save in mongo, with frozen copies of the associated utility bill
-        ## (the mongo part should normally come last because it can't roll back,
-        ## but here it must precede MySQL because ReebillDAO.save_reebill will
-        ## refuse to create frozen utility bills "again" if MySQL says its
-        ## attached". see https://www.pivotaltracker.com/story/show/38308443)
-        #self.state_db.try_to_attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
-
-        #self.reebill_dao.save_reebill(reebill)
-        #self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
-
-        #self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
-
-
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
