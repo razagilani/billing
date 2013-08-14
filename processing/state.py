@@ -230,9 +230,9 @@ class UtilBill(Base):
         as a utility bill period: "reasonable" means start < end and (end -
         start) < 1 year.'''
         if start >= end:
-            raise Exception('Utility bill start date must precede end.')
+            raise ValueError('Utility bill start date must precede end.')
         if (end - start).days > 365:
-            raise Exception('Utility billing period lasts longer than a year?!')
+            raise ValueError('Utility billing period lasts longer than a year?!')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
