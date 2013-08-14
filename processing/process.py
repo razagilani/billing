@@ -432,10 +432,16 @@ class Process(object):
         return new_path
 
 
-    def compute_bill(self, session, prior_reebill, present_reebill):
+    def compute_bill(self, session, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
+        if present_reebill.sequence == 1:
+            prior_reebill = None
+        else:
+            prior_reebill = self.reebill_dao.load_reebill(
+                    present_reebill.account, present_reebill.sequence - 1,
+                    version=0)
         acc = present_reebill.account
 
         # replace "utilbills" sub-documents of reebill document with new ones
@@ -769,10 +775,8 @@ class Process(object):
         # about any corrections that might have been made to that bill later.
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill_doc)
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0) if sequence > 1 else None
         try:
-            self.compute_bill(session, predecessor, reebill_doc)
+            self.compute_bill(session, reebill_doc)
         except Exception as e:
             # TODO: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -824,15 +828,12 @@ class Process(object):
         if len(all_unissued_corrections) == 0:
             raise ValueError('%s has no corrections to apply' % account)
         
-        # load target reebill from mongo (and, for recomputation, version 0 of
-        # its predecessor)
+        # load target reebill from mongo
         target_reebill = self.reebill_dao.load_reebill(account,
                 target_sequence, version=target_max_version)
-        target_reebill_predecessor = self.reebill_dao.load_reebill(account,
-                target_sequence - 1, version=0)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_bill(session, target_reebill_predecessor, target_reebill)
+        self.compute_bill(session, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
         # issue each correction
