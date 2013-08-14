@@ -37,7 +37,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
-from billing.processing.state import UtilBill
+from billing.processing.state import UtilBill, Customer
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -773,10 +773,13 @@ class BillToolBridge:
             last_seq = self.state_db.last_sequence(session, account)
             if last_seq == 0:
                 utilbill = session.query(UtilBill).join(Customer)\
-                        .filter(UtilBill.customer_id == customer.id)\
+                        .filter(UtilBill.customer_id == Customer.id)\
                         .filter_by(account=account)\
                         .filter(UtilBill.period_start >= start_date)\
                         .order_by(UtilBill.period_start).first()
+                if utilbill is None:
+                    raise ValueError("No utility bill found starting on/after %s" %
+                            start_date)
                 self.process.create_first_reebill(session, utilbill)
             else:
                 self.process.create_next_reebill(session, account)
