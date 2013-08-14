@@ -582,26 +582,30 @@ class Process(object):
         # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
-        # re-bind and compute, logging errors but continuing. this is because
-        # if the editable utility bill is in an un-computable state, or
-        # something is wrong with the energy data, a new version can never be
-        # created. see https://www.pivotaltracker.com/story/show/53434901
-
-        # recompute, using sequence predecessor to compute balance forward and
-        # prior balance. this is always version 0, because we want those values
-        # to be the same as they were on version 0 of this bill--we don't care
-        # about any corrections that might have been made to that bill later.
-        try:
-            fetch_bill_data.fetch_oltp_data(self.splinter,
-                    self.nexus_util.olap_id(account), reebill)
-        except Exception as e:
-            # TODO: catching Exception is awful and horrible and terrible and
-            # you should never do it, except when you can't think of any other
-            # way to accomplish the same thing
-            self.logger.error(("In Process.new_version, couldn't fetch_oltp_data "
-                    "in new version %s of reebill %s-%s: %s\n%s") % (
-                    reebill.version, reebill.account, reebill.sequence, e,
-                    traceback.format_exc()))
+        # NOTE getting new energy data is disabled so the user can choose
+        # whether to do it or not. see
+        # https://www.pivotaltracker.com/story/show/54786414
+        # the code is left here because it might eventually be re-enabled
+#        # re-bind and compute, logging errors but continuing. this is because
+#        # if the editable utility bill is in an un-computable state, or
+#        # something is wrong with the energy data, a new version can never be
+#        # created. see https://www.pivotaltracker.com/story/show/53434901
+#
+#        # recompute, using sequence predecessor to compute balance forward and
+#        # prior balance. this is always version 0, because we want those values
+#        # to be the same as they were on version 0 of this bill--we don't care
+#        # about any corrections that might have been made to that bill later.
+#        try:
+#            fetch_bill_data.fetch_oltp_data(self.splinter,
+#                    self.nexus_util.olap_id(account), reebill)
+#        except Exception as e:
+#            # TODO: catching Exception is awful and horrible and terrible and
+#            # you should never do it, except when you can't think of any other
+#            # way to accomplish the same thing
+#            self.logger.error(("In Process.new_version, couldn't fetch_oltp_data "
+#                    "in new version %s of reebill %s-%s: %s\n%s") % (
+#                    reebill.version, reebill.account, reebill.sequence, e,
+#                    traceback.format_exc()))
 
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)

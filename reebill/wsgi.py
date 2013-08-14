@@ -2160,18 +2160,24 @@ class BillToolBridge:
         else:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
-            last_sequence = self.state_db.last_sequence(session, account)
             for sequence in sequences:
-                # forbid deletion if predecessor has an unissued version (note
-                # that client is allowed to delete a range of bills at once, as
-                # long as they're in sequence order)
-                max_version = self.state_db.max_version(session, account, sequence)
-                if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
-                        (sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
-                    raise ValueError(("Can't delete a reebill version whose "
-                            "predecessor is unissued, unless its version is 0 "
-                            "and its sequence is the last one. Delete a "
-                            "series of unissued bills in sequence order."))
+                # previously, a reebill was only allowed to be deleted if
+                # predecessor has an unissued version, so bills could only be
+                # deleted in sequence order. as of 54786706, the lesson that
+                # accounting history can never change has finally been learned;
+                # since there is no dependency of one bill's accounting history
+                # information on that of its predecessors, there is no need for
+                # the rule that corrections must always be in a contiguous
+                # block ending at the newest reebill that has ever been issued.
+                #last_sequence = self.state_db.last_sequence(session, account)
+                #max_version = self.state_db.max_version(session, account, sequence)
+                #if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
+                        #(sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
+                    #raise ValueError(("Can't delete a reebill version whose "
+                            #"predecessor is unissued, unless its version is 0 "
+                            #"and its sequence is the last one. Delete a "
+                            #"series of unissued bills in sequence order."))
+
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
             
@@ -2179,6 +2185,7 @@ class BillToolBridge:
             for sequence in sequences:
                 journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
                         account, sequence, deleted_version)
+
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -2186,20 +2193,22 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def new_reebill_version(self, account, sequence, **args):
-        '''Creates a new version of the given reebill and all its successors,
-        if it's not issued.'''
+        '''Creates a new version of the given reebill (only one bill, not all
+        successors as in original design).'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebills = self.process.new_versions(session, account, sequence)
-            for new_reebill in new_reebills:
-                journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                        account, new_reebill.sequence, new_reebill.version)
-                journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                        account, new_reebill.sequence, new_reebill.version)
+            new_reebill = self.process.new_version(session, account, sequence)
+
+            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                    account, new_reebill.sequence, new_reebill.version)
+            # NOTE ReebillBoundEvent is no longer saved in the journal because
+            # new energy data are not retrieved unless the user explicitly
+            # chooses to do it by clicking "Bind RE&E"
+
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences': [r.sequence for r in
-                    new_reebills]})
+            return self.dumps({'success': True, 'sequences':
+                    [new_reebill.sequence]})
 
     ################
     # Handle addresses
