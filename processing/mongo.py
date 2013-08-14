@@ -677,10 +677,10 @@ class MongoReebill(object):
 
     @property
     def manual_adjustment(self):
-        return self.reebill_dict['manual_adjustment']
+        return Decimal(self.reebill_dict['manual_adjustment'])
     @manual_adjustment.setter
     def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = value
+        self.reebill_dict['manual_adjustment'] = Decimal(value)
 
     @property
     def ree_charges(self):
