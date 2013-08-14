@@ -515,18 +515,6 @@ class MongoReebill(object):
             # don't have to set this because we modified the hypothetical_chargegroups
             #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
-            # NOTE that the reebill has not been modified at all
-             
-
-
-
-
-
-
-
-
-
-
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
