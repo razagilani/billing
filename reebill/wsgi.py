@@ -727,29 +727,30 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
-            customer = self.process.create_new_account(session, account, name,
-                    discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
-            ba = {}
-            ba['addressee'] = ba_addressee
-            ba['street'] = ba_street
-            ba['city'] = ba_city
-            ba['state'] = ba_state
-            ba['postal_code'] = ba_postal_code
-            reebill.billing_address = ba
-            
-            sa = {}
-            sa['addressee'] = sa_addressee
-            sa['street'] = sa_street
-            sa['city'] = sa_city
-            sa['state'] = sa_state
-            sa['postal_code'] = sa_postal_code
-            reebill.service_address = sa
-            self.reebill_dao.save_reebill(reebill)
+
+            billing_address = {
+                'addressee': ba_addressee,
+                'street': ba_street,
+                'city': ba_city,
+                'state': ba_state,
+                'postal_code': ba_postal_code,
+            }
+            service_address = {
+                'addressee': sa_addressee,
+                'street': sa_street,
+                'city': sa_city,
+                'state': sa_state,
+                'postal_code': sa_postal_code,
+            }
+
+            self.process.create_new_account(session, account, name,
+                    discount_rate, late_charge_rate, billing_address,
+                    service_address, template_account)
+
             # record account creation
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
-                    customer.account)
+                    account)
 
             # get next account number to send it back to the client so it
             # can be shown in the account-creation form
