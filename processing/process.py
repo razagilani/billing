@@ -203,7 +203,7 @@ class Process(object):
                         datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
-                    begin_date, end_date))
+                        begin_date, end_date))
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap

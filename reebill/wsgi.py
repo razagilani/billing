@@ -2927,13 +2927,6 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             if xaction == 'read':
                 account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
-                # names for utilbill states in the UI
-                state_descriptions = {
-                    state.UtilBill.Complete: 'Final',
-                    state.UtilBill.UtilityEstimated: 'Utility Estimated',
-                    state.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                    state.UtilBill.Hypothetical: 'Missing'
-                }
 
                 # result is a list of dictionaries of the form {account: account
                 # number, name: full name, period_start: date, period_end: date,
@@ -2965,7 +2958,7 @@ class BillToolBridge:
                     ('period_end', ub.period_end),
                     ('total_charges', ub.total_charges),
                     ('sequence', ub.reebill.sequence if ub.reebill else None),
-                    ('state', state_descriptions[ub.state]),
+                    ('state', ub.state_name()),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
                     ('editable', (not ub.has_reebill or not ub.reebill.issued))
