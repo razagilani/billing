@@ -699,8 +699,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create utility bill in MySQL, Mongo, and filesystem (and make
             # sure it exists all 3 places)
-            self.process.upload_utility_bill(session, account, 'gas', start,
-                    end, 'washgas', 'DC Non Residential Non Heat',
+            self.process.upload_utility_bill(session, account, 'gas',
+                    'washgas', 'DC Non Residential Non Heat', start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -733,8 +733,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
-            self.process.upload_utility_bill(session, account, 'gas', start,
-                    'washgas', 'DC Non Residential Non Heat', end,
+            self.process.upload_utility_bill(session, account, 'gas',
+                    'washgas', 'DC Non Residential Non Heat', start, end,
                     StringIO("test"), 'january-gas.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
