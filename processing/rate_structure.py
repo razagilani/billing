@@ -411,31 +411,6 @@ class RateStructureDAO(object):
             result.append((doc, utilbill.period_start, utilbill.period_end))
         return result
 
-    def load_uprs(self, account, sequence, version, utility_name,
-            rate_structure_name):
-        '''Loads Utility Periodic Rate Structure docuemnt from Mongo, returns
-        it as a dictionary.'''
-        # eventually, return a uprs that may have useful information that
-        # matches this service period 
-        query = {
-            "_id.type":"UPRS",
-            "_id.account": account,
-            "_id.sequence": sequence,
-            "_id.version": version,
-            "_id.utility_name": utility_name,
-            "_id.rate_structure_name": rate_structure_name,
-        }
-        uprs = self.collection.find_one(query)
-        # create it if it does not exist
-        # the same behavior should probably be implemented for URS and CPRS so
-        # that they can be lazily created
-        # TODO 24253017
-        if uprs is None:
-            uprs = {'rates':[]} 
-            uprs = self.save_uprs(account, sequence,
-                    version, utility_name, rate_structure_name, uprs)
-        return uprs
-
     def load_uprs(self, id):
         '''Returns a Utility Periodic Rate Structure document from Mongo.'''
         query = {"_id": ObjectId(id), "type": "UPRS"}
