@@ -138,9 +138,7 @@ class Process(object):
                     utilbill.service)
             self.reebill_dao.update_utility_and_rs(mongo_reebill,
                     utilbill.service, utility, old_ratestructure)
-            self.rate_structure_dao.update_rs_name(utilbill.customer.account,
-                    int(reebill.sequence), int(reebill.max_version), old_utility,
-                    old_ratestructure, utility, old_ratestructure)
+            utilbill.utility = utility
 
         if rate_structure is not None:
             if not utilbill.has_reebill:
@@ -153,9 +151,7 @@ class Process(object):
                     utilbill.service)
             self.reebill_dao.update_utility_and_rs(mongo_reebill,
                     utilbill.service, old_utility, rate_structure)
-            self.rate_structure_dao.update_rs_name(utilbill.customer.account,
-                    int(reebill.sequence), int(reebill.max_version), old_utility,
-                    old_ratestructure, old_utility, rate_structure)
+            utilbill.rate_class = rate_structure
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
