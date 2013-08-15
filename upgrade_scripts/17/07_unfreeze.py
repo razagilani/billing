@@ -38,5 +38,5 @@ for reebill in db.reebills.find({'_id.version': 0, 'issue_date': None}):
 
         # replace the existing editable utility bill with the previously frozen one, now editable
         db.utilbills.save(utilbill)
-        db.utilbills.remove(existing_editable_utility_bills[0])
+        db.utilbills.remove({'_id': existing_editable_utility_bills[0]['_id']}, True)
 
