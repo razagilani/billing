@@ -422,8 +422,11 @@ class Process(object):
         # TODO move to StateDB?
         session.delete(utilbill)
 
-        # delete from Mongo
+        # delete utility bill document from Mongo
         self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
+
+        # delete UPRS and CPRS documents from Mongo
+        self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
 
         return new_path
 
