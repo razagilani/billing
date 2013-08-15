@@ -386,18 +386,15 @@ class RateStructureDAO(object):
         with the given utility and rate structure name.'''
         # skip Hypothetical utility bills--they have a UPRS document, but it's
         # fake, so it should not count toward the probability of RSIs being
-        # included in other bills.
+        # included in other bills. (ignore utility bills that are
+        # 'SkylineEstimated' or 'Hypothetical')
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
                 .filter(UtilBill.rate_class==rate_structure_name)\
-                .filter(UtilBill.state != UtilBill.Hypothetical)
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
         result = []
         for utilbill in utilbills:
-            # ignore utility bills that are 'SkylineEstimated' or
-            # 'Hypothetical'
-            if utilbill.state >= UtilBill.SkylineEstimated:
-                continue
             if utilbill.uprs_document_id is None:
                 self.logger.warning(('ingoring utility bill for %(account)s '
                     'from %(start)s to %(end)s: has state %(state)s but lacks '
