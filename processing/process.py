@@ -175,8 +175,9 @@ class Process(object):
             self.reebill_dao.save_reebill(mongo_reebill)
 
 
-    def upload_utility_bill(self, session, account, service, begin_date,
-            end_date, bill_file, file_name, total=0, state=UtilBill.Complete):
+    def upload_utility_bill(self, session, account, service, utility,
+            rate_class, begin_date, end_date, bill_file, file_name, total=0,
+            state=UtilBill.Complete):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table in MySQL and a document is added in Mongo
