@@ -86,8 +86,9 @@ class Process(object):
         # of this method
         old_start, old_end = utilbill.period_start, utilbill.period_end
 
-        # load MySQL reebill, if any, and its Mongo document
-        if utilbill.has_reebill:
+        # forbid editing if this utility bill has an issued reebill
+        # TODO this should change when it is clear which version of a utility bill can be edited in the UI
+        if utilbill.is_attached():
             reebill = utilbill.reebill
             mongo_reebill = self.reebill_dao.load_reebill(
                     reebill.customer.account, reebill.sequence)
@@ -95,6 +96,9 @@ class Process(object):
             if utilbill.reebill.issued:
                 raise ValueError(("Can't edit utility bills that are attached "
                         "to an issued reebill."))
+
+        # load Mongo document
+        doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
 
         # for total charges, it doesn't matter whether a reebill exists
         if total_charges is not None:
@@ -104,54 +108,26 @@ class Process(object):
         # exist
 
         if service is not None:
-            if utilbill.has_reebill:
-                mongo_reebill._get_utilbill_for_service(utilbill.service)\
-                        ['service'] = service
+            doc['service'] = service
             utilbill.service = service
             
         if period_start is not None:
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
-            if utilbill.has_reebill:
-                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
-                        (period_start, utilbill.period_end))
-                mongo_reebill.set_meter_dates_from_utilbills()
+            doc['start'] = period_start
 
         if period_end is not None:
             UtilBill.validate_utilbill_period(utilbill.period_start, period_end)
             utilbill.period_end = period_end
-            if utilbill.has_reebill:
-                mongo_reebill.set_utilbill_period_for_service(utilbill.service,
-                        (utilbill.period_start, period_end))
-                mongo_reebill.set_meter_dates_from_utilbills()
-
-        # for utility and rate structure name, a reebill must exist
+            doc['end'] = period_end
 
         if utility is not None:
-            if not utilbill.has_reebill:
-                raise ValueError(("Can't assign a utility/rate structure name "
-                        "to an unattached utility bill"))
-            # NOTE utility name, RS name are not yet stored in Mongo
-            old_utility = mongo_reebill.utility_name_for_service(
-                    utilbill.service)
-            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
-                    utilbill.service)
-            self.reebill_dao.update_utility_and_rs(mongo_reebill,
-                    utilbill.service, utility, old_ratestructure)
             utilbill.utility = utility
+            doc['utility'] = utility
 
         if rate_structure is not None:
-            if not utilbill.has_reebill:
-                raise ValueError(("Can't assign a utility/rate structure name "
-                        "to an unattached utility bill"))
-            # NOTE utility name, RS name are not yet stored in Mongo
-            old_utility = mongo_reebill.utility_name_for_service(
-                    utilbill.service)
-            old_ratestructure = mongo_reebill.rate_structure_name_for_service(
-                    utilbill.service)
-            self.reebill_dao.update_utility_and_rs(mongo_reebill,
-                    utilbill.service, old_utility, rate_structure)
             utilbill.rate_class = rate_structure
+            doc['rate_structure_binding'] = rate_structure
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
@@ -171,8 +147,6 @@ class Process(object):
                     # dates in destination file name are the new ones
                     period_start or utilbill.period_start,
                     period_end or utilbill.period_end)
-        if utilbill.has_reebill:
-            self.reebill_dao.save_reebill(mongo_reebill)
 
 
     def upload_utility_bill(self, session, account, service, utility,
