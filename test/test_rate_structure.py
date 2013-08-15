@@ -35,8 +35,8 @@ class RateStructureTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             # make a utility bill
             self.process.upload_utility_bill(session, account, 'gas',
-                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
-                    'january.pdf')
+                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
+                    date(2012,2,1), StringIO('January 2012'), 'january.pdf')
             utilbill = session.query(UtilBill).one()
 
             # get RS docs and put them in mongo
