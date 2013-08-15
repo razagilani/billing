@@ -184,6 +184,29 @@ class StateTest(utils.TestCase):
             self.assertRaises(NoResultFound, self.state_db.is_issued, session,
                     acc, seq, version=10)
 
+            # adding versions of bills for other accounts should have no effect
+            self.state_db.new_reebill(session, '11111', 1)
+            self.state_db.new_reebill(session, '11111', 2)
+            self.state_db.new_reebill(session, '22222', 1)
+            self.state_db.issue(session, '11111', 1)
+            self.state_db.issue(session, '22222', 1)
+            self.state_db.increment_version(session, '11111', 1)
+            self.state_db.increment_version(session, '22222', 1)
+            self.state_db.issue(session, '22222', 1)
+            self.state_db.increment_version(session, '22222', 1)
+            self.assertEqual(0, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
+            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
+            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
+
             # incrementing version to 1 should fail when the bill is not issued
             self.assertRaises(Exception, self.state_db.increment_version,
                     session, acc, seq)
