@@ -30,7 +30,7 @@ from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NotUniqueException
+from billing.processing.exceptions import BillStateError, NotUniqueException, NoRateStructureError
 from billing.processing import fetch_bill_data as fbd
 from billing.test import utils
 
@@ -691,8 +691,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         start, end = date(2012,1,1), date(2012,2,1)
 
         with DBSession(self.state_db) as session:
-            # create utility bill in MySQL and filesystem (and make sure it
-            # exists in both places)
+            # create utility bill in MySQL, Mongo, and filesystem (and make
+            # sure it exists all 3 places)
             self.process.upload_utility_bill(session, account, 'gas', start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
@@ -701,17 +701,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert os.access(bill_file_path, os.F_OK)
             customer = session.query(Customer)\
                     .filter(Customer.account == account).one()
-            utilbill_id = session.query(UtilBill)\
+            utilbill = session.query(UtilBill)\
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
-                    .filter(UtilBill.period_end == end).one().id
+                    .filter(UtilBill.period_end == end).one()
+            self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
             # with no reebills, deletion should succeed: row removed from
             # MySQL, document removed from Mongo (only template should be
-            # left), file moved to trash directory
-            new_path = self.process.delete_utility_bill(session, utilbill_id)
+            # left), UPRS and CPRS documents removed from Mongo, file moved to
+            # trash directory
+            new_path = self.process.delete_utility_bill(session, utilbill.id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
+            self.assertRaises(NoRateStructureError,
+                    self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
+            self.assertRaises(NoRateStructureError,
+                    self.rate_structure_dao.load_cprs_for_utilbill, utilbill)
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
                     account, start, end)

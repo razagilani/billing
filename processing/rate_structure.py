@@ -373,6 +373,13 @@ class RateStructureDAO(object):
             raise NoRateStructureError("No rate structure with _id %s" % _id)
         return doc
 
+    def _delete_rs_by_id(self, _id):
+        '''Deletes the rate structure document with the given _id. Raises a
+        MongoError if deletion fails.'''
+        result = self.collection.remove({'_id': ObjectId(_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
     def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
         '''Returns list of (UPRS document, start date, end date) tuples
@@ -477,6 +484,13 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
         return rate_structure_data
+
+    def delete_rs_docs_for_utilbill(self, utilbill):
+        '''Removes the UPRS and CPRS documents for the given state.UtilBill.
+        This should be done when the utility bill is deleted. Raises a
+        MongoError if deletion fails.'''
+        self._delete_rs_by_id(utilbill.uprs_document_id)
+        self._delete_rs_by_id(utilbill.cprs_document_id)
 
 
 class RateStructure(object):
