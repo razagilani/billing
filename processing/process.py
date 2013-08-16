@@ -418,6 +418,15 @@ class Process(object):
                     version=0)
         acc = present_reebill.account
 
+        # update "hypothetical charges" in reebill document to match actual
+        # charges in utility bill document. note that hypothetical charges are
+        # just replaced, so they will be wrong until computed below.
+        for service in present_reebill.services:
+            actual_chargegroups = present_reebill.\
+                    actual_chargegroups_for_service(service)
+            present_reebill.set_hypothetical_chargegroups_for_service(service,
+                    actual_chargegroups)
+
         # replace "utilbills" sub-documents of reebill document with new ones
         # generated directly from the reebill's '_utilbills'. these will
         # contain hypothetical charges that matche the actual charges until
@@ -607,11 +616,6 @@ class Process(object):
                 present_reebill._utilbills]
         
 
-
-    def copy_actual_charges(self, reebill):
-        for service in reebill.services:
-            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
-            reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
