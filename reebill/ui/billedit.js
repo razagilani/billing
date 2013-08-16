@@ -6425,6 +6425,9 @@ function reeBillReady() {
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
+        //Update the buttons on the reebill tab
+        deleteButton.setDisabled(true)
+        versionButton.setDisabled(true);
         if (account == null) {
             /* no account selected */
             updateStatusbar(null, null, null)
@@ -6539,11 +6542,18 @@ function reeBillReady() {
                     return record.data.sequence == sequence + 1; }).first() ==
                     undefined;
 
+            // the following rule determined when the "Delete selected reebill"
+            // button would be enabled/disabled to enforce the rule that
+            // corrections must always occur in a contiguous block ending at
+            // the latest bill. this was removed in
+            // https://www.pivotaltracker.com/story/show/54786706
+            //deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
+                                        //(record.data.issued == false && record.data.max_version > 0 &&
+                                         //(prevRecord == null || prevRecord.data.issued == true))));
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
-            deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
-                                        (record.data.issued == false && record.data.max_version > 0 &&
-                                         (prevRecord == null || prevRecord.data.issued == true))));
+            deleteButton.setDisabled(record.data.issued == true);
+
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
