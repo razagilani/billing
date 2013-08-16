@@ -2180,6 +2180,19 @@ class BillToolBridge:
 
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
+                #Delete the PDF associated with a reebill if it was version 0
+                # because we believe it is confusing to delete the pdf when
+                # when a version still exists
+                if deleted_version == 0:
+                    path = self.config.get('billdb', 'billpath')+'%s' %(account)
+                    file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+                    full_path = os.path.join(path, file_name)
+
+                    #If the file exists, delete it, otherwise don't worry.
+                    try:
+                        os.remove(full_path)
+                    except OSError:
+                        pass
             
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
