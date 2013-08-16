@@ -2571,43 +2571,6 @@ class BillToolBridge:
             return self.dumps({'success':True})
 
 
-    # TODO: i think this is dead code
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def _saveActualCharges(self, service, account, sequence, rows, **args):
-        if not account or not sequence or not service or not rows:
-            raise ValueError("Bad Parameter Value")
-        flattened_charges = ju.loads(rows)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_actual_chargegroups_flattened(service, flattened_charges)
-        self.reebill_dao.save_reebill(reebill)
-        
-        # compute so the hypothetical charges in the reebill document are
-        # updated to make to actual charges in the utility bill document
-        self.compute_bill(account, sequence)
-
-        return self.dumps({'success': True})
-
-
-    # TODO: i think this is dead code
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def _saveHypotheticalCharges(self, service, account, sequence, rows, **args):
-        if not account or not sequence or not service or not rows:
-            raise ValueError("Bad Parameter Value")
-        flattened_charges = ju.loads(rows)
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
-        self.reebill_dao.save_reebill(reebill)
-    
-        return self.dumps({'success': True})
-
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
