@@ -2365,7 +2365,9 @@ class BillToolBridge:
         flattened_charges = reebill.actual_chargegroups_flattened(service)
 
         if xaction == "read":
-            self.copyactual(account, sequence)
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
             return self.dumps({'success': True, 'rows': flattened_charges})
 
         elif xaction == "update":
@@ -2393,8 +2395,11 @@ class BillToolBridge:
                 ci.update(row)
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True})
         elif xaction == "create":
             rows = json.loads(kwargs["rows"])
@@ -2408,8 +2413,11 @@ class BillToolBridge:
             # for itself.
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True, 'rows':rows})
         elif xaction == "destroy":
             uuids = json.loads(kwargs["rows"])
@@ -2427,8 +2435,11 @@ class BillToolBridge:
                 flattened_charges.remove(ci)
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True})
 
 
@@ -2451,8 +2462,9 @@ class BillToolBridge:
         if reebill is None:
             return self.dumps({'success':True, 'rows':[]})
 
-        # update hypothetical charges to match actual
-        self.copyactual(account, sequence)
+        # compute so the hypothetical charges in the reebill document are
+        # updated to make to actual charges in the utility bill document
+        self.compute_bill(account, sequence)
 
         flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
 
@@ -2537,6 +2549,7 @@ class BillToolBridge:
             return self.dumps({'success':True})
 
 
+    # TODO: i think this is dead code
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2548,11 +2561,15 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.set_actual_chargegroups_flattened(service, flattened_charges)
         self.reebill_dao.save_reebill(reebill)
-        # copy actual charges to hypothetical
-        self.copyactual(account, sequence)
+        
+        # compute so the hypothetical charges in the reebill document are
+        # updated to make to actual charges in the utility bill document
+        self.compute_bill(account, sequence)
+
         return self.dumps({'success': True})
 
 
+    # TODO: i think this is dead code
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
