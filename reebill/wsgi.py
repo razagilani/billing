@@ -2105,6 +2105,19 @@ class BillToolBridge:
 
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
+                #Delete the PDF associated with a reebill if it was version 0
+                # because we believe it is confusing to delete the pdf when
+                # when a version still exists
+                if deleted_version == 0:
+                    path = self.config.get('billdb', 'billpath')+'%s' %(account)
+                    file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+                    full_path = os.path.join(path, file_name)
+
+                    #If the file exists, delete it, otherwise don't worry.
+                    try:
+                        os.remove(full_path)
+                    except OSError:
+                        pass
             
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
@@ -2299,7 +2312,9 @@ class BillToolBridge:
         flattened_charges = reebill.actual_chargegroups_flattened(service)
 
         if xaction == "read":
-            self.copyactual(account, sequence)
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
             return self.dumps({'success': True, 'rows': flattened_charges})
 
         elif xaction == "update":
@@ -2327,8 +2342,11 @@ class BillToolBridge:
                 ci.update(row)
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True})
         elif xaction == "create":
             rows = json.loads(kwargs["rows"])
@@ -2342,8 +2360,11 @@ class BillToolBridge:
             # for itself.
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True, 'rows':rows})
         elif xaction == "destroy":
             uuids = json.loads(kwargs["rows"])
@@ -2361,8 +2382,11 @@ class BillToolBridge:
                 flattened_charges.remove(ci)
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
-            # copy actual charges to hypothetical
-            self.copyactual(account, sequence)
+
+            # compute so the hypothetical charges in the reebill document are
+            # updated to make to actual charges in the utility bill document
+            self.compute_bill(account, sequence)
+
             return self.dumps({'success':True})
 
 
@@ -2385,8 +2409,9 @@ class BillToolBridge:
         if reebill is None:
             return self.dumps({'success':True, 'rows':[]})
 
-        # update hypothetical charges to match actual
-        self.copyactual(account, sequence)
+        # compute so the hypothetical charges in the reebill document are
+        # updated to make to actual charges in the utility bill document
+        self.compute_bill(account, sequence)
 
         flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
 
@@ -2471,6 +2496,7 @@ class BillToolBridge:
             return self.dumps({'success':True})
 
 
+    # TODO: i think this is dead code
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2482,11 +2508,15 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.set_actual_chargegroups_flattened(service, flattened_charges)
         self.reebill_dao.save_reebill(reebill)
-        # copy actual charges to hypothetical
-        self.copyactual(account, sequence)
+        
+        # compute so the hypothetical charges in the reebill document are
+        # updated to make to actual charges in the utility bill document
+        self.compute_bill(account, sequence)
+
         return self.dumps({'success': True})
 
 
+    # TODO: i think this is dead code
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
