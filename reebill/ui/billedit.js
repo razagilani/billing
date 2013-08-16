@@ -6425,6 +6425,9 @@ function reeBillReady() {
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
+        //Update the buttons on the reebill tab
+        deleteButton.setDisabled(true)
+        versionButton.setDisabled(true);
         if (account == null) {
             /* no account selected */
             updateStatusbar(null, null, null)
