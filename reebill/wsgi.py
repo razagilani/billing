@@ -693,16 +693,6 @@ class BillToolBridge:
     ###########################################################################
     # bill processing
 
-    # TODO: do this on a per service basis 18311877
-    @json_exception
-    def copyactual(self, account, sequence, **args):
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.process.copy_actual_charges(reebill)
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success': True})
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -885,9 +875,6 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             for sequence in range(sequence, self.state_db.last_sequence(session,
                     account) + 1):
-                # update "hypothetical charges" to match actual charges"
-                # TODO this should be done inside compute_bill
-                self.copyactual(account, sequence)
 
                 # use version 0 of the predecessor to show the real account
                 # history (prior balance, payment received, balance forward)
