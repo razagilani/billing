@@ -13,7 +13,7 @@ import base64
 import itertools as it
 import copy
 import uuid as UUID
-import operator
+from itertools import chain
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
@@ -182,8 +182,8 @@ class MongoReebill(object):
             # the utility bill--though the only thing that should ever be
             # different from the real versions is the value of the "quantity"
             # key in each register
-            'shadow_registers': reduce(operator.add,
-                    [m['registers'] for m in utilbill_doc['meters']], []),
+            'shadow_registers': list(chain.from_iterable(m['registers'] for m in
+                    utilbill_doc['meters'])),
 
             # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
@@ -1404,8 +1404,8 @@ class MongoReebill(object):
                         return
 
     def all_shadow_registers(self):
-        return reduce(operator.add, [self.shadow_registers(s) for s in
-                self.services], [])
+        return list(chain.from_iterable([self.shadow_registers(s) for s in
+                self.services]))
 
     def shadow_registers(self, service):
         '''Returns list of copies of shadow register dictionaries for the
