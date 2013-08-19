@@ -170,13 +170,26 @@ class MongoReebill(object):
         representing the "hypothetical" version of the given utility bill
         document.'''
         return {
+            # the "id" field in the reebill subdocument identifies which
+            # utility bill it is associated with; this should match the the
+            # value in the "document_id" column of the row of the
+            # utilbill_reebill table in MySQL representing the association
+            # between this reebill and the utility bill, and the "_id" of the
+            # corresponding utility bill document.
             'id': utilbill_doc['_id'],
+
+            # hypothetical versions of all the registers in all the meters of
+            # the utility bill--though the only thing that should ever be
+            # different from the real versions is the value of the "quantity"
+            # key in each register
             'shadow_registers': reduce(operator.add,
                     [m['registers'] for m in utilbill_doc['meters']], []),
-            # NOTE hypothetical charges are the same as actual (on the utility
+
+            # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
             # computed
             'hypothetical_chargegroups': utilbill_doc['chargegroups'],
+
             'ree_charges': 0,
             'ree_savings': 0,
             'ree_value': 0
