@@ -867,20 +867,18 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            for sequence in range(sequence, self.state_db.last_sequence(session,
-                    account) + 1):
-                # update "hypothetical charges" to match actual charges"
-                # TODO this should be done inside compute_bill
-                self.copyactual(account, sequence)
+            # update "hypothetical charges" to match actual charges"
+            # TODO this should be done inside compute_bill
+            self.copyactual(account, sequence)
 
-                # use version 0 of the predecessor to show the real account
-                # history (prior balance, payment received, balance forward)
-                mongo_reebill = self.reebill_dao.load_reebill(account,
-                        sequence, version='max')
-                mongo_predecessor = self.reebill_dao.load_reebill(account,
-                        sequence - 1, version=0)
-                self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
-                self.reebill_dao.save_reebill(mongo_reebill)
+            # use version 0 of the predecessor to show the real account
+            # history (prior balance, payment received, balance forward)
+            mongo_reebill = self.reebill_dao.load_reebill(account,
+                    sequence, version='max')
+            mongo_predecessor = self.reebill_dao.load_reebill(account, sequence
+                    - 1, version=0)
+            self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
+            self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
