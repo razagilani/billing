@@ -215,7 +215,7 @@ class UtilBill(Base):
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
-    date_received = Column(Date)
+    date_received = Column(DateTime)
     processed = Column(Integer, nullable=False)
     document_id = Column(String)
     cprs_document_id = Column(String)
@@ -311,8 +311,8 @@ class Payment(Base):
     previously-entered amount.'''
     def __init__(self, customer, date_received, date_applied, description,
             credit):
-        assert isinstance(self.date_received, datetime)
-        assert isinstance(self.applied, date)
+        assert isinstance(date_received, datetime)
+        assert isinstance(date_applied, date)
         self.customer = customer
         self.date_received = date_received # datetime
         self.date_applied = date_applied   # date
@@ -1018,7 +1018,7 @@ class StateDB(object):
         # evaluated once at the time this module was imported, which means its
         # value would be the same every time this method is called.
         if date_received is None:
-            date_received = datetime.utcnow().date()
+            date_received = datetime.utcnow()
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         new_payment = Payment(customer, date_received, date_applied,
