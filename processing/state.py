@@ -511,20 +511,18 @@ class StateDB(object):
                 .order_by(UtilBill.period_start)
         return utilbills.all()
 
-    def delete_reebill(self, session, account, sequence):
-        '''Deletes the highest version of the given reebill, if it's not
-        issued.'''
-        # note that reebills whose version is below the maximum version should
-        # always be issued
-        if self.is_issued(session, account, sequence):
-            raise IssuedBillError("Can't delete an issued reebill")
+    #def delete_reebill(self, session, reebill):
+        #'''Deletes the highest version of the given reebill, if it's not
+        #issued.'''
+        ## note that reebills whose version is below the maximum version should
+        ## always be issued
+        #if self.is_issued(session, account, sequence):
+            #raise IssuedBillError("Can't delete an issued reebill")
 
-        reebill = self.get_reebill(session, account, sequence)
-
-        # utility bill association is removed automatically because of "on
-        # delete cascade" setting on foreign key constraint of the
-        # utilbill_reebill table
-        session.delete(reebill)
+        ## utility bill association is removed automatically because of "on
+        ## delete cascade" setting on foreign key constraint of the
+        ## utilbill_reebill table
+        #session.delete(reebill)
 
     def max_version(self, session, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer

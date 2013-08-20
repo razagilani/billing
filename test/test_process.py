@@ -1498,9 +1498,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,2,1), StringIO('january 2012'), 'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
+            reebill = session.query(ReeBill).one()
 
             # delete the reebill: should succeed, because it's not issued
-            self.process.delete_reebill(session, account, 1)
+            self.process.delete_reebill(session, reebill)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
             self.assertEquals([], session.query(ReeBill).all())
@@ -1520,14 +1521,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
             b = self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
-                    session, account, 1)
+                    session, reebill)
 
             # create a new verison and delete it, returning to just version 0
             # (versioning requires a cprs)
             self.process.new_version(session, account, 1)
+            reebill_v1 = session.query(ReeBill).filter_by(version=1).one()
             self.assertEqual(1, self.state_db.max_version(session, account, 1))
             self.assertFalse(self.state_db.is_issued(session, account, 1))
-            self.process.delete_reebill(session, account, 1)
+            self.process.delete_reebill(session, reebill_v1)
             self.assertEqual(0, self.state_db.max_version(session, account, 1))
             self.assertTrue(self.state_db.is_issued(session, account, 1))
 
@@ -1842,6 +1844,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.new_version(session, account, 1)
             self.assertEquals(1, self.state_db.max_version(session, account,
                     1))
+            reebill_correction = session.query(ReeBill)\
+                    .filter_by(version=1).one()
 
             # put it in an un-computable state by adding a charge without an RSI
             reebill_correction_doc = self.reebill_dao.load_reebill(account, 1,
@@ -1862,7 +1866,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_reebill(reebill_correction_doc)
 
             # delete the new version
-            self.process.delete_reebill(session, account, 1)
+            self.process.delete_reebill(session, reebill_correction)
             self.assertEquals(0, self.state_db.max_version(session, account,
                     1))
 
