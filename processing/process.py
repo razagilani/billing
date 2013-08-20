@@ -373,13 +373,12 @@ class Process(object):
         return doc, uprs, cprs
 
 
-    def delete_utility_bill(self, session, utilbill_id):
+    def delete_utility_bill(self, session, utilbill):
         '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
         it's not attached to a reebill) and returns the path where the file was
         moved (it never really gets deleted). This path will be None if there
         was no file or it could not be found. Raises a ValueError if the
         utility bill cannot be deleted.'''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         if utilbill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 

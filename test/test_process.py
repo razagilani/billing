@@ -720,7 +720,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # MySQL, document removed from Mongo (only template should be
             # left), UPRS and CPRS documents removed from Mongo, file moved to
             # trash directory
-            new_path = self.process.delete_utility_bill(session, utilbill.id)
+            new_path = self.process.delete_utility_bill(session, utilbill)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
             self.assertRaises(NoRateStructureError,
@@ -752,7 +752,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert first_reebill.utilbills == [utilbill]
             assert utilbill.is_attached()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill.id)
+                    session, utilbill)
 
             # deletion should fail if any version of a reebill has an
             # association with the utility bill. so issue the reebill, add
@@ -778,7 +778,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             new_version_reebill_doc._utilbills[0]['_id'] = other_utility_bill_doc['_id']
             self.reebill_dao.save_reebill(new_version_reebill_doc)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill.id)
+                    session, utilbill)
             session.commit()
 
             # test deletion of a Skyline-estimated utility bill (no file)
@@ -788,7 +788,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     state=UtilBill.SkylineEstimated)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1)).id)
+                    date(2013,3,1), date(2013,4,1)))
 
             # test deletion of utility bill with non-standard file extension
             self.process.upload_utility_bill(session, account, 'gas',
@@ -799,7 +799,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert os.access(the_path, os.F_OK)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,4,1), date(2013,5,1)).id)
+                    date(2013,4,1), date(2013,5,1)))
             self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
 
             # test deletion of utility bill with no file extension
@@ -811,7 +811,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert os.access(the_path, os.F_OK)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,2,1), date(2013,3,1)).id)
+                    date(2013,2,1), date(2013,3,1)))
             self.assertFalse(os.access(the_path, os.F_OK))
 
     def test_new_version(self):

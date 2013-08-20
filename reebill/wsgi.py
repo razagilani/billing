@@ -2911,8 +2911,7 @@ class BillToolBridge:
                     # delete it & get new path (will be None if there was never
                     # a utility bill file or the file could not be found)
                     print start, end, service
-                    deleted_path = self.process.delete_utility_bill(session,
-                            utilbill_id)
+                    deleted_path = self.process.delete_utility_bill(session, utilbill)
 
                     # log it
                     journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
