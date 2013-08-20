@@ -160,9 +160,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill_doc.prior_balance)
             self.assertEqual(0, reebill_doc.hypothetical_total)
             self.assertEqual(0, reebill_doc.balance_forward)
-            # NOTE that reebill addresses are rebill utility bill addresses but
-            # this will change; see
-            # https://www.pivotaltracker.com/story/show/47749247
             self.assertEqual(billing_address, reebill_doc.billing_address)
             self.assertEqual(service_address, reebill_doc.service_address)
 
