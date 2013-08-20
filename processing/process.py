@@ -932,9 +932,7 @@ class Process(object):
         
         'billing_address' and 'service_address' are dictionaries containing the
         addresses for the utility bill. The address format should be the
-        utility bill address format (see top of mongo.py for conversion
-        functions). Note that there are no ReeBill billing/service addresses
-        currently; see https://www.pivotaltracker.com/story/show/47749247
+        utility bill address format.
 
         Returns the new state.Customer.'''
         if self.state_db.account_exists(session, account):
