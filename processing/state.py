@@ -311,6 +311,8 @@ class Payment(Base):
     previously-entered amount.'''
     def __init__(self, customer, date_received, date_applied, description,
             credit):
+        assert isinstance(self.date_received, datetime)
+        assert isinstance(self.applied, date)
         self.customer = customer
         self.date_received = date_received # datetime
         self.date_applied = date_applied   # date
