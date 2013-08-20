@@ -755,9 +755,12 @@ class Process(object):
         try:
             self.compute_bill(session, reebill_doc)
         except Exception as e:
-            # TODO: catching Exception is awful and horrible and terrible and
+            # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
-            # way to accomplish the same thing
+            # way to accomplish the same thing. ignoring the error here allows
+            # a new version of the bill to be created even when it can't be
+            # computed (e.g. the rate structure is broken and the user wants to
+            # edit it, but can't until the new version already exists).
             self.logger.error(("In Process.new_version, couldn't compute new "
                     "version %s of reebill %s-%s: %s\n%s") % (
                     reebill_doc.version, reebill_doc.account,
