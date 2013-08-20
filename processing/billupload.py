@@ -394,11 +394,9 @@ def create_directory_if_necessary(path, logger):
     try:
         os.makedirs(path)
     except OSError as e:
-        # if os.makedirs() fails because 'path' already exists, that's good,
+        # if os.makedirs fails because 'path' already exists, that's good,
         # but all other errors are bad
-        if e.errno == errno.EEXIST:
-            pass
-        else:
+        if e.errno != errno.EEXIST:
             logger.error('unable to create directory "%s": %s'  % (path, e))
             raise
 
