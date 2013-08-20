@@ -5027,10 +5027,8 @@ function reeBillReady() {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
-                                    //Ext.MessageBox.alert('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    //Ext.MessageBox.alert('1Server Error');
-                                    //console.log('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('1Server Error');
+                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     accountGrid.getSelectionModel().clearSelections();
