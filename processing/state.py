@@ -326,6 +326,8 @@ class Payment(Base):
             'date_applied': self.date_applied,
             'description': self.description,
             'credit': self.credit,
+            # the client uses this field to determine if users should be
+            # allowed to edit this payment
             'editable': datetime.utcnow() - self.date_received < timedelta(hours=24)
         }
 
