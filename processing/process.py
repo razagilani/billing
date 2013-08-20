@@ -902,25 +902,25 @@ class Process(object):
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
-    def delete_reebill(self, session, account, sequence):
-        '''Deletes the latest version of the reebill given by 'account' and
-        'sequence': removes state data and utility bill associations from
-        MySQL, and actual bill data from Mongo. A reebill that has been issued
-        can't be deleted. Returns the version of the reebill that was
-        deleted (the highest ersion before deletion).'''
+    def delete_reebill(self, session, reebill):
+        '''Deletes the the given reebill: removes the ReeBill object/row and
+        its utility bill associations from MySQL, and its document from Mongo.
+        A reebill version has been issued can't be deleted. Returns the version
+        of the reebill that was deleted.'''
         # don't delete an issued reebill
-        if self.state_db.is_issued(session, account, sequence):
+        if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
+
+        version = reebill.version
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
-        max_version = self.state_db.max_version(session, account, sequence)
-        self.state_db.delete_reebill(session, account, sequence)
+        session.delete(reebill)
 
         # delete highest-version reebill document from Mongo
-        self.reebill_dao.delete_reebill(account, sequence, max_version)
+        self.reebill_dao.delete_reebill(reebill)
 
-        return max_version
+        return version
 
 
     def create_new_account(self, session, account, name, discount_rate,

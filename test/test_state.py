@@ -321,25 +321,35 @@ class StateTest(utils.TestCase):
             self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
-            self.state_db.delete_reebill(session, account, 1)
+            reebill = session.query(ReeBill).filter_by(account=account,
+                    sequence=1, version=0)
+            self.state_db.delete_reebill(session, reebill)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
             # issued bill can't be deleted
             self.state_db.new_reebill(session, account, 1)
             self.state_db.issue(session, account, 1)
-            self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
+            assert reebill.issued
+            # TODO check for a more specific exception
+            self.assertRaises(Exception, self.state_db.delete_reebill, session,
+                    reebill)
 
             # make a new version, which is not issued; that can be deleted by
             # decrementing max_version
             self.state_db.increment_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
             assert not self.state_db.is_issued(session, account, 1)
+            reebill_correction = session.query(ReeBill).filter_by(
+                    account=account, sequence=1, version=1)
+            assert not reebill_correction.issued
             self.state_db.delete_reebill(session, account, 1)
             self.assertEqual([1], self.state_db.listSequences(session, account))
             self.assertEqual(0, self.state_db.max_version(session, account, 1))
 
             # remaining version 0 can't be deleted
-            self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
+            # TODO check for a more specific exception
+            self.assertRaises(Exception, self.state_db.delete_reebill, session,
+                    account, 1)
 
             session.commit()
 

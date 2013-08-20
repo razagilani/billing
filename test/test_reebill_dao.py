@@ -332,7 +332,15 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         self.assertEquals(2, len(all_utilbill_docs))
 
         # delete reebill
-        self.reebill_dao.delete_reebill('99999', 1, 0)
+        # (ReeBillDao.delete_reebill requires a state.ReeBill object so
+        # pretend)
+        class AnObject(object): pass
+        reebill = AnObject()
+        reebill.customer = AnObject()
+        reebill.customer.account = '99999'
+        reebill.sequence = 1
+        reebill.version = 0
+        self.reebill_dao.delete_reebill(reebill)
 
         # reebill should be gone, and utilbills should not.
         all_reebills = self.reebill_dao.load_reebills_in_period('99999',

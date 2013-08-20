@@ -2040,16 +2040,16 @@ class ReebillDAO:
         ub_doc = bson_convert(copy.deepcopy(ub_doc))
         self.utilbills_collection.save(ub_doc, safe=True)
         
-    def delete_reebill(self, account, sequence, version):
-        '''Deletes the reebill document given by 'account', 'sequence',
-        'version'. Does not check if the reebill has been issued. No utility
-        bill documents are deleted, even if there are frozen utility bill
-        documents for this reebill, because only issued reebills have those and
-        issued reebills should not be deleted.'''
+    def delete_reebill(self, reebill):
+        '''Deletes the document corresponding to the given state.ReeBill. Does
+        not check if the reebill has been issued. No utility bill documents are
+        deleted, even if there are frozen utility bill documents for this
+        reebill, because only issued reebills have those and issued reebills
+        should not be deleted.'''
         result = self.reebills_collection.remove({
-            '_id.account': account,
-            '_id.sequence': sequence,
-            '_id.version': version,
+            '_id.account': reebill.customer.account,
+            '_id.sequence': reebill.sequence,
+            '_id.version': reebill.version,
         }, safe=True)
         if result['err'] is not None or result['n'] == 0:
             raise MongoError(result)

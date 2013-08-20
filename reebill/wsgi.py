@@ -2089,9 +2089,10 @@ class BillToolBridge:
                             #"and its sequence is the last one. Delete a "
                             #"series of unissued bills in sequence order."))
 
-                deleted_version = self.process.delete_reebill(session,
-                        account, sequence)
-                #Delete the PDF associated with a reebill if it was version 0
+                reebill = self.state_db.get_reebill(session, account, sequence)
+                deleted_version = self.process.delete_reebill(session, reebill)
+
+                # Delete the PDF associated with a reebill if it was version 0
                 # because we believe it is confusing to delete the pdf when
                 # when a version still exists
                 if deleted_version == 0:
