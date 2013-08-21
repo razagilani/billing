@@ -21,7 +21,7 @@ from billing.processing.state import UtilBill
 from copy import deepcopy
 
 import pprint
-pp = pprint.PrettyPrinter(indent=1).pprint
+#pp = pprint.PrettyPrinter(indent=1).pprint
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
@@ -219,87 +219,18 @@ class RateStructureDAO(object):
         the version of the utility bill associated with the current
         reebill--either the same as the "current" ones if the reebill is
         unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
-        if the reebill is issued.'''
-        # load the URS
+        if the reebill is issued.
+        '''
         urs = self.load_urs(utilbill.utility, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end)
-
-        # remove the mongo key, because the requester already has this
-        # information and we do not want application code depending on the
-        # "_id" field.
-        del urs['_id']
-
-        # remove uuids because they are not used in rate structure computation
-        for urs_rate in urs['rates']:
-            del urs_rate['uuid']
-
-        for urs_reg in urs['registers']:
-            del urs_reg['uuid']
-
-        # load the UPRS
         uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
-
-        # remove the mongo key, because the requester already has this
-        # information and we do not want application code depending on the
-        # "_id" field.
-        del uprs['_id']
-
-        # remove the uuids because they are not used in rate structure
-        # computation
-        if 'rates' in uprs:
-            for uprs_rate in uprs['rates']:
-                del uprs_rate['uuid']
-
-        # load the CPRS
         cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
 
-        # remove the mongo key, because the requester already has this information
-        # and we do not want application code depending on the "_id" field.
-        if cprs is None:
-            import ipdb; ipdb.set_trace()
-        del cprs['_id']
+        # RSIs in CRPS override RSIs in URS with same "rsi_binding"
+        rsis = {rsi['rsi_binding']: rsi for rsi in uprs['rates']}
+        rsis.update({rsi['rsi_binding']: rsi for rsi in cprs['rates']})
+        return {'rates': rsis.values(), 'registers': urs['registers']}
 
-        # remove the uuids because they are not used in rate structure computation
-        if 'rates' in cprs:
-            for cprs_rate in cprs['rates']:
-                del cprs_rate['uuid']
-
-        # URS is overridden and augmented by rates in UPRS
-
-        # for each UPRS rate, find URS rate and override/augment it
-        if 'rates' in uprs:
-            for uprs_rate in uprs['rates']:
-                # find a matching rate in URS
-                urs_rate = [rate for rate in urs['rates'] if
-                        rate['rsi_binding'] == uprs_rate['rsi_binding']]
-                # URS does not have a rate for UPRS to override, so add it.
-                if len(urs_rate) == 0:
-                    urs['rates'].append(uprs_rate)
-                # URS has a rate that the UPRS overrides.
-                if len(urs_rate) == 1:
-                    urs_rate[0].update(uprs_rate)
-                if len(urs_rate) > 1:
-                    raise Exception('more than one URS rate matches a UPRS rate')
-
-        # UPRS/URS is overridden and augmented by rates in CPRS
-
-        # for each CPRS rate, find UPRS overidden URS rate and override/augment it
-        if 'rates' in cprs:
-            for cprs_rate in cprs['rates']:
-                # find a matching rate in the URS that was just overidden by UPRS
-                urs_uprs_rate = [rate for rate in urs['rates'] if
-                        rate['rsi_binding'] == cprs_rate['rsi_binding']]
-                # URS/UPRS does not have a rate for the CPRS to override, so add it.
-                if len(urs_uprs_rate) == 0:
-                    urs['rates'].append(cprs_rate)
-                # URS/UPRS has a rate that the CPRS overrides.
-                if len(urs_uprs_rate) == 1:
-                    urs_uprs_rate[0].update(cprs_rate)
-                if len(urs_uprs_rate) > 1:
-                    raise Exception('more than one URS/UPRS rate matches a UPRS rate')
-    
-        # the URS has been thoroughly overridden by the UPRS and CPRS
-        return urs
 
     def load_rate_structure(self, utilbill, reebill=None):
         '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
