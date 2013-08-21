@@ -5,7 +5,7 @@ cur = con.cursor()
 
 cur.execute('''select count(*), sum(max_version) from rebill''')
 initial_count, new_rows = cur.fetchall()[0]
-print 'rebill table: %s rows exist; %s new rows should be added' % (initial_count, new_rows)
+#print 'rebill table: %s rows exist; %s new rows should be added' % (initial_count, new_rows)
 
 # remove constraint that enforces uniqueness of {customer_id, sequence}
 # (in "show index from rebill" this appears as 2 separate indices, one on customer_id and another on sequence)
@@ -33,4 +33,3 @@ cur.execute('''alter table rebill add unique index (customer_id, sequence, max_v
 cur.execute('''alter table rebill change max_version version int(11)''')
 
 con.commit()
-print 'rebill upgrade done'
