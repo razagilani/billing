@@ -226,6 +226,15 @@ class RateStructureDAO(object):
         uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
         cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
 
+        # make sure "rsi_binding" is unique within UPRS and CPRS (not that we
+        # have ever had a problem with this, but the data structure allows it)
+        for rs in (uprs, cprs):
+            for rsi in rs['rates']:
+                if any(other['rsi_binding'] == rsi['rsi_binding'] and other !=
+                        rsi for other in rs['rates']):
+                    raise RSIError('Multiple RSIs have rsi_binding "%s"' %
+                            rsi['rsi_binding'])
+
         # RSIs in CRPS override RSIs in URS with same "rsi_binding"
         rsis = {rsi['rsi_binding']: rsi for rsi in uprs['rates']}
         rsis.update({rsi['rsi_binding']: rsi for rsi in cprs['rates']})

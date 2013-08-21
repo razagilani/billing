@@ -1,8 +1,10 @@
-'''Puts Mongo id, utility name, rate class in MySQL utility bill rows.'''
+'''Puts Mongo id, utility name, and rate class in MySQL utility bill rows.'''
 from sys import stderr
+from operator import itemgetter
 import MySQLdb
 import pymongo
 from billing.util.dateutils import date_to_datetime
+from billing.util.dictutils import subdict
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
 con.autocommit(False)
@@ -26,7 +28,7 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
-    query = {
+    editable_doc_query = {
         'account': account,
         #'service': service,
         'start': date_to_datetime(start),
@@ -34,10 +36,21 @@ for mysql_id, account, service, start, end in cur.fetchall():
         'sequence': {'$exists': False},
         'version': {'$exists': False},
     }
-    mongo_doc = db.utilbills.find_one(query)
+    mongo_doc = db.utilbills.find_one(editable_doc_query)
+
+    # if there's no editable utility bill document, create one by copying the
+    # highest-version frozen document
     if mongo_doc is None:
-        print >> stderr, "%s: no mongo document for query %s" % (mysql_id, query)
-        continue
+        any_doc_query = subdict(editable_doc_query, ['sequence', 'version'], invert=True)
+        docs = db.utilbills.find(any_doc_query)
+        if docs.count() == 0:
+            print >> stderr, "No utility bills found for query", any_doc_query
+            continue
+
+        mongo_doc = max(docs, key=itemgetter('version'))
+        del mongo_doc['sequence']; del mongo_doc['version']
+        db.utilbills.save(mongo_doc)
+        print >> stderr, "created editable document for utility bill", mysql_id
 
     # put mongo document id in MySQL table
     cur.execute("update utilbill set utility = '%s', rate_class = '%s', document_id = '%s' where id = %s" % (mongo_doc['utility'], mongo_doc['rate_structure_binding'], mongo_doc['_id'], mysql_id))
@@ -63,7 +76,7 @@ for mysql_id, account, sequence, version, in cur.fetchall():
     }
     reebill_doc = db.reebills.find_one(query)
     if reebill_doc is None:
-        print >> stderr, "%s: no mongo document for query %s" % (mysql_id, query)
+        print >> stderr, "%s: no reebill document for query %s" % (mysql_id, query)
         continue
     try:
         assert len(reebill_doc['utilbills']) == 1
