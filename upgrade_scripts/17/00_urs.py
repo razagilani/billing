@@ -16,7 +16,7 @@ for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
     urss = db.ratestructure.find(query)
     if urss.count() == 0:
         # if the URS is missing, it's not actually a problem; there's nothing to do
-        print >> stderr, 'No URS found for query %s' % query
+        print >> stderr, 'No URS found for query %s (not a problem)' % query
         continue
     if urss.count() > 1:
         print >> stderr, 'More than one URS matches query %s' % query
