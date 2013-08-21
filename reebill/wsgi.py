@@ -2100,11 +2100,12 @@ class BillToolBridge:
                     file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
                     full_path = os.path.join(path, file_name)
 
-                    #If the file exists, delete it, otherwise don't worry.
+                    # If the file exists, delete it, otherwise don't worry.
                     try:
                         os.remove(full_path)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        if e.errno != errno.ENOENT:
+                            raise
             
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
