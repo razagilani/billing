@@ -24,7 +24,8 @@ cur.execute("begin")
 
 cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
 for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
-    print account, sequence, version, utilbill_id
+    #print account, sequence, version, utilbill_id
+
     # find CPRS and UPRS docs
     cprs_query = {
         '_id.type': 'CPRS', 
