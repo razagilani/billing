@@ -90,7 +90,7 @@ for account, customer_id in cur.fetchall():
     cur.execute("select count(*) from reebill where customer_id = '%s' and issued = 1" % customer_id)
     num_reebills = cur.fetchone()[0]
 
-    print 'template for %s (%s reebills issued)' % (account, num_reebills)
+    #print 'template for %s (%s reebills issued)' % (account, num_reebills)
 
     # find utilbill, CPRS and UPRS docs
     utilbill_query = {
@@ -102,7 +102,7 @@ for account, customer_id in cur.fetchall():
         if num_reebills > 0:
             print >> stderr, "Missing template utility bill:", utilbill_query
         else:
-            print >> stderr, "Missing template utility bill: %s (but not needed)" % utilbill_query
+            print >> stderr, "Missing template utility bill: %s (unnecessary since bills have been issued)" % utilbill_query
         continue
     elif utilbills.count() > 1:
         print >> stderr, "Multiple utilbills match", utilbill_query
