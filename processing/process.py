@@ -615,10 +615,12 @@ class Process(object):
                 present_reebill._utilbills]
         
 
-
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
-        based on the given state.UtilBill.'''
+        based on the given state.UtilBill.
+        This is a separate method from create_next_reebill because a specific
+        utility bill is provided indicating where billing should start.
+        '''
         customer = utilbill.customer
 
         # make sure there are no reebills yet
@@ -641,14 +643,16 @@ class Process(object):
 
 
     def create_next_reebill(self, session, account):
-        '''Creates the successor to the highest-sequence state.ReeBill for
-        the given account, and its associated Mongo document.'''
+        '''Creates the successor to the highest-sequence state.ReeBill for the
+        given account, or the first reebill if none exists yet, and its
+        associated Mongo document.'''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
                 .filter(ReeBill.customer == customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
 
+        # now there is at least one reebill.
         # find successor to every utility bill belonging to the reebill, along
         # with its mongo document. note that Hypothetical utility bills are
         # excluded.
