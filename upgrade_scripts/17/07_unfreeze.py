@@ -11,6 +11,9 @@ for reebill in db.reebills.find({'_id.version': 0, 'issue_date': None}):
 
     for utilbill_subdoc in reebill['utilbills']:
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
+        if utilbill is None:
+            print >> stderr, 'No utility bill for reebill %s-%s-%s, id %s' % (reebill['_id']['account'], reebill['_id']['sequence'], reebill['_id']['version'], utilbill_subdoc['id'])
+            continue
 
         # unissued version-0 reebills always have "sequence" and "version" keys in their utility bill. if not, something is wrong.
         try:
