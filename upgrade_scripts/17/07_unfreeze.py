@@ -1,13 +1,22 @@
+'''
+Converts frozen utility bill documents associated with unissued reebills into editable ones, replacing any editable utility bills that already exist.
+'''
 from sys import stderr
 import pymongo
 from billing.util.dateutils import date_to_datetime
 from bson import ObjectId
+import MySQLdb
 from billing.util.dictutils import subdict, dict_merge
 
 db = pymongo.Connection('localhost')['skyline-dev']
+con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
+con.autocommit(False)
 
 # iterate through all unissued version-0 reebill documents
-for reebill in db.reebills.find({'_id.version': 0, 'issue_date': None}):
+cur = con.cursor()
+cur.execute('select distinct customer.account, sequence, utilbill_id from reebill, customer, utilbill_reebill where customer_id = customer.id and reebill_id = reebill.id and version = 0 and issued != 1 order by account, sequence')
+for account, sequence, utilbill_id in cur.fetchall():
+    reebill = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': 0})
 
     for utilbill_subdoc in reebill['utilbills']:
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
@@ -43,3 +52,6 @@ for reebill in db.reebills.find({'_id.version': 0, 'issue_date': None}):
         db.utilbills.save(utilbill)
         db.utilbills.remove({'_id': existing_editable_utility_bills[0]['_id']}, True)
 
+        # update MySQL "utilbill" table with utilbill id
+        cur.execute("update utilbill set document_id = '%s' where id = %s" % (utilbill_subdoc['id'], utilbill_id))
+con.commit()
