@@ -2939,10 +2939,12 @@ class BillToolBridge:
                     ('id', ub.id),
                     ('account', ub.customer.account),
                     ('name', full_name),
-                    ('utility', rb.utility_name_for_service(ub.service) if
+                    # capitalized service names have still not been expunged from
+                    # the db!
+                    ('utility', rb.utility_name_for_service(ub.service.lower()) if
                             ub.service is not None and rb is not None else ''),
                     ('rate_structure',
-                            rb.rate_structure_name_for_service(ub.service) if
+                            rb.rate_structure_name_for_service(ub.service.lower()) if
                             ub.service is not None and rb is not None else ''),
                     # capitalize service name
                     ('service', 'Unknown' if ub.service is None else
