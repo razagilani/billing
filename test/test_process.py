@@ -792,12 +792,15 @@ class ProcessTest(TestCaseWithSetup):
         editable_utilbill['meters'][0]['prior_read_date'] = date(2012,1,15)
         editable_utilbill['meters'][0]['present_read_date'] = date(2012,3,15)
         self.reebill_dao._save_utilbill(editable_utilbill)
-        # find the expected total energy (produced by MockSplinter) if this
-        # period is used. it is extremely unlikely to exactly match the total
-        # energy that would be produced for a different period(especially
-        # because the length is different).
-        correct_energy_amount_therms = sum([hour_of_energy(h) for h in
-                cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
+
+        # NOTE as of 54786414, new energy data are not loaded when a new version
+        # of a bill is created.
+        ## find the expected total energy (produced by MockSplinter) if this
+        ## period is used. it is extremely unlikely to exactly match the total
+        ## energy that would be produced for a different period(especially
+        ## because the length is different).
+        #correct_energy_amount_therms = sum([hour_of_energy(h) for h in
+                #cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
 
         # create new version of 1
         with DBSession(self.state_db) as session:
@@ -822,10 +825,12 @@ class ProcessTest(TestCaseWithSetup):
             self.assertNotEqual(None,
                     self.rate_structure_dao.load_rate_structure(new_bill, s))
 
-        # if the total REE is 'correct_energy_amount_therms' (within
-        # floating-point error), the correct meter read period was used.
-        self.assertAlmostEqual(correct_energy_amount_therms,
-                float(new_bill.total_renewable_energy()))
+        # NOTE as of 54786414, new energy data are not loaded when a new version
+        # of a bill is created.
+        ## if the total REE is 'correct_energy_amount_therms' (within
+        ## floating-point error), the correct meter read period was used.
+        #self.assertAlmostEqual(correct_energy_amount_therms,
+                #float(new_bill.total_renewable_energy()))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections(), get_total_adjustment(), and
