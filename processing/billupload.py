@@ -16,8 +16,9 @@ from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 
-# strings allowed as account names
-ACCOUNT_NAME_REGEX = '[0-9]{5}'
+# strings allowed as account names (formerly only digits, now digits/letters)
+#ACCOUNT_NAME_REGEX = '[0-9]{5}'
+ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
 # date format expected from front end
 INPUT_DATE_FORMAT ='%Y-%m-%d' 
