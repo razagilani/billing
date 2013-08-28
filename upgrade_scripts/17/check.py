@@ -15,6 +15,20 @@ cur.execute("select count(*) from utilbill")
 count = cur.fetchall()[0]
 print '%s total rows in utilbill' % count
 
+# all utility bills should have service, utility, rate class filled in
+cur.execute("select count(*) from utilbill where service is null or service = ''")
+count = cur.fetchall()[0]
+if count > 0:
+    print >> stderr, '%s rows in utilbill have null/empty service' % count
+cur.execute("select count(*) from utilbill where utility is null or utility = ''")
+count = cur.fetchall()[0]
+if count > 0:
+    print >> stderr, '%s rows in utilbill have null/empty utility' % count
+cur.execute("select count(*) from utilbill where rate_class is null or rate_class = ''")
+count = cur.fetchall()[0]
+if count > 0:
+    print >> stderr, '%s rows in utilbill have null/empty rate_class' % count
+
 # all non-hypothetical utility bills should have 3 documents filled in
 cur.execute("select count(*) from utilbill where state < 3 and document_id is null or uprs_document_id is null or cprs_document_id is null")
 count = cur.fetchall()[0]
@@ -79,3 +93,4 @@ for account, sequence, version in cur.fetchall():
     doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': version})
     if doc is None:
         print >> stderr, "couldn't load reebill: %s" % query
+
