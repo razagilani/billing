@@ -65,16 +65,25 @@ for id_type in ('document_id', 'uprs_document_id', 'cprs_document_id'):
 
 # every mongo document referenced by an id in mysql should exist
 cur.execute("(select document_id, uprs_document_id, cprs_document_id from utilbill) union distinct (select document_id, uprs_document_id, cprs_document_id from utilbill_reebill)")
+doc_count, uprs_count, cprs_count = 0, 0, 0
 for document_id, uprs_id, cprs_id in cur.fetchall():
-    utilbill = db.utilbills.find_one({'_id': ObjectId(document_id)})
-    uprs = db.ratestructure.find_one({'_id': ObjectId(uprs_id)})
-    cprs = db.ratestructure.find_one({'_id': ObjectId(cprs_id)})
-    if utilbill is None:
-        print >> stderr, "couldn't load utility bill with _id %s" % document_id
-    if uprs is None:
-        print >> stderr, "couldn't load UPRS with _id %s" % uprs_id
-    if cprs is None:
-        print >> stderr, "couldn't load CPRS with _id %s" % cprs_id
+    if document_id is not None:
+        utilbill = db.utilbills.find_one({'_id': ObjectId(document_id)})
+        if utilbill is None:
+            #print >> stderr, "couldn't load utility bill with _id %s" % document_id
+            doc_count += 1
+    if uprs_id is not None:
+        uprs = db.ratestructure.find_one({'_id': ObjectId(uprs_id)})
+        if uprs is None:
+            #print >> stderr, "couldn't load UPRS with _id %s" % uprs_id
+            uprs_count += 1
+    if cprs_id is not None:
+        cprs = db.ratestructure.find_one({'_id': ObjectId(cprs_id)})
+        if cprs is None:
+            #print >> stderr, "couldn't load CPRS with _id %s" % cprs_id
+            cprs_count += 1
+if doc_count + uprs_count + cprs_count > 0:
+    print >> stderr, "%s document_ids, %s uprs_ids, %s cprs_ids couldn't be loaded" % (doc_count, uprs_count, cprs_count)
 
 # in reebill table, for every row having customer_id c, sequence s, version v > 0, there is another row with customer_id c, sequence s, version v - 1
 cur.execute("select customer_id, sequence, version from reebill where version > 0")
