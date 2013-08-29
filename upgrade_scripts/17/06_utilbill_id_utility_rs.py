@@ -30,29 +30,25 @@ cur.execute("alter table utilbill add column document_id varchar(24)")
 # identified by utilbill.document_id
 cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 
-# remove all editable utility bill documents so that better ones can be
-# recreated from the frozen ones
-db.utilbills.remove({'sequence': {'$exists': False}})
+## create a new editable utility bill document from the hightest-version frozen
+## document for each reebill
+#cur.execute("select distinct customer.account, sequence from customer, reebill where reebill.customer_id = customer.id order by account, sequence")
+#for account, sequence in cur.fetchall():
+    #frozen_doc_query = {
+        #'account': account,
+        #'sequence': sequence,
+    #}
+    #docs = db.utilbills.find(frozen_doc_query)
+    #if docs.count() == 0:
+        #print >> stderr, "No frozen utility bill document found for reebill %s-%s: %s" % (account, sequence, frozen_doc_query)
+        #continue
+    #new_editable_doc = max(docs, key=itemgetter('version'))
+    #del new_editable_doc['sequence']
+    #del new_editable_doc['version']
+    #new_editable_doc['_id'] = ObjectId()
+    #db.utilbills.save(new_editable_doc)
 
-# create a new editable utility bill document from the hightest-version frozen
-# document for each reebill
-cur.execute("select distinct customer.account, sequence from customer, reebill where reebill.customer_id = customer.id order by account, sequence")
-for account, sequence in cur.fetchall():
-    frozen_doc_query = {
-        'account': account,
-        'sequence': sequence,
-    }
-    docs = db.utilbills.find(frozen_doc_query)
-    if docs.count() == 0:
-        print >> stderr, "No frozen utility bill document found for reebill %s-%s: %s" % (account, sequence, frozen_doc_query)
-        continue
-    new_editable_doc = max(docs, key=itemgetter('version'))
-    del new_editable_doc['sequence']
-    del new_editable_doc['version']
-    new_editable_doc['_id'] = ObjectId()
-    db.utilbills.save(new_editable_doc)
-
-# put Mongo _ids of editable utility bill documents in MySQL
+# put Mongo _ids of editable utility bill documents in MySQL utilbill table
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
