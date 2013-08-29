@@ -48,7 +48,7 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
     #new_editable_doc['_id'] = ObjectId()
     #db.utilbills.save(new_editable_doc)
 
-# put Mongo _ids of editable utility bill documents in MySQL utilbill table
+# put Mongo _ids of editable utility bill documents in MySQL
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document

@@ -7,10 +7,11 @@ create table utilbill_reebill (
     utilbill_id int(11) not null,
     reebill_id int(11) not null,
     foreign key (utilbill_id) references utilbill (id) on delete cascade,
-    foreign key (reebill_id) references reebill (id) on delete cascade,
+    foreign key (reebill_id) references rebill (id) on delete cascade,
     primary key (utilbill_id, reebill_id)
 );
--- copy data from utilbill.reebill_id into the new table
+
+-- copy reebill/utilbill associations from utilbill.reebill_id into the new table
 insert into utilbill_reebill (utilbill_id, reebill_id) select id, rebill_id from utilbill where rebill_id is not null;
 
 -- drop constraints preventing removal of the reebill_id column, then remove it
