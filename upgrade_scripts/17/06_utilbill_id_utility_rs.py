@@ -11,6 +11,12 @@ from bson import ObjectId
 from billing.util.dateutils import date_to_datetime
 from billing.util.dictutils import subdict
 
+def one(the_list):
+    #assert len(the_list) == 1
+    if len(the_list) != 1:
+        print >> stderr, type(the_list), 'has', len(the_list), 'elements'
+    return the_list[0]
+
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
 con.autocommit(False)
 cur = con.cursor()
@@ -62,11 +68,28 @@ for mysql_id, account, service, start, end in cur.fetchall():
     }
     mongo_doc = db.utilbills.find_one(editable_doc_query)
 
-    # if there's no editable utility bill document, create one by copying the
-    # highest-version frozen document
+    # if there's no editable utility bill document matching the date fields in
+    # MySQL, but there is a reebill associated with this utility bill, find the
+    # reebill, look up its utility bill document, try to find an editable
+    # utility bill with the same dates as that one, and put that one's _id in MySQL
     if mongo_doc is None:
         print >> stderr, "No editable utility bill document found for query", editable_doc_query
-        continue
+
+        cur.execute("select sequence, version from reebill, utilbill_reebill where reebill_id = reebill.id and utilbill_id = %s" % mysql_id)
+        if cur.rowcount == 0:
+            print >> stderr, "and no reebill exists in MySQL"
+            continue
+        sequence, version = cur.fetchone()
+        mongo_id = one(db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': version})['utilbills'])['id']
+        frozen_doc = db.utilbills.find_one({'_id': ObjectId(mongo_id)})
+        if frozen_doc is None:
+            print >> stderr, "and reebill's utility bill document could not be found either"
+            continue
+        editable_doc_query.update({'start': frozen_doc['start'], 'end': frozen_doc['end']})
+        mongo_doc = db.utilbills.find_one(editable_doc_query)
+        if mongo_doc is None:
+            print >> stderr, "and no utility bill matching the dates of the reebill's frozen utility bill document could be found"
+            continue
 
     # put mongo document id in MySQL table
     cur.execute("update utilbill set utility = '%s', rate_class = '%s', document_id = '%s' where id = %s" % (mongo_doc['utility'], mongo_doc['rate_structure_binding'], mongo_doc['_id'], mysql_id))
