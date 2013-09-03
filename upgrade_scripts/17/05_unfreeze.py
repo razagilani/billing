@@ -1,5 +1,5 @@
 '''
-Converts frozen utility bill documents associated with unissued reebills into editable ones, replacing any editable utility bills that already exist.
+Converts frozen utility bill documents associated with unissued version-0 reebills into editable ones, replacing any editable utility bills that already exist.
 '''
 from sys import stderr
 import pymongo
@@ -23,6 +23,8 @@ for account, sequence, utilbill_id in cur.fetchall():
     reebill = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': 0})
 
     for utilbill_subdoc in reebill['utilbills']:
+
+        # find utility bill document attached to the reebill
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
         if utilbill is None:
             print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (reebill['_id']['account'], reebill['_id']['sequence'], reebill['_id']['version'], utilbill_subdoc['id'])
@@ -36,6 +38,7 @@ for account, sequence, utilbill_id in cur.fetchall():
             print >> stderr, 'unissued version-0 reebill lacks "sequence" and "version" in its utility bill:', reebill['_id']
             continue
 
+        # find any existing editable utility bill documents with the same utility, service, and dates
         query_for_editable_twins = dict_merge(
                 subdict(utilbill, ['account', 'utility', 'service', 'start', 'end']),
                 {'sequence': {'$exists': False}})
