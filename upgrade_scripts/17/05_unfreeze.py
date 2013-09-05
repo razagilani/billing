@@ -104,9 +104,12 @@ group by customer_id, sequence
 order by customer_id, sequence, version''')
 for account, sequence, max_version in cur.fetchall():
     reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': max_version})
+    assert reebill_doc is not None
+
     for utilbill_subdoc in reebill_doc['utilbills']:
         utilbill_doc_id = utilbill_subdoc['id']
         utilbill_doc = db.utilbills.find_one({'_id': utilbill_doc_id})
+        assert utilbill_doc is not None
 
         try:
             unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
