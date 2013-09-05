@@ -1,6 +1,7 @@
 '''
 Converts frozen utility bill documents attached to unissued version-0 reebills into editable ones, replacing any editable utility bills that already exist.
 Deletes editable utility bill documents that have a frozen version attached to an issued reebill, and recreates them by copying the newest frozen version.
+After this script has run, all utility bill documents that a reebill document is attached to should be "frozen" if the reebill is issued and "editable" if it is not, and all the editable utility bills that have a frozen version should be identical their highest-version frozen version.
 '''
 from sys import stderr
 import pymongo
@@ -90,6 +91,7 @@ for account, sequence, utilbill_id in cur.fetchall():
         try:
             unfreeze_utilbill(utilbill)
         except AssertionError:
+            # if the "sequence" and "version" keys are missing, something went wrong in the past, but the utility bill document is already the way it's supposed to be. so it should just be left alone
             print >> stderr, 'unissued version-0 reebill lacks "sequence" and "version" in its utility bill:', reebill_doc['_id']
 
 
@@ -115,6 +117,100 @@ for account, sequence, max_version in cur.fetchall():
             unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
         except AssertionError:
             print >> stderr, 'issued reebill lacks "sequence" and "version" in its utility bill:', reebill_doc['_id']
+
+            # interestingly these cases are mostly (but not entirely)
+            # corrections. and they are a minority of total account/sequence
+            # pairs, even though there are a lot of them.
+            # are they a minority of issued account/sequence pairs that have corrections?
+            # no: out of 85 account/sequence pairs that have ever been
+            # corrected, 11 lack sequence/version keys in their utility bill.
+
+           #10001-25-1 correction ok
+           #10001-26-1 correction ok
+           #10001-27-1 correction ok
+           #10001-28-1 correction ok
+           #10001-29-1 correction ok
+           #10001-30-1 correction ok
+           #10001-32-1: correction lacked sequence/version keys
+           #10001-38-1: correction lacked sequence/version keys
+           #10005-20-1 correction ok
+           #10005-21-1 correction ok
+           #10005-31-1: correction lacked sequence/version keys
+           #10005-32-1: correction lacked sequence/version keys
+           #10004-30-2: correction lacked sequence/version keys
+           #10004-31-1: correction lacked sequence/version keys
+           #10004-32-2: correction lacked sequence/version keys
+           #10004-33-2: correction lacked sequence/version keys
+           #10004-34-1: correction lacked sequence/version keys
+           #10004-35-1: correction lacked sequence/version keys
+           #10011-21-1: correction lacked sequence/version keys
+           #10012-16-1 correction ok
+           #10012-17-1: correction lacked sequence/version keys
+           #10012-18-1: correction lacked sequence/version keys
+           #10012-19-1: correction lacked sequence/version keys
+           #10012-20-1: correction lacked sequence/version keys
+           #10012-21-1: correction lacked sequence/version keys
+           #10012-22-1: correction lacked sequence/version keys
+           #10012-23-1: correction lacked sequence/version keys
+           #10014-13-1: correction lacked sequence/version keys
+           #10014-14-1: correction lacked sequence/version keys
+           #10014-15-1: correction lacked sequence/version keys
+           #10014-16-1: correction lacked sequence/version keys
+           #10014-17-1: correction lacked sequence/version keys
+           #10014-18-1: correction lacked sequence/version keys
+           #10014-19-1: correction lacked sequence/version keys
+           #10016-10-1: correction lacked sequence/version keys
+           #10016-11-1: correction lacked sequence/version keys
+           #10016-12-1: correction lacked sequence/version keys
+           #10016-13-1: correction lacked sequence/version keys
+           #10016-14-1: correction lacked sequence/version keys
+           #10016-15-1: correction lacked sequence/version keys
+           #10016-16-1: correction lacked sequence/version keys
+           #10016-17-1: correction lacked sequence/version keys
+           #10016-18-2: correction lacked sequence/version keys
+           #10016-19-1: correction lacked sequence/version keys
+           #10016-20-1: correction lacked sequence/version keys
+           #10016-21-1: correction lacked sequence/version keys
+           #10016-22-1: correction lacked sequence/version keys
+           #10013-15-1: correction lacked sequence/version keys
+           #10013-16-1: correction lacked sequence/version keys
+           #10013-17-1: correction lacked sequence/version keys
+           #10013-18-1: correction lacked sequence/version keys
+           #10013-19-1: correction lacked sequence/version keys
+           #10013-20-1: correction lacked sequence/version keys
+           #10013-21-1: correction lacked sequence/version keys
+           #10013-22-1: correction lacked sequence/version keys
+           #10010-13-1: correction lacked sequence/version keys
+           #10022-6-1: correction lacked sequence/version keys
+           #10022-7-1: correction lacked sequence/version keys
+           #10021-11-1: correction lacked sequence/version keys
+           #10024-3-1: correction lacked sequence/version keys
+           #10024-4-1: correction lacked sequence/version keys
+           #10024-5-1: correction lacked sequence/version keys
+           #10024-6-1: correction lacked sequence/version keys
+           #10024-7-1: correction lacked sequence/version keys
+           #10024-8-1: correction lacked sequence/version keys
+           #10024-9-1: correction lacked sequence/version keys
+           #10024-10-1: correction lacked sequence/version keys
+           #10024-11-1: correction lacked sequence/version keys
+           #10027-2-1 correction ok
+           #10028-1-1 correction ok
+           #10031-6-1: correction lacked sequence/version keys
+           #10031-7-1: correction lacked sequence/version keys
+           #10043-1-1: correction lacked sequence/version keys
+           #10043-2-1: correction lacked sequence/version keys
+           #10043-3-1: correction lacked sequence/version keys
+           #10044-1-1: correction lacked sequence/version keys
+           #10044-2-1: correction lacked sequence/version keys
+           #10044-3-1: correction lacked sequence/version keys
+           #10046-1-2: correction lacked sequence/version keys
+           #10046-2-2: correction lacked sequence/version keys
+           #10046-3-2: correction lacked sequence/version keys
+           #10046-4-2: correction lacked sequence/version keys
+           #10046-5-2: correction lacked sequence/version keys
+           #10046-6-1: correction lacked sequence/version keys
+           #10046-7-1: correction lacked sequence/version keys
+
 con.commit()
 
 
