@@ -3,59 +3,9 @@ import datetime as dt
 import os
 import time, argparse, jinja2
 import pdb
-from billing.util.mail import send_email
+from billing.util.email_util import send_email
 
-template_plaintext = jinja2.Template("""\
-Please find attached your bills for the dates ending {{ bill_dates }}.
-
-The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
-
-Total Due {{balance_due}}
-
-Best Regards,
-Skyline Billing Department
-Skyline Innovations
-
---
-SKYLINE INNOVATIONS
-Guaranteed Savings Through Green Energy
-1606 20th St NW, Second Floor, Washington DC 20009
-Phone: (202) 719-5297  Fax: (888) 907-5996
-http://www.skylineinnovations.com
-""")
-
-template_html = jinja2.Template("""\
-
-<p>Please find attached your bills for the dates ending {{ bill_dates }}.</p>
-
-<p>The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
-
-<p>Total Due {{balance_due}}</p>
-
-<p>Best Regards,<br/>
-Skyline Billing Department<br/>
-Skyline Innovations</p>
-<br/>--
-<div style="text-align:center">
-    <b>SKYLINE INNOVATIONS</b>
-</div>
-<div style="text-align:center">
-    <font color="#33CC00" size="1"><b>Guaranteed Savings Through Green Energy</b></font>
-</div>
-<div style="text-align:center">
-    <font size="1">1606 20th St NW, Second Floor, Washington DC 20009</font>
-</div>
-<div style="text-align:center">
-    <font size="1">Phone: (202) 719-5297  Fax: (888) 907-5996</font>
-</div>
-<div style="text-align:center">
-    <font size="1">
-        <a href="http://www.skylineinnovations.com" target="_blank">
-            <b>http://www.skylineinnovations.com</b>
-        </a>
-    </font>
-</div>
-""")
+TEMPLATE_FILE_NAME = 'issue_email_template.html'
 
 def mail(recipients, merge_fields, bill_path, bill_files): 
     from_user = config["from"]
@@ -66,10 +16,13 @@ def mail(recipients, merge_fields, bill_path, bill_files):
 
     attachment_paths = [os.path.join(bill_path, file_name) for file_name in
             bill_files]
-    send_email(from_user, recipients, subject, originator, password, config['smtp_host'],
-            config['smtp_port'], template_html, merge_fields,
-            bcc_addrs=config.get("bcc_list"),
-            attachment_paths=attachment_paths)
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..',
+        'reebill', 'ui', TEMPLATE_FILE_NAME)) as template_file:
+        template_html = template_file.read()
+        send_email(from_user, recipients, subject, originator, password, config['smtp_host'],
+                config['smtp_port'], template_html, merge_fields,
+                bcc_addrs=config.get("bcc_list"),
+                attachment_paths=attachment_paths)
 
 
 def parse_args(): 

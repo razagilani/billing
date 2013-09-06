@@ -8,17 +8,26 @@ from email.message import Message
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
+from jinja2 import Template
 
 def send_email(from_user, recipients, subject, originator, password, smtp_host,
         smtp_port, template_html, template_values, attachment_paths=[],
         bcc_addrs=None):
+    '''Send email from 'from_user' to 'recipients', titled 'subject', using an
+    HTML template 'template_html' populated with values from the dictionary
+    'template_values'.
+    'originator': email address from which the email is sent
+    'attachment_paths': optional list of paths to files to include as
+    attachments
+    'bcc_addrs': optional comma-separated string of email addresses to BCC.
+    '''
     # outer container, attachments declare their type
     container = MIMEMultipart()
     container['Subject'] = subject
     container['From'] = from_user
     container['To'] = u', '.join(recipients)
 
-    html = template_html.render(template_values)
+    html = Template(template_html).render(template_values)
 
     for path in attachment_paths:
         ctype, encoding = mimetypes.guess_type(path)
