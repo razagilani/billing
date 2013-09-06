@@ -3,7 +3,7 @@ import datetime as dt
 import os
 import time, argparse, jinja2
 import pdb
-from billing.util.mail import send_email
+from billing.util.email_util import send_email
 
 template_plaintext = jinja2.Template("""\
 Please find attached your bills for the dates ending {{ bill_dates }}.
