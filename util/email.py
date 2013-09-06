@@ -12,6 +12,14 @@ from email.mime.image import MIMEImage
 def send_email(from_user, recipients, subject, originator, password, smtp_host,
         smtp_port, template_html, template_values, attachment_paths=[],
         bcc_addrs=None):
+    '''Send email from 'from_user' to 'recipients', titled 'subject', using an
+    HTML template 'template_html' populated with values from the dictionary
+    'template_values'.
+    'originator': email address from which the email is sent
+    'attachment_paths': optional list of paths to files to include as
+    attachments
+    'bcc_addrs': optional comma-separated string of email addresses to BCC.
+    '''
     # outer container, attachments declare their type
     container = MIMEMultipart()
     container['Subject'] = subject
