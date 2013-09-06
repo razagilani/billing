@@ -11,7 +11,7 @@ PASSWORD = 'electricsh33p'
 
 def send_hypothetical_savings_email(recipients, utility, actual_dollars,
         minimal_dollars, energy, contact_email):
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui',
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates',
             TEMPLATE_FILE_NAME)) as template_file:
         template = template_file.read()
         values = {
