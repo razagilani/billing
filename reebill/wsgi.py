@@ -687,6 +687,10 @@ class BillToolBridge:
         config_dict = deep_map(
                 lambda x: {'true':True, 'false':False}.get(x,x),
                 config_dict)
+        config_dict['default_account_sort_field'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_field','account')
+        config_dict['default_account_sort_dir'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_direction','DESC')
         return json.dumps(config_dict)
 
     ###########################################################################
@@ -1558,7 +1562,7 @@ class BillToolBridge:
 
         # It is possible that there is no reebill for the requested rate structure 
         # if this is the case, return no rate structure.  
-        # This is done so that the UI can configure itself with no data for the
+        # This is done so that the UIcan configure itself with no data for the
         # requested rate structure 
         if reebill is None:
             return self.dumps({'success':True})
