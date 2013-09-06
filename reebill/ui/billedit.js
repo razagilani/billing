@@ -4489,6 +4489,10 @@ function reeBillReady() {
         totalProperty: 'results',
         remoteSort: true,
         paramNames: {start: 'start', limit: 'limit'},
+        sortInfo: {
+            field: defaultAccountSortField,
+            direction: defaultAccountSortDir,
+        },
         autoLoad: {params:{start: 0, limit: 30}},
         reader: accountReader,
         fields: [
