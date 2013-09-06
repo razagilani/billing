@@ -8,6 +8,7 @@ from email.message import Message
 from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
+from jinja2 import Template
 
 def send_email(from_user, recipients, subject, originator, password, smtp_host,
         smtp_port, template_html, template_values, attachment_paths=[],
@@ -26,7 +27,7 @@ def send_email(from_user, recipients, subject, originator, password, smtp_host,
     container['From'] = from_user
     container['To'] = u', '.join(recipients)
 
-    html = template_html.render(template_values)
+    html = Template(template_html).render(template_values)
 
     for path in attachment_paths:
         ctype, encoding = mimetypes.guess_type(path)
