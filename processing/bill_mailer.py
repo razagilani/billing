@@ -5,7 +5,7 @@ import time, argparse, jinja2
 import pdb
 from billing.util.email_util import send_email
 
-template_plaintext = jinja2.Template("""\
+template_plaintext = """\
 Please find attached your bills for the dates ending {{ bill_dates }}.
 
 The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
@@ -22,9 +22,9 @@ Guaranteed Savings Through Green Energy
 1606 20th St NW, Second Floor, Washington DC 20009
 Phone: (202) 719-5297  Fax: (888) 907-5996
 http://www.skylineinnovations.com
-""")
+"""
 
-template_html = jinja2.Template("""\
+template_html = """\
 
 <p>Please find attached your bills for the dates ending {{ bill_dates }}.</p>
 
@@ -55,7 +55,7 @@ Skyline Innovations</p>
         </a>
     </font>
 </div>
-""")
+"""
 
 def mail(recipients, merge_fields, bill_path, bill_files): 
     from_user = config["from"]
