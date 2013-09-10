@@ -1226,47 +1226,6 @@ function reeBillReady() {
         ubRegisterStore.reload();
     });
 
-    // this event is received when the tab panel tab is clicked on
-    // and the panels it contains are displayed in accordion layout
-    /*ubMeasuredUsagesPanel.on('activate', function (panel) {
-
-        // because this tab is being displayed, demand the form that it contain 
-        // be populated
-        // disable it during load, the datastore re-enables when loaded.
-        ubMeasuredUsagesPanel.setDisabled(true);
-
-        // get the meter read dates for each service
-        ubMeasuredUsagesDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        configureUBMeasuredUsagesForms(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubMeasuredUsagesPanel.setDisabled(false);
-                }
-            },
-            failure: function() {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubMeasuredUsagesPanel.setDisabled(false);
-                }
-            },
-            disableCaching: true,
-        });
-    });*/
-
 
     ////////////////////////////////////////////////////////////////////////////
     // Charges tab
@@ -1854,99 +1813,6 @@ function reeBillReady() {
 
     var hChargesToolbar = new Ext.Toolbar({
         items: [
-            /*{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
-                id: 'hChargesInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-
-                    hChargesGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = hChargesGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var ChargeItemType = hChargesGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                        // ok, this is tricky:  the newly created record is assigned the chargegroup
-                        // of the selection during the insert.  This way, the new record is added
-                        // to the proper group.  Otherwise, if the record does not have the same
-                        // chargegroup name of the adjacent record, a new group is shown in the grid
-                        // and the UI goes out of sync.  Try this by change the chargegroup below
-                        // to some other string.
-                        chargegroup: selection.data.chargegroup,
-                        description: 'enter description',
-                        quantity: 0,
-                        quantity_units: 'kWh',
-                        rate: 0,
-                        rate_units: 'dollars',
-                        total: 0,
-                        //autototal: 0
-                    };
-                    var c = new ChargeItemType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = hChargesStore.indexOf(selection);
-                    hChargesStore.insert(insertionPoint + 1, c);
-                    hChargesGrid.getView().refresh();
-                    hChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                    hChargesGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
-                id: 'hChargesRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-                    var s = hChargesGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        hChargesStore.remove(r);
-                    }
-                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'hChargesSaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    hChargesGrid.stopEditing();
-
-                    hChargesStore.save(); 
-
-                }
-            },{
-                xtype:'tbseparator'
-            }*/
         ]
     });
 
@@ -2288,27 +2154,7 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'CPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    CPRSRSIGrid.stopEditing();
-
-                    CPRSRSIStore.save(); 
-
-                }
-            }*/
+            },
         ]
     });
 
@@ -2549,31 +2395,7 @@ function reeBillReady() {
                     UPRSRSIStore.save(); 
                     //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
                 }
-            },{
-                xtype:'tbseparator'
-            },/*{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'UPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    UPRSRSIGrid.stopEditing();
-
-                    UPRSRSIStore.setBaseParam("account", selected_account);
-                    UPRSRSIStore.setBaseParam("sequence", selected_sequence);
-
-                    UPRSRSIStore.save(); 
-                }
-            }*/
+            }
         ]
     });
 
@@ -3973,56 +3795,6 @@ function reeBillReady() {
         mailPanel.setDisabled(false);
         accountInfoFormPanel.setDisabled(false);
 
-        /* TODO re-enable service suspension checkboxes
-         * https://www.pivotaltracker.com/story/show/29557205
-        // create checkboxes in Sequential Account Information form for
-        // suspending services of the selected reebill
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/get_reebill_services?',
-            params: { account: selected_account, sequence: selected_sequence },
-            success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                var services = jsonData.services;
-                var suspended_services = jsonData.suspended_services;
-
-                // create a checkbox for each service, checked iff that service
-                // is in the bill's suspended_services (there's no handler
-                // because checkbox values are automatically submitted with
-                // "Sequential Account Information" form data)
-                var checkboxes = [];
-                for (i = 0; i < services.length; i++) {
-                    checkboxes.push({
-                        'boxLabel': services[i],
-                        'name': services[i] + '_suspended',
-                        'checked': suspended_services.indexOf(services[i].toLowerCase()) != -1,
-                    });
-                }
-                console.log(selected_account + ', ' + selected_sequence + ' checkboxes: '+checkboxes);
-
-                // replace the existing checkbox group in accountInfoFormPanel (if present) with a new one
-                accountInfoFormPanel.remove('suspended-services');
-                var suspendedServiceCheckboxGroup = new Ext.form.CheckboxGroup({
-                    id: 'suspended-services',
-                    itemCls: 'x-check-group-alt',
-                    fieldLabel: 'Suspended Services',
-                    columns: 1,
-                    items: checkboxes,
-                });
-                accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
-                // FIXME: accountInfoFormPanel sometimes does not show the
-                // checkbox group even though it and its checkboxes have been
-                // correctly generated. clicking the accordion bar again to
-                // re-show the panel makes it appear.
-                // the following did not help:
-                //accountInfoFormPanel.render();
-                //accountInfoFormPanel.update();
-            },
-            failure: function() {
-                 Ext.MessageBox.alert('Ajax failure', 'get_reebill_services request failed');
-            },
-        });
-        */
-
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);
     }
@@ -4056,66 +3828,6 @@ function pctChange(val){
     }
     return val;
 }
-
-
-/**
-* Used by Ajax calls to block the UI
-* by setting global Ajax listeners for the duration
-* of the call.
-* Since there is only one block to the UI and possibly
-* more than one Ajax call, we keep a counter.
-var blockUICounter = 0;
-
-function registerAjaxEvents()
-{
-    Ext.Ajax.addListener('beforerequest', this.showSpinnerBeforeRequest, this);
-    Ext.Ajax.addListener('requestcomplete', this.hideSpinnerRequestComplete, this);
-    Ext.Ajax.addListener('requestexception', this.hideSpinnerRequestException, this);
-    Ext.Ajax.addListener('requestaborted', this.hideSpinnerRequestAborted, this);
-}
-
-function unregisterAjaxEvents()
-{
-    Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
-    Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
-    Ext.Ajax.removeListener('requestexception', this.hideSpinnerException, this);
-    Ext.Ajax.removeListener('requestaborted', this.hideSpinnerRequestAborted, this);
-}
-
-function showSpinnerBeforeRequest(conn, options)
-{
-    //console.log("showSpinnerBeforeRequest " + blockUICounter)
-    blockUICounter++;
-    Ext.Msg.show({title: "Please Wait...", closable: false});
-}
-
-function hideSpinnerRequestComplete(conn, options)
-{
-    blockUICounter--;
-    //console.log("hideSpinnerRequestComplete " + blockUICounter)
-    if (!blockUICounter) {
-        Ext.Msg.hide();
-    }
-}
-
-function hideSpinnerRequestException(conn, response, options)
-{
-    blockUICounter--;
-    //console.log("hideSpinnerRequestException " + blockUICounter)
-    if (!blockUICounter) {
-        Ext.Msg.hide();
-    }
-}
-
-function hideSpinnerRequestAborted(conn, response, options)
-{
-    blockUICounter--;
-    //console.log("hideSpinnerRequestAborted " + blockUICounter)
-    if (!blockUICounter) {
-        Ext.Msg.hide();
-    }
-}
-*/
 
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
