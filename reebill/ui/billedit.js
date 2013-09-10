@@ -4486,18 +4486,11 @@ function reeBillReady() {
             ['account', 'codename', 'casualname', 'primusname',
             'utilityserviceaddress', 'lastissuedate', 'dayssince',
             'lastevent']);
-    accountGrid.selModel = new Ext.grid.RowSelectionModel({
-        singleSelect: true,
-        listeners: {
-            rowselect: function (selModel, index, record) {
-                loadReeBillUIForAccount(record.data.account);
-                return false;
-            },
-        rowdeselect: function(selModel, index, record) {
-            loadReeBillUIForAccount(null);
-            reeBillGrid.getSelectionModel().clearSelections();
-        }
-        },
+    accountGrid.selModel.on('rowselect', function(selModel, index, record) {
+        loadReeBillUIForAccount(record.data.account);
+    });
+    accountGrid.selModel.on('rowdeselect', function(selModel, index, record) {
+        loadReeBillUIForAccount(null);
     });
 
     /* set sort order for account grid using values returned by the server */
