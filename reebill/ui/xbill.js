@@ -3077,6 +3077,12 @@ function reeBillReady() {
             // UI; if it becomes configurable, a separate setting should be used
             {field: 'account', direction: 'ASC'});
 
+    xBillAccountGrid.selModel.on('rowselect', function(selModel, index, record) {
+        loadUIForAccount(record.data.account);
+    });
+    xBillAccountGrid.selModel.on('rowdeselect', function(selModel, index, record) {
+        loadUIForAccount(null);
+    });
 
     ///////////////////////////////////////
     // account ree_charges status
@@ -3218,7 +3224,7 @@ function reeBillReady() {
                 id: 'exportAccountButton',
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
-                // account parameter for URL is set in loadReeBillUIForAccount()
+                // account parameter for URL is set in loadUIForAccount()
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, // disabled until account is selected
@@ -3226,7 +3232,7 @@ function reeBillReady() {
                 id: 'dailyAverageEnergyExportButton',
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
-                // account parameter for URL is set in loadReeBillUIForAccount()
+                // account parameter for URL is set in loadUIForAccount()
                 href: "http://"+location.host+"/reebill/daily_average_energy_xls",
                 text: 'Export Daily Average Utility Energy XLS',
                 disabled: true, // disabled until account is selected
@@ -3809,7 +3815,7 @@ function reeBillReady() {
     lastUtilBillEndDateDataConn.disableCaching = true;
 
     // load things global to the account
-    function loadReeBillUIForAccount(account) {
+    function loadUIForAccount(account) {
         selected_account = account;
         selected_sequence = null;
 
