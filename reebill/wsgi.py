@@ -688,6 +688,10 @@ class BillToolBridge:
         config_dict = deep_map(
                 lambda x: {'true':True, 'false':False}.get(x,x),
                 config_dict)
+        config_dict['default_account_sort_field'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_field','account')
+        config_dict['default_account_sort_dir'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_direction','DESC')
         return json.dumps(config_dict)
 
     ###########################################################################
