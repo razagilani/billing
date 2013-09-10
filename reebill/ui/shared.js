@@ -134,6 +134,8 @@ function CustomerAccountGrid(title, columnNames) {
     }
     this.colModel = new Ext.grid.ColumnModel({columns: the_columns});
 
+    this.selModel = new Ext.grid.RowSelectionModel({singleSelect:true});
+
     this.store = accountStore;
     this.frame = true;
     this.collapsible = true;
