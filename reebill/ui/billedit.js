@@ -41,6 +41,7 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -4477,151 +4478,39 @@ function reeBillReady() {
         ]
     });
 
-    var accountStoreProxyConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/retrieve_account_status',
-    });
-    accountStoreProxyConn.autoAbort = true;
-    var accountStoreProxy = new Ext.data.HttpProxy(accountStoreProxyConn);
-
-    var accountStore = new Ext.data.JsonStore({
-        proxy: accountStoreProxy,
-        root: 'rows',
-        totalProperty: 'results',
-        remoteSort: true,
-        paramNames: {start: 'start', limit: 'limit'},
-        sortInfo: {
-            field: defaultAccountSortField,
-            direction: defaultAccountSortDir,
+    /* accountGrid is a clone of the generic CustomerAccountGrid from
+     * shared.js, but also has a 'selModel' property that is not defined there
+     * (because it has to run 'loadReeBillUIForSequence' which only applies to
+     * the renewable-energy-bill-processing UI. */
+    var accountGrid = new CustomerAccountGrid('Account Processing Status',
+            ['account', 'codename', 'casualname', 'primusname',
+            'utilityserviceaddress', 'lastissuedate', 'dayssince',
+            'lastevent']);
+    accountGrid.selModel = new Ext.grid.RowSelectionModel({
+        singleSelect: true,
+        listeners: {
+            rowselect: function (selModel, index, record) {
+                loadReeBillUIForAccount(record.data.account);
+                return false;
+            },
+        rowdeselect: function(selModel, index, record) {
+            loadReeBillUIForAccount(null);
+            reeBillGrid.getSelectionModel().clearSelections();
+        }
         },
-        autoLoad: {params:{start: 0, limit: 30}},
-        reader: accountReader,
-        fields: [
-            {name: 'account'},
-            {name: 'codename'},
-            {name: 'casualname'},
-            {name: 'primusname'},
-            {name: 'utilityserviceaddress'},
-            {name: 'dayssince'},
-            {name: 'lastevent'},
-            {name: 'lastissuedate'},
-            {name: 'provisionable'},
-        ],
     });
 
+    /* set sort order for account grid using values returned by the server */
+    accountStore.sortInfo = {
+        field: defaultAccountSortField,
+        direction: defaultAccountSortDir,
+    }
     accountStore.on('beforeload', function(store, options) {
         accountGrid.setDisabled(true);
     });
 
     accountStore.on('load', function(store, options) {
         accountGrid.setDisabled(false);
-    });
-
-    /* This function controls the style of cells in the account grid. */
-    var accountGridColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
-        // probably the right way to do this is to set metaData.css to a CSS class name, but setting metaData.attr works for me.
-        // see documentation for "renderer" config option of Ext.grid.Column
-
-        // show text for accounts that don't yet exist in billing in gray;
-        // actual billing accounts are black
-        //if (record.data.provisionable) {
-            //metaData.attr = 'style="color:gray"';
-        //} else {
-            //metaData.attr = 'style="color:black"';
-        //}
-        if (record.data.provisionable) {
-            metaData.css = 'account-grid-gray';
-        } else {
-            metaData.css = 'account-grid-black';
-        }
-        return value;
-    }
-
-    var accountColModel = new Ext.grid.ColumnModel({
-        columns: [
-            {
-                header: 'Account',
-                sortable: true,
-                dataIndex: 'account',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Codename',
-                sortable: true,
-                dataIndex: 'codename',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Casual Name',
-                sortable: true,
-                dataIndex: 'casualname',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Primus Name',
-                sortable: true,
-                dataIndex: 'primusname',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Utility Service Address',
-                sortable: true,
-                dataIndex: 'utilityserviceaddress',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Last Issued',
-                sortable: true,
-                dataIndex: 'lastissuedate',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Days Since Utility Bill',
-                sortable: true,
-                dataIndex: 'dayssince',
-                renderer: accountGridColumnRenderer,
-            },{
-                header: 'Last Event',
-                sortable: false,
-                dataIndex: 'lastevent',
-                renderer: accountGridColumnRenderer,
-                width: 350,
-            },
-        ]
-    });
-
-    // this grid tracks the state of the currently selected account
-    var accountGrid = new Ext.grid.EditorGridPanel({
-        id: 'accountGrid',
-        colModel: accountColModel,
-        selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-                    loadReeBillUIForAccount(record.data.account);
-                    return false;
-                },
-                rowdeselect: function(selModel, index, record) {
-                    loadReeBillUIForAccount(null);
-                    reeBillGrid.getSelectionModel().clearSelections();
-                }
-            },
-        }),
-        store: accountStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-
-        title: 'Account Processing Status',
-
-        // paging bar on the bottom
-        bbar: new Ext.PagingToolbar({
-            pageSize: 30,
-            store: accountStore,
-            displayInfo: true,
-            displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No statuses to display",
-        }),
-        clicksToEdit: 2,
     });
 
     accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {

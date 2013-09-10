@@ -3013,11 +3013,11 @@ function reeBillReady() {
     });
 
     accountStore.on('beforeload', function(store, options) {
-        accountGrid.setDisabled(true);
+        xBillAccountGrid.setDisabled(true);
     });
 
     accountStore.on('load', function(store, options) {
-        accountGrid.setDisabled(false);
+        xBillAccountGrid.setDisabled(false);
     });
 
     /* This function controls the style of cells in the account grid. */
@@ -3071,49 +3071,50 @@ function reeBillReady() {
         ]
     });
 
-    // this grid tracks the state of the currently selected account
-    var accountGrid = new Ext.grid.EditorGridPanel({
-        id: 'accountGrid',
-        colModel: accountColModel,
-        selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-                    loadReeBillUIForAccount(record.data.account);
-                    return false;
-                },
-                rowdeselect: function(selModel, index, record) {
-                    loadReeBillUIForAccount(null);
-                }
-            },
-        }),
-        store: accountStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
+    //// this grid tracks the state of the currently selected account
+    //var accountGrid = new Ext.grid.EditorGridPanel({
+        //id: 'accountGrid',
+        //colModel: accountColModel,
+        //selModel: new Ext.grid.RowSelectionModel({
+            //singleSelect: true,
+            //listeners: {
+                //rowselect: function (selModel, index, record) {
+                    //loadReeBillUIForAccount(record.data.account);
+                    //return false;
+                //},
+                //rowdeselect: function(selModel, index, record) {
+                    //loadReeBillUIForAccount(null);
+                //}
+            //},
+        //}),
+        //store: accountStore,
+        //enableColumnMove: false,
+        //frame: true,
+        //collapsible: true,
+        //animCollapse: false,
+        //stripeRows: true,
+        //viewConfig: {
+            //// doesn't seem to work
+            //forceFit: true,
+        //},
 
-        title: 'Account Processing Status',
+        //title: 'Account Processing Status',
 
-        // paging bar on the bottom
-        bbar: new Ext.PagingToolbar({
-            pageSize: 30,
-            store: accountStore,
-            displayInfo: true,
-            displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No statuses to display",
-        }),
-        clicksToEdit: 2,
-    });
+        //// paging bar on the bottom
+        //bbar: new Ext.PagingToolbar({
+            //pageSize: 30,
+            //store: accountStore,
+            //displayInfo: true,
+            //displayMsg: 'Displaying {0} - {1} of {2}',
+            //emptyMsg: "No statuses to display",
+        //}),
+        //clicksToEdit: 2,
+    //});
 
-    accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
-        return ! record.data.provisionable;
-    });
+    //accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
+        //return ! record.data.provisionable;
+    //}
+    var xBillAccountGrid = new CustomerAccountGrid('Accounts', ['account', 'codename', 'casualname', 'primusname']);
 
 
     ///////////////////////////////////////
@@ -3491,17 +3492,17 @@ function reeBillReady() {
                                     console.log('1Server Error');
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
-                                    accountGrid.getSelectionModel().clearSelections();
+                                    xBillAccountGrid.getSelectionModel().clearSelections();
                                     if (moreAccountsCheckbox.getValue()) {
                                         newNameField.reset();
                                         // don't reset any other fields
                                     } else {
                                         // update next account number shown in field
-                                        accountsPanel.getLayout().setActiveItem('accountGrid');
+                                        accountsPanel.getLayout().setActiveItem('xBillAccountGrid');
                                         accountStore.setDefaultSort('account','DESC');
-                                        pageSize = accountGrid.getBottomToolbar().pageSize;
+                                        pageSize = xBillAccountGrid.getBottomToolbar().pageSize;
                                         accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                            accountGrid.getSelectionModel().selectFirstRow();
+                                            xBillAccountGrid.getSelectionModel().selectFirstRow();
                                         }});
                                         // reload grid to show new account
                                         // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
@@ -3550,7 +3551,7 @@ function reeBillReady() {
         title: 'Accounts',
         disabled: accountsPanelDisabled,
         layout: 'accordion',
-        items: [accountGrid, newAccountFormPanel, ]
+        items: [xBillAccountGrid, newAccountFormPanel, ]
     });
 
     ///////////////////////////////////////////////////////////////////////////
