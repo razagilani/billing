@@ -1178,8 +1178,13 @@ class BillToolBridge:
                     utility_service_addresses = ''
                 else:
                     # load highest version of last issued reebill to get data out of it
-                    reebill = self.reebill_dao.load_reebill(status.account,
-                            self.state_db.last_issued_sequence(session, status.account))
+                    # TODO remove this try/except
+                    from billing.processing.exceptions import NoSuchBillException
+                    try:
+                        reebill = self.reebill_dao.load_reebill(status.account,
+                                self.state_db.last_issued_sequence(session, status.account))
+                    except NoSuchBillException:
+                        continue
 
                     # get service address from utility bill document, convert JSON
                     # to string using the function above
