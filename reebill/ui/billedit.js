@@ -4501,6 +4501,7 @@ function reeBillReady() {
     });
 
     /* set sort order for account grid using values returned by the server */
+    // TODO: how can the 2 grids have different sort order when they share the same store? maybe they should have 2 different stores?
     accountStore.sortInfo = {
         field: defaultAccountSortField,
         direction: defaultAccountSortDir,
