@@ -4489,6 +4489,10 @@ function reeBillReady() {
         totalProperty: 'results',
         remoteSort: true,
         paramNames: {start: 'start', limit: 'limit'},
+        sortInfo: {
+            field: defaultAccountSortField,
+            direction: defaultAccountSortDir,
+        },
         autoLoad: {params:{start: 0, limit: 30}},
         reader: accountReader,
         fields: [
@@ -5972,7 +5976,6 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="Cooki.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Billing Witch</font></td></tr></table>',
     });
 
     // end of tab widgets
