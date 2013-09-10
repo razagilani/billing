@@ -1,5 +1,44 @@
-/* This file contains constructor functions for UI widgets and other objects
- * that are shared between ReeBill and XBill UIs. */
+/* This file contains constructor functions and other code for things that are
+ * shared between ReeBill and XBill UIs. */
+
+function loadDashboard()
+{
+    // pass configuration information to containing webpage
+    // 'UNSPECIFIED' is expanded to a version string by deployment script
+    var SKYLINE_VERSIONINFO="UNSPECIFIED"
+    var SKYLINE_DEPLOYENV="UNSPECIFIED"
+    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+    versionInfo.update(SKYLINE_VERSIONINFO);
+    deployEnv = Ext.get('SKYLINE_DEPLOYENV');
+    deployEnv.update(SKYLINE_DEPLOYENV);
+
+    title = Ext.get('pagetitle');
+    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
+
+    // show username & logout link in the footer
+    var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
+
+    var usernameDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/getUsername',
+    });
+    usernameDataConn.autoAbort = true;
+    usernameDataConn.disableCaching = true;
+
+    usernameDataConn.request({
+        success: function(result, request) {
+            // check success status
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            // handle failure if needed
+            var username = jsonData['username'];
+            Ext.DomHelper.overwrite('LOGIN_INFO',
+                "You're logged in as <b>" + username + "</b>; " + logoutLink)
+        },
+        failure: function() {
+             Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
+        },
+    });
+}
+
 
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
