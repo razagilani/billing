@@ -48,56 +48,7 @@ var accountStore = new Ext.data.JsonStore({
         {name: 'provisionable'},
     ],
 });
-// TODO re-enable sorting for accountstore
 
-
-
-var accountColModel = new Ext.grid.ColumnModel({
-    columns: [
-        {
-            header: 'Account',
-            sortable: true,
-            dataIndex: 'account',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Codename',
-            sortable: true,
-            dataIndex: 'codename',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Casual Name',
-            sortable: true,
-            dataIndex: 'casualname',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Primus Name',
-            sortable: true,
-            dataIndex: 'primusname',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Utility Service Address',
-            sortable: true,
-            dataIndex: 'utilityserviceaddress',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Last Issued',
-            sortable: true,
-            dataIndex: 'lastissuedate',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Days Since Utility Bill',
-            sortable: true,
-            dataIndex: 'dayssince',
-            renderer: accountGridColumnRenderer,
-        },{
-            header: 'Last Event',
-            sortable: false,
-            dataIndex: 'lastevent',
-            renderer: accountGridColumnRenderer,
-            width: 350,
-        },
-    ]
-});
 
 var accountGridColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
     // probably the right way to do this is to set metaData.css to a CSS class name, but setting metaData.attr works for me.
