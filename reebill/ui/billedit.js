@@ -2253,6 +2253,19 @@ function reeBillReady() {
         ],
     });
     
+    var ubVersionMenu = new Ext.Button({
+        text: "a button",
+        iconCls: 'icon-add',
+        menu: {
+            items: [
+                { text: 'a', },
+                { text: 'b', },
+            ],
+            //floating: false,
+        },
+        //handler: function() {}
+    });
+
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
@@ -2265,7 +2278,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [ubVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
