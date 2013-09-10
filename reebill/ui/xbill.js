@@ -3071,49 +3071,6 @@ function reeBillReady() {
         ]
     });
 
-    //// this grid tracks the state of the currently selected account
-    //var accountGrid = new Ext.grid.EditorGridPanel({
-        //id: 'accountGrid',
-        //colModel: accountColModel,
-        //selModel: new Ext.grid.RowSelectionModel({
-            //singleSelect: true,
-            //listeners: {
-                //rowselect: function (selModel, index, record) {
-                    //loadReeBillUIForAccount(record.data.account);
-                    //return false;
-                //},
-                //rowdeselect: function(selModel, index, record) {
-                    //loadReeBillUIForAccount(null);
-                //}
-            //},
-        //}),
-        //store: accountStore,
-        //enableColumnMove: false,
-        //frame: true,
-        //collapsible: true,
-        //animCollapse: false,
-        //stripeRows: true,
-        //viewConfig: {
-            //// doesn't seem to work
-            //forceFit: true,
-        //},
-
-        //title: 'Account Processing Status',
-
-        //// paging bar on the bottom
-        //bbar: new Ext.PagingToolbar({
-            //pageSize: 30,
-            //store: accountStore,
-            //displayInfo: true,
-            //displayMsg: 'Displaying {0} - {1} of {2}',
-            //emptyMsg: "No statuses to display",
-        //}),
-        //clicksToEdit: 2,
-    //});
-
-    //accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
-        //return ! record.data.provisionable;
-    //}
     var xBillAccountGrid = new CustomerAccountGrid('Accounts',
             ['account', 'codename', 'casualname', 'primusname'],
             // initial sort direction (not saved on the server like for ReeBill
