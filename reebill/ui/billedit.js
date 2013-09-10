@@ -4485,7 +4485,10 @@ function reeBillReady() {
     var accountGrid = new CustomerAccountGrid('Account Processing Status',
             ['account', 'codename', 'casualname', 'primusname',
             'utilityserviceaddress', 'lastissuedate', 'dayssince',
-            'lastevent']);
+            'lastevent'],
+            // sortInfo
+            {field: defaultAccountSortField, direction:
+                defaultAccountSortDir});
     accountGrid.selModel.on('rowselect', function(selModel, index, record) {
         loadReeBillUIForAccount(record.data.account);
     });
@@ -4495,10 +4498,10 @@ function reeBillReady() {
 
     /* set sort order for account grid using values returned by the server */
     // TODO: how can the 2 grids have different sort order when they share the same store? maybe they should have 2 different stores?
-    accountStore.sortInfo = {
-        field: defaultAccountSortField,
-        direction: defaultAccountSortDir,
-    }
+    //accountStore.sortInfo = {
+        //field: defaultAccountSortField,
+        //direction: defaultAccountSortDir,
+    //}
     accountStore.on('beforeload', function(store, options) {
         accountGrid.setDisabled(true);
     });

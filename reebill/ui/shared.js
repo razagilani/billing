@@ -70,7 +70,11 @@ var accountGridColumnRenderer = function(value, metaData, record, rowIndex, colI
 }
 
 
-function CustomerAccountGrid(title, columnNames) {
+/* 'title': label text shown above grid
+ * 'columnNames': list of names of columns to include in the grid
+ * 'initialSortInfo': {field: <name of column to sort by>, direction: <"ASC" or "DESC">}
+ */
+function CustomerAccountGrid(title, columnNames, initialSortInfo) {
     /* config objects for Ext.grid.Columns that can go in a grid of customer
      * account information. The grid inheriting from this constructor specifies
      * a list of names to choose which columns should be shown. */
@@ -137,13 +141,25 @@ function CustomerAccountGrid(title, columnNames) {
     this.selModel = new Ext.grid.RowSelectionModel({singleSelect:true});
 
     this.store = accountStore;
+
+    this.store = new Ext.data.JsonStore({
+        proxy: accountStoreProxy,
+        root: 'rows',
+        totalProperty: 'results',
+        remoteSort: true,
+        paramNames: {start: 'start', limit: 'limit'},
+        sortInfo: initialSortInfo,
+        autoLoad: {params:{start: 0, limit: 30}},
+        reader: accountReader,
+        fields: columnNames,
+    });
     this.frame = true;
     this.collapsible = true;
 };
 
 CustomerAccountGrid.prototype = new Ext.grid.EditorGridPanel(
-    /* the properties defined here apparently can't be defined by this. ... =
-     * ... as above */
+    /* the properties defined here apparently can't be defined by
+     * "this. ... = ..." as above */
 
     {
         viewConfig: { forceFit: true, },

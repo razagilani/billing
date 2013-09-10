@@ -3114,7 +3114,11 @@ function reeBillReady() {
     //accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
         //return ! record.data.provisionable;
     //}
-    var xBillAccountGrid = new CustomerAccountGrid('Accounts', ['account', 'codename', 'casualname', 'primusname']);
+    var xBillAccountGrid = new CustomerAccountGrid('Accounts',
+            ['account', 'codename', 'casualname', 'primusname'],
+            // initial sort direction (not saved on the server like for ReeBill
+            // UI; if it becomes configurable, a separate setting should be used
+            {field: 'account', direction: 'ASC'});
 
 
     ///////////////////////////////////////
