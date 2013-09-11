@@ -1999,18 +1999,27 @@ function reeBillReady() {
             }),
         ],
     });
+
+    var ubVersionStore = new Ext.data.ArrayStore({
+        fields: ['label'],
+        idIndex: 0,
+        data:[['current']],
+    });
+
+    function updateUbVersionMenus(cb, record, index) {
+        muUbVersionMenu.setValue(record.data.label);
+        rsUbVersionMenu.setValue(record.data.label);
+        chargesUbVersionMenu.setValue(record.data.label);
+    }
     
-    var ubVersionMenu = new Ext.Button({
-        text: "a button",
-        iconCls: 'icon-add',
-        menu: {
-            items: [
-                { text: 'a', },
-                { text: 'b', },
-            ],
-            //floating: false,
-        },
-        //handler: function() {}
+    var muUbVersionMenu = new Ext.form.ComboBox({
+        id: 'muUbVersionMenu',
+        editable: false,
+        mode: 'local',
+        triggerAction: 'all',
+        valueField: 'label',
+        displayField: 'label',
+        store: ubVersionStore,
     });
 
     //
@@ -2025,7 +2034,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [ubVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [muUbVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
@@ -2839,6 +2848,17 @@ function reeBillReady() {
     //
     // Instantiate the Charge Items panel
     //
+    
+    var chargesUbVersionMenu = new Ext.form.ComboBox({
+        id: 'chargesUbVersionMenu',
+        editable: false,
+        mode: 'local',
+        triggerAction: 'all',
+        valueField: 'label',
+        displayField: 'label',
+        store: ubVersionStore,
+    });
+    
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
         title: 'Charge Items',
@@ -2846,6 +2866,9 @@ function reeBillReady() {
         xtype: 'panel',
         layout: 'accordion',
         items: [
+            {
+                items:[chargesUbVersionMenu]
+            },
             aChargesGrid,
             hChargesGrid,
         ]
@@ -3679,6 +3702,16 @@ function reeBillReady() {
     //
     // Instantiate the Rate Structure panel 
     //
+    var rsUbVersionMenu = new Ext.form.ComboBox({
+        id: 'rsUbVersionMenu',
+        editable: false,
+        mode: 'local',
+        triggerAction: 'all',
+        valueField: 'label',
+        displayField: 'label',
+        store: ubVersionStore,
+    });
+    
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
@@ -3689,10 +3722,15 @@ function reeBillReady() {
             region: 'north',
             layout: 'fit',
             split: true,
+            items: [{items:[rsUbVersionMenu]}],
+        },{
+            region: 'center',
+            layout: 'fit',
+            split: true,
             height: 275,
             items: [CPRSRSIGrid]
         },{
-            region: 'center',
+            region: 'south',
             layout: 'fit',
             split: true,
             items: [UPRSRSIGrid]
@@ -6288,6 +6326,9 @@ function reeBillReady() {
     reeBillImageDataConn.disableCaching = true;
 
     function loadReeBillUIForSequence(account, sequence) {
+        muUbVersionMenu.setValue('current')
+        rsUbVersionMenu.setValue('current');
+        chargesUbVersionMenu.setValue('current');
         /* null argument means no sequence is selected */
 
         // get selected reebill's record and the predecessor's record
