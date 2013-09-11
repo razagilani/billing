@@ -2596,7 +2596,7 @@ class BillToolBridge:
                 for row in rows:
                     # extract keys needed to identify the register being updated
                     # from the "id" field sent by the client
-                    orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+                    utilbill_id, orig_meter_id, orig_reg_id = row['id'].split('/')
 
                     validate_id_components(row.get('meter_id',''),
                             row.get('register_id',''))
@@ -2605,24 +2605,19 @@ class BillToolBridge:
                     # (getting back values necessary to tell the client which row
                     # should be selected)
                     del row['id']
-                    new_service, new_meter_id, new_reg_id = \
-                            reebill.update_register(orig_service, orig_meter_id,
-                            orig_reg_id, **row)
+                    new_meter_id, new_reg_id = mongo.update_register(
+                            utilbill_doc, orig_meter_id, orig_reg_id, **row)
 
                     # if this row was selected before, tell the client it should
                     # still be selected, specifying the row by its new "id"
                     if kwargs.get('current_selected_id') == '%s/%s/%s' % (
-                            orig_service, orig_meter_id, orig_reg_id):
-                        result['current_selected_id'] = '%s/%s/%s' % (new_service,
+                            utilbill_id, orig_meter_id, orig_reg_id):
+                        result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
                                 new_meter_id, new_reg_id)
 
                 self.reebill_dao._save_utilbill(utilbill_doc)
 
-                # update meter read dates to match utility bill period dates in
-                # case they changed (they didn't, because the UI can't specify this)
-                reebill.set_meter_dates_from_utilbills()
-
-                registers_json = reebill.get_all_actual_registers_json()
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
                 result.update({
                     'rows': registers_json,
                     'total': len(registers_json)
@@ -2631,10 +2626,10 @@ class BillToolBridge:
                 if reebill_sequence is not None:
                     # utility bill document has been modified, so reebill document
                     # must be updated to match it
+                    reebill.set_meter_dates_from_utilbills()
                     reebill.update_utilbill_subdocs()
                     self.reebill_dao.save_reebill(reebill)
 
-                self.reebill_dao.save_reebill(reebill)
                 return self.dumps(result)
 
             if xaction == 'destroy':
@@ -2642,17 +2637,25 @@ class BillToolBridge:
                 id_of_row_to_delete = rows[0]
 
                 # extract keys needed to identify the register being updated
-                orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                utilbill_id, orig_meter_id, orig_reg_id = id_of_row_to_delete\
                         .split('/')
-                reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
+                mongo.delete_register(utilbill_doc,orig_meter_id, orig_reg_id)
 
                 # NOTE there is no "current_selected_id" because the formerly
                 # selected row was deleted
-                registers_json = reebill.get_all_actual_registers_json()
+                registers_json = mongo.get_all_actual_registers_json(
+                        utilbill_doc)
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
 
-                self.reebill_dao.save_reebill(reebill)
+                self.reebill_dao._save_utilbill(utilbill_doc)
+
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
+
                 return self.dumps(result)
 
             raise ValueError('Unknown xaction "%s"' % xaction)
