@@ -149,7 +149,7 @@ def get_all_actual_registers_json(utilbill_doc):
 # TODO make this a method of a utility bill document class when one exists
 def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     if meter_identifier is None:
-        meter_identifier = _new_meter(utilbill_doc, service)['identifier']
+        meter_identifier = _new_meter(utilbill_doc)['identifier']
     meter = _meter(utilbill_doc, meter_identifier)
     if meter is None:
         meter = _new_meter(utilbill_doc, meter_identifier)
@@ -185,8 +185,8 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
 def _meter(utilbill_doc, identifier):
     '''Returns the first meter found with the given identifier in the given
     utility bill document. Raises StopIteration if none was found.'''
-    meter = next(meter for meter in self._get_utilbill_for_service(
-            service)['meters'] if meter['identifier'] == identifier)
+    meter = next(meter for meter in utilbill_doc['meters'] if
+            meter['identifier'] == identifier)
     return meter
 
 # TODO make this a method of a utility bill document class when one exists
@@ -197,10 +197,9 @@ def _delete_meter(self, service, identifier):
             ub['meters'][:] = [meter for meter in ub['meters'] if meter['identifier'] != identifier]
 
 # TODO make this a method of a utility bill document class when one exists
-def _new_meter(utilbill_doc, service, identifier=None):
+def _new_meter(utilbill_doc, identifier=None):
     if any(m['identifier'] == identifier for m in utilbill_doc['meters']):
-        raise ValueError('Meter %s for service %s already exists' % (
-                identifier, service))
+        raise ValueError('Meter %s for already exists' % (identifier))
     if identifier is None:
         identifier = 'Insert meter ID here'
     new_meter = {
