@@ -479,6 +479,7 @@ function reeBillReady() {
                 rowdeselect: function (selModel, index, record) {
                     //loadReeBillUIForSequence(record.data.account, null);
                     selected_utilbill_id = null;
+                    ubMeasuredUsagesPanel.setDisabled(false);
                 },
                 
                 rowselect: function (selModel, index, record) {
@@ -1688,10 +1689,11 @@ function reeBillReady() {
         }
         ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
-        // set the current selection into the store's baseParams
+        options.params.utilbill_id = selected_utilbill_id;
+
         store.baseParams.account = selected_account;
-        store.baseParams.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill_id;
+
         ubRegisterGrid.setDisabled(true);
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
     });
@@ -1706,7 +1708,7 @@ function reeBillReady() {
 
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill_id;
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
@@ -6166,7 +6168,7 @@ function reeBillReady() {
         selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
-        ubMeasuredUsagesPanel.setDisabled(true);
+        //ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
