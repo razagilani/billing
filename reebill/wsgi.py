@@ -2497,7 +2497,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def utilbill_registers(self, account, sequence, xaction, **kwargs):
+    def utilbill_registers(self, utilbill_id, xaction, reebill_sequence=None,
+            reebill_version=None, **kwargs):
         '''Handles AJAX requests to read and write data for the "Utility Bill
         Registers" grid in the "Meters and Registers" tab. 'account',
         'sequence' identify the reebill whose utility bill is being edited.
@@ -2511,124 +2512,138 @@ class BillToolBridge:
                 raise ValueError(('Service names and meter/register ids must '
                         'not contain "/"'))
 
-        # load reebilld document from mongo; there will always be one because
-        # the grid is only visible when one is selected
-        reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        toSelect = None
+        with DBSession(self.state_db) as session:
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            if reebill_sequence is None:
+                assert reebill_version is None
+                # load editable utility bill
+                utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+                        utilbill)
+            else:
+                # load frozen utilbill document for the given reebill
+                reebill = self.state_db.get_reebill(utilbill.customer.account,
+                        reebill_sequence, version=reebill.version)
+                utilbill_doc = self.state_db.load_doc_for_statedb_utilbill(
+                        session, utilbill, reebill=reebill)
 
-        if xaction == 'read':
-            # get dictionaries describing all registers in all utility bills
-            registers_json = reebill.get_all_actual_registers_json()
+            toSelect = None
 
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
+            if xaction == 'read':
+                # get dictionaries describing all registers in all utility bills
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
 
-            # client sends "current_selected_id" to identify which row is
-            # selected in the grid; if this key is present, server must also
-            # include "current_selected_id" in the response to indicate that
-            # the same row is still selected
-            if 'current_selected_id' in kwargs:
-                result['current_selected_id'] = kwargs['current_selected_id']
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-            return self.dumps(result)
+                # client sends "current_selected_id" to identify which row is
+                # selected in the grid; if this key is present, server must also
+                # include "current_selected_id" in the response to indicate that
+                # the same row is still selected
+                if 'current_selected_id' in kwargs:
+                    result['current_selected_id'] = kwargs['current_selected_id']
 
-        # the "rows" argument is only given when xaction is "create", "update",
-        # or "destroy". it's a list if there are multiple rows (though in
-        # practice there is only one because only one row of the grid can be
-        # created/edited/deleted at a time).
-        rows = json.loads(kwargs['rows'])
-        if not isinstance(rows, list):
-            rows = [rows]
+                return self.dumps(result)
 
-        if xaction == 'create':
-            for row in rows:
-                validate_id_components(row.get('meter_id',''),
-                        row.get('register_id',''))
-                # create the new register (ignoring return value)
-                reebill.new_register(reebill.services[0],
-                        row.get('meter_id', None), row.get('register_id',
-                        None))
-               
-            # get dictionaries describing all registers in all utility bills
-            registers_json = reebill.get_all_actual_registers_json()
+            # the "rows" argument is only given when xaction is "create", "update",
+            # or "destroy". it's a list if there are multiple rows (though in
+            # practice there is only one because only one row of the grid can be
+            # created/edited/deleted at a time).
+            rows = json.loads(kwargs['rows'])
+            if not isinstance(rows, list):
+                rows = [rows]
 
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
+            if xaction == 'create':
+                for row in rows:
+                    validate_id_components(row.get('meter_id',''),
+                            row.get('register_id',''))
+                    # create the new register (ignoring return value)
+                    mongo.new_register(utilbill_doc, reebill.services[0],
+                            row.get('meter_id', None), row.get('register_id',
+                            None))
+                   
+                # get dictionaries describing all registers in all utility bills
+                registers_json = reebill.get_all_actual_registers_json()
 
-            # client sends "current_selected_id" to identify which row is
-            # selected in the grid; if this key is present, server must also
-            # include "current_selected_id" in the response to indicate that
-            # the same row is still selected
-            if 'current_selected_id' in kwargs:
-                result['current_selected_id'] = kwargs['current_selected_id']
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
+                # client sends "current_selected_id" to identify which row is
+                # selected in the grid; if this key is present, server must also
+                # include "current_selected_id" in the response to indicate that
+                # the same row is still selected
+                if 'current_selected_id' in kwargs:
+                    result['current_selected_id'] = kwargs['current_selected_id']
 
-        if xaction == 'update':
-            # for update, client sends a JSON representation of the grid rows,
-            # containing only the fields to be updated, plus an "id" field that
-            # contains the service, meter id, and register id BEFORE the user
-            # edited them.
+                self.reebill_dao.save_reebill(reebill)
+                return self.dumps(result)
 
-            result = {'success': True}
+            if xaction == 'update':
+                # for update, client sends a JSON representation of the grid rows,
+                # containing only the fields to be updated, plus an "id" field that
+                # contains the service, meter id, and register id BEFORE the user
+                # edited them.
 
-            for row in rows:
+                result = {'success': True}
+
+                for row in rows:
+                    # extract keys needed to identify the register being updated
+                    # from the "id" field sent by the client
+                    orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+
+                    validate_id_components(row.get('meter_id',''),
+                            row.get('register_id',''))
+
+                    # modify the register using every field in 'row' except "id"
+                    # (getting back values necessary to tell the client which row
+                    # should be selected)
+                    del row['id']
+                    new_service, new_meter_id, new_reg_id = \
+                            reebill.update_register(orig_service, orig_meter_id,
+                            orig_reg_id, **row)
+
+                    # if this row was selected before, tell the client it should
+                    # still be selected, specifying the row by its new "id"
+                    if kwargs.get('current_selected_id') == '%s/%s/%s' % (
+                            orig_service, orig_meter_id, orig_reg_id):
+                        result['current_selected_id'] = '%s/%s/%s' % (new_service,
+                                new_meter_id, new_reg_id)
+
+                # update meter read dates to match utility bill period dates in
+                # case they changed (they didn't, because the UI can't specify this)
+                reebill.set_meter_dates_from_utilbills()
+
+                registers_json = reebill.get_all_actual_registers_json()
+                result.update({
+                    'rows': registers_json,
+                    'total': len(registers_json)
+                })
+
+                # utility bill has been changed and reebill must be updated to match
+                reebill.update_utilbill_subdocs()
+
+                self.reebill_dao.save_reebill(reebill)
+                return self.dumps(result)
+
+            if xaction == 'destroy':
+                assert len(rows) == 1
+                id_of_row_to_delete = rows[0]
+
                 # extract keys needed to identify the register being updated
-                # from the "id" field sent by the client
-                orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+                orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                        .split('/')
+                reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
 
-                validate_id_components(row.get('meter_id',''),
-                        row.get('register_id',''))
+                # NOTE there is no "current_selected_id" because the formerly
+                # selected row was deleted
+                registers_json = reebill.get_all_actual_registers_json()
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-                # modify the register using every field in 'row' except "id"
-                # (getting back values necessary to tell the client which row
-                # should be selected)
-                del row['id']
-                new_service, new_meter_id, new_reg_id = \
-                        reebill.update_register(orig_service, orig_meter_id,
-                        orig_reg_id, **row)
+                self.reebill_dao.save_reebill(reebill)
+                return self.dumps(result)
 
-                # if this row was selected before, tell the client it should
-                # still be selected, specifying the row by its new "id"
-                if kwargs.get('current_selected_id') == '%s/%s/%s' % (
-                        orig_service, orig_meter_id, orig_reg_id):
-                    result['current_selected_id'] = '%s/%s/%s' % (new_service,
-                            new_meter_id, new_reg_id)
-
-            # update meter read dates to match utility bill period dates in
-            # case they changed (they didn't, because the UI can't specify this)
-            reebill.set_meter_dates_from_utilbills()
-
-            registers_json = reebill.get_all_actual_registers_json()
-            result.update({
-                'rows': registers_json,
-                'total': len(registers_json)
-            })
-
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
-
-        if xaction == 'destroy':
-            assert len(rows) == 1
-            id_of_row_to_delete = rows[0]
-
-            # extract keys needed to identify the register being updated
-            orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
-                    .split('/')
-            reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
-
-            # NOTE there is no "current_selected_id" because the formerly
-            # selected row was deleted
-            registers_json = reebill.get_all_actual_registers_json()
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
-
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
-
-        raise ValueError('Unknown xaction "%s"' % xaction)
+            raise ValueError('Unknown xaction "%s"' % xaction)
 
     #
     ################
