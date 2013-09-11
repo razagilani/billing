@@ -5,9 +5,10 @@ Utility functions to interact with state database
 import os, sys
 import itertools
 import datetime
-import operator
 from datetime import timedelta, datetime, date
 from decimal import Decimal
+from itertools import groupby
+from operator import attrgetter, itemgetter
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
@@ -289,6 +290,20 @@ class UtilBill(Base):
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
+
+    def sequence_version_string(self):
+        '''Returns a string describing sequences and versions of reebills
+        attached to this utility bill, consisting of sequences followed by a
+        comma-separated list of versions of that sequence, e.g. "1-0,1,2, 2-0".
+        '''
+        # group _utilbill_reebills by sequence, sorted by version within each
+        # group
+        groups = groupby(sorted(self._utilbill_reebills,
+                key=lambda x: (x.reebill.sequence, x.reebill.version)),
+                key=attrgetter('reebill.sequence'))
+        return ', '.join('%s-%s' % (sequence,
+                ','.join(str(ur.reebill.version) for ur in group))
+                for (sequence, group) in groups)
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -799,7 +814,7 @@ class StateDB(object):
                 for r in reebills.all()],
                 # sort by account ascending; worry about performance later
                 # (maybe when sort order is actually configurable)
-                key=operator.itemgetter(0))
+                key=itemgetter(0))
         return tuples, len(tuples)
 
     def reebills(self, session, include_unissued=True):

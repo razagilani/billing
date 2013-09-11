@@ -2812,12 +2812,7 @@ class BillToolBridge:
                     'period_start': ub.period_start,
                     'period_end': ub.period_end,
                     'total_charges': ub.total_charges,
-                    ## NOTE does not support multiple reebills per utility bill
-                    #'sequence': ub._utilbill_reebills[0].reebill.sequence if
-                            #ub.is_attached() else None,
-                    'sequence': ', '.join(sorted(['%s-%s' %
-                            (rb.reebill.sequence, rb.reebill.version) for rb in
-                            ub._utilbill_reebills])),
+                    'sequence': ub.sequence_version_string(),
                     'state': ub.state_name(),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
