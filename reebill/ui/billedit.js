@@ -48,6 +48,7 @@ function reeBillReady() {
     // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
+    var selected_utilbill_id = null;
 
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
@@ -477,9 +478,11 @@ function reeBillReady() {
             listeners: {
                 rowdeselect: function (selModel, index, record) {
                     //loadReeBillUIForSequence(record.data.account, null);
+                    selected_utilbill_id = null;
                 },
                 
                 rowselect: function (selModel, index, record) {
+                    selected_utilbill_id = record.id;
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
