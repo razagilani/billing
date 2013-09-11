@@ -230,28 +230,6 @@ function reeBillReady() {
         ]
     };
 
-    var utilbillReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'name', mapping: 'name'},
-            {name: 'rate_structure', mapping: 'rate_structure'},
-            {name: 'utility', mapping: 'utility'},
-            {name: 'account', mapping: 'account'},
-            {name: 'period_start', mapping: 'period_start'},
-            {name: 'period_end', mapping: 'period_end'},
-            {name: 'total_charges', mapping: 'total_charges'},
-            {name: 'sequence', mapping: 'sequence'},
-            {name: 'state', mapping: 'state'},
-        ]
-    });
-
     var utilbillWriter = new Ext.data.JsonWriter({
         encode: true,
         writeAllFields: false,
@@ -268,7 +246,6 @@ function reeBillReady() {
     var utilbillGridStore = new Ext.data.JsonStore({
         proxy: utilbillStoreProxy,
         autoSave: true,
-        reader: utilbillReader,
         writer: utilbillWriter,
         baseParams: { start:0, limit: 25},
         data: initialutilbill,
