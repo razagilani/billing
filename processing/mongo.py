@@ -1468,10 +1468,6 @@ class ReebillDAO:
         # inside other transactions.
         session = self.state_db.session()
 
-        # TODO looks like somebody's temporary hack should be removed
-        if account is None: return None
-        if sequence is None: return None
-
         query = {
             "_id.account": str(account),
             # TODO stop passing in sequnce as a string from BillToolBridge
