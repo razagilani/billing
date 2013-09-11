@@ -273,7 +273,7 @@ function reeBillReady() {
             name: 'total_charges',
             type: 'float'
         },
-        {name: 'sequence'},
+        {name: 'reebills'},
         {name: 'state'},
         {name: 'service'},
         {name: 'editable'},
@@ -374,8 +374,29 @@ function reeBillReady() {
             },{
                 id: 'sequence',
                 header: 'Reebill Sequence/Version',
-                dataIndex: 'sequence',
+                dataIndex: 'reebills',
                 width: 150,
+                renderer: function(value, metaData, record, rowIndex, colIndex, store) {
+                    /* assume the server returns the sequence/version
+                    pairs in sorted order. Render the list of JSON objects in
+                    'record.data.reebills' as sequences followed by "-" and a
+                    comma-separated list of versions of that sequence, e.g.
+                    "1-0,1,2 2-0". */
+                    var result = '';
+                    var reebills = record.data.reebills;
+                    for (var i = 0; i < reebills.length; i++) {
+                        var sequence = reebills[i].sequence;
+                        result += sequence.toString() + "-";
+                        while (i < reebills.length && reebills[i].sequence ==
+                                sequence) {
+                            result += reebills[i].version + ",";
+                            i++;
+                        } 
+                        result = result.substr(0,result.length-1);
+                        result += ' ';
+                    }
+                    return result;
+                }
             },
             {
                 id: 'state',

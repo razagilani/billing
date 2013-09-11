@@ -2813,7 +2813,7 @@ class BillToolBridge:
                     'period_start': ub.period_start,
                     'period_end': ub.period_end,
                     'total_charges': ub.total_charges,
-                    'sequence': ub.sequence_version_string(),
+                    'reebills': ub.sequence_version_json(),
                     'state': ub.state_name(),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
