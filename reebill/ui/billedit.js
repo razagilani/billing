@@ -48,7 +48,9 @@ function reeBillReady() {
     // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
-    var selected_utilbill_id = null;
+
+    // this is a Record object in 'utilbillGridStore'
+    var selected_utilbill = null;
 
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
@@ -275,6 +277,7 @@ function reeBillReady() {
         // defaults to id? probably should explicity state it until we are ext experts
         //idProperty: 'sequence',
         fields: [
+        {name: 'id'},
         {name: 'name'},
         {name: 'account'},
         {name: 'rate_structure'},
@@ -477,13 +480,13 @@ function reeBillReady() {
             moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
-                    selected_utilbill_id = null;
+                    selected_utilbill = null;
                     ubMeasuredUsagesPanel.setDisabled(true);
                     ubRegisterGrid.setEditable(false);
                 },
                 
                 rowselect: function (selModel, index, record) {
-                    selected_utilbill_id = record.id;
+                    selected_utilbill = record.data;
                     ubMeasuredUsagesPanel.setDisabled(false);
                     ubRegisterGrid.setEditable(true);
 
@@ -1691,10 +1694,10 @@ function reeBillReady() {
         }
         ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
-        options.params.utilbill_id = selected_utilbill_id;
+        options.params.utilbill_id = selected_utilbill.id;
 
         store.baseParams.account = selected_account;
-        options.params.utilbill_id = selected_utilbill_id;
+        options.params.utilbill_id = selected_utilbill.id;
 
         ubRegisterGrid.setDisabled(true);
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
@@ -1710,7 +1713,7 @@ function reeBillReady() {
 
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.account = selected_account;
-        options.params.utilbill_id = selected_utilbill_id;
+        options.params.utilbill_id = selected_utilbill.id;
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
