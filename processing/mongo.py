@@ -190,11 +190,9 @@ def _meter(utilbill_doc, identifier):
     return meter
 
 # TODO make this a method of a utility bill document class when one exists
-def _delete_meter(self, service, identifier):
-    ub = self._get_utilbill_for_service(service)
-    for ub in self._utilbills:
-        if ub['service'] == service:
-            ub['meters'][:] = [meter for meter in ub['meters'] if meter['identifier'] != identifier]
+def _delete_meter(utilbill_doc, identifier):
+        utilbill_doc['meters'][:] = [meter for meter in utilbill_doc['meters']
+                if meter['identifier'] != identifier]
 
 # TODO make this a method of a utility bill document class when one exists
 def _new_meter(utilbill_doc, identifier=None):
@@ -211,54 +209,39 @@ def _new_meter(utilbill_doc, identifier=None):
     utilbill_doc['meters'].append(new_meter)
     return new_meter
 
-def delete_register(self, service, meter_identifier, identifier):
-    ub = self._get_utilbill_for_service(service)
-    for ub in self._utilbills:
-        if ub['service'] == service:
-            for meter in ub['meters']:
-                if meter['identifier'] == meter_identifier:
-                    meter['registers'][:] = [reg for reg in meter['registers'] if reg['identifier'] != identifier]
-                    if len(meter['registers']) == 0:
-                        self._delete_meter(service, meter_identifier)
-                        break
-    shadows = self._get_handle_for_service(service)['shadow_registers']
-    shadows[:] = [r for r in shadows if r['identifier'] != identifier]
+def delete_register(utilbill_doc, service, meter_identifier, identifier):
+    for meter in utilbill_doc['meters']:
+        if meter['identifier'] == meter_identifier:
+            meter['registers'][:] = [reg for reg in meter['registers'] if reg['identifier'] != identifier]
+            if len(meter['registers']) == 0:
+                _delete_meter(utilbill_doc, meter_identifier)
+                break
 
 # TODO make this a method of a utility bill document class when one exists
-def update_register(self, original_service, original_meter_id,
-        original_register_id, service=None, meter_id=None, register_id=None,
-        description=None, quantity=None, quantity_units=None, type=None,
-        binding=None):
-    '''In the utility bill given by 'original_service', updates fields in
+def update_register(utilbill_doc, original_meter_id, original_register_id,
+        meter_id=None, register_id=None, description=None, quantity=None,
+        quantity_units=None, type=None, binding=None):
+    '''In the given utility bill document, updates fields in
     the register given by 'original_register_id' in the meter given by
-    'original_meter_id'. Also updates "shadow registers" in the reebill
-    document to match. Returns the new service, meter identifier, and
-    register_identifier of the register.'''
+    'original_meter_id'.'''
     # find the meter, and the register within the meter
-    meter = self._meter(original_service, original_meter_id)
+    meter = _meter(utilbill_doc, original_meter_id)
     register = next(r for r in meter['registers'] if r['identifier'] ==
             original_register_id)
 
-    if service is not None:
-        # NOTE this method will be rewritten before multiple services are
-        # supported anyway
-        raise NotImplementedError(('Moving a register from one utility '
-            'bill to another is not supported. You can delete the '
-            'register and create a new one.'))
     if meter_id is not None:
         # meter id is being updated, and there is an existing meter with
         # the given id, the register must be removed from its old meter and
         # inserted into that meter. if there is no meter with that id, the
         # id of the meter containing the register can be changed.
         try:
-            existing_meter_with_new_id = self._meter(original_service,
-                    meter_id)
+            existing_meter_with_new_id = _meter(utilbill_doc, meter_id)
             # insert register in new meter
-            self.new_register(original_service, meter_identifier=
+            new_register(utilbill_doc, meter_identifier=
                     existing_meter_with_new_id['identifier'],
                     identifier=original_register_id)
             # remove register from old meter
-            self.delete_register(original_service, original_meter_id,
+            delete_register(utilbill_doc, original_meter_id,
                     original_register_id)
         except StopIteration:
             # if there are any other registers in the same meter, a new
@@ -266,28 +249,15 @@ def update_register(self, original_service, original_meter_id,
             # changed.
             if len(meter['registers']) > 1:
                 # create new meter
-                new_meter = self._new_meter(original_service,
-                        identifier=meter_id)
+                new_meter = _new_meter(utilbill_doc, identifier=meter_id)
                 # insert register in new meter
-                self.new_register(original_service,
-                        meter_identifier=meter_id,
+                new_register(utilbill_doc, meter_identifier=meter_id,
                         identifier=original_register_id)
                 # remove register from old meter
-                self.delete_register(original_service, original_meter_id,
+                delete_register(utilbill_doc, original_meter_id,
                         original_register_id)
             else:
                 meter['identifier'] = meter_id
-        #else:
-            ## NOTE this stuff goes in an "else" block instead of above in
-            ## "try" in case StopIteration can be raised by any of the lines
-            ## in this block
-            ## insert register in new meter
-            #self.new_register(original_service, meter_identifier=
-                    #existing_meter_with_new_id['identifier'],
-                    #identifier=original_register_id)
-            ## remove register from old meter
-            #self.delete_register(original_service, original_meter_id,
-                    #original_register_id)
     if description is not None:
         register['description'] = description
     if quantity is not None:
@@ -303,12 +273,7 @@ def update_register(self, original_service, original_meter_id,
     if binding is not None:
         register['register_binding'] = binding
 
-    # update shadow registers in reebill document to match utility bill
-    # documents
-    self._update_shadow_registers()
-
-    return service or original_service, meter['identifier'], \
-            register['identifier']
+    return meter['identifier'], register['identifier']
 
 
 
