@@ -2,7 +2,7 @@
 import sys
 import datetime
 from datetime import date, time, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_EVEN
 import pymongo
 import bson # part of pymongo package
 import functools
@@ -13,16 +13,20 @@ import base64
 import itertools as it
 import copy
 import uuid as UUID
-import operator
+from itertools import chain
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.state import Customer, UtilBill
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
+
+# utility bill-to-reebill address schema converters
+# also remember that utilbill and reebill use different names for these
 
 def utilbill_billing_address_to_reebill_address(billing_address):
     '''Transforms Rich's utility bill billing address schema to his reebill
@@ -111,6 +115,181 @@ def unflatten_chargegroups_list(flat_charges):
             new_chargegroups[cg].append(charge)
     return new_chargegroups
 
+# TODO make this a method of a utility bill document class when one exists
+def get_all_actual_registers_json(utilbill_doc):
+    '''Given a utility bill document, returns a list of dictionaries describing
+    non-shadow registers of all meters. (The "actual" in the name has nothing
+    to do with "actual charges".)'''
+    result = []
+    for meter in utilbill_doc['meters']:
+        for register in meter['registers']:
+            # compensate for unpredictable database schema by inserting ''
+            # for missing keys
+            result.append({
+                'meter_id': meter['identifier'],
+                'register_id': register['identifier'],
+                'service': utilbill_doc['service'],
+                'type': register.get('type', ''),
+                'binding': register.get('register_binding', ''),
+                'description': register.get('description', ''),
+                'quantity': register.get('quantity', 0),
+                'quantity_units': register.get('quantity_units', ''),
+
+                # insert an "id" key that uniquely identifies these
+                # objects. this is used by client code; TODO consider
+                # moving into wsgi.py or somewhere else, but currently
+                # inserting the "id" here is the simplest and avoids
+                # repetition
+                'id' : '%s/%s/%s' % (utilbill_doc['service'],
+                        meter['identifier'], register['identifier'])
+            })
+    return result
+
+
+# TODO make this a method of a utility bill document class when one exists
+def new_register(utilbill_doc, meter_identifier=None, identifier = None):
+    if meter_identifier is None:
+        meter_identifier = _new_meter(utilbill_doc)['identifier']
+    meter = _meter(utilbill_doc, meter_identifier)
+    if meter is None:
+        meter = _new_meter(utilbill_doc, meter_identifier)
+    if identifier is None:
+        identifier = 'Insert register ID here'
+    new_actual_register = {
+        "description" : "Insert description",
+        "quantity" : Decimal(0),
+        "quantity_units" : "No Units",
+        "shadow" : False,
+        "identifier" : identifier,
+        "type" : "total",
+        "register_binding": "Insert register binding here"
+    }
+    new_shadow_register = {
+        "description" : "Insert description",
+        "quantity" : Decimal(0),
+        "quantity_units" : "Therms",
+        "shadow" : True,
+        "identifier" : identifier,
+        "type" : "total",
+        "register_binding": "Insert register binding here"
+    }
+
+    for reg in meter['registers']:
+        if reg['identifier'] == identifier:
+            raise ValueError('Register %s for meter %s for service %s already exists.' % (identifier, meter_identifier, service))
+    meter['registers'].append(new_actual_register)
+
+    return (meter_identifier, new_actual_register)
+
+# TODO make this a method of a utility bill document class when one exists
+def _meter(utilbill_doc, identifier):
+    '''Returns the first meter found with the given identifier in the given
+    utility bill document. Raises StopIteration if none was found.'''
+    meter = next(meter for meter in utilbill_doc['meters'] if
+            meter['identifier'] == identifier)
+    return meter
+
+# TODO make this a method of a utility bill document class when one exists
+def _delete_meter(utilbill_doc, identifier):
+        utilbill_doc['meters'][:] = [meter for meter in utilbill_doc['meters']
+                if meter['identifier'] != identifier]
+
+# TODO make this a method of a utility bill document class when one exists
+def _new_meter(utilbill_doc, identifier=None):
+    if any(m['identifier'] == identifier for m in utilbill_doc['meters']):
+        raise ValueError('Meter %s for already exists' % (identifier))
+    if identifier is None:
+        identifier = 'Insert meter ID here'
+    new_meter = {
+        'identifier': identifier,
+        'present_read_date': None,
+        'prior_read_date': datetime.now(),
+        'registers': [],
+    }
+    utilbill_doc['meters'].append(new_meter)
+    return new_meter
+
+def delete_register(utilbill_doc, meter_identifier, identifier):
+    for meter in utilbill_doc['meters']:
+        if meter['identifier'] == meter_identifier:
+            meter['registers'][:] = [reg for reg in meter['registers'] if reg['identifier'] != identifier]
+            if len(meter['registers']) == 0:
+                _delete_meter(utilbill_doc, meter_identifier)
+                break
+
+# TODO make this a method of a utility bill document class when one exists
+def update_register(utilbill_doc, original_meter_id, original_register_id,
+        meter_id=None, register_id=None, description=None, quantity=None,
+        quantity_units=None, type=None, binding=None):
+    '''In the given utility bill document, updates fields in
+    the register given by 'original_register_id' in the meter given by
+    'original_meter_id'.'''
+    # find the meter, and the register within the meter
+    meter = _meter(utilbill_doc, original_meter_id)
+    register = next(r for r in meter['registers'] if r['identifier'] ==
+            original_register_id)
+
+    if meter_id is not None:
+        # meter id is being updated, and there is an existing meter with
+        # the given id, the register must be removed from its old meter and
+        # inserted into that meter. if there is no meter with that id, the
+        # id of the meter containing the register can be changed.
+        try:
+            existing_meter_with_new_id = _meter(utilbill_doc, meter_id)
+            # insert register in new meter
+            new_register(utilbill_doc, meter_identifier=
+                    existing_meter_with_new_id['identifier'],
+                    identifier=original_register_id)
+            # remove register from old meter
+            delete_register(utilbill_doc, original_meter_id,
+                    original_register_id)
+        except StopIteration:
+            # if there are any other registers in the same meter, a new
+            # meter must be created. if not, the meter id can just be
+            # changed.
+            if len(meter['registers']) > 1:
+                # create new meter
+                new_meter = _new_meter(utilbill_doc, identifier=meter_id)
+                # insert register in new meter
+                new_register(utilbill_doc, meter_identifier=meter_id,
+                        identifier=original_register_id)
+                # remove register from old meter
+                delete_register(utilbill_doc, original_meter_id,
+                        original_register_id)
+            else:
+                meter['identifier'] = meter_id
+    if description is not None:
+        register['description'] = description
+    if quantity is not None:
+        register['quantity'] = Decimal(str(quantity))
+    if description is not None:
+        register['description'] = description
+    if quantity_units is not None:
+        register['quantity_units'] = quantity_units
+    if register_id is not None:
+        register['identifier'] = register_id
+    if type is not None:
+        register['type'] = type
+    if binding is not None:
+        register['register_binding'] = binding
+
+    return meter['identifier'], register['identifier']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
     data is stored in 'dictionary', which is a Python dict that PyMongo could
@@ -159,6 +338,132 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
+
+    @classmethod
+    def get_utilbill_subdoc(cls, utilbill_doc):
+        '''Returns a a dictionary that is the subdocument of a reebill document
+        representing the "hypothetical" version of the given utility bill
+        document.'''
+        return {
+            # the "id" field in the reebill subdocument identifies which
+            # utility bill it is associated with; this should match the the
+            # value in the "document_id" column of the row of the
+            # utilbill_reebill table in MySQL representing the association
+            # between this reebill and the utility bill, and the "_id" of the
+            # corresponding utility bill document.
+            'id': utilbill_doc['_id'],
+
+            # hypothetical versions of all the registers in all the meters of
+            # the utility bill--though the only thing that should ever be
+            # different from the real versions is the value of the "quantity"
+            # key in each register
+            'shadow_registers': list(chain.from_iterable(m['registers'] for m in
+                    utilbill_doc['meters'])),
+
+            # hypothetical charges are the same as actual (on the utility
+            # bill); they will not reflect the renewable energy quantity until
+            # computed
+            'hypothetical_chargegroups': utilbill_doc['chargegroups'],
+
+            'ree_charges': 0,
+            'ree_savings': 0,
+            'ree_value': 0
+        }
+
+    @classmethod
+    def get_reebill_doc_for_utilbills(cls, account, sequence, version,
+                discount_rate, late_charge_rate, utilbill_docs):
+        '''Returns a newly-created MongoReebill object having the given account
+        number, discount rate, late charge rate, and list of utility bill
+        documents. Hypothetical charges are the same as the utility bill's
+        actual charges. Addresses are copied from the utility bill template.
+        Note that the utility bill document _id is not changed; the caller is
+        responsible for properly duplicating utility bill documents.'''
+        # NOTE currently only one utility bill is allowed
+        assert len(utilbill_docs) == 1
+        utilbill = utilbill_docs[0]
+
+        reebill_doc = {
+            "_id" : {
+                "account" : account,
+                "sequence" : sequence,
+                "version" : version,
+            },
+            "ree_charges" : 0,
+            "ree_value" : 0,
+            "discount_rate" : discount_rate,
+            'late_charge_rate': late_charge_rate,
+            'late_charges': 0,
+            "message" : None,
+            "issue_date" : None,
+            "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
+            "payment_received" : 0,
+            "actual_total" : 0,
+            "due_date" : None,
+            "total_adjustment" : 0,
+            "manual_adjustment" : 0,
+            "ree_savings" : 0,
+            "statistics" : {
+                "renewable_utilization" : 0,
+                "renewable_produced" : None,
+                "total_conventional_consumed" : 0,
+                "total_co2_offset" : 0,
+                "conventional_consumed" : 0,
+                "total_renewable_produced" : None,
+                "total_savings" : 0,
+                "consumption_trend" : [
+                    { "quantity" : 0, "month" : "Dec" },
+                    { "quantity" : 0, "month" : "Jan" },
+                    { "quantity" : 0, "month" : "Feb" },
+                    { "quantity" : 0, "month" : "Mar" },
+                    { "quantity" : 0, "month" : "Apr" },
+                    { "quantity" : 0, "month" : "May" },
+                    { "quantity" : 0, "month" : "Jun" },
+                    { "quantity" : 0, "month" : "Jul" },
+                    { "quantity" : 0, "month" : "Aug" },
+                    { "quantity" : 0, "month" : "Sep" },
+                    { "quantity" : 0, "month" : "Oct" },
+                    { "quantity" : 0, "month" : "Nov" }
+                ],
+                "conventional_utilization" : 0,
+                "total_trees" : 0,
+                "co2_offset" : 0,
+                "total_renewable_consumed" : 0,
+                "renewable_consumed" : 0,
+            },
+            "balance_due" : 0,
+            "prior_balance" : 0,
+            "hypothetical_total" : 0,
+            "balance_forward" : 0,
+            # NOTE these address fields are containers for utility bill
+            # addresses. these addresses will eventually move into utility bill
+            # documents, and if necessary new reebill-specific address fields
+            # will be added. so copying the address from the utility bill to
+            # the reebill is the correct thing (and there is only one utility
+            # bill for now). see
+            # https://www.pivotaltracker.com/story/show/47749247
+
+            # copy addresses from utility bill
+            # specifying keys explicitly to provide validation and to document
+            # the schema
+            "billing_address": {
+                'addressee': utilbill['billing_address']['addressee'],
+                'street': utilbill['billing_address']['street'],
+                'city': utilbill['billing_address']['city'],
+                'state': utilbill['billing_address']['state'],
+                'postal_code': utilbill['billing_address']['postal_code'],
+            },
+            "service_address": {
+                'addressee': utilbill['service_address']['addressee'],
+                'street': utilbill['service_address']['street'],
+                'city': utilbill['service_address']['city'],
+                'state': utilbill['service_address']['state'],
+                'postal_code': utilbill['service_address']['postal_code'],
+            },
+        }
+        return MongoReebill(reebill_doc, utilbill_docs)
+
+
     def __init__(self, reebill_data, utilbill_dicts):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
@@ -266,9 +571,10 @@ class MongoReebill(object):
                 del u['version']
             u['_id'] = handle['id'] = bson.ObjectId()
 
+    # TODO: is this method obsolete?
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removed "sequence" and "version" keys if
+        references to them, and removes "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
         rolling to create copies of the utility bills. does not need to be
         called when creating a new account because 'convert_to_new_account'
@@ -281,6 +587,122 @@ class MongoReebill(object):
                 del utilbill_doc['sequence']
             if 'version' in utilbill_doc:
                 del utilbill_doc['version']
+
+    def update_utilbill_subdocs(self):
+        '''Refreshes the "utilbills" sub-documents of the reebill document to
+        match the utility bill documents in _utilbills. (These represent the
+        "hypothetical" version of each utility bill.)'''
+        # TODO maybe this should be done in compute_bill or a method called by
+        # it; see https://www.pivotaltracker.com/story/show/51581067
+        self.reebill_dict['utilbills'] = \
+                [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
+                utilbill_doc in self._utilbills]
+
+                
+    def compute_charges(self, the_rate_structure):
+        """This function binds a rate structure against the actual and
+        hypothetical charges found in a bill. If and RSI specifies information
+        no in the bill, it is added to the bill. If the bill specifies
+        information in a charge that is not in the RSI, the charge is left
+        untouched."""
+        account, sequence = self.account, self.sequence
+
+        # process rate structures for all services
+        for service in self.services:
+            #
+            # All registers for all meters in a given service are made available
+            # to the rate structure for the given service.
+            # Registers that are not to be used by the rate structure should
+            # simply not have an rsi_binding.
+            #
+
+            # actual
+
+            # copy rate structure because it gets destroyed during use
+            rate_structure = copy.deepcopy(the_rate_structure)
+
+            # get non-shadow registers in the reebill
+            actual_register_readings = self.actual_registers(service)
+
+            #print "loaded rate structure"
+            #pp(rate_structure)
+
+            #print "loaded actual register readings"
+            #pp(actual_register_readings)
+
+            # copy the quantity of each non-shadow register in the reebill to
+            # the corresponding register dictionary in the rate structure
+            # ("apply the registers from the reebill to the probable rate structure")
+            rate_structure.bind_register_readings(actual_register_readings)
+
+            #print "rate structure with bound registers"
+            #pp(rate_structure)
+
+            # get all utility charges from the reebill's utility bill (in the
+            # form of a group name -> [list of charges] dictionary). for each
+            # charge, find the corresponding rate structure item (the one that
+            # matches its "rsi_binding") and copy the values of "description",
+            # "quantity", "quantity_units", "rate", and "rate_units" in that
+            # RSI to the charge
+            # ("process actual charges with non-shadow meter register totals")
+            # ("iterate over the charge groups, binding the reebill charges to
+            # its associated RSI")
+            actual_chargegroups = self.actual_chargegroups_for_service(service)
+            for charges in actual_chargegroups.values():
+                rate_structure.bind_charges(charges)
+
+            # (original comment "don't have to set this because we modified the
+            # actual_chargegroups" is false--we modified the rate structure
+            # items, but left the charges in the bill unchanged. as far as i
+            # can tell this line of code has no effect)
+            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            # hypothetical charges
+
+            # re-copy rate structure because it gets destroyed during use
+            rate_structure = copy.deepcopy(the_rate_structure)
+
+            # get shadow and non-shadow registers in the reebill
+            actual_register_readings = self.actual_registers(service)
+            shadow_register_readings = self.shadow_registers(service)
+
+            # "add the shadow register totals to the actual register, and re-process"
+
+            # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
+            # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
+            # renewable energy - then the rate is calculated incorrectly.  This is because
+            # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
+            # one way for actual charge computation and another way for hypothetical charge
+            # computation.
+
+            # for each shadow register dictionary: add its quantity to the
+            # quantity of the corresponding non-shadow register
+            registers_to_bind = copy.deepcopy(shadow_register_readings)
+            for shadow_reading in registers_to_bind:
+                for actual_reading in actual_register_readings:
+                    if actual_reading['identifier'] == shadow_reading['identifier']:
+                        shadow_reading['quantity'] += actual_reading['quantity']
+                # TODO: throw exception when registers mismatch
+
+            # copy the quantity of each register dictionary in the reebill to
+            # the corresponding register dictionary in the rate structure
+            # ("apply the combined registers from the reebill to the probable
+            # rate structure")
+            rate_structure.bind_register_readings(registers_to_bind)
+
+            # for each hypothetical charge in the reebill, copy the values of
+            # "description", "quantity", "quantity_units", "rate", and
+            # "rate_units" from the corresponding rate structure item to the
+            # charge
+            # ("process hypothetical charges with shadow and non-shadow meter register totals")
+            # ("iterate over the charge groups, binding the reebill charges to its associated RSI")
+            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+            for chargegroup, charges in hypothetical_chargegroups.items():
+                rate_structure.bind_charges(charges)
+
+            # don't have to set this because we modified the hypothetical_chargegroups
+            #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -443,10 +865,10 @@ class MongoReebill(object):
 
     @property
     def manual_adjustment(self):
-        return self.reebill_dict['manual_adjustment']
+        return Decimal(self.reebill_dict['manual_adjustment'])
     @manual_adjustment.setter
     def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = value
+        self.reebill_dict['manual_adjustment'] = Decimal(value)
 
     @property
     def ree_charges(self):
@@ -788,174 +1210,6 @@ class MongoReebill(object):
                         break
         return meters
 
-    def _meter(self, service, identifier):
-        '''Returns the first meter found with the given identifier in the first
-        utility bill document found with the given service. Raises
-        StopIteration if none was found.'''
-        meter = next(meter for meter in self._get_utilbill_for_service(
-                service)['meters'] if meter['identifier'] == identifier)
-        return meter
-        return meter
-
-    def _delete_meter(self, service, identifier):
-        ub = self._get_utilbill_for_service(service)
-        for ub in self._utilbills:
-            if ub['service'] == service:
-                ub['meters'][:] = [meter for meter in ub['meters'] if meter['identifier'] != identifier]
-
-    def _new_meter(self, service, identifier=None):
-        if any(m['identifier'] == identifier for m in
-                self._get_utilbill_for_service( service)['meters']):
-            raise ValueError('Meter %s for service %s already exists' % (
-                    identifier, service))
-        if identifier is None:
-            identifier = 'Insert meter ID here'
-        new_meter = {
-            'identifier': identifier,
-            'present_read_date': None,
-            'prior_read_date': datetime.now(),
-            'registers': [],
-        }
-        ub = self._get_utilbill_for_service(service)
-        ub['meters'].append(new_meter)
-        return new_meter
-
-    def delete_register(self, service, meter_identifier, identifier):
-        ub = self._get_utilbill_for_service(service)
-        for ub in self._utilbills:
-            if ub['service'] == service:
-                for meter in ub['meters']:
-                    if meter['identifier'] == meter_identifier:
-                        meter['registers'][:] = [reg for reg in meter['registers'] if reg['identifier'] != identifier]
-                        if len(meter['registers']) == 0:
-                            self._delete_meter(service, meter_identifier)
-                            break
-        shadows = self._get_handle_for_service(service)['shadow_registers']
-        shadows[:] = [r for r in shadows if r['identifier'] != identifier]
-
-    def new_register(self, service, meter_identifier=None, identifier = None):
-        if meter_identifier is None:
-            meter_identifier = self._new_meter(service)['identifier']
-        meter = self._meter(service, meter_identifier)
-        if meter is None:
-            meter = self._new_meter(service, meter_identifier)
-        if identifier is None:
-            identifier = 'Insert register ID here'
-        new_actual_register = {
-            "description" : "Insert description",
-            "quantity" : Decimal(0),
-            "quantity_units" : "No Units",
-            "shadow" : False,
-            "identifier" : identifier,
-            "type" : "total",
-            "register_binding": "Insert register binding here"
-        }
-        new_shadow_register = {
-            "description" : "Insert description",
-            "quantity" : Decimal(0),
-            "quantity_units" : "Therms",
-            "shadow" : True,
-            "identifier" : identifier,
-            "type" : "total",
-            "register_binding": "Insert register binding here"
-        }
-
-        for reg in  meter['registers']:
-            if reg['identifier'] == identifier:
-                raise ValueError('Register %s for meter %s for service %s already exists.' %(identifier, meter_identifier, service))
-        meter['registers'].append(new_actual_register)
-
-        # put hypothetical register in 'utilbills' list of reebill document
-        self._get_handle_for_service(service)['shadow_registers']\
-                .append(new_shadow_register)
-        return (meter_identifier, new_actual_register)
-
-    def update_register(self, original_service, original_meter_id,
-            original_register_id, service=None, meter_id=None, register_id=None,
-            description=None, quantity=None, quantity_units=None, type=None,
-            binding=None):
-        '''In the utility bill given by 'original_service', updates fields in
-        the register given by 'original_register_id' in the meter given by
-        'original_meter_id'. Also updates "shadow registers" in the reebill
-        document to match. Returns the new service, meter identifier, and
-        register_identifier of the register.'''
-        # find the meter, and the register within the meter
-        meter = self._meter(original_service, original_meter_id)
-        register = next(r for r in meter['registers'] if r['identifier'] ==
-                original_register_id)
-
-        if service is not None:
-            # NOTE this method will be rewritten before multiple services are
-            # supported anyway
-            raise NotImplementedError(('Moving a register from one utility '
-                'bill to another is not supported. You can delete the '
-                'register and create a new one.'))
-        if meter_id is not None:
-            # meter id is being updated, and there is an existing meter with
-            # the given id, the register must be removed from its old meter and
-            # inserted into that meter. if there is no meter with that id, the
-            # id of the meter containing the register can be changed.
-            try:
-                existing_meter_with_new_id = self._meter(original_service,
-                        meter_id)
-                # insert register in new meter
-                self.new_register(original_service, meter_identifier=
-                        existing_meter_with_new_id['identifier'],
-                        identifier=original_register_id)
-                # remove register from old meter
-                self.delete_register(original_service, original_meter_id,
-                        original_register_id)
-            except StopIteration:
-                # if there are any other registers in the same meter, a new
-                # meter must be created. if not, the meter id can just be
-                # changed.
-                if len(meter['registers']) > 1:
-                    # create new meter
-                    new_meter = self._new_meter(original_service,
-                            identifier=meter_id)
-                    # insert register in new meter
-                    self.new_register(original_service,
-                            meter_identifier=meter_id,
-                            identifier=original_register_id)
-                    # remove register from old meter
-                    self.delete_register(original_service, original_meter_id,
-                            original_register_id)
-                else:
-                    meter['identifier'] = meter_id
-            #else:
-                ## NOTE this stuff goes in an "else" block instead of above in
-                ## "try" in case StopIteration can be raised by any of the lines
-                ## in this block
-                ## insert register in new meter
-                #self.new_register(original_service, meter_identifier=
-                        #existing_meter_with_new_id['identifier'],
-                        #identifier=original_register_id)
-                ## remove register from old meter
-                #self.delete_register(original_service, original_meter_id,
-                        #original_register_id)
-        if description is not None:
-            register['description'] = description
-        if quantity is not None:
-            register['quantity'] = Decimal(str(quantity))
-        if description is not None:
-            register['description'] = description
-        if quantity_units is not None:
-            register['quantity_units'] = quantity_units
-        if register_id is not None:
-            register['identifier'] = register_id
-        if type is not None:
-            register['type'] = type
-        if binding is not None:
-            register['register_binding'] = binding
-
-        # update shadow registers in reebill document to match utility bill
-        # documents
-        self._update_shadow_registers()
-
-        return service or original_service, meter['identifier'], \
-                register['identifier']
-
-
     def _update_shadow_registers(self):
         '''Refreshes list of "shadow_register" dictionaries in this reebill
         document to match the utility bill documents. This should be called
@@ -1101,7 +1355,7 @@ class MongoReebill(object):
         elif len(actual_register) ==1:
             return actual_register[0]
         else:
-            raise ValueError("More than one actual register named %s"
+            raise Exception("More than one actual register named %s"
                     % identifier)
 
     def actual_registers(self, service):
@@ -1116,36 +1370,6 @@ class MongoReebill(object):
                 result.extend(meter['registers'])
         return result
 
-    def get_all_actual_registers_json(self):
-        '''Returns a list of dictionaries describing non-shadow registers of
-        all meters in all utility bills. (The "actual" in the name has nothing
-        to do with "actual charges".)'''
-        result = []
-        for utilbill in self._utilbills:
-            for meter in utilbill['meters']:
-                for register in meter['registers']:
-                    # compensate for unpredictable database schema by inserting ''
-                    # for missing keys
-                    result.append({
-                        'meter_id': meter['identifier'],
-                        'register_id': register['identifier'],
-                        'service': utilbill['service'],
-                        'type': register.get('type', ''),
-                        'binding': register.get('register_binding', ''),
-                        'description': register.get('description', ''),
-                        'quantity': register.get('quantity', 0),
-                        'quantity_units': register.get('quantity_units', ''),
-
-                        # insert an "id" key that uniquely identifies these
-                        # objects. this is used by client code; TODO consider
-                        # moving into wsgi.py or somewhere else, but currently
-                        # inserting the "id" here is the simplest and avoids
-                        # repetition
-                        'id' : '%s/%s/%s' % (utilbill['service'],
-                                meter['identifier'], register['identifier'])
-                    })
-        return result
-
     def set_actual_register_quantity(self, identifier, quantity):
         '''Sets the value 'quantity' in the first register subdictionary whose
         identifier is 'identifier' to 'quantity'. Raises an exception if no
@@ -1158,8 +1382,8 @@ class MongoReebill(object):
                         return
 
     def all_shadow_registers(self):
-        return reduce(operator.add, [self.shadow_registers(s) for s in
-                self.services], [])
+        return list(chain.from_iterable([self.shadow_registers(s) for s in
+                self.services]))
 
     def shadow_registers(self, service):
         '''Returns list of copies of shadow register dictionaries for the
@@ -1303,43 +1527,43 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
-    def increment_reebill_version(self, session, reebill):
-        '''Converts the reebill into its version successor: increments
-        _id.version, sets issue_date to None, and reloads the utility bills
-        from Mongo (since the reebill is unissued, these will be the current
-        versionless ones, not the ones that belong to the previous old
-        version of this reebill).'''
-        reebill.issue_date = None
-        reebill.version += 1
+    #def increment_reebill_version(self, session, reebill):
+        #'''Converts the reebill into its version successor: increments
+        #_id.version, sets issue_date to None, and reloads the utility bills
+        #from Mongo (since the reebill is unissued, these will be the current
+        #versionless ones, not the ones that belong to the previous old
+        #version of this reebill).'''
+        #reebill.issue_date = None
+        #reebill.version += 1
 
-        # replace the reebill's utility bill dictionaries with new ones loaded
-        # from mongo. which ones? the un-frozen/editable/"current truth"
-        # versions of the frozen ones currently in the reebill. how do you find
-        # them? i think the only way is by {account, service, utility, start
-        # date, end date}.
-        # TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
-        all_new_utilbills = []
-        for utilbill_handle in reebill.reebill_dict['utilbills']:
-            # load new utility bill
-            old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
-            new_utilbill = self.load_utilbill(account=reebill.account,
-                    utility=old_utilbill['utility'],
-                    service=old_utilbill['service'],
-                    start=old_utilbill['start'], end=old_utilbill['end'],
-                    # must not contain "sequence" or "version" keys
-                    sequence=False, version=False)
+        ## replace the reebill's utility bill dictionaries with new ones loaded
+        ## from mongo. which ones? the un-frozen/editable/"current truth"
+        ## versions of the frozen ones currently in the reebill. how do you find
+        ## them? i think the only way is by {account, service, utility, start
+        ## date, end date}.
+        ## TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
+        #all_new_utilbills = []
+        #for utilbill_handle in reebill.reebill_dict['utilbills']:
+            ## load new utility bill
+            #old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
+            #new_utilbill = self.load_utilbill(account=reebill.account,
+                    #utility=old_utilbill['utility'],
+                    #service=old_utilbill['service'],
+                    #start=old_utilbill['start'], end=old_utilbill['end'],
+                    ## must not contain "sequence" or "version" keys
+                    #sequence=False, version=False)
 
-            # convert types
-            new_utilbill = deep_map(float_to_decimal, new_utilbill)
-            new_utilbill = convert_datetimes(new_utilbill)
+            ## convert types
+            #new_utilbill = deep_map(float_to_decimal, new_utilbill)
+            #new_utilbill = convert_datetimes(new_utilbill)
 
-            all_new_utilbills.append(new_utilbill)
+            #all_new_utilbills.append(new_utilbill)
 
-            # utilbill_handle's _id should match the new utility bill
-            utilbill_handle['id'] = new_utilbill['_id']
+            ## utilbill_handle's _id should match the new utility bill
+            #utilbill_handle['id'] = new_utilbill['_id']
 
-        # replace utilbills with new ones loaded above (all at once)
-        reebill._utilbills = all_new_utilbills
+        ## replace utilbills with new ones loaded above (all at once)
+        #reebill._utilbills = all_new_utilbills
 
 
     def load_utilbills(self, **kwargs):
@@ -1432,6 +1656,77 @@ class ReebillDAO:
         return docs[0]
 
 
+    def _load_utilbill_by_id(self, _id):
+        docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill document for _id %s"
+                    % _id)
+        assert docs.count() == 1
+        result = docs[0]
+        result = deep_map(float_to_decimal, result)
+        result = convert_datetimes(result)
+        return result
+
+    def load_doc_for_statedb_utilbill(self, utilbill, reebill=None):
+        '''Returns the Mongo utility bill document corresponding to the given
+        state.UtilBill object.
+
+        If 'reebill' is None, this is the "current" document, i.e. the one
+        whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is the document for the version of the
+        utility bill associated with the current reebill--either the same as
+        the "current" one if the reebill is unissued, or a frozen one (whose
+        _id is in the utilbill_reebill table) if the reebill is issued.'''
+        if utilbill.state == UtilBill.Hypothetical:
+            assert utilbill.document_id == None
+            assert utilbill.uprs_id == None
+            assert utilbill.cprs_id == None
+            raise ValueError('No document for hypothetical utilty bill: %s'
+                    % utilbill)
+        # empty document_ids are legitimate because "hypothetical" utility
+        # bills do not have a document
+        # empty document_ids should not be possible, once the db is cleaned up
+        # (there's already a "not null" constraint for 'document_id' but the
+        # default value is "")
+        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
+                is None:
+            return self._load_utilbill_by_id(utilbill.document_id)
+        return self._load_utilbill_by_id(
+                reebill.document_id_for_utilbill(utilbill))
+
+    def delete_doc_for_statedb_utilbill(self, utilbill_row):
+        # TODO add reebill argument here like above?
+        '''Deletes the Mongo utility bill document corresponding to the given
+        state.UtilBill object.'''
+        if utilbill_row._utilbill_reebills != []:
+            raise ValueError(("Can't delete a utility bill that has "
+                    "reebills associated with it"))
+        result = self.utilbills_collection.remove({
+                '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
+    def load_utilbill_template(self, session, account):
+        '''Returns the Mongo utility bill document template for the customer
+        given by 'account'.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        assert customer.utilbill_template_id not in (None, '')
+        docs = self.utilbills_collection.find({
+                '_id': bson.ObjectId(customer.utilbill_template_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill template for %s" %
+                    customer)
+        assert docs.count() == 1
+        utilbill_doc = docs[0]
+
+        # convert types
+        utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
+        utilbill_doc = convert_datetimes(utilbill_doc)
+
+        return utilbill_doc
+
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
@@ -1444,7 +1739,8 @@ class ReebillDAO:
             if utilbill_doc == None:
                 raise NoSuchBillException(("No utility bill found for reebill "
                         " %s-%s-%s in %s: query was %s") % (
-                        reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
+                        reebill_doc['_id']['account'],
+                        reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
 
 
@@ -1477,7 +1773,7 @@ class ReebillDAO:
         # TODO figure out how to move this into _get_version_query(): it can't
         # be expressed as part of the query, except maybe with a javascript
         # "where" clause
-        if isinstance(version, int):
+        if isinstance(version, int) or isinstance(version, long):
             query.update({'_id.version': version})
             mongo_doc = self.reebills_collection.find_one(query)
         elif version == 'max':
@@ -1504,7 +1800,8 @@ class ReebillDAO:
             else:
                 mongo_doc = docs[docs.count()-1]
         else:
-            raise ValueError('Unknown version specifier "%s"' % version)
+            raise ValueError('Unknown version specifier "%s" (%s)' %
+                    (version, type(version)))
 
         if mongo_doc is None:
             raise NoSuchBillException(("no reebill found in %s: query was %s")
@@ -1587,14 +1884,19 @@ class ReebillDAO:
         document is replaced.
 
         'freeze_utilbills' should be used when issuing a reebill for the first
-        time (an original or a correction). This creates immutable copies of
-        the utility bill documents with new _ids and puts the reebill's
-        sequence and version in them.
+        time (an original or a correction). This creates "frozen" (immutable)
+        copies of the utility bill documents with new _ids and puts the
+        reebill's sequence and version in them. This document serves as a
+        permanent archive of the utility bill document as it was at the time of
+        issuing, and its _id should go in the "document_id" column of the
+        "utilbill_reebill" table in MySQL.
         
-        Replacing an already-issued reebill (as determined by StateDB, using
-        the rule that all versions except the highest are issued) or its
+        Replacing an already-issued reebill (as determined by StateDB) or its
         utility bills is forbidden unless 'force' is True (this should only be
-        used for testing).'''
+        used for testing).
+        
+        Returns the _id of the frozen utility bill if 'freeze_utilbills' is
+        True, or None otherwise.'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         # TODO 38459029
@@ -1602,22 +1904,24 @@ class ReebillDAO:
         session = self.state_db.session()
         issued = self.state_db.is_issued(session, reebill.account,
                 reebill.sequence, version=reebill.version, nonexistent=False)
-        attached = self.state_db.is_attached(session, reebill.account,
-                reebill.sequence, nonexistent=False)
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
-        if (issued or attached) and freeze_utilbills:
-            raise IssuedBillError("Can't freeze utility bills because this "
-                    "reebill is attached or issued; frozen utility bills "
-                    "should already exist")
         
+        # there will only be a return value if 'freeze_utilbills' is True
+        return_value = None
+
+        # NOTE returning the _id of the new frozen utility bill can only work
+        # if there is only one utility bill; otherwise some system is needed to
+        # specify which _id goes with which utility bill in MySQL
+        if len(reebill._utilbills) > 1:
+            raise NotImplementedError('Multiple services not yet supported')
+
         for utilbill_handle in reebill.reebill_dict['utilbills']:
             utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
             if freeze_utilbills:
-                # this reebill is being attached (usually right before
-                # issuing): convert the utility bills into frozen copies by
-                # putting "sequence" and "version" keys in the utility
-                # bill, and changing its _id to a new one
+                # convert the utility bills into frozen copies by putting
+                # "sequence" and "version" keys in the utility bill, and
+                # changing its _id to a new one
                 old_id = utilbill_doc['_id']
                 new_id = bson.objectid.ObjectId()
 
@@ -1632,12 +1936,15 @@ class ReebillDAO:
                 # utility bill and replace the old utility bill document with the new one
                 utilbill_handle['id'] = new_id
                 reebill._set_utilbill_for_id(old_id, utilbill_doc)
+                return_value = new_id
             else:
                 self._save_utilbill(utilbill_doc, force=force)
 
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
         self.reebills_collection.save(reebill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
+
+        return return_value
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
@@ -1707,62 +2014,22 @@ class ReebillDAO:
         ub_doc = bson_convert(copy.deepcopy(ub_doc))
         self.utilbills_collection.save(ub_doc, safe=True)
         
-    def delete_reebill(self, account, sequence, version):
-        # load reebill in order to find utility bills
-        reebill = self.load_reebill(account, sequence, version)
-
-        # first ensure that each utility bill can be found and the reebill can
-        # be found (to help keep this operation atomic)
-        for u in reebill._utilbills:
-            self.utilbills_collection.find({'_id': bson_convert(u['_id'])})
-        self.reebills_collection.find({
-            '_id.account': account,
-            '_id.sequence': sequence,
-            '_id.version': version,
-        })
-
-        # remove each utility bill, then the reebill
-        for u in reebill._utilbills:
-            # if this is a frozen utility bill, delete it
-            if 'sequence' in u:
-                result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
-
-            # if this is an editable utility bill, delete it only if the
-            # reebill's version is 0. (the editable document is retained for
-            # version > 0 so new versions can still be created after this
-            # version is removed.) this also deletes the "editable version of"
-            # the frozen utility bill above, if any.
-            #
-            # (NOTE it is not actually possible to identify the "editable
-            # version of" a given frozen utility bill because the keys can
-            # change; see
-            # https://www.pivotaltracker.com/projects/397621#!/stories/37521779)
-            if version == 0:
-                q = {
-                    'account': account,
-                    'service': u['service'],
-                    'utility': u['utility'],
-                    'start': None if u['start'] is None
-                            else date_to_datetime(u['start']),
-                    'end': None if u['end'] is None
-                            else date_to_datetime(u['end']),
-                    'sequence': {'$exists': False},
-                    'version': {'$exists': False},
-                }
-                result = self.utilbills_collection.remove(q, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
-
+    def delete_reebill(self, reebill):
+        '''Deletes the document corresponding to the given state.ReeBill. Does
+        not check if the reebill has been issued. No utility bill documents are
+        deleted, even if there are frozen utility bill documents for this
+        reebill, because only issued reebills have those and issued reebills
+        should not be deleted.'''
         result = self.reebills_collection.remove({
-            '_id.account': account,
-            '_id.sequence': sequence,
-            '_id.version': version,
+            '_id.account': reebill.customer.account,
+            '_id.sequence': reebill.sequence,
+            '_id.version': reebill.version,
         }, safe=True)
         if result['err'] is not None or result['n'] == 0:
             raise MongoError(result)
 
+    # TODO remove this method; this should be determined by looking at utility
+    # bills in MySQL
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
@@ -1788,6 +2055,8 @@ class ReebillDAO:
 
         return MongoReebill(reebill_result, utilbill_result).period_begin
 
+    # TODO remove this method; this should be determined by looking at utility
+    # bills in MySQL
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
@@ -1800,6 +2069,8 @@ class ReebillDAO:
             return None
         return MongoReebill(result).issue_date
 
+    # TODO remove this method; this should be determined by looking at reebills
+    # in MySQL
     def last_sequence(self, account):
         '''Returns the sequence of the last reebill for the given account, or 0
         if no reebills were found. This is different from

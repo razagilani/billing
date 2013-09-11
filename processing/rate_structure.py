@@ -8,6 +8,7 @@ import inspect
 import jinja2
 import os
 import pymongo
+from bson import ObjectId
 import sys
 import traceback
 import uuid
@@ -15,11 +16,12 @@ import yaml
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError
+from billing.processing.state import UtilBill
 from copy import deepcopy
 
 import pprint
-pp = pprint.PrettyPrinter(indent=1).pprint
+#pp = pprint.PrettyPrinter(indent=1).pprint
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
@@ -91,8 +93,8 @@ class RateStructureDAO(object):
         self.reebill_dao = reebill_dao
         self.logger = logger
 
-    def _get_probable_rsis(self, utility, service, rate_structure_name, period,
-            distance_func=manhattan_distance,
+    def _get_probable_rsis(self, session, utility, service,
+            rate_structure_name, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
             verbose=False):
@@ -102,10 +104,10 @@ class RateStructureDAO(object):
         score (between 0 and 1) for an RSI to be included. 'ignore' is an
         optional function to exclude UPRSs from the input data (used for
         testing).'''
-        # load all UPRS and their utility bill period dates (to avoid repeated
+        # load all UPRSs and their utility bill period dates (to avoid repeated
         # queries)
         all_uprss = [(uprs, start, end) for (uprs, start, end) in
-                self._load_uprss_for_prediction(utility,
+                self._load_uprss_for_prediction(session, utility,
                 service, rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
@@ -126,8 +128,8 @@ class RateStructureDAO(object):
                 # bill TODO this sucks--figure out how to avoid it, especially
                 # the part that involves using supposedly private methods and
                 # directly accessing document structure
-                reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
-                        uprs['_id']['sequence'], version=uprs['_id']['version'])
+                #reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
+                        #uprs['_id']['sequence'], version=uprs['_id']['version'])
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
@@ -176,7 +178,7 @@ class RateStructureDAO(object):
                     quantity = closest_occurrence[binding][1]['quantity']
                 except KeyError:
                     if self.logger:
-                        self.logger.error('malformed RSI:' + rsi_dict)
+                        self.logger.error('malformed RSI: %s' % rsi_dict)
                 result.append({
                     'rsi_binding': binding,
                     'rate': rate,
@@ -186,137 +188,74 @@ class RateStructureDAO(object):
                 })
         return result
 
-    def get_probable_uprs(self, reebill, service, ignore=lambda x: False):
-        '''Returns a guess of the rate structure for the utility bill of the
-        given service for the given reebill. 'ignore' is a boolean-valued
+    def get_probable_uprs(self, session, utility, service, rate_structure_name,
+            start, end, ignore=lambda x: False):
+        '''Returns a guess of the rate structure for a new utility bill of the
+        given utility name, service, and dates.
+        
+        'ignore' is a boolean-valued
         function that should return True when given a UPRS document that should
-        be excluded from prediction.'''
-        utility = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.rate_structure_name_for_service(service)
-
+        be excluded from prediction.
+        
+        The returned document has no _id, so the caller can add one before
+        saving.'''
         return {
-            '_id': {
-                'account': reebill.account,
-                'sequence': reebill.sequence,
-                'version': reebill.version,
-                'utility_name': utility,
-                'rate_structure_name': rate_structure_name,
-            },
-            'rates': self._get_probable_rsis(utility, service,
-                rate_structure_name,
-                reebill.utilbill_period_for_service(service),
+            'type': 'UPRS',
+            'rates': self._get_probable_rsis(session,
+                utility, service, rate_structure_name,
+                (start, end),
                 # exclude certain UPRSs from prediction as specified above
                 ignore=ignore)
         }
 
-    def _load_combined_rs_dict(self, reebill, service):
+    def _load_combined_rs_dict(self, utilbill, reebill=None):
         '''Returns a dictionary of combined rate structure (derived from URS,
-        UPRS, and CPRS) that should be used to compute the charges of
-        'reebill'.'''
-        # return a probable rate structure for each utilbill in the reebill
-        # all the data needed to identify a probable rate structure
-        account = reebill.account
-        sequence = reebill.sequence
-        version = reebill.version
-        rsbinding = reebill.rate_structure_name_for_service(service)
-        utility_name = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.rate_structure_name_for_service(service)
-        period_begin, period_end = reebill.utilbill_period_for_service(service)
+        UPRS, and CPRS) belonging to the given state.UtilBill.
+        
+        If 'reebill' is None, this is based on the "current" UPRS and CPRS
+        documents, i.e. the ones whose _id is in the utilbill table.
 
-        # load the URS
-        urs = self.load_urs(utility_name, rate_structure_name, period_begin,
-                period_end)
-        if urs is None:
-            raise ValueError(("Could not find URS for utility_name %s, "
-                    "rate_structure_name %s, period %s - %s") % (utility_name,
-                    rate_structure_name, period_begin, period_end))
+        If a ReeBill is given, this is based on the UPRS and CPRS documents for
+        the version of the utility bill associated with the current
+        reebill--either the same as the "current" ones if the reebill is
+        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
+        if the reebill is issued.
+        '''
+        urs = self.load_urs(utilbill.utility, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end)
+        uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
+        cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
 
-        # remove the mongo key, because the requester already has this
-        # information and we do not want application code depending on the
-        # "_id" field.
-        del urs['_id']
+        # make sure "rsi_binding" is unique within UPRS and CPRS (not that we
+        # have ever had a problem with this, but the data structure allows it)
+        for rs in (uprs, cprs):
+            for rsi in rs['rates']:
+                if any(other['rsi_binding'] == rsi['rsi_binding'] and other !=
+                        rsi for other in rs['rates']):
+                    raise RSIError('Multiple RSIs have rsi_binding "%s"' %
+                            rsi['rsi_binding'])
 
-        # remove uuids because they are not used in rate structure computation
-        for urs_rate in urs['rates']:
-            del urs_rate['uuid']
+        # RSIs in CRPS override RSIs in URS with same "rsi_binding"
+        rsis = {rsi['rsi_binding']: rsi for rsi in uprs['rates']}
+        rsis.update({rsi['rsi_binding']: rsi for rsi in cprs['rates']})
+        return {'rates': rsis.values(), 'registers': urs['registers']}
 
-        for urs_reg in urs['registers']:
-            del urs_reg['uuid']
 
-        # load the UPRS
-        uprs = self.load_uprs(reebill.account, reebill.sequence,
-                reebill.version, utility_name, rate_structure_name)
+    def load_rate_structure(self, utilbill, reebill=None):
+        '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
+        the given state.UtilBill.
+        
+        If 'reebill' is None, this is based on the "current" UPRS and CPRS
+        documents, i.e. the ones whose _id is in the utilbill table.
 
-        # remove the mongo key, because the requester already has this
-        # information and we do not want application code depending on the
-        # "_id" field.
-        del uprs['_id']
-
-        # remove the uuids because they are not used in rate structure
-        # computation
-        if 'rates' in uprs:
-            for uprs_rate in uprs['rates']:
-                del uprs_rate['uuid']
-
-        # load the CPRS
-        cprs = self.load_cprs(account, sequence, version, utility_name,
-                rate_structure_name)
-
-        # remove the mongo key, because the requester already has this information
-        # and we do not want application code depending on the "_id" field.
-        if cprs is None:
-            import ipdb; ipdb.set_trace()
-        del cprs['_id']
-
-        # remove the uuids because they are not used in rate structure computation
-        if 'rates' in cprs:
-            for cprs_rate in cprs['rates']:
-                del cprs_rate['uuid']
-
-        # URS is overridden and augmented by rates in UPRS
-
-        # for each UPRS rate, find URS rate and override/augment it
-        if 'rates' in uprs:
-            for uprs_rate in uprs['rates']:
-                # find a matching rate in URS
-                urs_rate = [rate for rate in urs['rates'] if
-                        rate['rsi_binding'] == uprs_rate['rsi_binding']]
-                # URS does not have a rate for UPRS to override, so add it.
-                if len(urs_rate) == 0:
-                    urs['rates'].append(uprs_rate)
-                # URS has a rate that the UPRS overrides.
-                if len(urs_rate) == 1:
-                    urs_rate[0].update(uprs_rate)
-                if len(urs_rate) > 1:
-                    raise Exception('more than one URS rate matches a UPRS rate')
-
-        # UPRS/URS is overridden and augmented by rates in CPRS
-
-        # for each CPRS rate, find UPRS overidden URS rate and override/augment it
-        if 'rates' in cprs:
-            for cprs_rate in cprs['rates']:
-                # find a matching rate in the URS that was just overidden by UPRS
-                urs_uprs_rate = [rate for rate in urs['rates'] if
-                        rate['rsi_binding'] == cprs_rate['rsi_binding']]
-                # URS/UPRS does not have a rate for the CPRS to override, so add it.
-                if len(urs_uprs_rate) == 0:
-                    urs['rates'].append(cprs_rate)
-                # URS/UPRS has a rate that the CPRS overrides.
-                if len(urs_uprs_rate) == 1:
-                    urs_uprs_rate[0].update(cprs_rate)
-                if len(urs_uprs_rate) > 1:
-                    raise Exception('more than one URS/UPRS rate matches a UPRS rate')
+        If a ReeBill is given, this is based on the UPRS and CPRS documents for
+        the version of the utility bill associated with the current
+        reebill--either the same as the "current" ones if the reebill is
+        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
+        if the reebill is issued.'''
+        return RateStructure(self._load_combined_rs_dict(utilbill,
+                reebill=reebill))
     
-        # the URS has been thoroughly overridden by the UPRS and CPRS
-        return urs
-
-    def load_rate_structure(self, reebill, service):
-        '''Returns a RateStructure object representing the combined rate
-        structure used to compute charges for the utility bill of the given
-        service in 'reebill'.'''
-        rs_dict = self._load_combined_rs_dict(reebill, service)
-        return RateStructure(rs_dict)
-
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
             period_end=None):
         '''Loads Utility (global) Rate Structure document from Mongo, returns
@@ -330,118 +269,114 @@ class RateStructureDAO(object):
             "_id.rate_structure_name": rate_structure_name,
         }
         urs = self.collection.find_one(query)
+        if urs is None:
+            # don't mention dates in error message because they're ignored
+            raise ValueError(("Could not find URS for utility_name %s, "
+                    "rate_structure_name %s") % (utility_name,
+                    rate_structure_name))
         return urs
 
-    def _load_uprss_for_prediction(self, utility_name, service,
+    def load_uprs_for_utilbill(self, utilbill, reebill=None):
+        '''Loads and returns a UPRS document for the given state.Utilbill.
+
+        If 'reebill' is None, this is the "current" document, i.e. the one
+        whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is the UPRS document for the version of the
+        utility bill associated with the current reebill--either the same as
+        the "current" one if the reebill is unissued, or a frozen one (whose
+        _id is in the utilbill_reebill table) if the reebill is issued.'''
+        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
+                is None:
+            return self._load_rs_by_id(utilbill.uprs_document_id)
+        return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
+
+    def load_cprs_for_utilbill(self, utilbill, reebill=None):
+        '''Loads and returns a CPRS document for the given state.Utilbill.
+
+        If 'reebill' is None, this is the "current" document, i.e. the one
+        whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is the CPRS document for the version of the
+        utility bill associated with the current reebill--either the same as
+        the "current" one if the reebill is unissued, or a frozen one (whose
+        _id is in the utilbill_reebill table) if the reebill is issued.'''
+        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
+                is None:
+            return self._load_rs_by_id(utilbill.cprs_document_id)
+        return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
+
+    def _load_rs_by_id(self, _id):
+        '''Loads and returns a rate structure document by its _id.'''
+        doc = self.collection.find_one({'_id': ObjectId(_id)})
+        if doc is None:
+            raise NoRateStructureError("No rate structure with _id %s" % _id)
+        return doc
+
+    def _delete_rs_by_id(self, _id):
+        '''Deletes the rate structure document with the given _id. Raises a
+        MongoError if deletion fails.'''
+        result = self.collection.remove({'_id': ObjectId(_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
+    def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
-        '''Returns list of (raw UPRS dictionary, start date, end date) tuples
-        with given utility and rate structure name.'''
-        cursor = self.collection.find({
-            '_id.type': 'UPRS',
-            '_id.utility_name': utility_name,
-            '_id.rate_structure_name': rate_structure_name
-        })
+        '''Returns list of (UPRS document, start date, end date) tuples
+        with the given utility and rate structure name.'''
+        # skip Hypothetical utility bills--they have a UPRS document, but it's
+        # fake, so it should not count toward the probability of RSIs being
+        # included in other bills. (ignore utility bills that are
+        # 'SkylineEstimated' or 'Hypothetical')
+        utilbills = session.query(UtilBill)\
+                .filter(UtilBill.service==service)\
+                .filter(UtilBill.utility==utility_name)\
+                .filter(UtilBill.rate_class==rate_structure_name)\
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
         result = []
-        for doc in cursor:
-            if doc is None or doc['_id'].get('account', None) is None or \
-                    doc['_id'].get('sequence', None) is None or \
-                    doc['_id'].get('version', None) is None or \
-                    'effective' in doc['_id'] or 'expires' in doc['_id']:
-                if verbose:
-                    print >> sys.stderr, 'malformed UPRS id:', doc['_id']
+        for utilbill in utilbills:
+            if utilbill.uprs_document_id is None:
+                self.logger.warning(('ingoring utility bill for %(account)s '
+                    'from %(start)s to %(end)s: has state %(state)s but lacks '
+                    'uprs_document_id') % {'state': utilbill.state,
+                    'account': utilbill.customer.account, 'start':
+                    utilbill.period_start, 'end': utilbill.period_end})
                 continue
-            # only include RS docs that correspond to an actual utility bill
-            # with an actual reebill
-            try:
-                # TODO would be better to use StateDB.is_issued here (to use
-                # only bills that officially exist in MySQL and are issued),
-                # but a ReeBillDAO is what's available
-                # (look up highest version, not the UPRS document's verison,
-                # because UPRS will only be used if its version is the max)
-                reebill = self.reebill_dao.load_reebill(doc['_id']['account'],
-                        doc['_id']['sequence'], version='max')
-                utilbill = reebill._get_utilbill_for_rs(utility_name,
-                        service, rate_structure_name)
-            except NoSuchBillException:
-                continue
-            # skip the UPRS if its version is not the maximum
-            if doc['_id']['version'] != reebill.version:
-                continue
-            result.append((doc, utilbill['start'], utilbill['end']))
+                            
+            # load UPRS document for the current version of this utility bill
+            # (it never makes sense to use a frozen utility bill's URPS here
+            # because the only UPRSs that should count are "current" ones)
+            doc = self.load_uprs_for_utilbill(utilbill)
+            # only include RS docs that correspond to a current utility bill
+            # (not one belonging to a reebill that has been corrected); this
+            # will be subtly broken until old versions of utility bills are
+            # excluded from MySQL: see
+            # https://www.pivotaltracker.com/story/show/51683847
+            result.append((doc, utilbill.period_start, utilbill.period_end))
         return result
 
-    def load_uprs(self, account, sequence, version, utility_name,
-            rate_structure_name):
-        '''Loads Utility Periodic Rate Structure docuemnt from Mongo, returns
-        it as a dictionary.'''
-        # eventually, return a uprs that may have useful information that
-        # matches this service period 
-        query = {
-            "_id.type":"UPRS",
-            "_id.account": account,
-            "_id.sequence": sequence,
-            "_id.version": version,
-            "_id.utility_name": utility_name,
-            "_id.rate_structure_name": rate_structure_name,
-        }
+    def load_uprs(self, id):
+        '''Returns a Utility Periodic Rate Structure document from Mongo.'''
+        query = {"_id": ObjectId(id), "type": "UPRS"}
         uprs = self.collection.find_one(query)
-        # create it if it does not exist
-        # the same behavior should probably be implemented for URS and CPRS so
-        # that they can be lazily created
-        # TODO 24253017
         if uprs is None:
-            uprs = {'rates':[]} 
-            uprs = self.save_uprs(account, sequence,
-                    version, utility_name, rate_structure_name, uprs)
+            raise ValueError('Could not find UPRS: query was %s' %
+                    format_query(query))
         return uprs
 
-    def load_cprs(self, account, sequence, version, utility_name,
-            rate_structure_name):
-        '''Loads Customer Periodic Rate Structure docuemnt from Mongo, returns
-        it as a dictionary.'''
-        query = {
-            "_id.type":"CPRS",
-            "_id.account":account, 
-            "_id.sequence": int(sequence), 
-            "_id.rate_structure_name": rate_structure_name, 
-            "_id.utility_name": utility_name, 
-            "_id.version":int(version)
-        }
+    def load_cprs(self, id):
+        '''Returns a Customer Periodic Rate Structure document from Mongo.'''
+        query = {"_id": ObjectId(id), "type": "CPRS"}
         cprs = self.collection.find_one(query)
         if cprs is None:
-            raise ValueError('Could not find CPRS: query was %s' % format_query(query))
+            raise ValueError('Could not find CPRS: query was %s' %
+                    format_query(query))
         return cprs
 
     def save_rs(self, rate_structure_data):
         '''Easy way to save rate structure without unnecessary arguments.'''
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
-
-    def update_rs_name(self, account, sequence, version, old_utility, old_name, new_utility, new_name):
-        uprs = self.load_uprs(account, sequence, version, old_utility, old_name)
-        cprs = self.load_cprs(account, sequence, version, old_utility, old_name)
-        new_uprs = deepcopy(uprs)
-        new_uprs['_id']['utility_name'] = new_utility
-        new_uprs['_id']['rate_structure_name'] = new_name
-        new_cprs = deepcopy(cprs)
-        new_cprs['_id']['utility_name'] = new_utility
-        new_cprs['_id']['rate_structure_name'] = new_name
-        new_uprs = bson_convert(deepcopy(new_uprs))
-        new_cprs = bson_convert(deepcopy(new_cprs))
-        self.collection.save(new_uprs)
-        self.collection.save(new_cprs)
-        self.collection.remove({'_id.account':account,
-                                '_id.sequence':int(sequence),
-                                '_id.version':int(version),
-                                '_id.utility_name':old_utility,
-                                '_id.rate_structure_name':old_name,
-                                '_id.type':'UPRS'})
-        self.collection.remove({'_id.account':account,
-                                '_id.sequence':int(sequence),
-                                '_id.version':int(version),
-                                '_id.utility_name':old_utility,
-                                '_id.rate_structure_name':old_name,
-                                '_id.type':'CPRS'})
 
     def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
@@ -486,6 +421,13 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
         return rate_structure_data
+
+    def delete_rs_docs_for_utilbill(self, utilbill):
+        '''Removes the UPRS and CPRS documents for the given state.UtilBill.
+        This should be done when the utility bill is deleted. Raises a
+        MongoError if deletion fails.'''
+        self._delete_rs_by_id(utilbill.uprs_document_id)
+        self._delete_rs_by_id(utilbill.cprs_document_id)
 
 
 class RateStructure(object):
@@ -546,6 +488,13 @@ class RateStructure(object):
                 raise Exception("RSI descriptor required.\n%s" % rsi)
             self.__dict__[rsi.rsi_binding] = rsi
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def bind_register_readings(self, register_readings):
         '''Takes the list of register dictionaries from a reebill, and for each
@@ -637,6 +586,17 @@ class Register(object):
         if not 'inclusions' in reg_data:
             self.inclusions = [{'fromhour': 0, 'tohour': 23, 'weekday':[1,2,3,4,5,6,7]}]
             self.exclusions = []
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for k, v in self.__dict__.iteritems():
+            if not hasattr(other, k) or getattr(other, k) != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
 
     @property
     def register_binding(self):
@@ -761,6 +721,26 @@ class RateStructureItem(object):
         self.evaluated_total = False
         self.evaluated_quantity = False
         self.evaluated_rate = False
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for k, v in self.__dict__.iteritems():
+            # _rate_structures do not have to be the same (comparing them would
+            # result in stack overflow because they are compared by their
+            # RateStructureItems). this could be done if it were determined
+            # what the important characteristics of RateStructures are, but
+            # they could absolutely any key/value pairs in addition to
+            # evaluated_total, evaluated_quantity, evaluated_rate. see
+            # https://www.pivotaltracker.com/story/show/52931715
+            if k == '_rate_structure':
+                continue
+            if not hasattr(other, k) or getattr(other, k) != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @property
     def rsi_binding(self):
