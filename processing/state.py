@@ -291,6 +291,20 @@ class UtilBill(Base):
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
 
+    def sequence_version_json(self):
+        '''Returns a list of dictionaries describing reebill versions attached
+        to this utility bill. Each element is of the form {"sequence":
+        sequence, "version": version}. The elements are sorted by sequence and
+        by version within the same sequence.
+        '''
+        return sorted(
+            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version}
+                 for ur in self._utilbill_reebills),
+            key=lambda element: (element['sequence'], element['version'])
+        )
+
+    # TODO: this is no longer used; client receives JSON and renders it as a
+    # string
     def sequence_version_string(self):
         '''Returns a string describing sequences and versions of reebills
         attached to this utility bill, consisting of sequences followed by a
