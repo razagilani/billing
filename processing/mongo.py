@@ -209,7 +209,7 @@ def _new_meter(utilbill_doc, identifier=None):
     utilbill_doc['meters'].append(new_meter)
     return new_meter
 
-def delete_register(utilbill_doc, service, meter_identifier, identifier):
+def delete_register(utilbill_doc, meter_identifier, identifier):
     for meter in utilbill_doc['meters']:
         if meter['identifier'] == meter_identifier:
             meter['registers'][:] = [reg for reg in meter['registers'] if reg['identifier'] != identifier]
