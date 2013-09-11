@@ -2557,13 +2557,13 @@ class BillToolBridge:
                 for row in rows:
                     validate_id_components(row.get('meter_id',''),
                             row.get('register_id',''))
+
                     # create the new register (ignoring return value)
-                    mongo.new_register(utilbill_doc, reebill.services[0],
-                            row.get('meter_id', None), row.get('register_id',
-                            None))
+                    mongo.new_register(utilbill_doc, row.get('meter_id', None),
+                            row.get('register_id', None))
                    
                 # get dictionaries describing all registers in all utility bills
-                registers_json = reebill.get_all_actual_registers_json()
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
 
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
@@ -2575,7 +2575,14 @@ class BillToolBridge:
                 if 'current_selected_id' in kwargs:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
-                self.reebill_dao.save_reebill(reebill)
+                self.reebill_dao._save_utilbill(utilbill_doc)
+
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
+
                 return self.dumps(result)
 
             if xaction == 'update':
@@ -2609,6 +2616,8 @@ class BillToolBridge:
                         result['current_selected_id'] = '%s/%s/%s' % (new_service,
                                 new_meter_id, new_reg_id)
 
+                self.reebill_dao._save_utilbill(utilbill_doc)
+
                 # update meter read dates to match utility bill period dates in
                 # case they changed (they didn't, because the UI can't specify this)
                 reebill.set_meter_dates_from_utilbills()
@@ -2619,8 +2628,11 @@ class BillToolBridge:
                     'total': len(registers_json)
                 })
 
-                # utility bill has been changed and reebill must be updated to match
-                reebill.update_utilbill_subdocs()
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
 
                 self.reebill_dao.save_reebill(reebill)
                 return self.dumps(result)

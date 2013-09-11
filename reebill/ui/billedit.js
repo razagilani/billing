@@ -477,13 +477,15 @@ function reeBillReady() {
             moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
-                    //loadReeBillUIForSequence(record.data.account, null);
                     selected_utilbill_id = null;
-                    ubMeasuredUsagesPanel.setDisabled(false);
+                    ubMeasuredUsagesPanel.setDisabled(true);
+                    ubRegisterGrid.setEditable(false);
                 },
                 
                 rowselect: function (selModel, index, record) {
                     selected_utilbill_id = record.id;
+                    ubMeasuredUsagesPanel.setDisabled(false);
+                    ubRegisterGrid.setEditable(true);
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
