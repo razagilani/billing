@@ -393,9 +393,9 @@ function reeBillReady() {
                 width: 90,
             },{
                 id: 'sequence',
-                header: 'Sequence',
+                header: 'Reebill Sequence/Version',
                 dataIndex: 'sequence',
-                width: 70,
+                width: 150,
             },
             {
                 id: 'state',
