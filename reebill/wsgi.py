@@ -2639,7 +2639,7 @@ class BillToolBridge:
                 # extract keys needed to identify the register being updated
                 utilbill_id, orig_meter_id, orig_reg_id = id_of_row_to_delete\
                         .split('/')
-                mongo.delete_register(utilbill_doc,orig_meter_id, orig_reg_id)
+                mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
 
                 # NOTE there is no "current_selected_id" because the formerly
                 # selected row was deleted
