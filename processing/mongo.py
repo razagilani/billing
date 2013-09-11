@@ -1764,11 +1764,12 @@ class ReebillDAO:
         # inside other transactions.
         session = self.state_db.session()
 
-        query = {
-            "_id.account": str(account),
-            # TODO stop passing in sequnce as a string from BillToolBridge
-            "_id.sequence": int(sequence),
-        }
+        assert isinstance(account, basestring)
+        assert isinstance(sequence, long) or isinstance(sequence, int)
+        assert isinstance(version, basestring) or isinstance(version, long) \
+                or isinstance(version, int) or isinstance(version, date)
+
+        query = {"_id.account": account, "_id.sequence": sequence}
 
         # TODO figure out how to move this into _get_version_query(): it can't
         # be expressed as part of the query, except maybe with a javascript
