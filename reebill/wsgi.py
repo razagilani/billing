@@ -22,8 +22,9 @@ import copy
 import functools
 import re
 import md5
-import errno
+import operator
 from StringIO import StringIO
+from itertools import chain
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
@@ -36,7 +37,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
-from billing.processing.state import UtilBill
+from billing.processing.state import UtilBill, Customer
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -60,7 +61,7 @@ sys.stdout = sys.stderr
 pprint.pprint(os.environ)
 pprint.pprint(sys.path)
 pprint.pprint(sys.prefix)
-pp = pprint.PrettyPrinter(indent=1).pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
 class Debugger:
@@ -696,16 +697,6 @@ class BillToolBridge:
     ###########################################################################
     # bill processing
 
-    # TODO: do this on a per service basis 18311877
-    @json_exception
-    def copyactual(self, account, sequence, **args):
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.process.copy_actual_charges(reebill)
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success': True})
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -730,29 +721,30 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
-            customer = self.process.create_new_account(session, account, name,
-                    discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
-            ba = {}
-            ba['addressee'] = ba_addressee
-            ba['street'] = ba_street
-            ba['city'] = ba_city
-            ba['state'] = ba_state
-            ba['postal_code'] = ba_postal_code
-            reebill.billing_address = ba
-            
-            sa = {}
-            sa['addressee'] = sa_addressee
-            sa['street'] = sa_street
-            sa['city'] = sa_city
-            sa['state'] = sa_state
-            sa['postal_code'] = sa_postal_code
-            reebill.service_address = sa
-            self.reebill_dao.save_reebill(reebill)
+
+            billing_address = {
+                'addressee': ba_addressee,
+                'street': ba_street,
+                'city': ba_city,
+                'state': ba_state,
+                'postal_code': ba_postal_code,
+            }
+            service_address = {
+                'addressee': sa_addressee,
+                'street': sa_street,
+                'city': sa_city,
+                'state': sa_state,
+                'postal_code': sa_postal_code,
+            }
+
+            self.process.create_new_account(session, account, name,
+                    discount_rate, late_charge_rate, billing_address,
+                    service_address, template_account)
+
             # record account creation
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
-                    customer.account)
+                    account)
 
             # get next account number to send it back to the client so it
             # can be shown in the account-creation form
@@ -772,31 +764,44 @@ class BillToolBridge:
 
         # 1st transaction: roll
         with DBSession(self.state_db) as session:
-            lastSequence = self.state_db.last_sequence(session, account)
-            reebill = self.reebill_dao.load_reebill(account, lastSequence)
-            new_reebill = self.process.roll_bill(session, reebill, start_date)
-            self.reebill_dao.save_reebill(new_reebill)
+            last_seq = self.state_db.last_sequence(session, account)
+            if last_seq == 0:
+                utilbill = session.query(UtilBill).join(Customer)\
+                        .filter(UtilBill.customer_id == Customer.id)\
+                        .filter_by(account=account)\
+                        .filter(UtilBill.period_start >= start_date)\
+                        .order_by(UtilBill.period_start).first()
+                if utilbill is None:
+                    raise ValueError("No utility bill found starting on/after %s" %
+                            start_date)
+                self.process.create_first_reebill(session, utilbill)
+            else:
+                self.process.create_next_reebill(session, account)
+            new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq +
+                    1)
+
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence)
+                    account, last_seq + 1)
             # Process.roll includes attachment
+            # TODO "attached" is no longer a useful event;
+            # see https://www.pivotaltracker.com/story/show/55044870
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
+                account, last_seq + 1, new_reebill_doc.version)
 
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
         with DBSession(self.state_db) as session:
-            new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_reebill, use_olap=True, verbose=True)
-            self.reebill_dao.save_reebill(new_reebill)
+                    new_reebill_doc, use_olap=True, verbose=True)
+            self.reebill_dao.save_reebill(new_reebill_doc)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
+                account, new_reebill_doc.sequence, new_reebill_doc.version)
             
-            self.process.compute_bill(session, reebill, new_reebill)
-            self.reebill_dao.save_reebill(new_reebill)
+            self.process.compute_bill(session, new_reebill_doc)
+            self.reebill_dao.save_reebill(new_reebill_doc)
 
             return self.dumps({'success': True})
 
@@ -872,10 +877,6 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            # update "hypothetical charges" to match actual charges"
-            # TODO this should be done inside compute_bill
-            self.copyactual(account, sequence)
-
             # use version 0 of the predecessor to show the real account
             # history (prior balance, payment received, balance forward)
             mongo_reebill = self.reebill_dao.load_reebill(account,
@@ -912,36 +913,6 @@ class BillToolBridge:
             )
             return self.dumps({'success': True})
 
-    def attach_utility_bills(self, session, account, sequence):
-        '''Finalizes association between the reebill given by 'account',
-        'sequence' and its utility bills by recording it in the state database
-        and marking the utility bills as processed. Utility bills for suspended
-        services are skipped. Note that this does not issue the reebill or give
-        it an issue date.'''
-        # finalize utility bill association
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.process.attach_utilbills(session, reebill)
-
-        version = self.state_db.max_version(session, account, sequence)
-        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, sequence, version)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def attach_utilbills(self, account, sequence, **args):
-        '''Handles AJAX call to attach utility bills without issuing. Normally
-        this is done through 'issue'.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            if reebill is None:
-                raise NoSuchBillException('No reebill for account %s, sequence %s')
-            self.attach_utility_bills(session, account, sequence)
-            return self.dumps({'success': True})
-
     def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
         '''Issues all unissued bills given by account and sequences. These must
@@ -963,10 +934,8 @@ class BillToolBridge:
 
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
-            predecessor = self.reebill_dao.load_reebill(account,
-                    unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process.compute_bill(session, predecessor, reebill)
+            self.process.compute_bill(session, reebill)
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
@@ -1203,14 +1172,24 @@ class BillToolBridge:
             rows = []
             for i, status in enumerate(statuses):
 
-                # load highest version of last issued reebill to get data out of it
-                reebill = self.reebill_dao.load_reebill(status.account,
-                        self.state_db.last_issued_sequence(session, status.account))
+                last_issued_sequence = self.state_db.last_issued_sequence(
+                        session, status.account)
+                if last_issued_sequence == 0:
+                    utility_service_addresses = ''
+                else:
+                    # load highest version of last issued reebill to get data out of it
+                    # TODO remove this try/except
+                    from billing.processing.exceptions import NoSuchBillException
+                    try:
+                        reebill = self.reebill_dao.load_reebill(status.account,
+                                self.state_db.last_issued_sequence(session, status.account))
+                    except NoSuchBillException:
+                        continue
 
-                # get service address from utility bill document, convert JSON
-                # to string using the function above
-                utility_service_addresses = format_service_address(
-                        reebill._utilbills[0])
+                    # get service address from utility bill document, convert JSON
+                    # to string using the function above
+                    utility_service_addresses = format_service_address(
+                            reebill._utilbills[0])
 
                 last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
                         not None else 'Never Issued'
@@ -1558,140 +1537,108 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         service = service.lower()
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested rate structure 
-        # if this is the case, return no rate structure.  
-        # This is done so that the UIcan configure itself with no data for the
-        # requested rate structure 
-        if reebill is None:
-            return self.dumps({'success':True})
-
-        rate_structure = self.ratestructure_dao.load_cprs(
-            reebill.account, 
-            reebill.sequence, 
-            reebill.version,
-            reebill.utility_name_for_service(service),
-            reebill.rate_structure_name_for_service(service)
-        )
-
-        rates = rate_structure["rates"]
-
-        if xaction == "read":
-            return self.dumps({'success': True, 'rows':rates})
-        
         with DBSession(self.state_db) as session:
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            utilbill = next(u for u in reebill.utilbills if u.service.lower() ==
+                    service)
+
+            rate_structure = self.ratestructure_dao.load_cprs_for_utilbill(
+                    utilbill)
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return self.dumps({'success': True, 'rows':rates})
+            
+                
             if self.state_db.is_issued(session, account, sequence):
                 raise ValueError("Cannot edit rate structure for an issued bill")
-            
-        if xaction == "update":
 
-            rows = json.loads(kwargs["rows"])
+            if xaction == "update":
 
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
+                rows = json.loads(kwargs["rows"])
 
-            # process list of edits
-            # TODO: RateStructure DAO should do CRUD ops
-            for row in rows:
-                # identify the RSI UUID of the posted data
-                rsi_uuid = row['uuid']
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
 
-                # identify the rsi, and update it with posted data
-                matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                # process list of edits
+                # TODO: RateStructure DAO should do CRUD ops
+                for row in rows:
+                    # identify the RSI UUID of the posted data
+                    rsi_uuid = row['uuid']
 
-                # eliminate attributes that have empty strings or None as these mustn't 
-                # be added to the RSI so the RSI knows to compute for those values
-                for k,v in row.items():
-                    if v is None or v == "":
-                        del row[k]
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                # now that blank values are removed, ensure that required fields were sent from client 
-                if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
 
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                rsi.clear()
-                rsi.update(row)
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
 
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            result = self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                result = self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
-        elif xaction == "create":
+            elif xaction == "create":
 
-            # TODO: 27315653 allow more than one RSI to be created
+                # TODO: 27315653 allow more than one RSI to be created
 
-            new_rate = {"uuid": str(UUID.uuid1())}
-            # should find an unbound charge item, and use its binding since an RSI
-            # might be made after a charge item is created
-            #new_rate['rsi_binding'] = orphaned binding
-            rates.append(new_rate)
+                new_rate = {"uuid": str(UUID.uuid1())}
+                # should find an unbound charge item, and use its binding since an RSI
+                # might be made after a charge item is created
+                #new_rate['rsi_binding'] = orphaned binding
+                rates.append(new_rate)
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True, 'rows':new_rate})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True, 'rows':new_rate})
 
-        elif xaction == "destroy":
+            elif xaction == "destroy":
 
-            uuids = json.loads(kwargs["rows"])
+                uuids = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
 
-            # process list of removals
-            for rsi_uuid in uuids:
+                # process list of removals
+                for rsi_uuid in uuids:
 
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
 
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                rates.remove(rsi)
+                    rates.remove(rsi)
 
-            self.ratestructure_dao.save_cprs(
-                reebill.account, 
-                reebill.sequence, 
-                reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
@@ -1704,136 +1651,106 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested rate structure 
-        # if this is the case, return no rate structure.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested rate structure 
-        if reebill is None:
-            return self.dumps({'success':True})
-
-        utility_name = reebill.utility_name_for_service(service)
-        rs_name = reebill.rate_structure_name_for_service(service)
-        (effective, expires) = reebill.utilbill_period_for_service(service)
-        rate_structure = self.ratestructure_dao.load_uprs(account, sequence,
-                reebill.version, utility_name, rs_name)
-
-        # It is possible the a UPRS does not exist for the utility billing period.
-        # If this is the case, create it
-        if rate_structure is None:
-            raise Exception("Could not load UPRS for %s, %s %s to %s" %
-                    (utility_name, rs_name, effective, expires) )
-
-        rates = rate_structure["rates"]
-
-        if xaction == "read":
-            return self.dumps({'success': True, 'rows':rates})
-        
         with DBSession(self.state_db) as session:
-            if self.state_db.is_issued(session, account, sequence):
-                raise Exception("Cannot edit rate structure for an issued bill")
+            reebill = self.state_db.get_reebill(session, account, sequence)
+
+            # NOTE does not support multiple utility bills per reebill
+            rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(
+                    reebill.utilbills[0])
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return self.dumps({'success': True, 'rows':rates})
             
-        if xaction == "update":
+            with DBSession(self.state_db) as session:
+                if self.state_db.is_issued(session, account, sequence):
+                    raise Exception("Cannot edit rate structure for an issued bill")
+                
+            if xaction == "update":
 
-            rows = json.loads(kwargs["rows"])
+                rows = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
 
-            # process list of edits
-            for row in rows:
+                # process list of edits
+                for row in rows:
 
-                # identify the RSI descriptor of the posted data
-                rsi_uuid = row['uuid']
+                    # identify the RSI descriptor of the posted data
+                    rsi_uuid = row['uuid']
 
-                # identify the rsi, and update it with posted data
-                matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                # eliminate attributes that have empty strings or None as these mustn't 
-                # be added to the RSI so the RSI knows to compute for those values
-                for k,v in row.items():
-                    if v is None or v == "":
-                        del row[k]
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
 
-                # now that blank values are removed, ensure that required fields were sent from client 
-                if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                rsi.clear()
-                rsi.update(row)
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
-        elif xaction == "create":
+            elif xaction == "create":
 
-            # TODO: 27315653 allow more than one RSI to be created
+                # TODO: 27315653 allow more than one RSI to be created
 
-            new_rate = {"uuid": str(UUID.uuid1())}
-            # find an oprhan binding and set it here
-            #new_rate['rsi_binding'] = "Temporary RSI Binding"
-            rates.append(new_rate)
+                new_rate = {"uuid": str(UUID.uuid1())}
+                # find an oprhan binding and set it here
+                #new_rate['rsi_binding'] = "Temporary RSI Binding"
+                rates.append(new_rate)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True, 'rows':new_rate})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True, 'rows':new_rate})
 
-        elif xaction == "destroy":
+            elif xaction == "destroy":
 
-            uuids = json.loads(kwargs["rows"])
+                uuids = json.loads(kwargs["rows"])
 
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
 
-            # process list of removals
-            for rsi_uuid in uuids:
+                # process list of removals
+                for rsi_uuid in uuids:
 
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
 
-                if (len(matches) == 0):
-                    raise Exception("Did not match an RSI UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one RSI UUID which should not be possible")
-                rsi = matches[0]
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
 
-                rates.remove(rsi)
+                    rates.remove(rsi)
 
-            self.ratestructure_dao.save_uprs(
-                reebill.account, reebill.sequence, reebill.version,
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service),
-                rate_structure
-            )
+                self.ratestructure_dao.save_rs(rate_structure)
 
-            # 23417235 temporary hack
-            self.compute_bill(account, sequence)
-            return self.dumps({'success':True})
+                # 23417235 temporary hack
+                self.compute_bill(account, sequence)
+                return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
@@ -2181,9 +2098,10 @@ class BillToolBridge:
                             #"and its sequence is the last one. Delete a "
                             #"series of unissued bills in sequence order."))
 
-                deleted_version = self.process.delete_reebill(session,
-                        account, sequence)
-                #Delete the PDF associated with a reebill if it was version 0
+                reebill = self.state_db.get_reebill(session, account, sequence)
+                deleted_version = self.process.delete_reebill(session, reebill)
+
+                # Delete the PDF associated with a reebill if it was version 0
                 # because we believe it is confusing to delete the pdf when
                 # when a version still exists
                 if deleted_version == 0:
@@ -2579,7 +2497,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def utilbill_registers(self, account, sequence, xaction, **kwargs):
+    def utilbill_registers(self, utilbill_id, xaction, reebill_sequence=None,
+            reebill_version=None, **kwargs):
         '''Handles AJAX requests to read and write data for the "Utility Bill
         Registers" grid in the "Meters and Registers" tab. 'account',
         'sequence' identify the reebill whose utility bill is being edited.
@@ -2593,124 +2512,153 @@ class BillToolBridge:
                 raise ValueError(('Service names and meter/register ids must '
                         'not contain "/"'))
 
-        # load reebilld document from mongo; there will always be one because
-        # the grid is only visible when one is selected
-        reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        toSelect = None
+        with DBSession(self.state_db) as session:
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            if reebill_sequence is None:
+                assert reebill_version is None
+                # load editable utility bill
+                utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+                        utilbill)
+            else:
+                # load frozen utilbill document for the given reebill
+                reebill = self.state_db.get_reebill(utilbill.customer.account,
+                        reebill_sequence, version=reebill.version)
+                utilbill_doc = self.state_db.load_doc_for_statedb_utilbill(
+                        session, utilbill, reebill=reebill)
 
-        if xaction == 'read':
-            # get dictionaries describing all registers in all utility bills
-            registers_json = reebill.get_all_actual_registers_json()
+            toSelect = None
 
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
+            if xaction == 'read':
+                # get dictionaries describing all registers in all utility bills
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
 
-            # client sends "current_selected_id" to identify which row is
-            # selected in the grid; if this key is present, server must also
-            # include "current_selected_id" in the response to indicate that
-            # the same row is still selected
-            if 'current_selected_id' in kwargs:
-                result['current_selected_id'] = kwargs['current_selected_id']
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-            return self.dumps(result)
+                # client sends "current_selected_id" to identify which row is
+                # selected in the grid; if this key is present, server must also
+                # include "current_selected_id" in the response to indicate that
+                # the same row is still selected
+                if 'current_selected_id' in kwargs:
+                    result['current_selected_id'] = kwargs['current_selected_id']
 
-        # the "rows" argument is only given when xaction is "create", "update",
-        # or "destroy". it's a list if there are multiple rows (though in
-        # practice there is only one because only one row of the grid can be
-        # created/edited/deleted at a time).
-        rows = json.loads(kwargs['rows'])
-        if not isinstance(rows, list):
-            rows = [rows]
+                return self.dumps(result)
 
-        if xaction == 'create':
-            for row in rows:
-                validate_id_components(row.get('meter_id',''),
-                        row.get('register_id',''))
-                # create the new register (ignoring return value)
-                reebill.new_register(reebill.services[0],
-                        row.get('meter_id', None), row.get('register_id',
-                        None))
-               
-            # get dictionaries describing all registers in all utility bills
-            registers_json = reebill.get_all_actual_registers_json()
+            # the "rows" argument is only given when xaction is "create", "update",
+            # or "destroy". it's a list if there are multiple rows (though in
+            # practice there is only one because only one row of the grid can be
+            # created/edited/deleted at a time).
+            rows = json.loads(kwargs['rows'])
+            if not isinstance(rows, list):
+                rows = [rows]
 
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
+            if xaction == 'create':
+                for row in rows:
+                    validate_id_components(row.get('meter_id',''),
+                            row.get('register_id',''))
 
-            # client sends "current_selected_id" to identify which row is
-            # selected in the grid; if this key is present, server must also
-            # include "current_selected_id" in the response to indicate that
-            # the same row is still selected
-            if 'current_selected_id' in kwargs:
-                result['current_selected_id'] = kwargs['current_selected_id']
+                    # create the new register (ignoring return value)
+                    mongo.new_register(utilbill_doc, row.get('meter_id', None),
+                            row.get('register_id', None))
+                   
+                # get dictionaries describing all registers in all utility bills
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
 
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-        if xaction == 'update':
-            # for update, client sends a JSON representation of the grid rows,
-            # containing only the fields to be updated, plus an "id" field that
-            # contains the service, meter id, and register id BEFORE the user
-            # edited them.
+                # client sends "current_selected_id" to identify which row is
+                # selected in the grid; if this key is present, server must also
+                # include "current_selected_id" in the response to indicate that
+                # the same row is still selected
+                if 'current_selected_id' in kwargs:
+                    result['current_selected_id'] = kwargs['current_selected_id']
 
-            result = {'success': True}
+                self.reebill_dao._save_utilbill(utilbill_doc)
 
-            for row in rows:
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
+
+                return self.dumps(result)
+
+            if xaction == 'update':
+                # for update, client sends a JSON representation of the grid rows,
+                # containing only the fields to be updated, plus an "id" field that
+                # contains the service, meter id, and register id BEFORE the user
+                # edited them.
+
+                result = {'success': True}
+
+                for row in rows:
+                    # extract keys needed to identify the register being updated
+                    # from the "id" field sent by the client
+                    utilbill_id, orig_meter_id, orig_reg_id = row['id'].split('/')
+
+                    validate_id_components(row.get('meter_id',''),
+                            row.get('register_id',''))
+
+                    # modify the register using every field in 'row' except "id"
+                    # (getting back values necessary to tell the client which row
+                    # should be selected)
+                    del row['id']
+                    new_meter_id, new_reg_id = mongo.update_register(
+                            utilbill_doc, orig_meter_id, orig_reg_id, **row)
+
+                    # if this row was selected before, tell the client it should
+                    # still be selected, specifying the row by its new "id"
+                    if kwargs.get('current_selected_id') == '%s/%s/%s' % (
+                            utilbill_id, orig_meter_id, orig_reg_id):
+                        result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
+                                new_meter_id, new_reg_id)
+
+                self.reebill_dao._save_utilbill(utilbill_doc)
+
+                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
+                result.update({
+                    'rows': registers_json,
+                    'total': len(registers_json)
+                })
+
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.set_meter_dates_from_utilbills()
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
+
+                return self.dumps(result)
+
+            if xaction == 'destroy':
+                assert len(rows) == 1
+                id_of_row_to_delete = rows[0]
+
                 # extract keys needed to identify the register being updated
-                # from the "id" field sent by the client
-                orig_service, orig_meter_id, orig_reg_id = row['id'].split('/')
+                utilbill_id, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                        .split('/')
+                mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
 
-                validate_id_components(row.get('meter_id',''),
-                        row.get('register_id',''))
+                # NOTE there is no "current_selected_id" because the formerly
+                # selected row was deleted
+                registers_json = mongo.get_all_actual_registers_json(
+                        utilbill_doc)
+                result = {'success': True, "rows": registers_json,
+                        'total': len(registers_json)}
 
-                # modify the register using every field in 'row' except "id"
-                # (getting back values necessary to tell the client which row
-                # should be selected)
-                del row['id']
-                new_service, new_meter_id, new_reg_id = \
-                        reebill.update_register(orig_service, orig_meter_id,
-                        orig_reg_id, **row)
+                self.reebill_dao._save_utilbill(utilbill_doc)
 
-                # if this row was selected before, tell the client it should
-                # still be selected, specifying the row by its new "id"
-                if kwargs.get('current_selected_id') == '%s/%s/%s' % (
-                        orig_service, orig_meter_id, orig_reg_id):
-                    result['current_selected_id'] = '%s/%s/%s' % (new_service,
-                            new_meter_id, new_reg_id)
+                if reebill_sequence is not None:
+                    # utility bill document has been modified, so reebill document
+                    # must be updated to match it
+                    reebill.update_utilbill_subdocs()
+                    self.reebill_dao.save_reebill(reebill)
 
-            # update meter read dates to match utility bill period dates in
-            # case they changed (they didn't, because the UI can't specify this)
-            reebill.set_meter_dates_from_utilbills()
+                return self.dumps(result)
 
-            registers_json = reebill.get_all_actual_registers_json()
-            result.update({
-                'rows': registers_json,
-                'total': len(registers_json)
-            })
-
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
-
-        if xaction == 'destroy':
-            assert len(rows) == 1
-            id_of_row_to_delete = rows[0]
-
-            # extract keys needed to identify the register being updated
-            orig_service, orig_meter_id, orig_reg_id = id_of_row_to_delete\
-                    .split('/')
-            reebill.delete_register(orig_service, orig_meter_id, orig_reg_id)
-
-            # NOTE there is no "current_selected_id" because the formerly
-            # selected row was deleted
-            registers_json = reebill.get_all_actual_registers_json()
-            result = {'success': True, "rows": registers_json,
-                    'total': len(registers_json)}
-
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps(result)
-
-        raise ValueError('Unknown xaction "%s"' % xaction)
+            raise ValueError('Unknown xaction "%s"' % xaction)
 
     #
     ################
@@ -2722,8 +2670,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def upload_utility_bill(self, account, service, begin_date, end_date, total_charges,
-            file_to_upload, **args):
+    def upload_utility_bill(self, account, service, begin_date, end_date,
+            total_charges, file_to_upload, **args):
+        '''Handles AJAX request to create a new utility bill from the "Upload
+        Utility Bill" form. If 'file_to_upload' None, the utility bill state
+        will be 'SkylineEstimated'; otherwise it will be 'Complete'. Currently,
+        there is no way to specify a 'UtilityEstimated' state in the UI.'''
         with DBSession(self.state_db) as session:
             if not account or not begin_date or not end_date or not total_charges or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
@@ -2736,11 +2688,30 @@ class BillToolBridge:
             UtilBill.validate_utilbill_period(begin_date_as_date,
                     end_date_as_date)
 
+            # these arguments are not provided by the client; look up the
+            # previous bill with the same service and use the same values as in
+            # that one, or if there is no previous bill, get it from the
+            # template
+            try:
+                predecessor = self.state_db.get_last_real_utilbill(session,
+                        account, begin_date, service=service)
+                rate_class = predecessor.rate_class
+                utility = predecessor.utility
+            except NoSuchBillException:
+                template = self.reebill_dao.load_utilbill_template(session, account)
+                rate_class = template['rate_structure_binding']
+                utility = template['utility']
+
+            # NOTE 'file_to_upload.file' is always a CherryPy object; if no
+            # file was specified, 'file_to_upload.file' will be None
+
             try:
                 self.process.upload_utility_bill(session, account, service,
-                        begin_date_as_date, end_date_as_date,
-                        file_to_upload.file, file_to_upload.filename if
-                        file_to_upload else None, total=total_charges_as_float)
+                        utility, rate_class, begin_date_as_date,
+                        end_date_as_date, file_to_upload.file,
+                        file_to_upload.filename if file_to_upload else None,
+                        total=total_charges_as_float, state=UtilBill.Complete
+                        if file_to_upload.file else UtilBill.SkylineEstimated)
             except IOError:
                 self.logger.error('file upload failed:', begin_date, end_date,
                         file_to_upload.filename)
@@ -2756,47 +2727,12 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        journal_entries = self.journal_dao.load_entries(account)
-#        for entry in journal_entries:
-#            # TODO 29715501 replace user identifier with user name
-#            # (UserDAO.load_user() currently requires a password to load a
-#            # user, but we just want to translate an indentifier into a
-#            # name)
-#
-#            # put a string containing all non-standard journal entry data in an
-#            # 'extra' field for display in the browser, because the UI can't
-#            # have column to handle any key that might appear in any event.
-#            # disabled for now because the client doesn't actually show the
-#            #"extra" data.
-#            # TODO processing the entries in this way is slow when loading entries
-#            # for all accounts. (yes, "paging" will be needed when the number of
-#            # entries gets REALLY large but the real problem here is bad code,
-#            # which should be fixed first. mongo aggregation is probably the
-#            # simplest way to do it and it's fast.)
-#            extra_data = copy.deepcopy(entry)
-#            del extra_data['account']
-#            if 'sequence' in extra_data:
-#                del extra_data['sequence']
-#            del extra_data['date']
-#            if 'event' in extra_data:
-#                del extra_data['event']
-#            if 'user' in extra_data:
-#                del extra_data['user']
-#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
-
         if xaction == "read":
+            journal_entries = self.journal_dao.load_entries(account)
             return self.dumps({'success': True, 'rows':journal_entries})
 
-        elif xaction == "update":
-            # TODO: 20493983 eventually allow admin user to override and edit
-            return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
-
-        elif xaction == "create":
-            # TODO: 20493983 necessary for adding new journal entries directy to grid
-            return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
-        elif xaction == "destroy":
-            # TODO: 20493983 eventually allow admin user to override and edit
-            return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
+        # TODO: 20493983 eventually allow admin user to override and edit
+        return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
     @cherrypy.expose
     @random_wait
@@ -2855,38 +2791,33 @@ class BillToolBridge:
                 # sequence: reebill sequence number (if present)}
                 utilbills, totalCount = self.state_db.list_utilbills(session,
                         account, int(start), int(limit))
-                state_reebills = [ub.reebill for ub in utilbills]
-                mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account,
-                        rb.sequence) if rb else None for rb in state_reebills]
+                # NOTE does not support multiple reebills per utility bill
+                state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
+                        ub._utilbill_reebills] for ub in utilbills)
 
                 full_names = self.full_names_of_accounts([account])
                 full_name = full_names[0] if full_names else account
 
-                rows = [dict([
+                rows = [{
                     # TODO: sending real database ids to the client a security
                     # risk; these should be encrypted
-                    ('id', ub.id),
-                    ('account', ub.customer.account),
-                    ('name', full_name),
-                    # capitalized service names have still not been expunged from
-                    # the db!
-                    ('utility', rb.utility_name_for_service(ub.service.lower()) if
-                            ub.service is not None and rb is not None else ''),
-                    ('rate_structure',
-                            rb.rate_structure_name_for_service(ub.service.lower()) if
-                            ub.service is not None and rb is not None else ''),
+                    'id': ub.id,
+                    'account': ub.customer.account,
+                    'name': full_name,
+                    'utility': ub.utility,
+                    'rate_structure': ub.rate_class,
                     # capitalize service name
-                    ('service', 'Unknown' if ub.service is None else
-                            ub.service[0].upper() + ub.service[1:]),
-                    ('period_start', ub.period_start),
-                    ('period_end', ub.period_end),
-                    ('total_charges', ub.total_charges),
-                    ('sequence', ub.reebill.sequence if ub.reebill else None),
-                    ('state', ub.state_name()),
+                    'service': 'Unknown' if ub.service is None else
+                           ub.service[0].upper() + ub.service[1:],
+                    'period_start': ub.period_start,
+                    'period_end': ub.period_end,
+                    'total_charges': ub.total_charges,
+                    'sequence': ub.sequence_version_string(),
+                    'state': ub.state_name(),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
-                    ('editable', (not ub.has_reebill or not ub.reebill.issued))
-                ]) for rb, ub in zip(mongo_reebills,utilbills)]
+                    'editable': not ub.is_attached()
+                } for ub in utilbills]
 
                 return self.dumps({'success': True, 'rows':rows,
                         'results':totalCount})
@@ -2944,8 +2875,7 @@ class BillToolBridge:
                     # delete it & get new path (will be None if there was never
                     # a utility bill file or the file could not be found)
                     print start, end, service
-                    deleted_path = self.process.delete_utility_bill(session,
-                            utilbill_id)
+                    deleted_path = self.process.delete_utility_bill(session, utilbill)
 
                     # log it
                     journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],

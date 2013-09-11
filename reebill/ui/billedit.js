@@ -48,6 +48,7 @@ function reeBillReady() {
     // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
+    var selected_utilbill_id = null;
 
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
@@ -392,9 +393,9 @@ function reeBillReady() {
                 width: 90,
             },{
                 id: 'sequence',
-                header: 'Sequence',
+                header: 'Reebill Sequence/Version',
                 dataIndex: 'sequence',
-                width: 70,
+                width: 150,
             },
             {
                 id: 'state',
@@ -476,10 +477,15 @@ function reeBillReady() {
             moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
-                    //loadReeBillUIForSequence(record.data.account, null);
+                    selected_utilbill_id = null;
+                    ubMeasuredUsagesPanel.setDisabled(true);
+                    ubRegisterGrid.setEditable(false);
                 },
                 
                 rowselect: function (selModel, index, record) {
+                    selected_utilbill_id = record.id;
+                    ubMeasuredUsagesPanel.setDisabled(false);
+                    ubRegisterGrid.setEditable(true);
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
@@ -1685,10 +1691,11 @@ function reeBillReady() {
         }
         ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
-        // set the current selection into the store's baseParams
+        options.params.utilbill_id = selected_utilbill_id;
+
         store.baseParams.account = selected_account;
-        store.baseParams.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill_id;
+
         ubRegisterGrid.setDisabled(true);
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
     });
@@ -1703,7 +1710,7 @@ function reeBillReady() {
 
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill_id;
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
@@ -1993,6 +2000,19 @@ function reeBillReady() {
         ],
     });
     
+    var ubVersionMenu = new Ext.Button({
+        text: "a button",
+        iconCls: 'icon-add',
+        menu: {
+            items: [
+                { text: 'a', },
+                { text: 'b', },
+            ],
+            //floating: false,
+        },
+        //handler: function() {}
+    });
+
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
@@ -2005,7 +2025,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [ubVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
@@ -4771,10 +4791,8 @@ function reeBillReady() {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
-                                    //Ext.MessageBox.alert('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    //Ext.MessageBox.alert('1Server Error');
-                                    //console.log('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('1Server Error');
+                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     accountGrid.getSelectionModel().clearSelections();
@@ -6152,7 +6170,7 @@ function reeBillReady() {
         selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
-        ubMeasuredUsagesPanel.setDisabled(true);
+        //ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
