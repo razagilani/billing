@@ -190,7 +190,8 @@ class BillToolBridge:
             self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
             self.config.set('skyline_backend', 'olap_host', 'tyrell')
             self.config.set('skyline_backend', 'olap_database', 'dev')
-            self.config.set('skyline_backend', 'nexus_host', '[specify nexus host]')
+            self.config.set('skyline_backend', 'nexus_db_host', '[specify nexus mongo host for direct conns from skyliner]')
+            self.config.set('skyline_backend', 'nexus_web_host', '[specify nexus web host for NexusAPI/NexusUtil]')
 
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
@@ -312,7 +313,7 @@ class BillToolBridge:
         self.logger.setLevel(logging.DEBUG)
 
         # create a NexusUtil
-        self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_host'))
+        self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
 
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
@@ -372,7 +373,7 @@ class BillToolBridge:
                         'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        #'nexus_host': self.config.get('skyline_backend', 'nexus_host'),
+                        'nexus_host': self.config.get('skyline_backend', 'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
@@ -382,7 +383,7 @@ class BillToolBridge:
                     'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
-                    #'nexus_host': self.config.get('skyline_backend', 'nexus_host'),
+                    'nexus_host': self.config.get('skyline_backend', 'nexus_db_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
