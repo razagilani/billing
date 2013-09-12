@@ -2169,9 +2169,7 @@ function reeBillReady() {
 
     aChargesStore.on('beforeload', function () {
         aChargesGrid.setDisabled(true);
-        aChargesStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        aChargesStore.setBaseParam("account", selected_account);
-        aChargesStore.setBaseParam("sequence", selected_sequence);
+        aChargesStore.setBaseParam("utilbill_id", selected_utilbill.id);
     });
 
     // fired when the datastore has completed loading
