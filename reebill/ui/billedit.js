@@ -481,12 +481,16 @@ function reeBillReady() {
                     selected_utilbill = null;
                     ubMeasuredUsagesPanel.setDisabled(true);
                     ubRegisterGrid.setEditable(false);
+                    rateStructurePanel.setDisabled(true);
+                    chargeItemsPanel.setDisabled(true);
                 },
                 
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
                     ubMeasuredUsagesPanel.setDisabled(false);
                     ubRegisterGrid.setEditable(true);
+                    rateStructurePanel.setDisabled(false);
+                    chargeItemsPanel.setDisabled(false);
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
@@ -6099,9 +6103,6 @@ function reeBillReady() {
         
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
-            ubMeasuredUsagesPanel.setDisabled(true);
-            rateStructurePanel.setDisabled(true);
-            chargeItemsPanel.setDisabled(true);
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
@@ -6185,9 +6186,6 @@ function reeBillReady() {
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
         // the global account and sequence selection
-        ubMeasuredUsagesPanel.setDisabled(false);
-        rateStructurePanel.setDisabled(false);
-        chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
         accountInfoFormPanel.setDisabled(false);
