@@ -494,9 +494,9 @@ function reeBillReady() {
 
                     ubVersionStore.removeAll()
                     ubVersionStore.add([
-                        new Ext.data.Record({data: {sequence: null, version: null}}),
-                        new Ext.data.Record({data: {sequence: 1, version: 0}}),
-                        new Ext.data.Record({data: {sequence: 1, version: 1}}),
+                        new Ext.data.Record({sequence: null, version: null}),
+                        new Ext.data.Record({sequence: 1, version: 0}),
+                        new Ext.data.Record({sequence: 1, version: 1}),
                     ]);
 
                     // a row was selected in the UI, update subordinate ReeBill Data
@@ -2014,9 +2014,9 @@ function reeBillReady() {
 
     var ubVersionStore = new Ext.data.ArrayStore({
         fields: [
-            //{'name': 'sequence', 'type': 'int'},
-            //{'name': 'version', 'type': 'int'},
-            'data',
+            {'name': 'sequence', 'type': 'int'},
+            {'name': 'version', 'type': 'int'},
+            //'data',
         ],
         idIndex: 0,
         data:[['current']],
@@ -2037,15 +2037,15 @@ function reeBillReady() {
         displayField: 'data',
         store: ubVersionStore,
 
-        tpl: new Ext.XTemplate('<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">some text {data.sequence}</div></tpl>'),
-        //view: new Ext.DataView({
-            //store: ubVersionStore,
-            //tpl: new Ext.XTemplate('<tpl for=".">', 'some text', '</tpl>'),
-            //data: {x: 1},
-        //}),
-        //listConfig: {
-            //itemTpl: '{sequence}-{version}',
-        //},
+        // this template converts the record in the Datastore to a string:
+        // "current" when the value of "sequence" in the record is null, and
+        // sequence-version otherwise
+        tpl: new Ext.XTemplate(
+            '<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">',
+            '<tpl if="sequence == null">Current version</tpl>',
+            '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
+            '</div></tpl>'
+        ),
     });
 
     //
