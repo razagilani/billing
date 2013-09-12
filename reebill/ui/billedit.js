@@ -619,7 +619,7 @@ function reeBillReady() {
     //
     var utilityBillPanel = new Ext.Panel({
         id: 'utilityBillTab',
-        title: 'Utility Bill',
+        title: 'Utility Bills',
         disabled: utilityBillPanelDisabled,
         layout: 'vbox',
         layoutConfig : {
@@ -1316,7 +1316,7 @@ function reeBillReady() {
     // finally, set up the tabe that will contain the above widgets
     var reeBillPanel = new Ext.Panel({
         id: 'reeBillTab',
-        title: 'ReeBill',
+        title: 'ReeBills',
         disabled: reeBillPanelDisabled,
         layout: 'accordion',
         items: [reeBillGrid, accountInfoFormPanel ],
@@ -2889,7 +2889,7 @@ function reeBillReady() {
 
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
-        title: 'Charge Items',
+        title: 'Charges',
         disabled: chargeItemsPanelDisabled,
         xtype: 'panel',
         layout: 'accordion',
@@ -3738,7 +3738,7 @@ function reeBillReady() {
     //
     var paymentsPanel = new Ext.Panel({
         id: 'paymentTab',
-        title: 'Pay',
+        title: 'Payments',
         disabled: paymentPanelDisabled,
         layout: 'accordion',
         items: [paymentGrid, ],
