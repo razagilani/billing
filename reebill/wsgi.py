@@ -1533,16 +1533,9 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
-    def cprsrsi(self, xaction, account, sequence, service, **kwargs):
-        if not xaction or not sequence or not service:
-            raise ValueError("Bad Parameter Value")
-        service = service.lower()
-
+    def cprsrsi(self, utilbill_id, xaction, **kwargs):
         with DBSession(self.state_db) as session:
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            utilbill = next(u for u in reebill.utilbills if u.service.lower() ==
-                    service)
-
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
             rate_structure = self.ratestructure_dao.load_cprs_for_utilbill(
                     utilbill)
             rates = rate_structure["rates"]
@@ -1550,10 +1543,6 @@ class BillToolBridge:
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
             
-                
-            if self.state_db.is_issued(session, account, sequence):
-                raise ValueError("Cannot edit rate structure for an issued bill")
-
             if xaction == "update":
 
                 rows = json.loads(kwargs["rows"])
@@ -1594,7 +1583,6 @@ class BillToolBridge:
                 self.ratestructure_dao.save_rs(rate_structure)
 
                 # 23417235 temporary hack
-                result = self.compute_bill(account, sequence)
                 return self.dumps({'success':True})
 
             elif xaction == "create":
@@ -1609,8 +1597,6 @@ class BillToolBridge:
 
                 self.ratestructure_dao.save_rs(rate_structure)
 
-                # 23417235 temporary hack
-                self.compute_bill(account, sequence)
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
@@ -1637,36 +1623,22 @@ class BillToolBridge:
 
                 self.ratestructure_dao.save_rs(rate_structure)
 
-                # 23417235 temporary hack
-                self.compute_bill(account, sequence)
                 return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def uprsrsi(self, xaction, account, sequence, service, **kwargs):
-        if not xaction or not account or not sequence or not service:
-            raise ValueError("Bad Parameter Value")
-        # client sends capitalized service names! workaround:
-        service = service.lower()
-        sequence = int(sequence)
-
+    def uprsrsi(self, utilbill_id, xaction, **kwargs):
         with DBSession(self.state_db) as session:
-            reebill = self.state_db.get_reebill(session, account, sequence)
-
-            # NOTE does not support multiple utility bills per reebill
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
             rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(
-                    reebill.utilbills[0])
+                    utilbill)
             rates = rate_structure["rates"]
 
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
             
-            with DBSession(self.state_db) as session:
-                if self.state_db.is_issued(session, account, sequence):
-                    raise Exception("Cannot edit rate structure for an issued bill")
-                
             if xaction == "update":
 
                 rows = json.loads(kwargs["rows"])
@@ -1706,8 +1678,6 @@ class BillToolBridge:
 
                 self.ratestructure_dao.save_rs(rate_structure)
 
-                # 23417235 temporary hack
-                self.compute_bill(account, sequence)
                 return self.dumps({'success':True})
 
             elif xaction == "create":
@@ -1721,8 +1691,6 @@ class BillToolBridge:
 
                 self.ratestructure_dao.save_rs(rate_structure)
 
-                # 23417235 temporary hack
-                self.compute_bill(account, sequence)
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
@@ -1749,8 +1717,6 @@ class BillToolBridge:
 
                 self.ratestructure_dao.save_rs(rate_structure)
 
-                # 23417235 temporary hack
-                self.compute_bill(account, sequence)
                 return self.dumps({'success':True})
 
     @cherrypy.expose

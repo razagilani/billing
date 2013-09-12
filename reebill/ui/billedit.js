@@ -2974,17 +2974,8 @@ function reeBillReady() {
     });
 
     CPRSRSIStore.on('beforeload', function (store, options) {
-
         CPRSRSIGrid.setDisabled(true);
-
-        // not sure why options don't have to be explicitly set as they do 
-        // for utilbillGridStore and reeBillStore
-        //options.params.account = selected_account;
-        //options.params.sequence = selected_sequence;
-        //options.params.service = Ext.getCmp('service_for_charges').getValue();
-        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        CPRSRSIStore.setBaseParam("account", selected_account);
-        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
+        CPRSRSIStore.setBaseParam("utilbill_id", selected_utilbill.id);
     });
 
     // fired when the datastore has completed loading
@@ -3245,9 +3236,7 @@ function reeBillReady() {
 
     UPRSRSIStore.on('beforeload', function () {
         UPRSRSIGrid.setDisabled(true);
-        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        UPRSRSIStore.setBaseParam("account", selected_account);
-        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
+        UPRSRSIStore.setBaseParam("utilbill_id", selected_utilbill.id);
     });
 
     // fired when the datastore has completed loading
