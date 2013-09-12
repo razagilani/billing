@@ -50,8 +50,6 @@ UBVersionMenu.prototype = new Ext.form.ComboBox({
     editable: false,
     mode: 'local',
     triggerAction: 'all',
-    valueField: 'data',
-    displayField: 'data',
 
     // this template converts the record in the Datastore to a string:
     // "current" when the value of "sequence" in the record is null, and
@@ -516,12 +514,20 @@ function reeBillReady() {
                     rateStructurePanel.setDisabled(false);
                     chargeItemsPanel.setDisabled(false);
 
+                    // replace the records in 'ubVersionStore' with new ones,
+                    // so the contents of the 3 utility bill version menus
+                    // match the selected utility bill. there's always one row
+                    // for the current version of the utility bill, and one row
+                    // for each issued reebill version attached to it (if any)
                     ubVersionStore.removeAll()
-                    ubVersionStore.add([
-                        new Ext.data.Record({sequence: null, version: null}),
-                        new Ext.data.Record({sequence: 1, version: 0}),
-                        new Ext.data.Record({sequence: 1, version: 1}),
-                    ]);
+                    ubVersionStore.add(new Ext.data.Record({'sequence': null,
+                            'version': null}));
+                    for (var i = 0; i < selected_utilbill.reebills.length; i++) {
+                        ubVersionStore.add(new Ext.data.Record({
+                            'sequence': selected_utilbill.reebills[i].sequence,
+                            'version': selected_utilbill.reebills[i].version,
+                        }));
+                    }
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
