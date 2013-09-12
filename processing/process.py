@@ -73,6 +73,63 @@ class Process(object):
         session.add(new_customer)
         return new_customer
 
+    
+    def get_utilbill_doc(self, session, utilbill_id, reebill_sequence=None,
+            reebill_version=None):
+        '''Loads and returns the Mongo document for the utility bill given by
+        'utilbill_id' (MySQL id). If the sequence and version of an issued
+        reebill are given, the document returned will be the frozen version for
+        the issued reebill.
+        '''
+        # NOTE this method is in Process because it uses both databases; is
+        # there a better place to put it?
+
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+
+        if reebill_sequence is None:
+            assert reebill_version is None
+            # load editable utility bill document
+            return self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+
+        # otherwise, load frozen utility bill document for the given reebill
+        reebill = self.state_db.get_reebill(utilbill.customer.account,
+                reebill_sequence, version=reebill_version)
+        assert reebill.issued == True
+        return self.state_db.load_doc_for_statedb_utilbill(session,
+                utilbill, reebill=reebill)
+
+    def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
+            reebill_version=None):
+        '''Loads and returns a rate structure document of type 'rs_type'
+        ("uprs" or "cprs") for the utility bill given by 'utilbill_id' (MySQL
+        id). If the sequence and version of an issued reebill are given, the
+        document returned will be the frozen version for the issued reebill.
+        '''
+        # NOTE this method is in Process because it uses both databases; is
+        # there a better place to put it?
+
+        if rs_type == 'uprs':
+            load_method = self.rate_structure_dao.load_uprs_for_utilbill
+        elif rs_type == 'cprs':
+            load_method = self.rate_structure_dao.load_cprs_for_utilbill
+        else:
+            raise ValueError(('Unknown "rs_type": expected "uprs" or "cprs", '
+                'got "%s"') % rs_type)
+
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+
+        if reebill_sequence is None:
+            assert reebill_version is None
+            # load editable utility bill document
+            return load_method(utilbill)
+
+        # otherwise, load frozen utility bill document for the given reebill
+        reebill = self.state_db.get_reebill(utilbill.customer.account,
+                reebill_sequence, version=reebill_version)
+        assert reebill.issued == True
+        return load_method(session, utilbill, reebill=reebill)
+
+
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_structure=None):
