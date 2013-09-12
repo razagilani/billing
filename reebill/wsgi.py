@@ -1532,191 +1532,87 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    # TODO see 15415625 about the problem passing in service to get at a set of RSIs
-    def cprsrsi(self, utilbill_id, xaction, **kwargs):
-        with DBSession(self.state_db) as session:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            rate_structure = self.ratestructure_dao.load_cprs_for_utilbill(
-                    utilbill)
-            rates = rate_structure["rates"]
-
-            if xaction == "read":
-                return self.dumps({'success': True, 'rows':rates})
-            
-            if xaction == "update":
-
-                rows = json.loads(kwargs["rows"])
-
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
-
-                # process list of edits
-                # TODO: RateStructure DAO should do CRUD ops
-                for row in rows:
-                    # identify the RSI UUID of the posted data
-                    rsi_uuid = row['uuid']
-
-                    # identify the rsi, and update it with posted data
-                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                    # there should only be one match
-                    if (len(matches) == 0):
-                        raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
-
-                    # eliminate attributes that have empty strings or None as these mustn't 
-                    # be added to the RSI so the RSI knows to compute for those values
-                    for k,v in row.items():
-                        if v is None or v == "":
-                            del row[k]
-
-                    # now that blank values are removed, ensure that required fields were sent from client 
-                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-
-                    # now take the legitimate values from the posted data and update the RSI
-                    # clear it so that the old emptied attributes are removed
-                    rsi.clear()
-                    rsi.update(row)
-
-                self.ratestructure_dao.save_rs(rate_structure)
-
-                # 23417235 temporary hack
-                return self.dumps({'success':True})
-
-            elif xaction == "create":
-
-                # TODO: 27315653 allow more than one RSI to be created
-
-                new_rate = {"uuid": str(UUID.uuid1())}
-                # should find an unbound charge item, and use its binding since an RSI
-                # might be made after a charge item is created
-                #new_rate['rsi_binding'] = orphaned binding
-                rates.append(new_rate)
-
-                self.ratestructure_dao.save_rs(rate_structure)
-
-                return self.dumps({'success':True, 'rows':new_rate})
-
-            elif xaction == "destroy":
-
-                uuids = json.loads(kwargs["rows"])
-
-                # single edit comes in not in a list
-                # TODO: understand why this is a unicode coming up from browser
-                if type(uuids) is unicode: uuids = [uuids]
-
-                # process list of removals
-                for rsi_uuid in uuids:
-
-                    # identify the rsi
-                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-
-                    if (len(matches) == 0):
-                        raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
-
-                    rates.remove(rsi)
-
-                self.ratestructure_dao.save_rs(rate_structure)
-
-                return self.dumps({'success':True})
+    def uprsrsi(self, utilbill_id, xaction, **kwargs):
+        return self.rsi_crud(utilbill_id, 'uprs', xaction, kwargs.get('rows'))
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def uprsrsi(self, utilbill_id, xaction, **kwargs):
+    def cprsrsi(self, utilbill_id, xaction, **kwargs):
+        return self.rsi_crud(utilbill_id, 'cprs', xaction, kwargs.get('rows'))
+
+    def rsi_crud(self, utilbill_id, rsi_type, xaction, rows):
+        '''Performs all CRUD operations on the UPRS or CPRS of the utility bill
+        given by its MySQL id. 'xaction' is one of the Ext-JS operation names
+        "create", "read", "update", "destroy". If 'xaction' is not "read",
+        'rows' should contain data to create/update/delete as a JSON string.
+        '''
         with DBSession(self.state_db) as session:
             utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            rate_structure = self.ratestructure_dao.load_uprs_for_utilbill(
-                    utilbill)
+            rate_structure = getattr(self.ratestructure_dao,
+                    'load_%s_for_utilbill' % rsi_type)(utilbill)
             rates = rate_structure["rates"]
 
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
             
+            rows = json.loads(rows)
+
             if xaction == "update":
-
-                rows = json.loads(kwargs["rows"])
-
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
 
                 # process list of edits
                 for row in rows:
-
                     # identify the RSI descriptor of the posted data
                     rsi_uuid = row['uuid']
-
                     # identify the rsi, and update it with posted data
                     matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
                     # there should only be one match
-                    if (len(matches) == 0):
+                    if len(matches) == 0:
                         raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
+                    if len(matches) > 1:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
-
                     # eliminate attributes that have empty strings or None as these mustn't 
                     # be added to the RSI so the RSI knows to compute for those values
                     for k,v in row.items():
                         if v is None or v == "":
                             del row[k]
-
                     # now that blank values are removed, ensure that required fields were sent from client 
                     if 'uuid' not in row: raise Exception("RSI must have a uuid")
                     if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-
                     # now take the legitimate values from the posted data and update the RSI
                     # clear it so that the old emptied attributes are removed
                     rsi.clear()
                     rsi.update(row)
-
                 self.ratestructure_dao.save_rs(rate_structure)
-
                 return self.dumps({'success':True})
 
             elif xaction == "create":
-
-                # TODO: 27315653 allow more than one RSI to be created
-
                 new_rate = {"uuid": str(UUID.uuid1())}
                 # find an oprhan binding and set it here
                 #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
-
                 self.ratestructure_dao.save_rs(rate_structure)
-
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
-
-                uuids = json.loads(kwargs["rows"])
-
-                # single edit comes in not in a list
-                # TODO: understand why this is a unicode coming up from browser
+                uuids = rows
                 if type(uuids) is unicode: uuids = [uuids]
-
                 # process list of removals
                 for rsi_uuid in uuids:
-
                     # identify the rsi
-                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-
+                    matches = [result for result in it.ifilter(lambda x:
+                        x['uuid']==rsi_uuid, rates)]
                     if (len(matches) == 0):
                         raise Exception("Did not match an RSI UUID which should not be possible")
                     if (len(matches) > 1):
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
-
                     rates.remove(rsi)
-
                 self.ratestructure_dao.save_rs(rate_structure)
-
                 return self.dumps({'success':True})
 
     @cherrypy.expose
