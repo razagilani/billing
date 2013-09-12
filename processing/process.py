@@ -89,14 +89,14 @@ class Process(object):
         if reebill_sequence is None:
             assert reebill_version is None
             # load editable utility bill document
-            return self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            return self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # otherwise, load frozen utility bill document for the given reebill
         reebill = self.state_db.get_reebill(utilbill.customer.account,
                 reebill_sequence, version=reebill_version)
         assert reebill.issued == True
-        return self.state_db.load_doc_for_statedb_utilbill(session,
-                utilbill, reebill=reebill)
+        return self.state_db.load_doc_for_utilbill(session, utilbill,
+                reebill=reebill)
 
     def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
             reebill_version=None):
@@ -155,7 +155,7 @@ class Process(object):
                         "to an issued reebill."))
 
         # load Mongo document
-        doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # for total charges, it doesn't matter whether a reebill exists
         if total_charges is not None:
@@ -372,7 +372,7 @@ class Process(object):
                     utilbill.customer.account, utilbill.period_end,
                     service=utilbill.service, utility=utilbill.utility,
                     rate_class=utilbill.rate_class)
-            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+            doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
             cprs['_id'] = ObjectId()
         except NoSuchBillException:
@@ -689,7 +689,7 @@ class Process(object):
         
         # load document for the 'utilbill', use it to create the reebill
         # document, and save the reebill document
-        utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
                 utilbill.customer.account, 1, 0, customer.discountrate,
                 utilbill.customer.latechargerate, [utilbill_doc])
@@ -735,7 +735,7 @@ class Process(object):
                     '"hypothetical" so a reebill can\'t be based on it'))
             new_utilbills.append(successor)
             new_utilbill_docs.append(
-                    self.reebill_dao.load_doc_for_statedb_utilbill(successor))
+                    self.reebill_dao.load_doc_for_utilbill(successor))
 
         # currently only one service is supported
         assert len(new_utilbills) == 1
@@ -802,7 +802,7 @@ class Process(object):
         # (note that utility bill subdocuments in the reebill also get updated
         # in 'compute_bill' below, but 'fetch_oltp_data' won't work unless they
         # are updated)
-        reebill_doc._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
+        reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
                 for u in reebill.utilbills]
         reebill_doc.update_utilbill_subdocs()
 
@@ -1016,7 +1016,7 @@ class Process(object):
             utilbill_doc = self.reebill_dao.load_utilbill_template(session,
                     template_account)
         else:
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
                     template_account_last_utilbill)
 
         # create row for new customer in MySQL, with new utilbill document

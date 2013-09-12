@@ -111,8 +111,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertIsNotNone(utilbill.document_id)
             self.assertIsNotNone(utilbill.uprs_document_id)
             self.assertIsNotNone(utilbill.cprs_document_id)
-            utilbill_doc = self.reebill_dao\
-                    .load_doc_for_statedb_utilbill(utilbill)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertNotEqual(template_account_template_utilbill['_id'],
                     utilbill_doc['_id'])
             self.assertEqual('88888', utilbill_doc['account'])
@@ -437,8 +436,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # first bill for a given rate structure.)
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             uprs['rates'] = example_data.get_uprs_dict()['rates']
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
-                    utilbill)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             utilbill_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
             self.rate_structure_dao.save_rs(uprs)
@@ -709,7 +707,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one()
-            self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
@@ -770,8 +768,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             new_version_reebill._utilbills = [other_utility_bill]
             new_version_reebill_doc = self.reebill_dao.load_reebill(account, 1,
                     version=1)
-            other_utility_bill_doc = self.reebill_dao\
-                    .load_doc_for_statedb_utilbill(utilbill)
+            other_utility_bill_doc = self.reebill_dao.load_doc_for_utilbill(
+                    utilbill)
             new_version_reebill_doc._utilbills[0]['_id'] = other_utility_bill_doc['_id']
             self.reebill_dao.save_reebill(new_version_reebill_doc)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
@@ -942,7 +940,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # utility bill document, UPRS document, CPRS document, and combined
                 # rate structure object should be the same as the "current" ones
                 # belonging to the utility bill itself...
-                current_utilbill = self.reebill_dao.load_doc_for_statedb_utilbill(
+                current_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill)
                 current_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=new_reebill)
@@ -950,7 +948,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         utilbill, reebill=new_reebill)
                 current_combined_rs = self.rate_structure_dao.load_rate_structure(
                         utilbill, reebill=new_reebill)
-                reebill_utilbill = self.reebill_dao.load_doc_for_statedb_utilbill(
+                reebill_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill, reebill=new_reebill)
                 reebill_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=new_reebill)
@@ -966,7 +964,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # version (at least _ids should be different)
                 original_reebill = self.state_db.get_reebill(session, acc, 1,
                         version=0)
-                frozen_utilbill = self.reebill_dao.load_doc_for_statedb_utilbill(
+                frozen_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill, reebill=original_reebill)
                 frozen_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=original_reebill)
@@ -1636,7 +1634,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                     utilbill_jan)
             uprs['rates'] = example_data.get_uprs_dict()['rates']
-            utilbill_jan_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+            utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill_jan)
             utilbill_jan_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
@@ -1761,7 +1759,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             all_utilbills = session.query(UtilBill).all()
             self.assertEqual(1, len(all_utilbills))
             ub = all_utilbills[0]
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(ub)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(ub)
             self.assertEqual(utilbill_doc['_id'], ObjectId(ub.document_id))
 
             # the utility bill document should look like the template, except
