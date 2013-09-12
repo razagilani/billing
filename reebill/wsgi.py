@@ -1532,26 +1532,32 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def uprsrsi(self, utilbill_id, xaction, **kwargs):
-        return self.rsi_crud(utilbill_id, 'uprs', xaction, kwargs.get('rows'))
+    def uprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
+            reebill_version=None, **kwargs):
+        return self.rsi_crud(utilbill_id, 'uprs', xaction, reebill_sequence,
+                reebill_version, kwargs.get('rows'))
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def cprsrsi(self, utilbill_id, xaction, **kwargs):
-        return self.rsi_crud(utilbill_id, 'cprs', xaction, kwargs.get('rows'))
+    def cprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
+            reebill_version=None, **kwargs):
+        return self.rsi_crud(utilbill_id, 'cprs', xaction, reebill_sequence,
+                reebill_version, kwargs.get('rows'))
 
-    def rsi_crud(self, utilbill_id, rsi_type, xaction, rows):
+    def rsi_crud(self, utilbill_id, rsi_type, xaction, reebill_sequence,
+            reebill_version, rows):
         '''Performs all CRUD operations on the UPRS or CPRS of the utility bill
-        given by its MySQL id. 'xaction' is one of the Ext-JS operation names
-        "create", "read", "update", "destroy". If 'xaction' is not "read",
-        'rows' should contain data to create/update/delete as a JSON string.
+        given by its MySQL id (and reebill_sequence and reebill_version if
+        non-None). 'xaction' is one of the Ext-JS operation names "create",
+        "read", "update", "destroy". If 'xaction' is not "read", 'rows' should
+        contain data to create/update/delete as a JSON string.
         '''
         with DBSession(self.state_db) as session:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            rate_structure = getattr(self.ratestructure_dao,
-                    'load_%s_for_utilbill' % rsi_type)(utilbill)
+            rate_structure = self.process.get_rs_doc(session, utilbill_id,
+                    rsi_type, reebill_sequence=reebill_sequence,
+                    reebill_version=reebill_version)
             rates = rate_structure["rates"]
 
             if xaction == "read":
@@ -1568,7 +1574,8 @@ class BillToolBridge:
                     # identify the RSI descriptor of the posted data
                     rsi_uuid = row['uuid']
                     # identify the rsi, and update it with posted data
-                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x:
+                            x['uuid']==rsi_uuid, rates)]
                     # there should only be one match
                     if len(matches) == 0:
                         raise Exception("Did not match an RSI UUID which should not be possible")
@@ -2016,10 +2023,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def actualCharges(self, utilbill_id, xaction, **kwargs):
+    def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
+            reebill_version=None, **kwargs):
         with DBSession(self.state_db) as session:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
+                    reebill_sequence=reebill_sequence,
+                    reebill_version=reebill_version)
             flattened_charges = mongo.actual_chargegroups_flattened(utilbill_doc)
 
             if xaction == "read":
@@ -2214,18 +2223,9 @@ class BillToolBridge:
 
 
         with DBSession(self.state_db) as session:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            if reebill_sequence is None:
-                assert reebill_version is None
-                # load editable utility bill
-                utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
-                        utilbill)
-            else:
-                # load frozen utilbill document for the given reebill
-                reebill = self.state_db.get_reebill(utilbill.customer.account,
-                        reebill_sequence, version=reebill.version)
-                utilbill_doc = self.state_db.load_doc_for_statedb_utilbill(
-                        session, utilbill, reebill=reebill)
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
+                    reebill_sequence=reebill_sequence,
+                    reebill_version=reebill_version)
 
             toSelect = None
 
