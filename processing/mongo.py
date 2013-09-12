@@ -1666,7 +1666,7 @@ class ReebillDAO:
         result = convert_datetimes(result)
         return result
 
-    def load_doc_for_statedb_utilbill(self, utilbill, reebill=None):
+    def load_doc_for_utilbill(self, utilbill, reebill=None):
         '''Returns the Mongo utility bill document corresponding to the given
         state.UtilBill object.
 
