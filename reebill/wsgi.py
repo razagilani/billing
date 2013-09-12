@@ -2016,100 +2016,75 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def actualCharges(self, xaction, service, account, sequence, **kwargs):
-        if not xaction or not account or not sequence or not service:
-            raise ValueError("Bad Parameter Value")
-        service = service.lower()
+    def actualCharges(self, utilbill_id, xaction, **kwargs):
+        with DBSession(self.state_db) as session:
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            flattened_charges = mongo.actual_chargegroups_flattened(utilbill_doc)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+            if xaction == "read":
+                return self.dumps({'success': True, 'rows': flattened_charges})
 
-        # It is possible that there is no reebill for the requested charges 
-        # if this is the case, return no charges.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested charges 
-        # TODO ensure that this is necessary with new datastore scheme
-        if reebill is None:
-            return self.dumps({'success':True, 'rows':[]})
+            if xaction == "update":
+                rows = json.loads(kwargs["rows"])
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+                for row in rows:
+                    # identify the charge item UUID of the posted data
+                    ci_uuid = row['uuid']
+                    # identify the charge item, and update it with posted data
+                    matches = [ci_match for ci_match in it.ifilter(lambda x:
+                            x['uuid']==ci_uuid, flattened_charges)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match charge item UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one charge item UUID which should not be possible")
+                    ci = matches[0]
 
-        flattened_charges = reebill.actual_chargegroups_flattened(service)
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
-        if xaction == "read":
-            # compute so the hypothetical charges in the reebill document are
-            # updated to make to actual charges in the utility bill document
-            self.compute_bill(account, sequence)
-            return self.dumps({'success': True, 'rows': flattened_charges})
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    ci.clear()
+                    ci.update(row)
 
-        elif xaction == "update":
-            rows = json.loads(kwargs["rows"])
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
-            for row in rows:
-                # identify the charge item UUID of the posted data
-                ci_uuid = row['uuid']
-                # identify the charge item, and update it with posted data
-                matches = [ci_match for ci_match in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match charge item UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one charge item UUID which should not be possible")
-                ci = matches[0]
+                mongo.set_actual_chargegroups_flattened(utilbill_doc,
+                        flattened_charges)
+                self.reebill_dao._save_utilbill(utilbill_doc)
+                return self.dumps({'success':True})
 
-                # now that blank values are removed, ensure that required fields were sent from client 
-                # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+            if xaction == "create":
+                rows = json.loads(kwargs["rows"])
+                # single create comes in not in a list
+                if type(rows) is dict: rows = [rows]
+                for row in rows:
+                    row["uuid"] = str(UUID.uuid1())
+                    flattened_charges.append(copy.copy(row))
+                mongo.set_actual_chargegroups_flattened(utilbill_doc,
+                        flattened_charges)
+                self.reebill_dao._save_utilbill(utilbill_doc)
+                return self.dumps({'success':True, 'rows':rows})
 
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                ci.clear()
-                ci.update(row)
-            reebill.set_actual_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            # compute so the hypothetical charges in the reebill document are
-            # updated to make to actual charges in the utility bill document
-            self.compute_bill(account, sequence)
-
-            return self.dumps({'success':True})
-        elif xaction == "create":
-            rows = json.loads(kwargs["rows"])
-            # single create comes in not in a list
-            if type(rows) is dict: rows = [rows]
-            for row in rows:
-                row["uuid"] = str(UUID.uuid1())
-                # TODO: 22726549 need a copy here because reebill mangles the datastructure passed in
-                flattened_charges.append(copy.copy(row))
-            # TODO: 22726549 Reebill shouldn't mangle a datastructure passed in.  It should make a copy
-            # for itself.
-            reebill.set_actual_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            # compute so the hypothetical charges in the reebill document are
-            # updated to make to actual charges in the utility bill document
-            self.compute_bill(account, sequence)
-
-            return self.dumps({'success':True, 'rows':rows})
-        elif xaction == "destroy":
-            uuids = json.loads(kwargs["rows"])
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
-            for ci_uuid in uuids:
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
-                if (len(matches) == 0):
-                    raise Exception("Did not match a charge item UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one charge item UUID which should not be possible")
-                ci = matches[0]
-                flattened_charges.remove(ci)
-            reebill.set_actual_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            # compute so the hypothetical charges in the reebill document are
-            # updated to make to actual charges in the utility bill document
-            self.compute_bill(account, sequence)
-
-            return self.dumps({'success':True})
+            if xaction == "destroy":
+                uuids = json.loads(kwargs["rows"])
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
+                for ci_uuid in uuids:
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
+                    if (len(matches) == 0):
+                        raise Exception("Did not match a charge item UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one charge item UUID which should not be possible")
+                    ci = matches[0]
+                    flattened_charges.remove(ci)
+                mongo.set_actual_chargegroups_flattened(utilbill_doc,
+                        flattened_charges)
+                self.reebill_dao._save_utilbill(utilbill_doc)
+                return self.dumps({'success':True})
 
 
     @cherrypy.expose

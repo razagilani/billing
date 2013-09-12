@@ -276,6 +276,16 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     return meter['identifier'], register['identifier']
 
 
+# TODO make this a method of a utility bill document class when one exists
+def actual_chargegroups_flattened(utilbill_doc):
+    return flatten_chargegroups_dict(copy.deepcopy(
+            utilbill_doc['chargegroups']))
+
+# TODO make this a method of a utility bill document class when one exists
+def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
+    utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
+
+
 
 
 
@@ -1482,21 +1492,10 @@ class MongoReebill(object):
         return flatten_chargegroups_dict(copy.deepcopy(
                 utilbill_handle['hypothetical_chargegroups']))
 
-    def actual_chargegroups_flattened(self, service):
-        utilbill = self._get_utilbill_for_service(service)
-        return flatten_chargegroups_dict(copy.deepcopy(
-                utilbill['chargegroups']))
-
-
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill_handle = self._get_handle_for_service(service)
         utilbill_handle['hypothetical_chargegroups'] = \
                 unflatten_chargegroups_list(flat_charges)
-
-    def set_actual_chargegroups_flattened(self, service, flat_charges):
-        utilbill = self._get_utilbill_for_service(service)
-        utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
-
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
