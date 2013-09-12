@@ -41,6 +41,30 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
+/* Constructor for menus that show versions of utility bills in
+ * utility-bill-editing tabs */
+function UBVersionMenu(store) {
+    this.store = store;
+}
+UBVersionMenu.prototype = new Ext.form.ComboBox({
+    editable: false,
+    mode: 'local',
+    triggerAction: 'all',
+    valueField: 'data',
+    displayField: 'data',
+
+    // this template converts the record in the Datastore to a string:
+    // "current" when the value of "sequence" in the record is null, and
+    // sequence-version otherwise
+    tpl: new Ext.XTemplate(
+        '<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">',
+        '<tpl if="sequence == null">Current version</tpl>',
+        '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
+        '</div></tpl>'
+    ),
+});
+
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -2028,25 +2052,7 @@ function reeBillReady() {
         chargesUbVersionMenu.setValue(record.data.label);
     }
     
-    var muUbVersionMenu = new Ext.form.ComboBox({
-        id: 'muUbVersionMenu',
-        editable: false,
-        mode: 'local',
-        triggerAction: 'all',
-        valueField: 'data',
-        displayField: 'data',
-        store: ubVersionStore,
-
-        // this template converts the record in the Datastore to a string:
-        // "current" when the value of "sequence" in the record is null, and
-        // sequence-version otherwise
-        tpl: new Ext.XTemplate(
-            '<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">',
-            '<tpl if="sequence == null">Current version</tpl>',
-            '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
-            '</div></tpl>'
-        ),
-    });
+    var muUbVersionMenu = new UBVersionMenu(ubVersionStore);
 
     //
     // Instantiate the Utility Bill Meters and Registers panel
@@ -2873,16 +2879,8 @@ function reeBillReady() {
     // Instantiate the Charge Items panel
     //
     
-    var chargesUbVersionMenu = new Ext.form.ComboBox({
-        id: 'chargesUbVersionMenu',
-        editable: false,
-        mode: 'local',
-        triggerAction: 'all',
-        valueField: 'label',
-        displayField: 'label',
-        store: ubVersionStore,
-    });
-    
+    var chargesUbVersionMenu = new UBVersionMenu(ubVersionStore);
+
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
         title: 'Charge Items',
@@ -3454,16 +3452,8 @@ function reeBillReady() {
     //
     // Instantiate the Rate Structure panel 
     //
-    var rsUbVersionMenu = new Ext.form.ComboBox({
-        id: 'rsUbVersionMenu',
-        editable: false,
-        mode: 'local',
-        triggerAction: 'all',
-        valueField: 'label',
-        displayField: 'label',
-        store: ubVersionStore,
-    });
-    
+    var rsUbVersionMenu = new UBVersionMenu(ubVersionStore);
+
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
