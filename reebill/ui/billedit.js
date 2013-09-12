@@ -492,6 +492,13 @@ function reeBillReady() {
                     rateStructurePanel.setDisabled(false);
                     chargeItemsPanel.setDisabled(false);
 
+                    ubVersionStore.removeAll()
+                    ubVersionStore.add([
+                        new Ext.data.Record({data: {sequence: null, version: null}}),
+                        new Ext.data.Record({data: {sequence: 1, version: 0}}),
+                        new Ext.data.Record({data: {sequence: 1, version: 1}}),
+                    ]);
+
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
                     //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
@@ -2006,7 +2013,11 @@ function reeBillReady() {
     });
 
     var ubVersionStore = new Ext.data.ArrayStore({
-        fields: ['label'],
+        fields: [
+            //{'name': 'sequence', 'type': 'int'},
+            //{'name': 'version', 'type': 'int'},
+            'data',
+        ],
         idIndex: 0,
         data:[['current']],
     });
@@ -2022,9 +2033,19 @@ function reeBillReady() {
         editable: false,
         mode: 'local',
         triggerAction: 'all',
-        valueField: 'label',
-        displayField: 'label',
+        valueField: 'data',
+        displayField: 'data',
         store: ubVersionStore,
+
+        tpl: new Ext.XTemplate('<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">some text {data.sequence}</div></tpl>'),
+        //view: new Ext.DataView({
+            //store: ubVersionStore,
+            //tpl: new Ext.XTemplate('<tpl for=".">', 'some text', '</tpl>'),
+            //data: {x: 1},
+        //}),
+        //listConfig: {
+            //itemTpl: '{sequence}-{version}',
+        //},
     });
 
     //
