@@ -185,6 +185,78 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     0.6, 0.2, billing_address, service_address, '88888')
 
 
+    def test_get_docs(self):
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
+                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+            utilbill = session.query(UtilBill).one()
+
+            # invalid rate structure type names
+            self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    utilbill.id, 'UPRS')
+            self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    utilbill.id, 'CPRS')
+            self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    utilbill.id, 'urs')
+            self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    utilbill.id, 'URS')
+
+            # documents should be the same ones when loaded directly using
+            # reebill_dao
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
+            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
+            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
+            self.assertEqual(utilbill_doc,
+                    self.reebill_dao.load_doc_for_utilbill(utilbill))
+            self.assertEqual(uprs_doc,
+                    self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
+            self.assertEqual(cprs_doc,
+                    self.rate_structure_dao.load_cprs_for_utilbill(utilbill))
+
+            # issue a reebill based on this utility bill, then modify the
+            # editable utility bill so it's different from the frozen ones
+            self.process.create_first_reebill(session, utilbill)
+            self.process.issue(session, '99999', 1)
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
+            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
+            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
+            utilbill_doc['service'] = 'electricity'
+            new_rsi = {"rate": "36.25", "rsi_binding": "NEW", "quantity": "1"}
+            uprs_doc['rates'] = [new_rsi]
+            cprs_doc['rates'] = [new_rsi]
+            self.reebill_dao._save_utilbill(utilbill_doc)
+            self.rate_structure_dao.save_rs(uprs_doc)
+            self.rate_structure_dao.save_rs(cprs_doc)
+
+            # load frozen documents associated with the issued reebill
+            frozen_utilbill_doc = self.process.get_utilbill_doc(session,
+                    utilbill.id, reebill_sequence=1, reebill_version=0)
+            frozen_uprs_doc = self.process.get_rs_doc(session, utilbill.id,
+                    'uprs', reebill_sequence=1, reebill_version=0)
+            frozen_cprs_doc = self.process.get_rs_doc(session, utilbill.id,
+                    'cprs', reebill_sequence=1, reebill_version=0)
+            self.assertNotEqual(frozen_utilbill_doc, utilbill_doc)
+            self.assertNotEqual(frozen_uprs_doc, uprs_doc)
+            self.assertNotEqual(frozen_cprs_doc, cprs_doc)
+            self.assertEquals('gas', frozen_utilbill_doc['service'])
+            self.assertNotIn(new_rsi, frozen_uprs_doc['rates'])
+            self.assertNotIn(new_rsi, frozen_cprs_doc['rates'])
+
+            # editable documents should be loaded correctly
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
+            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
+            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
+            self.assertEqual(utilbill_doc,
+                    self.reebill_dao.load_doc_for_utilbill(utilbill))
+            self.assertEqual(uprs_doc,
+                    self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
+            self.assertEqual(cprs_doc,
+                    self.rate_structure_dao.load_cprs_for_utilbill(utilbill))
+            self.assertEquals('electricity', utilbill_doc['service'])
+            self.assertIn(new_rsi, uprs_doc['rates'])
+            self.assertIn(new_rsi, cprs_doc['rates'])
+
     def test_get_late_charge(self):
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'

@@ -86,10 +86,10 @@ class Process(object):
             return self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # otherwise, load frozen utility bill document for the given reebill
-        reebill = self.state_db.get_reebill(utilbill.customer.account,
+        reebill = self.state_db.get_reebill(session, utilbill.customer.account,
                 reebill_sequence, version=reebill_version)
         assert reebill.issued == True
-        return self.state_db.load_doc_for_utilbill(session, utilbill,
+        return self.reebill_dao.load_doc_for_utilbill(utilbill,
                 reebill=reebill)
 
     def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
@@ -118,10 +118,10 @@ class Process(object):
             return load_method(utilbill)
 
         # otherwise, load frozen utility bill document for the given reebill
-        reebill = self.state_db.get_reebill(utilbill.customer.account,
+        reebill = self.state_db.get_reebill(session, utilbill.customer.account,
                 reebill_sequence, version=reebill_version)
         assert reebill.issued == True
-        return load_method(session, utilbill, reebill=reebill)
+        return load_method(utilbill, reebill=reebill)
 
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
