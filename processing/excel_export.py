@@ -228,7 +228,7 @@ def main():
         state_db,
         mongo.ReebillDAO(state_db, database='skyline-dev'),
         mongo.ReebillDAO(state_db,
-                pymongo.Connection('localhost-dev', 27017)['skyline-dev')
+                pymongo.Connection('localhost-dev', 27017)['skyline-dev']),
         verbose=True
     )
 
