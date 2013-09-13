@@ -1984,6 +1984,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # test_reebill.ReebillTest.test_get_reebill_doc_for_utilbills, but
             # should be done here as well.)
 
+            self.assertRaises(ValueError, self.process.create_first_reebill,
+                    session, utilbill)
+
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for
         https://www.pivotaltracker.com/story/show/53434901.'''
