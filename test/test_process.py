@@ -330,7 +330,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_first_reebill(session, utilbill)
             reebill = session.query(ReeBill).one()
             self.process.issue(session, '99999', 1)
-            self.process.update_utilbill_metadata(utilbill.id, service='water')
+            self.process.update_utilbill_metadata(session, utilbill.id,
+                    service='water')
             editable_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             frozen_doc = self.reebill_dao.load_doc_for_utilbill(utilbill,
                     reebill=reebill)
@@ -338,7 +339,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert frozen_doc['sequence'] == 1 and frozen_doc['version'] == 0
             self.assertNotEqual(editable_doc, frozen_doc)
             self.assertEqual('electricity', frozen_doc['service'])
-            self.assertEqual('electricity', utilbill.service)
+            self.assertEqual('water', utilbill.service)
             self.assertEqual('water', editable_doc['service'])
 
 
