@@ -43,25 +43,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 /* Constructor for menus that show versions of utility bills in
  * utility-bill-editing tabs */
-function UBVersionMenu(store) {
-    this.store = store;
-}
-UBVersionMenu.prototype = new Ext.form.ComboBox({
-    editable: false,
-    mode: 'local',
-    triggerAction: 'all',
-
-    // this template converts the record in the Datastore to a string:
-    // "current" when the value of "sequence" in the record is null, and
-    // sequence-version otherwise
-    tpl: new Ext.XTemplate(
-        '<tpl for="."><div ext:qtip="{data}" class="x-combo-list-item">',
-        '<tpl if="sequence == null">Current version</tpl>',
-        '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
-        '</div></tpl>'
-    ),
-});
-
 
 function reeBillReady() {
     // global declaration of account and sequence variable
@@ -519,14 +500,22 @@ function reeBillReady() {
                     // match the selected utility bill. there's always one row
                     // for the current version of the utility bill, and one row
                     // for each issued reebill version attached to it (if any)
-                    ubVersionStore.removeAll()
-                    ubVersionStore.add(new Ext.data.Record({'sequence': null,
-                            'version': null}));
+                    records = [[null, null]];
                     for (var i = 0; i < selected_utilbill.reebills.length; i++) {
-                        ubVersionStore.add(new Ext.data.Record({
-                            'sequence': selected_utilbill.reebills[i].sequence,
-                            'version': selected_utilbill.reebills[i].version,
-                        }));
+                        records.push([
+                            selected_utilbill.reebills[i].sequence,
+                            selected_utilbill.reebills[i].version,
+                        ]);
+                    }
+                    menus = UBVersionMenu.prototype.ubVersionMenus
+                    for (var i = 0;i < menus.length;i++) {
+                        menus[i].store.loadData(records);
+                    }
+                    if (menus.length > 0) {
+                        menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
+                            sequence: null,
+                            version: null,
+                        }), 0);
                     }
 
                     // a row was selected in the UI, update subordinate ReeBill Data
@@ -2041,25 +2030,61 @@ function reeBillReady() {
             }),
         ],
     });
-
-    var ubVersionStore = new Ext.data.ArrayStore({
-        fields: [
-            {'name': 'sequence', 'type': 'int'},
-            {'name': 'version', 'type': 'int'},
-            //'data',
-        ],
-        idIndex: 0,
-        data:[['current']],
-    });
-
-    function updateUbVersionMenus(cb, record, index) {
-        muUbVersionMenu.setValue(record.data.label);
-        rsUbVersionMenu.setValue(record.data.label);
-        chargesUbVersionMenu.setValue(record.data.label);
-    }
     
-    var muUbVersionMenu = new UBVersionMenu(ubVersionStore);
-
+    var UBVersionMenu = Ext.extend(Ext.form.ComboBox, {
+        //A list of all UBVersionMenus in existance, so that they can all
+        //be updated at the same time.
+        ubVersionMenus: [],
+        constructor: function () {
+            UBVersionMenu.superclass.constructor.call(this, {
+                editable: false,
+                mode: 'local',
+                triggerAction: 'all',
+                flex: 0,
+                
+                // this template converts the record in the Datastore to a string:
+                // "current" when the value of "sequence" in the record is null, and
+                // sequence-version otherwise
+                tpl: new Ext.XTemplate(
+                    '<tpl for="."><div class="x-combo-list-item">',
+                    '<tpl if="sequence == null">Current version</tpl>',
+                    '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
+                    '</div></tpl>'
+                ),
+                
+                listeners: {
+                    select: function (cb, record, index) {
+                        menus = cb.ubVersionMenus;
+                        for (var i = 0;i < menus.length;i++) {
+                            menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
+                        }
+                        if (record.data.sequence == null) {
+                            ubRegisterStore.load({params:{}});
+                            aChargesStore.load({params:{}});
+                            UPRSRSIStore.load({params:{}});
+                            CPRSRSIStore.load({params:{}});
+                        }
+                        else {
+                            ubRegisterStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
+                            aChargesStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
+                            UPRSRSIStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
+                            CPRSRSIStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
+                        }
+                    },
+                },
+                store: new Ext.data.ArrayStore({
+                    fields: [
+                        //These can be any type, since it isn't specified
+                        {'name': 'sequence'},
+                        {'name': 'version'},
+                    ],
+                    data:[[null, null]],
+                }),
+            });
+            UBVersionMenu.prototype.ubVersionMenus.push(this);
+        }
+    });
+    
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
@@ -2072,7 +2097,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [muUbVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [new UBVersionMenu(), ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
@@ -2441,12 +2466,9 @@ function reeBillReady() {
         }),
         plugins: aChargesSummary,
         frame: true,
-        collapsible: true,
-        animCollapse: false,
+        flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
         title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
@@ -2816,12 +2838,9 @@ function reeBillReady() {
         }),
         plugins: hChargesSummary,
         frame: true,
-        collapsible: true,
-        animCollapse: false,
+        flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
         title: 'Hypothetical Charges',
         clicksToEdit: 2
         // config options for stateful behavior
@@ -2885,18 +2904,18 @@ function reeBillReady() {
     // Instantiate the Charge Items panel
     //
     
-    var chargesUbVersionMenu = new UBVersionMenu(ubVersionStore);
-
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
         title: 'Charges',
         disabled: chargeItemsPanelDisabled,
         xtype: 'panel',
-        layout: 'accordion',
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [
-            {
-                items:[chargesUbVersionMenu]
-            },
+            new UBVersionMenu(),
             aChargesGrid,
             hChargesGrid,
         ]
@@ -3174,8 +3193,7 @@ function reeBillReady() {
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
+        flex: 1,
         stripeRows: true,
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
@@ -3440,8 +3458,7 @@ function reeBillReady() {
         store: UPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
+        flex: 1,
         stripeRows: true,
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
@@ -3458,37 +3475,21 @@ function reeBillReady() {
     //
     // Instantiate the Rate Structure panel 
     //
-    var rsUbVersionMenu = new UBVersionMenu(ubVersionStore);
 
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
         disabled: rateStructurePanelDisabled,
-        layout: 'border',
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [
-        {
-            region: 'north',
-            layout: 'fit',
-            split: true,
-            items: [{items:[rsUbVersionMenu]}],
-        },{
-            region: 'center',
-            layout: 'fit',
-            split: true,
-            height: 275,
-            items: [CPRSRSIGrid]
-        },{
-            region: 'south',
-            layout: 'fit',
-            split: true,
-            items: [UPRSRSIGrid]
-        //},{
-            //region:'south',
-            //layout: 'fit',
-            //split: true,
-            //height: 275,
-            //items: [URSRSIGrid]
-        }]
+            new UBVersionMenu(),
+            CPRSRSIGrid,
+            UPRSRSIGrid,
+        ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -6074,9 +6075,6 @@ function reeBillReady() {
     reeBillImageDataConn.disableCaching = true;
 
     function loadReeBillUIForSequence(account, sequence) {
-        muUbVersionMenu.setValue('current')
-        rsUbVersionMenu.setValue('current');
-        chargesUbVersionMenu.setValue('current');
         /* null argument means no sequence is selected */
 
         // get selected reebill's record and the predecessor's record
