@@ -336,7 +336,7 @@ class RateStructureDAO(object):
         result = []
         for utilbill in utilbills:
             if utilbill.uprs_document_id is None:
-                self.logger.warning(('ingoring utility bill for %(account)s '
+                self.logger.warning(('ignoring utility bill for %(account)s '
                     'from %(start)s to %(end)s: has state %(state)s but lacks '
                     'uprs_document_id') % {'state': utilbill.state,
                     'account': utilbill.customer.account, 'start':
