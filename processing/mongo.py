@@ -1497,7 +1497,7 @@ class MongoReebill(object):
         utilbill_handle['hypothetical_chargegroups'] = \
                 unflatten_chargegroups_list(flat_charges)
 
-class ReebillDAO:
+class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
     def __init__(self, state_db, host='localhost', port=27017,
