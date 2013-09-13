@@ -150,6 +150,11 @@ class Process(object):
 
         # load Mongo document
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        
+        # 'load_doc_for_utilbill' should load an editable document always, not
+        # one attached to a reebill
+        assert 'sequence' not in doc
+        assert 'version' not in doc
 
         # for total charges, it doesn't matter whether a reebill exists
         if total_charges is not None:
