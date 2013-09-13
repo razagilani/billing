@@ -1503,15 +1503,7 @@ class ReebillDAO:
     def __init__(self, state_db, host='localhost', port=27017,
             database=None, **kwargs):
         self.state_db = state_db
-
-        try:
-            self.connection = pymongo.Connection(host, int(port)) 
-        except Exception as e: 
-            print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
-            raise e
-        finally:
-            # TODO disconnect from the database __del__
-            pass
+        self.connection = pymongo.Connection(host, int(port)) 
         
         self.reebills_collection = self.connection[database]['reebills']
         self.utilbills_collection = self.connection[database]['utilbills']
