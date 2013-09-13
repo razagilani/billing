@@ -13,7 +13,6 @@ from billing.util.nexus_util import NexusUtil
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.processing.state import StateDB
-from billing.processing.mongo import ReebillDAO
 from billing.util.dictutils import deep_map
 from billing.util import dateutils
 from billing.util.monthmath import Month, months_of_past_year
@@ -403,66 +402,3 @@ class EstimatedRevenue(object):
 
         return default_rate
 
-
-if __name__ == '__main__':
-    state_db = StateDB(
-        host='localhost',
-        database='skyline_dev',
-        user='dev',
-        password='dev'
-    )
-    reebill_dao = ReebillDAO(state_db, **{
-        'host': 'localhost',
-        'port': 27017,
-        'database': 'skyline-dev',
-        'collection': 'reebills',
-    })
-    ratestructure_dao = RateStructureDAO(**{
-        'host': 'localhost',
-        'port': 27017,
-        'database': 'skyline',
-        'collection': 'ratestructure',
-    })
-    splinter = Splinter('http://duino-drop.appspot.com/', **{
-        'skykit_host': 'localhost',
-        'skykit_db': 'dev',
-        'olap_cache_host': 'localhost',
-        'olap_cache_db': 'dev',
-        'monguru_options': {
-            'olap_cache_host': 'localhost',
-            'olap_cache_db': 'dev',
-            'cartographer_options': {
-                'olap_cache_host': 'localhost',
-                'olap_cache_db': 'dev',
-                'measure_collection': 'skymap',
-                'install_collection': 'skyit_installs',
-                'nexus_db': 'nexus',
-                'nexus_collection': 'skyline',
-            },
-        },
-        'cartographer_options': {
-            'olap_cache_host': 'localhost',
-            'olap_cache_db': 'dev',
-            'measure_collection': 'skymap',
-            'install_collection': 'skyit_installs',
-            'nexus_db': 'nexus',
-            'nexus_collection': 'skyline',
-        },
-    })
-    nexus_util = NexusUtil('nexus')
-
-    session = state_db.session()
-    er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
-            None, nexus_util, splinter)
-
-    data = er.report(session, failfast=True)
-    #data = er.report(session)
-    print table.csv
-
-    data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
-    data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
-    pp(data)
-
-    session.commit()
-
-    # TODO test accuracy on historical bills here

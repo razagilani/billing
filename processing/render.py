@@ -860,33 +860,3 @@ def equivalentTrees(poundsCarbonAvoided = 0):
     Assume 1.08 pounds per bill period"""
     return int(poundsCarbon) * 1.08
 
-if __name__ == '__main__':
-    from billing.mongo import ReebillDAO
-    from billing.processing.state import StateDB
-    from billing.processing.session_contextmanager import DBSession
-    from billing.processing.process import Process
-    sdb = StateDB(**{
-        'host': 'localhost',
-        'database': 'skyline_dev',
-        'user': 'dev',
-        'password': 'dev'
-    })
-    reebill_dao = ReebillDAO(sdb, **{
-        'host': 'localhost',
-        'database': 'skyline',
-        'user': 'dev',
-        'password': 'dev'
-    })
-    renderer = ReebillRenderer(
-            {'temp_directory': '/tmp/rendering/'},
-            sdb, reebill_dao, None)
-    with DBSession(sdb) as s:
-        renderer.render(
-            s,
-            '10023', 
-            8,
-            '/tmp/rendering/10023/',
-            "10023-8.pdf",
-            "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
-            False
-        )

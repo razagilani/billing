@@ -25,6 +25,7 @@ import md5
 import operator
 from StringIO import StringIO
 from itertools import chain
+import pymongo
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
@@ -327,7 +328,9 @@ class BillToolBridge:
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection(self.billdb_config['host'],
+                int(self.billdb_config['port']))[self.billdb_config['database']])
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))

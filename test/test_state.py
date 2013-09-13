@@ -45,7 +45,9 @@ class StateTest(utils.TestCase):
             'host':'localhost',
             'database':'test'
         })
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **billdb_config)
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection(self.billdb_config['host'],
+                int(billdb_config['port']))[billdb_config['database']])
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
