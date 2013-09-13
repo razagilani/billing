@@ -68,12 +68,6 @@ class Process(object):
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
 
-    def new_account(self, session, name, account, discount_rate, late_charge_rate):
-        new_customer = Customer(name, account, discount_rate, late_charge_rate)
-        session.add(new_customer)
-        return new_customer
-
-    
     def get_utilbill_doc(self, session, utilbill_id, reebill_sequence=None,
             reebill_version=None):
         '''Loads and returns the Mongo document for the utility bill given by
