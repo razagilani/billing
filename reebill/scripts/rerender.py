@@ -29,7 +29,9 @@ renderer_config = {
 }
 
 state_db = state.StateDB(**statedb_config)
-reebill_dao = mongo.ReebillDAO(state_db, **billdb_config)
+reebill_dao = mongo.ReebillDAO(state_db,
+        pymongo.Connection(billdb_config['host'],
+        int(billdb_config['port']))[billdb_config['database']])
 
 with DBSession(state_db) as session:
     renderer = render.ReebillRenderer(renderer_config, state_db, reebill_dao,

@@ -108,8 +108,10 @@ def main():
         'database': args.statedb,
         'user': args.stateuser
     }
-
-    g = Grapher(StateDB(**statedb_config), ReebillDAO(billdb_config))
+    state_db = StateDB(**state_db)
+    g = Grapher(state_db, ReebillDAO(state_db,
+                pymongo.Connection(billdb_config['host'],
+                int(billdb_config['port']))[billdb_config['database']]))
     g.plot_monthly_actual_and_hypothetical_ce_charces(args.account, 'chart.png')
 
 if __name__ == '__main__':

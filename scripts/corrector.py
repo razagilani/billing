@@ -63,9 +63,9 @@ class BillCorrector(object):
             logger, report_recipient, log_recipient):
         # data accesss objects
         self.state_db = state.StateDB(**statedb_config)
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                billdb_config['host'], billdb_config['port'],
-                billdb_config['database'])
+        reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection(billdb_config['host'],
+                int(billdb_config['port']))[billdb_config['database']])
         self.session = self.state_db.session()
         self.splinter = Splinter(**splinter_config)
         self.nexus_util = NexusUtil('nexus')
