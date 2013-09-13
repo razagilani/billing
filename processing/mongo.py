@@ -1500,13 +1500,10 @@ class MongoReebill(object):
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    def __init__(self, state_db, host='localhost', port=27017,
-            database=None, **kwargs):
+    def __init__(self, state_db, database, **kwargs):
         self.state_db = state_db
-        self.connection = pymongo.Connection(host, int(port)) 
-        
-        self.reebills_collection = self.connection[database]['reebills']
-        self.utilbills_collection = self.connection[database]['utilbills']
+        self.reebills_collection = database['reebills']
+        self.utilbills_collection = database['utilbills']
 
     def _get_version_query(self, account, sequence, specifier):
         '''Returns the version part of a Mongo query for a reebill based on the

@@ -64,14 +64,8 @@ class FetchTest(unittest.TestCase):
             'host': 'localhost',
             'database': 'skyline_dev'
         })
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'skyline',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'reebills',
-            'host': 'localhost',
-            'port': '27017'
-        })
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection('localhost', 27017)['skyline-dev'])
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
