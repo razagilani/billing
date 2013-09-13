@@ -137,17 +137,6 @@ class Process(object):
         # of this method
         old_start, old_end = utilbill.period_start, utilbill.period_end
 
-        # forbid editing if this utility bill has an issued reebill
-        # TODO this should change when it is clear which version of a utility bill can be edited in the UI
-        if utilbill.is_attached():
-            reebill = utilbill.reebill
-            mongo_reebill = self.reebill_dao.load_reebill(
-                    reebill.customer.account, reebill.sequence)
-            # utility bills that have issued reebills shouldn't be editable
-            if utilbill.reebill.issued:
-                raise ValueError(("Can't edit utility bills that are attached "
-                        "to an issued reebill."))
-
         # load Mongo document
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         
