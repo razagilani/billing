@@ -507,11 +507,15 @@ function reeBillReady() {
                             selected_utilbill.reebills[i].version,
                         ]);
                     }
+                    //Go through the menus and load the data
                     menus = UBVersionMenu.prototype.ubVersionMenus
                     for (var i = 0;i < menus.length;i++) {
                         menus[i].store.loadData(records);
                     }
+                    //Select the 'Current Version'.  Only has to be selected once since they are all connected
                     if (menus.length > 0) {
+                        //Fires the event 'select', which takes a combobox, record, and index as arguments
+                        //Gets the correct record type from the combobox's store
                         menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
                             sequence: null,
                             version: null,
@@ -2056,14 +2060,17 @@ function reeBillReady() {
                     select: function (cb, record, index) {
                         menus = cb.ubVersionMenus;
                         for (var i = 0;i < menus.length;i++) {
+                            //Set the value to the correct string by extracting it from what the template generates
                             menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
                         }
+                        //If sequence is null, load the current version
                         if (record.data.sequence == null) {
                             ubRegisterStore.load({params:{}});
                             aChargesStore.load({params:{}});
                             UPRSRSIStore.load({params:{}});
                             CPRSRSIStore.load({params:{}});
                         }
+                        //Otherwise, get the correct sequence and version
                         else {
                             ubRegisterStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
                             aChargesStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
