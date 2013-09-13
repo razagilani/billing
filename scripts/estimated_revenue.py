@@ -51,7 +51,9 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     state_db = state.StateDB(**statedb_config)
     session = state_db.session()
 
-    reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
+    reebill_dao = mongo.ReebillDAO(state_db,
+            pymongo.Connection(billdb_config['host'],
+            int(billdb_config['port']))[billdb_config['database']])
     ratestructure_dao = rs.RateStructureDAO(billdb_config['host'], billdb_config['port'], billdb_config['database'],
         reebill_dao)
 

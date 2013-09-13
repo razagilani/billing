@@ -114,14 +114,9 @@ port = 27017
                 rate_structure_name='DC Non Residential Non Heat',
                 utility_name='washgas'))
 
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection('localhost', 27017)['test'])
+
         self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
                 27017, 'test', self.reebill_dao, logger=logger)
 
