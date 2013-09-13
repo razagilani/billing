@@ -199,6 +199,8 @@ class Process(object):
                     period_start or utilbill.period_start,
                     period_end or utilbill.period_end)
 
+        self.reebill_dao._save_utilbill(doc)
+
 
     def upload_utility_bill(self, session, account, service, utility,
             rate_class, begin_date, end_date, bill_file, file_name, total=0,
