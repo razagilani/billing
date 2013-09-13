@@ -171,6 +171,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(template_account_template_utilbill,
                     template_account_template_utilbill_again)
 
+            # it should not be possible to create an account that already
+            # exists
+            self.assertRaises(ValueError, self.process.create_new_account,
+                    session, '88888', 'New Account', 0.6, 0.2, billing_address,
+                    service_address, '99999')
+
+            # try creating another account when the template account has no
+            # utility bills yet
+            self.process.create_new_account(session, '77777', 'New Account',
+                    0.6, 0.2, billing_address, service_address, '88888')
+            self.process.create_new_account(session, '66666', 'New Account',
+                    0.6, 0.2, billing_address, service_address, '88888')
+
+
     def test_get_late_charge(self):
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'
