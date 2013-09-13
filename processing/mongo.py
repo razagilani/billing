@@ -1864,12 +1864,6 @@ class ReebillDAO:
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
 
-    def last_issue_date(self, session, account):
-        last_sequence = self.state_db.last_issued_sequence(session, account)
-        reebill = self.load_reebill(account, last_sequence)
-        return reebill.issue_date
-
-        
     def save_reebill(self, reebill, freeze_utilbills=False, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account, sequence, and version already exists, the existing
@@ -1999,13 +1993,6 @@ class ReebillDAO:
         self.utilbills_collection.save(utilbill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
 
-    def update_utility_and_rs(self, reebill, service, utility, rs_binding):
-        ub_doc = reebill._get_utilbill_for_service(service)
-        ub_doc['utility'] = utility
-        ub_doc['rate_structure_binding'] = rs_binding
-        ub_doc = bson_convert(copy.deepcopy(ub_doc))
-        self.utilbills_collection.save(ub_doc, safe=True)
-        
     def delete_reebill(self, reebill):
         '''Deletes the document corresponding to the given state.ReeBill. Does
         not check if the reebill has been issued. No utility bill documents are
@@ -2022,33 +2009,6 @@ class ReebillDAO:
 
     # TODO remove this method; this should be determined by looking at utility
     # bills in MySQL
-    def get_first_bill_date_for_account(self, account):
-        '''Returns the start date of the account's earliest reebill, or None if
-        no reebills exist for the customer.'''
-        query = {
-            '_id.account': account,
-            '_id.sequence': 1,
-        }
-        reebill_result = self.reebills_collection.find_one(query)
-        if reebill_result is None:
-            raise NoSuchBillException('First reebill for account %s is missing'
-                    % account)
-
-        utilbill_ids = [ub['id'] for ub in reebill_result['utilbills']]
-        query = {
-            '_id': {"$in": utilbill_ids}
-        }
-        utilbill_result = self.utilbills_collection.find(query)
-        if utilbill_result is None:
-            raise NoSuchBillException('Utilbills for first reebill for account %s is missing'
-                    % account)
-        else:
-            utilbill_result = list(utilbill_result)
-
-        return MongoReebill(reebill_result, utilbill_result).period_begin
-
-    # TODO remove this method; this should be determined by looking at utility
-    # bills in MySQL
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
@@ -2060,18 +2020,3 @@ class ReebillDAO:
         if result == None:
             return None
         return MongoReebill(result).issue_date
-
-    # TODO remove this method; this should be determined by looking at reebills
-    # in MySQL
-    def last_sequence(self, account):
-        '''Returns the sequence of the last reebill for the given account, or 0
-        if no reebills were found. This is different from
-        StateDB.last_sequence() because it uses Mongo; there may be un-issued
-        reebills in Mongo that are not in MySQL.'''
-        result = self.reebills_collection.find_one({
-            '_id.account': account
-            }, sort=[('_id.sequence', pymongo.DESCENDING)])
-        if result is None:
-            return 0
-        return result['_id']['sequence']
-
