@@ -256,7 +256,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
                 end=date(2012,8,22))
         second['service'] = 'electric'
         second['utility'] = 'washgas'
-        self.reebill_dao._save_utilbill(second)
+        self.reebill_dao.save_utilbill(second)
         bills = self.reebill_dao.load_utilbills()
         self.assertEquals(2, len(bills))
         first = self.reebill_dao.load_utilbills()[0]
@@ -281,31 +281,31 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         # ensure that a utilbill with "sequence" or "version" keys in it can
         # only be saved once
         utilbill = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(utilbill)
+        self.reebill_dao.save_utilbill(utilbill)
 
         # it can be saved repeatedly
-        self.reebill_dao._save_utilbill(utilbill)
+        self.reebill_dao.save_utilbill(utilbill)
         
         # when a reebill is issued, "sequence" and "version" keys get added to
         # the utility bill, so when it gets saved, a new document is created.
         attached_utilbill = copy.deepcopy(utilbill)
-        self.reebill_dao._save_utilbill(attached_utilbill,
+        self.reebill_dao.save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
         # this "frozen" utility bill should never change, so it can only be
         # saved once.
-        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
+        self.assertRaises(IssuedBillError, self.reebill_dao.save_utilbill,
                 attached_utilbill)
 
         # but the original utility bill can still be saved
-        self.reebill_dao._save_utilbill(utilbill)
+        self.reebill_dao.save_utilbill(utilbill)
 
         # it should never be possible to save a utilbill with the same
         # account, utility, service, start, end as another
         other_utilbill = example_data.get_utilbill_dict('99999',
                 start=utilbill['start'], end=utilbill['end'],
                 service=utilbill['service'], utility=utilbill['utility'])
-        self.assertRaises(NotUniqueException, self.reebill_dao._save_utilbill,
+        self.assertRaises(NotUniqueException, self.reebill_dao.save_utilbill,
                 other_utilbill)
 
     def test_delete_reebill(self):

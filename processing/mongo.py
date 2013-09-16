@@ -1912,7 +1912,7 @@ class ReebillDAO(object):
                 # saving fails below
                 utilbill_doc = copy.deepcopy(utilbill_doc)
                 utilbill_doc['_id'] = new_id
-                self._save_utilbill(utilbill_doc, force=force,
+                self.save_utilbill(utilbill_doc, force=force,
                         sequence_and_version=(reebill.sequence,
                         reebill.version))
                 # saving succeeded: set handle id to match the saved
@@ -1921,7 +1921,7 @@ class ReebillDAO(object):
                 reebill._set_utilbill_for_id(old_id, utilbill_doc)
                 return_value = new_id
             else:
-                self._save_utilbill(utilbill_doc, force=force)
+                self.save_utilbill(utilbill_doc, force=force)
 
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
         self.reebills_collection.save(reebill_doc, safe=True)
@@ -1929,7 +1929,7 @@ class ReebillDAO(object):
 
         return return_value
 
-    def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
+    def save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
         '''Save raw utility bill dictionary. If this utility bill belongs to an
         issued reebill (i.e. has sequence and version in it) it can't be saved.
