@@ -195,23 +195,14 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
                     utility=u['utility'], service=u['service'],
                     start=u['start'], end=u['end'], sequence=1)
             
-            # reebill with frozen utility bills can still be saved, but it
-            # can't be saved again with freeze_utilbills=True
-            self.reebill_dao.save_reebill(b)
-            self.assertRaises(NotUniqueException,
-                    self.reebill_dao.save_reebill, b, freeze_utilbills=True)
+            # reebill with frozen utility bills can't be saved, because saving
+            # the utility bills fails
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+                    b)
+            # unless the "force" argument is used
+            self.reebill_dao.save_reebill(b, force=True)
 
-            # save again to make sure the failed call to
-            # save_reebill(freeze_utilbills=True) above did not modify
-            # _id, sequence, or version
-            self.reebill_dao.save_reebill(b)
-
-            # trying to make SQLAlchemy flush its cache
-            #from billing.processing.state import ReeBill
-            #session.query(ReeBill).all()
-            #sqlalchemy.flush()
-
-            # issued reebill can't be saved at all
+            # likewise, an issued reebill can't be saved
             self.state_db.issue(session, '99999', 1)
             self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
                     b)
@@ -292,19 +283,21 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         utilbill = example_data.get_utilbill_dict('99999')
         self.reebill_dao._save_utilbill(utilbill)
 
-        # multiple saves are possible when the utilbill doesn't belong to a
-        # utilbill
+        # it can be saved repeatedly
         self.reebill_dao._save_utilbill(utilbill)
         
-        # put "sequence" and "version" keys in a copy of the utilbill, and save
+        # when a reebill is issued, "sequence" and "version" keys get added to
+        # the utility bill, so when it gets saved, a new document is created.
         attached_utilbill = copy.deepcopy(utilbill)
         self.reebill_dao._save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
-        # NOTE attached_utilbill is still saveable
-        self.reebill_dao._save_utilbill(attached_utilbill)
+        # this "frozen" utility bill should never change, so it can only be
+        # saved once.
+        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
+                attached_utilbill)
 
-        # and so is the original utilbill
+        # but the original utility bill can still be saved
         self.reebill_dao._save_utilbill(utilbill)
 
         # it should never be possible to save a utilbill with the same
