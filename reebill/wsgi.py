@@ -1537,6 +1537,8 @@ class BillToolBridge:
     @json_exception
     def uprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
+        '''AJAX request handler for "Shared Rate Structure Items" grid.
+        '''
         return self.rsi_crud(utilbill_id, 'uprs', xaction, reebill_sequence,
                 reebill_version, kwargs.get('rows'))
 
@@ -1546,6 +1548,8 @@ class BillToolBridge:
     @json_exception
     def cprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
+        '''AJAX request handler for "Individual Rate Structure Items" grid.
+        '''
         return self.rsi_crud(utilbill_id, 'cprs', xaction, reebill_sequence,
                 reebill_version, kwargs.get('rows'))
 
