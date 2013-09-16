@@ -186,7 +186,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_get_docs(self):
+        '''Tests Process.get_utilbill_doc and Process.get_rs_doc: retrieving
+        documents for utility bills on their own or with a particular reebill
+        version.'''
         with DBSession(self.state_db) as session:
+            # upload a utility bill
             self.process.upload_utility_bill(session, '99999', 'gas',
                     'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
                     date(2013,2,1), StringIO('January 2013'), 'january.pdf')
@@ -202,8 +206,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertRaises(ValueError, self.process.get_rs_doc, session,
                     utilbill.id, 'URS')
 
-            # documents should be the same ones when loaded directly using
-            # reebill_dao
+            # documents loaded via get_utilbill_doc and get_rs_doc should be
+            # the same as when loaded directly using reebill_dao
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
             cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
