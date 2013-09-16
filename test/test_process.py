@@ -190,13 +190,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         documents for utility bills on their own or with a particular reebill
         version.'''
         with DBSession(self.state_db) as session:
-            # upload a utility bill
+            # upload some utility bills (only the first will be loaded)
             self.process.upload_utility_bill(session, '99999', 'gas',
                     'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
                     date(2013,2,1), StringIO('January 2013'), 'january.pdf')
-            utilbill = session.query(UtilBill).one()
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    'washgas', 'DC Non Residential Non Heat', date(2013,2,1),
+                    date(2013,3,1), StringIO('January 2013'), 'january.pdf')
+            utilbill = session.query(UtilBill).order_by(UtilBill.period_start)\
+                    .first()
+            assert utilbill.period_start == date(2013,1,1)
 
-            # invalid rate structure type names
+            # check invalid rate structure type names
             self.assertRaises(ValueError, self.process.get_rs_doc, session,
                     utilbill.id, 'UPRS')
             self.assertRaises(ValueError, self.process.get_rs_doc, session,
@@ -247,7 +252,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertNotIn(new_rsi, frozen_uprs_doc['rates'])
             self.assertNotIn(new_rsi, frozen_cprs_doc['rates'])
 
-            # editable documents should be loaded correctly
+            # editable documents should be unchanged
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
             cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
