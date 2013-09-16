@@ -380,8 +380,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert bill1.due_date == date(2012,1,31)
  
             # after bill1 is created, it must be computed to get it into a
-            # usable state (in particular, it needs a late charge). that
-            # requires a sequence 0 template bill.
+            # usable state (in particular, it needs a late charge).
             self.process.compute_bill(session, bill1)
  
             # but compute_bill() destroys bill1's balance_due, so reset it to
