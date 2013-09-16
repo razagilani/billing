@@ -2064,7 +2064,7 @@ class BillToolBridge:
 
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
                 return self.dumps({'success':True})
 
             if xaction == "create":
@@ -2076,7 +2076,7 @@ class BillToolBridge:
                     flattened_charges.append(copy.copy(row))
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
                 return self.dumps({'success':True, 'rows':rows})
 
             if xaction == "destroy":
@@ -2095,7 +2095,7 @@ class BillToolBridge:
                     flattened_charges.remove(ci)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
                 return self.dumps({'success':True})
 
 
@@ -2278,7 +2278,7 @@ class BillToolBridge:
                 if 'current_selected_id' in kwargs:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
 
                 if reebill_sequence is not None:
                     # utility bill document has been modified, so reebill document
@@ -2318,7 +2318,7 @@ class BillToolBridge:
                         result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
                                 new_meter_id, new_reg_id)
 
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
 
                 registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
                 result.update({
@@ -2351,7 +2351,7 @@ class BillToolBridge:
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
 
-                self.reebill_dao._save_utilbill(utilbill_doc)
+                self.reebill_dao.save_utilbill(utilbill_doc)
 
                 if reebill_sequence is not None:
                     # utility bill document has been modified, so reebill document

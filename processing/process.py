@@ -193,7 +193,7 @@ class Process(object):
                     period_start or utilbill.period_start,
                     period_end or utilbill.period_end)
 
-        self.reebill_dao._save_utilbill(doc)
+        self.reebill_dao.save_utilbill(doc)
 
 
     def upload_utility_bill(self, session, account, service, utility,
@@ -285,7 +285,7 @@ class Process(object):
             new_utilbill.document_id = doc['_id']
             new_utilbill.uprs_document_id = uprs['_id']
             new_utilbill.cprs_document_id = cprs['_id']
-            self.reebill_dao._save_utilbill(doc)
+            self.reebill_dao.save_utilbill(doc)
             self.rate_structure_dao.save_rs(uprs)
             self.rate_structure_dao.save_rs(cprs)
 
@@ -1042,7 +1042,7 @@ class Process(object):
                 'postal_code': service_address['postal_code'],
             },
         })
-        self.reebill_dao._save_utilbill(utilbill_doc)
+        self.reebill_dao.save_utilbill(utilbill_doc)
 
         return new_customer
 

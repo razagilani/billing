@@ -225,7 +225,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             new_rsi = {"rate": "36.25", "rsi_binding": "NEW", "quantity": "1"}
             uprs_doc['rates'] = [new_rsi]
             cprs_doc['rates'] = [new_rsi]
-            self.reebill_dao._save_utilbill(utilbill_doc)
+            self.reebill_dao.save_utilbill(utilbill_doc)
             self.rate_structure_dao.save_rs(uprs_doc)
             self.rate_structure_dao.save_rs(cprs_doc)
 
@@ -561,7 +561,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
             electric_bill = example_data.get_utilbill_dict(account, service='electric')
-            #self.reebill_dao._save_utilbill(electric_bill)
+            #self.reebill_dao.save_utilbill(electric_bill)
             # TODO it's bad to directly modify reebill_dict
             bill0.reebill_dict['utilbills'].append({
                 'id': electric_bill['_id'],
@@ -611,7 +611,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
             self.rate_structure_dao.save_rs(uprs)
-            self.reebill_dao._save_utilbill(utilbill_doc)
+            self.reebill_dao.save_utilbill(utilbill_doc)
 
             # also add some charges to the CPRS to test overriding of UPRS by CPRS
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
@@ -1085,7 +1085,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     version=False)
             editable_utilbill['meters'][0]['prior_read_date'] = date(2012,1,15)
             editable_utilbill['meters'][0]['present_read_date'] = date(2012,3,15)
-            self.reebill_dao._save_utilbill(editable_utilbill)
+            self.reebill_dao.save_utilbill(editable_utilbill)
             # find the expected total energy (produced by MockSplinter) if this
             # period is used. it is extremely unlikely to exactly match the total
             # energy that would be produced for a different period (especially
@@ -1424,9 +1424,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             template_a['_id'] = ObjectId('00000000000000000000000a')
             template_b['_id'] = ObjectId('00000000000000000000000b')
             template_c['_id'] = ObjectId('00000000000000000000000c')
-            self.reebill_dao._save_utilbill(template_a)
-            self.reebill_dao._save_utilbill(template_b)
-            self.reebill_dao._save_utilbill(template_c)
+            self.reebill_dao.save_utilbill(template_a)
+            self.reebill_dao.save_utilbill(template_b)
+            self.reebill_dao.save_utilbill(template_c)
             reebill_a_0 = example_data.get_reebill(acc_a, 0,
                     start=date(2012,12,1), end=date(2013,1,1))
             reebill_b_0 = example_data.get_reebill(acc_b, 0,
@@ -1810,7 +1810,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_jan_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
             self.rate_structure_dao.save_rs(uprs)
-            self.reebill_dao._save_utilbill(utilbill_jan_doc)
+            self.reebill_dao.save_utilbill(utilbill_jan_doc)
 
 
             # create utility bill for February. thie UPRS and charges will be
