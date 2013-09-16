@@ -1939,7 +1939,15 @@ class ReebillDAO(object):
         when (and only when) issuing the containing reebill for the first time
         (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
         and version keys into the utility bill. (If those keys are already in
-        the utility bill, you won't be able to save it.)'''
+        the utility bill, you won't be able to save it.)
+        '''
+        if 'sequence' in utilbill_doc or 'version' in utilbill_doc:
+            assert 'sequence' in utilbill_doc and 'version' in utilbill_doc
+            if not force:
+                raise IssuedBillError(("Can't save utility bill document "
+                    "because it belongs to issued reebill %s-%s-%s") % (
+                        utilbill_doc['account'], utilbill_doc['sequence'],
+                        utilbill_doc['version']))
 
         # check for uniqueness of {account, service, utility, start, end} (and
         # sequence + version if appropriate). Mongo won't enforce this for us.
@@ -1959,7 +1967,9 @@ class ReebillDAO(object):
             unique_fields['sequence'] = sequence_and_version[0]
             unique_fields['version'] = sequence_and_version[1]
         elif 'sequence' in utilbill_doc:
-            # this utility bill is already a frozen one and has been saved:
+            # NOTE re-saving a frozen utility bill document can only happen when
+            # the 'force' argument is used
+            assert force is True
             # check for existing frozen utility bills with the same sequence
             # and version (ignoring un-frozen ones)
             unique_fields['sequence'] = utilbill_doc['sequence']
