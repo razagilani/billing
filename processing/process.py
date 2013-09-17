@@ -24,7 +24,7 @@ import skyliner
 from billing.processing import state
 from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
-from billing.processing.rate_structure import RateStructureDAO
+from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
@@ -284,11 +284,11 @@ class Process(object):
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
                     new_utilbill)
             new_utilbill.document_id = doc['_id']
-            new_utilbill.uprs_document_id = uprs['_id']
-            new_utilbill.cprs_document_id = cprs['_id']
+            new_utilbill.uprs_document_id = uprs._id
+            new_utilbill.cprs_document_id = cprs._id
             self.reebill_dao.save_utilbill(doc)
-            self.rate_structure_dao.save_rs(uprs)
-            self.rate_structure_dao.save_rs(cprs)
+            uprs.save()
+            cprs.save()
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -365,7 +365,7 @@ class Process(object):
                     rate_class=utilbill.rate_class)
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs['_id'] = ObjectId()
+            cprs._id = ObjectId()
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
             # existing ones are Hypothetical), use template for the utility
@@ -378,7 +378,7 @@ class Process(object):
             assert doc['service'] == utilbill.service
             assert doc['utility'] == utilbill.utility
             assert doc['rate_structure_binding'] == utilbill.rate_class
-            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+            cprs = RateStructure(_id=ObjectId(), type='CPRS', rates=[])
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -393,12 +393,12 @@ class Process(object):
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
-        uprs['_id'] = ObjectId()
+        uprs._id = ObjectId()
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
-        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                cprs['rates']}
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates +
+                cprs.rates}
         for group, charges in doc['chargegroups'].iteritems():
             i = 0
             while i < len(charges):

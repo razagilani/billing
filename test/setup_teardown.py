@@ -16,7 +16,7 @@ from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset
-from billing.processing import rate_structure
+from billing.processing import rate_structure2
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -117,11 +117,13 @@ port = 27017
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])
 
-        self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
+        self.rate_structure_dao = rate_structure2.RateStructureDAO('localhost',
                 27017, 'test', self.reebill_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='rate_structure')
 
         self.nexus_util = MockNexusUtil([
             {

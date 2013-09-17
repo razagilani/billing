@@ -6,7 +6,7 @@ from bson import ObjectId
 from unittest import TestCase
 from billing.test import example_data
 from billing.test import utils
-from billing.processing.rate_structure import RateStructure
+from billing.processing.rate_structure2 import RateStructure
 from billing.processing import mongo
 
 class UtilBillTest(TestCase):

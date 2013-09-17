@@ -3,7 +3,6 @@ import copy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
 from billing.processing.mongo import MongoReebill, float_to_decimal
-from billing.processing.rate_structure import RateStructure
 from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime

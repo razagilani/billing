@@ -5,7 +5,7 @@ import unittest
 import pymongo
 import MySQLdb
 import sqlalchemy
-from billing.processing import rate_structure
+from billing.processing import rate_structure2
 from billing.processing.state import StateDB, Customer, UtilBill
 from billing.processing import mongo
 from billing.test import example_data
