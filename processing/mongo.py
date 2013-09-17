@@ -12,6 +12,7 @@ import string
 import base64
 import itertools as it
 import copy
+from copy import deepcopy
 import uuid as UUID
 from itertools import chain
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
@@ -285,19 +286,36 @@ def actual_chargegroups_flattened(utilbill_doc):
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+# TODO make this a method of a utility bill document class when one exists
+def compute_utility_bill(utilbill_doc, the_rate_structure):
+    '''Updates charges in the given utility bill document to match the given
+    rate structure document.
+    '''
+    # make copies of 'rate_structure' and 'chargegroups' subdocument to
+    # insulate them from code in rate_structure.py
+    rate_structure = copy.deepcopy(the_rate_structure)
 
+    # registers can't be copied because changes to it need to be preserved, for
+    # some reason
+    registers = chain.from_iterable(m['registers'] for m in
+            utilbill_doc['meters'])
 
+    # make a copy of the "chargegroups" subdocument to insulate it from
+    # rate_structure.py
+    actual_chargegroups = deepcopy(utilbill_doc['chargegroups'])
 
+    # this does something to the list of register dictionaries and/or rate
+    # structure document but i'm not sure how it affects charges
+    rate_structure.bind_register_readings(registers)
 
+    # i don't know what this does either
+    for charges in actual_chargegroups.values():
+        rate_structure.bind_charges(charges)
 
-
-
-
-
-
-
-
-
+    # by now, 'charges' should be a version of the utility bill "chargegroups"
+    # subdocument with correct charges; the original subdocument can be
+    # replaced with it
+    utilbill_doc['chargegroups'] = actual_chargegroups
 
 
 class MongoReebill(object):
@@ -619,53 +637,55 @@ class MongoReebill(object):
 
         # process rate structures for all services
         for service in self.services:
-            #
-            # All registers for all meters in a given service are made available
-            # to the rate structure for the given service.
-            # Registers that are not to be used by the rate structure should
-            # simply not have an rsi_binding.
-            #
+            compute_utility_bill(self._get_utilbill_for_service(service),
+                    the_rate_structure)
+            ##
+            ## All registers for all meters in a given service are made available
+            ## to the rate structure for the given service.
+            ## Registers that are not to be used by the rate structure should
+            ## simply not have an rsi_binding.
+            ##
 
-            # actual
+            ## actual
 
-            # copy rate structure because it gets destroyed during use
-            rate_structure = copy.deepcopy(the_rate_structure)
+            ## copy rate structure because it gets destroyed during use
+            #rate_structure = copy.deepcopy(the_rate_structure)
 
-            # get non-shadow registers in the reebill
-            actual_register_readings = self.actual_registers(service)
+            ## get non-shadow registers in the reebill
+            #actual_register_readings = self.actual_registers(service)
 
-            #print "loaded rate structure"
-            #pp(rate_structure)
+            ##print "loaded rate structure"
+            ##pp(rate_structure)
 
-            #print "loaded actual register readings"
-            #pp(actual_register_readings)
+            ##print "loaded actual register readings"
+            ##pp(actual_register_readings)
 
-            # copy the quantity of each non-shadow register in the reebill to
-            # the corresponding register dictionary in the rate structure
-            # ("apply the registers from the reebill to the probable rate structure")
-            rate_structure.bind_register_readings(actual_register_readings)
+            ## copy the quantity of each non-shadow register in the reebill to
+            ## the corresponding register dictionary in the rate structure
+            ## ("apply the registers from the reebill to the probable rate structure")
+            #rate_structure.bind_register_readings(actual_register_readings)
 
-            #print "rate structure with bound registers"
-            #pp(rate_structure)
+            ##print "rate structure with bound registers"
+            ##pp(rate_structure)
 
-            # get all utility charges from the reebill's utility bill (in the
-            # form of a group name -> [list of charges] dictionary). for each
-            # charge, find the corresponding rate structure item (the one that
-            # matches its "rsi_binding") and copy the values of "description",
-            # "quantity", "quantity_units", "rate", and "rate_units" in that
-            # RSI to the charge
-            # ("process actual charges with non-shadow meter register totals")
-            # ("iterate over the charge groups, binding the reebill charges to
-            # its associated RSI")
-            actual_chargegroups = self.actual_chargegroups_for_service(service)
-            for charges in actual_chargegroups.values():
-                rate_structure.bind_charges(charges)
+            ## get all utility charges from the reebill's utility bill (in the
+            ## form of a group name -> [list of charges] dictionary). for each
+            ## charge, find the corresponding rate structure item (the one that
+            ## matches its "rsi_binding") and copy the values of "description",
+            ## "quantity", "quantity_units", "rate", and "rate_units" in that
+            ## RSI to the charge
+            ## ("process actual charges with non-shadow meter register totals")
+            ## ("iterate over the charge groups, binding the reebill charges to
+            ## its associated RSI")
+            #actual_chargegroups = self.actual_chargegroups_for_service(service)
+            #for charges in actual_chargegroups.values():
+                #rate_structure.bind_charges(charges)
 
-            # (original comment "don't have to set this because we modified the
-            # actual_chargegroups" is false--we modified the rate structure
-            # items, but left the charges in the bill unchanged. as far as i
-            # can tell this line of code has no effect)
-            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+            ## (original comment "don't have to set this because we modified the
+            ## actual_chargegroups" is false--we modified the rate structure
+            ## items, but left the charges in the bill unchanged. as far as i
+            ## can tell this line of code has no effect)
+            #self.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
             # hypothetical charges
 
