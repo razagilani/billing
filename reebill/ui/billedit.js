@@ -440,7 +440,6 @@ function reeBillReady() {
         tbar: new Ext.Toolbar({
             items: [{
                 xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
@@ -455,7 +454,8 @@ function reeBillReady() {
                   //      utilbillGrid.refresh();
                   //  }});
                 }
-            }]
+            },
+        ]
         }),
         bbar: new Ext.PagingToolbar({
             // TODO: constant
@@ -2354,6 +2354,30 @@ function reeBillReady() {
 
     var aChargesToolbar = new Ext.Toolbar({
         items: [
+            {
+                xtype: 'button',
+                id: 'utilbillComputeButton',
+                text: 'Recompute All',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                aChargesStore.reload();
+                                hChargesStore.reload();
+                            } else {
+                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                                    "\n" + jsonData.errors.details);
+                            }
+                        },
+                        failure: function() {
+                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+                        },
+                    });
+                }
+            },
             {
                 xtype: 'tbseparator'
             },{

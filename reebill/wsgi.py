@@ -895,6 +895,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def compute_utility_bill(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            self.process.compute_utility_bill(session, utilbill_id)
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def render(self, account, sequence, **args):
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
