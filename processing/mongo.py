@@ -177,7 +177,8 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
 
     for reg in meter['registers']:
         if reg['identifier'] == identifier:
-            raise ValueError('Register %s for meter %s for service %s already exists.' % (identifier, meter_identifier, service))
+            raise ValueError('Register %s for meter %s already exists.' %
+                    (identifier, meter_identifier))
     meter['registers'].append(new_actual_register)
 
     return (meter_identifier, new_actual_register)
