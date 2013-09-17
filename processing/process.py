@@ -22,6 +22,7 @@ import traceback
 import uuid as UUID
 import skyliner
 from billing.processing import state
+from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state, fetch_bill_data
@@ -451,17 +452,16 @@ class Process(object):
 
         return new_path
 
-
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
         saves the document.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-        rs = self.rate_structure_dao.load_rate_structure(utilbill)
-        mongo.compute_utility_bill(utilbill, rs)
-        self.reebill_dao.save_utilbill(doc)
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
+        mongo.compute_utility_bill(document, rate_structure)
+        self.reebill_dao.save_utilbill(document)
 
     def compute_bill(self, session, present_reebill):
         '''Updates everything about the given reebill document that can be
