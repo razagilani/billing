@@ -1578,6 +1578,13 @@ class BillToolBridge:
 
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
+
+            # TODO enable this when testing is done
+            ## only "read" is allowed when 'reebill_sequence', 'reebill_version'
+            ## are specified
+            #if reebill_version is not None:
+                #raise IssuedBillError(("Can't modify rate structure belonging "
+                    #"to an issued reebill"))
             
             rows = json.loads(rows)
 
@@ -1593,8 +1600,7 @@ class BillToolBridge:
                     matches = [rsi_match for rsi_match in it.ifilter(lambda x:
                             x['uuid']==rsi_uuid, rates)]
                     # there should only be one match
-                    if len(matches) == 0:
-                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if len(matches) == 0: raise Exception("Did not match an RSI UUID which should not be possible")
                     if len(matches) > 1:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
@@ -1610,18 +1616,25 @@ class BillToolBridge:
                     # clear it so that the old emptied attributes are removed
                     rsi.clear()
                     rsi.update(row)
-                self.ratestructure_dao.save_rs(rate_structure)
-                return self.dumps({'success':True})
 
-            elif xaction == "create":
-                new_rate = {"uuid": str(UUID.uuid1())}
+            if xaction == "create":
+                new_rate = {
+                    'rsi_binding': '',
+                    'description': '',
+                    'quantity': '',
+                    'quantity_units': '',
+                    'rate': '',
+                    'rate_units': '',
+                    'roundrule': '',
+                    "uuid": str(UUID.uuid1()),
+                }
+                from billing.processing.rate_structure import RateStructureItem
+                RateStructureItem(new_rate, copy.deepcopy(rate_structure))
                 # find an oprhan binding and set it here
                 #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
-                self.ratestructure_dao.save_rs(rate_structure)
-                return self.dumps({'success':True, 'rows':new_rate})
 
-            elif xaction == "destroy":
+            if xaction == "destroy":
                 uuids = rows
                 if type(uuids) is unicode: uuids = [uuids]
                 # process list of removals
@@ -1635,8 +1648,15 @@ class BillToolBridge:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
                     rates.remove(rsi)
-                self.ratestructure_dao.save_rs(rate_structure)
-                return self.dumps({'success':True})
+
+            self.ratestructure_dao.save_rs(rate_structure)
+            pp.pprint(rate_structure)
+
+            # TODO this loads the RS doc again unnecessarily; the
+            # solution may be that all this code moves into Process, which is
+            # where belongs anyway.
+            self.process.compute_utility_bill(session, utilbill_id)
+            return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
@@ -2078,6 +2098,12 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
+
+                # todo this loads the utility bill doc again unnecessarily; the
+                # solution may be that all this code moves into process, which
+                # is where belongs anyway.
+                self.process.compute_utility_bill(session, utilbill_id)
+
                 return self.dumps({'success':True})
 
             if xaction == "create":
@@ -2090,6 +2116,12 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
+
+                # TODO this loads the utility bill doc again unnecessarily; the
+                # solution may be that all this code moves into Process, which
+                # is where belongs anyway.
+                self.process.compute_utility_bill(session, utilbill_id)
+
                 return self.dumps({'success':True, 'rows':rows})
 
             if xaction == "destroy":
@@ -2109,6 +2141,12 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
+
+                # TODO this loads the utility bill doc again unnecessarily; the
+                # solution may be that all this code moves into Process, which
+                # is where belongs anyway.
+                self.process.compute_utility_bill(session, utilbill_id)
+
                 return self.dumps({'success':True})
 
 
@@ -2299,6 +2337,7 @@ class BillToolBridge:
                     reebill.update_utilbill_subdocs()
                     self.reebill_dao.save_reebill(reebill)
 
+                self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
 
             if xaction == 'update':
@@ -2312,7 +2351,7 @@ class BillToolBridge:
                 for row in rows:
                     # extract keys needed to identify the register being updated
                     # from the "id" field sent by the client
-                    utilbill_id, orig_meter_id, orig_reg_id = row['id'].split('/')
+                    _, orig_meter_id, orig_reg_id = row['id'].split('/')
 
                     validate_id_components(row.get('meter_id',''),
                             row.get('register_id',''))
@@ -2346,6 +2385,7 @@ class BillToolBridge:
                     reebill.update_utilbill_subdocs()
                     self.reebill_dao.save_reebill(reebill)
 
+                self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
 
             if xaction == 'destroy':
@@ -2353,7 +2393,7 @@ class BillToolBridge:
                 id_of_row_to_delete = rows[0]
 
                 # extract keys needed to identify the register being updated
-                utilbill_id, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                _, orig_meter_id, orig_reg_id = id_of_row_to_delete\
                         .split('/')
                 mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
 
@@ -2372,6 +2412,7 @@ class BillToolBridge:
                     reebill.update_utilbill_subdocs()
                     self.reebill_dao.save_reebill(reebill)
 
+                self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
 
             raise ValueError('Unknown xaction "%s"' % xaction)

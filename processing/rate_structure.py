@@ -21,7 +21,7 @@ from billing.processing.state import UtilBill
 from copy import deepcopy
 
 import pprint
-#pp = pprint.PrettyPrinter(indent=1).pprint
+pp = pprint.PrettyPrinter(indent=1).pprint
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
@@ -485,6 +485,7 @@ class RateStructure(object):
         self.rates = [RateStructureItem(rsi_data, self) for rsi_data in rs_data["rates"]]
         for rsi in self.rates:
             if rsi.rsi_binding is None:
+                # wtf is a descriptor?
                 raise Exception("RSI descriptor required.\n%s" % rsi)
             self.__dict__[rsi.rsi_binding] = rsi
 
@@ -705,13 +706,17 @@ class RateStructureItem(object):
                 # the return type is a function of what the expression evals to.
                 value = str(value)
 
-                if len(value):
+                if len(value) == 0:
+                    raise ValueError('0-length property name not allowed')
                     # place these propery values in self, but prepend the _ so @property methods of self
                     # do not access them since @property methods are used for expression evaluation
                     setattr(self, "_"+key, value)
                 else:
-                    pass
-                    #print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
+                    #pass
+                    ##print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
+
+                    # don't remove zero-length values! that makes an invalid RateStructureItem object and an invalid Mongo document that cannot be used for computing bills.
+                    setattr(self, "_"+key, value)
             else:
                 pass
                 #print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
