@@ -452,6 +452,17 @@ class Process(object):
         return new_path
 
 
+    def compute_utility_bill(self, session, utilbill_id):
+        '''Updates all charges in the document of the utility bill given by
+        'utilbill_id' so they are correct according to its rate structure, and
+        saves the document.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        rs = self.rate_structure_dao.load_rate_structure(utilbill)
+        mongo.compute_utility_bill(utilbill, rs)
+        self.reebill_dao.save_utilbill(doc)
+
     def compute_bill(self, session, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
