@@ -464,9 +464,11 @@ class Process(object):
         self.reebill_dao.save_utilbill(doc)
 
     def compute_bill(self, session, present_reebill):
-        '''Compute everything about the bill that can be continuously
-        recomputed. This should be called immediately after roll_bill()
-        whenever roll_bill() is called.'''
+        '''Updates everything about the given reebill document that can be
+        continually updated. This should be called whenever anything about a
+        reebill or its utility bills has been changed, and should be
+        idempotent.
+        '''
         if present_reebill.sequence == 1:
             prior_reebill = None
         else:
