@@ -1,6 +1,6 @@
 from __future__ import division
 from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField
+from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from datetime import datetime, date
 from collections import defaultdict
 from decimal import Decimal
@@ -244,25 +244,13 @@ class RateStructureDAO(object):
         return RateStructure(self._load_combined_rs_dict(utilbill,
                 reebill=reebill))
     
-    def load_urs(self, utility_name, rate_structure_name, period_begin=None,
-            period_end=None):
-        '''Loads Utility (global) Rate Structure document from Mongo, returns
-        it as a dictionary.'''
-        # TODO: be able to accept a period_begin/period_end for a service and
-        # query the URS in a manner ensuring the correct in-effect URS is
-        # obtained
-        query = {
-            "_id.type":"URS",
-            "_id.utility_name": utility_name,
-            "_id.rate_structure_name": rate_structure_name,
-        }
-        urs = self.collection.find_one(query)
-        if urs is None:
-            # don't mention dates in error message because they're ignored
-            raise ValueError(("Could not find URS for utility_name %s, "
-                    "rate_structure_name %s") % (utility_name,
-                    rate_structure_name))
-        return urs
+    def load_urs(self, utility_name, rate_structure_name):
+        '''Loads Utility (global) Rate Structure document from Mongo.
+        '''
+        result = URS.objects.get(id__type='URS', id__utility_name=utility_name,
+                id__rate_structure_name=rate_structure_name)
+        assert result.id.type = 'URS'
+        return result
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a UPRS document for the given state.Utilbill.
@@ -373,6 +361,7 @@ class RateStructureDAO(object):
 
 
 class RateStructureItem(EmbeddedDocument):
+    rsi_binding = StringField(required=True)
     quantity = StringField(required=True)
     quantity_units = StringField()
     rate = StringField(required=True)
@@ -408,3 +397,34 @@ class RateStructure(Document):
     # value of []
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem))
 
+#class URS(RateStructure):
+    #meta = {
+        #'db_alias': 'rate_structure',
+        #'collection': 'rate_structure',
+        #'allow_inheritance': True
+    #}
+    #utility_name = StringField(required=True)
+    #rate_structure_name = StringField(required=True)
+
+class URSID(EmbeddedDocument):
+    type = StringField(required=True) # TODO figure out how to hard-code this as "URS"
+    rate_structure_name=StringField(required=True)
+    utility_name=StringField(required=True)
+
+    # these are not used for anything but may be in some existing documents
+    effective=DateTimeField()
+    expires=DateTimeField()
+
+# TODO deal with problem of "type" being in URS id and in URS itself since it
+# inherits from RateStructure--the solution is probably to remove the "type"
+# field and make them separate classes
+class URS(RateStructure):
+    meta = {
+        'db_alias': 'rate_structure',
+        'collection': 'rate_structure',
+        'allow_inheritance': True
+    }
+    # MongoEngine uses the name "id" for the document's _id
+    id = EmbeddedDocumentField(URSID)
+    utility_name = StringField(required=True)
+    rate_structure_name = StringField(required=True)
