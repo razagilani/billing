@@ -405,6 +405,7 @@ example_urs = URS(
         utility_name='washgas',
         rate_structure_name="DC Non Residential Non Heat",
     ),
+    type='URS',
     registers=[Register(
         register_binding='REG_TOTAL',
         description='Total therms register',
@@ -764,24 +765,40 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         meter['present_read_date'] = end
     return utilbill_dict
 
-def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
+#def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
+        #utility_name='washgas'):
+    #'''Returns an example utility global rate structure document.'''
+    #urs_dict = copy.deepcopy(example_urs)
+    #urs_dict['_id'].update({
+        #'rate_structure_name': rate_structure_name,
+        #'utility_name': utility_name,
+    #})
+    #return urs_dict
+
+def get_urs(rate_structure_name='DC Non Residential Non Heat',
         utility_name='washgas'):
-    '''Returns an example utility global rate structure document.'''
-    urs_dict = copy.deepcopy(example_urs)
-    urs_dict['_id'].update({
-        'rate_structure_name': rate_structure_name,
-        'utility_name': utility_name,
-    })
-    return urs_dict
+    result = copy.deepcopy(example_urs)
+    result.id = URSID(rate_structure_name=rate_structure_name,
+            utility_name=utility_name, type='URS')
+    return result
 
-def get_uprs_dict():
-    '''Returns an example customer periodic rate structure document.'''
-    uprs_dict = copy.deepcopy(example_uprs)
-    uprs_dict['_id'] = ObjectId()
-    return uprs_dict
+#def get_uprs_dict():
+    #'''Returns an example customer periodic rate structure document.'''
+    #uprs_dict = copy.deepcopy(example_uprs)
+    #uprs_dict['_id'] = ObjectId()
+    #return uprs_dict
 
-def get_cprs_dict():
-    cprs_dict = copy.deepcopy(example_cprs)
-    cprs_dict['_id'] = ObjectId()
-    return cprs_dict
+def get_uprs():
+    result = deepcopy(example_uprs)
+    result.id = ObjectId()
+    return result
 
+#def get_cprs_dict():
+    #cprs_dict = copy.deepcopy(example_cprs)
+    #cprs_dict['_id'] = ObjectId()
+    #return cprs_dict
+
+def get_cprs():
+    result = deepcopy(cprs)
+    result.id = ObjectId()
+    return result
