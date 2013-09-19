@@ -1104,9 +1104,9 @@ class Process(object):
                 reebill.utilbills[0])
         cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 reebill.utilbills[0])
-        uprs['_id'], cprs['_id'] = frozen_uprs_id, frozen_cprs_id
-        self.rate_structure_dao.save_rs(uprs)
-        self.rate_structure_dao.save_rs(cprs)
+        uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
+        uprs.save()
+        cprs.save()
         reebill._utilbill_reebills[0].uprs_document_id = frozen_uprs_id
         reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
 
