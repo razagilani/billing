@@ -1727,9 +1727,23 @@ function reeBillReady() {
         ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
         options.params.utilbill_id = selected_utilbill.id;
-
-        store.baseParams.account = selected_account;
-        options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = measuredUsageUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
 
         ubRegisterGrid.setDisabled(true);
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
@@ -1746,6 +1760,24 @@ function reeBillReady() {
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.account = selected_account;
         options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = measuredUsageUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
@@ -2039,7 +2071,8 @@ function reeBillReady() {
         //A list of all UBVersionMenus in existance, so that they can all
         //be updated at the same time.
         ubVersionMenus: [],
-        constructor: function () {
+        //stores_to_reload is a list of stores to reload when the dropdown is selected for this menu
+        constructor: function (stores_to_reload) {
             UBVersionMenu.superclass.constructor.call(this, {
                 editable: false,
                 mode: 'local',
@@ -2062,21 +2095,12 @@ function reeBillReady() {
                         for (var i = 0;i < menus.length;i++) {
                             //Set the value to the correct string by extracting it from what the template generates
                             menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
+                            menus[i].selected_record = record;
+                        }
+                        for (var i = 0;i < stores_to_reload.length;i++) {
+                            stores_to_reload[i].load()
                         }
                         //If sequence is null, load the current version
-                        if (record.data.sequence == null) {
-                            ubRegisterStore.load({params:{}});
-                            aChargesStore.load({params:{}});
-                            UPRSRSIStore.load({params:{}});
-                            CPRSRSIStore.load({params:{}});
-                        }
-                        //Otherwise, get the correct sequence and version
-                        else {
-                            ubRegisterStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
-                            aChargesStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
-                            UPRSRSIStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
-                            CPRSRSIStore.load({params:{'reebill_sequence':record.data.sequence, 'reebill_version':record.data.version}});
-                        }
                     },
                 },
                 store: new Ext.data.ArrayStore({
@@ -2088,9 +2112,12 @@ function reeBillReady() {
                     data:[[null, null]],
                 }),
             });
+            this.selected_record = this.store[0];
             UBVersionMenu.prototype.ubVersionMenus.push(this);
         }
     });
+
+    measuredUsageUBVersionMenu = new UBVersionMenu([ubRegisterStore]);
     
     //
     // Instantiate the Utility Bill Meters and Registers panel
@@ -2104,7 +2131,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [new UBVersionMenu(), ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [measuredUsageUBVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
@@ -2232,9 +2259,53 @@ function reeBillReady() {
         //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
 
-    aChargesStore.on('beforeload', function () {
+    aChargesStore.on('beforeload', function (store, options) {
         aChargesGrid.setDisabled(true);
         aChargesStore.setBaseParam("utilbill_id", selected_utilbill.id);
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    aChargesStore.on('beforewrite', function(store, action, rs, options, arg) {
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -2934,6 +3005,8 @@ function reeBillReady() {
     //
     // Instantiate the Charge Items panel
     //
+
+    chargesUBVersionMenu = new UBVersionMenu([aChargesStore]);
     
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
@@ -2946,7 +3019,7 @@ function reeBillReady() {
             align : 'stretch',
         },
         items: [
-            new UBVersionMenu(),
+            chargesUBVersionMenu,
             aChargesGrid,
             hChargesGrid,
         ]
@@ -3052,7 +3125,51 @@ function reeBillReady() {
 
     CPRSRSIStore.on('beforeload', function (store, options) {
         CPRSRSIGrid.setDisabled(true);
-        CPRSRSIStore.setBaseParam("utilbill_id", selected_utilbill.id);
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -3310,9 +3427,54 @@ function reeBillReady() {
         //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
     });
 
-    UPRSRSIStore.on('beforeload', function () {
+    UPRSRSIStore.on('beforeload', function (store, options) {
         UPRSRSIGrid.setDisabled(true);
-        UPRSRSIStore.setBaseParam("utilbill_id", selected_utilbill.id);
+        options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = rsUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    UPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = rsUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -3507,6 +3669,8 @@ function reeBillReady() {
     // Instantiate the Rate Structure panel 
     //
 
+    rsUBVersionMenu = new UBVersionMenu([CPRSRSIStore, UPRSRSIStore]);
+
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
@@ -3517,7 +3681,7 @@ function reeBillReady() {
             align : 'stretch',
         },
         items: [
-            new UBVersionMenu(),
+            rsUBVersionMenu,
             CPRSRSIGrid,
             UPRSRSIGrid,
         ],
