@@ -287,37 +287,69 @@ def actual_chargegroups_flattened(utilbill_doc):
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+## TODO make this a method of a utility bill document class when one exists
+#def compute_utility_bill(utilbill_doc, the_rate_structure):
+    #'''Updates charges in the given utility bill document to match the given
+    #rate structure document.
+    #'''
+    ## make copies of 'rate_structure' and 'chargegroups' subdocument to
+    ## insulate them from code in rate_structure.py
+    #rate_structure = copy.deepcopy(the_rate_structure)
+
+    ## registers can't be copied because changes to it need to be preserved, for
+    ## some reason
+    #registers = chain.from_iterable(m['registers'] for m in
+            #utilbill_doc['meters'])
+
+    ## make a copy of the "chargegroups" subdocument to insulate it from
+    ## rate_structure.py
+    #actual_chargegroups = deepcopy(utilbill_doc['chargegroups'])
+
+    ## this does something to the list of register dictionaries and/or rate
+    ## structure document but i'm not sure how it affects charges
+    #rate_structure.bind_register_readings(registers)
+
+    ## i don't know what this does either
+    #for charges in actual_chargegroups.values():
+        #rate_structure.bind_charges(charges)
+
+    ## by now, 'charges' should be a version of the utility bill "chargegroups"
+    ## subdocument with correct charges; the original subdocument can be
+    ## replaced with it
+    #utilbill_doc['chargegroups'] = actual_chargegroups
+
 # TODO make this a method of a utility bill document class when one exists
-def compute_utility_bill(utilbill_doc, the_rate_structure):
-    '''Updates charges in the given utility bill document to match the given
-    rate structure document.
-    '''
-    # make copies of 'rate_structure' and 'chargegroups' subdocument to
-    # insulate them from code in rate_structure.py
-    rate_structure = copy.deepcopy(the_rate_structure)
+def compute_all_charges(utilbill_doc, uprs, cprs):
+    '''Updates "quantity", "rate", and "total" fields in all charges in this
+    utility bill document so they're correct accoding to the formulas in the
+    RSIs in the given rate structures. RSIs in 'uprs' that have the same
+    'rsi_binding' as any RSI in 'cprs' are ignored.'''
+    # TODO: this will fail when charges depend on other charges. the
+    # solution is to topological-sort charges (see module "tsort") in order
+    # of dependency, then compute the charges in that order. for now,
+    # charges are not valid identifiers in RSI quantity and rate formulas.
 
-    # registers can't be copied because changes to it need to be preserved, for
-    # some reason
-    registers = chain.from_iterable(m['registers'] for m in
-            utilbill_doc['meters'])
+    # get dictionary mapping register names to their quantities
+    register_readings = {}
+    for meter in utilbill_doc['meters']:
+        for register in meter['registers']:
+            register_readings[register['register_binding']] = \
+                    register['quantity']
 
-    # make a copy of the "chargegroups" subdocument to insulate it from
-    # rate_structure.py
-    actual_chargegroups = deepcopy(utilbill_doc['chargegroups'])
+    # get dictionary mapping rsi_bindings to RateStructureItem objects from
+    # 'uprs', then replace any items in it with RateStructureItems from 'cprs'
+    # with the same rsi_bindings
+    rsis = uprs.rsis_dict()
+    rsis.update(cprs.rsis_dict())
 
-    # this does something to the list of register dictionaries and/or rate
-    # structure document but i'm not sure how it affects charges
-    rate_structure.bind_register_readings(registers)
-
-    # i don't know what this does either
-    for charges in actual_chargegroups.values():
-        rate_structure.bind_charges(charges)
-
-    # by now, 'charges' should be a version of the utility bill "chargegroups"
-    # subdocument with correct charges; the original subdocument can be
-    # replaced with it
-    utilbill_doc['chargegroups'] = actual_chargegroups
-
+    # compute each charge using its corresponding RSI
+    for charges in utilbill_doc['chargegroups'].itervalues():
+        for charge in charges:
+            rsi = rsis[charge['rsi_binding']]
+            quantity, rate = rsi.compute_charge(register_readings)
+            charge['quantity'] = quantity
+            charge['rate'] = rate
+            charge['total'] = quantity * rate
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All

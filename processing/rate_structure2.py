@@ -358,6 +358,9 @@ class RateStructureDAO(object):
 
 
 
+class RSIFormulaIdentifier(object):
+    def __init__(self, quantity):
+        self.quantity = quantity
 class RateStructureItem(EmbeddedDocument):
     rsi_binding = StringField(required=True)
     quantity = StringField(required=True)
@@ -367,6 +370,21 @@ class RateStructureItem(EmbeddedDocument):
     round_rule = StringField()
     description = StringField()
     uuid = StringField()
+
+    def compute_charge(self, register_quantities):
+        '''Evaluates this RSI's "quantity" and "rate" formulas, given the
+        readings of registers in 'register_quantities' (a dictionary mapping
+        register names to quantities), and returns (quantity result, rate
+        result).
+        '''
+        # identifiers in RSI formulas end in ".quantity"; the only way to
+        # evaluate these as Python code is to turn each of the key/value pairs
+        # in 'register_quantities' into an object with a "quantity" attribute
+        register_quantities = {reg_name: RSIFormulaIdentifier(q) for reg_name,
+                q in register_quantities.iteritems()}
+        quantity = eval(self.quantity, {}, register_quantities)
+        rate = eval(self.rate, {}, register_quantities)
+        return quantity, rate
 
 class Register(EmbeddedDocument):
     # this is the only field that has any meaning, since a "register" in a rate
@@ -393,6 +411,15 @@ class RateStructure(Document):
     # possible to have an optional ListField (?) because there is a default
     # value of []
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem))
+
+    def rsis_dict(self):
+        result = {}
+        for rsi in self.rates:
+            binding = rsi['rsi_binding']
+            if binding in result:
+                raise ValueError('Duplicate rsi_binding "%s"' % binding)
+            result[binding] = rsi
+        return result
 
 #class URS(RateStructure):
     #meta = {
