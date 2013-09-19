@@ -460,7 +460,7 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
-        mongo.compute_utility_bill(document, rate_structure)
+        mongo.compute_all_charges(document, rate_structure)
         self.reebill_dao.save_utilbill(document)
 
     def compute_bill(self, session, present_reebill):
@@ -507,7 +507,9 @@ class Process(object):
                 .filter(ReeBill.version == present_reebill.version).one()
         for utilbill in reebill_row.utilbills:
             rs = self.rate_structure_dao.load_rate_structure(utilbill)
-            present_reebill.compute_charges(rs)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
+            present_reebill.compute_charges(uprs, cprs)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)

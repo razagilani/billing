@@ -660,7 +660,7 @@ class MongoReebill(object):
                 utilbill_doc in self._utilbills]
 
                 
-    def compute_charges(self, the_rate_structure):
+    def compute_charges(self, uprs, cprs):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -670,101 +670,117 @@ class MongoReebill(object):
 
         # process rate structures for all services
         for service in self.services:
-            compute_utility_bill(self._get_utilbill_for_service(service),
-                    the_rate_structure)
-            ##
-            ## All registers for all meters in a given service are made available
-            ## to the rate structure for the given service.
-            ## Registers that are not to be used by the rate structure should
-            ## simply not have an rsi_binding.
-            ##
+            utilbill_doc = self._get_utilbill_for_service(service)
+            compute_all_charges(utilbill_doc, uprs, cprs)
 
-            ## actual
+            # TODO temporary hack: duplicate the utility bill, set its register
+            # quantities to the hypothetical values, recompute it, and then
+            # copy all the charges back into the reebill
+            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(service))
+            for meter in hypothetical_utilbill['meters']:
+                for register in meter['registers']:
+                    corresponding_actual_register = next(r for r in
+                            chain.from_iterable(m['registers'] for m in utilbill_doc['meters'])
+                            if r['register_binding'] == register['register_binding'])
+                    register['quantity'] = corresponding_actual_register['quantity']
 
-            ## copy rate structure because it gets destroyed during use
+            compute_all_charges(hypothetical_utilbill, uprs, cprs)
+            self.set_hypothetical_chargegroups_for_service(service,
+                    hypothetical_utilbill['chargegroups'])
+
+            ###
+            ### All registers for all meters in a given service are made available
+            ### to the rate structure for the given service.
+            ### Registers that are not to be used by the rate structure should
+            ### simply not have an rsi_binding.
+            ###
+
+            ### actual
+
+            ### copy rate structure because it gets destroyed during use
+            ##rate_structure = copy.deepcopy(the_rate_structure)
+
+            ### get non-shadow registers in the reebill
+            ##actual_register_readings = self.actual_registers(service)
+
+            ###print "loaded rate structure"
+            ###pp(rate_structure)
+
+            ###print "loaded actual register readings"
+            ###pp(actual_register_readings)
+
+            ### copy the quantity of each non-shadow register in the reebill to
+            ### the corresponding register dictionary in the rate structure
+            ### ("apply the registers from the reebill to the probable rate structure")
+            ##rate_structure.bind_register_readings(actual_register_readings)
+
+            ###print "rate structure with bound registers"
+            ###pp(rate_structure)
+
+            ### get all utility charges from the reebill's utility bill (in the
+            ### form of a group name -> [list of charges] dictionary). for each
+            ### charge, find the corresponding rate structure item (the one that
+            ### matches its "rsi_binding") and copy the values of "description",
+            ### "quantity", "quantity_units", "rate", and "rate_units" in that
+            ### RSI to the charge
+            ### ("process actual charges with non-shadow meter register totals")
+            ### ("iterate over the charge groups, binding the reebill charges to
+            ### its associated RSI")
+            ##actual_chargegroups = self.actual_chargegroups_for_service(service)
+            ##for charges in actual_chargegroups.values():
+                ##rate_structure.bind_charges(charges)
+
+            ### (original comment "don't have to set this because we modified the
+            ### actual_chargegroups" is false--we modified the rate structure
+            ### items, but left the charges in the bill unchanged. as far as i
+            ### can tell this line of code has no effect)
+            ##self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            ## hypothetical charges
+
+            ## re-copy rate structure because it gets destroyed during use
             #rate_structure = copy.deepcopy(the_rate_structure)
 
-            ## get non-shadow registers in the reebill
+            ## get shadow and non-shadow registers in the reebill
             #actual_register_readings = self.actual_registers(service)
+            #shadow_register_readings = self.shadow_registers(service)
 
-            ##print "loaded rate structure"
-            ##pp(rate_structure)
+            ## "add the shadow register totals to the actual register, and re-process"
 
-            ##print "loaded actual register readings"
-            ##pp(actual_register_readings)
+            ## TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
+            ## a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
+            ## renewable energy - then the rate is calculated incorrectly.  This is because
+            ## a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
+            ## one way for actual charge computation and another way for hypothetical charge
+            ## computation.
 
-            ## copy the quantity of each non-shadow register in the reebill to
+            ## for each shadow register dictionary: add its quantity to the
+            ## quantity of the corresponding non-shadow register
+            #registers_to_bind = copy.deepcopy(shadow_register_readings)
+            #for shadow_reading in registers_to_bind:
+                #for actual_reading in actual_register_readings:
+                    #if actual_reading['identifier'] == shadow_reading['identifier']:
+                        #shadow_reading['quantity'] += actual_reading['quantity']
+                ## TODO: throw exception when registers mismatch
+
+            ## copy the quantity of each register dictionary in the reebill to
             ## the corresponding register dictionary in the rate structure
-            ## ("apply the registers from the reebill to the probable rate structure")
-            #rate_structure.bind_register_readings(actual_register_readings)
+            ## ("apply the combined registers from the reebill to the probable
+            ## rate structure")
+            #rate_structure.bind_register_readings(registers_to_bind)
 
-            ##print "rate structure with bound registers"
-            ##pp(rate_structure)
-
-            ## get all utility charges from the reebill's utility bill (in the
-            ## form of a group name -> [list of charges] dictionary). for each
-            ## charge, find the corresponding rate structure item (the one that
-            ## matches its "rsi_binding") and copy the values of "description",
-            ## "quantity", "quantity_units", "rate", and "rate_units" in that
-            ## RSI to the charge
-            ## ("process actual charges with non-shadow meter register totals")
-            ## ("iterate over the charge groups, binding the reebill charges to
-            ## its associated RSI")
-            #actual_chargegroups = self.actual_chargegroups_for_service(service)
-            #for charges in actual_chargegroups.values():
+            ## for each hypothetical charge in the reebill, copy the values of
+            ## "description", "quantity", "quantity_units", "rate", and
+            ## "rate_units" from the corresponding rate structure item to the
+            ## charge
+            ## ("process hypothetical charges with shadow and non-shadow meter register totals")
+            ## ("iterate over the charge groups, binding the reebill charges to its associated RSI")
+            #hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+            #for chargegroup, charges in hypothetical_chargegroups.items():
                 #rate_structure.bind_charges(charges)
 
-            ## (original comment "don't have to set this because we modified the
-            ## actual_chargegroups" is false--we modified the rate structure
-            ## items, but left the charges in the bill unchanged. as far as i
-            ## can tell this line of code has no effect)
-            #self.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-            # hypothetical charges
-
-            # re-copy rate structure because it gets destroyed during use
-            rate_structure = copy.deepcopy(the_rate_structure)
-
-            # get shadow and non-shadow registers in the reebill
-            actual_register_readings = self.actual_registers(service)
-            shadow_register_readings = self.shadow_registers(service)
-
-            # "add the shadow register totals to the actual register, and re-process"
-
-            # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
-            # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
-            # renewable energy - then the rate is calculated incorrectly.  This is because
-            # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
-            # one way for actual charge computation and another way for hypothetical charge
-            # computation.
-
-            # for each shadow register dictionary: add its quantity to the
-            # quantity of the corresponding non-shadow register
-            registers_to_bind = copy.deepcopy(shadow_register_readings)
-            for shadow_reading in registers_to_bind:
-                for actual_reading in actual_register_readings:
-                    if actual_reading['identifier'] == shadow_reading['identifier']:
-                        shadow_reading['quantity'] += actual_reading['quantity']
-                # TODO: throw exception when registers mismatch
-
-            # copy the quantity of each register dictionary in the reebill to
-            # the corresponding register dictionary in the rate structure
-            # ("apply the combined registers from the reebill to the probable
-            # rate structure")
-            rate_structure.bind_register_readings(registers_to_bind)
-
-            # for each hypothetical charge in the reebill, copy the values of
-            # "description", "quantity", "quantity_units", "rate", and
-            # "rate_units" from the corresponding rate structure item to the
-            # charge
-            # ("process hypothetical charges with shadow and non-shadow meter register totals")
-            # ("iterate over the charge groups, binding the reebill charges to its associated RSI")
-            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-            for chargegroup, charges in hypothetical_chargegroups.items():
-                rate_structure.bind_charges(charges)
-
-            # don't have to set this because we modified the hypothetical_chargegroups
-            #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+            ## don't have to set this because we modified the hypothetical_chargegroups
+            ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
 
     # methods for getting data out of the mongo document: these could change
