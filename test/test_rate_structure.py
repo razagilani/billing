@@ -40,7 +40,8 @@ class RateStructureTest(TestCaseWithSetup):
             utilbill = session.query(UtilBill).one()
 
             # get RS docs and put them in mongo
-            urs_dict = self.rate_structure_dao.load_urs(utilbill.utility, utilbill.rate_class)
+            urs_dict = self.rate_structure_dao.load_urs(utilbill.utility,
+                    utilbill.rate_class)
             uprs_dict = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             cprs_dict = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 

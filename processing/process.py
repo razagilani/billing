@@ -284,8 +284,8 @@ class Process(object):
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
                     new_utilbill)
             new_utilbill.document_id = doc['_id']
-            new_utilbill.uprs_document_id = uprs._id
-            new_utilbill.cprs_document_id = cprs._id
+            new_utilbill.uprs_document_id = uprs.id
+            new_utilbill.cprs_document_id = cprs.id
             self.reebill_dao.save_utilbill(doc)
             uprs.save()
             cprs.save()
@@ -365,7 +365,7 @@ class Process(object):
                     rate_class=utilbill.rate_class)
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs._id = ObjectId()
+            cprs.id = ObjectId()
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
             # existing ones are Hypothetical), use template for the utility
@@ -378,7 +378,7 @@ class Process(object):
             assert doc['service'] == utilbill.service
             assert doc['utility'] == utilbill.utility
             assert doc['rate_structure_binding'] == utilbill.rate_class
-            cprs = RateStructure(_id=ObjectId(), type='CPRS', rates=[])
+            cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -393,7 +393,7 @@ class Process(object):
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
-        uprs._id = ObjectId()
+        uprs.id = ObjectId()
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)

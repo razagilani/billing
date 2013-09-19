@@ -209,8 +209,7 @@ class RateStructureDAO(object):
         unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
         if the reebill is issued.
         '''
-        urs = self.load_urs(utilbill.utility, utilbill.rate_class,
-                utilbill.period_start, utilbill.period_end)
+        urs = self.load_urs(utilbill.utility, utilbill.rate_class)
         uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
         cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
 
@@ -249,7 +248,7 @@ class RateStructureDAO(object):
         '''
         result = URS.objects.get(id__type='URS', id__utility_name=utility_name,
                 id__rate_structure_name=rate_structure_name)
-        assert result.id.type = 'URS'
+        assert result.id.type == 'URS'
         return result
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
@@ -284,9 +283,8 @@ class RateStructureDAO(object):
 
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id.'''
-        # TODO i think this is not the right way to load documents by _id
-        # maybe __raw__={'_id': ObjectId(_id)}
-        doc = RateStructure.objects.get(_id=ObjectId(_id))
+        assert _id is not None
+        doc = RateStructure.objects.get(id=ObjectId(_id))
         return doc
 
     def _delete_rs_by_id(self, _id):
@@ -381,7 +379,6 @@ class Register(EmbeddedDocument):
     description = StringField()
     uuid = StringField()
 
-
 class RateStructure(Document):
     meta = {
         'db_alias': 'rate_structure',
@@ -390,7 +387,7 @@ class RateStructure(Document):
     }
 
     type = StringField(required=True)
-    registers = ListField(field=Register)
+    registers = ListField(field=EmbeddedDocumentField(Register))
 
     # NOTE for a ListField, required=True means it must be nonempty; it is not
     # possible to have an optional ListField (?) because there is a default
@@ -421,10 +418,10 @@ class URSID(EmbeddedDocument):
 class URS(RateStructure):
     meta = {
         'db_alias': 'rate_structure',
-        'collection': 'rate_structure',
-        'allow_inheritance': True
+        #'collection': 'rate_structure',
+        #'allow_inheritance': True
     }
     # MongoEngine uses the name "id" for the document's _id
-    id = EmbeddedDocumentField(URSID)
-    utility_name = StringField(required=True)
-    rate_structure_name = StringField(required=True)
+    id = EmbeddedDocumentField(URSID, primary_key=True)
+    #utility_name = StringField(required=True)
+    #rate_structure_name = StringField(required=True)
