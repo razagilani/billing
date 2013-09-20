@@ -363,9 +363,6 @@ class Process(object):
                     utilbill.customer.account, utilbill.period_end,
                     service=utilbill.service, utility=utilbill.utility,
                     rate_class=utilbill.rate_class)
-            doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs['_id'] = ObjectId()
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
             # existing ones are Hypothetical), use template for the utility
@@ -379,6 +376,12 @@ class Process(object):
             assert doc['utility'] == utilbill.utility
             assert doc['rate_structure_binding'] == utilbill.rate_class
             cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+        else:
+            # the preceding utility bill does exist, so duplicate its CPRS to
+            # produce the CPRS for this bill
+            doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
+            cprs['_id'] = ObjectId()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
