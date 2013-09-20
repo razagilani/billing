@@ -10,7 +10,7 @@ chardet==1.1
 fabulous==0.1.5
 grapefruit==0.1a3
 greenlet==0.4.0
-mongoengine==0.6.13
+mongoengine==0.8.4
 numpy==1.6.2
 ordereddict==1.1
 py-bcrypt==0.2
