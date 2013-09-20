@@ -283,7 +283,7 @@ class RateStructureDAO(object):
 
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id.'''
-        assert _id is not None
+        assert isinstance(_id, basestring)
         doc = RateStructure.objects.get(id=ObjectId(_id))
         return doc
 
@@ -405,12 +405,13 @@ class RateStructure(Document):
     }
 
     type = StringField(required=True)
-    registers = ListField(field=EmbeddedDocumentField(Register))
+    registers = ListField(field=EmbeddedDocumentField(Register), default=[])
 
     # NOTE for a ListField, required=True means it must be nonempty; it is not
     # possible to have an optional ListField (?) because there is a default
     # value of []
-    rates = ListField(field=EmbeddedDocumentField(RateStructureItem))
+    rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
+            default=[])
 
     def rsis_dict(self):
         result = {}
