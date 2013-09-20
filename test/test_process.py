@@ -18,6 +18,7 @@ from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing import rate_structure2
+from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -231,12 +232,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
             cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
             utilbill_doc['service'] = 'electricity'
-            new_rsi = {"rate": "36.25", "rsi_binding": "NEW", "quantity": "1"}
-            uprs_doc['rates'] = [new_rsi]
-            cprs_doc['rates'] = [new_rsi]
+            new_rsi = RateStructureItem(rsi_binding='NEW', rate='36.25',
+                    quantity='1')
+            uprs_doc.rates = [new_rsi]
+            cprs_doc.rates = [new_rsi]
             self.reebill_dao.save_utilbill(utilbill_doc)
-            self.rate_structure_dao.save_rs(uprs_doc)
-            self.rate_structure_dao.save_rs(cprs_doc)
+            uprs_doc.save()
+            cprs_doc.save()
 
             # load frozen documents associated with the issued reebill
             frozen_utilbill_doc = self.process.get_utilbill_doc(session,
@@ -249,8 +251,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertNotEqual(frozen_uprs_doc, uprs_doc)
             self.assertNotEqual(frozen_cprs_doc, cprs_doc)
             self.assertEquals('gas', frozen_utilbill_doc['service'])
-            self.assertNotIn(new_rsi, frozen_uprs_doc['rates'])
-            self.assertNotIn(new_rsi, frozen_cprs_doc['rates'])
+            self.assertNotIn(new_rsi, frozen_uprs_doc.rates)
+            self.assertNotIn(new_rsi, frozen_cprs_doc.rates)
 
             # editable documents should be unchanged
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
@@ -263,8 +265,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(cprs_doc,
                     self.rate_structure_dao.load_cprs_for_utilbill(utilbill))
             self.assertEquals('electricity', utilbill_doc['service'])
-            self.assertIn(new_rsi, uprs_doc['rates'])
-            self.assertIn(new_rsi, cprs_doc['rates'])
+            self.assertIn(new_rsi, uprs_doc.rates)
+            self.assertIn(new_rsi, cprs_doc.rates)
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
