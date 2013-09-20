@@ -347,9 +347,9 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         for charge in charges:
             rsi = rsis[charge['rsi_binding']]
             quantity, rate = rsi.compute_charge(register_readings)
-            charge['quantity'] = quantity
-            charge['rate'] = rate
-            charge['total'] = quantity * rate
+            charge['quantity'] = Decimal(quantity)
+            charge['rate'] = Decimal(rate)
+            charge['total'] = Decimal(quantity) * Decimal(rate)
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All

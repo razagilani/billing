@@ -1,5 +1,5 @@
 '''Provides example data to be used in tests.'''
-import copy
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
 from billing.processing.mongo import MongoReebill, float_to_decimal
@@ -722,7 +722,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
     '''Returns an example reebill with the given account, sequence, and dates. It comes
     with one utility bill having the same dates.'''
-    reebill_dict = copy.deepcopy(example_reebill)
+    reebill_dict = deepcopy(example_reebill)
     reebill_dict['_id'].update({
         'account': account,
         'sequence': sequence,
@@ -745,13 +745,13 @@ def get_reebill(account, sequence, start=date(2011,11,12),
     })
 
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
-            [copy.deepcopy(deep_map(float_to_decimal, u))])
+            [deepcopy(deep_map(float_to_decimal, u))])
 
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):
     '''Returns an example utility bill dictionary.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
-    utilbill_dict = copy.deepcopy(example_utilbill)
+    utilbill_dict = deepcopy(example_utilbill)
     utilbill_dict.update({
         '_id': ObjectId(),
         'account': account,
@@ -768,7 +768,7 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
 #def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
         #utility_name='washgas'):
     #'''Returns an example utility global rate structure document.'''
-    #urs_dict = copy.deepcopy(example_urs)
+    #urs_dict = deepcopy(example_urs)
     #urs_dict['_id'].update({
         #'rate_structure_name': rate_structure_name,
         #'utility_name': utility_name,
@@ -777,14 +777,14 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
 
 def get_urs(rate_structure_name='DC Non Residential Non Heat',
         utility_name='washgas'):
-    result = copy.deepcopy(example_urs)
+    result = deepcopy(example_urs)
     result.id = URSID(rate_structure_name=rate_structure_name,
             utility_name=utility_name, type='URS')
     return result
 
 #def get_uprs_dict():
     #'''Returns an example customer periodic rate structure document.'''
-    #uprs_dict = copy.deepcopy(example_uprs)
+    #uprs_dict = deepcopy(example_uprs)
     #uprs_dict['_id'] = ObjectId()
     #return uprs_dict
 
@@ -794,11 +794,11 @@ def get_uprs():
     return result
 
 #def get_cprs_dict():
-    #cprs_dict = copy.deepcopy(example_cprs)
+    #cprs_dict = deepcopy(example_cprs)
     #cprs_dict['_id'] = ObjectId()
     #return cprs_dict
 
 def get_cprs():
-    result = deepcopy(cprs)
+    result = deepcopy(example_cprs)
     result.id = ObjectId()
     return result
