@@ -360,7 +360,7 @@ class Process(object):
         # see https://www.pivotaltracker.com/story/show/51749487
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
-                    utilbill.customer.account, utilbill.period_end,
+                    utilbill.customer.account, utilbill.period_start,
                     service=utilbill.service, utility=utilbill.utility,
                     rate_class=utilbill.rate_class)
         except NoSuchBillException:

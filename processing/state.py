@@ -1025,7 +1025,7 @@ class StateDB(object):
         cursor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
                 .filter(UtilBill.state != UtilBill.Hypothetical)\
-                .filter(UtilBill.period_end < end)
+                .filter(UtilBill.period_end <= end)
         if service is not None:
             cursor = cursor.filter(UtilBill.service == service)
         if utility is not None:
