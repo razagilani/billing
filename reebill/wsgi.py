@@ -2158,6 +2158,7 @@ class BillToolBridge:
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
         service = service.lower()
+        sequence = int(sequence)
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -2172,88 +2173,23 @@ class BillToolBridge:
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
         self.compute_bill(account, sequence)
-
-        flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
-
+        
+        utilbill_doc = reebill._get_utilbill_for_service(service)
+        flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
+        charge_dict_a = {c['rsi_binding']:c for c in flattened_charges_a}
+        flattened_charges_h = reebill.hypothetical_chargegroups_flattened(service)
+        for charge_dict_h in flattened_charges_h:
+            matching = charge_dict_a[charge_dict_h['rsi_binding']]
+            charge_dict_h['actual_rate'] = matching['rate']
+            charge_dict_h['actual_quantity'] = matching['quantity']
+            charge_dict_h['actual_total'] = matching['total']
+        print flattened_charges_a
+        print flattened_charges_h
         if xaction == "read":
-            return self.dumps({'success': True, 'rows': flattened_charges})
-
-        elif xaction == "update":
-            rows = json.loads(kwargs["rows"])
-
-            # single edit comes in not in a list
-            if type(rows) is dict: rows = [rows]
-
-            for row in rows:
-                # identify the charge item UUID of the posted data
-                ci_uuid = row['uuid']
-
-                # identify the charge item, and update it with posted data
-                matches = [ci_match for ci_match in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
-                # there should only be one match
-                if (len(matches) == 0):
-                    raise Exception("Did not match charge item UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one charge item UUID which should not be possible")
-                ci = matches[0]
-
-                # now that blank values are removed, ensure that required fields were sent from client 
-                # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-
-                # now take the legitimate values from the posted data and update the RSI
-                # clear it so that the old emptied attributes are removed
-                ci.clear()
-                ci.update(row)
-
-            reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            return self.dumps({'success':True})
-
-        elif xaction == "create":
-
-            rows = json.loads(kwargs["rows"])
-
-            # single create comes in not in a list
-            if type(rows) is dict: rows = [rows]
-
-            for row in rows:
-                row["uuid"] = str(UUID.uuid1())
-                # TODO: 22726549 need a copy here because reebill mangles the datastructure passed in
-                flattened_charges.append(copy.copy(row))
-
-            # TODO: 22726549 Reebill shouldn't mangle a datastructure passed in.  It should make a copy
-            # for itself.
-            reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            return self.dumps({'success':True, 'rows':rows})
-
-        elif xaction == "destroy":
-
-            uuids = json.loads(kwargs["rows"])
-
-            # single edit comes in not in a list
-            # TODO: understand why this is a unicode coming up from browser
-            if type(uuids) is unicode: uuids = [uuids]
-
-            for ci_uuid in uuids:
-
-                # identify the rsi
-                matches = [result for result in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
-
-                if (len(matches) == 0):
-                    raise Exception("Did not match a charge item UUID which should not be possible")
-                if (len(matches) > 1):
-                    raise Exception("Matched more than one charge item UUID which should not be possible")
-                ci = matches[0]
-
-                flattened_charges.remove(ci)
-
-            reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
-            self.reebill_dao.save_reebill(reebill)
-
-            return self.dumps({'success':True})
+            return self.dumps({'success': True, 'rows': flattened_charges_h})
+        else:
+            raise NotImplementedError('Cannot create, edit or destroy charges'+\
+                                      ' from this grid.')
 
 
     @cherrypy.expose

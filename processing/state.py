@@ -1018,14 +1018,14 @@ class StateDB(object):
 
     def get_last_real_utilbill(self, session, account, end, service=None,
             utility=None, rate_class=None):
-        '''Returns the latest_ending non-Hypothetical UtilBill whose
+        '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
         utility, and rate class.'''
         customer = self.get_customer(session, account)
         cursor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
                 .filter(UtilBill.state != UtilBill.Hypothetical)\
-                .filter(UtilBill.period_end <= end)
+                .filter(UtilBill.period_end < end)
         if service is not None:
             cursor = cursor.filter(UtilBill.service == service)
         if utility is not None:
