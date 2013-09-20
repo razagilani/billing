@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
-from billing.processing import rate_structure
+from billing.processing import rate_structure2
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -615,23 +615,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the user would manually add RSIs and charges when processing the
             # first bill for a given rate structure.)
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            uprs['rates'] = example_data.get_uprs_dict()['rates']
+            uprs.rates = example_data.get_uprs().rates
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             utilbill_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
-            self.rate_structure_dao.save_rs(uprs)
+            uprs.save()
             self.reebill_dao.save_utilbill(utilbill_doc)
 
             # also add some charges to the CPRS to test overriding of UPRS by CPRS
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
-            cprs['rates'] = example_data.get_cprs_dict()['rates']
-            self.rate_structure_dao.save_rs(cprs)
+            cprs.rates = example_data.get_cprs().rates
+            cprs.save()
 
             # compute charges in the bill using the rate structure created from the
             # above documents
             rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
-            reebill1.compute_charges(rate_structure)
+            reebill1.compute_charges(uprs, cprs)
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:

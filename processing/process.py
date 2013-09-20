@@ -24,7 +24,7 @@ import skyliner
 from billing.processing import state
 from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
-from billing.processing.rate_structure import RateStructureDAO
+from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
@@ -284,11 +284,11 @@ class Process(object):
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
                     new_utilbill)
             new_utilbill.document_id = doc['_id']
-            new_utilbill.uprs_document_id = uprs['_id']
-            new_utilbill.cprs_document_id = cprs['_id']
+            new_utilbill.uprs_document_id = uprs.id
+            new_utilbill.cprs_document_id = cprs.id
             self.reebill_dao.save_utilbill(doc)
-            self.rate_structure_dao.save_rs(uprs)
-            self.rate_structure_dao.save_rs(cprs)
+            uprs.save()
+            cprs.save()
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -375,13 +375,13 @@ class Process(object):
             assert doc['service'] == utilbill.service
             assert doc['utility'] == utilbill.utility
             assert doc['rate_structure_binding'] == utilbill.rate_class
-            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+            cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         else:
             # the preceding utility bill does exist, so duplicate its CPRS to
             # produce the CPRS for this bill
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs['_id'] = ObjectId()
+            cprs.id = ObjectId()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -396,12 +396,12 @@ class Process(object):
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
-        uprs['_id'] = ObjectId()
+        uprs.id = ObjectId()
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
-        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                cprs['rates']}
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates +
+                cprs.rates}
         for group, charges in doc['chargegroups'].iteritems():
             i = 0
             while i < len(charges):
@@ -463,7 +463,7 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
-        mongo.compute_utility_bill(document, rate_structure)
+        mongo.compute_all_charges(document, rate_structure)
         self.reebill_dao.save_utilbill(document)
 
     def compute_bill(self, session, present_reebill):
@@ -510,7 +510,9 @@ class Process(object):
                 .filter(ReeBill.version == present_reebill.version).one()
         for utilbill in reebill_row.utilbills:
             rs = self.rate_structure_dao.load_rate_structure(utilbill)
-            present_reebill.compute_charges(rs)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
+            present_reebill.compute_charges(uprs, cprs)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -1107,9 +1109,9 @@ class Process(object):
                 reebill.utilbills[0])
         cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 reebill.utilbills[0])
-        uprs['_id'], cprs['_id'] = frozen_uprs_id, frozen_cprs_id
-        self.rate_structure_dao.save_rs(uprs)
-        self.rate_structure_dao.save_rs(cprs)
+        uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
+        uprs.save()
+        cprs.save()
         reebill._utilbill_reebills[0].uprs_document_id = frozen_uprs_id
         reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
 
