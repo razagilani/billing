@@ -290,8 +290,9 @@ class RateStructureDAO(object):
     def _delete_rs_by_id(self, _id):
         '''Deletes the rate structure document with the given _id. Raises a
         MongoError if deletion fails.'''
-        result = self.collection.remove({'_id': ObjectId(_id)}, safe=True)
-        # TODO is there a way to specify safe more or get the result "err" and "n"?
+        result = RateStructure.objects.get(id=ObjectId(_id)).delete()
+        # TODO is there a way to specify safe mode or get the result "err" and "n"?
+        # look at 'write_concern' argument
 
     def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
