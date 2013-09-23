@@ -1815,12 +1815,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_jan = session.query(UtilBill).one()
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                     utilbill_jan)
-            uprs['rates'] = example_data.get_uprs_dict()['rates']
+            uprs.rates = example_data.get_uprs().rates
             utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill_jan)
             utilbill_jan_doc['chargegroups'] = example_data.get_utilbill_dict(
                     '99999')['chargegroups']
-            self.rate_structure_dao.save_rs(uprs)
+            uprs.save()
             self.reebill_dao.save_utilbill(utilbill_jan_doc)
 
 
