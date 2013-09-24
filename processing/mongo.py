@@ -363,13 +363,15 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # get dictionary mapping charge names to their indices in an alphabetical
     # list. this assigns a number to each charge.
     # TODO rename to charge_names_to_numbers
-    charge_numbers_to_names = {value: index for index, value in enumerate(
-            chain.from_iterable(((c['rsi_binding'] for c in group)
-            for group in utilbill_doc['chargegroups'].itervalues())))}
+    all_charges = list(sorted(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()),
+            key=lambda charge: charge['rsi_binding']))
+    charge_numbers = {charge['rsi_binding']: index for index, charge in
+            enumerate(all_charges)}
 
     # the dependencies of some charges' RSI formulas on other charges form a
     # DAG, which will be represented as a list of pairs of charge numbers in
-    # 'charge_numbers_to_names'. this list will be used to determine the order
+    # 'charge_numbers'. this list will be used to determine the order
     # in which charges get evaluated. to build the list, find all identifiers
     # in each RSI formula that is not a register name; every such identifier
     # must be the name of a charge, and its presence means the charge whose RSI
@@ -379,11 +381,11 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # this list initially contains all charge numbers, and by the end of the
     # loop will contain only the numbers of charges that had no relationship to
     # another chanrge
-    independent_charge_numbers = set(charge_numbers_to_names.itervalues())
+    independent_charge_numbers = set(charge_numbers.itervalues())
     for charges in utilbill_doc['chargegroups'].itervalues():
         for charge in charges:
             rsi = rsis[charge['rsi_binding']]
-            number_of_this_charge = charge_numbers_to_names[charge['rsi_binding']]
+            this_charge_num = charge_numbers[charge['rsi_binding']]
 
             # for every node in the AST of the RSI's "quantity" and "rate"
             # formulas, if the 'ast' module identifiers that node as an
@@ -395,13 +397,11 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
                 if isinstance(node, ast.Name) \
                         and not _is_built_in_function(node) \
                         and node.id not in identifiers:
+                    other_charge_num = charge_numbers[node.id]
                     # a pair (x,y) means x precedes y, i.e. y depends on x
-                    dependency_graph.append((
-                        charge_numbers_to_names[node.id],
-                        number_of_this_charge,
-                    ))
-                    independent_charge_numbers.discard(charge_numbers_to_names[node.id])
-                    independent_charge_numbers.discard(number_of_this_charge)
+                    dependency_graph.append((other_charge_num, this_charge_num))
+                    independent_charge_numbers.discard(other_charge_num)
+                    independent_charge_numbers.discard(this_charge_num)
 
     # charges that don't depend on other charges can be evaluated before ones
     # that do.
@@ -415,17 +415,14 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     except GraphError as g:
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
-        names_in_cycle = ', '.join(charge_numbers_to_names[i] for i in
-                ge.args[1])
+        names_in_cycle = ', '.join(all_charges[i] for i in ge.args[1])
         raise ValueError('Circular dependency: %' % names_in_cycle)
+    assert len(evaluation_order) == len(all_charges)
 
     # compute each charge, using its corresponding RSI, in the above order.
     # every time a charge is computed, store the resulting "quantity", "rate",
     # and "total" in 'identifiers' so it can be used in evaluating subsequent
     # charges that depend on it.
-    all_charges = list(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()))
-    assert len(evaluation_order) == len(all_charges)
     for charge_number in evaluation_order:
         charge = all_charges[charge_number]
         rsi = rsis[charge['rsi_binding']]
