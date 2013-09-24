@@ -399,14 +399,10 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
                     ))
                     has_dependency = True
 
-        # if this charge did not depend on any other charges, it can be
-        # evaluated before any that do have dependencies
-        if not has_dependency:
-            evaluation_order.append(number_of_this_charge)
-
-    # TODO: dependency_graph is [] here when running billing.test.test_utilbill:UtilBillTest.test_compute
-    # so charges don't get computed
-    import ipdb; ipdb.set_trace()
+            # if this charge did not depend on any other charges, it can be
+            # evaluated before any that do have dependencies
+            if not has_dependency:
+                evaluation_order.append(number_of_this_charge)
 
     # 'evaluation_order' now contains only the indices of charges that don't
     # have dependencies. topological sort the dependency graph to find an
