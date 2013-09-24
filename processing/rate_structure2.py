@@ -329,24 +329,6 @@ class RateStructureDAO(object):
             result.append((doc, utilbill.period_start, utilbill.period_end))
         return result
 
-    def load_uprs(self, id):
-        '''Returns a Utility Periodic Rate Structure document from Mongo.'''
-        query = {"_id": ObjectId(id), "type": "UPRS"}
-        uprs = self.collection.find_one(query)
-        if uprs is None:
-            raise ValueError('Could not find UPRS: query was %s' %
-                    format_query(query))
-        return uprs
-
-    def load_cprs(self, id):
-        '''Returns a Customer Periodic Rate Structure document from Mongo.'''
-        query = {"_id": ObjectId(id), "type": "CPRS"}
-        cprs = self.collection.find_one(query)
-        if cprs is None:
-            raise ValueError('Could not find CPRS: query was %s' %
-                    format_query(query))
-        return cprs
-
     def delete_rs_docs_for_utilbill(self, utilbill):
         '''Removes the UPRS and CPRS documents for the given state.UtilBill.
         This should be done when the utility bill is deleted. Raises a

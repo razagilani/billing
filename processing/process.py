@@ -382,6 +382,10 @@ class Process(object):
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
             cprs.id = ObjectId()
+            # NOTE this is a temporary workaround for a bug in MongoEngine
+            # 0.8.4 described here:
+            # https://www.pivotaltracker.com/story/show/57593308
+            cprs._created = True
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -397,6 +401,10 @@ class Process(object):
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
         uprs.id = ObjectId()
+        # NOTE this is a temporary workaround for a bug in MongoEngine
+        # 0.8.4 described here:
+        # https://www.pivotaltracker.com/story/show/57593308
+        cprs._created = True
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
@@ -1030,6 +1038,10 @@ class Process(object):
         # create row for new customer in MySQL, with new utilbill document
         # template _id
         new_id = ObjectId()
+        # NOTE this is a temporary workaround for a bug in MongoEngine
+        # 0.8.4 described here:
+        # https://www.pivotaltracker.com/story/show/57593308
+        cprs._created = True
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
                 new_id)
         session.add(new_customer)
