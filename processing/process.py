@@ -1120,8 +1120,8 @@ class Process(object):
         uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
         uprs.save()
         cprs.save()
-        reebill._utilbill_reebills[0].uprs_document_id = frozen_uprs_id
-        reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
+        reebill._utilbill_reebills[0].uprs_document_id = str(frozen_uprs_id)
+        reebill._utilbill_reebills[0].cprs_document_id = str(frozen_cprs_id)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
