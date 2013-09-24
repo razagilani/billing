@@ -1579,12 +1579,10 @@ class BillToolBridge:
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
 
-            # TODO enable this when testing is done
-            ## only "read" is allowed when 'reebill_sequence', 'reebill_version'
-            ## are specified
-            #if reebill_version is not None:
-                #raise IssuedBillError(("Can't modify rate structure belonging "
-                    #"to an issued reebill"))
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
             
             rows = json.loads(rows)
 
@@ -2070,6 +2068,11 @@ class BillToolBridge:
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': flattened_charges})
 
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
+
             if xaction == "update":
                 rows = json.loads(kwargs["rows"])
                 # single edit comes in not in a list
@@ -2236,6 +2239,11 @@ class BillToolBridge:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
                 return self.dumps(result)
+
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
 
             # the "rows" argument is only given when xaction is "create", "update",
             # or "destroy". it's a list if there are multiple rows (though in
