@@ -804,7 +804,7 @@ class BillToolBridge:
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill_doc.sequence, new_reebill_doc.version)
             
-            self.process.compute_bill(session, new_reebill_doc)
+            self.process.compute_reebill(session, new_reebill_doc)
             self.reebill_dao.save_reebill(new_reebill_doc)
 
             return self.dumps({'success': True})
@@ -887,7 +887,7 @@ class BillToolBridge:
                     sequence, version='max')
             mongo_predecessor = self.reebill_dao.load_reebill(account, sequence
                     - 1, version=0)
-            self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
+            self.process.compute_reebill(session, mongo_predecessor, mongo_reebill)
             self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
@@ -948,7 +948,7 @@ class BillToolBridge:
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process.compute_bill(session, reebill)
+            self.process.compute_reebill(session, reebill)
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
@@ -1579,12 +1579,10 @@ class BillToolBridge:
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':rates})
 
-            # TODO enable this when testing is done
-            ## only "read" is allowed when 'reebill_sequence', 'reebill_version'
-            ## are specified
-            #if reebill_version is not None:
-                #raise IssuedBillError(("Can't modify rate structure belonging "
-                    #"to an issued reebill"))
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
             
             rows = json.loads(rows)
 
@@ -2070,6 +2068,11 @@ class BillToolBridge:
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': flattened_charges})
 
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
+
             if xaction == "update":
                 rows = json.loads(kwargs["rows"])
                 # single edit comes in not in a list
@@ -2172,7 +2175,7 @@ class BillToolBridge:
 
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
-        self.compute_bill(account, sequence)
+        self.compute_reebill(account, sequence)
         
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
@@ -2211,6 +2214,8 @@ class BillToolBridge:
                 raise ValueError(('Service names and meter/register ids must '
                         'not contain "/"'))
 
+        if xaction not in ('create', 'read', 'update', 'destroy'):
+            raise ValueError('Unknown xaction "%s"' % xaction)
 
         with DBSession(self.state_db) as session:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
@@ -2234,6 +2239,11 @@ class BillToolBridge:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
                 return self.dumps(result)
+
+            # only xaction "read" is allowed when reebill_sequence/version
+            # arguments are given
+            if (reebill_sequence, reebill_version) != (None, None):
+                raise IssuedBillError('Issued reebills cannot be modified')
 
             # the "rows" argument is only given when xaction is "create", "update",
             # or "destroy". it's a list if there are multiple rows (though in
@@ -2265,17 +2275,6 @@ class BillToolBridge:
                 if 'current_selected_id' in kwargs:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
-
             if xaction == 'update':
                 # for update, client sends a JSON representation of the grid rows,
                 # containing only the fields to be updated, plus an "id" field that
@@ -2306,23 +2305,11 @@ class BillToolBridge:
                         result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
                                 new_meter_id, new_reg_id)
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
                 registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
                 result.update({
                     'rows': registers_json,
                     'total': len(registers_json)
                 })
-
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.set_meter_dates_from_utilbills()
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
 
             if xaction == 'destroy':
                 assert len(rows) == 1
@@ -2340,18 +2327,9 @@ class BillToolBridge:
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
-
-            raise ValueError('Unknown xaction "%s"' % xaction)
+            self.reebill_dao.save_utilbill(utilbill_doc)
+            self.process.compute_utility_bill(session, utilbill_id)
+            return self.dumps(result)
 
     #
     ################

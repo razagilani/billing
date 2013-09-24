@@ -6,6 +6,11 @@ from copy import deepcopy
 class TestCase(unittest.TestCase):
     '''Extra assert methods.'''
 
+    def assertDecimalAlmostEqual(self, x, y, places=7):
+        '''Asserts equality between any objects that can be cast to floats
+        (especially Decimals) up to 'places'.'''
+        self.assertAlmostEqual(float(x), float(y), places=places)
+
     def assertDatetimesClose(self, d1, d2, seconds=10):
         '''Asserts that datetimes d1 and d2 differ by less than 'seconds' seconds.'''
         self.assertLess(abs(d1 - d2), timedelta(seconds=seconds))

@@ -472,6 +472,15 @@ class Process(object):
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
         mongo.compute_all_charges(document, rate_structure)
+
+        # also compute documents of any unissued reebills associated with this
+        # utility bill
+        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills):
+            reebill_doc = self.reebill_dao.load_reebill(
+                    reebill.customer.account, reebill.sequence,
+                    version=reebill.version)
+            self.compute_reebill(session, reebill_doc)
+
         self.reebill_dao.save_utilbill(document)
 
     def compute_bill(self, session, present_reebill):
@@ -830,7 +839,7 @@ class Process(object):
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill_doc)
         try:
-            self.compute_bill(session, reebill_doc)
+            self.compute_reebill(session, reebill_doc)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -890,7 +899,7 @@ class Process(object):
                 target_sequence, version=target_max_version)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_bill(session, target_reebill)
+        self.compute_reebill(session, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
         # issue each correction
@@ -1093,8 +1102,8 @@ class Process(object):
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
-        # TODO: should this be replaced with a call to compute_bill() to just
-        # make sure everything is up-to-date before issuing?
+        # TODO: should this be replaced with a call to compute_reebill() to
+        # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
         lc = self.get_late_charge(session, reebill_document)
         if lc is not None:
