@@ -9,7 +9,7 @@ from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, Register, RateStructureItem
 from billing.processing import mongo
 
-class UtilBillTest(TestCase):
+class UtilBillTest(utils.TestCase):
 
     def test_compute(self):
         # make a utility bill document from scratch to ensure full control over
@@ -123,33 +123,33 @@ class UtilBillTest(TestCase):
         # register quantity of 150 therms. there should not be a charge for
         # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
         # structure.
-        self.assertEquals(10, the_charge_named('CONSTANT'))
-        self.assertEquals(45, the_charge_named('LINEAR'))
-        self.assertEquals(31, the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertEquals(30, the_charge_named('BLOCK_1'))
-        self.assertEquals(10, the_charge_named('BLOCK_2'))
-        self.assertEquals(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
+        self.assertDecimalAlmostEqual(31, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
+        self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
-        self.assertEquals(10, the_charge_named('CONSTANT'))
-        self.assertEquals(75, the_charge_named('LINEAR'))
-        self.assertEquals(51, the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertEquals(30, the_charge_named('BLOCK_1'))
-        self.assertEquals(30, the_charge_named('BLOCK_2'))
-        self.assertEquals(5, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
+        self.assertDecimalAlmostEqual(51, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
+        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
-        self.assertEquals(10, the_charge_named('CONSTANT'))
-        self.assertEquals(0, the_charge_named('LINEAR'))
-        self.assertEquals(1, the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertEquals(0, the_charge_named('BLOCK_1'))
-        self.assertEquals(0, the_charge_named('BLOCK_2'))
-        self.assertEquals(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
+        self.assertDecimalAlmostEqual(1, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
