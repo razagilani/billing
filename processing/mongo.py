@@ -15,6 +15,9 @@ import copy
 from copy import deepcopy
 import uuid as UUID
 from itertools import chain
+from collections import defaultdict
+import ast
+from tsort import topological_sort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
@@ -323,17 +326,20 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
     utility bill document so they're correct accoding to the formulas in the
     RSIs in the given rate structures. RSIs in 'uprs' that have the same
-    'rsi_binding' as any RSI in 'cprs' are ignored.'''
-    # TODO: this will fail when charges depend on other charges. the
-    # solution is to topological-sort charges (see module "tsort") in order
-    # of dependency, then compute the charges in that order. for now,
-    # charges are not valid identifiers in RSI quantity and rate formulas.
-
-    # get dictionary mapping register names to their quantities
-    register_readings = {}
+    'rsi_binding' as any RSI in 'cprs' are ignored.
+    '''
+    # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
+    # (where NAME can be a register or the RSI_BINDING of some other charge).
+    # these are not valid python identifiers, so they can't be parsed as
+    # individual names. this dictionary maps names to "quantity"/"rate"/"total"
+    # to float values; RateStructureItem.compute_charge uses it to get values
+    # for the identifiers in the RSI formulas. it is initially filled only with
+    # register names, and the inner dictionary corresponding to each register
+    # name contains only "quantity".
+    identifiers = defaultdict(lambda:{})
     for meter in utilbill_doc['meters']:
         for register in meter['registers']:
-            register_readings[register['register_binding']] = \
+            identifiers[register['register_binding']]['quantity'] = \
                     register['quantity']
 
     # get dictionary mapping rsi_bindings to RateStructureItem objects from
@@ -342,14 +348,66 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     rsis = uprs.rsis_dict()
     rsis.update(cprs.rsis_dict())
 
-    # compute each charge using its corresponding RSI
+    # get dictionary mapping charge names to their indices in an alphabetical
+    # list. this assigns a number to each charge.
+    charge_numbers_to_names = {value: index for index, value in enumerate(
+            chain.from_iterable(((c['rsi_binding'] for c in group)
+            for group in utilbill_doc['chargegroups'].itervalues())))}
+
+    # the dependencies of some charges' RSI formulas on other charges form a
+    # DAG, which will be represented as a list of pairs of charge numbers in
+    # 'charge_numbers_to_names'. to build this list, find all identifiers in
+    # each RSI formula that is not a register name; every such identifier must
+    # be the name of a charge, and its presence means the charge whose RSI
+    # formula contains that identifier depends on the charge whose name is the
+    # identifier.
+    dependency_graph = []
     for charges in utilbill_doc['chargegroups'].itervalues():
         for charge in charges:
             rsi = rsis[charge['rsi_binding']]
-            quantity, rate = rsi.compute_charge(register_readings)
-            charge['quantity'] = Decimal(quantity)
-            charge['rate'] = Decimal(rate)
-            charge['total'] = Decimal(quantity) * Decimal(rate)
+
+            # for every node in the AST of the RSI's "quantity" and "rate"
+            # formulas, if the 'ast' module identifiers that node as an
+            # identifier, and its name does not occur in 'identifiers' above
+            # (which contains only register names), add the tuple (this
+            # charge's number, that charge's number) to 'dependency_graph'.
+            for node in chain.from_iterable((ast.walk(ast.parse(rsi.quantity)),
+                    ast.walk(ast.parse(rsi.rate)))):
+                if isinstance(node, ast.Name) and node.id not in identifiers:
+                    # a pair (x,y) means x precedes y, i.e. y depends on x
+                    dependency_graph.append((
+                        charge_numbers_to_names[node.id],
+                        charge_numbers_to_names[charge['rsi_binding']]
+                    ))
+
+    # topological sort the dependency graph to get a list of indices describing
+    # the order in which charges should be evaluated
+    try:
+        evaluation_order = topological_sort(dependency_graph)
+    except GraphError as g:
+        # if the graph contains a cycle, provide a more comprehensible error
+        # message with the charge numbers converted back to names
+        names_in_cycle = ', '.join(charge_numbers_to_names[i] for i in
+                ge.args[1])
+        raise ValueError('Circular dependency: %' % names_in_cycle)
+
+    # compute each charge, using its corresponding RSI, in the above order.
+    # every time a charge is computed, store the resulting "quantity", "rate",
+    # and "total" in 'identifiers' so it can be used in evaluating subsequent
+    # charges that depend on it.
+    all_charges = list(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()))
+    for charge_number in evaluation_order:
+        charge = all_charges[charge_number]
+        rsi = rsis[charge['rsi_binding']]
+        quantity, rate = rsi.compute_charge(identifiers)
+        charge['quantity'] = Decimal(quantity)
+        charge['rate'] = Decimal(rate)
+        charge['total'] = Decimal(quantity) * Decimal(rate)
+        # TODO maybe use float here instead of decimal
+        identifiers[charge['rsi_binding']]['quantity'] = charge['quantity']
+        identifiers[charge['rsi_binding']]['rate'] = charge['rate']
+        identifiers[charge['rsi_binding']]['total'] = charge['total']
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All

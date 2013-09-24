@@ -21,6 +21,7 @@ reportlab==2.5
 requests==0.14.0
 simplejson==2.6.0
 six==1.1.0
+tsort==0.0.1
 tablib==0.9.11
 wsgiref==0.1.2
 xlwt==0.7.4
