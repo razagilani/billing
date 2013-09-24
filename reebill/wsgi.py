@@ -2211,6 +2211,8 @@ class BillToolBridge:
                 raise ValueError(('Service names and meter/register ids must '
                         'not contain "/"'))
 
+        if xaction not in ('create', 'read', 'update', 'destroy'):
+            raise ValueError('Unknown xaction "%s"' % xaction)
 
         with DBSession(self.state_db) as session:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
@@ -2265,11 +2267,6 @@ class BillToolBridge:
                 if 'current_selected_id' in kwargs:
                     result['current_selected_id'] = kwargs['current_selected_id']
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
-
             if xaction == 'update':
                 # for update, client sends a JSON representation of the grid rows,
                 # containing only the fields to be updated, plus an "id" field that
@@ -2300,16 +2297,11 @@ class BillToolBridge:
                         result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
                                 new_meter_id, new_reg_id)
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
                 registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
                 result.update({
                     'rows': registers_json,
                     'total': len(registers_json)
                 })
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
 
             if xaction == 'destroy':
                 assert len(rows) == 1
@@ -2327,12 +2319,9 @@ class BillToolBridge:
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
 
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
-                self.process.compute_utility_bill(session, utilbill_id)
-                return self.dumps(result)
-
-            raise ValueError('Unknown xaction "%s"' % xaction)
+            self.reebill_dao.save_utilbill(utilbill_doc)
+            self.process.compute_utility_bill(session, utilbill_id)
+            return self.dumps(result)
 
     #
     ################
