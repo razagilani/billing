@@ -375,6 +375,9 @@ class RateStructureItem(EmbeddedDocument):
             except NameError:
                 return False
 
+        # use 'ast' module to parse the two formulas, and return nodes of the
+        # resulting parse tree whose type is ast.Name (and are not a built-in
+        # functions as determined by the function above)
         for node in chain.from_iterable((ast.walk(ast.parse(self.quantity)),
                 ast.walk(ast.parse(self.rate)))):
             if isinstance(node, ast.Name) and not _is_built_in_function(node):
