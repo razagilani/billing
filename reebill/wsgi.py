@@ -2267,12 +2267,6 @@ class BillToolBridge:
 
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
-
                 self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
 
@@ -2314,13 +2308,6 @@ class BillToolBridge:
                     'total': len(registers_json)
                 })
 
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.set_meter_dates_from_utilbills()
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
-
                 self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
 
@@ -2341,12 +2328,6 @@ class BillToolBridge:
                         'total': len(registers_json)}
 
                 self.reebill_dao.save_utilbill(utilbill_doc)
-
-                if reebill_sequence is not None:
-                    # utility bill document has been modified, so reebill document
-                    # must be updated to match it
-                    reebill.update_utilbill_subdocs()
-                    self.reebill_dao.save_reebill(reebill)
 
                 self.process.compute_utility_bill(session, utilbill_id)
                 return self.dumps(result)
