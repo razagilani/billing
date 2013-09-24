@@ -113,6 +113,7 @@ class UtilBillTest(TestCase):
 
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
 
+        # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
             return next(c['total'] for c in
                     utilbill_doc['chargegroups']['All Charges']
