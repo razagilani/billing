@@ -483,7 +483,7 @@ class Process(object):
 
         self.reebill_dao.save_utilbill(document)
 
-    def compute_bill(self, session, present_reebill):
+    def compute_reebill(self, session, present_reebill):
         '''Updates everything about the given reebill document that can be
         continually updated. This should be called whenever anything about a
         reebill or its utility bills has been changed, and should be
