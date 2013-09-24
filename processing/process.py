@@ -1038,10 +1038,6 @@ class Process(object):
         # create row for new customer in MySQL, with new utilbill document
         # template _id
         new_id = ObjectId()
-        # NOTE this is a temporary workaround for a bug in MongoEngine
-        # 0.8.4 described here:
-        # https://www.pivotaltracker.com/story/show/57593308
-        cprs._created = True
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
                 new_id)
         session.add(new_customer)
