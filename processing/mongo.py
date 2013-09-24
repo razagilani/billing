@@ -321,6 +321,18 @@ def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     ## replaced with it
     #utilbill_doc['chargegroups'] = actual_chargegroups
 
+def _is_built_in_function(node):
+    '''This is a horrible way to find out if an ast node is a builtin function,
+    used below in compute_all_charges. It seems to work, and I can't come up
+    with a better way. (Note that the type 'builtin_function_or_method' is not
+    a variable in global scope, like 'int' or 'str', so you can't refer to it
+    directly.) '''
+    try:
+        return eval('type(%s)' % node.id).__name__ \
+                == 'builtin_function_or_method'
+    except NameError:
+        return False
+
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
@@ -356,15 +368,19 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     # the dependencies of some charges' RSI formulas on other charges form a
     # DAG, which will be represented as a list of pairs of charge numbers in
-    # 'charge_numbers_to_names'. to build this list, find all identifiers in
-    # each RSI formula that is not a register name; every such identifier must
-    # be the name of a charge, and its presence means the charge whose RSI
-    # formula contains that identifier depends on the charge whose name is the
-    # identifier.
+    # 'charge_numbers_to_names'. this list will be used to determine the order
+    # in which charges get evaluated ('evaluation_order'). to build the list,
+    # find all identifiers in each RSI formula that is not a register name;
+    # every such identifier must be the name of a charge, and its presence
+    # means the charge whose RSI formula contains that identifier depends on
+    # the charge whose name is the identifier.
     dependency_graph = []
+    evaluation_order = []
     for charges in utilbill_doc['chargegroups'].itervalues():
         for charge in charges:
+            has_dependency = False
             rsi = rsis[charge['rsi_binding']]
+            number_of_this_charge = charge_numbers_to_names[charge['rsi_binding']]
 
             # for every node in the AST of the RSI's "quantity" and "rate"
             # formulas, if the 'ast' module identifiers that node as an
@@ -373,17 +389,30 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             # charge's number, that charge's number) to 'dependency_graph'.
             for node in chain.from_iterable((ast.walk(ast.parse(rsi.quantity)),
                     ast.walk(ast.parse(rsi.rate)))):
-                if isinstance(node, ast.Name) and node.id not in identifiers:
+                if isinstance(node, ast.Name) \
+                        and not _is_built_in_function(node) \
+                        and node.id not in identifiers:
                     # a pair (x,y) means x precedes y, i.e. y depends on x
                     dependency_graph.append((
                         charge_numbers_to_names[node.id],
-                        charge_numbers_to_names[charge['rsi_binding']]
+                        number_of_this_charge,
                     ))
+                    has_dependency = True
 
-    # topological sort the dependency graph to get a list of indices describing
-    # the order in which charges should be evaluated
+        # if this charge did not depend on any other charges, it can be
+        # evaluated before any that do have dependencies
+        if not has_dependency:
+            evaluation_order.append(number_of_this_charge)
+
+    # TODO: dependency_graph is [] here when running billing.test.test_utilbill:UtilBillTest.test_compute
+    # so charges don't get computed
+    import ipdb; ipdb.set_trace()
+
+    # 'evaluation_order' now contains only the indices of charges that don't
+    # have dependencies. topological sort the dependency graph to find an
+    # evaluation order that works for the charges that do have dependencies.
     try:
-        evaluation_order = topological_sort(dependency_graph)
+        evaluation_order.extend(topological_sort(dependency_graph))
     except GraphError as g:
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
@@ -397,6 +426,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # charges that depend on it.
     all_charges = list(chain.from_iterable(
             utilbill_doc['chargegroups'].itervalues()))
+    assert len(evaluation_order) == len(all_charges)
     for charge_number in evaluation_order:
         charge = all_charges[charge_number]
         rsi = rsis[charge['rsi_binding']]
