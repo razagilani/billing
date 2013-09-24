@@ -18,7 +18,7 @@ from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing import rate_structure2
-from billing.processing.rate_structure2 import RateStructureItem
+from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -900,9 +900,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             new_path = self.process.delete_utility_bill(session, utilbill)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
-            self.assertRaises(NoRateStructureError,
+            self.assertRaises(RateStructure.DoesNotExist,
                     self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
-            self.assertRaises(NoRateStructureError,
+            self.assertRaises(RateStructure.DoesNotExist,
                     self.rate_structure_dao.load_cprs_for_utilbill, utilbill)
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
