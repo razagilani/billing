@@ -1118,6 +1118,10 @@ class Process(object):
         cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 reebill.utilbills[0])
         uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
+        # NOTE this is a temporary workaround for a bug in MongoEngine
+        # 0.8.4 described here:
+        # https://www.pivotaltracker.com/story/show/57593308
+        uprs._created = True; cprs._created = True
         uprs.save()
         cprs.save()
         reebill._utilbill_reebills[0].uprs_document_id = str(frozen_uprs_id)
