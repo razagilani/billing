@@ -1076,15 +1076,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill,
                     reebill=reebill)
             self.assertNotEqual(ObjectId(utilbill.uprs_document_id),
-                    uprs['_id'])
+                    uprs.id)
             self.assertNotEqual(ObjectId(utilbill.cprs_document_id),
-                    cprs['_id'])
+                    cprs.id)
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].uprs_document_id),
-                    uprs['_id'])
+                    uprs.id)
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].cprs_document_id),
-                    cprs['_id'])
+                    cprs.id)
 
             # modify editable utility bill document so its meter read dates are
             # different from both its period and the frozen document's meter read
