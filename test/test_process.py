@@ -1505,46 +1505,42 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs_c = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_c)
                     .one())
-            uprs_a['rates'] = [
-                {
-                    "rsi_binding" : "SYSTEM_CHARGE",
-                    "description" : "System Charge",
-                    "quantity" : 1,
-                    "rate_units" : "dollars",
-                    "processingnote" : "",
-                    "rate" : 11.2,
-                    "quantity_units" : "",
-                    "total" : 11.2,
-                    "uuid" : "c9733cca-2c16-11e1-8c7f-002421e88ffb"
-                },
+            uprs_a.rates = [
+                RateStructureItem(
+                    rsi_binding='SYSTEM_CHARGE',
+                    description='System Charge',
+                    quantity='1',
+                    rate_units='dollars',
+                    processingnote='',
+                    rate='11.2',
+                    uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                )
             ]
-            uprs_b['rates'] = uprs_c['rates'] = [
-                {
-                    "rsi_binding" : "DISTRIBUTION_CHARGE",
-                    "description" : "Distribution charge for all therms",
-                    "quantity" : 750.10197727,
-                    "rate_units" : "dollars",
-                    "processingnote" : "",
-                    "rate" : 0.2935,
-                    "quantity_units" : "therms",
-                    "total" : 220.16,
-                    "uuid" : "c9733ed2-2c16-11e1-8c7f-002421e88ffb"
-                },
-                {
-                    "rsi_binding" : "PGC",
-                    "description" : "Purchased Gas Charge",
-                    "quantity" : 750.10197727,
-                    "rate_units" : "dollars",
-                    "processingnote" : "",
-                    "rate" : 0.7653,
-                    "quantity_units" : "therms",
-                    "total" : 574.05,
-                    "uuid" : "c97340da-2c16-11e1-8c7f-002421e88ffb"
-                },
+            uprs_b.rates = uprs_c.rates = [
+                RateStructureItem(
+                    rsi_binding='DISTRIBUTION_CHARGE',
+                    description='Distribution charge for all therms',
+                    quantity='750.10197727',
+                    rate_units='dollars',
+                    processingnote='',
+                    rate='0.2935',
+                    quantity_units='therms',
+                    total='220.16',
+                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb'
+                ),
+                RateStructureItem(
+                    rsi_binding='PGC',
+                    description='Purchased Gas Charge',
+                    quantity='750.10197727',
+                    rate_units='dollars',
+                    processingnote='',
+                    rate='0.7653',
+                    quantity_units='therms',
+                    total='574.05',
+                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb'
+                ),
             ]
-            self.rate_structure_dao.save_rs(uprs_a)
-            self.rate_structure_dao.save_rs(uprs_b)
-            self.rate_structure_dao.save_rs(uprs_c)
+            uprs_a.save(); uprs_b.save(); uprs_c.save()
 
             # create utility bill and reebill #2 for A
             self.process.upload_utility_bill(session, acc_a, 'gas', 'washgas',
@@ -1560,7 +1556,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
-                    set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
+                    set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
             # make sure A's reebill #2 is computable after rolling (even though
             # RSIs have changed, meaning some of the original charges may not
@@ -1572,18 +1568,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
             # a new bill is rolled, the UPRS it gets depends on whether it's
             # closer to B/C-1 or to A-2.
-            uprs_a_2['rates'] = [{
-                "rsi_binding" : "RIGHT_OF_WAY",
-                "description" : "DC Rights-of-Way Fee",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.03059,
-                "quantity_units" : "therms",
-                "total" : 22.95,
-                "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
-            },]
-            self.rate_structure_dao.save_rs(uprs_a_2)
+            uprs_a_2.rates = [RateStructureItem(
+                rsi_binding='RIGHT_OF_WAY',
+                description='DC Rights-of-Way Fee',
+                quantity='750.10197727',
+                rate_units='dollars',
+                processingnote='',
+                rate='0.03059',
+                quantity_units='therms',
+                total='22.95',
+                uuid='c97344f4-2c16-11e1-8c7f-002421e88ffb'
+            )]
+            uprs_a_2.save()
 
             # roll B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
             # the latter are more numerous, but A-1 should outweigh them
@@ -1597,7 +1593,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     session.query(UtilBill).filter_by(customer=customer_b,
                     period_start=date(2013,2,5)).one())
             self.assertEqual(set(['RIGHT_OF_WAY']),
-                    set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
+                    set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
             # https://www.pivotaltracker.com/story/show/47134189
             ## B-2 and its utility bill should not contain any charges that
