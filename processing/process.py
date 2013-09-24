@@ -283,9 +283,9 @@ class Process(object):
         if state < UtilBill.Hypothetical:
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
                     new_utilbill)
-            new_utilbill.document_id = doc['_id']
-            new_utilbill.uprs_document_id = uprs.id
-            new_utilbill.cprs_document_id = cprs.id
+            new_utilbill.document_id = str(doc['_id'])
+            new_utilbill.uprs_document_id = str(uprs.id)
+            new_utilbill.cprs_document_id = str(cprs.id)
             self.reebill_dao.save_utilbill(doc)
             uprs.save()
             cprs.save()
@@ -1045,7 +1045,7 @@ class Process(object):
         # save utilbill document template in Mongo with new account, _id,
         # addresses, and "total"
         utilbill_doc.update({
-            '_id': new_id, 'account': account,
+            '_id': str(new_id), 'account': account,
 
             # TODO what is 'total' anyway? should it be removed?
             # see https://www.pivotaltracker.com/story/show/53093021
