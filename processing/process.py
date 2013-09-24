@@ -464,6 +464,15 @@ class Process(object):
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
         mongo.compute_utility_bill(document, rate_structure)
+
+        # also compute documents of any unissued reebills associated with this
+        # utility bill
+        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills):
+            reebill_doc = self.reebill_dao.load_reebill(
+                    reebill.customer.account, reebill.sequence,
+                    version=reebill.version)
+            self.compute_bill(session, reebill_doc)
+
         self.reebill_dao.save_utilbill(document)
 
     def compute_bill(self, session, present_reebill):
