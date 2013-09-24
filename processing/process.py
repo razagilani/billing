@@ -1045,7 +1045,7 @@ class Process(object):
         # save utilbill document template in Mongo with new account, _id,
         # addresses, and "total"
         utilbill_doc.update({
-            '_id': str(new_id), 'account': account,
+            '_id': new_id, 'account': account,
 
             # TODO what is 'total' anyway? should it be removed?
             # see https://www.pivotaltracker.com/story/show/53093021
