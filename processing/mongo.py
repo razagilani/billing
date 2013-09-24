@@ -362,6 +362,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     # get dictionary mapping charge names to their indices in an alphabetical
     # list. this assigns a number to each charge.
+    # TODO rename to charge_names_to_numbers
     charge_numbers_to_names = {value: index for index, value in enumerate(
             chain.from_iterable(((c['rsi_binding'] for c in group)
             for group in utilbill_doc['chargegroups'].itervalues())))}
@@ -369,16 +370,18 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # the dependencies of some charges' RSI formulas on other charges form a
     # DAG, which will be represented as a list of pairs of charge numbers in
     # 'charge_numbers_to_names'. this list will be used to determine the order
-    # in which charges get evaluated ('evaluation_order'). to build the list,
-    # find all identifiers in each RSI formula that is not a register name;
-    # every such identifier must be the name of a charge, and its presence
-    # means the charge whose RSI formula contains that identifier depends on
-    # the charge whose name is the identifier.
+    # in which charges get evaluated. to build the list, find all identifiers
+    # in each RSI formula that is not a register name; every such identifier
+    # must be the name of a charge, and its presence means the charge whose RSI
+    # formula contains that identifier depends on the charge whose name is the
+    # identifier.
     dependency_graph = []
-    evaluation_order = []
+    # this list initially contains all charge numbers, and by the end of the
+    # loop will contain only the numbers of charges that had no relationship to
+    # another chanrge
+    independent_charge_numbers = set(charge_numbers_to_names.itervalues())
     for charges in utilbill_doc['chargegroups'].itervalues():
         for charge in charges:
-            has_dependency = False
             rsi = rsis[charge['rsi_binding']]
             number_of_this_charge = charge_numbers_to_names[charge['rsi_binding']]
 
@@ -397,12 +400,12 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
                         charge_numbers_to_names[node.id],
                         number_of_this_charge,
                     ))
-                    has_dependency = True
+                    independent_charge_numbers.discard(charge_numbers_to_names[node.id])
+                    independent_charge_numbers.discard(number_of_this_charge)
 
-            # if this charge did not depend on any other charges, it can be
-            # evaluated before any that do have dependencies
-            if not has_dependency:
-                evaluation_order.append(number_of_this_charge)
+    # charges that don't depend on other charges can be evaluated before ones
+    # that do.
+    evaluation_order = list(independent_charge_numbers)
 
     # 'evaluation_order' now contains only the indices of charges that don't
     # have dependencies. topological sort the dependency graph to find an
