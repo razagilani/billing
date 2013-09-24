@@ -16,7 +16,6 @@ from copy import deepcopy
 import uuid as UUID
 from itertools import chain
 from collections import defaultdict
-import ast
 from tsort import topological_sort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
@@ -321,18 +320,6 @@ def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     ## replaced with it
     #utilbill_doc['chargegroups'] = actual_chargegroups
 
-def _is_built_in_function(node):
-    '''This is a horrible way to find out if an ast node is a builtin function,
-    used below in compute_all_charges. It seems to work, and I can't come up
-    with a better way. (Note that the type 'builtin_function_or_method' is not
-    a variable in global scope, like 'int' or 'str', so you can't refer to it
-    directly.) '''
-    try:
-        return eval('type(%s)' % node.id).__name__ \
-                == 'builtin_function_or_method'
-    except NameError:
-        return False
-
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
@@ -392,16 +379,14 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
-            for node in chain.from_iterable((ast.walk(ast.parse(rsi.quantity)),
-                    ast.walk(ast.parse(rsi.rate)))):
-                if isinstance(node, ast.Name) \
-                        and not _is_built_in_function(node) \
-                        and node.id not in identifiers:
-                    other_charge_num = charge_numbers[node.id]
-                    # a pair (x,y) means x precedes y, i.e. y depends on x
-                    dependency_graph.append((other_charge_num, this_charge_num))
-                    independent_charge_numbers.discard(other_charge_num)
-                    independent_charge_numbers.discard(this_charge_num)
+            for identifier in rsi.get_identifiers():
+                if identifier in identifiers:
+                    continue
+                other_charge_num = charge_numbers[identifier]
+                # a pair (x,y) means x precedes y, i.e. y depends on x
+                dependency_graph.append((other_charge_num, this_charge_num))
+                independent_charge_numbers.discard(other_charge_num)
+                independent_charge_numbers.discard(this_charge_num)
 
     # charges that don't depend on other charges can be evaluated before ones
     # that do.

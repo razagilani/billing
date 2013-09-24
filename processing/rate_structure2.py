@@ -1,4 +1,6 @@
 from __future__ import division
+import ast
+from itertools import chain
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from datetime import datetime, date
@@ -356,6 +358,27 @@ class RateStructureItem(EmbeddedDocument):
     round_rule = StringField()
     description = StringField()
     uuid = StringField()
+
+    def get_identifiers(self):
+        '''Generates names of all identifiers occuring in this RSI's 'quantity'
+        and 'rate' formulas (excluding built-in functions).
+        '''
+        def _is_built_in_function(node):
+            '''This is a horrible way to find out if an ast node is a builtin function,
+            used below in compute_all_charges. It seems to work, and I can't come up
+            with a better way. (Note that the type 'builtin_function_or_method' is not
+            a variable in global scope, like 'int' or 'str', so you can't refer to it
+            directly.) '''
+            try:
+                return eval('type(%s)' % node.id).__name__ \
+                        == 'builtin_function_or_method'
+            except NameError:
+                return False
+
+        for node in chain.from_iterable((ast.walk(ast.parse(self.quantity)),
+                ast.walk(ast.parse(self.rate)))):
+            if isinstance(node, ast.Name) and not _is_built_in_function(node):
+                yield node.id
 
     def compute_charge(self, register_quantities):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
