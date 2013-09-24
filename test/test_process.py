@@ -390,9 +390,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
  
             # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge).
-            self.process.compute_bill(session, bill1)
+            self.process.compute_reebill(session, bill1)
  
-            # but compute_bill() destroys bill1's balance_due, so reset it to
+            # but compute_reebill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1, force=True)
@@ -422,7 +422,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be computed
-            self.process.compute_bill(session, bill2)
+            self.process.compute_reebill(session, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
@@ -701,7 +701,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
-            self.process.compute_bill(session, reebill1)
+            self.process.compute_reebill(session, reebill1)
             self.reebill_dao.save_reebill(reebill1)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
             hypothetical_chargegroups = reebill1.hypothetical_chargegroups_for_service('gas')
@@ -1240,14 +1240,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # get original balance of reebill 4 before applying corrections
             four = self.reebill_dao.load_reebill(acc, 4)
-            self.process.compute_bill(session, four)
+            self.process.compute_reebill(session, four)
             four_original_balance = four.balance_due
 
             # apply corrections to un-issued reebill 4. reebill 4 should be
             # updated, and the corrections (1 & 3) should be issued
             self.process.issue_corrections(session, acc, 4)
             four = self.reebill_dao.load_reebill(acc, 4)
-            self.process.compute_bill(session, four)
+            self.process.compute_reebill(session, four)
             # for some reason, adjustment is part of "balance forward"
             # https://www.pivotaltracker.com/story/show/32754231
             self.assertEqual(four.prior_balance - four.payment_received +
@@ -1294,7 +1294,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
             two.late_charge_rate = .5
-            self.process.compute_bill(session, two)
+            self.process.compute_reebill(session, two)
             self.assertEqual(50, two.late_charges)
 
             # save and issue 2nd reebill so a new version can be created
@@ -1344,7 +1344,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(reebill_1.period_end, date(2013,5,2))
 
             # reebill should be computable
-            self.process.compute_bill(session, reebill_1) 
+            self.process.compute_reebill(session, reebill_1) 
 
             self.process.issue(session, account, 1)
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
@@ -1389,7 +1389,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
             self.process.create_next_reebill(session, account)
             reebill_2 = self.reebill_dao.load_reebill(account, 2)
-            self.process.compute_bill(session, reebill_2) 
+            self.process.compute_reebill(session, reebill_2) 
 
             self.process.issue(session, account, reebill_2.sequence)
             reebill_2 = self.reebill_dao.load_reebill(account, reebill_2.sequence)
@@ -1565,7 +1565,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # have corresponding RSIs and had to be removed)
             reebill_a_1 = self.reebill_dao.load_reebill(acc_a, 1)
             reebill_a_2 = self.reebill_dao.load_reebill(acc_a, 2)
-            self.process.compute_bill(session, reebill_a_2) 
+            self.process.compute_reebill(session, reebill_a_2) 
 
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
             # a new bill is rolled, the UPRS it gets depends on whether it's
@@ -1744,13 +1744,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one = self.reebill_dao.load_reebill(acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
-            # this change must be saved in Mongo, because compute_bill() ->
+            # this change must be saved in Mongo, because compute_reebill() ->
             # get_unissued_corrections() loads the original and corrected bills
             # from Mongo and compares them to calculate the adjustment
             self.reebill_dao.save_reebill(one_corrected)
 
             two = self.reebill_dao.load_reebill(acc, 2)
-            self.process.compute_bill(session, two)
+            self.process.compute_reebill(session, two)
 
             # only 'two' should get an adjustment; 'one' is a correction, so it
             # can't have adjustments
@@ -1780,7 +1780,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # payment on jan. 20 gets applied to #2
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
-            self.process.compute_bill(session, two_doc)
+            self.process.compute_reebill(session, two_doc)
             self.reebill_dao.save_reebill(two_doc)
             self.assertEqual(Decimal('123.45'), two_doc.payment_received)
 
@@ -1788,8 +1788,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # #1 and does get applied to #2
             self.process.new_version(session, acc, 1)
             one_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            self.process.compute_bill(session, one_doc)
-            self.process.compute_bill(session, two_doc)
+            self.process.compute_reebill(session, one_doc)
+            self.process.compute_reebill(session, two_doc)
             self.assertEqual(Decimal(0), one_doc.payment_received)
             self.assertEqual(Decimal('123.45'), two_doc.payment_received)
 
@@ -1845,7 +1845,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2, use_olap=use_olap)
-                self.process.compute_bill(session, reebill2)
+                self.process.compute_reebill(session, reebill2)
 
                 # save original values
                 # (more fields could be added here)
@@ -1872,23 +1872,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 check()
 
                 # bind and compute repeatedly
-                self.process.compute_bill(session, reebill2)
+                self.process.compute_reebill(session, reebill2)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
                 check()
-                self.process.compute_bill(session, reebill2)
+                self.process.compute_reebill(session, reebill2)
                 check()
-                self.process.compute_bill(session, reebill2)
-                check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
-                check()
-                self.process.compute_bill(session, reebill2)
+                self.process.compute_reebill(session, reebill2)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
                 check()
-                self.process.compute_bill(session, reebill2)
+                self.process.compute_reebill(session, reebill2)
+                check()
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                check()
+                self.process.compute_reebill(session, reebill2)
                 check()
 
     def test_choose_next_utilbills_bug(self):
@@ -2015,7 +2015,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), reebill_doc,
                     use_olap=True)
-            self.process.compute_bill(session, reebill_doc)
+            self.process.compute_reebill(session, reebill_doc)
             self.process.issue(session, account, 1)
 
             # create new version
@@ -2040,7 +2040,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
             with self.assertRaises(KeyError) as context:
-                self.process.compute_bill(session, reebill_correction_doc)
+                self.process.compute_reebill(session, reebill_correction_doc)
             self.reebill_dao.save_reebill(reebill_correction_doc)
 
             # delete the new version

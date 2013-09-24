@@ -471,11 +471,11 @@ class Process(object):
             reebill_doc = self.reebill_dao.load_reebill(
                     reebill.customer.account, reebill.sequence,
                     version=reebill.version)
-            self.compute_bill(session, reebill_doc)
+            self.compute_reebill(session, reebill_doc)
 
         self.reebill_dao.save_utilbill(document)
 
-    def compute_bill(self, session, present_reebill):
+    def compute_reebill(self, session, present_reebill):
         '''Updates everything about the given reebill document that can be
         continually updated. This should be called whenever anything about a
         reebill or its utility bills has been changed, and should be
@@ -815,8 +815,8 @@ class Process(object):
         # replace utility bill documents with the "current" ones, and update
         # "hypothetical" utility bill data in the reebill document to match
         # (note that utility bill subdocuments in the reebill also get updated
-        # in 'compute_bill' below, but 'fetch_oltp_data' won't work unless they
-        # are updated)
+        # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
+        # they are updated)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
                 for u in reebill.utilbills]
         reebill_doc.update_utilbill_subdocs()
@@ -829,7 +829,7 @@ class Process(object):
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill_doc)
         try:
-            self.compute_bill(session, reebill_doc)
+            self.compute_reebill(session, reebill_doc)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -889,7 +889,7 @@ class Process(object):
                 target_sequence, version=target_max_version)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_bill(session, target_reebill)
+        self.compute_reebill(session, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
         # issue each correction
@@ -1092,8 +1092,8 @@ class Process(object):
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
-        # TODO: should this be replaced with a call to compute_bill() to just
-        # make sure everything is up-to-date before issuing?
+        # TODO: should this be replaced with a call to compute_reebill() to
+        # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
         lc = self.get_late_charge(session, reebill_document)
         if lc is not None:

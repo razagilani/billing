@@ -804,7 +804,7 @@ class BillToolBridge:
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill_doc.sequence, new_reebill_doc.version)
             
-            self.process.compute_bill(session, new_reebill_doc)
+            self.process.compute_reebill(session, new_reebill_doc)
             self.reebill_dao.save_reebill(new_reebill_doc)
 
             return self.dumps({'success': True})
@@ -887,7 +887,7 @@ class BillToolBridge:
                     sequence, version='max')
             mongo_predecessor = self.reebill_dao.load_reebill(account, sequence
                     - 1, version=0)
-            self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
+            self.process.compute_reebill(session, mongo_predecessor, mongo_reebill)
             self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
@@ -948,7 +948,7 @@ class BillToolBridge:
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process.compute_bill(session, reebill)
+            self.process.compute_reebill(session, reebill)
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
@@ -2175,7 +2175,7 @@ class BillToolBridge:
 
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
-        self.compute_bill(account, sequence)
+        self.compute_reebill(account, sequence)
         
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
