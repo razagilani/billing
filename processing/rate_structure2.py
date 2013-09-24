@@ -342,8 +342,11 @@ class RateStructureDAO(object):
 
 
 class RSIFormulaIdentifier(object):
-    def __init__(self, quantity):
+    def __init__(self, quantity=None, rate=None, total=None):
         self.quantity = quantity
+        self.rate = rate
+        self.total = total
+
 class RateStructureItem(EmbeddedDocument):
     rsi_binding = StringField(required=True)
     quantity = StringField(required=True)
@@ -360,11 +363,12 @@ class RateStructureItem(EmbeddedDocument):
         register names to quantities), and returns (quantity result, rate
         result).
         '''
-        # identifiers in RSI formulas end in ".quantity"; the only way to
-        # evaluate these as Python code is to turn each of the key/value pairs
-        # in 'register_quantities' into an object with a "quantity" attribute
-        register_quantities = {reg_name: RSIFormulaIdentifier(q) for reg_name,
-                q in register_quantities.iteritems()}
+        # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
+        # the only way to evaluate these as Python code is to turn each of the
+        # key/value pairs in 'register_quantities' into an object with a
+        # "quantity" attribute
+        register_quantities = {reg_name: RSIFormulaIdentifier(**data) for reg_name,
+                data in register_quantities.iteritems()}
         quantity = eval(self.quantity, {}, register_quantities)
         rate = eval(self.rate, {}, register_quantities)
         return quantity, rate
