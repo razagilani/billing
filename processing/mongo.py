@@ -289,37 +289,6 @@ def actual_chargegroups_flattened(utilbill_doc):
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
-## TODO make this a method of a utility bill document class when one exists
-#def compute_utility_bill(utilbill_doc, the_rate_structure):
-    #'''Updates charges in the given utility bill document to match the given
-    #rate structure document.
-    #'''
-    ## make copies of 'rate_structure' and 'chargegroups' subdocument to
-    ## insulate them from code in rate_structure.py
-    #rate_structure = copy.deepcopy(the_rate_structure)
-
-    ## registers can't be copied because changes to it need to be preserved, for
-    ## some reason
-    #registers = chain.from_iterable(m['registers'] for m in
-            #utilbill_doc['meters'])
-
-    ## make a copy of the "chargegroups" subdocument to insulate it from
-    ## rate_structure.py
-    #actual_chargegroups = deepcopy(utilbill_doc['chargegroups'])
-
-    ## this does something to the list of register dictionaries and/or rate
-    ## structure document but i'm not sure how it affects charges
-    #rate_structure.bind_register_readings(registers)
-
-    ## i don't know what this does either
-    #for charges in actual_chargegroups.values():
-        #rate_structure.bind_charges(charges)
-
-    ## by now, 'charges' should be a version of the utility bill "chargegroups"
-    ## subdocument with correct charges; the original subdocument can be
-    ## replaced with it
-    #utilbill_doc['chargegroups'] = actual_chargegroups
-
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
