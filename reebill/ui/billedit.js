@@ -575,6 +575,9 @@ function reeBillReady() {
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
                                 html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
                     }
+                    else {
+                        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+                    }
                 }
             }
         }),
