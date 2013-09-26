@@ -2071,6 +2071,9 @@ function reeBillReady() {
         //A list of all UBVersionMenus in existance, so that they can all
         //be updated at the same time.
         ubVersionMenus: [],
+        //A toggle that is set after the select of one menu is fired,
+        //so that other menus don't trigger it again
+        inSelect: false,
         //stores_to_reload is a list of stores to reload when the dropdown is selected for this menu
         constructor: function (stores_to_reload) {
             UBVersionMenu.superclass.constructor.call(this, {
@@ -2091,16 +2094,26 @@ function reeBillReady() {
                 
                 listeners: {
                     select: function (cb, record, index) {
+                        //If we're already in the middle of a select, this method
+                        //doesn't need to run.
+                        if(UBVersionMenu.prototype.inSelect) {
+                            return;
+                        }
+                        UBVersionMenu.prototype.inSelect = true;
                         menus = cb.ubVersionMenus;
                         for (var i = 0;i < menus.length;i++) {
                             //Set the value to the correct string by extracting it from what the template generates
                             menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
                             menus[i].selected_record = record;
+                            //For each menu but the one clicked on, make sure the select event gets fired
+                            if (menus[i] != cb) {
+                                menus[i].fireEvent('select', menus[i], record, index);
+                            }
                         }
                         for (var i = 0;i < stores_to_reload.length;i++) {
-                            stores_to_reload[i].load()
+                            stores_to_reload[i].load();
                         }
-                        //If sequence is null, load the current version
+                        UBVersionMenu.prototype.inSelect = false;
                     },
                 },
                 store: new Ext.data.ArrayStore({
@@ -2634,6 +2647,16 @@ function reeBillReady() {
     //
 
     chargesUBVersionMenu = new UBVersionMenu([aChargesStore]);
+
+    chargesUBVersionMenu.on('select', function(combo, record, index) {
+        //Only allow recomputing when the current version is selected
+        if (record.data.sequence == null) {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(false);
+        }
+        else {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(true);
+        }
+    });
     
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
