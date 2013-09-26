@@ -1826,7 +1826,7 @@ class BillToolBridge:
                         row_dict['difference'] = Decimal(0.0)
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
+                rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
                 rows.sort(key=lambda d: d['matching'], reverse = True)
                 return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
             elif xaction == 'update':
