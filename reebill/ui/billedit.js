@@ -5390,7 +5390,7 @@ function reeBillReady() {
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
         groupField: 'matching',
-        sortInfo:{field: 'difference', direction: 'DESC'},
+        sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
     
