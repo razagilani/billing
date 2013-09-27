@@ -1617,13 +1617,13 @@ class BillToolBridge:
 
             if xaction == "create":
                 new_rate = {
-                    'rsi_binding': '',
-                    'description': '',
-                    'quantity': '',
-                    'quantity_units': '',
-                    'rate': '',
-                    'rate_units': '',
-                    'roundrule': '',
+                    'rsi_binding': 'Insert binding here',
+                    'description': 'Insert description here',
+                    'quantity': 'Insert quantity here',
+                    'quantity_units': 'Insert units here',
+                    'rate': 'Instert rate here',
+                    'rate_units': 'Insert units here',
+                    'roundrule': 'Insert roundrule here',
                     "uuid": str(UUID.uuid1()),
                 }
                 from billing.processing.rate_structure import RateStructureItem
@@ -1631,6 +1631,7 @@ class BillToolBridge:
                 # find an oprhan binding and set it here
                 #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
+                rows = [new_rate]
 
             if xaction == "destroy":
                 uuids = rows
@@ -1646,6 +1647,7 @@ class BillToolBridge:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
                     rates.remove(rsi)
+                rows = []
 
             self.ratestructure_dao.save_rs(rate_structure)
             pp.pprint(rate_structure)
@@ -1654,7 +1656,7 @@ class BillToolBridge:
             # solution may be that all this code moves into Process, which is
             # where belongs anyway.
             self.process.compute_utility_bill(session, utilbill_id)
-            return self.dumps({'success':True})
+            return self.dumps({'success':True, 'rows':rows})
 
     @cherrypy.expose
     @random_wait
