@@ -5854,7 +5854,6 @@ function reeBillReady() {
     });
     
     reebillChargesPanel.on('activate', function (panel) {
-        console.log('chargeItemsPanel activated')
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         hChargesStore.load();

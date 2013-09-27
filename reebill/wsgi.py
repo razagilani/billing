@@ -2175,7 +2175,7 @@ class BillToolBridge:
 
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
-        self.compute_reebill(account, sequence)
+        self.compute_bill(account, sequence)
         
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
@@ -2186,8 +2186,6 @@ class BillToolBridge:
             charge_dict_h['actual_rate'] = matching['rate']
             charge_dict_h['actual_quantity'] = matching['quantity']
             charge_dict_h['actual_total'] = matching['total']
-        print flattened_charges_a
-        print flattened_charges_h
         if xaction == "read":
             return self.dumps({'success': True, 'rows': flattened_charges_h})
         else:
