@@ -720,7 +720,12 @@ class MongoReebill(object):
                     corresponding_actual_register = next(r for r in
                             chain.from_iterable(m['registers'] for m in utilbill_doc['meters'])
                             if r['register_binding'] == register['register_binding'])
-                    register['quantity'] = corresponding_actual_register['quantity']
+                    corresponding_shadow_register = next(r for r in
+                            chain.from_iterable((r for r in u['shadow_registers'])
+                            for u in self.reebill_dict['utilbills'])
+                            if r['register_binding'] == register['register_binding'])
+                    register['quantity'] = corresponding_actual_register['quantity'] + \
+                            corresponding_shadow_register['quantity']
 
             compute_all_charges(hypothetical_utilbill, uprs, cprs)
             self.set_hypothetical_chargegroups_for_service(service,
@@ -750,8 +755,7 @@ class MongoReebill(object):
             ### copy the quantity of each non-shadow register in the reebill to
             ### the corresponding register dictionary in the rate structure
             ### ("apply the registers from the reebill to the probable rate structure")
-            ##rate_structure.bind_register_readings(actual_register_readings)
-
+            ##rate_structure.bind_register_readings(actual_register_readings) 
             ###print "rate structure with bound registers"
             ###pp(rate_structure)
 
