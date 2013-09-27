@@ -46,7 +46,7 @@ from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
+from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
 
 
 
