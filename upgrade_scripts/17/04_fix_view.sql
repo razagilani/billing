@@ -1,3 +1,5 @@
+use skyline_dev;
+
 ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`10.0.0.%` SQL SECURITY INVOKER VIEW `status_days_since` AS (
     select
     `c`.`id` AS `id`,
