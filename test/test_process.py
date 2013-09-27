@@ -805,10 +805,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('washgas', document['utility'])
             self.assertEqual(date(2012,1,1), document['start'])
             self.assertEqual(date(2012,2,1), document['end'])
+            self.assertEqual(1, len(document['meters']))
             self.assertEqual(date(2012,1,1),
                     document['meters'][0]['prior_read_date'])
-            self.assertEqual(date(2012,1,1),
+            self.assertEqual(date(2012,2,1),
                     document['meters'][0]['present_read_date'])
+            self.assertEqual([0], [r['quantity'] for r in
+                    document['meters'][0]['registers']])
 
             # second contiguous bill
             file2 = StringIO("Let's pretend this is a PDF")
