@@ -715,21 +715,43 @@ class MongoReebill(object):
             # quantities to the hypothetical values, recompute it, and then
             # copy all the charges back into the reebill
             hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(service))
-            for meter in hypothetical_utilbill['meters']:
-                for register in meter['registers']:
-                    corresponding_actual_register = next(r for r in
-                            chain.from_iterable(m['registers'] for m in utilbill_doc['meters'])
-                            if r['register_binding'] == register['register_binding'])
-                    corresponding_shadow_register = next(r for r in
-                            chain.from_iterable((r for r in u['shadow_registers'])
-                            for u in self.reebill_dict['utilbills'])
-                            if r['register_binding'] == register['register_binding'])
-                    register['quantity'] = corresponding_actual_register['quantity'] + \
-                            corresponding_shadow_register['quantity']
 
+            # these three generators iterate through "actual registers" of the
+            # real utility bill (describing conventional energy usage), "shadow
+            # registers" of the reebill (describing renewable energy usage
+            # offsetting conventional energy), and "hypothetical registers" in
+            # the copy of the utility bill (which will be set to the sum of the
+            # other two).
+            actual_registers = chain.from_iterable(m['registers']
+                    for m in utilbill_doc['meters'])
+            shadow_registers = chain.from_iterable(u['shadow_registers']
+                    for u in self.reebill_dict['utilbills'])
+            hypothetical_registers = chain.from_iterable(m['registers'] for m
+                    in hypothetical_utilbill['meters'])
+
+            # set the quantity of each "hypothetical register" to the sum of
+            # the corresponding "actual" and "shadow" registers.
+            for h_register in hypothetical_registers:
+                a_register = next(r for r in actual_registers
+                        if r['register_binding'] == 
+                        h_register['register_binding'])
+                s_register = next(r for r in shadow_registers
+                        if r['register_binding'] == 
+                        h_register['register_binding'])
+                h_register['quantity'] = a_register['quantity'] + \
+                        h_register['quantity']
+
+            # compute the charges of the hypothetical utility bill
             compute_all_charges(hypothetical_utilbill, uprs, cprs)
+
+            # copy the charges from there into the reebill
             self.set_hypothetical_chargegroups_for_service(service,
                     hypothetical_utilbill['chargegroups'])
+
+
+
+
+
 
             ###
             ### All registers for all meters in a given service are made available
