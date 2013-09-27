@@ -33,7 +33,7 @@ from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException, NotUniqueException
 
 import pprint
@@ -390,6 +390,18 @@ class Process(object):
              # two accounts are sharing the same template document
             'account': utilbill.customer.account,
         })
+
+        # "meters" subdocument of new utility bill document is a copy of the
+        # template, but with the dates changed to match the utility bill period
+        # and the quantities of all registers set to 0.
+        doc['meters'] = [subdict(m, ['prior_read_date',
+                'present_read_date', 'registers', 'identifier'])
+                for m in copy.deepcopy(doc['meters'])]
+        for meter in doc['meters']:
+            meter['prior_read_date'] = utilbill.period_start
+            meter['present_read_date'] = utilbill.period_end
+            for register in meter['registers']:
+                register['quantity'] = Decimal('0')
 
         # generate predicted UPRS
         uprs = self.rate_structure_dao.get_probable_uprs(session,
