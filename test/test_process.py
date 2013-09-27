@@ -635,7 +635,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # compute charges in the bill using the rate structure created from the
             # above documents
-            rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
             reebill1.compute_charges(uprs, cprs)
 
@@ -1147,19 +1146,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         utilbill, reebill=new_reebill)
                 current_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                         utilbill, reebill=new_reebill)
-                current_combined_rs = self.rate_structure_dao.load_rate_structure(
-                        utilbill, reebill=new_reebill)
                 reebill_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill, reebill=new_reebill)
                 reebill_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=new_reebill)
                 reebill_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                         utilbill, reebill=new_reebill)
-                reebill_combined_rs = self.rate_structure_dao.load_rate_structure(
-                        utilbill, reebill=new_reebill)
                 self.assertEquals(current_uprs, reebill_uprs)
                 self.assertEquals(current_cprs, reebill_cprs)
-                self.assertEquals(current_combined_rs, reebill_combined_rs)
+                #self.assertEquals(current_combined_rs, reebill_combined_rs)
 
                 # ...and should not match the frozen ones that were in the previous
                 # version (at least _ids should be different)
@@ -1171,8 +1166,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         utilbill, reebill=original_reebill)
                 frozen_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                         utilbill, reebill=original_reebill)
-                frozen_combined_rs = self.rate_structure_dao.\
-                        load_rate_structure(utilbill, reebill=original_reebill)
                 self.assertNotEqual(frozen_utilbill, reebill_utilbill)
                 self.assertNotEqual(frozen_uprs, reebill_uprs)
                 self.assertNotEqual(frozen_cprs, reebill_cprs)
