@@ -104,7 +104,7 @@ port = 27017
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
         mongoengine.connect('test', host='localhost', port=27017,
-                alias='rate_structure')
+                alias='ratestructure')
 
         # insert template utilbill document for the customer in Mongo
         db = pymongo.Connection('localhost')['test']
