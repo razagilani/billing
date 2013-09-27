@@ -352,6 +352,41 @@ class RateStructureItem(EmbeddedDocument):
         rate = eval(self.rate, {}, register_quantities)
         return quantity, rate
 
+    def to_dict(self):
+        '''String representation of this RateStructureItem to send as JSON to
+        the browser.
+        '''
+        return {
+            'rsi_binding': self.rsi_binding,
+            'quantity': self.quantity,
+            'quantityunits': self.quantity_units,
+            'rate': self.rate,
+            'rateunits': self.rate_units,
+            'roundrule': self.round_rule,
+            'description': self.description,
+            'uuid': self.uuid,
+        }
+
+    def update(self, rsi_binding=None, quantity=None, quantityunits=None,
+            rate=None, rateunits=None, roundrule=None, description=None,
+            uuid=None):
+        if rsi_binding is not None:
+            self.rsi_binding = rsi_binding
+        if quantity is not None:
+            self.quantity = quantity
+        if quantityunits is not None:
+            self.quantityunits = quantityunits
+        if rate is not None:
+            self.rate = rate
+        if rateunits is not None:
+            self.rateunits = rateunits
+        if roundrule is not None:
+            self.roundrule = roundrule
+        if description is not None:
+            self.description = description
+        if uuid is not None:
+            self.uuid = uuid
+
 class Register(EmbeddedDocument):
     # this is the only field that has any meaning, since a "register" in a rate
     # structure document really just means a name

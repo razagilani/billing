@@ -37,7 +37,7 @@ from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
-from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
 from billing.processing.state import UtilBill, Customer
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
@@ -334,6 +334,10 @@ class BillToolBridge:
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
+        mongoengine.connect(rsdb_config_section['database'],
+                host=rsdb_config_section['host'],
+                port=int(rsdb_config_section['port']),
+                alias='ratestructure')
         self.ratestructure_dao = rs.RateStructureDAO(
             rsdb_config_section['host'],
             rsdb_config_section['port'],
@@ -1577,7 +1581,9 @@ class BillToolBridge:
             rates = rate_structure["rates"]
 
             if xaction == "read":
-                return self.dumps({'success': True, 'rows':rates})
+                #return self.dumps({'success': True, 'rows':rates})
+                return json.dumps({'success': True, 'rows':[rsi.to_dict()
+                        for rsi in rate_structure.rates]})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1585,6 +1591,9 @@ class BillToolBridge:
                 raise IssuedBillError('Issued reebills cannot be modified')
             
             rows = json.loads(rows)
+
+            if 'total' in rows:
+                del rows['total']
 
             if xaction == "update":
                 # single edit comes in not in a list
@@ -1596,24 +1605,27 @@ class BillToolBridge:
                     rsi_uuid = row['uuid']
                     # identify the rsi, and update it with posted data
                     matches = [rsi_match for rsi_match in it.ifilter(lambda x:
-                            x['uuid']==rsi_uuid, rates)]
+                            x.uuid==rsi_uuid, rates)]
                     # there should only be one match
                     if len(matches) == 0: raise Exception("Did not match an RSI UUID which should not be possible")
                     if len(matches) > 1:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
-                    # eliminate attributes that have empty strings or None as these mustn't 
-                    # be added to the RSI so the RSI knows to compute for those values
-                    for k,v in row.items():
-                        if v is None or v == "":
-                            del row[k]
-                    # now that blank values are removed, ensure that required fields were sent from client 
-                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-                    # now take the legitimate values from the posted data and update the RSI
-                    # clear it so that the old emptied attributes are removed
-                    rsi.clear()
-                    rsi.update(row)
+
+                    ## eliminate attributes that have empty strings or None as these mustn't 
+                    ## be added to the RSI so the RSI knows to compute for those values
+                    #for k,v in row.items():
+                        #if v is None or v == "":
+                            #del row[k]
+                    ## now that blank values are removed, ensure that required fields were sent from client 
+                    #if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    #if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    ## now take the legitimate values from the posted data and update the RSI
+                    ## clear it so that the old emptied attributes are removed
+                    #rsi.clear()
+                    #rsi.update(row)
+
+                    rsi.update(**row)
 
             if xaction == "create":
                 new_rate = {
@@ -1649,7 +1661,7 @@ class BillToolBridge:
                     rates.remove(rsi)
                 rows = []
 
-            self.ratestructure_dao.save_rs(rate_structure)
+            rate_structure.save()
             pp.pprint(rate_structure)
 
             # TODO this loads the RS doc again unnecessarily; the
