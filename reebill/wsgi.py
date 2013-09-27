@@ -46,7 +46,7 @@ from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
+from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
 
 
 
@@ -1824,7 +1824,7 @@ class BillToolBridge:
                         row_dict['difference'] = Decimal(0.0)
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
+                rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
                 rows.sort(key=lambda d: d['matching'], reverse = True)
                 return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
             elif xaction == 'update':
@@ -2175,7 +2175,7 @@ class BillToolBridge:
 
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
-        self.compute_reebill(account, sequence)
+        self.compute_bill(account, sequence)
         
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
@@ -2186,8 +2186,6 @@ class BillToolBridge:
             charge_dict_h['actual_rate'] = matching['rate']
             charge_dict_h['actual_quantity'] = matching['quantity']
             charge_dict_h['actual_total'] = matching['total']
-        print flattened_charges_a
-        print flattened_charges_h
         if xaction == "read":
             return self.dumps({'success': True, 'rows': flattened_charges_h})
         else:
