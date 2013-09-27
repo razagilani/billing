@@ -198,53 +198,6 @@ class RateStructureDAO(object):
                 session, utility, service, rate_structure_name, (start, end),
                 ignore=ignore))
 
-    def _load_combined_rs_dict(self, utilbill, reebill=None):
-        '''Returns a dictionary of combined rate structure (derived from URS,
-        UPRS, and CPRS) belonging to the given state.UtilBill.
-        
-        If 'reebill' is None, this is based on the "current" UPRS and CPRS
-        documents, i.e. the ones whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is based on the UPRS and CPRS documents for
-        the version of the utility bill associated with the current
-        reebill--either the same as the "current" ones if the reebill is
-        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
-        if the reebill is issued.
-        '''
-        urs = self.load_urs(utilbill.utility, utilbill.rate_class)
-        uprs = self.load_uprs_for_utilbill(utilbill, reebill=reebill)
-        cprs = self.load_cprs_for_utilbill(utilbill, reebill=reebill)
-
-        # make sure "rsi_binding" is unique within UPRS and CPRS (not that we
-        # have ever had a problem with this, but the data structure allows it)
-        for rs in (uprs, cprs):
-            for rsi in rs.rates:
-                if any(other.rsi_binding == rsi.rsi_binding and other != rsi
-                        for other in rs.rates):
-                    raise RSIError('Multiple RSIs have rsi_binding "%s"' %
-                            rsi.rsi_binding)
-
-        # RSIs in CRPS override RSIs in URS with same "rsi_binding"
-        rsis = {rsi.rsi_binding: rsi for rsi in uprs.rates}
-        rsis.update({rsi.rsi_binding: rsi for rsi in cprs.rates})
-        return RateStructure(rates=rsis.values(), registers=urs.registers)
-
-
-    def load_rate_structure(self, utilbill, reebill=None):
-        '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
-        the given state.UtilBill.
-        
-        If 'reebill' is None, this is based on the "current" UPRS and CPRS
-        documents, i.e. the ones whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is based on the UPRS and CPRS documents for
-        the version of the utility bill associated with the current
-        reebill--either the same as the "current" ones if the reebill is
-        unissued, or frozen ones (whose _ids are in the utilbill_reebill table)
-        if the reebill is issued.'''
-        return RateStructure(self._load_combined_rs_dict(utilbill,
-                reebill=reebill))
-    
     def load_urs(self, utility_name, rate_structure_name):
         '''Loads Utility (global) Rate Structure document from Mongo.
         '''
