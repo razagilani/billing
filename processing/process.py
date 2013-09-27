@@ -161,11 +161,15 @@ class Process(object):
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
             doc['start'] = period_start
+            for meter in doc['meters']:
+                meter['prior_read_date'] = period_start
 
         if period_end is not None:
             UtilBill.validate_utilbill_period(utilbill.period_start, period_end)
             utilbill.period_end = period_end
             doc['end'] = period_end
+            for meter in doc['meters']:
+                meter['present_read_date'] = period_end
 
         if utility is not None:
             utilbill.utility = utility
