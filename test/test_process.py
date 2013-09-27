@@ -298,6 +298,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual(date(2013,1,2), utilbill.period_start)
             self.assertEqual(date(2013,1,2), doc['start'])
+            for meter in doc['meters']:
+                self.assertEqual(date(2013,1,2), meter['prior_read_date'])
 
             # change end date
             self.process.update_utilbill_metadata(session, utilbill.id,
@@ -305,6 +307,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual(date(2013,2,2), utilbill.period_end)
             self.assertEqual(date(2013,2,2), doc['end'])
+            for meter in doc['meters']:
+                self.assertEqual(date(2013,2,2), meter['present_read_date'])
 
             # change service
             self.process.update_utilbill_metadata(session, utilbill.id,
