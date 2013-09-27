@@ -488,6 +488,7 @@ class Process(object):
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        print '****************', type(uprs), type(cprs)
         mongo.compute_all_charges(document, uprs, cprs)
 
         # also compute documents of any unissued reebills associated with this
