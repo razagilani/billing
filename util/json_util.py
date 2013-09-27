@@ -15,12 +15,12 @@ date_pattern = re.compile("^\d\d\d\d+-\d+-\d+$")
 datetime_pattern = re.compile("^\d\d\d\d+-\d\d-\d\d \d\d:\d\d:\d\d\.\d+$")
 
 def __encode_obj__(obj):
-    if type(obj) is datetime.date:
-        return obj.strftime("%Y-%m-%d")
-    elif type(obj) is datetime.datetime:
+    if isinstance(obj, datetime.date):
         return obj.isoformat()
-    elif type(obj) is ObjectId: 
+    if isinstance(obj, ObjectId):
         return str(obj)
+    raise ValueError('Object of type "%s" is not JSON serializable' %
+            type(obj))
 
 
 # can't use object_hook when object_pairs_hook is being used
