@@ -33,7 +33,7 @@ from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException, NotUniqueException
 
 import pprint
@@ -161,11 +161,15 @@ class Process(object):
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
             doc['start'] = period_start
+            for meter in doc['meters']:
+                meter['prior_read_date'] = period_start
 
         if period_end is not None:
             UtilBill.validate_utilbill_period(utilbill.period_start, period_end)
             utilbill.period_end = period_end
             doc['end'] = period_end
+            for meter in doc['meters']:
+                meter['present_read_date'] = period_end
 
         if utility is not None:
             utilbill.utility = utility
@@ -390,6 +394,18 @@ class Process(object):
              # two accounts are sharing the same template document
             'account': utilbill.customer.account,
         })
+
+        # "meters" subdocument of new utility bill document is a copy of the
+        # template, but with the dates changed to match the utility bill period
+        # and the quantities of all registers set to 0.
+        doc['meters'] = [subdict(m, ['prior_read_date',
+                'present_read_date', 'registers', 'identifier'])
+                for m in copy.deepcopy(doc['meters'])]
+        for meter in doc['meters']:
+            meter['prior_read_date'] = utilbill.period_start
+            meter['present_read_date'] = utilbill.period_end
+            for register in meter['registers']:
+                register['quantity'] = Decimal('0')
 
         # generate predicted UPRS
         uprs = self.rate_structure_dao.get_probable_uprs(session,

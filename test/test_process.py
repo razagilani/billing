@@ -298,6 +298,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual(date(2013,1,2), utilbill.period_start)
             self.assertEqual(date(2013,1,2), doc['start'])
+            for meter in doc['meters']:
+                self.assertEqual(date(2013,1,2), meter['prior_read_date'])
 
             # change end date
             self.process.update_utilbill_metadata(session, utilbill.id,
@@ -305,6 +307,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual(date(2013,2,2), utilbill.period_end)
             self.assertEqual(date(2013,2,2), doc['end'])
+            for meter in doc['meters']:
+                self.assertEqual(date(2013,2,2), meter['present_read_date'])
 
             # change service
             self.process.update_utilbill_metadata(session, utilbill.id,
@@ -797,6 +801,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[0].state)
             self.assertEqual(date(2012,1,1), bills[0].period_start)
             self.assertEqual(date(2012,2,1), bills[0].period_end)
+
+            # check that "metadata" of the document in Mongo match MySQL
+            document = self.reebill_dao.load_doc_for_utilbill(bills[0])
+            self.assertEqual(account, document['account'])
+            self.assertEqual('gas', document['service'])
+            self.assertEqual('washgas', document['utility'])
+            self.assertEqual(date(2012,1,1), document['start'])
+            self.assertEqual(date(2012,2,1), document['end'])
+            self.assertEqual(1, len(document['meters']))
+            self.assertEqual(date(2012,1,1),
+                    document['meters'][0]['prior_read_date'])
+            self.assertEqual(date(2012,2,1),
+                    document['meters'][0]['present_read_date'])
+            self.assertEqual([0], [r['quantity'] for r in
+                    document['meters'][0]['registers']])
 
             # second contiguous bill
             file2 = StringIO("Let's pretend this is a PDF")
