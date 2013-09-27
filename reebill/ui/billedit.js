@@ -575,6 +575,9 @@ function reeBillReady() {
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
                                 html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
                     }
+                    else {
+                        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+                    }
                 }
             }
         }),
@@ -2071,6 +2074,9 @@ function reeBillReady() {
         //A list of all UBVersionMenus in existance, so that they can all
         //be updated at the same time.
         ubVersionMenus: [],
+        //A toggle that is set after the select of one menu is fired,
+        //so that other menus don't trigger it again
+        inSelect: false,
         //stores_to_reload is a list of stores to reload when the dropdown is selected for this menu
         constructor: function (stores_to_reload) {
             UBVersionMenu.superclass.constructor.call(this, {
@@ -2091,16 +2097,26 @@ function reeBillReady() {
                 
                 listeners: {
                     select: function (cb, record, index) {
+                        //If we're already in the middle of a select, this method
+                        //doesn't need to run.
+                        if(UBVersionMenu.prototype.inSelect) {
+                            return;
+                        }
+                        UBVersionMenu.prototype.inSelect = true;
                         menus = cb.ubVersionMenus;
                         for (var i = 0;i < menus.length;i++) {
                             //Set the value to the correct string by extracting it from what the template generates
                             menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
                             menus[i].selected_record = record;
+                            //For each menu but the one clicked on, make sure the select event gets fired
+                            if (menus[i] != cb) {
+                                menus[i].fireEvent('select', menus[i], record, index);
+                            }
                         }
                         for (var i = 0;i < stores_to_reload.length;i++) {
-                            stores_to_reload[i].load()
+                            stores_to_reload[i].load();
                         }
-                        //If sequence is null, load the current version
+                        UBVersionMenu.prototype.inSelect = false;
                     },
                 },
                 store: new Ext.data.ArrayStore({
@@ -2634,6 +2650,16 @@ function reeBillReady() {
     //
 
     chargesUBVersionMenu = new UBVersionMenu([aChargesStore]);
+
+    chargesUBVersionMenu.on('select', function(combo, record, index) {
+        //Only allow recomputing when the current version is selected
+        if (record.data.sequence == null) {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(false);
+        }
+        else {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(true);
+        }
+    });
     
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
@@ -5390,7 +5416,7 @@ function reeBillReady() {
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
         groupField: 'matching',
-        sortInfo:{field: 'difference', direction: 'DESC'},
+        sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
     
@@ -5828,7 +5854,6 @@ function reeBillReady() {
     });
     
     reebillChargesPanel.on('activate', function (panel) {
-        console.log('chargeItemsPanel activated')
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         hChargesStore.load();
@@ -5958,7 +5983,7 @@ function reeBillReady() {
         selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
-        //ubMeasuredUsagesPanel.setDisabled(true);
+        ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
