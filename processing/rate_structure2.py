@@ -412,8 +412,8 @@ class Register(EmbeddedDocument):
 
 class RateStructure(Document):
     meta = {
-        'db_alias': 'rate_structure',
-        'collection': 'rate_structure',
+        'db_alias': 'ratestructure',
+        'collection': 'ratestructure',
         'allow_inheritance': True
     }
 
@@ -458,7 +458,7 @@ class URSID(EmbeddedDocument):
 # field and make them separate classes
 class URS(RateStructure):
     meta = {
-        'db_alias': 'rate_structure',
+        'db_alias': 'ratestructure',
         #'collection': 'rate_structure',
         #'allow_inheritance': True
     }
