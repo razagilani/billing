@@ -2571,7 +2571,6 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
@@ -5825,14 +5824,17 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
-        title: 'Hypothetical Charges',
     });
 
     reebillChargesPanel = new Ext.Panel({
         id: 'hChargesPanelTab',
         title: 'Reebill Charges',
         disabled: reebillChargesPanelDisabled,
-        layout: 'accordion',
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
         items: [
             hChargesGrid,
         ],
