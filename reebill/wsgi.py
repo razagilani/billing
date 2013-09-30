@@ -23,6 +23,7 @@ import functools
 import re
 import md5
 import operator
+import errno
 from StringIO import StringIO
 from itertools import chain
 import pymongo
