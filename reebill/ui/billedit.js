@@ -2972,7 +2972,6 @@ function reeBillReady() {
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        flex: 1,
         stripeRows: true,
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
@@ -3282,7 +3281,6 @@ function reeBillReady() {
         store: UPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        flex: 1,
         stripeRows: true,
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
@@ -3313,8 +3311,32 @@ function reeBillReady() {
         },
         items: [
             rsUBVersionMenu,
-            CPRSRSIGrid,
-            UPRSRSIGrid,
+            {
+                xtype:'panel',
+                flex: 1,
+                border: false,
+                layout:'border',
+                items: [
+                    {
+                        xtype: 'panel',
+                        region: 'north',
+                        border: false,
+                        minHeight: 0,
+                        height: 250,
+                        split: true,
+                        layout: 'fit',
+                        items: [CPRSRSIGrid],
+                    },
+                    {
+                        xtype: 'panel',
+                        region: 'center',
+                        border: false,
+                        split: true,
+                        layout: 'fit',
+                        items: [UPRSRSIGrid],
+                    },
+                ],
+            },
         ],
     });
 
