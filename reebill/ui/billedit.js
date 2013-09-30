@@ -2567,7 +2567,6 @@ function reeBillReady() {
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: aChargesSummary,
-        frame: true,
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
@@ -3536,15 +3535,8 @@ function reeBillReady() {
         }),
         store: paymentStore,
         enableColumnMove: false,
-        frame: true,
-        collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Payments',
         clicksToEdit: 2
     });
 
@@ -3567,7 +3559,11 @@ function reeBillReady() {
         id: 'paymentTab',
         title: 'Payments',
         disabled: paymentPanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [paymentGrid, ],
     });
 
@@ -3778,14 +3774,11 @@ function reeBillReady() {
         store: mailReeBillStore,
         enableColumnMove: false,
         frame: true,
-        collapsible: true,
-        animCollapse: false,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Mail ReeBills',
     });
 
     mailReeBillGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3806,7 +3799,7 @@ function reeBillReady() {
         id: 'mailTab',
         title: 'Mail',
         disabled: mailPanelDisabled,
-        layout: 'vbox',
+        layout: 'fit',
         layoutConfig : {
             align : 'stretch',
             pack : 'start'
@@ -5630,7 +5623,6 @@ function reeBillReady() {
         autoExpandColumn: 'mailto',
         height: 900,
         width: 1000,
-        title: 'Reebills Ready to be Issued',
         clicksToEdit: 2,
         forceValidation: true,
     });
@@ -5653,7 +5645,8 @@ function reeBillReady() {
         id: 'issuableTab',
         title: 'Issuable Reebills',
         disabled: issuablePanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : { align : 'stretch', pack : 'start' },
         items: [issuableGrid,],
     });
 
@@ -5820,7 +5813,6 @@ function reeBillReady() {
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: hChargesSummary,
-        frame: true,
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
