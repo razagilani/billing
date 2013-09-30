@@ -69,6 +69,7 @@ class ReeBill(Base):
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
+    issue_date = Column(Date)
 
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
@@ -298,7 +299,8 @@ class UtilBill(Base):
         by version within the same sequence.
         '''
         return sorted(
-            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version}
+            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version,
+              'issue_date':ur.reebill.issue_date}
                  for ur in self._utilbill_reebills),
             key=lambda element: (element['sequence'], element['version'])
         )

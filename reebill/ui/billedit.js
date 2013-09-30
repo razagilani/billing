@@ -500,11 +500,12 @@ function reeBillReady() {
                     // match the selected utility bill. there's always one row
                     // for the current version of the utility bill, and one row
                     // for each issued reebill version attached to it (if any)
-                    records = [[null, null]];
+                    records = [[null, null, null]];
                     for (var i = 0; i < selected_utilbill.reebills.length; i++) {
                         records.push([
                             selected_utilbill.reebills[i].sequence,
                             selected_utilbill.reebills[i].version,
+                            selected_utilbill.reebills[i].issue_date,
                         ]);
                     }
                     //Go through the menus and load the data
@@ -519,6 +520,7 @@ function reeBillReady() {
                         menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
                             sequence: null,
                             version: null,
+                            issue_date: null,
                         }), 0);
                     }
 
@@ -2076,7 +2078,7 @@ function reeBillReady() {
                 tpl: new Ext.XTemplate(
                     '<tpl for="."><div class="x-combo-list-item">',
                     '<tpl if="sequence == null">Current version</tpl>',
-                    '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
+                    '<tpl if="sequence != null">Reebill {sequence}-{version}: {issue_date}</tpl>',
                     '</div></tpl>'
                 ),
                 
@@ -2109,8 +2111,9 @@ function reeBillReady() {
                         //These can be any type, since it isn't specified
                         {'name': 'sequence'},
                         {'name': 'version'},
+                        {'name': 'issue_date'},
                     ],
-                    data:[[null, null]],
+                    data:[[null, null, null]],
                 }),
             });
             this.selected_record = this.store[0];
