@@ -723,9 +723,6 @@ class BillToolBridge:
             ba_postal_code, sa_addressee, sa_street, sa_city, sa_state,
             sa_postal_code, **kwargs):
         with DBSession(self.state_db) as session:
-            if not name or not account or not discount_rate or not template_account:
-                raise ValueError("Bad Parameter Value")
-
             billing_address = {
                 'addressee': ba_addressee,
                 'street': ba_street,
@@ -760,8 +757,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def roll(self, account, **kwargs):
-        if not account:
-            raise ValueError("Bad Parameter Value")
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
@@ -816,8 +811,6 @@ class BillToolBridge:
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
             raise ValueError("OLTP is not integrated")
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
@@ -844,8 +837,6 @@ class BillToolBridge:
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # convert column letters into 0-based indices
@@ -877,8 +868,6 @@ class BillToolBridge:
     # https://www.pivotaltracker.com/story/show/31404685
     def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # use version 0 of the predecessor to show the real account
@@ -903,8 +892,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def render(self, account, sequence, **args):
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'code':2, 'errors': {'reason':
@@ -1017,9 +1004,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
-        if not account or not sequences:
-            raise ValueError("Bad Parameter Value")
-        
         # Go from comma-separated e-mail addresses to a list of e-mail addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
 
@@ -1114,8 +1098,6 @@ class BillToolBridge:
     def listSequences(self, account, **kwargs):
         '''Handles AJAX request to get reebill sequences for each account and
         whether each reebill has been committed.'''
-        if not account:
-            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             sequences = []
             # eventually, this data will have to support pagination
@@ -1153,9 +1135,6 @@ class BillToolBridge:
 
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
-        if not start or not limit:
-            raise ValueError("Bad Parameter Value")
-
         with DBSession(self.state_db) as session:
             start, limit = int(start), int(limit)
 
@@ -1291,8 +1270,6 @@ class BillToolBridge:
     def summary_ree_charges(self, start, limit, **args):
         '''Handles AJAX request for "Summary and Export" grid in "Accounts"
         tab.'''
-        if not start or not limit:
-            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             accounts, totalCount = self.state_db.list_accounts(session,
                     int(start), int(limit))
@@ -1661,8 +1638,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def payment(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad parameter value")
         with DBSession(self.state_db) as session:
             if xaction == "read":
                 payments = self.state_db.payments(session, account)
@@ -1704,8 +1679,6 @@ class BillToolBridge:
     @json_exception
     def reebill(self, xaction, start, limit, account, sort = u'sequence', dir = u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
-        if not xaction or not start or not limit:
-            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             if xaction == "read":
                 reebills, totalCount = self.state_db.listReebills(session,
@@ -1792,8 +1765,6 @@ class BillToolBridge:
     @json_exception
     def issuable(self, xaction, **kwargs):
         '''Return a list of the issuable reebills'''
-        if not xaction:
-            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             if xaction == 'read':
                 start = kwargs['start']
@@ -1920,9 +1891,6 @@ class BillToolBridge:
     @json_exception
     def account_info(self, account, sequence, **args):
         """ Return information about the account """
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # It is possible that there is no reebill for the requested addresses
@@ -2034,8 +2002,6 @@ class BillToolBridge:
         account and sequence, and a list of which services are suspended
         (usually empty). Used to show service suspension checkboxes in
         "Sequential Account Information".'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2158,8 +2124,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def hypotheticalCharges(self, xaction, service, account, sequence, **kwargs):
-        if not xaction or not account or not sequence or not service:
-            raise ValueError("Bad Parameter Value")
         service = service.lower()
         sequence = int(sequence)
 
@@ -2346,9 +2310,6 @@ class BillToolBridge:
         will be 'SkylineEstimated'; otherwise it will be 'Complete'. Currently,
         there is no way to specify a 'UtilityEstimated' state in the UI.'''
         with DBSession(self.state_db) as session:
-            if not account or not begin_date or not end_date or not total_charges or not file_to_upload:
-                raise ValueError("Bad Parameter Value")
-
             # pre-process parameters
             service = service.lower()
             total_charges_as_float = float(total_charges)
@@ -2411,8 +2372,6 @@ class BillToolBridge:
         '''Saves the text 'entry' as a Note in the journal for 'account'.
         Sequence is optional in case the entry applies to the account as whole,
         but should be provided if it's associated with a particular reebill.'''
-        if not account or not entry:
-            raise ValueError("Bad Parameter Value")
         if sequence:
             sequence = int(sequence)
             journal.Note.save_instance(cherrypy.session['user'], account,
@@ -2562,8 +2521,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
-        if not account or not begin_date or not end_date or not resolution:
-            raise ValueError("Bad Parameter Value")
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
         result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
@@ -2574,8 +2531,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not account or not sequence or not resolution:
-            raise ValueError("Bad Parameter Value")
         if not self.config.getboolean('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
