@@ -58,8 +58,8 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
 
 
 # TODO should this be done?
-## remove all editable utility bill documents so that better ones can be
-## recreated from the frozen ones
+# remove all editable utility bill documents so that better ones can be
+# recreated from the frozen ones
 #db.utilbills.remove({'sequence': {'$exists': False}})
 
 # unissued version-0 reebills are currently attached to utility bills that have
@@ -81,7 +81,10 @@ for account, sequence, utilbill_id in cur.fetchall():
         # find utility bill document attached to the reebill
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
         if utilbill is None:
-            print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'], utilbill_subdoc['id'])
+            print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (
+                    reebill_doc['_id']['account'],
+                    reebill_doc['_id']['sequence'],
+                    reebill_doc['_id']['version'], utilbill_subdoc['id'])
             continue
 
         # replace the existing editable utility bill with the previously frozen one, now editable
@@ -91,8 +94,11 @@ for account, sequence, utilbill_id in cur.fetchall():
         try:
             unfreeze_utilbill(utilbill)
         except AssertionError:
-            # if the "sequence" and "version" keys are missing, something went wrong in the past, but the utility bill document is already the way it's supposed to be. so it should just be left alone
-            print >> stderr, 'unissued version-0 reebill lacks "sequence" and "version" in its utility bill:', reebill_doc['_id']
+            # if the "sequence" and "version" keys are missing, something went
+            # wrong in the past, but the utility bill document is already the
+            # way it's supposed to be. so it should just be left alone
+            print >> stderr, ('unissued version-0 reebill lacks "sequence"'
+                    'and "version" in its utility bill:', reebill_doc['_id'])
 
 
 # all issued reebills have an editable version of the frozen utility bill
@@ -107,11 +113,18 @@ order by customer_id, sequence, version''')
 for account, sequence, max_version in cur.fetchall():
     reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': max_version})
     assert reebill_doc is not None
+    if reebill_doc is None:
+        print >> stderr, 'No reebill document for %s-%s-%s, id %s' % (account,
+                sequence, max_version)
+        continue
 
     for utilbill_subdoc in reebill_doc['utilbills']:
         utilbill_doc_id = utilbill_subdoc['id']
         utilbill_doc = db.utilbills.find_one({'_id': utilbill_doc_id})
-        assert utilbill_doc is not None
+        if utilbill_doc is None:
+            print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (
+                    account, sequence, max_version, utilbill_doc_id)
+            continue
 
         try:
             unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
