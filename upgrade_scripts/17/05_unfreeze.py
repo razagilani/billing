@@ -131,7 +131,7 @@ for account, sequence, utilbill_id in cur.fetchall():
             # wrong in the past, but the utility bill document is already the
             # way it's supposed to be. so it should just be left alone
             print >> stderr, ('unissued version-0 reebill lacks "sequence"'
-                    'and "version" in its utility bill:', reebill_doc['_id'])
+                    ' and "version" in its utility bill: %s' % reebill_doc['_id'])
         # NOTE that a new document is not being created, so the document can
         # keep the same _id and the reebill subdocument "id" field does not
         # need to be updated. (And the utilbill.document_id in MySQL does not
@@ -141,15 +141,15 @@ for account, sequence, utilbill_id in cur.fetchall():
 
 # part 2:
 # replace editable version of every utility bill document with a copy of the
-# frozen document attached to the highest-version reebill.
-query_for_highest_version_reebills = '''
+# frozen document attached to the highest-version issued reebill.
+query_for_highest_version_issued_reebills = '''
 select account, sequence, max(version)
 from reebill join customer on customer.id = customer_id
 where issued = 1
 group by customer_id, sequence
 order by customer_id, sequence, version'''
 
-cur.execute(query_for_highest_version_reebills)
+cur.execute(query_for_highest_version_issued_reebills)
 for account, sequence, max_version in cur.fetchall():
     reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence':
             sequence, '_id.version': max_version})
@@ -159,14 +159,16 @@ for account, sequence, max_version in cur.fetchall():
         utilbill_doc_id = utilbill_subdoc['id']
         utilbill_doc = db.utilbills.find_one({'_id': utilbill_doc_id})
         if utilbill_doc is None:
-            print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (
-                    account, sequence, max_version, utilbill_doc_id)
+            print >> stderr, ('No utility bill document for reebill %s-%s-%s, '
+                    'id %s') % (account, sequence, max_version,
+                    utilbill_doc_id)
             continue
 
         try:
             unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
         except AssertionError:
-            print >> stderr, 'issued reebill lacks "sequence" and "version" in its utility bill:', reebill_doc['_id']
+            print >> stderr, ('issued reebill lacks "sequence" and "version"'
+                    ' in its utility bill: %s') % reebill_doc['_id']
 
             # interestingly these cases are mostly (but not entirely)
             # corrections. and they are a minority of total account/sequence
