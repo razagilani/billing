@@ -16,7 +16,7 @@ Also, this script deletes editable utility bill documents that have a frozen
 version attached to an issued reebill (i.e. all editable utility bill
 documents) and recreates them by copying the newest frozen version. This is not
 schema change; it just ensures that editable utility bill documents are
-up-to-date, because many of them are not.
+up-to-date, because most of them are not.
 
 After the script has run, all utility bill documents that a reebill document
 is attached to should be "frozen" if the reebill is issued and "editable" if it
@@ -25,28 +25,36 @@ identical to the latest frozen version.
 '''
 from sys import stderr
 import pymongo
-from billing.util.dateutils import date_to_datetime
 from bson import ObjectId
 import MySQLdb
+from billing.util.dateutils import date_to_datetime
 from billing.util.dictutils import subdict, dict_merge
+from billing.util.mongo_utils import format_query
+from billing.processing.exceptions import MongoError
 
 db = pymongo.Connection('localhost')['skyline-dev']
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
 con.autocommit(False)
 
+def check_error(mongo_result):
+    if mongo_result['err'] is not None or mongo_result['n'] == 0:
+        raise MongoError(result)
+
 def unfreeze_utilbill(utilbill_doc, new_id=None):
-    '''Converts 'utilbill_doc' into an "editable" utility bill document, i.e.
-    without "sequence" and "version" keys, and saves it. If 'new_id' is given,
+    '''Converts 'utilbill_doc' into an editable utility bill document, i.e.
+    removes its "sequence" and "version" keys, and saves it. If 'new_id' is given,
     a new document is created with that _id the frozen one is unchanged. If
     'new_id' is not given, the original document is modified and saved with its
     original _id, so the frozen document has become editable. In both cases,
     any existing editable document having the same service, utility, and dates
     is removed.'''
-    # make sure this document really is "frozen", i.e. has "sequence" and "version" keys in it
+    # make sure this document really is "frozen", i.e. has "sequence" and
+    # "version" keys in it
     assert 'sequence' in utilbill_doc
     assert 'version' in utilbill_doc
 
-    # find any existing editable utility bill documents with the same utility, service, and dates
+    # find any existing editable utility bill documents with the same utility,
+    # service, and dates
     query_for_editable_twins = dict_merge(
             subdict(utilbill_doc, ['account', 'utility', 'service', 'start', 'end']),
             {'sequence': {'$exists': False}})
@@ -54,9 +62,11 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
 
     # there should be at most 1 editable version of this utility bill
     if editable_twins.count() == 0:
-        return
+        print >> stderr, 'No editable version of utility document: %s' % \
+                format_query(query_for_editable_twins)
     if editable_twins.count() > 1:
-        print >> stderr, editable_twins.count(), 'editable utility bills match this query:', query_for_editable_twins
+        print >> stderr, '%s editable utility bills match this query: %s' % (
+                editable_twins.count(), format_query(query_for_editable_twins))
         return
 
     # "un-freeze" the utility bill to which the reebill is attached
@@ -70,10 +80,12 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
         # convert the previously frozen document into an editable one, without changing its id
         pass
 
-    db.utilbills.save(utilbill_doc)
-    db.utilbills.remove({'_id': editable_twins[0]['_id']}, True)
+    # save the un-frozen document
+    db.utilbills.save(utilbill_doc, safe=True)
 
-
+    # remove existing editable version
+    check_error(db.utilbills.remove({'_id':
+            editable_twins[0]['_id']}, True))
 
 
 
