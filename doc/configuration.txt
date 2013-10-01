@@ -40,7 +40,7 @@ Create directory for bill PDF files
     sudo mkdir /db-dev; sudo chown [your username]:[your username] /db-dev
 
 Load a copy of production data into your databases
-    billing/scripts/destage_from_prod.bash root tyrell-prod dev
+    billing/scripts/destage_from_prod_rsync.bash tyrell-prod dev root
 
 Create ReeBill config file:
     cp billing/reebill/reebill-dev-template.cfg billing/reebill/reebill.cfg
