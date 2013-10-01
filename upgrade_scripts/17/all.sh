@@ -4,6 +4,10 @@ set -e
 echo 'drop database if exists skyline_dev; create database skyline_dev; grant all on skyline_dev.* to dev;' | mysql -uroot -proot
 echo "******************************************************** destaging db"
 ../../scripts/destage_from_prod_rsync.bash tyrell-prod dev root
+echo "******************************************************** cleanup"
+for file in cleanup/*; do
+    python $file;
+done
 echo "******************************************************** 01_urs.py"
 python 01_urs.py
 echo "******************************************************** 02_manymany.sql"
