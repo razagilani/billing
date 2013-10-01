@@ -95,3 +95,11 @@ def format_query(query_dict):
 
     #return deep_map(date_to_isodate, deep_map(unicode_to_ascii, query_dict))
     return deep_map(unicode_to_ascii, deep_map(datetime_to_isodate, deep_map(boolean_to_mongoboolean, query_dict)))
+
+def check_error(mongo_result):
+    '''Raises exceptions.MongoError if the result of a result dictionary
+    (returned by Collection.remove) indicates that something went wrong.
+    '''
+    if mongo_result['err'] is not None or mongo_result['n'] == 0:
+        raise MongoError(result)
+

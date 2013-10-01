@@ -29,12 +29,8 @@ from bson import ObjectId
 import MySQLdb
 from billing.util.dateutils import date_to_datetime
 from billing.util.dictutils import subdict, dict_merge
-from billing.util.mongo_utils import format_query
+from billing.util.mongo_utils import format_query, check_error
 from billing.processing.exceptions import MongoError
-
-def check_error(mongo_result):
-    if mongo_result['err'] is not None or mongo_result['n'] == 0:
-        raise MongoError(result)
 
 def unfreeze_utilbill(utilbill_doc, new_id=None):
     '''Converts 'utilbill_doc' into an editable utility bill document, i.e.
@@ -80,8 +76,7 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
     db.utilbills.save(utilbill_doc, safe=True)
 
     # remove existing editable version
-    check_error(db.utilbills.remove({'_id':
-            editable_twins[0]['_id']}, True))
+    check_error(db.utilbills.remove({'_id': editable_twins[0]['_id']}, True))
 
 
 db = pymongo.Connection('localhost')['skyline-dev']
