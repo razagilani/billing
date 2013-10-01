@@ -1,3 +1,4 @@
+from sys import stderr
 import MySQLdb
 import pymongo
 
@@ -20,17 +21,11 @@ for row in mysql_cur.fetchall():
     issue_date = mongo_reebill['issue_date']
     if issued > 0:
         if issue_date is None:
-            print "Issue date is missing for issued reebill %s-%s-%s" %(account, sequence, version)
+            print >> stderr, "Issue date is missing for issued reebill %s-%s-%s" %(account, sequence, version)
         else:
             sql_str = 'update reebill set issue_date = date("%s") where reebill.id = %s' %(mongo_reebill['issue_date'].date().isoformat(), reebill_id)
-            print sql_str
             mysql_cur.execute(sql_str)
             #print "set reebill with id %s to issue_date %s" \
             #    %(reebill_id, mongo_reebill['issue_date'])
-    else:
-        if issue_date is not None:
-            print "Issue date for non-issued reebill %s-%s-%s" %(account, sequence, version)
-        else:
-            pass
 
 mysql_con.commit()
