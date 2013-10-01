@@ -32,10 +32,6 @@ from billing.util.dictutils import subdict, dict_merge
 from billing.util.mongo_utils import format_query
 from billing.processing.exceptions import MongoError
 
-db = pymongo.Connection('localhost')['skyline-dev']
-con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
-con.autocommit(False)
-
 def check_error(mongo_result):
     if mongo_result['err'] is not None or mongo_result['n'] == 0:
         raise MongoError(result)
@@ -88,41 +84,46 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
             editable_twins[0]['_id']}, True))
 
 
+db = pymongo.Connection('localhost')['skyline-dev']
+con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
+con.autocommit(False)
+cur = con.cursor()
 
 # TODO should this be done?
 # remove all editable utility bill documents so that better ones can be
 # recreated from the frozen ones
 #db.utilbills.remove({'sequence': {'$exists': False}})
 
-# unissued version-0 reebills are currently attached to utility bills that have
-# "sequence" and "version" keys in them (which can still be edited by the user)
-# but should be attached to editable ones (without "sequence" and "version").
-# convert these frozen utility bills into editable ones, replacing editable
-# ones that are already there.
-cur = con.cursor()
-cur.execute('''select distinct customer.account, sequence, utilbill_id
-from reebill join customer join utilbill_reebill on customer_id = customer.id and reebill_id = reebill.id
-where version = 0 and issued != 1
-order by account, sequence''')
 
+# part 1:
+# un-freeze frozen utility bill documents attached to unissued version-0
+# reebills, replacing editable versions of the same utility bills.
+query_for_unissued_version_0_reebills = '''
+select distinct customer.account, sequence, utilbill_id
+from reebill join customer join utilbill_reebill
+on customer_id = customer.id and reebill_id = reebill.id
+where version = 0 and issued != 1
+order by account, sequence'''
+
+cur.execute(query_for_unissued_version_0_reebills)
 for account, sequence, utilbill_id in cur.fetchall():
-    reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': 0})
+    reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence':
+            sequence, '_id.version': 0})
+    assert reebill_doc is not None
 
     for utilbill_subdoc in reebill_doc['utilbills']:
 
         # find utility bill document attached to the reebill
         utilbill = db.utilbills.find_one({'_id': utilbill_subdoc['id']})
         if utilbill is None:
-            print >> stderr, 'No utility bill document for reebill %s-%s-%s, id %s' % (
-                    reebill_doc['_id']['account'],
+            print >> stderr, ('No utility bill document for unissued reebill '
+                    '%s-%s-%s, id %s') % (reebill_doc['_id']['account'],
                     reebill_doc['_id']['sequence'],
                     reebill_doc['_id']['version'], utilbill_subdoc['id'])
             continue
 
-        # replace the existing editable utility bill with the previously frozen one, now editable
-        # NOTE that a new document is not being created, so the document can
-        # keep the same _id and the reebill subdocument "id" field does not
-        # need to be updated
+        # replace the existing editable utility bill with the previously frozen
+        # one, now editable
         try:
             unfreeze_utilbill(utilbill)
         except AssertionError:
@@ -131,24 +132,28 @@ for account, sequence, utilbill_id in cur.fetchall():
             # way it's supposed to be. so it should just be left alone
             print >> stderr, ('unissued version-0 reebill lacks "sequence"'
                     'and "version" in its utility bill:', reebill_doc['_id'])
+        # NOTE that a new document is not being created, so the document can
+        # keep the same _id and the reebill subdocument "id" field does not
+        # need to be updated. (And the utilbill.document_id in MySQL does not
+        # exist yet; when it is created in 06_utilbill_id_utility_rs it should
+        # be set to this _id.)
 
 
-# all issued reebills have an editable version of the frozen utility bill
-# document they are attached to. this document is unlikely to be accurate
-# because the user has not been able to edit it. so replace it with an new one
-# made by copying the frozen document attached to the highest-version reebill.
-cur.execute('''select account, sequence, max(version)
+# part 2:
+# replace editable version of every utility bill document with a copy of the
+# frozen document attached to the highest-version reebill.
+query_for_highest_version_reebills = '''
+select account, sequence, max(version)
 from reebill join customer on customer.id = customer_id
 where issued = 1
 group by customer_id, sequence
-order by customer_id, sequence, version''')
+order by customer_id, sequence, version'''
+
+cur.execute(query_for_highest_version_reebills)
 for account, sequence, max_version in cur.fetchall():
-    reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': max_version})
+    reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence':
+            sequence, '_id.version': max_version})
     assert reebill_doc is not None
-    if reebill_doc is None:
-        print >> stderr, 'No reebill document for %s-%s-%s, id %s' % (account,
-                sequence, max_version)
-        continue
 
     for utilbill_subdoc in reebill_doc['utilbills']:
         utilbill_doc_id = utilbill_subdoc['id']
