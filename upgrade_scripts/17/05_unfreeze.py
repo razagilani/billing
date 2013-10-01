@@ -1,7 +1,27 @@
 '''
-Converts frozen utility bill documents attached to unissued version-0 reebills into editable ones, replacing any editable utility bills that already exist.
-Deletes editable utility bill documents that have a frozen version attached to an issued reebill, and recreates them by copying the newest frozen version.
-After this script has run, all utility bill documents that a reebill document is attached to should be "frozen" if the reebill is issued and "editable" if it is not, and all the editable utility bills that have a frozen version should be identical their highest-version frozen version.
+This script updates existing data to match the new design in which any utility
+bill document attached to a reebill is frozen (i.e. contains the keys
+"sequence" and "version") if and only if the reebill is issued. In the old
+design, unissued reebills with sequence 0 are attached to frozen utility bill
+documents, but in the new design they should be attached to editable utility
+bill documents.
+
+This is accomplished by converting frozen utility bill documents into editable
+ones. Any existing editable version of the same utility bill is replaced,
+because it is probably less less up-to-date than the frozen one. (It is not
+always possible to find an "editable version" of a particular frozen utility
+bill, because they are not linked by a primary key.)
+
+Also, this script deletes editable utility bill documents that have a frozen
+version attached to an issued reebill (i.e. all editable utility bill
+documents) and recreates them by copying the newest frozen version. This is not
+schema change; it just ensures that editable utility bill documents are
+up-to-date, because many of them are not.
+
+After the script has run, all utility bill documents that a reebill document
+is attached to should be "frozen" if the reebill is issued and "editable" if it
+is not, and all the editable utility bills that have a frozen version should be
+identical to the latest frozen version.
 '''
 from sys import stderr
 import pymongo
