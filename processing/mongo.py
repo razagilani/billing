@@ -15,7 +15,7 @@ import copy
 from copy import deepcopy
 import uuid as UUID
 from itertools import chain
-from billing.util.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
@@ -2032,8 +2032,7 @@ class ReebillDAO(object):
             '_id.sequence': reebill.sequence,
             '_id.version': reebill.version,
         }, safe=True)
-        if result['err'] is not None or result['n'] == 0:
-            raise MongoError(result)
+        check_error(result)
 
     # TODO remove this method; this should be determined by looking at utility
     # bills in MySQL
