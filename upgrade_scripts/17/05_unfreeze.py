@@ -125,8 +125,9 @@ for account, sequence, utilbill_id in cur.fetchall():
             # if the "sequence" and "version" keys are missing, something went
             # wrong in the past, but the utility bill document is already the
             # way it's supposed to be. so it should just be left alone
-            print >> stderr, ('unissued version-0 reebill lacks "sequence"'
-                    ' and "version" in its utility bill: %s' % reebill_doc['_id'])
+            print >> stderr, ('Minor warning: unissued version-0 reebill lacks '
+                    '"sequence" and "version" in its utility bill: %s'
+                    % reebill_doc['_id'])
         # NOTE that a new document is not being created, so the document can
         # keep the same _id and the reebill subdocument "id" field does not
         # need to be updated. (And the utilbill.document_id in MySQL does not
