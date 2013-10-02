@@ -3,6 +3,8 @@ from sys import stderr
 import MySQLdb
 import pymongo
 from billing.util.dateutils import date_to_datetime
+from billing.util.mongo_utils import check_error
+from billing.exceptions import MongoError
 from bson import ObjectId
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
@@ -24,8 +26,9 @@ cur.execute("begin")
 
 cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
 initial_count = db.ratestructure.count()
+remove_count = insert_count = 0
 for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
-    #print account, sequence, version, utilbill_id
+    print account, sequence, version, utilbill_id, '************', remove_count, insert_count, db.ratestructure.count()
 
     # find CPRS and UPRS docs
     cprs_query = {
@@ -59,8 +62,9 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
 
     # delete CPRS and UPRS docs from collection
     # TODO do this after saving replacement, not before
-    db.ratestructure.remove(cprs)
-    db.ratestructure.remove(uprs)
+    check_error(db.ratestructure.remove(cprs, safe=True))
+    check_error(db.ratestructure.remove(uprs, safe=True))
+    remove_count += 2
 
     # replace ids with new ones, and add "type" field to the body of the document
     cprs['_id'] = ObjectId()
@@ -76,18 +80,18 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     # put RS document ids in utilbill_reebill table only if the reebill is
     # issued
     if issued:
-        cur.execute(("update utilbill_reebill set uprs_document_id = '%s', "
-            "cprs_document_id = '%s' where reebill_id = %s"
-            " and utilbill_id = %s") % (uprs['_id'],
-            cprs['_id'], reebill_id, utilbill_id))
+        cur.execute(("update utilbill_reebill set uprs_document_id = '%s', " "cprs_document_id = '%s' where reebill_id = %s" " and utilbill_id = %s") % (uprs['_id'], cprs['_id'], reebill_id, utilbill_id))
 
-    db.ratestructure.save(cprs)
-    db.ratestructure.save(uprs)
+    db.ratestructure.insert(cprs)
+    db.ratestructure.insert(uprs)
+    insert_count += 2
 
 # total number of rate structure documents should not have changed
 final_count = db.ratestructure.count()
 if initial_count != final_count:
     print >> stderr, "Rate structure count has changed: initial %s, final %s" % (initial_count, final_count)
+print '%s inserted, %s removed' % (remove_count, insert_count)
+# NOTE insert_count and remove_count are identical. therefore some documents that are saved already exist. how is that possible when ObjectIds are unique?
 
 
 # put ids of "template" utility bills in MySQL customer table
