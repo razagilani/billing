@@ -23,6 +23,7 @@ cur.execute("""alter table utilbill_reebill add column cprs_document_id varchar(
 cur.execute("begin")
 
 cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
+initial_count = db.ratestructure.count()
 for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
     #print account, sequence, version, utilbill_id
 
@@ -82,6 +83,11 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
 
     db.ratestructure.save(cprs)
     db.ratestructure.save(uprs)
+
+# total number of rate structure documents should not have changed
+final_count = db.ratestructure.count()
+if initial_count != final_count:
+    print >> stderr, "Rate structure count has changed: initial %s, final %s" % (initial_count, final_count)
 
 
 # put ids of "template" utility bills in MySQL customer table
