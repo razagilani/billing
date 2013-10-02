@@ -99,13 +99,13 @@ for account, customer_id in cur.fetchall():
     }
     utilbills = db.utilbills.find(utilbill_query)
     if utilbills.count() == 0:
-        if num_reebills > 0:
-            print >> stderr, "Missing template utility bill:", utilbill_query
+        if num_reebills == 0:
+            print >> stderr, "ERROR missing template utility bill:", utilbill_query
         else:
-            print >> stderr, "Missing template utility bill: %s (unnecessary since bills have been issued)" % utilbill_query
+            print >> stderr, "WARNING missing template utility bill: %s (unnecessary since bills have been issued)" % utilbill_query
         continue
-    elif utilbills.count() > 1:
-        print >> stderr, "Multiple utilbills match", utilbill_query
+    if utilbills.count() > 1:
+        print >> stderr, "ERROR multiple documents match query for template utility bill", utilbill_query
         continue
     utilbill = utilbills[0]
 
