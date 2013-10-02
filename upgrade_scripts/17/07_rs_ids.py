@@ -25,10 +25,7 @@ cur.execute("begin")
 
 cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id from reebill join customer join utilbill_reebill where reebill.customer_id = customer.id and reebill.id = utilbill_reebill.reebill_id")
 initial_count = db.ratestructure.count()
-remove_count = insert_count = 0
 for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
-    print account, sequence, version, utilbill_id, '************', remove_count, insert_count, db.ratestructure.count()
-
     # find CPRS and UPRS docs
     cprs_query = {
         '_id.type': 'CPRS', 
@@ -61,9 +58,8 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
 
     # delete CPRS and UPRS docs from collection
     # TODO do this after saving replacement, not before
-    check_error(db.ratestructure.remove(cprs, safe=True))
-    check_error(db.ratestructure.remove(uprs, safe=True))
-    remove_count += 2
+    check_error(db.ratestructure.remove(cprs_query, safe=True))
+    check_error(db.ratestructure.remove(uprs_query, safe=True))
 
     # replace ids with new ones, and add "type" field to the body of the document
     cprs['_id'] = ObjectId()
@@ -83,14 +79,9 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
 
     db.ratestructure.insert(cprs)
     db.ratestructure.insert(uprs)
-    insert_count += 2
 
-# total number of rate structure documents should not have changed
-final_count = db.ratestructure.count()
-if initial_count != final_count:
-    print >> stderr, "Rate structure count has changed: initial %s, final %s" % (initial_count, final_count)
-print '%s inserted, %s removed' % (remove_count, insert_count)
-# NOTE insert_count and remove_count are identical. therefore some documents that are saved already exist. how is that possible when ObjectIds are unique?
+    # total number of rate structure documents should not have changed
+    assert db.ratestructure.count() == initial_count
 
 
 # put ids of "template" utility bills in MySQL customer table
