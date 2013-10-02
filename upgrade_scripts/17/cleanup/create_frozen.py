@@ -35,6 +35,6 @@ for account, sequence, max_version in cur.fetchall():
             db.utilbills.insert(utilbill_doc)
             db.reebills.save(reebill_doc)
 
-            print 'fixed %s-%s-%s' % (account, sequence, version)
+            #print 'fixed %s-%s-%s' % (account, sequence, version)
 
 
