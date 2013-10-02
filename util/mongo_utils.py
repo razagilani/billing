@@ -6,6 +6,7 @@ from billing.util.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
+from billing.processing.exceptions import MongoError
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
@@ -101,5 +102,5 @@ def check_error(mongo_result):
     (returned by Collection.remove) indicates that something went wrong.
     '''
     if mongo_result['err'] is not None or mongo_result['n'] == 0:
-        raise MongoError(result)
+        raise MongoError(mongo_result)
 
