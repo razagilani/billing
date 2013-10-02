@@ -10,6 +10,7 @@ import pymongo
 from bson import ObjectId
 from billing.util.dateutils import date_to_datetime
 from billing.util.dictutils import subdict
+from billing.util.mongo_utils import format_query
 
 def one(the_list):
     #assert len(the_list) == 1
@@ -54,7 +55,7 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
     #new_editable_doc['_id'] = ObjectId()
     #db.utilbills.save(new_editable_doc)
 
-# put Mongo _ids of editable utility bill documents in MySQL
+# put Mongo _ids, document_id, rate class of editable utility bill documents in MySQL
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
@@ -73,18 +74,22 @@ for mysql_id, account, service, start, end in cur.fetchall():
     # reebill, look up its utility bill document, try to find an editable
     # utility bill with the same dates as that one, and put that one's _id in MySQL
     if mongo_doc is None:
-        print >> stderr, "No editable utility bill document found for query", editable_doc_query
+        #print >> stderr, "No editable utility bill document found for query", editable_doc_query
 
         cur.execute("select sequence, version from reebill, utilbill_reebill where reebill_id = reebill.id and utilbill_id = %s" % mysql_id)
         if cur.rowcount == 0:
-            print >> stderr, "and no reebill exists in MySQL"
+            print >> stderr, ("No editable utility bill document found for "
+                    "query %s and no reebill exists in MySQL") % \
+                    format_query(editable_doc_query)
             continue
+
         sequence, version = cur.fetchone()
         mongo_id = one(db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': version})['utilbills'])['id']
         frozen_doc = db.utilbills.find_one({'_id': ObjectId(mongo_id)})
         if frozen_doc is None:
             print >> stderr, "and reebill's utility bill document could not be found either"
             continue
+
         editable_doc_query.update({'start': frozen_doc['start'], 'end': frozen_doc['end']})
         mongo_doc = db.utilbills.find_one(editable_doc_query)
         if mongo_doc is None:
