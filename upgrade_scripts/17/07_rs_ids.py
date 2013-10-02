@@ -4,7 +4,7 @@ import MySQLdb
 import pymongo
 from billing.util.dateutils import date_to_datetime
 from billing.util.mongo_utils import check_error
-from billing.exceptions import MongoError
+from billing.processing.exceptions import MongoError
 from bson import ObjectId
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
