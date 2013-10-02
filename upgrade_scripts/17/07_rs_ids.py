@@ -3,7 +3,7 @@ from sys import stderr
 import MySQLdb
 import pymongo
 from billing.util.dateutils import date_to_datetime
-from billing.util.mongo_utils import check_error
+from billing.util.mongo_utils import check_error, format_query
 from bson import ObjectId
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
@@ -49,10 +49,10 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     }
     uprss = db.ratestructure.find(uprs_query)
     if uprss.count() == 0:
-        print >> stderr, "Missing UPRS:", uprs_query
+        print >> stderr, "Missing UPRS:", format_query(uprs_query)
         continue
     elif uprss.count() > 1:
-        print >> stderr, "Multiple UPRSs match", uprs_query
+        print >> stderr, "Multiple UPRSs match", format_query(uprs_query)
         continue
     uprs = uprss[0]
 
@@ -100,12 +100,12 @@ for account, customer_id in cur.fetchall():
     utilbills = db.utilbills.find(utilbill_query)
     if utilbills.count() == 0:
         if num_reebills == 0:
-            print >> stderr, "ERROR missing template utility bill:", utilbill_query
+            print >> stderr, "ERROR missing template utility bill:", format_query(utilbill_query)
         else:
-            print >> stderr, "WARNING missing template utility bill: %s (unnecessary since bills have been issued)" % utilbill_query
+            print >> stderr, "WARNING missing template utility bill: %s (unnecessary since bills have been issued)" % format_query(utilbill_query)
         continue
     if utilbills.count() > 1:
-        print >> stderr, "ERROR multiple documents match query for template utility bill", utilbill_query
+        print >> stderr, "ERROR multiple documents match query for template utility bill", format_query(utilbill_query)
         continue
     utilbill = utilbills[0]
 
