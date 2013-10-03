@@ -13,9 +13,10 @@ from billing.util.dictutils import subdict
 from billing.util.mongo_utils import format_query
 
 def one(the_list):
-    #assert len(the_list) == 1
-    if len(the_list) != 1:
-        print >> stderr, type(the_list), 'has', len(the_list), 'elements'
+    '''Ensure that 'the_list' has one element and return it.'''
+    assert len(the_list) == 1
+    #if len(the_list) != 1:
+        #print >> stderr, 'list', type(the_list), 'has', len(the_list), 'elements but should have 1'
     return the_list[0]
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
