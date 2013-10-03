@@ -85,7 +85,15 @@ for mysql_id, account, service, start, end in cur.fetchall():
             continue
 
         sequence, version = cur.fetchone()
-        mongo_id = one(db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': version})['utilbills'])['id']
+        reebill_doc = db.reebills.find_one({'_id.account': account,
+                '_id.sequence': sequence, '_id.version': version})
+        try:
+            mongo_id = one(reebill_doc['utilbills'])['id']
+        except AssertionError:
+            print >> stderr, ("Reebill %s-%s-%s has muiltiple utility bills: "
+                    "couldn't be used to find editable version of frozen "
+                    "utility bill document") % (account, sequence, version)
+            continue
         frozen_doc = db.utilbills.find_one({'_id': ObjectId(mongo_id)})
         if frozen_doc is None:
             print >> stderr, "and reebill's utility bill document could not be found either"
