@@ -51,15 +51,14 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 
 # put Mongo _ids, document_id, rate class of editable utility bill documents in MySQL
 utilbill_query = '''
-select utilbill.id, customer.account, service, period_start, period_end
+select utilbill.id, customer.account, period_start, period_end
 from utilbill join customer on utilbill.customer_id = customer.id
 order by account, period_start, period_end'''
 cur.execute(utilbill_query)
-for mysql_id, account, service, start, end in cur.fetchall():
+for mysql_id, account, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
     editable_doc_query = {
         'account': account,
-        #'service': service,
         'start': date_to_datetime(start),
         'end': date_to_datetime(end),
         'sequence': {'$exists': False},
