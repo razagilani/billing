@@ -57,7 +57,8 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 # put Mongo _ids, document_id, rate class of editable utility bill documents in MySQL
 utilbill_query = '''
 select utilbill.id, customer.account, service, period_start, period_end
-from utilbill join customer on utilbill.customer_id = customer.id'''
+from utilbill join customer on utilbill.customer_id = customer.id
+order by account, period_start, period_end'''
 cur.execute(utilbill_query)
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
@@ -79,8 +80,9 @@ for mysql_id, account, service, start, end in cur.fetchall():
         #print >> stderr, "No editable utility bill document found for query", editable_doc_query
 
         reebill_query = '''select sequence, version
-        from reebill, utilbill_reebill where reebill_id = reebill.id
-        and utilbill_id = %s''' % mysql_id
+        from reebill join utilbill_reebill on reebill_id = reebill.id
+        and utilbill_id = %s
+        order by sequence, version''' % mysql_id
         cur.execute(reebill_query)
         if cur.rowcount == 0:
             print >> stderr, ("No editable utility bill document found for "
