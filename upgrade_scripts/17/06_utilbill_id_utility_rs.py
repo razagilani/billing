@@ -15,8 +15,6 @@ from billing.util.mongo_utils import format_query
 def one(the_list):
     '''Ensure that 'the_list' has one element and return it.'''
     assert len(the_list) == 1
-    #if len(the_list) != 1:
-        #print >> stderr, 'list', type(the_list), 'has', len(the_list), 'elements but should have 1'
     return the_list[0]
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
@@ -57,7 +55,10 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
     #db.utilbills.save(new_editable_doc)
 
 # put Mongo _ids, document_id, rate class of editable utility bill documents in MySQL
-cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
+utilbill_query = '''
+select utilbill.id, customer.account, service, period_start, period_end
+from utilbill join customer on utilbill.customer_id = customer.id'''
+cur.execute(utilbill_query)
 for mysql_id, account, service, start, end in cur.fetchall():
     # get mongo id of editable utility bill document
     editable_doc_query = {
@@ -77,7 +78,10 @@ for mysql_id, account, service, start, end in cur.fetchall():
     if mongo_doc is None:
         #print >> stderr, "No editable utility bill document found for query", editable_doc_query
 
-        cur.execute("select sequence, version from reebill, utilbill_reebill where reebill_id = reebill.id and utilbill_id = %s" % mysql_id)
+        reebill_query = '''select sequence, version
+        from reebill, utilbill_reebill where reebill_id = reebill.id
+        and utilbill_id = %s''' % mysql_id
+        cur.execute(reebill_query)
         if cur.rowcount == 0:
             print >> stderr, ("No editable utility bill document found for "
                     "query %s and no reebill exists in MySQL") % \
@@ -106,20 +110,25 @@ for mysql_id, account, service, start, end in cur.fetchall():
             continue
 
     # put mongo document id in MySQL table
-    cur.execute("update utilbill set utility = '%s', rate_class = '%s', document_id = '%s' where id = %s" % (mongo_doc['utility'], mongo_doc['rate_structure_binding'], mongo_doc['_id'], mysql_id))
+    utilbill_update = ('''update utilbill set utility = '{utility}',
+    rate_class = '{rate_structure_binding}', document_id = '{_id}'
+    where id = %s''' %  mysql_id).format(**mongo_doc)
+    cur.execute(utilbill_update)
+    #cur.execute("update utilbill set utility = '%s', rate_class = '%s', document_id = '%s' where id = %s" % (mongo_doc['utility'], mongo_doc['rate_structure_binding'], mongo_doc['_id'], mysql_id))
 
 # check for success; abort if any rows did not get a document id
 cur.execute("select count(*) from utilbill where document_id in ('', NULL)")
 count = cur.fetchone()[0]
 if count > 0:
-    #raise Exception("%s rows did not match a document" % count)
     print >> stderr, "%s rows did not match a document" % count
     #cur.rollback()
-# NOTE currently about 1/3 of utility bill rows did not match a document
 
 
 # insert mongo document ids in document_id column of utilbill_reebill to represent frozen utility bill documents
-cur.execute("select reebill.id, customer.account, reebill.sequence, reebill.version from reebill join customer where reebill.customer_id = customer.id")
+utilbill_reebill_query = '''
+select reebill.id, customer.account, reebill.sequence, reebill.version
+from reebill join customer on reebill.customer_id = customer.id'''
+cur.execute(utilbill_reebill_query)
 for mysql_id, account, sequence, version, in cur.fetchall():
     # get mongo id of editable utility bill document
     query = {
@@ -129,20 +138,24 @@ for mysql_id, account, sequence, version, in cur.fetchall():
     }
     reebill_doc = db.reebills.find_one(query)
     if reebill_doc is None:
-        print >> stderr, "%s: no reebill document for query %s" % (mysql_id, query)
+        print >> stderr, "%s: no reebill document for query %s" % (mysql_id,
+                query)
         continue
     try:
         assert len(reebill_doc['utilbills']) == 1
     except KeyError as e:
-        print >> stderr, 'Reebill %s-%s-%s lacks "utilbills" key' % (account, sequence, version)
+        print >> stderr, 'Reebill %s-%s-%s lacks "utilbills" key' % (account,
+                sequence, version)
         continue
     except AssertionError as e:
         # TODO handle multi-utilbill cases (10001)
         if len(reebill_doc['utilbills']) == 0:
-            print >> stderr, 'Reebill %s-%s-%s lacks utility bill subdocuments' % (account, sequence, version)
+            print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
+                    'subdocuments') % (account, sequence, version)
             continue
         elif len(reebill_doc['utilbills']) > 1:
-            print >> stderr, 'Reebill %s-%s-%s has multiple utility bill subdocuments' % (account, sequence, version)
+            print >> stderr, ('Reebill %s-%s-%s has multiple utility bill '
+                    'subdocuments') % (account, sequence, version)
             continue
         else:
             raise
@@ -150,7 +163,8 @@ for mysql_id, account, sequence, version, in cur.fetchall():
     mongo_utilbill_id = utilbill_subdoc['id']
 
     # put mongo document id in MySQL table
-    cur.execute("update utilbill_reebill set document_id = '%s' where reebill_id = %s" % (mongo_utilbill_id, mysql_id))
+    cur.execute(("update utilbill_reebill set document_id = '%s' "
+            "where reebill_id = %s") % (mongo_utilbill_id, mysql_id))
 
 # check for success; complain if any rows did not get a document id
 cur.execute("select count(*) from utilbill where document_id is NULL")
@@ -158,8 +172,7 @@ count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
 total = cur.fetchone()[0]
 if count > 0:
-    print >> stderr, "%s of %s utilbill rows did not match a document" % (count, total)
-    #raise Exception("%s rows did not match a document" % count)
+    print >> stderr, "%s of %s rows did not match a document" % (count, total)
     #cur.rollback()
 
 con.commit()
