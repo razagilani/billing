@@ -6,6 +6,9 @@ from billing.util.dictutils import subdict, dict_merge
 
 db = pymongo.Connection('localhost')['skyline-dev']
 
+uprs_count = db.ratestructure.find({'_id.type': 'UPRS'}).count()
+urs_count = db.ratestructure.find({'_id.type': 'URS'}).count()
+
 for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
     # get URS corresponding to the UPRS
     query = {
@@ -16,10 +19,10 @@ for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
     urss = db.ratestructure.find(query)
     if urss.count() == 0:
         # if the URS is missing, it's not actually a problem; there's nothing to do
-        print >> stderr, 'No URS found for query %s (not a problem)' % query
+        print >> stderr, 'WARNING no URS found for query %s (nothing to update)' % query
         continue
     if urss.count() > 1:
-        print >> stderr, 'More than one URS matches query %s' % query
+        print >> stderr, 'ERROR more than one URS matches query %s' % query
         for u in urss:
             print >> stderr, '\t', urs['_id']
         continue
@@ -35,3 +38,6 @@ for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
 
 # remove "rates" from URS (register types still needed, maybe)
 db.ratestructure.update({'_id.type': 'UPRS'}, {'$set': {'rates': []}})
+
+assert db.ratestructure.find({'_id.type': 'UPRS'}).count() = uprs_count
+assert db.ratestructure.find({'_id.type': 'URS'}).count() = urs_count
