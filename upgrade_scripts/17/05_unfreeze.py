@@ -34,23 +34,23 @@ from billing.processing.exceptions import MongoError
 
 def unfreeze_utilbill(utilbill_doc, new_id=None):
     '''Converts 'utilbill_doc' into an editable utility bill document, i.e.
-    removes its "sequence" and "version" keys, and saves it. If 'new_id' is given,
-    a new document is created with that _id the frozen one is unchanged. If
-    'new_id' is not given, the original document is modified and saved with its
-    original _id, so the frozen document has become editable. In both cases,
-    any existing editable document having the same service, utility, and dates
-    is removed.'''
+    removes its "sequence" and "version" keys, and saves it. If 'new_id' is
+    given, a new document is created with that _id the frozen one is unchanged.
+    If 'new_id' is not given, the original document is modified and saved with
+    its original _id, so the frozen document has become editable. In both
+    cases, any existing editable document having the same service, utility, and
+    dates is removed.'''
     # find any existing editable utility bill documents with the same utility,
     # service, and dates
     query_for_editable_twins = dict_merge(
-            subdict(utilbill_doc, ['account', 'utility', 'service', 'start', 'end']),
-            {'sequence': {'$exists': False}})
+            subdict(utilbill_doc, ['account', 'utility', 'service', 'start',
+            'end']), {'sequence': {'$exists': False}})
     editable_twins = db.utilbills.find(query_for_editable_twins)
 
     # there should be at most 1 editable version of this utility bill
     if editable_twins.count() == 0:
-        print >> stderr, ('WARNING expected an editable version of this utility'
-                ' bill document to exist before being replaced: %s') % \
+        print >> stderr, ('WARNING expected an editable version of this '
+                'utility bill document to exist before being replaced: %s') % \
                 format_query(query_for_editable_twins)
     if editable_twins.count() > 1:
         print >> stderr, ('WARNING %s editable utility bills match this '
@@ -63,8 +63,6 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
 
     # "un-freeze" the utility bill to which the reebill is attached
     # ('pop' won't complain if the keys are missing)
-    #del utilbill_doc['sequence']
-    #del utilbill_doc['version']
     utilbill_doc.pop('sequence', None)
     utilbill_doc.pop('version', None)
 
@@ -84,12 +82,6 @@ db = pymongo.Connection('localhost')['skyline-dev']
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
 con.autocommit(False)
 cur = con.cursor()
-
-# TODO should this be done?
-# remove all editable utility bill documents so that better ones can be
-# recreated from the frozen ones
-#db.utilbills.remove({'sequence': {'$exists': False}})
-
 
 # part 1:
 # un-freeze frozen utility bill documents attached to unissued version-0
@@ -149,7 +141,6 @@ from reebill join customer on customer.id = customer_id
 where issued = 1
 group by customer_id, sequence
 order by customer_id, sequence, version'''
-
 cur.execute(query_for_highest_version_issued_reebills)
 for account, sequence, max_version in cur.fetchall():
     reebill_doc = db.reebills.find_one({'_id.account': account, '_id.sequence':
@@ -174,99 +165,6 @@ for account, sequence, max_version in cur.fetchall():
                     ' in its utility bill: %s') % reebill_doc['_id']
 
         unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
-
-            # interestingly these cases are mostly (but not entirely)
-            # corrections. and they are a minority of total account/sequence
-            # pairs, even though there are a lot of them.
-            # are they a minority of issued account/sequence pairs that have corrections?
-            # no: out of 85 account/sequence pairs that have ever been
-            # corrected, 11 lack sequence/version keys in their utility bill.
-
-           #10001-25-1 correction ok
-           #10001-26-1 correction ok
-           #10001-27-1 correction ok
-           #10001-28-1 correction ok
-           #10001-29-1 correction ok
-           #10001-30-1 correction ok
-           #10001-32-1: correction lacked sequence/version keys
-           #10001-38-1: correction lacked sequence/version keys
-           #10005-20-1 correction ok
-           #10005-21-1 correction ok
-           #10005-31-1: correction lacked sequence/version keys
-           #10005-32-1: correction lacked sequence/version keys
-           #10004-30-2: correction lacked sequence/version keys
-           #10004-31-1: correction lacked sequence/version keys
-           #10004-32-2: correction lacked sequence/version keys
-           #10004-33-2: correction lacked sequence/version keys
-           #10004-34-1: correction lacked sequence/version keys
-           #10004-35-1: correction lacked sequence/version keys
-           #10011-21-1: correction lacked sequence/version keys
-           #10012-16-1 correction ok
-           #10012-17-1: correction lacked sequence/version keys
-           #10012-18-1: correction lacked sequence/version keys
-           #10012-19-1: correction lacked sequence/version keys
-           #10012-20-1: correction lacked sequence/version keys
-           #10012-21-1: correction lacked sequence/version keys
-           #10012-22-1: correction lacked sequence/version keys
-           #10012-23-1: correction lacked sequence/version keys
-           #10014-13-1: correction lacked sequence/version keys
-           #10014-14-1: correction lacked sequence/version keys
-           #10014-15-1: correction lacked sequence/version keys
-           #10014-16-1: correction lacked sequence/version keys
-           #10014-17-1: correction lacked sequence/version keys
-           #10014-18-1: correction lacked sequence/version keys
-           #10014-19-1: correction lacked sequence/version keys
-           #10016-10-1: correction lacked sequence/version keys
-           #10016-11-1: correction lacked sequence/version keys
-           #10016-12-1: correction lacked sequence/version keys
-           #10016-13-1: correction lacked sequence/version keys
-           #10016-14-1: correction lacked sequence/version keys
-           #10016-15-1: correction lacked sequence/version keys
-           #10016-16-1: correction lacked sequence/version keys
-           #10016-17-1: correction lacked sequence/version keys
-           #10016-18-2: correction lacked sequence/version keys
-           #10016-19-1: correction lacked sequence/version keys
-           #10016-20-1: correction lacked sequence/version keys
-           #10016-21-1: correction lacked sequence/version keys
-           #10016-22-1: correction lacked sequence/version keys
-           #10013-15-1: correction lacked sequence/version keys
-           #10013-16-1: correction lacked sequence/version keys
-           #10013-17-1: correction lacked sequence/version keys
-           #10013-18-1: correction lacked sequence/version keys
-           #10013-19-1: correction lacked sequence/version keys
-           #10013-20-1: correction lacked sequence/version keys
-           #10013-21-1: correction lacked sequence/version keys
-           #10013-22-1: correction lacked sequence/version keys
-           #10010-13-1: correction lacked sequence/version keys
-           #10022-6-1: correction lacked sequence/version keys
-           #10022-7-1: correction lacked sequence/version keys
-           #10021-11-1: correction lacked sequence/version keys
-           #10024-3-1: correction lacked sequence/version keys
-           #10024-4-1: correction lacked sequence/version keys
-           #10024-5-1: correction lacked sequence/version keys
-           #10024-6-1: correction lacked sequence/version keys
-           #10024-7-1: correction lacked sequence/version keys
-           #10024-8-1: correction lacked sequence/version keys
-           #10024-9-1: correction lacked sequence/version keys
-           #10024-10-1: correction lacked sequence/version keys
-           #10024-11-1: correction lacked sequence/version keys
-           #10027-2-1 correction ok
-           #10028-1-1 correction ok
-           #10031-6-1: correction lacked sequence/version keys
-           #10031-7-1: correction lacked sequence/version keys
-           #10043-1-1: correction lacked sequence/version keys
-           #10043-2-1: correction lacked sequence/version keys
-           #10043-3-1: correction lacked sequence/version keys
-           #10044-1-1: correction lacked sequence/version keys
-           #10044-2-1: correction lacked sequence/version keys
-           #10044-3-1: correction lacked sequence/version keys
-           #10046-1-2: correction lacked sequence/version keys
-           #10046-2-2: correction lacked sequence/version keys
-           #10046-3-2: correction lacked sequence/version keys
-           #10046-4-2: correction lacked sequence/version keys
-           #10046-5-2: correction lacked sequence/version keys
-           #10046-6-1: correction lacked sequence/version keys
-           #10046-7-1: correction lacked sequence/version keys
 
 con.commit()
 
