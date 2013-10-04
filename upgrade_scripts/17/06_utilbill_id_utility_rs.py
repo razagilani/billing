@@ -159,38 +159,8 @@ for account, reebill_id, sequence, version, utilbill_id, service in \
         print >> stderr, "%s: no reebill document for query %s" % (reebill_id,
                 query)
         continue
-    #try:
-        #assert len(reebill_doc['utilbills']) == 1
-    #except KeyError as e:
-        #print >> stderr, 'Reebill %s-%s-%s lacks "utilbills" key' % (account,
-                #sequence, version)
-        #continue
-    #except AssertionError as e:
-        #if len(reebill_doc['utilbills']) == 0:
-            #print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
-                    #'subdocuments') % (account, sequence, version)
-            #continue
-        #if len(reebill_doc['utilbills']) == 1:
-            #utilbill_document_id = reebill_doc['utilbills'][0]
-        #elif len(reebill_doc['utilbills']) > 1:
-            ## when there are multiple utility bill subdocuments, select the one
-            ## where "service" matches the MySQL utility bill
-            #utilbill_document_id = None
-            #for subdoc in reebill_doc['utilbills']:
-                #doc = db.utilbills.find_one({'_id': subdoc['id']})
-                #assert 'sequence' in doc and 'version' in doc
-                #if doc['service'] == service:
-                    #utilbill_document_id = subdoc['id']
-                    #break
-            #if utilbill_document_id is None:
-                #print >> stderr, ('ERROR reebill %s-%s-%s has no subdocument '
-                        #'for utility bill with service %s') % (account,
-                        #sequence, version, service)
-                #continue
-        #else:
-            #raise
     if len(reebill_doc['utilbills']) == 0:
-        print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
+        print >> stderr, ('ERROR reebill %s-%s-%s lacks utility bill '
                 'subdocuments') % (account, sequence, version)
         continue
     if len(reebill_doc['utilbills']) == 1:
