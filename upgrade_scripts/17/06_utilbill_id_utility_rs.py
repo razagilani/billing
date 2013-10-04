@@ -140,10 +140,14 @@ if count > 0:
 
 # insert mongo document ids in document_id column of utilbill_reebill to represent frozen utility bill documents
 utilbill_reebill_query = '''
-select reebill.id, customer.account, reebill.sequence, reebill.version
-from reebill join customer on reebill.customer_id = customer.id'''
+select account, reebill.id, sequence, version, utilbill.id, service
+from customer join reebill on customer.id = reebill.customer_id
+join utilbill_reebill on reebill.id = reebill_id
+join utilbill on utilbill_id = utilbill.id
+'''
 cur.execute(utilbill_reebill_query)
-for mysql_id, account, sequence, version, in cur.fetchall():
+for account, reebill_id, sequence, version, utilbill_id, service in \
+        cur.fetchall():
     # get mongo id of editable utility bill document
     query = {
         '_id.account': account,
@@ -152,33 +156,66 @@ for mysql_id, account, sequence, version, in cur.fetchall():
     }
     reebill_doc = db.reebills.find_one(query)
     if reebill_doc is None:
-        print >> stderr, "%s: no reebill document for query %s" % (mysql_id,
+        print >> stderr, "%s: no reebill document for query %s" % (reebill_id,
                 query)
         continue
-    try:
-        assert len(reebill_doc['utilbills']) == 1
-    except KeyError as e:
-        print >> stderr, 'Reebill %s-%s-%s lacks "utilbills" key' % (account,
-                sequence, version)
+    #try:
+        #assert len(reebill_doc['utilbills']) == 1
+    #except KeyError as e:
+        #print >> stderr, 'Reebill %s-%s-%s lacks "utilbills" key' % (account,
+                #sequence, version)
+        #continue
+    #except AssertionError as e:
+        #if len(reebill_doc['utilbills']) == 0:
+            #print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
+                    #'subdocuments') % (account, sequence, version)
+            #continue
+        #if len(reebill_doc['utilbills']) == 1:
+            #utilbill_document_id = reebill_doc['utilbills'][0]
+        #elif len(reebill_doc['utilbills']) > 1:
+            ## when there are multiple utility bill subdocuments, select the one
+            ## where "service" matches the MySQL utility bill
+            #utilbill_document_id = None
+            #for subdoc in reebill_doc['utilbills']:
+                #doc = db.utilbills.find_one({'_id': subdoc['id']})
+                #assert 'sequence' in doc and 'version' in doc
+                #if doc['service'] == service:
+                    #utilbill_document_id = subdoc['id']
+                    #break
+            #if utilbill_document_id is None:
+                #print >> stderr, ('ERROR reebill %s-%s-%s has no subdocument '
+                        #'for utility bill with service %s') % (account,
+                        #sequence, version, service)
+                #continue
+        #else:
+            #raise
+    if len(reebill_doc['utilbills']) == 0:
+        print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
+                'subdocuments') % (account, sequence, version)
         continue
-    except AssertionError as e:
-        # TODO handle multi-utilbill cases (10001)
-        if len(reebill_doc['utilbills']) == 0:
-            print >> stderr, ('Reebill %s-%s-%s lacks utility bill '
-                    'subdocuments') % (account, sequence, version)
+    if len(reebill_doc['utilbills']) == 1:
+        utilbill_document_id = reebill_doc['utilbills'][0]['id']
+    else:
+        # when there are multiple utility bill subdocuments, select the one
+        # where "service" matches the MySQL utility bill
+        utilbill_document_id = None
+        for subdoc in reebill_doc['utilbills']:
+            doc = db.utilbills.find_one({'_id': subdoc['id']})
+            assert 'sequence' in doc and 'version' in doc
+            if doc['service'] == service:
+                utilbill_document_id = subdoc['id']
+                break
+        if utilbill_document_id is None:
+            print >> stderr, ('ERROR reebill %s-%s-%s has no subdocument '
+                    'for utility bill with service %s') % (account,
+                    sequence, version, service)
             continue
-        elif len(reebill_doc['utilbills']) > 1:
-            print >> stderr, ('Reebill %s-%s-%s has multiple utility bill '
-                    'subdocuments') % (account, sequence, version)
-            continue
-        else:
-            raise
-    utilbill_subdoc = reebill_doc['utilbills'][0]
-    mongo_utilbill_id = utilbill_subdoc['id']
 
     # put mongo document id in MySQL table
-    cur.execute(("update utilbill_reebill set document_id = '%s' "
-            "where reebill_id = %s") % (mongo_utilbill_id, mysql_id))
+    update = ("update utilbill_reebill set document_id = '%s' "
+            "where utilbill_id = %s and reebill_id = %s") % (
+            utilbill_document_id, utilbill_id, reebill_id)
+    cur.execute(update)
 
 # check for success; complain if any rows did not get a document id
 cur.execute("select count(*) from utilbill where document_id is NULL")
