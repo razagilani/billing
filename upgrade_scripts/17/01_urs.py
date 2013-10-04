@@ -39,5 +39,8 @@ for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
 # remove "rates" from URS (register types still needed, maybe)
 db.ratestructure.update({'_id.type': 'UPRS'}, {'$set': {'rates': []}})
 
-assert db.ratestructure.find({'_id.type': 'UPRS'}).count() == uprs_count
-assert db.ratestructure.find({'_id.type': 'URS'}).count() == urs_count
+try:
+    assert db.ratestructure.find({'_id.type': 'UPRS'}).count() == uprs_count
+    assert db.ratestructure.find({'_id.type': 'URS'}).count() == urs_count
+except AssertionError:
+    import ipdb; ipdb.set_trace()
