@@ -1,5 +1,7 @@
 #!/bin/bash
-# Convenience script to delete/recreate database, destage data, and run all upgrade scripts. Not to be used in production!
+# Convenience script to delete/recreate database, destage data, run all upgrade
+# scripts, and check database for successfull upgrade. Not intended for use in
+# production.
 set -e
 scripts_dir=`dirname $0`
 echo 'drop database if exists skyline_dev; create database skyline_dev; grant all on skyline_dev.* to dev;' | mysql -uroot -proot
@@ -25,3 +27,5 @@ echo "******************************************************** 07_rs_ids.py"
 python $scripts_dir/07_rs_ids.py
 echo "******************************************************** 08_issue_dates.py"
 python $scripts_dir/08_issue_dates.py
+echo "******************************************************** check"
+python $scripts_dir/check.py
