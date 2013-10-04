@@ -86,8 +86,8 @@ for mysql_id, account, start, end in cur.fetchall():
             mongo_doc = generate_utilbill_doc(account, start, end)
             db.utilbills.insert(mongo_doc)
 
-            print ('INFO generated new document for unattached '
-                    'utility bill: %s %s - %s') % (account, start, end)
+            #print ('INFO generated new document for unattached '
+                    #'utility bill: %s %s - %s') % (account, start, end)
         else:
             # this utility bill does have a reebill. the frozen utility bill
             # document belonging to that reebill can help find a document for
@@ -120,9 +120,9 @@ for mysql_id, account, start, end in cur.fetchall():
                         'for reebill %s-%s did not help') % (account, start,
                         end, sequence, version)
                 continue
-            print ('INFO used reebill %s-%s-%s to find editable utility bill'
-                    ' document %s - %s') % (account, sequence, version,
-                    frozen_doc['start'], frozen_doc['end'])
+            #print ('INFO used reebill %s-%s-%s to find editable utility bill'
+                    #' document %s - %s') % (account, sequence, version,
+                    #frozen_doc['start'], frozen_doc['end'])
 
     # put mongo document id in MySQL table
     utilbill_update = ('''update utilbill set utility = '{utility}',
