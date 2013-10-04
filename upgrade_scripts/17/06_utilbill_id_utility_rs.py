@@ -190,12 +190,20 @@ for account, reebill_id, sequence, version, utilbill_id, service in \
 
 # check for success; complain if any rows did not get a document id
 cur.execute("select count(*) from utilbill where document_id is NULL")
-count = cur.fetchone()[0]
+utilbill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
-total = cur.fetchone()[0]
-if count > 0:
-    print >> stderr, "%s of %s rows did not match a document" % (count, total)
+utilbill_count = cur.fetchone()[0]
+cur.execute("select count(*) from utilbill_reebill where document_id is NULL")
+utilbill_reebill_null_count = cur.fetchone()[0]
+cur.execute("select count(*) from utilbill_reebill")
+utilbill_reebill_count = cur.fetchone()[0]
+if utilbill_null_count > 0:
+    print >> stderr, 'ERROR %s of %s rows in "utilbill" did not match a document' % (utilbill_null_count, utilbill_count)
     #cur.rollback()
+if utilbill_reebill_null_count > 0:
+    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
+if utilbill_reebill_null_count > 0:
+    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
 
 con.commit()
 
