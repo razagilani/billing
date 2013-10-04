@@ -144,6 +144,7 @@ select account, reebill.id, sequence, version, utilbill.id, service
 from customer join reebill on customer.id = reebill.customer_id
 join utilbill_reebill on reebill.id = reebill_id
 join utilbill on utilbill_id = utilbill.id
+order by account, sequence, version, service
 '''
 cur.execute(utilbill_reebill_query)
 for account, reebill_id, sequence, version, utilbill_id, service in \
