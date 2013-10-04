@@ -152,7 +152,8 @@ docs = [
 
 # "insert" is used to ensure that documents don't already exist
 for doc in docs:
-    db.ratestructure.insert(doc)
+    result = db.ratestructure.insert(doc, continue_on_error=False)
+    assert db.error() is None
 
 # check for success
 final_count = db.ratestructure.count()
