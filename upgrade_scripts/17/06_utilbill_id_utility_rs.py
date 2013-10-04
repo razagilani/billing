@@ -49,13 +49,14 @@ cur.execute("alter table utilbill add column document_id varchar(255)")
 # identified by utilbill.document_id
 cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 
-# put Mongo _ids, document_id, rate class of editable utility bill documents in MySQL
+# put Mongo _ids, document_id, rate class of editable utility bill documents in
+# MySQL
 utilbill_query = '''
-select utilbill.id, customer.account, period_start, period_end
+select utilbill.id, customer.account, period_start, period_end, service
 from utilbill join customer on utilbill.customer_id = customer.id
 order by account, period_start, period_end'''
 cur.execute(utilbill_query)
-for mysql_id, account, start, end in cur.fetchall():
+for mysql_id, account, start, end, service in cur.fetchall():
     # get mongo id of editable utility bill document
     editable_doc_query = {
         'account': account,
@@ -63,16 +64,18 @@ for mysql_id, account, start, end in cur.fetchall():
         'end': date_to_datetime(end),
         'sequence': {'$exists': False},
         'version': {'$exists': False},
+        # NOTE 'service' is ignored for query because it's only used to choose
+        # among multiple frozen utility bill documents when a reebill is used
+        # as an alternative way to find the editable document
     }
     mongo_doc = db.utilbills.find_one(editable_doc_query)
 
     # if there's no editable utility bill document matching the date fields in
     # MySQL, but there is a reebill associated with this utility bill, find the
     # reebill, look up its utility bill document, try to find an editable
-    # utility bill with the same dates as that one, and put that one's _id in MySQL
+    # utility bill with the same dates as that one, and put that one's _id in
+    # MySQL
     if mongo_doc is None:
-        #print >> stderr, "No editable utility bill document found for query", editable_doc_query
-
         reebill_query = '''select sequence, version
         from reebill join utilbill_reebill on reebill_id = reebill.id
         and utilbill_id = %s
@@ -95,14 +98,14 @@ for mysql_id, account, start, end in cur.fetchall():
             sequence, version = cur.fetchone()
             reebill_doc = db.reebills.find_one({'_id.account': account,
                     '_id.sequence': sequence, '_id.version': version})
-            try:
-                mongo_id = one(reebill_doc['utilbills'])['id']
-            except AssertionError:
-                print >> stderr, ("WARNING reebill %s-%s-%s has muiltiple "
-                        "utility bills: couldn't be used to find editable "
-                        "version of frozen utility bill document") % (account,
-                        sequence, version)
-                continue
+
+            # get the "id" field of the subdocument whose corresponding frozen
+            # utility bill document has the same "service" as the MySQL row
+            # (though "service" only matters when there is more than one)
+            mongo_id = next(subdoc['id'] for subdoc in reebill_doc['utilbills']
+                    if db.utilbills.find_one({'_id': subdoc['id']})['service']
+                    == service)
+
             frozen_doc = db.utilbills.find_one({'_id': ObjectId(mongo_id)})
             if frozen_doc is None:
                 print >> stderr, ('ERROR could not find document for utility '
