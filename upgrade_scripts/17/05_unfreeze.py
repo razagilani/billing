@@ -120,22 +120,21 @@ for account, sequence, utilbill_id in cur.fetchall():
                     reebill_doc['_id']['version'], utilbill_subdoc['id'])
             continue
 
-        # replace the existing editable utility bill with the previously frozen
-        # one, now editable
-
         # make sure this document really is "frozen", i.e. has "sequence" and
         # "version" keys in it
         try:
             assert 'sequence' in utilbill and 'version' in utilbill
         except AssertionError:
-            # if the "sequence" and "version" keys are missing, something went
-            # wrong in the past, but the utility bill document is already the
-            # way it's supposed to be. so it should just be left alone
-            print >> stderr, ('Minor warning: unissued version-0 reebill lacks '
-                    '"sequence" and "version" in its utility bill: %s'
+            print >> stderr, ('WARNING unissued version-0 reebill lacks '
+                    '"sequence" and "version" keys in utility bill document: %s'
                     % reebill_doc['_id'])
+            # when the document is already "unfrozen", there is nothing to do
+            continue
 
+        # replace the existing editable utility bill with the previously frozen
+        # one, now editable
         unfreeze_utilbill(utilbill)
+
         # NOTE that a new document is not being created, so the document can
         # keep the same _id and the reebill subdocument "id" field does not
         # need to be updated. (And the utilbill.document_id in MySQL does not
@@ -173,11 +172,9 @@ for account, sequence, max_version in cur.fetchall():
         try:
             assert 'sequence' in utilbill_doc and 'version' in utilbill_doc
         except AssertionError:
-            # if the "sequence" and "version" keys are missing, something went
-            # wrong in the past, but the utility bill document is already the
-            # way it's supposed to be. so it should just be left alone
             print >> stderr, ('issued reebill lacks "sequence" and "version"'
                     ' in its utility bill: %s') % reebill_doc['_id']
+
         unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
 
             # interestingly these cases are mostly (but not entirely)
