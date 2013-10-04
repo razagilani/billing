@@ -163,6 +163,24 @@ for account, customer_id in cur.fetchall():
 
 con.commit()
 
+
+# check for success; complain if any rows did not get a document id
+cur.execute("select count(*) from utilbill where uprs_document_id is NULL or cprs_document_id is NULL")
+utilbill_null_count = cur.fetchone()[0]
+cur.execute("select count(*) from utilbill")
+utilbill_count = cur.fetchone()[0]
+cur.execute("select count(*) from utilbill_reebill where uprs_document_id is NULL or cprs_document_id is NULL")
+utilbill_reebill_null_count = cur.fetchone()[0]
+cur.execute("select count(*) from utilbill_reebill")
+utilbill_reebill_count = cur.fetchone()[0]
+if utilbill_null_count > 0:
+    print >> stderr, 'ERROR %s of %s rows in "utilbill" lack at least one RS document id' % (utilbill_null_count, utilbill_count)
+if utilbill_reebill_null_count > 0:
+    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" lack at least one RS document id' % (utilbill_reebill_null_count, utilbill_reebill_count)
+
+
+
+
 # TODO make new columns not null after verifying that every value is filled in?
 #cur.execute("alter table utilbill modify cprs_document_id integer not null")
 #cur.execute("alter table utilbill modify uprs_document_id integer not null")
