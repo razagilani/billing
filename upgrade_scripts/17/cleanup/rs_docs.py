@@ -8,6 +8,8 @@ if db.ratestructure.find_one({'_id': {'account': '10001', 'sequence': 1,
     raise ValueError('This script was already run!')
 
 initial_count = db.ratestructure.count();
+
+# some of these have been mysteriously appearing in the production database even though they are issued bills that are never suppoesd to change
 docs = [
     {'_id': {'account': '10001', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'COMMERCIAL_HEAT-COOL'}, 'rates': []},
     {'_id': {'account': '10001', 'sequence': 1, 'version': 0, 'type': 'CPRS', 'utility_name': 'washgas', 'rate_structure_name': 'COMMERCIAL_HEAT-COOL'}, 'rates': []},
@@ -125,9 +127,9 @@ docs = [
     {'_id': {'account': '10008', 'sequence': 8, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Heat'}, 'rates': []},
     {'_id': {'account': '10008', 'sequence': 9, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Heat'}, 'rates': []},
     {'_id': {'account': '10009', 'sequence': 1, 'version': 0, 'type': 'CPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
-    {'_id': {'account': '10009', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
+    #{'_id': {'account': '10009', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
     {'_id': {'account': '10009', 'sequence': 2, 'version': 0, 'type': 'CPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
-    {'_id': {'account': '10009', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
+    #{'_id': {'account': '10009', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
     {'_id': {'account': '10009', 'sequence': 3, 'version': 0, 'type': 'CPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
     {'_id': {'account': '10009', 'sequence': 4, 'version': 0, 'type': 'CPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
     {'_id': {'account': '10009', 'sequence': 5, 'version': 0, 'type': 'CPRS', 'utility_name': 'pepco', 'rate_structure_name': 'DC Residential R Winter'}, 'rates': []},
@@ -137,17 +139,17 @@ docs = [
     {'_id': {'account': '10011', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
     {'_id': {'account': '10011', 'sequence': 2, 'version': 0, 'type': 'CPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
     {'_id': {'account': '10011', 'sequence': 3, 'version': 0, 'type': 'CPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10011', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10012', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10012', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10012', 'sequence': 5, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10013', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10013', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10014', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10014', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10016', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
-    {'_id': {'account': '10018', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'dominion', 'rate_structure_name': 'GS-1'}, 'rates': []},
-    {'_id': {'account': '10019', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10011', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10012', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10012', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10012', 'sequence': 5, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10013', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10013', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10014', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10014', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10016', 'sequence': 1, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
+    #{'_id': {'account': '10018', 'sequence': 3, 'version': 0, 'type': 'UPRS', 'utility_name': 'dominion', 'rate_structure_name': 'GS-1'}, 'rates': []},
+    #{'_id': {'account': '10019', 'sequence': 2, 'version': 0, 'type': 'UPRS', 'utility_name': 'washgas', 'rate_structure_name': 'DC Non Residential Non Heat'}, 'rates': []},
 ]
 
 # "insert" is used to ensure that documents don't already exist
