@@ -53,9 +53,13 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
                 ' bill document to exist before being replaced: %s') % \
                 format_query(query_for_editable_twins)
     if editable_twins.count() > 1:
-        print >> stderr, 'ERROR %s editable utility bills match this query: %s' % (
-                editable_twins.count(), format_query(query_for_editable_twins))
-        return
+        print >> stderr, ('WARNING %s editable utility bills match this '
+                'query: %s; both will be deleted') % (editable_twins.count(),
+                format_query(query_for_editable_twins))
+
+    # remove existing editable version(s), if there were any
+    for twin in editable_twins:
+        check_error(db.utilbills.remove({'_id': twin['_id']}, True))
 
     # "un-freeze" the utility bill to which the reebill is attached
     # ('pop' won't complain if the keys are missing)
@@ -74,12 +78,6 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
         # it without changing its id
         db.utilbills.save(utilbill_doc, safe=True)
     assert db.error() is None
-
-    # remove existing editable version, if it existed. if there wasn't one,
-    # this "remove" should not be run because it will delete the document that
-    # was just inserted above!
-    if editable_twins.count() == 1:
-        check_error(db.utilbills.remove({'_id': editable_twins[0]['_id']}, True))
 
 
 db = pymongo.Connection('localhost')['skyline-dev']
