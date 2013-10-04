@@ -1,7 +1,10 @@
 '''
 Adds columns to utilbill table: document_id, utility, rate_class
+
 Creates editable utility bill documents where they don't exist.
-Fills document_id, utility, rate_class columns with _id, utility, rate_structure_name of editable utility bill document in Mongo.
+
+Fills document_id, utility, rate_class columns with _id, utility,
+rate_structure_name of editable utility bill document in Mongo.
 '''
 from sys import stderr
 from operator import itemgetter
@@ -123,9 +126,6 @@ for mysql_id, account, start, end, service in cur.fetchall():
                         'for reebill %s-%s did not help') % (account, start,
                         end, sequence, version)
                 continue
-            #print ('INFO used reebill %s-%s-%s to find editable utility bill'
-                    #' document %s - %s') % (account, sequence, version,
-                    #frozen_doc['start'], frozen_doc['end'])
 
     # put mongo document id in MySQL table
     utilbill_update = ('''update utilbill set utility = '{utility}',
@@ -141,7 +141,8 @@ if count > 0:
     #cur.rollback()
 
 
-# insert mongo document ids in document_id column of utilbill_reebill to represent frozen utility bill documents
+# insert mongo document ids in document_id column of utilbill_reebill to
+# represent frozen utility bill documents
 utilbill_reebill_query = '''
 select account, reebill.id, sequence, version, utilbill.id, service
 from customer join reebill on customer.id = reebill.customer_id
@@ -202,7 +203,6 @@ cur.execute("select count(*) from utilbill_reebill")
 utilbill_reebill_count = cur.fetchone()[0]
 if utilbill_null_count > 0:
     print >> stderr, 'ERROR %s of %s rows in "utilbill" did not match a document' % (utilbill_null_count, utilbill_count)
-    #cur.rollback()
 if utilbill_reebill_null_count > 0:
     print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
 if utilbill_reebill_null_count > 0:
