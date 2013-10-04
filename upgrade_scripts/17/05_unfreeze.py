@@ -54,7 +54,8 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
 
     # there should be at most 1 editable version of this utility bill
     if editable_twins.count() == 0:
-        print >> stderr, 'ERROR no editable version of utility bill document: %s' % \
+        print >> stderr, ('WARNING expected an editable version of this utility'
+                ' bill document to exist before being replaced: %s') % \
                 format_query(query_for_editable_twins)
     if editable_twins.count() > 1:
         print >> stderr, 'ERROR %s editable utility bills match this query: %s' % (
