@@ -65,15 +65,15 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
     utilbill_doc.pop('version', None)
 
     if new_id:
-        # change the _id so this document will not replace an existing one when sav
+        # change the _id so this document will not replace an existing one when
+        # inserted
         utilbill_doc['_id'] = new_id
+        db.utilbills.insert(utilbill_doc, continue_on_error=False)
     else:
-        # convert the previously frozen document into an editable one, without
-        # changing its id
-        pass
-
-    # save the un-frozen document
-    db.utilbills.insert(utilbill_doc, continue_on_error=False)
+        # convert the previously frozen document into an editable one, and save
+        # it without changing its id
+        db.utilbills.save(utilbill_doc, safe=True)
+    assert db.error() is None
 
     # remove existing editable version, if it existed. if there wasn't one,
     # this "remove" should not be run because it will delete the document that
