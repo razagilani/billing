@@ -70,14 +70,18 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
         # change the _id so this document will not replace an existing one when sav
         utilbill_doc['_id'] = new_id
     else:
-        # convert the previously frozen document into an editable one, without changing its id
+        # convert the previously frozen document into an editable one, without
+        # changing its id
         pass
 
     # save the un-frozen document
-    db.utilbills.save(utilbill_doc, safe=True)
+    db.utilbills.insert(utilbill_doc, continue_on_error=False)
 
-    # remove existing editable version
-    check_error(db.utilbills.remove({'_id': editable_twins[0]['_id']}, True))
+    # remove existing editable version, if it existed. if there wasn't one,
+    # this "remove" should not be run because it will delete the document that
+    # was just inserted above!
+    if editable_twins.count() == 1:
+        check_error(db.utilbills.remove({'_id': editable_twins[0]['_id']}, True))
 
 
 db = pymongo.Connection('localhost')['skyline-dev']
