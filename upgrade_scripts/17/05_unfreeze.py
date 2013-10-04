@@ -40,11 +40,6 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
     original _id, so the frozen document has become editable. In both cases,
     any existing editable document having the same service, utility, and dates
     is removed.'''
-    # make sure this document really is "frozen", i.e. has "sequence" and
-    # "version" keys in it
-    assert 'sequence' in utilbill_doc
-    assert 'version' in utilbill_doc
-
     # find any existing editable utility bill documents with the same utility,
     # service, and dates
     query_for_editable_twins = dict_merge(
@@ -63,8 +58,11 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
         return
 
     # "un-freeze" the utility bill to which the reebill is attached
-    del utilbill_doc['sequence']
-    del utilbill_doc['version']
+    # ('pop' won't complain if the keys are missing)
+    #del utilbill_doc['sequence']
+    #del utilbill_doc['version']
+    utilbill_doc.pop('sequence', None)
+    utilbill_doc.pop('version', None)
 
     if new_id:
         # change the _id so this document will not replace an existing one when sav
@@ -124,8 +122,11 @@ for account, sequence, utilbill_id in cur.fetchall():
 
         # replace the existing editable utility bill with the previously frozen
         # one, now editable
+
+        # make sure this document really is "frozen", i.e. has "sequence" and
+        # "version" keys in it
         try:
-            unfreeze_utilbill(utilbill)
+            assert 'sequence' in utilbill and 'version' in utilbill
         except AssertionError:
             # if the "sequence" and "version" keys are missing, something went
             # wrong in the past, but the utility bill document is already the
@@ -133,6 +134,8 @@ for account, sequence, utilbill_id in cur.fetchall():
             print >> stderr, ('Minor warning: unissued version-0 reebill lacks '
                     '"sequence" and "version" in its utility bill: %s'
                     % reebill_doc['_id'])
+
+        unfreeze_utilbill(utilbill)
         # NOTE that a new document is not being created, so the document can
         # keep the same _id and the reebill subdocument "id" field does not
         # need to be updated. (And the utilbill.document_id in MySQL does not
@@ -165,11 +168,17 @@ for account, sequence, max_version in cur.fetchall():
                     utilbill_doc_id)
             continue
 
+        # make sure this document really is "frozen", i.e. has "sequence" and
+        # "version" keys in it
         try:
-            unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
+            assert 'sequence' in utilbill_doc and 'version' in utilbill_doc
         except AssertionError:
+            # if the "sequence" and "version" keys are missing, something went
+            # wrong in the past, but the utility bill document is already the
+            # way it's supposed to be. so it should just be left alone
             print >> stderr, ('issued reebill lacks "sequence" and "version"'
                     ' in its utility bill: %s') % reebill_doc['_id']
+        unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
 
             # interestingly these cases are mostly (but not entirely)
             # corrections. and they are a minority of total account/sequence
