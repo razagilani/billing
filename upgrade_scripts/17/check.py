@@ -128,3 +128,46 @@ print '%s of %s UPRS documents are orphaned' % count_orphaned_docs(
 print '%s of %s CPRS documents are orphaned' % count_orphaned_docs(
         'cprs_document_id', db.ratestructure, {'type': 'CPRS'})
 
+
+# all utility bill documents referenced by document_id in utilbill should have
+# "sequence"/"version" keys
+count = 0
+cur.execute("select document_id from utilbill")
+for (document_id,) in cur.fetchall():
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if 'sequence' in doc or 'version' in doc:
+        count += 1
+print '%s editable utility bill documents have sequence/version keys' % count
+
+# no utility bill documents referenced by document_id in utilbill_reebill
+# should have "sequence"/"version" keys
+count = 0
+cur.execute("select document_id from utilbill_reebill")
+for (document_id,) in cur.fetchall():
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if 'sequence' not in doc or 'version' not in doc:
+        count += 1
+print '%s frozen utility bill documents lack sequence/version keys' % count
+
+# utility bill documents should have same account, start, ende, service, utility, rate_class as MySQL rows
+count = 0
+cur.execute("select account, period_start, period_end, service, utility, rate_class, document_id from utilbill join customer on customer_id = customer.id")
+for account, start, end, service, utility, rate_class, document_id in cur.fetchall():
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if doc['account'] != account or doc['start'] != start \
+            or doc['service'] != service or doc['utility'] != utility \
+            or doc['rate_class'] != rate_class:
+        count += 1
+print '%s utility bill documents differ from MySQL row in at least one "metadata" key' % count
