@@ -35,10 +35,11 @@ cur.execute("begin")
 #where reebill.customer_id = customer.id
 #and reebill.id = utilbill_reebill.reebill_id'''
 reebill_query = '''
-select reebill.id, customer.account, reebill.sequence, reebill.version, reebill.issued, utilbill_id
-from reebill join customer join utilbill_reebill
-where reebill.customer_id = customer.id
-and reebill.id = utilbill_reebill.reebill_id'''
+select reebill.id, customer.account, reebill.sequence, reebill.version,
+reebill.issued, utilbill_id
+from reebill join customer on customer.id = reebill.customer_id
+join utilbill_reebill on reebill.id = utilbill_reebill.reebill_id
+'''
 cur.execute(reebill_query)
 initial_count = db.ratestructure.count()
 
@@ -71,10 +72,10 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     }
     cprss = db.ratestructure.find(cprs_query)
     if cprss.count() == 0:
-        print >> stderr, "Missing CPRS:", cprs_query
+        print >> stderr, "ERROR Missing CPRS:", cprs_query
         continue
     elif cprss.count() > 1:
-        print >> stderr, "Multiple CPRSs match", cprs_query
+        print >> stderr, "ERROR Multiple CPRSs match", cprs_query
         continue
     cprs = cprss[0]
     uprs_query = {
@@ -85,10 +86,10 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     }
     uprss = db.ratestructure.find(uprs_query)
     if uprss.count() == 0:
-        print >> stderr, "Missing UPRS:", format_query(uprs_query)
+        print >> stderr, "ERROR Missing UPRS:", format_query(uprs_query)
         continue
     elif uprss.count() > 1:
-        print >> stderr, "Multiple UPRSs match", format_query(uprs_query)
+        print >> stderr, "ERROR Multiple UPRSs match", format_query(uprs_query)
         continue
     uprs = uprss[0]
 
@@ -112,7 +113,10 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     # put RS document ids in utilbill_reebill table only if the reebill is
     # issued
     if issued:
-        cur.execute(("update utilbill_reebill set uprs_document_id = '%s', " "cprs_document_id = '%s' where reebill_id = %s" " and utilbill_id = %s") % (uprs['_id'], cprs['_id'], reebill_id, utilbill_id))
+        cur.execute(("update utilbill_reebill set uprs_document_id = '%s', "
+                "cprs_document_id = '%s' where reebill_id = %s"
+                " and utilbill_id = %s") % (uprs['_id'], cprs['_id'],
+                reebill_id, utilbill_id))
 
     db.ratestructure.insert(cprs)
     db.ratestructure.insert(uprs)
