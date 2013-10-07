@@ -31,13 +31,13 @@ if count > 0:
     print >> stderr, '%s rows in utilbill have null/empty rate_class' % count
 
 # all non-hypothetical utility bills should have 3 documents filled in
-cur.execute("select count(*) from utilbill where state < 3 and document_id is null or uprs_document_id is null or cprs_document_id is null")
+cur.execute("select count(*) from utilbill where state < 3 and (document_id is null or uprs_document_id is null or cprs_document_id is null)")
 count = cur.fetchall()[0]
 if count > 0:
     print >> stderr, '%s rows in utilbill have null documents but state < 3' % count
 
 # all non-hypothetical utility bills should have 0 documents filled in
-cur.execute("select count(*) from utilbill where state = 3 and document_id is not null or uprs_document_id is not null or cprs_document_id is not null")
+cur.execute("select count(*) from utilbill where state = 3 and (document_id is not null or uprs_document_id is not null or cprs_document_id is not null)")
 count = cur.fetchall()[0]
 if count > 0:
     print >> stderr, '%s rows in utilbill have documents but state = 3' % count
@@ -62,7 +62,6 @@ for id_type in ('document_id', 'uprs_document_id', 'cprs_document_id'):
     distinct_count = cur.fetchone()[0]
     duplicates = total_count - distinct_count
     if duplicates > 0:
-        #print >> stderr, '%s duplicate %ss' % (duplicates, id_type)
         print >> stderr, '%s of %s non-null %ss have duplicates' % (duplicates, total_count, id_type)
 
 # every mongo document referenced by an id in mysql should exist
