@@ -55,11 +55,11 @@ cur.execute("alter table utilbill_reebill add column document_id varchar(24)")
 # put Mongo _ids, document_id, rate class of editable utility bill documents in
 # MySQL
 utilbill_query = '''
-select utilbill.id, customer.account, period_start, period_end, service
-from utilbill join customer on utilbill.customer_id = customer.id
+select utilbill.id, customer.account, period_start, period_end, service, state
+from utilbill left outer join customer on utilbill.customer_id = customer.id
 order by account, period_start, period_end'''
 cur.execute(utilbill_query)
-for mysql_id, account, start, end, service in cur.fetchall():
+for mysql_id, account, start, end, service, state in cur.fetchall():
     # get mongo id of editable utility bill document
     editable_doc_query = {
         'account': account,
@@ -127,14 +127,21 @@ for mysql_id, account, start, end, service in cur.fetchall():
                         end, sequence, version)
                 continue
 
-    # put mongo document id in MySQL table
-    utilbill_update = ('''update utilbill set utility = '{utility}',
-    rate_class = '{rate_structure_binding}', document_id = '{_id}'
-    where id = %s''' %  mysql_id).format(**mongo_doc)
+    # put utility and rate class in MySQL table (and Mongo document id if the
+    # bill is not "hypothetical")
+    assert state in xrange(4)
+    if state == 3:
+        utilbill_update = ('''update utilbill set utility = '{utility}',
+        rate_class = '{rate_structure_binding}' where id = %s''' % 
+        mysql_id).format(**mongo_doc)
+    else:
+        utilbill_update = ('''update utilbill set utility = '{utility}',
+        rate_class = '{rate_structure_binding}', document_id = '{_id}'
+        where id = %s''' %  mysql_id).format(**mongo_doc)
     cur.execute(utilbill_update)
 
 # check for success; abort if any rows did not get a document id
-cur.execute("select count(*) from utilbill where document_id in ('', NULL)")
+cur.execute("select count(*) from utilbill where state < 3 and document_id in ('', NULL)")
 count = cur.fetchone()[0]
 if count > 0:
     print >> stderr, "%s rows did not match a document" % count
@@ -194,11 +201,11 @@ for account, reebill_id, sequence, version, utilbill_id, service in \
     cur.execute(update)
 
 # check for success; complain if any rows did not get a document id
-cur.execute("select count(*) from utilbill where document_id is NULL")
+cur.execute("select count(*) from utilbill where state < 3 and document_id in (NULL, '')")
 utilbill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
 utilbill_count = cur.fetchone()[0]
-cur.execute("select count(*) from utilbill_reebill join reebill on reebill_id = reebill.id where issued = 1 and document_id is NULL")
+cur.execute("select count(*) from utilbill_reebill join reebill on reebill_id = reebill.id where issued = 1 and document_id in (NULL, '')")
 utilbill_reebill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill_reebill")
 utilbill_reebill_count = cur.fetchone()[0]
