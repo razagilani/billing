@@ -148,6 +148,7 @@ select account, reebill.id, sequence, version, utilbill.id, service
 from customer join reebill on customer.id = reebill.customer_id
 join utilbill_reebill on reebill.id = reebill_id
 join utilbill on utilbill_id = utilbill.id
+where issued = 1
 order by account, sequence, version, service
 '''
 cur.execute(utilbill_reebill_query)
@@ -197,16 +198,14 @@ cur.execute("select count(*) from utilbill where document_id is NULL")
 utilbill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
 utilbill_count = cur.fetchone()[0]
-cur.execute("select count(*) from utilbill_reebill where document_id is NULL")
+cur.execute("select count(*) from utilbill_reebill join reebill on reebill_id = reebill.id where issued = 1 and document_id is NULL")
 utilbill_reebill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill_reebill")
 utilbill_reebill_count = cur.fetchone()[0]
 if utilbill_null_count > 0:
     print >> stderr, 'ERROR %s of %s rows in "utilbill" did not match a document' % (utilbill_null_count, utilbill_count)
 if utilbill_reebill_null_count > 0:
-    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
-if utilbill_reebill_null_count > 0:
-    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
+    print >> stderr, 'ERROR %s of %s issued reebills in "utilbill_reebill" did not match a document' % (utilbill_reebill_null_count, utilbill_reebill_count)
 
 con.commit()
 
