@@ -3,6 +3,7 @@ Check facts about the databases that should be true after all upgrade scripts ha
 see https://www.pivotaltracker.com/story/show/55042588
 '''
 from sys import stderr
+from bisect import bisect_left
 import pymongo
 from bson import ObjectId
 from MySQLdb import Connection
@@ -102,4 +103,30 @@ for account, sequence, version in cur.fetchall():
     doc = db.reebills.find_one({'_id.account': account, '_id.sequence': sequence, '_id.version': version})
     if doc is None:
         print >> stderr, "couldn't load reebill: %s" % query
+
+# count number of utility bill, UPRS, CPRS documents documents that are not
+# referenced in Mongo (these are not probably harmful, just evidence of
+# something else that went wrong, and they're clutter)
+
+def count_orphaned_docs(mysql_column, mongo_collection, mongo_query):
+    cur.execute("select %s from utilbill" % mysql_column)
+    # binary search sorted list of ids from MySQL column for each Mongo _id
+    # string
+    mysql_ids = sorted(zip(*cur.fetchall())[0])
+    mongo_ids = (str(doc['_id']) for doc in mongo_collection.find(mongo_query,
+            {'_id':1}))
+    orphaned_count, total_count = 0, 0
+    for _id in mongo_ids:
+        mysql_id_idx = bisect_left(mysql_ids, _id)
+        if not mysql_ids[mysql_id_idx] == _id:
+            orphaned_count += 1
+        total_count += 1
+    return orphaned_count, total_count
+
+print '%s of %s utility bill documents are orphaned' % count_orphaned_docs(
+        'document_id', db.utilbills, {})
+print '%s of %s UPRS documents are orphaned' % count_orphaned_docs(
+        'uprs_document_id', db.ratestructure, {'type': 'UPRS'})
+print '%s of %s CPRS documents are orphaned' % count_orphaned_docs(
+        'cprs_document_id', db.ratestructure, {'type': 'CPRS'})
 
