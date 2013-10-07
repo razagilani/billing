@@ -60,6 +60,7 @@ deletes = set()
 # RS documents should only have increases by the number of these duplicates.
 duplicate_count = 0
 last_reebill_id = None
+issued_count = 0
 
 for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall():
 
@@ -110,16 +111,25 @@ for reebill_id, account, sequence, version, issued, utilbill_id in cur.fetchall(
     cur.execute("update utilbill set uprs_document_id = '%s' where id = %s" %
             (uprs['_id'], utilbill_id))
 
+    db.ratestructure.insert(cprs)
+    db.ratestructure.insert(uprs)
+
     # put RS document ids in utilbill_reebill table only if the reebill is
     # issued
     if issued:
+        # the documents for the issued reebill's "frozen" utility bill should
+        # be copies of the editable utility bill's documents with new _ids.
+        cprs['_id'] = ObjectId()
+        uprs['_id'] = ObjectId()
+        db.ratestructure.insert(cprs)
+        db.ratestructure.insert(uprs)
         cur.execute(("update utilbill_reebill set uprs_document_id = '%s', "
                 "cprs_document_id = '%s' where reebill_id = %s"
                 " and utilbill_id = %s") % (uprs['_id'], cprs['_id'],
                 reebill_id, utilbill_id))
-
-    db.ratestructure.insert(cprs)
-    db.ratestructure.insert(uprs)
+        # these new documents should also be accounted for in the count of new
+        # documents added
+        issued_count += 1
 
     if reebill_id == last_reebill_id:
         duplicate_count += 1
@@ -135,7 +145,8 @@ for kvp_set in deletes:
 # there were reebills sharing the same RS documents, in which case one CPRS and
 # one UPRS is added
 try:
-    assert db.ratestructure.count() == initial_count + 2 * duplicate_count
+    assert db.ratestructure.count() == initial_count + 2 * (duplicate_count +
+            issued_count)
 except AssertionError:
     import ipdb; ipdb.set_trace()
 
