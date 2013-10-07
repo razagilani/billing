@@ -1,4 +1,10 @@
-'''Puts Mongo id in MySQL utility bill rows.'''
+'''Puts rate structure Mongo document ids in MySQL utility bill rows.
+
+Creates new rate structure documents for utility bills that do not have
+reebills in ReeBill 16.
+
+Adds ids of "template" utility bill documents in MySQL customer table.
+'''
 from sys import stderr
 import MySQLdb
 import pymongo
@@ -129,6 +135,25 @@ try:
 except AssertionError:
     import ipdb; ipdb.set_trace()
 
+# create new rate structure documents for utility bills that do not have
+# reebills
+unattached_utilbill_query = '''
+select utilbill.id, utility, rate_class
+from utilbill left outer join utilbill_reebill on utilbill.id = utilbill_id
+where state < 3 and reebill_id is null
+'''
+cur.execute(unattached_utilbill_query)
+for utilbill_id, utility, rate_class in cur.fetchall():
+    uprs = {'_id': ObjectId(), 'type': 'UPRS', 'utility': utility,
+            'rate_class': rate_class, 'rates': []}
+    cprs = {'_id': ObjectId(), 'type': 'CPRS', 'utility': utility,
+            'rate_class': rate_class, 'rates': []}
+    cur.execute('''update utilbill set uprs_document_id = '%s',
+            cprs_document_id = '%s' where id = %s''' % (str(uprs['_id']),
+            str(cprs['_id']), utilbill_id))
+    db.ratestructure.insert(uprs)
+    db.ratestructure.insert(cprs)
+
 # put ids of "template" utility bills in MySQL customer table
 cur.execute("select account, customer.id from customer order by account")
 for account, customer_id in cur.fetchall():
@@ -165,7 +190,7 @@ con.commit()
 
 
 # check for success; complain if any rows did not get a document id
-cur.execute("select count(*) from utilbill where uprs_document_id is NULL or cprs_document_id is NULL")
+cur.execute("select count(*) from utilbill where state < 3 and (uprs_document_id is NULL or cprs_document_id is NULL)")
 utilbill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
 utilbill_count = cur.fetchone()[0]
@@ -174,7 +199,7 @@ utilbill_reebill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill_reebill")
 utilbill_reebill_count = cur.fetchone()[0]
 if utilbill_null_count > 0:
-    print >> stderr, 'ERROR %s of %s rows in "utilbill" lack at least one RS document id' % (utilbill_null_count, utilbill_count)
+    print >> stderr, 'ERROR %s of %s rows in "utilbill" with state < 3 lack at least one RS document id' % (utilbill_null_count, utilbill_count)
 if utilbill_reebill_null_count > 0:
     print >> stderr, 'ERROR %s of %s rows for issued reebills in in "utilbill_reebill" lack at least one RS document id' % (utilbill_reebill_null_count, utilbill_reebill_count)
 
