@@ -169,14 +169,14 @@ cur.execute("select count(*) from utilbill where uprs_document_id is NULL or cpr
 utilbill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill")
 utilbill_count = cur.fetchone()[0]
-cur.execute("select count(*) from utilbill_reebill where uprs_document_id is NULL or cprs_document_id is NULL")
+cur.execute("select count(*) from utilbill_reebill join reebill on reebill_id = reebill.id where issued = 1 and (uprs_document_id is NULL or cprs_document_id is NULL)")
 utilbill_reebill_null_count = cur.fetchone()[0]
 cur.execute("select count(*) from utilbill_reebill")
 utilbill_reebill_count = cur.fetchone()[0]
 if utilbill_null_count > 0:
     print >> stderr, 'ERROR %s of %s rows in "utilbill" lack at least one RS document id' % (utilbill_null_count, utilbill_count)
 if utilbill_reebill_null_count > 0:
-    print >> stderr, 'ERROR %s of %s rows in "utilbill_reebill" lack at least one RS document id' % (utilbill_reebill_null_count, utilbill_reebill_count)
+    print >> stderr, 'ERROR %s of %s rows for issued reebills in in "utilbill_reebill" lack at least one RS document id' % (utilbill_reebill_null_count, utilbill_reebill_count)
 
 
 
@@ -187,5 +187,3 @@ if utilbill_reebill_null_count > 0:
 
 
 # TODO clean up remaining documents that have old-style id. are there any?
-
-# TODO what to do with UPRS documents? probably move their RSIs into UPRS whenever they are not overridden.
