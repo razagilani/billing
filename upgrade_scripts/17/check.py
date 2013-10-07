@@ -56,13 +56,14 @@ if count > 0:
 
 # there should be no duplicate document ids in the union of document_id, uprs_id, cprs_id in utilbill and utilbill_reebill
 for id_type in ('document_id', 'uprs_document_id', 'cprs_document_id'):
-    cur.execute("select count(*) from ((select %(id_type)s from utilbill) union all (select %(id_type)s from utilbill_reebill as a)) as t" % {'id_type': id_type})
+    cur.execute("select count(*) from ((select %(id_type)s from utilbill where %(id_type)s is not null) union all (select %(id_type)s from utilbill_reebill as a where %(id_type)s is not null)) as t" % {'id_type': id_type})
     total_count = cur.fetchone()[0]
-    cur.execute("select count(*) from ((select %(id_type)s from utilbill) union distinct (select %(id_type)s from utilbill_reebill as a)) as t" % {'id_type': id_type})
+    cur.execute("select count(*) from ((select %(id_type)s from utilbill where %(id_type)s is not null) union distinct (select %(id_type)s from utilbill_reebill as a where %(id_type)s is not null)) as t" % {'id_type': id_type})
     distinct_count = cur.fetchone()[0]
     duplicates = total_count - distinct_count
     if duplicates > 0:
-        print >> stderr, '%s duplicate %ss' % (duplicates, id_type)
+        #print >> stderr, '%s duplicate %ss' % (duplicates, id_type)
+        print >> stderr, '%s of %s non-null %ss have duplicates' % (duplicates, total_count, id_type)
 
 # every mongo document referenced by an id in mysql should exist
 cur.execute("(select document_id, uprs_document_id, cprs_document_id from utilbill) union distinct (select document_id, uprs_document_id, cprs_document_id from utilbill_reebill)")
@@ -107,7 +108,6 @@ for account, sequence, version in cur.fetchall():
 # count number of utility bill, UPRS, CPRS documents documents that are not
 # referenced in Mongo (these are not probably harmful, just evidence of
 # something else that went wrong, and they're clutter)
-
 def count_orphaned_docs(mysql_column, mongo_collection, mongo_query):
     cur.execute("select %s from utilbill" % mysql_column)
     # binary search sorted list of ids from MySQL column for each Mongo _id
@@ -122,7 +122,6 @@ def count_orphaned_docs(mysql_column, mongo_collection, mongo_query):
             orphaned_count += 1
         total_count += 1
     return orphaned_count, total_count
-
 print '%s of %s utility bill documents are orphaned' % count_orphaned_docs(
         'document_id', db.utilbills, {})
 print '%s of %s UPRS documents are orphaned' % count_orphaned_docs(
