@@ -2108,7 +2108,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # make sure there is an "URS" document so the utility bill can be
             # computed
-            from billing.processing.rate_structure import RateStructure
             self.rate_structure_dao.save_rs({
                 "_id" : {
                     "type" : "URS",
@@ -2127,7 +2126,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 ],
                 "rates" : [ ]
             })
-                
 
             # compute_utility_bill should update the document to match
             self.process.compute_utility_bill(session, utilbill.id)
@@ -2137,7 +2135,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(date(2014,2,1), doc['end'])
             self.assertEquals('electricity', doc['service'])
             self.assertEquals('BGE', doc['utility'])
-            self.assertEquals('General Service - Schedule C', doc['rate_structure_binding'])
+            self.assertEquals('General Service - Schedule C',
+                    doc['rate_structure_binding'])
 
 
 
