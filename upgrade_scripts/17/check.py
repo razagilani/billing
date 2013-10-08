@@ -5,6 +5,7 @@ see https://www.pivotaltracker.com/story/show/55042588
 from sys import stderr
 from bisect import bisect_left
 import pymongo
+from collections import defaultdict
 from bson import ObjectId
 from MySQLdb import Connection
 
@@ -162,22 +163,39 @@ print '%s frozen utility bill documents lack sequence/version keys' % count
 
 # utility bill documents should have same account, start, ende, service,
 # utility, rate_class as MySQL rows
-count = 0
+counts, total_count = defaultdict(lambda: 0), 0
 cur.execute('''
 select account, period_start, period_end, service, utility, rate_class,
 document_id
 from utilbill join customer on customer_id = customer.id''')
 for account, start, end, service, utility, rate_class, document_id in cur.fetchall():
+    different = False
     if document_id is None:
         continue
     doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
     if doc is None:
         continue
-    if doc['account'] != account or doc['start'] != start or doc['end'] != end\
-            or doc['service'] != service or doc['utility'] != utility \
-            or doc['rate_structure_binding'] != rate_class:
-        count += 1
-print '%s utility bill documents differ from MySQL row in at least one "metadata" key' % count
+    if doc['account'] != account:
+        counts['account'] += 1
+        different = True
+    if doc['start'] != start:
+        counts['start'] += 1
+        different = True
+    if doc['end'] != end:
+        counts['end'] += 1
+        different = True
+    if doc['service'] != service:
+        counts['service'] += 1
+        different = True
+    if doc['utility'] != utility:
+        counts['utility'] += 1
+        different = True
+    if doc['rate_structure_binding'] != rate_class:
+        counts['rate_class'] += 1
+        different = True
+    if different:
+        total_count += 1
+print '%s utility bill documents differ from MySQL row in at least one "metadata" key: %s' % (total_count, dict(counts))
 
 # all reebill versions below highest should be issued
 cur.execute('''
