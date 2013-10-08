@@ -207,3 +207,12 @@ reebill left outer join utilbill_reebill on reebill_id = reebill.id
 where utilbill_id is null''')
 count = cur.fetchall()[0]
 print '%s rows in reebill table do not match rows of utilbill' % count
+
+# every utility bill has same customer_id as corresponding reebill
+cur.execute('''select count(*)
+from utilbill join utilbill_reebill on utilbill.id = utilbill_id
+join reebill on reebill_id = reebill.id
+where utilbill.customer_id != reebill.customer_id;
+''')
+count = cur.fetchall()[0]
+print '%s non-matching customer_ids between corresponding reebill and utilbill rows' % count
