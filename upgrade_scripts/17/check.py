@@ -171,3 +171,16 @@ for account, start, end, service, utility, rate_class, document_id in cur.fetcha
             or doc['rate_class'] != rate_class:
         count += 1
 print '%s utility bill documents differ from MySQL row in at least one "metadata" key' % count
+
+# all reebill versions below highest should be issued
+cur.execute('''
+select count(*) from reebill where
+issued = 0 and (customer_id, sequence, version) not in (
+    select customer_id, sequence, max(version)
+    from reebill
+    group by customer_id, sequence
+    --order by customer_id, sequence
+)
+''')
+count = cur.fetchall()[0]
+print '%s non-highest-version reebills are issued' % count
