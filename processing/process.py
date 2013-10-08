@@ -486,7 +486,7 @@ class Process(object):
 
         # update Mongo document to match "metadata" columns in MySQL:
         document.update({
-            'account': utilbill.account,
+            'account': utilbill.customer.account,
             'start': utilbill.start,
             'end': utilbill.end,
             'service': utilbill.service,
