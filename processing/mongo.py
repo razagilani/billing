@@ -288,6 +288,7 @@ def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
 # TODO make this a method of a utility bill document class when one exists
+# TODO maybe rename something like "compute_utility_bill_charges"
 def compute_utility_bill(utilbill_doc, the_rate_structure):
     '''Updates charges in the given utility bill document to match the given
     rate structure document.

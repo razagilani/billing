@@ -2073,6 +2073,49 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.new_version(session, account, 1)
         self.assertEquals(1, self.state_db.max_version(session, account, 1))
 
+    def test_compute_utility_bill(self):
+        '''Tests creation of a utility bill and updating the Mongo document
+        after the MySQL row has changed.'''
+        with DBSession(self.state_db) as session:
+            # create reebill and utility bill
+            # NOTE Process._generate_docs_for_new_utility_bill requires utility
+            # and rate_class arguments to match those of the template
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    'washgas', 'some rate structure', date(2013,5,6),
+                    date(2013,7,8), StringIO('A Water Bill'), 'waterbill.pdf')
+            utilbill = session.query(UtilBill).filter_by(
+                    customer=self.state_db.get_customer(session,
+                    '99999')).one()
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEquals('99999', doc['account'])
+            self.assertEquals(date(2013,5,6), doc['start'])
+            self.assertEquals(date(2013,7,8), doc['end'])
+            # TODO enable these assertions when upload_utility_bill stops
+            # ignoring them; currently they are set to match the template's
+            # values regardless of the arguments to upload_utility_bill, and
+            # Process._generate_docs_for_new_utility_bill requires them to
+            # match the template.
+            #self.assertEquals('water', doc['service'])
+            #self.assertEquals('pepco', doc['utility'])
+            #self.assertEquals('pepco', doc['rate_structure_binding'])
+
+            # modify the MySQL utility bill
+            utilbill.start = date(2014,1,1)
+            utilbill.end = date(2014,2,1)
+            utilbill.service = 'electricity'
+            utilbill.utility = 'bge'
+
+            # compute_utility_bill should update the document to match
+            self.process.compute_utility_bill(session, utilbill.id)
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEquals('99999', doc['account'])
+            self.assertEquals(date(2014,1,1), doc['start'])
+            self.assertEquals(date(2014,2,1), doc['end'])
+            self.assertEquals('electricity', doc['service'])
+            self.assertEquals('bge', doc['utility'])
+
+
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()
