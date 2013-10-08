@@ -478,6 +478,18 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+
+        # update Mongo document to match "metadata" columns in MySQL:
+        document.update({
+            'account': utilbill.account,
+            'start': utilbill.start,
+            'end': utilbill.end,
+            'service': utilbill.service,
+            'utility': utilbill.utility,
+            'rate_structure_binding': utilbill.rate_class,
+        })
+
+        # compute the charges
         rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
         mongo.compute_utility_bill(document, rate_structure)
 
