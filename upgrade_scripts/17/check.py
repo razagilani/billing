@@ -160,18 +160,22 @@ for (document_id,) in cur.fetchall():
         count += 1
 print '%s frozen utility bill documents lack sequence/version keys' % count
 
-# utility bill documents should have same account, start, ende, service, utility, rate_class as MySQL rows
+# utility bill documents should have same account, start, ende, service,
+# utility, rate_class as MySQL rows
 count = 0
-cur.execute("select account, period_start, period_end, service, utility, rate_class, document_id from utilbill join customer on customer_id = customer.id")
+cur.execute('''
+select account, period_start, period_end, service, utility, rate_class,
+document_id
+from utilbill join customer on customer_id = customer.id''')
 for account, start, end, service, utility, rate_class, document_id in cur.fetchall():
     if document_id is None:
         continue
     doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
     if doc is None:
         continue
-    if doc['account'] != account or doc['start'] != start \
+    if doc['account'] != account or doc['start'] != start or doc['end'] != end\
             or doc['service'] != service or doc['utility'] != utility \
-            or doc['rate_class'] != rate_class:
+            or doc['rate_structure_binding'] != rate_class:
         count += 1
 print '%s utility bill documents differ from MySQL row in at least one "metadata" key' % count
 
