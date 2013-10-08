@@ -128,6 +128,9 @@ print '%s of %s UPRS documents are orphaned' % count_orphaned_docs(
 print '%s of %s CPRS documents are orphaned' % count_orphaned_docs(
         'cprs_document_id', db.ratestructure, {'type': 'CPRS'})
 
+# count rate structure documents with old-style _ids
+count = db.ratestructure.find({'_id.account': {'$exists': True}}).count()
+print '%s rate structure documents have old-style _ids' % count
 
 # all utility bill documents referenced by document_id in utilbill should have
 # "sequence"/"version" keys
