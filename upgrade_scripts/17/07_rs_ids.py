@@ -224,6 +224,7 @@ if utilbill_reebill_null_count > 0:
 # TODO make new columns not null after verifying that every value is filled in?
 #cur.execute("alter table utilbill modify cprs_document_id integer not null")
 #cur.execute("alter table utilbill modify uprs_document_id integer not null")
+# can't actually use "not null" because the column should be null when state = 3
 
 
 # TODO clean up remaining documents that have old-style id. are there any?
