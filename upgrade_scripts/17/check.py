@@ -179,8 +179,31 @@ issued = 0 and (customer_id, sequence, version) not in (
     select customer_id, sequence, max(version)
     from reebill
     group by customer_id, sequence
-    --order by customer_id, sequence
+    order by customer_id, sequence
 )
 ''')
 count = cur.fetchall()[0]
 print '%s non-highest-version reebills are issued' % count
+
+# utility bill ids in reebill mongo documents match the ones in MySQL
+cur.execute('''
+select account, sequence, version, issued, utilbill_reebill.document_id, utilbill.document_id
+from customer join reebill on customer.id = customer_id
+join utilbill_reebill on reebill.id = reebill_id
+join utilbill on utilbill_id = utilbill.id''')
+count = 0
+for account, sequence, version, issued, frozen_document_id, editable_document_id in cur.fetchall():
+    reebill_doc = db.reebills.find_one({'_id.account': account,
+            '_id.sequence': sequence, '_id.version': version})
+    id_to_look_for = frozen_document_id if issued else editable_document_id
+    if ObjectId(id_to_look_for) not in (subdoc['id'] for subdoc in
+            reebill_doc['utilbills']):
+        count += 1
+print '%s reebill document ids do not match MySQL document_id column' % count
+
+# every reebill has a utility bill in MySQL
+cur.execute('''select count(*) from
+reebill left outer join utilbill_reebill on reebill_id = reebill.id
+where utilbill_id is null''')
+count = cur.fetchall()[0]
+print '%s rows in reebill table do not match rows of utilbill' % count
