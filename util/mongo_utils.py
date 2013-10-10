@@ -58,7 +58,7 @@ def bson_convert(x):
         return datetime(x.year, x.month, x.day)
     if type(x) is dict or type(x) is MutableNamedTuple:
         #TODO: don't copy dict
-        return {item[0]: bson_convert(item[1])) for item in x.iteritems()}
+        return {item[0]: bson_convert(item[1]) for item in x.iteritems()}
     if type(x) is list:
         return map(bson_convert, x)
 
