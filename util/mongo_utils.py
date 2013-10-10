@@ -99,7 +99,8 @@ def format_query(query_dict):
 
 def check_error(mongo_result):
     '''Raises exceptions.MongoError if the result of a result dictionary
-    (returned by Collection.remove) indicates that something went wrong.
+    (returned by pymongo.Collection.update and pymongo.Collection.remove)
+    indicates that something went wrong.
     '''
     if mongo_result['err'] is not None or mongo_result['n'] == 0:
         raise MongoError(mongo_result)
