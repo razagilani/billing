@@ -62,8 +62,7 @@ for id_type in ('document_id', 'uprs_document_id', 'cprs_document_id'):
     cur.execute("select count(*) from ((select %(id_type)s from utilbill where %(id_type)s is not null) union distinct (select %(id_type)s from utilbill_reebill as a where %(id_type)s is not null)) as t" % {'id_type': id_type})
     distinct_count = cur.fetchone()[0]
     duplicates = total_count - distinct_count
-    if duplicates > 0:
-        print >> stderr, '%s of %s non-null %ss have duplicates' % (duplicates, total_count, id_type)
+    print >> stderr, '%s of %s non-null %ss have duplicates' % (duplicates, total_count, id_type)
 
 # every mongo document referenced by an id in mysql should exist
 cur.execute("(select document_id, uprs_document_id, cprs_document_id from utilbill) union distinct (select document_id, uprs_document_id, cprs_document_id from utilbill_reebill)")
