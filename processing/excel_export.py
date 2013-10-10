@@ -1,7 +1,11 @@
 #!/usr/bin/python
 import os
 import sys
+from itertools import chain
+from operator import itemgetter
+
 import tablib
+
 from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
@@ -89,6 +93,9 @@ class Exporter(object):
             # load utilbill from mysql to find out if the bill was
             # (utility-)estimated
             utilbills = rb.utilbills
+            mongo_utilbills = self.reebill_dao.load_utilbills(account=rb.customer.account,
+                                                              sequence=rb.sequence,
+                                                              version=rb.version)
             estimated = any([u.state == UtilBill.UtilityEstimated
                     for u in utilbills])
             if utilbills == []:
@@ -120,12 +127,12 @@ class Exporter(object):
             # get all charges from this bill in "flattened" format, sorted by
             # name, with (actual) or (hypothetical) appended
             services = reebill.services
-            actual_charges = sorted(reduce(lambda x,y: x+y,
-                    [reebill.actual_chargegroups_flattened(service)
-                    for service in services]), key=lambda x:x['description'])
-            hypothetical_charges = sorted(reduce(lambda x,y: x+y,
-                    [reebill.hypothetical_chargegroups_flattened(service)
-                    for service in services]), key=lambda x:x['description'])
+            actual_charges = sorted(chain.from_iterable(
+                    mongo.actual_chargegroups_flattened(m_ub)
+                    for m_ub in mongo_utilbills), key=itemgetter('description'))
+            hypothetical_charges = sorted(chain.from_iterable(
+                    reebill.hypothetical_chargegroups_flattened(service)
+                    for service in services), key=itemgetter('description'))
             for charge in actual_charges:
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
@@ -133,7 +140,7 @@ class Exporter(object):
             # extra charges: actual and hypothetical totals, difference between
             # them, Skyline's late fee from the reebill
             actual_total = sum(ac.get('total', 0) for ac in actual_charges)
-            hypothetical_total = sum(hc.get('total', 0) for hc in hypothetical_charges)
+            hypothetical_total = float(sum(hc.get('total', 0) for hc in hypothetical_charges))
             extra_charges = [
                 { 'description': 'Actual Total', 'total': actual_total },
                 { 'description': 'Hypothetical Total', 'total': hypothetical_total },

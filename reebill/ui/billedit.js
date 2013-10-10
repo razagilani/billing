@@ -502,11 +502,15 @@ function reeBillReady() {
                     // for each issued reebill version attached to it (if any)
                     records = [[null, null, null]];
                     for (var i = 0; i < selected_utilbill.reebills.length; i++) {
-                        records.push([
-                            selected_utilbill.reebills[i].sequence,
-                            selected_utilbill.reebills[i].version,
-                            selected_utilbill.reebills[i].issue_date,
-                        ]);
+                        //Check that reebill associated with this version is issued
+                        // otherwise there is no associated frozen utilbill
+                        if (selected_utilbill.reebills[i].issue_date != null) {
+                            records.push([
+                                selected_utilbill.reebills[i].sequence,
+                                selected_utilbill.reebills[i].version,
+                                selected_utilbill.reebills[i].issue_date,
+                            ]);
+                        }
                     }
                     //Go through the menus and load the data
                     menus = UBVersionMenu.prototype.ubVersionMenus
