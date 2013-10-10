@@ -2441,6 +2441,11 @@ class BillToolBridge:
                     'period_start': ub.period_start,
                     'period_end': ub.period_end,
                     'total_charges': ub.total_charges,
+                    # NOTE the value of 'issue_date' in this JSON object is
+                    # used by the client to determine whether a frozen utility
+                    # bill version exists (when issue date == null, the reebill
+                    # is unissued, so there is no frozen version of the utility
+                    # bill corresponding to it).
                     'reebills': ub.sequence_version_json(),
                     'state': ub.state_name(),
                     # utility bill rows are only editable if they don't have a
