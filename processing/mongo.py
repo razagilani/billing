@@ -1752,7 +1752,7 @@ class ReebillDAO:
                     'version': {'$exists': False},
                 }
                 result = self.utilbills_collection.remove(q, safe=True)
-                if result['err'] is not None or result['n'] == 0:
+                if result['err'] is not None: #or result['n'] == 0:
                     raise MongoError(result)
 
         result = self.reebills_collection.remove({
