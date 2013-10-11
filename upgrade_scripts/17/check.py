@@ -109,15 +109,16 @@ for account, sequence, version in cur.fetchall():
 # something else that went wrong, and they're clutter)
 def count_orphaned_docs(mysql_column, mongo_collection, mongo_query):
     cur.execute("select %s from utilbill" % mysql_column)
+    mysql_ids = list(zip(*cur.fetchall())[0])
+    cur.execute("select %s from utilbill_reebill" % mysql_column)
+    mysql_ids.extend(zip(*cur.fetchall())[0])
     # binary search sorted list of ids from MySQL column for each Mongo _id
     # string
-    mysql_ids = sorted(zip(*cur.fetchall())[0])
-    mongo_ids = (str(doc['_id']) for doc in mongo_collection.find(mongo_query,
-            {'_id':1}))
+    mysql_ids.sort()
     orphaned_count, total_count = 0, 0
-    for _id in mongo_ids:
-        mysql_id_idx = bisect_left(mysql_ids, _id)
-        if not mysql_ids[mysql_id_idx] == _id:
+    for doc in mongo_collection.find(mongo_query):
+        mysql_id_idx = bisect_left(mysql_ids, str(doc['_id']))
+        if not mysql_ids[mysql_id_idx] == str(doc['_id']):
             orphaned_count += 1
         total_count += 1
     return orphaned_count, total_count
