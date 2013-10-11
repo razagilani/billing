@@ -1,16 +1,35 @@
-#!/bin/bash -v
+#!/bin/bash
 
 USAGE="
-Usage: $0 PRODHOST TOENV MYSQLPASSWORD -n 
+Usage: $0 -n -s PRODHOST TOENV MYSQLPASSWORD
      De-stages production ReeBill data to the specified environment.
+
+     -n -- optional, no download, use already downloaded database data if exists, default is to always download. 
+     -s -- optional, skip bill syncing, default is to always sync bill pdfs.
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      MYSQLPASSWORD -- local mysql admin password
-     -n -- optional, use already downloaded files, skipping rsync 
-             
      "
-# All SaaS environments (yourhost.yourdomain.com) are additionally named within the *.skylineinnovations.net DNS namespace
-# therefore, hosts do not need to be qualified with skylineinnovations.net
+
+NODOWNLOAD=false
+SKIPBILLS=false
+while getopts "ns" opt; do
+    case $opt in
+        n)
+            echo -e "\nUsing already downloaded data, if it exists\n"
+            NODOWNLOAD=true
+            ;;
+        s)
+            echo "\nSkipping bill download, bill pdfs will not be updated\n"
+            SKIPBILLS=true
+            ;;
+        \?)
+            echo "\ninvalid option ($OPTARG), ignoring\n"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 
 : ${1?"$USAGE"} 
 
@@ -22,7 +41,6 @@ fi
 PRODHOST=$1 
 TOENV=$2
 MYSQLPASSWORD=$3
-RSYNC=$4
 
 # need to more uniquely name backup file
 now=`date +"%Y%m%d"`
@@ -32,19 +50,21 @@ ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
-if [ -z $RSYNC ] || [ $RSYNC != '-n' ] 
+if [ "$NODOWNLOAD" = "false" ]
 then # -n not given
+    echo -e "\nDownloading database dump files.\n"
     rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
 elif [ ! -d ${now}reebill-prod ] # -n given, dir doesnt exist
 then
+    echo -e "\nDownloading database dumps one time, future use with -n will use this download.\n"
     rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
-    echo "Downloading file one time, future use with -n will use this download."
 else
-    echo "Not Downloading file, already exists"
+    echo -e "\nNot Downloading data, already exists\n"
 fi
 cd ${now}reebill-prod
 
 # apparently only root can restore the database
+mysql -uroot -p$MYSQLPASSWORD -e "drop database if exists skyline_${TOENV}"
 mysql -uroot -p$MYSQLPASSWORD -e "create database if not exists skyline_${TOENV};"
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
@@ -58,3 +78,9 @@ mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_m
 # Scrub Mongo of customer data
 cd $current_dir
 mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod_data.js
+
+if [ "$SKIPBILLS" = "false" ]
+then
+    echo -e "\nSyncing bill pdfs..."
+    rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
+fi

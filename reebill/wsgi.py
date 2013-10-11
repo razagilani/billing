@@ -22,6 +22,7 @@ import copy
 import functools
 import re
 import md5
+import errno
 from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
@@ -687,6 +688,10 @@ class BillToolBridge:
         config_dict = deep_map(
                 lambda x: {'true':True, 'false':False}.get(x,x),
                 config_dict)
+        config_dict['default_account_sort_field'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_field','account')
+        config_dict['default_account_sort_dir'] = cherrypy.session['user'].preferences.get(
+            'default_account_sort_direction','DESC')
         return json.dumps(config_dict)
 
     ###########################################################################
@@ -868,20 +873,18 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            for sequence in range(sequence, self.state_db.last_sequence(session,
-                    account) + 1):
-                # update "hypothetical charges" to match actual charges"
-                # TODO this should be done inside compute_bill
-                self.copyactual(account, sequence)
+            # update "hypothetical charges" to match actual charges"
+            # TODO this should be done inside compute_bill
+            self.copyactual(account, sequence)
 
-                # use version 0 of the predecessor to show the real account
-                # history (prior balance, payment received, balance forward)
-                mongo_reebill = self.reebill_dao.load_reebill(account,
-                        sequence, version='max')
-                mongo_predecessor = self.reebill_dao.load_reebill(account,
-                        sequence - 1, version=0)
-                self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
-                self.reebill_dao.save_reebill(mongo_reebill)
+            # use version 0 of the predecessor to show the real account
+            # history (prior balance, payment received, balance forward)
+            mongo_reebill = self.reebill_dao.load_reebill(account,
+                    sequence, version='max')
+            mongo_predecessor = self.reebill_dao.load_reebill(account, sequence
+                    - 1, version=0)
+            self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
+            self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -1560,7 +1563,7 @@ class BillToolBridge:
 
         # It is possible that there is no reebill for the requested rate structure 
         # if this is the case, return no rate structure.  
-        # This is done so that the UI can configure itself with no data for the
+        # This is done so that the UIcan configure itself with no data for the
         # requested rate structure 
         if reebill is None:
             return self.dumps({'success':True})
@@ -2161,25 +2164,46 @@ class BillToolBridge:
         else:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
-            last_sequence = self.state_db.last_sequence(session, account)
             for sequence in sequences:
-                # forbid deletion if predecessor has an unissued version (note
-                # that client is allowed to delete a range of bills at once, as
-                # long as they're in sequence order)
-                max_version = self.state_db.max_version(session, account, sequence)
-                if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
-                        (sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
-                    raise ValueError(("Can't delete a reebill version whose "
-                            "predecessor is unissued, unless its version is 0 "
-                            "and its sequence is the last one. Delete a "
-                            "series of unissued bills in sequence order."))
+                # previously, a reebill was only allowed to be deleted if
+                # predecessor has an unissued version, so bills could only be
+                # deleted in sequence order. as of 54786706, the lesson that
+                # accounting history can never change has finally been learned;
+                # since there is no dependency of one bill's accounting history
+                # information on that of its predecessors, there is no need for
+                # the rule that corrections must always be in a contiguous
+                # block ending at the newest reebill that has ever been issued.
+                #last_sequence = self.state_db.last_sequence(session, account)
+                #max_version = self.state_db.max_version(session, account, sequence)
+                #if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
+                        #(sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
+                    #raise ValueError(("Can't delete a reebill version whose "
+                            #"predecessor is unissued, unless its version is 0 "
+                            #"and its sequence is the last one. Delete a "
+                            #"series of unissued bills in sequence order."))
+
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
+                #Delete the PDF associated with a reebill if it was version 0
+                # because we believe it is confusing to delete the pdf when
+                # when a version still exists
+                if deleted_version == 0:
+                    path = self.config.get('billdb', 'billpath')+'%s' %(account)
+                    file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+                    full_path = os.path.join(path, file_name)
+
+                    # If the file exists, delete it, otherwise don't worry.
+                    try:
+                        os.remove(full_path)
+                    except OSError as e:
+                        if e.errno != errno.ENOENT:
+                            raise
             
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
                 journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
                         account, sequence, deleted_version)
+
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -2187,20 +2211,22 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def new_reebill_version(self, account, sequence, **args):
-        '''Creates a new version of the given reebill and all its successors,
-        if it's not issued.'''
+        '''Creates a new version of the given reebill (only one bill, not all
+        successors as in original design).'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebills = self.process.new_versions(session, account, sequence)
-            for new_reebill in new_reebills:
-                journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                        account, new_reebill.sequence, new_reebill.version)
-                journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                        account, new_reebill.sequence, new_reebill.version)
+            new_reebill = self.process.new_version(session, account, sequence)
+
+            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                    account, new_reebill.sequence, new_reebill.version)
+            # NOTE ReebillBoundEvent is no longer saved in the journal because
+            # new energy data are not retrieved unless the user explicitly
+            # chooses to do it by clicking "Bind RE&E"
+
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences': [r.sequence for r in
-                    new_reebills]})
+            return self.dumps({'success': True, 'sequences':
+                    [new_reebill.sequence]})
 
     ################
     # Handle addresses
@@ -2550,43 +2576,6 @@ class BillToolBridge:
             return self.dumps({'success':True})
 
 
-    # TODO: i think this is dead code
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def _saveActualCharges(self, service, account, sequence, rows, **args):
-        if not account or not sequence or not service or not rows:
-            raise ValueError("Bad Parameter Value")
-        flattened_charges = ju.loads(rows)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_actual_chargegroups_flattened(service, flattened_charges)
-        self.reebill_dao.save_reebill(reebill)
-        
-        # compute so the hypothetical charges in the reebill document are
-        # updated to make to actual charges in the utility bill document
-        self.compute_bill(account, sequence)
-
-        return self.dumps({'success': True})
-
-
-    # TODO: i think this is dead code
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def _saveHypotheticalCharges(self, service, account, sequence, rows, **args):
-        if not account or not sequence or not service or not rows:
-            raise ValueError("Bad Parameter Value")
-        flattened_charges = ju.loads(rows)
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
-        self.reebill_dao.save_reebill(reebill)
-    
-        return self.dumps({'success': True})
-
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2723,81 +2712,6 @@ class BillToolBridge:
             return self.dumps(result)
 
         raise ValueError('Unknown xaction "%s"' % xaction)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def ubMeasuredUsages(self, account, sequence, branch=0, **args):
-        """
-        Return all of the measuredusages on a per service basis so that the forms may be
-        dynamically created.
-
-        This function returns a sophisticated data structure to the client. However, the client
-        is expected to flatten it, and return edits keyed by meter or register identifier.
-
-        {"SERVICENAME": [
-            "present_read_date": "2011-10-04", 
-            "prior_read_date": "2011-09-05",
-            "identifier": "028702956",
-            "registers": [
-                {
-                "description": "Total Ccf", 
-                "quantity": 200.0, 
-                "quantity_units": "Ccf", 
-                "shadow": false, 
-                "identifier": "028702956", 
-                "type": "total", 
-                "register_binding": "REG_TOTAL"
-                }
-            ], ...
-        ]}
-        """
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested measured usages
-        # if this is the case, return no usages.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested measured usage
-        if reebill is None:
-            # TODO: 40161259 must return success field
-            return self.dumps({'success': True})
-
-        meters = reebill.meters
-        # TODO: 40161259 must return success field
-        return self.dumps({'success':True, "meters":meters})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
-        if not account or not sequence or not service or not meter_identifier \
-            or not presentreaddate or not priorreaddate:
-            raise ValueError("Bad Parameter Value")
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_meter_read_date(service, meter_identifier, 
-            datetime.strptime(presentreaddate, "%Y-%m-%d"), 
-            datetime.strptime(priorreaddate, "%Y-%m-%d")
-        )
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success':True})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
-        if not account or not sequence or not service or not register_identifier \
-            or not meter_identifier or not quantity:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_meter_actual_register(service, meter_identifier, register_identifier, Decimal(quantity))
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success':True})
 
     #
     ################
@@ -2936,13 +2850,6 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             if xaction == 'read':
                 account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
-                # names for utilbill states in the UI
-                state_descriptions = {
-                    state.UtilBill.Complete: 'Final',
-                    state.UtilBill.UtilityEstimated: 'Utility Estimated',
-                    state.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                    state.UtilBill.Hypothetical: 'Missing'
-                }
 
                 # result is a list of dictionaries of the form {account: account
                 # number, name: full name, period_start: date, period_end: date,
@@ -2976,7 +2883,7 @@ class BillToolBridge:
                     ('period_end', ub.period_end),
                     ('total_charges', ub.total_charges),
                     ('sequence', ub.reebill.sequence if ub.reebill else None),
-                    ('state', state_descriptions[ub.state]),
+                    ('state', ub.state_name()),
                     # utility bill rows are only editable if they don't have a
                     # reebill attached to them
                     ('editable', (not ub.has_reebill or not ub.reebill.issued))

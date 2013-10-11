@@ -40,7 +40,7 @@ Create directory for bill PDF files
     sudo mkdir /db-dev; sudo chown [your username]:[your username] /db-dev
 
 Load a copy of production data into your databases
-    billing/scripts/destage_from_prod.bash root tyrell-prod dev
+    billing/scripts/destage_from_prod_rsync.bash tyrell-prod dev root
 
 Create ReeBill config file:
     cp billing/reebill/reebill-dev-template.cfg billing/reebill/reebill.cfg
@@ -661,6 +661,15 @@ reebill-prod backs up data daily, every friday backup is stored in ~/reebill-pro
 
 reebill-stage destages prod data daily
 * 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+
+ReeBill Backup and Destage Scripts
+==================================
+
+backup_database.bash is used to created backups of both mongo and sql databases, places dump files in /tmp where destage can access them.
+
+destage_bills.bash destages just utility bill PDFs from /db-prod. example usage: ./destage_bills.bash [hostname] [env] where environment is dev or stage, this creates a directory such as /db-dev.
+
+destage_from_prod_rsync.bash is used to destage to a local development or staging environment. example usage: ./destage_from_prop_rsync.bash tyrell-prod dev. the use of the '-n' flag causes the script to download the data once, and use this local copy for all subsequent uses of the destage script. -n must be used if destaging from prod to stage environments, as it skips the rsync commands which need private keys for the server. a -s flag is available if the user does not wish to download bill pdfs. Note that these optional arguments must be put first when executing this scripts, otherwise they will be ignored. 
 
 
 Running ReeBill Unit Tests
