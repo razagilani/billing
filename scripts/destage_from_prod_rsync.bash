@@ -1,13 +1,14 @@
 #!/bin/bash
 
 USAGE="
-Usage: $0 PRODHOST TOENV MYSQLPASSWORD -n -s
+Usage: $0 -n -s PRODHOST TOENV MYSQLPASSWORD
      De-stages production ReeBill data to the specified environment.
+
+     -n -- optional, no download, use already downloaded database data if exists, default is to always download. 
+     -s -- optional, skip bill syncing, default is to always sync bill pdfs.
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      MYSQLPASSWORD -- local mysql admin password
-     -n -- optional, no download, use already downloaded database data if exists, default is to always download. 
-     -s -- optional, skip bill syncing, default is to always sync bill pdfs.
      "
 
 NODOWNLOAD=false
@@ -15,15 +16,15 @@ SKIPBILLS=false
 while getopts "ns" opt; do
     case $opt in
         n)
-            echo "Using already downloaded data, if it exists"
+            echo -e "\nUsing already downloaded data, if it exists\n"
             NODOWNLOAD=true
             ;;
         s)
-            echo "Skipping bill download, bill pdfs will not be updated"
+            echo "\nSkipping bill download, bill pdfs will not be updated\n"
             SKIPBILLS=true
             ;;
         \?)
-            echo "invalid option ($OPTARG), ignoring"
+            echo "\ninvalid option ($OPTARG), ignoring\n"
             ;;
     esac
 done
@@ -51,13 +52,14 @@ current_dir="$( cd "$( dirname "$0" )" && pwd)"
 cd /tmp
 if [ "$NODOWNLOAD" = "false" ]
 then # -n not given
+    echo -e "\nDownloading database dump files.\n"
     rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
 elif [ ! -d ${now}reebill-prod ] # -n given, dir doesnt exist
 then
+    echo -e "\nDownloading database dumps one time, future use with -n will use this download.\n"
     rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
-    echo "Downloading database dumps one time, future use with -n will use this download."
 else
-    echo "Not Downloading data, already exists"
+    echo -e "\nNot Downloading data, already exists\n"
 fi
 cd ${now}reebill-prod
 
@@ -79,5 +81,6 @@ mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod
 
 if [ "$SKIPBILLS" = "false" ]
 then
+    echo -e "\nSyncing bill pdfs..."
     rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
 fi
