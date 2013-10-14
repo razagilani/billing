@@ -232,8 +232,10 @@ class RateStructureDAO(object):
             for rsi in rs['rates']:
                 if any(other['rsi_binding'] == rsi['rsi_binding'] and other !=
                         rsi for other in rs['rates']):
+                    # NOTE RSIError requires 2 string arguments but it's not
+                    # clear what they're for
                     raise RSIError('Multiple RSIs have rsi_binding "%s"' %
-                            rsi['rsi_binding'])
+                            rsi['rsi_binding'], '')
 
         # RSIs in CRPS override RSIs in URS with same "rsi_binding"
         rsis = {rsi['rsi_binding']: rsi for rsi in uprs['rates']}
