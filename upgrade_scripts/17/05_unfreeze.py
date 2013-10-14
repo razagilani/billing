@@ -192,7 +192,6 @@ for account, sequence, max_version in cur.fetchall():
             # NOTE this sets all utilbill "id" fields to the same value, but
             # there should always be 1
             check_error(db.reebills.update({'utilbills.id': _id}, {'$set': {'utilbills.$.id': new_id}}, safe=True))
-            print db.reebills.find({'utilbills.id': new_id}).count()
 con.commit()
 
 
