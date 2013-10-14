@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python)
 """
 Utility functions to interact with state database
 """
@@ -491,7 +491,7 @@ class StateDB(object):
 
     config = None
 
-    def __init__(self, host, database, user, password, db_connections=5):
+    def __init__(self, host, database, user, password, db_connections=5, logger=None):
         # put "echo=True" in the call to create_engine to print the SQL
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
@@ -509,6 +509,9 @@ class StateDB(object):
         # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
         self.session = scoped_session(sessionmaker(bind=engine,
                 autoflush=True))
+
+        # TODO don't default to None
+        self.logger = logger
 
     def get_customer(self, session, account):
         return session.query(Customer).filter(Customer.account==account).one()
@@ -994,24 +997,29 @@ class StateDB(object):
         '''Deletes hypothetical utility bills for the given account and service
         whose periods precede the start date of the earliest non-hypothetical
         utility bill or follow the end date of the last utility bill.'''
-        customer = session.query(Customer).filter(Customer.account==account) \
-                .one()
-        first_real_utilbill = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state!=UtilBill.Hypothetical)\
+        customer = self.get_customer(session, account)
+        all_utilbills = session.query(UtilBill)\
+                .filter(UtilBill.customer == customer)
+        real_utilbills = all_utilbills\
+                .filter(UtilBill.state != UtilBill.Hypothetical)
+        hypothetical_utilbills = all_utilbills\
+                .filter(UtilBill.state == UtilBill.Hypothetical)
+
+        # if there are no real utility bills, delete all the hypothetical ones
+        # (i.e. all of the utility bills for this customer)
+        if real_utilbills.count() == 0:
+            for hb in hypothetical_utilbills:
+                session.delete(hb)
+            return
+
+        # if there are real utility bills, only delete the hypothetical ones
+        # whose entire period comes before end of first real bill or after
+        # start of last real bill
+        first_real_utilbill = real_utilbills\
                 .order_by(asc(UtilBill.period_start))[0]
         last_real_utilbill = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state!=UtilBill.Hypothetical)\
                 .order_by(desc(UtilBill.period_start))[0]
-        hypothetical_utilbills = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state==UtilBill.Hypothetical)\
-                .order_by(asc(UtilBill.period_start)).all()
-
         for hb in hypothetical_utilbills:
-            # delete if entire period comes before end of first real bill or
-            # after start of last real bill
             if (hb.period_start <= first_real_utilbill.period_end \
                     and hb.period_end <= first_real_utilbill.period_end)\
                     or (hb.period_end >= last_real_utilbill.period_start\
