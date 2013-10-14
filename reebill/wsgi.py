@@ -322,7 +322,13 @@ class BillToolBridge:
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
-        self.state_db = state.StateDB(**self.statedb_config) 
+        self.state_db = state.StateDB(
+            host=self.statedb_config['host'],
+            password=self.statedb_config['password'],
+            database=self.statedb_config['database'],
+            user=self.statedb_config['user'],
+            logger=self.logger,
+        )
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
@@ -2484,7 +2490,7 @@ class BillToolBridge:
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
-                raise ValueError('utilbill_grid() does not accept xaction "create"')
+                raise ValueError('utilbill_grid does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
                 account = kwargs["account"]
@@ -2496,7 +2502,6 @@ class BillToolBridge:
 
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
-                print ids
                 for utilbill_id in ids:
                     # load utilbill to get its dates and service
                     utilbill = session.query(state.UtilBill)\
@@ -2506,12 +2511,13 @@ class BillToolBridge:
 
                     # delete it & get new path (will be None if there was never
                     # a utility bill file or the file could not be found)
-                    print start, end, service
-                    deleted_path = self.process.delete_utility_bill(session, utilbill)
+                    deleted_path = self.process.delete_utility_bill(session,
+                            utilbill)
 
                     # log it
-                    journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
-                            account, start, end, service, deleted_path)
+                    journal.UtilBillDeletedEvent.save_instance(
+                            cherrypy.session['user'], account, start, end,
+                            service, deleted_path)
 
                 # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
