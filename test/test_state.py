@@ -39,7 +39,11 @@ class StateTest(utils.TestCase):
                 ('Test Customer', 99999, .12, .34)''')
         mysql_connection.commit()
 
-        sqlalchemy.orm.clear_mappers()
+        # NOTE for some reason, when this is enabled, all tests fail with a
+        # SQLAlchemy-related error; see 
+        # https://www.pivotaltracker.com/story/show/58851006
+        #sqlalchemy.orm.clear_mappers()
+
         self.state_db = state.StateDB('localhost', 'test', 'dev', 'dev')
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection(billdb_config['host'],
