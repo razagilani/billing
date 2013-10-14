@@ -34,27 +34,31 @@ from billing.processing.exceptions import MongoError
 
 def unfreeze_utilbill(utilbill_doc, new_id=None):
     '''Converts 'utilbill_doc' into an editable utility bill document, i.e.
-    removes its "sequence" and "version" keys, and saves it. If 'new_id' is
-    given, a new document is created with that _id the frozen one is unchanged.
-    If 'new_id' is not given, the original document is modified and saved with
-    its original _id, so the frozen document has become editable. In both
-    cases, any existing editable document having the same service, utility, and
-    dates is removed.'''
+    removes its "sequence" and "version" keys, and saves it.
+    
+    If 'new_id' is given, a new document is created with that _id the frozen
+    one is unchanged. If 'new_id' is not given, the original document is
+    modified and saved with its original _id, so the frozen document has become
+    editable. In both cases, any existing editable document having the same
+    service, utility, and dates is removed.
+
+    Returns a list of _ids of documents that were removed.
+    '''
     # find any existing editable utility bill documents with the same utility,
     # service, and dates
     query_for_editable_twins = dict_merge(
             subdict(utilbill_doc, ['account', 'utility', 'service', 'start',
             'end']), {'sequence': {'$exists': False}})
-    editable_twins = db.utilbills.find(query_for_editable_twins)
+    editable_twins = list(db.utilbills.find(query_for_editable_twins))
 
     # there should be at most 1 editable version of this utility bill
-    if editable_twins.count() == 0:
+    if len(editable_twins) == 0:
         print >> stderr, ('WARNING expected an editable version of this '
                 'utility bill document to exist before being replaced: %s') % \
                 format_query(query_for_editable_twins)
-    if editable_twins.count() > 1:
+    if len(editable_twins) > 1:
         print >> stderr, ('WARNING %s editable utility bills match this '
-                'query: %s; both will be deleted') % (editable_twins.count(),
+                'query: %s; both will be deleted') % (len(editable_twins),
                 format_query(query_for_editable_twins))
 
     # remove existing editable version(s), if there were any
@@ -76,6 +80,8 @@ def unfreeze_utilbill(utilbill_doc, new_id=None):
         # it without changing its id
         db.utilbills.save(utilbill_doc, safe=True)
     assert db.error() is None
+
+    return [twin['_id'] for twin in editable_twins]
 
 
 db = pymongo.Connection('localhost')['skyline-dev']
@@ -164,7 +170,29 @@ for account, sequence, max_version in cur.fetchall():
             print >> stderr, ('issued reebill lacks "sequence" and "version"'
                     ' in its utility bill: %s') % reebill_doc['_id']
 
-        unfreeze_utilbill(utilbill_doc, new_id=ObjectId())
+        new_id = ObjectId()
+        removed_ids = unfreeze_utilbill(utilbill_doc, new_id=new_id)
+
+        # even though this is an issued bill, there may be an unissued reebill
+        # (with version > 0) referring to the editable utility bill document.
+        # the "id" in this reebill's document needs to be updated to match the
+        # "_id" of the new editable utility bill document.
+        for _id in removed_ids:
+            reebill_docs = list(db.reebills.find({'utilbills.id': _id}))
+            if len(reebill_docs) == 0:
+                print 'replaced editable utility bill document with no reebills', _id
+                continue
+            # any reebill document referring to this utility bill should be an
+            # unissued correction with 1 utility bill
+            for result in db.reebills.find({'utilbills.id': _id}):
+                assert len(result['utilbills']) == 1
+                assert result['_id']['version'] > 0
+                assert result['issue_date'] is None
+                print '######### updating utilbill id of unissued correction %s-%s-%s, _id %s' % (account, result['_id']['sequence'], result['_id']['version'], _id)
+            # NOTE this sets all utilbill "id" fields to the same value, but
+            # there should always be 1
+            check_error(db.reebills.update({'utilbills.id': _id}, {'$set': {'utilbills.$.id': new_id}}, safe=True))
+            print db.reebills.find({'utilbills.id': new_id}).count()
 
 con.commit()
 
