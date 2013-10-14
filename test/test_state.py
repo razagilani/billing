@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
 import pymongo
 from billing.processing import state
-from billing.processing.state import Customer, UtilBill
+from billing.processing.state import Customer, UtilBill, ReeBill
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
@@ -99,6 +99,7 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
             today = datetime.utcnow().date()
+            customer = session.query(Customer).filter_by(account=account).one()
 
             # when there are no utility bills, trim_hypothetical_utilbills
             # should do nothing
@@ -110,53 +111,36 @@ class StateTest(utils.TestCase):
             # TODO add tests for other services to make sure e.g. "electric"
             # bills are unaffected
 
+            # to simplify the utility-bill-creation API
+            def create_bill(start, end, state):
+                session.add(UtilBill(customer, state, 'gas',
+                        'washgas', 'DC Non Residential Non Heat',
+                        period_start=start, period_end=end,
+                        date_received=today))
+
             # when there are only Hypothetical utility bills,
             # trim_hypothetical_utilbills should remove all of them
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2013,1,1), date(2013,2,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2013,2,1), date(2013,3,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2013,6,1), date(2013,7,1), 0, today,
-                    state=UtilBill.Hypothetical)
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Hypothetical)
+            create_bill(date(2012,2,1), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
             self.state_db.trim_hypothetical_utilbills(session, account,
                     service)
             self.assertEqual(0, session.query(UtilBill).count())
 
             # 2 Complete bills
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,1), date(2012,2,1), 0, today)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,15), date(2012,7,15), 0, today)
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Complete)
+            create_bill(date(2012,6,15), date(2012,7,15), UtilBill.Complete)
 
             # Hypothetical bills before, between, and after the Complete bills
             # (including some overlaps with Complete bills and each other)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,9,1), date(2011,10,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,10,1), date(2011,11,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,11,15), date(2012,1,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,30), date(2012,3,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,3,1), date(2012,4,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,1), date(2012,7,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,8,20), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,9,1), 0, today,
-                    state=UtilBill.Hypothetical)
+            create_bill(date(2011,9,1), date(2011,10,1), UtilBill.Hypothetical)
+            create_bill(date(2011,10,1), date(2011,11,15), UtilBill.Hypothetical)
+            create_bill(date(2011,11,15), date(2012,1,15), UtilBill.Hypothetical)
+            create_bill(date(2012,1,30), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,3,1), date(2012,4,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,8,20), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,9,1), UtilBill.Hypothetical)
 
             self.state_db.trim_hypothetical_utilbills(session, account,
                     service)
