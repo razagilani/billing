@@ -512,6 +512,21 @@ function reeBillReady() {
                             ]);
                         }
                     }
+                    records.sort(function (a, b) {
+                        if (a[2] == null) {
+                            return -1;
+                        }
+                        if (b[2] == null) {
+                            return 1;
+                        }
+                        if (b[2] > a[2]) {
+                            return 1;
+                        }
+                        if (b[2] == a[2]) {
+                            return 0;
+                        }
+                        return -1;
+                    });
                     //Go through the menus and load the data
                     menus = UBVersionMenu.prototype.ubVersionMenus
                     for (var i = 0;i < menus.length;i++) {
