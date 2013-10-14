@@ -4,6 +4,7 @@ from datetime import date, datetime
 import MySQLdb
 import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
+import pymongo
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill
 from billing.processing import mongo
@@ -46,7 +47,7 @@ class StateTest(utils.TestCase):
             'database':'test'
         })
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(self.billdb_config['host'],
+                pymongo.Connection(billdb_config['host'],
                 int(billdb_config['port']))[billdb_config['database']])
 
     def tearDown(self):
@@ -484,13 +485,15 @@ class StateTest(utils.TestCase):
                 r.issued = 1
             utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
-                    dt+timedelta(days=30*x),\ dt+timedelta(days=30*(x+1)),
+                    dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             for x in xrange(10):
                 session.add(reebills[x])
                 session.add(utilbills[x])
 
-            # Add multiple utilbills that come after the last utilbill from the above loop
+            # Add multiple utilbills that come after the last utilbill from the
+            # above loop
             target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
                     period_start=dt+timedelta(days=30*10),
@@ -506,7 +509,9 @@ class StateTest(utils.TestCase):
                     period_end=dt+timedelta(days=30*13), reebill=None))
 
             # Same tests
-            utilbills = self.state_db.choose_next_utilbills(session, account, services) self.assertListEqual(services, [ub.service for ub in utilbills])
+            utilbills = self.state_db.choose_next_utilbills(session, account,
+                    services)
+            self.assertListEqual(services, [ub.service for ub in utilbills])
             self.assertEqual(len(utilbills), 1)
             self.assertIsNotNone(utilbills[0])
             self.assertIsNone(utilbills[0].reebill)
@@ -567,7 +572,8 @@ class StateTest(utils.TestCase):
                 r.issued = 1
             gas_utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
-                    dt_gas+timedelta(days=30*x),\ dt_gas+timedelta(days=30*(x+1)),
+                    dt_gas+timedelta(days=30*x),
+                    dt_gas+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             elec_utilbills = [UtilBill(customer, 0, 'electric', 'pepco',
                     'DC Non Residential Non Heat',
