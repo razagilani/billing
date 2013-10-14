@@ -45,7 +45,7 @@ cur.execute("begin")
 # on the type (for a string, it's "").
 cur.execute("alter table utilbill add column utility varchar(255) not null")
 cur.execute("alter table utilbill add column rate_class varchar(255) not null")
-cur.execute("alter table utilbill add column document_id varchar(255)")
+cur.execute("alter table utilbill add column document_id varchar(24)")
 
 # also add document_id column to utilbill_reebill table: Mongo utility bill id,
 # null if reebill is unissued because its mongo doc is the "current" one
