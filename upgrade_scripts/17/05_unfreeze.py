@@ -179,8 +179,8 @@ for account, sequence, max_version in cur.fetchall():
         # "_id" of the new editable utility bill document.
         for _id in removed_ids:
             reebill_docs = list(db.reebills.find({'utilbills.id': _id}))
+            # if no reebills refer to this utility bill document, skip it
             if len(reebill_docs) == 0:
-                print 'replaced editable utility bill document with no reebills', _id
                 continue
             # any reebill document referring to this utility bill should be an
             # unissued correction with 1 utility bill
@@ -188,12 +188,11 @@ for account, sequence, max_version in cur.fetchall():
                 assert len(result['utilbills']) == 1
                 assert result['_id']['version'] > 0
                 assert result['issue_date'] is None
-                print '######### updating utilbill id of unissued correction %s-%s-%s, _id %s' % (account, result['_id']['sequence'], result['_id']['version'], _id)
+                print 'INFO updating utilbill id of unissued correction %s-%s-%s, _id %s' % (account, result['_id']['sequence'], result['_id']['version'], _id)
             # NOTE this sets all utilbill "id" fields to the same value, but
             # there should always be 1
             check_error(db.reebills.update({'utilbills.id': _id}, {'$set': {'utilbills.$.id': new_id}}, safe=True))
             print db.reebills.find({'utilbills.id': new_id}).count()
-
 con.commit()
 
 
