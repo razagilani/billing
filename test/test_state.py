@@ -100,6 +100,31 @@ class StateTest(utils.TestCase):
             account, service = '99999', 'gas'
             today = datetime.utcnow().date()
 
+            # when there are no utility bills, trim_hypothetical_utilbills
+            # should do nothing
+            assert session.query(UtilBill).count() == 0
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
+
+            # TODO add tests for other services to make sure e.g. "electric"
+            # bills are unaffected
+
+            # when there are only Hypothetical utility bills,
+            # trim_hypothetical_utilbills should remove all of them
+            self.state_db.record_utilbill_in_database(session, account,
+                    service, date(2013,1,1), date(2013,2,1), 0, today,
+                    state=UtilBill.Hypothetical)
+            self.state_db.record_utilbill_in_database(session, account,
+                    service, date(2013,2,1), date(2013,3,1), 0, today,
+                    state=UtilBill.Hypothetical)
+            self.state_db.record_utilbill_in_database(session, account,
+                    service, date(2013,6,1), date(2013,7,1), 0, today,
+                    state=UtilBill.Hypothetical)
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
+
             # 2 Complete bills
             self.state_db.record_utilbill_in_database(session, account,
                     service, date(2012,1,1), date(2012,2,1), 0, today)
