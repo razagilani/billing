@@ -2140,7 +2140,11 @@ class BillToolBridge:
 
         # compute so the hypothetical charges in the reebill document are
         # updated to make to actual charges in the utility bill document
-        self.compute_bill(account, sequence)
+        # Don't compute if the bill is issued, since it cannot be modified.
+        with DBSession(self.state_db) as session:
+            if not self.state_db.is_issued(session, account, sequence):
+                self.process.compute_reebill(session, reebill)
+                self.reebill_dao.save_reebill(reebill)
         
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
