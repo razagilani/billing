@@ -40,12 +40,7 @@ class StateTest(utils.TestCase):
         mysql_connection.commit()
 
         sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'test'
-        })
+        self.state_db = state.StateDB('localhost', 'test', 'dev', 'dev')
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection(billdb_config['host'],
                 int(billdb_config['port']))[billdb_config['database']])
