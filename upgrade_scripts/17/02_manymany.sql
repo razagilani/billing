@@ -17,8 +17,10 @@ create table utilbill_reebill (
     primary key (utilbill_id, reebill_id)
 );
 
--- copy reebill/utilbill associations from utilbill.reebill_id into the new table
-insert into utilbill_reebill (utilbill_id, reebill_id) select id, rebill_id from utilbill where rebill_id is not null;
+-- copy reebill/utilbill associations from utilbill.reebill_id into the new
+-- table
+insert into utilbill_reebill (utilbill_id, reebill_id)
+select id, rebill_id from utilbill where rebill_id is not null;
 
 -- drop constraints preventing removal of the reebill_id column, then remove it
 alter table utilbill drop foreign key fk_utilbill_rebill;
