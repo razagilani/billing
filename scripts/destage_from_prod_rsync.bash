@@ -20,11 +20,11 @@ while getopts "ns" opt; do
             NODOWNLOAD=true
             ;;
         s)
-            echo "\nSkipping bill download, bill pdfs will not be updated\n"
+            echo -e "\nSkipping bill download, bill pdfs will not be updated\n"
             SKIPBILLS=true
             ;;
         \?)
-            echo "\ninvalid option ($OPTARG), ignoring\n"
+            echo -e "\ninvalid option ($OPTARG), ignoring\n"
             ;;
     esac
 done
@@ -45,7 +45,6 @@ MYSQLPASSWORD=$3
 # need to more uniquely name backup file
 now=`date +"%Y%m%d"`
 destage_dir=${now}reebill-prod
-ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
@@ -53,11 +52,11 @@ cd /tmp
 if [ "$NODOWNLOAD" = "false" ]
 then # -n not given
     echo -e "\nDownloading database dump files.\n"
-    rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
+    rsync -ahz --exclude 'db-prod' --progress -e "ssh" $PRODHOST:/tmp/$destage_dir . 
 elif [ ! -d ${now}reebill-prod ] # -n given, dir doesnt exist
 then
     echo -e "\nDownloading database dumps one time, future use with -n will use this download.\n"
-    rsync -ahz --exclude 'db-prod' --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
+    rsync -ahz --exclude 'db-prod' --progress -e "ssh" $PRODHOST:/tmp/$destage_dir . 
 else
     echo -e "\nNot Downloading data, already exists\n"
 fi
@@ -82,5 +81,5 @@ mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod
 if [ "$SKIPBILLS" = "false" ]
 then
     echo -e "\nSyncing bill pdfs..."
-    rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
+    rsync -ahz --progress -e "ssh" $PRODHOST:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
 fi
