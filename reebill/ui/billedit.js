@@ -4183,16 +4183,7 @@ function reeBillReady() {
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, // disabled until account is selected
-            },{
-                id: 'dailyAverageEnergyExportButton',
-                iconCls: 'icon-application-go',
-                xtype: 'linkbutton',
-                // account parameter for URL is set in loadReeBillUIForAccount()
-                href: "http://"+location.host+"/reebill/daily_average_energy_xls",
-                text: 'Export Daily Average Utility Energy XLS',
-                disabled: true, // disabled until account is selected
-            }
-        ]
+            }]
     });
 
     // this grid tracks the state of the currently selected account
