@@ -196,6 +196,8 @@ class StateTest(utils.TestCase):
                     acc, seq, version=10)
 
             # adding versions of bills for other accounts should have no effect
+            session.add(Customer('someone', '11111', 0.5, 0.1, 'id goes here'))
+            session.add(Customer('someone', '22222', 0.5, 0.1, 'id goes here'))
             self.state_db.new_reebill(session, '11111', 1)
             self.state_db.new_reebill(session, '11111', 2)
             self.state_db.new_reebill(session, '22222', 1)
@@ -325,6 +327,7 @@ class StateTest(utils.TestCase):
 
             session.commit()
 
+    @unittest.skip('StateDB.delete_reebill no longer exists; move elsewhere?')
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
@@ -332,8 +335,8 @@ class StateTest(utils.TestCase):
             self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
-            reebill = session.query(ReeBill).filter_by(account=account,
-                    sequence=1, version=0)
+            customer = session.query(Customer).filter_by(account=account).one()
+            reebill = session.query(ReeBill).filter_by(customer=customer, sequence=1, version=0)
             self.state_db.delete_reebill(session, reebill)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
