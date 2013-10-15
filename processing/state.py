@@ -589,7 +589,7 @@ class StateDB(object):
     def last_sequence(self, session, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
         there are no reebills.'''
-        customer = self.get_customer(account)
+        customer = self.get_customer(session, account)
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
@@ -603,7 +603,7 @@ class StateDB(object):
             include_corrections=False):
         '''Returns the sequence of the last issued reebill for 'account', or 0
         if there are no issued reebills.'''
-        customer = self.get_customer(account)
+        customer = self.get_customer(session, account)
         if include_corrections:
             filter_logic = sqlalchemy.or_(ReeBill.issued==1,
                     sqlalchemy.and_(ReeBill.issued==0, ReeBill.version>0))
@@ -641,7 +641,7 @@ class StateDB(object):
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
         by 'account', or None if there are no utilbills.'''
-        customer = self.get_customer(account)
+        customer = self.get_customer(session, account)
         query_results = session.query(sqlalchemy.func.max(UtilBill.period_end))\
                 .filter(UtilBill.customer_id==customer.id).one()
         if len(query_results) > 0:
