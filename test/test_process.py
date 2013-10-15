@@ -2100,8 +2100,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             #self.assertEquals('pepco', doc['rate_structure_binding'])
 
             # modify the MySQL utility bill
-            utilbill.start = date(2014,1,1)
-            utilbill.end = date(2014,2,1)
+            utilbill.period_start = date(2014,1,1)
+            utilbill.period_end = date(2014,2,1)
             utilbill.service = 'electricity'
             utilbill.utility = 'BGE'
             utilbill.rate_class = 'General Service - Schedule C'
@@ -2128,6 +2128,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             })
 
             # compute_utility_bill should update the document to match
+            import ipdb; ipdb.set_trace()
             self.process.compute_utility_bill(session, utilbill.id)
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEquals('99999', doc['account'])
