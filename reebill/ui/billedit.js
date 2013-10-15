@@ -6075,8 +6075,6 @@ function reeBillReady() {
         // enable export buttons 
         Ext.getCmp('exportAccountButton').setDisabled(false);
         Ext.getCmp('exportAccountButton').setParams({'account': account});
-        Ext.getCmp('dailyAverageEnergyExportButton').setDisabled(false);
-        Ext.getCmp('dailyAverageEnergyExportButton').setParams({'account': account});
         //Ext.getCmp('exportButton').setDisabled(false);
         Ext.getCmp('accountReeValueExportCSVBtn').setDisabled(false);
 
