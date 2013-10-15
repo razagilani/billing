@@ -6,7 +6,7 @@ set -e
 scripts_dir=`dirname $0`
 echo 'drop database if exists skyline_dev; create database skyline_dev; grant all on skyline_dev.* to dev;' | mysql -uroot -proot
 echo "******************************************************** destaging db"
-$scripts_dir/../../scripts/destage_from_prod_rsync.bash tyrell-prod dev root -n
+$scripts_dir/../../scripts/destage_from_prod_rsync.bash -s skyline-internal-prod dev root
 echo "******************************************************** cleanup"
 for file in $scripts_dir/cleanup/*; do
     python $file;
