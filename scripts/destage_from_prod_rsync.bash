@@ -6,7 +6,7 @@ Usage: $0 -n -s PRODHOST TOENV MYSQLPASSWORD
 
      -n -- optional, no download, use already downloaded database data if exists, default is to always download. 
      -s -- optional, skip bill syncing, default is to always sync bill pdfs.
-     PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
+     PRODHOST -- parameter specifying the hostname containing production data (e.g. skyline-internal-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      MYSQLPASSWORD -- local mysql admin password
      "
