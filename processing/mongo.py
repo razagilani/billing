@@ -287,6 +287,12 @@ def actual_chargegroups_flattened(utilbill_doc):
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+def meter_read_period(utilbill_doc):
+    '''Returns the period dates of the first (i.e. only) meter in this bill.'''
+    assert len(utilbill_doc['meters']) >= 1
+    meter = utilbill_doc['meters'][0]
+    return meter['prior_read_date'], meter['present_read_date']
+
 # TODO make this a method of a utility bill document class when one exists
 # TODO maybe rename something like "compute_utility_bill_charges"
 def compute_utility_bill(utilbill_doc, the_rate_structure):
@@ -1185,11 +1191,13 @@ class MongoReebill(object):
         u = self._get_utilbill_for_service(service)
         u['start'], u['end'] = period
 
-    def meter_read_period(self, service):
-        '''Returns tuple of period dates for first meter found with the given
-        service.'''
-        meter = self.meters_for_service(service)[0]
-        return meter['prior_read_date'], meter['present_read_date']
+    def renewable_energy_period(self):
+        '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
+        the period of renewable energy consumption in this bill. In practice,
+        this means the read dates of the only meter in the utility bill which
+        is equivalent to the utility bill's period.'''
+        assert len(self._utilbills) == 1
+        return meter_read_period(self._utilbills[0])
 
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter

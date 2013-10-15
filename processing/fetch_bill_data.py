@@ -82,11 +82,7 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=False):
     energy. The OLAP database is the default source of energy-sold values; use
     use_olap=False to get them directly from OLTP.'''
     install_obj = splinter.get_install_obj_for(olap_id)
-    # period for renewable energy is the reebill's meter read period (NOT the
-    # same as utililty bill period or reebill period, though they almost always
-    # coincide)
-    # TODO support multi-service customers; don't just rely on the first service
-    start, end = reebill.meter_read_period(reebill.services[0])
+    start, end = reebill.renewable_energy_period()
 
     # get hourly "energy sold" values during this period
     if use_olap:
