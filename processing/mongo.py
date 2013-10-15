@@ -204,8 +204,8 @@ def _new_meter(utilbill_doc, identifier=None):
         identifier = 'Insert meter ID here'
     new_meter = {
         'identifier': identifier,
-        'present_read_date': None,
-        'prior_read_date': datetime.now(),
+        'present_read_date': utilbill_doc['end'],
+        'prior_read_date': utilbill_doc['start'],
         'registers': [],
     }
     utilbill_doc['meters'].append(new_meter)
