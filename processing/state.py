@@ -582,8 +582,9 @@ class StateDB(object):
         overall, since a new version can't be created if the last one hasn't
         been issued.) If no version has ever been issued, returns None.'''
         # weird filtering on other table without a join
+        customer = self.get_customer(session, account)
         result = session.query(func.max(ReeBill.version))\
-                .filter(Customer.account==account)\
+                .filter(ReeBill.customer == customer)\
                 .filter(ReeBill.issued==1).one()[0]
         # SQLAlchemy returns None if no reebills with that customer are issued
         if result is None:
