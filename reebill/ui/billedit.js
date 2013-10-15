@@ -41,6 +41,9 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
+/* Constructor for menus that show versions of utility bills in
+ * utility-bill-editing tabs */
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -48,6 +51,9 @@ function reeBillReady() {
     // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
+
+    // this is a Record object in 'utilbillGridStore'
+    var selected_utilbill = null;
 
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
@@ -227,28 +233,6 @@ function reeBillReady() {
         ]
     };
 
-    var utilbillReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'name', mapping: 'name'},
-            {name: 'rate_structure', mapping: 'rate_structure'},
-            {name: 'utility', mapping: 'utility'},
-            {name: 'account', mapping: 'account'},
-            {name: 'period_start', mapping: 'period_start'},
-            {name: 'period_end', mapping: 'period_end'},
-            {name: 'total_charges', mapping: 'total_charges'},
-            {name: 'sequence', mapping: 'sequence'},
-            {name: 'state', mapping: 'state'},
-        ]
-    });
-
     var utilbillWriter = new Ext.data.JsonWriter({
         encode: true,
         writeAllFields: false,
@@ -265,15 +249,15 @@ function reeBillReady() {
     var utilbillGridStore = new Ext.data.JsonStore({
         proxy: utilbillStoreProxy,
         autoSave: true,
-        reader: utilbillReader,
         writer: utilbillWriter,
-        baseParams: { start:0, limit: 25},
+        baseParams: { start:0, limit: 120},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
         // defaults to id? probably should explicity state it until we are ext experts
         //idProperty: 'sequence',
         fields: [
+        {name: 'id'},
         {name: 'name'},
         {name: 'account'},
         {name: 'rate_structure'},
@@ -292,7 +276,7 @@ function reeBillReady() {
             name: 'total_charges',
             type: 'float'
         },
-        {name: 'sequence'},
+        {name: 'reebills'},
         {name: 'state'},
         {name: 'service'},
         {name: 'editable'},
@@ -392,9 +376,30 @@ function reeBillReady() {
                 width: 90,
             },{
                 id: 'sequence',
-                header: 'Sequence',
-                dataIndex: 'sequence',
-                width: 70,
+                header: 'Reebill Sequence/Version',
+                dataIndex: 'reebills',
+                width: 150,
+                renderer: function(value, metaData, record, rowIndex, colIndex, store) {
+                    /* assume the server returns the sequence/version
+                    pairs in sorted order. Render the list of JSON objects in
+                    'record.data.reebills' as sequences followed by "-" and a
+                    comma-separated list of versions of that sequence, e.g.
+                    "1-0,1,2 2-0". */
+                    var result = '';
+                    var reebills = record.data.reebills;
+                    for (var i = 0; i < reebills.length; i++) {
+                        var sequence = reebills[i].sequence;
+                        result += sequence.toString() + "-";
+                        while (i < reebills.length && reebills[i].sequence ==
+                                sequence) {
+                            result += reebills[i].version + ",";
+                            i++;
+                        } 
+                        result = result.substr(0,result.length-1);
+                        result += ' ';
+                    }
+                    return result;
+                }
             },
             {
                 id: 'state',
@@ -435,7 +440,6 @@ function reeBillReady() {
         tbar: new Ext.Toolbar({
             items: [{
                 xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
@@ -450,7 +454,8 @@ function reeBillReady() {
                   //      utilbillGrid.refresh();
                   //  }});
                 }
-            }]
+            },
+        ]
         }),
         bbar: new Ext.PagingToolbar({
             // TODO: constant
@@ -476,10 +481,67 @@ function reeBillReady() {
             moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
-                    //loadReeBillUIForSequence(record.data.account, null);
+                    selected_utilbill = null;
+                    ubMeasuredUsagesPanel.setDisabled(true);
+                    ubRegisterGrid.setEditable(false);
+                    rateStructurePanel.setDisabled(true);
+                    chargeItemsPanel.setDisabled(true);
                 },
                 
                 rowselect: function (selModel, index, record) {
+                    selected_utilbill = record.data;
+                    ubMeasuredUsagesPanel.setDisabled(false);
+                    ubRegisterGrid.setEditable(true);
+                    rateStructurePanel.setDisabled(false);
+                    chargeItemsPanel.setDisabled(false);
+
+                    // replace the records in 'ubVersionStore' with new ones,
+                    // so the contents of the 3 utility bill version menus
+                    // match the selected utility bill. there's always one row
+                    // for the current version of the utility bill, and one row
+                    // for each issued reebill version attached to it (if any)
+                    records = [[null, null, null]];
+                    for (var i = 0; i < selected_utilbill.reebills.length; i++) {
+                        //Check that reebill associated with this version is issued
+                        // otherwise there is no associated frozen utilbill
+                        if (selected_utilbill.reebills[i].issue_date != null) {
+                            records.push([
+                                selected_utilbill.reebills[i].sequence,
+                                selected_utilbill.reebills[i].version,
+                                selected_utilbill.reebills[i].issue_date,
+                            ]);
+                        }
+                    }
+                    records.sort(function (a, b) {
+                        if (a[2] == null) {
+                            return -1;
+                        }
+                        if (b[2] == null) {
+                            return 1;
+                        }
+                        if (b[2] > a[2]) {
+                            return 1;
+                        }
+                        if (b[2] == a[2]) {
+                            return 0;
+                        }
+                        return -1;
+                    });
+                    //Go through the menus and load the data
+                    menus = UBVersionMenu.prototype.ubVersionMenus
+                    for (var i = 0;i < menus.length;i++) {
+                        menus[i].store.loadData(records);
+                    }
+                    //Select the 'Current Version'.  Only has to be selected once since they are all connected
+                    if (menus.length > 0) {
+                        //Fires the event 'select', which takes a combobox, record, and index as arguments
+                        //Gets the correct record type from the combobox's store
+                        menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
+                            sequence: null,
+                            version: null,
+                            issue_date: null,
+                        }), 0);
+                    }
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
@@ -533,6 +595,9 @@ function reeBillReady() {
                         // loading message in the utilbill image box
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
                                 html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                    }
+                    else {
+                        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
                     }
                 }
             }
@@ -1391,13 +1456,6 @@ function reeBillReady() {
                                 reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                     reeBillGrid.getSelectionModel().selectFirstRow();
                                 }});
-
-                                utilbillGridStore.setDefaultSort('sequence', 'DESC');
-                                pageSize = utilbillGrid.getBottomToolbar().pageSize;
-                                utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                    utilbillGrid.getSelectionModel().selectFirstRow();
-                                    utilbillGridStore.setDefaultSort('period_end', 'DESC');
-                                }});
                             }
                         } catch (err) {
                             waitMask.hide();
@@ -1442,14 +1500,6 @@ function reeBillReady() {
                             pageSize = reeBillGrid.getBottomToolbar().pageSize;
                             reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                 reeBillGrid.getSelectionModel().selectFirstRow();
-                            }});
-
-                            utilbillGrid.getSelectionModel().clearSelections();
-                            utilbillGridStore.setDefaultSort('sequence', 'DESC');
-                            pageSize = utilbillGrid.getBottomToolbar().pageSize;
-                            utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                utilbillGrid.getSelectionModel().selectFirstRow();
-                                utilbillGridStore.setDefaultSort('period_end', 'DESC');
                             }});
                         }
                     } catch (err) {
@@ -1685,10 +1735,25 @@ function reeBillReady() {
         }
         ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
-        // set the current selection into the store's baseParams
-        store.baseParams.account = selected_account;
-        store.baseParams.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = measuredUsageUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
         ubRegisterGrid.setDisabled(true);
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
     });
@@ -1703,7 +1768,25 @@ function reeBillReady() {
 
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
+        options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = measuredUsageUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
@@ -1993,6 +2076,72 @@ function reeBillReady() {
         ],
     });
     
+    var UBVersionMenu = Ext.extend(Ext.form.ComboBox, {
+        //A list of all UBVersionMenus in existance, so that they can all
+        //be updated at the same time.
+        ubVersionMenus: [],
+        //A toggle that is set after the select of one menu is fired,
+        //so that other menus don't trigger it again
+        inSelect: false,
+        //stores_to_reload is a list of stores to reload when the dropdown is selected for this menu
+        constructor: function (stores_to_reload) {
+            UBVersionMenu.superclass.constructor.call(this, {
+                editable: false,
+                mode: 'local',
+                triggerAction: 'all',
+                flex: 0,
+                
+                // this template converts the record in the Datastore to a string:
+                // "current" when the value of "sequence" in the record is null, and
+                // sequence-version otherwise
+                tpl: new Ext.XTemplate(
+                    '<tpl for="."><div class="x-combo-list-item">',
+                    '<tpl if="sequence == null">Current version</tpl>',
+                    '<tpl if="sequence != null">Reebill {sequence}-{version}: {issue_date}</tpl>',
+                    '</div></tpl>'
+                ),
+                
+                listeners: {
+                    select: function (cb, record, index) {
+                        //If we're already in the middle of a select, this method
+                        //doesn't need to run.
+                        if(UBVersionMenu.prototype.inSelect) {
+                            return;
+                        }
+                        UBVersionMenu.prototype.inSelect = true;
+                        menus = cb.ubVersionMenus;
+                        for (var i = 0;i < menus.length;i++) {
+                            //Set the value to the correct string by extracting it from what the template generates
+                            menus[i].setRawValue(/>(.*)</.exec(menus[i].tpl.apply(record.data))[1]);
+                            menus[i].selected_record = record;
+                            //For each menu but the one clicked on, make sure the select event gets fired
+                            if (menus[i] != cb) {
+                                menus[i].fireEvent('select', menus[i], record, index);
+                            }
+                        }
+                        for (var i = 0;i < stores_to_reload.length;i++) {
+                            stores_to_reload[i].load();
+                        }
+                        UBVersionMenu.prototype.inSelect = false;
+                    },
+                },
+                store: new Ext.data.ArrayStore({
+                    fields: [
+                        //These can be any type, since it isn't specified
+                        {'name': 'sequence'},
+                        {'name': 'version'},
+                        {'name': 'issue_date'},
+                    ],
+                    data:[[null, null, null]],
+                }),
+            });
+            this.selected_record = this.store[0];
+            UBVersionMenu.prototype.ubVersionMenus.push(this);
+        }
+    });
+
+    measuredUsageUBVersionMenu = new UBVersionMenu([ubRegisterStore]);
+    
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
@@ -2005,7 +2154,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
+        items: [measuredUsageUBVersionMenu, ubRegisterGrid, intervalMeterFormPanel], // configureUBMeasuredUsagesForm sets this
     });
 
     ubMeasuredUsagesPanel.on('activate', function(panel) {
@@ -2133,11 +2282,53 @@ function reeBillReady() {
         //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
 
-    aChargesStore.on('beforeload', function () {
+    aChargesStore.on('beforeload', function (store, options) {
         aChargesGrid.setDisabled(true);
-        aChargesStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        aChargesStore.setBaseParam("account", selected_account);
-        aChargesStore.setBaseParam("sequence", selected_sequence);
+        aChargesStore.setBaseParam("utilbill_id", selected_utilbill.id);
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    aChargesStore.on('beforewrite', function(store, action, rs, options, arg) {
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -2258,6 +2449,29 @@ function reeBillReady() {
     var aChargesToolbar = new Ext.Toolbar({
         items: [
             {
+                xtype: 'button',
+                id: 'utilbillComputeButton',
+                text: 'Recompute All',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                aChargesStore.reload();
+                            } else {
+                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                                    "\n" + jsonData.errors.details);
+                            }
+                        },
+                        failure: function() {
+                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+                        },
+                    });
+                }
+            },
+            {
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
@@ -2375,14 +2589,9 @@ function reeBillReady() {
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: aChargesSummary,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
+        flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
-        title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
@@ -2440,401 +2649,42 @@ function reeBillReady() {
         //console.log("aChargesGrid disable ");
         //console.log(panel);
     });
-    
-
-
-    ///////////////////////////////////////
-    // support for the hypothetical charges
-    // note: the following code is a copy/paste from above...
-
-    // initial data loaded into the grid before a bill is loaded
-    // populate with data if initial pre-loaded data is desired
-    var initialHypotheticalCharges = {
-        rows: [
-        ]
-    };
-
-    var hChargesReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        idProperty: 'uuid',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'uuid', mapping: 'uuid'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
-            {name: 'total', mapping: 'total', type: 'float'},
-            {name: 'processingnote', mapping:'processingnote'},
-        ]
-    });
-    var hChargesWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    // This proxy is only used for reading charge item records, not writing.
-    // This is due to the necessity to batch upload all records. See Grid Editor save handler.
-    // We leave the proxy here for loading data as well as if and when records have entity 
-    // id's and row level CRUD can occur.
-
-    // make a connections instance so that it may be specifically aborted
-    var hChargesStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
-        disableCaching: true,
-    })
-    hChargesStoreProxyConn.autoAbort = true;
-
-    var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
-
-    var hChargesStore = new Ext.data.GroupingStore({
-        proxy: hChargesStoreProxy,
-        autoSave: true,
-        reader: hChargesReader,
-        //root: 'rows',
-        //idProperty: 'uuid',
-        writer: hChargesWriter,
-        data: initialHypotheticalCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
-    });
-
-
-    hChargesStore.on('save', function () {
-        //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
-    });
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    hChargesStore.on('update', function(){
-        //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-    });
-
-    hChargesStore.on('beforeload', function () {
-        hChargesGrid.setDisabled(true);
-        hChargesStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        hChargesStore.setBaseParam("account", selected_account);
-        hChargesStore.setBaseParam("sequence", selected_sequence);
-    });
-
-    // fired when the datastore has completed loading
-    hChargesStore.on('load', function (store, records, options) {
-        //console.log('hChargesStore load');
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
-        hChargesGrid.setDisabled(false);
-    });
-
-    var hChargesSummary = new Ext.ux.grid.GroupSummary();
-
-    var hChargesColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                id:'chargegroup',
-                header: 'Charge Group',
-                width: 160,
-                sortable: true,
-                dataIndex: 'chargegroup',
-                hidden: true,
-            },{
-                header: 'UUID',
-                width: 75,
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                hidden: true,
-            },{
-                header: 'RSI Binding',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Description',
-                width: 75,
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Quantity',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-                
-            },{
-                header: 'Rate',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-            },{
-                header: 'Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.NumberField({allowBlank: false}),
-                renderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.total);
-                }
-            },
-        ]
-    });
-
-    var hChargesToolbar = new Ext.Toolbar({
-        items: [
-            /*{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
-                id: 'hChargesInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-
-                    hChargesGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = hChargesGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var ChargeItemType = hChargesGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                        // ok, this is tricky:  the newly created record is assigned the chargegroup
-                        // of the selection during the insert.  This way, the new record is added
-                        // to the proper group.  Otherwise, if the record does not have the same
-                        // chargegroup name of the adjacent record, a new group is shown in the grid
-                        // and the UI goes out of sync.  Try this by change the chargegroup below
-                        // to some other string.
-                        chargegroup: selection.data.chargegroup,
-                        description: 'enter description',
-                        quantity: 0,
-                        quantity_units: 'kWh',
-                        rate: 0,
-                        rate_units: 'dollars',
-                        total: 0,
-                        //autototal: 0
-                    };
-                    var c = new ChargeItemType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = hChargesStore.indexOf(selection);
-                    hChargesStore.insert(insertionPoint + 1, c);
-                    hChargesGrid.getView().refresh();
-                    hChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                    hChargesGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
-                id: 'hChargesRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-                    var s = hChargesGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        hChargesStore.remove(r);
-                    }
-                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'hChargesSaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    hChargesGrid.stopEditing();
-
-                    hChargesStore.save(); 
-
-                }
-            },{
-                xtype:'tbseparator'
-            }*/
-        ]
-    });
-
-
-    var hChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: hChargesToolbar,
-        colModel: hChargesColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: hChargesStore,
-        enableColumnMove: false,
-        view: new Ext.grid.GroupingView({
-            forceFit:true,
-            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
-        }),
-        plugins: hChargesSummary,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
-        title: 'Hypothetical Charges',
-        clicksToEdit: 2
-        // config options for stateful behavior
-        //stateful: true,
-        //stateId: 'grid' 
-    });
-
-    hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount() <1);
-    });
-    
-    hChargesGrid.on('activate', function(panel) {
-        //console.log("hCharges Grid Activated");
-        //console.log(panel);
-    });
-    hChargesGrid.on('beforeshow', function(panel) {
-        //console.log("hChargesGrid beforeshow");
-        //console.log(panel);
-    });
-    hChargesGrid.on('show', function(panel) {
-        //console.log("hChargesGrid show");
-        //console.log(panel);
-    });
-    hChargesGrid.on('viewready', function(panel) {
-        //console.log("hChargesGrid view ready");
-        //console.log(panel);
-    });
-    hChargesGrid.on('beforeexpand', function (panel, animate) {
-        //console.log("hChargesGrid beforeexpand ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('expand', function (panel) {
-        //console.log("hChargesGrid expand ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('collapse', function (panel) {
-        //console.log("hChargesGrid collapse ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('afterrender', function (panel) {
-        //console.log("hChargesGrid afterrender ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('enable', function (panel) {
-        //console.log("hChargesGrid enable ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('disable', function (panel) {
-        //console.log("hChargesGrid disable ");
-        //console.log(panel);
-    });
 
     //
     // Instantiate the Charge Items panel
     //
+
+    chargesUBVersionMenu = new UBVersionMenu([aChargesStore]);
+
+    chargesUBVersionMenu.on('select', function(combo, record, index) {
+        //Only allow recomputing when the current version is selected
+        if (record.data.sequence == null) {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(false);
+        }
+        else {
+            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(true);
+        }
+    });
+    
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
         title: 'Charges',
         disabled: chargeItemsPanelDisabled,
         xtype: 'panel',
-        layout: 'accordion',
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [
+            chargesUBVersionMenu,
             aChargesGrid,
-            hChargesGrid,
         ]
     });
 
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
     chargeItemsPanel.on('activate', function (panel) {
-        //console.log("chargeItemsPanel activated");
         //console.log(panel);
 
         // because this tab is being displayed, demand the grids that it contain 
@@ -2842,10 +2692,6 @@ function reeBillReady() {
         aChargesGrid.setDisabled(true);
         //aChargesStore.proxy.getConnection().autoAbort = true;
         aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-        hChargesGrid.setDisabled(true);
-        //hChargesStore.proxy.getConnection().autoAbort = true;
-        hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
     });
 
     chargeItemsPanel.on('expand', function (panel) {
@@ -2930,17 +2776,52 @@ function reeBillReady() {
     });
 
     CPRSRSIStore.on('beforeload', function (store, options) {
-
         CPRSRSIGrid.setDisabled(true);
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
 
-        // not sure why options don't have to be explicitly set as they do 
-        // for utilbillGridStore and reeBillStore
-        //options.params.account = selected_account;
-        //options.params.sequence = selected_sequence;
-        //options.params.service = Ext.getCmp('service_for_charges').getValue();
-        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        CPRSRSIStore.setBaseParam("account", selected_account);
-        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = chargesUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -3112,8 +2993,6 @@ function reeBillReady() {
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
         stripeRows: true,
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
@@ -3199,11 +3078,54 @@ function reeBillReady() {
         //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
     });
 
-    UPRSRSIStore.on('beforeload', function () {
+    UPRSRSIStore.on('beforeload', function (store, options) {
         UPRSRSIGrid.setDisabled(true);
-        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        UPRSRSIStore.setBaseParam("account", selected_account);
-        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
+        options.params.utilbill_id = selected_utilbill.id;
+        
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = rsUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    UPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.utilbill_id = selected_utilbill.id;
+        //Include the reebill's associated sequence and version if the utilbill is associated with one
+        record = rsUBVersionMenu.selected_record
+        //If there is no sequence or version, don't include those parameters
+        if (record.data.sequence == null) {
+            if (options.params.reebill_sequence != undefined) {
+                delete options.params.reebill_sequence
+            }
+            if (options.params.reebill_version != undefined) {
+                delete options.params.reebill_version
+            }
+        }
+        //Otherwise, get the correct sequence and version
+        else {
+            options.params.reebill_sequence = record.data.sequence
+            options.params.reebill_version = record.data.version
+        }
+
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
     });
 
     // fired when the datastore has completed loading
@@ -3380,8 +3302,6 @@ function reeBillReady() {
         store: UPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
         stripeRows: true,
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
@@ -3395,294 +3315,50 @@ function reeBillReady() {
     });
   
 
-
-    // the URS
-    //var initialURSRSI = {
-        //rows: [
-        //]
-    //};
-
-    //var URSRSIReader = new Ext.data.JsonReader({
-        //// metadata configuration options:
-        //// there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        ////idProperty: 'id',
-        ////root: 'rows',
-
-        //// the fields config option will internally create an Ext.data.Record
-        //// constructor that provides mapping for reading the record data objects
-        //fields: [
-            //// map Record's field to json object's key of same name
-            //{name: 'uuid', mapping: 'uuid'},
-            //{name: 'rsi_binding', mapping: 'rsi_binding'},
-            //{name: 'description', mapping: 'description'},
-            //{name: 'quantity', mapping: 'quantity'},
-            //{name: 'quantityunits', mapping: 'quantityunits'},
-            //{name: 'rate', mapping: 'rate'},
-            //{name: 'rateunits', mapping: 'rateunits'},
-            //{name: 'roundrule', mapping:'roundrule'},
-            //{name: 'total', mapping: 'total'},
-        //]
-    //});
-
-    //var URSRSIWriter = new Ext.data.JsonWriter({
-        //encode: true,
-        //// write all fields, not just those that changed
-        //writeAllFields: true 
-    //});
-
-    //var URSRSIStoreProxyConn = new Ext.data.Connection({
-        //url: 'http://'+location.host+'/reebill/ursrsi',
-        //disableCaching: true,
-    //});
-    //URSRSIStoreProxyConn.autoAbort = true;
-
-    //var URSRSIStoreProxy = new Ext.data.HttpProxy(URSRSIStoreProxyConn);
-
-    //var URSRSIStore = new Ext.data.JsonStore({
-        //proxy: URSRSIStoreProxy,
-        //reader: URSRSIReader,
-        //writer: URSRSIWriter,
-        //// or, autosave must be used to save each action
-        //autoSave: true,
-        //// won't be updated when combos change, so do this in event
-        //// perhaps also can be put in the options param for the ajax request
-        //baseParams: { account:selected_account, sequence: selected_sequence},
-        //data: initialURSRSI,
-        //root: 'rows',
-        //idProperty: 'uuid',
-        //fields: [
-            //{name: 'uuid'},
-            //{name: 'rsi_binding'},
-            //{name: 'description'},
-            //{name: 'quantity'},
-            //{name: 'quantityunits'},
-            //{name: 'rate'},
-            //{name: 'rateunits'},
-            //{name: 'roundrule'},
-            //{name: 'total'},
-        //],
-    //});
-
-    //URSRSIStore.on('save', function (store, batch, data) {
-    //});
-
-    //URSRSIStore.on('beforeload', function (store, options) {
-
-        ////URSRSIGrid.setDisabled(true);
-
-        ////options.params.account = selected_account;
-        ////options.params.sequence = selected_sequence;
-        ////options.params.service = Ext.getCmp('service_for_charges').getValue();
-        //URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        //URSRSIStore.setBaseParam("account", selected_account);
-        //URSRSIStore.setBaseParam("sequence", selected_sequence);
-    //});
-
-    //// fired when the datastore has completed loading
-    //URSRSIStore.on('load', function (store, records, options) {
-        //// the grid is disabled by the panel that contains it  
-        //// prior to loading, and must be enabled when loading is complete
-        //// the datastore enables when it is done loading
-        ////URSRSIGrid.setDisabled(false);
-    //});
-
-    //// grid's data store callback for when data is edited
-    //// when the store backing the grid is edited, enable the save button
-    //URSRSIStore.on('update', function(){
-
-        //// disallow editing of the URS
-        ////URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-    //});
-
-    //URSRSIStore.on('beforesave', function() {
-    //});
-
-    //var URSRSIColModel = new Ext.grid.ColumnModel(
-    //{
-        //columns: [
-            //{
-                //header: 'UUID',
-                //sortable: true,
-                //dataIndex: 'uuid',
-                //editable: false,
-                //editor: new Ext.form.TextField({allowBlank: false}),
-                //hidden: true,
-            //},{
-                //header: 'RSI Binding',
-                //sortable: true,
-                //dataIndex: 'rsi_binding',
-                //// no editor disallows edits
-                ////editor: new Ext.form.TextField({allowBlank: false})
-            //},{
-                //header: 'Description',
-                //sortable: true,
-                //dataIndex: 'description',
-            //},{
-                //header: 'Quantity',
-                //sortable: true,
-                //dataIndex: 'quantity',
-            //},{
-                //header: 'Units',
-                //sortable: true,
-                //dataIndex: 'quantityunits',
-            //},{
-                //header: 'Rate',
-                //sortable: true,
-                //dataIndex: 'rate',
-            //},{
-                //header: 'Units',
-                //sortable: true,
-                //dataIndex: 'rateunits',
-            //},{
-                //header: 'Round Rule',
-                //sortable: true,
-                //dataIndex: 'roundrule',
-            //},{
-                //header: 'Total', 
-                //sortable: true, 
-                //dataIndex: 'total', 
-                //summaryType: 'sum',
-                //align: 'right',
-            //}
-        //]
-    //});
-
-    //var URSRSIToolbar = new Ext.Toolbar({
-        //items: [
-            //{
-                //xtype: 'button',
-                //// ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                //id: 'URSRSIInsertBtn',
-                //iconCls: 'icon-add',
-                //text: 'Insert',
-                //disabled: true,
-                //handler: function()
-                //{
-                    //URSRSIGrid.stopEditing();
-
-                    //// grab the current selection - only one row may be selected per singlselect configuration
-                    //var selection = URSRSIGrid.getSelectionModel().getSelected();
-
-                    //// make the new record
-                    //var URSRSIType = URSRSIGrid.getStore().recordType;
-                    //var defaultData = 
-                    //{
-                    //};
-                    //var r = new URSRSIType(defaultData);
-        
-                    //// select newly inserted record
-                    //var insertionPoint = URSRSIStore.indexOf(selection);
-                    //URSRSIStore.insert(insertionPoint + 1, r);
-                    //URSRSIGrid.startEditing(insertionPoint +1,1);
-                    
-                    //// An inserted record must be saved 
-                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-                //}
-            //},{
-                //xtype: 'tbseparator'
-            //},{
-                //xtype: 'button',
-                //// ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                //id: 'URSRSIRemoveBtn',
-                //iconCls: 'icon-delete',
-                //text: 'Remove',
-                //disabled: true,
-                //handler: function()
-                //{
-                    //URSRSIGrid.stopEditing();
-
-                    //// TODO single row selection only, test allowing multirow selection
-                    //var s = URSRSIGrid.getSelectionModel().getSelections();
-                    //for(var i = 0, r; r = s[i]; i++)
-                    //{
-                        //URSRSIStore.remove(r);
-                    //}
-                    //URSRSIStore.save(); 
-                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
-                //}
-            //},{
-                //xtype:'tbseparator'
-            //},[>{
-                //xtype: 'button',
-                //// places reference to this button in grid.  
-                //id: 'URSRSISaveBtn',
-                //iconCls: 'icon-save',
-                //text: 'Save',
-                //disabled: true,
-                //handler: function()
-                //{
-                    //// disable the save button for the save attempt.
-                    //// is there a closer place for this to the actual button click due to the possibility of a double
-                    //// clicked button submitting two ajax requests?
-                    //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
-
-                    //// stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    //URSRSIGrid.stopEditing();
-
-                    //URSRSIStore.save(); 
-                //}
-            //}*/
-        //]
-    //});
-
-    //var URSRSIGrid = new Ext.grid.EditorGridPanel({
-        //tbar: URSRSIToolbar,
-        //colModel: URSRSIColModel,
-        //selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        //store: URSRSIStore,
-        //enableColumnMove: true,
-        //frame: true,
-        //collapsible: false,
-        //animCollapse: false,
-        //stripeRows: true,
-        //viewConfig: {
-            //// doesn't seem to work
-            //forceFit: true,
-        //},
-        //title: 'Utility Global',
-        //clicksToEdit: 2
-    //});
-
-    //URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        //// if a selection is made, allow it to be removed
-        //// if the selection was deselected to nothing, allow no 
-        //// records to be removed.
-
-        //// disallow editing of the URS
-        ////URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        //// if there was a selection, allow an insertion
-        ////URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    //});
-  
-
     //
     // Instantiate the Rate Structure panel 
     //
+
+    rsUBVersionMenu = new UBVersionMenu([CPRSRSIStore, UPRSRSIStore]);
+
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
         disabled: rateStructurePanelDisabled,
-        layout: 'border',
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [
-        {
-            region: 'north',
-            layout: 'fit',
-            split: true,
-            height: 275,
-            items: [CPRSRSIGrid]
-        },{
-            region: 'center',
-            layout: 'fit',
-            split: true,
-            items: [UPRSRSIGrid]
-        //},{
-            //region:'south',
-            //layout: 'fit',
-            //split: true,
-            //height: 275,
-            //items: [URSRSIGrid]
-        }]
+            rsUBVersionMenu,
+            {
+                xtype:'panel',
+                flex: 1,
+                border: false,
+                layout:'border',
+                items: [
+                    {
+                        xtype: 'panel',
+                        region: 'north',
+                        border: false,
+                        split: true,
+                        layout: 'fit',
+                        items: [UPRSRSIGrid],
+                        minHeight: 0,
+                        height: 300,
+                    },
+                    {
+                        xtype: 'panel',
+                        region: 'center',
+                        border: false,
+                        split: true,
+                        layout: 'fit',
+                        items: [CPRSRSIGrid],
+                    },
+                ],
+            },
+        ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -3903,15 +3579,8 @@ function reeBillReady() {
         }),
         store: paymentStore,
         enableColumnMove: false,
-        frame: true,
-        collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Payments',
         clicksToEdit: 2
     });
 
@@ -3934,7 +3603,11 @@ function reeBillReady() {
         id: 'paymentTab',
         title: 'Payments',
         disabled: paymentPanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [paymentGrid, ],
     });
 
@@ -4145,14 +3818,11 @@ function reeBillReady() {
         store: mailReeBillStore,
         enableColumnMove: false,
         frame: true,
-        collapsible: true,
-        animCollapse: false,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Mail ReeBills',
     });
 
     mailReeBillGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -4173,7 +3843,7 @@ function reeBillReady() {
         id: 'mailTab',
         title: 'Mail',
         disabled: mailPanelDisabled,
-        layout: 'vbox',
+        layout: 'fit',
         layoutConfig : {
             align : 'stretch',
             pack : 'start'
@@ -4771,10 +4441,8 @@ function reeBillReady() {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
-                                    //Ext.MessageBox.alert('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    //Ext.MessageBox.alert('1Server Error');
-                                    //console.log('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('1Server Error');
+                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     accountGrid.getSelectionModel().clearSelections();
@@ -5769,7 +5437,7 @@ function reeBillReady() {
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
         groupField: 'matching',
-        sortInfo:{field: 'difference', direction: 'DESC'},
+        sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
     
@@ -5999,7 +5667,6 @@ function reeBillReady() {
         autoExpandColumn: 'mailto',
         height: 900,
         width: 1000,
-        title: 'Reebills Ready to be Issued',
         clicksToEdit: 2,
         forceValidation: true,
     });
@@ -6022,13 +5689,199 @@ function reeBillReady() {
         id: 'issuableTab',
         title: 'Issuable Reebills',
         disabled: issuablePanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : { align : 'stretch', pack : 'start' },
         items: [issuableGrid,],
     });
 
     issuablePanel.on('activate', function(panel) {
         issuableStore.reload();
     });
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Reebill Charges tab
+    //
+
+    var hChargesReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        idProperty: 'uuid',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'uuid', mapping: 'uuid'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'actual_quantity', mapping: 'actual_quantity'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+            {name: 'actual_rate', mapping: 'actual_rate'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'rate_units', mapping: 'rate_units'},
+            {name: 'actual_total', mapping: 'actual_total', type: 'float'},
+            {name: 'total', mapping: 'total', type: 'float'},
+            {name: 'processingnote', mapping:'processingnote'},
+        ]
+    });
+    
+    var hChargesWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+    
+    var hChargesStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
+        disableCaching: true,
+    })
+    hChargesStoreProxyConn.autoAbort = true;
+
+    var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
+
+    var hChargesStore = new Ext.data.GroupingStore({
+        proxy: hChargesStoreProxy,
+        autoSave: true,
+        reader: hChargesReader,
+        //root: 'rows',
+        //idProperty: 'uuid',
+        writer: hChargesWriter,
+        data: {rows:[]},
+        sortInfo:{field: 'chargegroup', direction: 'ASC'},
+        groupField:'chargegroup'
+    });
+
+    hChargesStore.on('beforeload', function (store, options) {
+        hChargesGrid.setDisabled(true);
+        options.params.service = Ext.getCmp('service_for_charges').getValue();
+        options.params.account = selected_account;
+        options.params.sequence = selected_sequence;
+    });
+    
+    hChargesStore.on('load', function (store, records, options) {
+        hChargesGrid.setDisabled(false);
+    });
+    
+    var hChargesSummary = new Ext.ux.grid.GroupSummary();
+
+    var hChargesColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                id:'chargegroup',
+                header: 'Charge Group',
+                width: 160,
+                sortable: true,
+                dataIndex: 'chargegroup',
+                hidden: true,
+            },{
+                header: 'UUID',
+                width: 75,
+                sortable: true,
+                dataIndex: 'uuid',
+                hidden: true,
+            },{
+                header: 'RSI Binding',
+                sortable: true,
+                dataIndex: 'rsi_binding',
+            },{
+                header: 'Description',
+                width: 75,
+                sortable: true,
+                dataIndex: 'description',
+            },{
+                header: 'Actual Quantity',
+                width: 75,
+                sortable: true,
+                dataIndex: 'actual_quantity',
+            },{
+                header: 'Hypo Quantity',
+                width: 75,
+                sortable: true,
+                dataIndex: 'quantity',
+            },{
+                header: 'Units',
+                width: 75,
+                sortable: true,
+                dataIndex: 'quantity_units',
+            },{
+                header: 'Actual Rate',
+                width: 75,
+                sortable: true,
+                dataIndex: 'actual_rate',
+            },{
+                header: 'Hypo Rate',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rate',
+            },{
+                header: 'Units',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rate_units',
+            },{
+                header: 'Actual Total', 
+                width: 75, 
+                sortable: true, 
+                summaryType: 'sum',
+                align: 'right',
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.actual_total);
+                }
+            },{
+                header: 'Hypo Total', 
+                width: 75, 
+                sortable: true, 
+                summaryType: 'sum',
+                align: 'right',
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.total);
+                }
+            },
+        ]
+    });
+    
+    var hChargesGrid = new Ext.grid.GridPanel({
+        colModel: hChargesColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: hChargesStore,
+        enableColumnMove: false,
+        view: new Ext.grid.GroupingView({
+            forceFit:true,
+            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
+        }),
+        plugins: hChargesSummary,
+        flex: 1,
+        stripeRows: true,
+        autoExpandColumn: 'rsi_binding',
+    });
+
+    reebillChargesPanel = new Ext.Panel({
+        id: 'hChargesPanelTab',
+        title: 'Reebill Charges',
+        disabled: reebillChargesPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        items: [
+            hChargesGrid,
+        ],
+    });
+    
+    reebillChargesPanel.on('activate', function (panel) {
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        hChargesStore.load();
+    });
+    
 
     ////////////////////////////////////////////////////////////////////////////
     // Status bar displayed at footer of every panel in the tabpanel
@@ -6059,15 +5912,16 @@ function reeBillReady() {
         border:true,
         items:[
             accountsPanel,
-            paymentsPanel,
             utilityBillPanel,
-            reeBillPanel,
             ubMeasuredUsagesPanel,
             rateStructurePanel,
             chargeItemsPanel,
-            journalPanel,
+            paymentsPanel,
+            reeBillPanel,
+            reebillChargesPanel,
             issuablePanel,
             mailPanel,
+            journalPanel,
             reportPanel,
             preferencesPanel,
             aboutPanel,
@@ -6223,11 +6077,6 @@ function reeBillReady() {
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
-        aChargesStore.loadData({rows: 0, success: true});
-        hChargesStore.loadData({rows: 0, succes: true});
-        CPRSRSIStore.loadData({rows: 0, success: true});
-        //URSRSIStore.loadData({rows: 0, success: true});
-        UPRSRSIStore.loadData({rows: 0, success: true});
 
         updateStatusbar(account, null, null);
 
@@ -6311,18 +6160,17 @@ function reeBillReady() {
         
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
-            ubMeasuredUsagesPanel.setDisabled(true);
-            rateStructurePanel.setDisabled(true);
-            chargeItemsPanel.setDisabled(true);
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
+            reebillChargesPanel.setDisabled(true);
             Ext.getCmp('service_for_charges').getStore().removeAll();
             Ext.getCmp('service_for_charges').clearValue();
             Ext.getCmp('service_for_charges').setDisabled(true);
             return;
         }
-
+        //Enable the reebill charges panel when a reebill is selected
+        reebillChargesPanel.setDisabled(false);
         // enable or disable the reebill delete button depending on whether the
         // selected reebill is issued: only un-issued bills should be
         // deletable.
@@ -6397,9 +6245,6 @@ function reeBillReady() {
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
         // the global account and sequence selection
-        ubMeasuredUsagesPanel.setDisabled(false);
-        rateStructurePanel.setDisabled(false);
-        chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
         accountInfoFormPanel.setDisabled(false);

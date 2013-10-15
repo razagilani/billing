@@ -3,8 +3,10 @@ import unittest
 from datetime import date, datetime
 import MySQLdb
 import sqlalchemy
+from sqlalchemy.orm.exc import NoResultFound
+import pymongo
 from billing.processing import state
-from billing.processing.state import Customer, UtilBill
+from billing.processing.state import Customer, UtilBill, ReeBill
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
@@ -26,7 +28,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -37,14 +39,15 @@ class StateTest(utils.TestCase):
                 ('Test Customer', 99999, .12, .34)''')
         mysql_connection.commit()
 
-        sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'test'
-        })
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **billdb_config)
+        # NOTE for some reason, when this is enabled, all tests fail with a
+        # SQLAlchemy-related error; see 
+        # https://www.pivotaltracker.com/story/show/58851006
+        #sqlalchemy.orm.clear_mappers()
+
+        self.state_db = state.StateDB('localhost', 'test', 'dev', 'dev')
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection(billdb_config['host'],
+                int(billdb_config['port']))[billdb_config['database']])
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -53,7 +56,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -96,39 +99,48 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
             today = datetime.utcnow().date()
+            customer = session.query(Customer).filter_by(account=account).one()
+
+            # when there are no utility bills, trim_hypothetical_utilbills
+            # should do nothing
+            assert session.query(UtilBill).count() == 0
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
+
+            # TODO add tests for other services to make sure e.g. "electric"
+            # bills are unaffected
+
+            # to simplify the utility-bill-creation API
+            def create_bill(start, end, state):
+                session.add(UtilBill(customer, state, 'gas',
+                        'washgas', 'DC Non Residential Non Heat',
+                        period_start=start, period_end=end,
+                        date_received=today))
+
+            # when there are only Hypothetical utility bills,
+            # trim_hypothetical_utilbills should remove all of them
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Hypothetical)
+            create_bill(date(2012,2,1), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
 
             # 2 Complete bills
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,1), date(2012,2,1), 0, today)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,15), date(2012,7,15), 0, today)
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Complete)
+            create_bill(date(2012,6,15), date(2012,7,15), UtilBill.Complete)
 
             # Hypothetical bills before, between, and after the Complete bills
             # (including some overlaps with Complete bills and each other)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,9,1), date(2011,10,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,10,1), date(2011,11,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,11,15), date(2012,1,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,30), date(2012,3,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,3,1), date(2012,4,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,1), date(2012,7,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,8,20), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,9,1), 0, today,
-                    state=UtilBill.Hypothetical)
+            create_bill(date(2011,9,1), date(2011,10,1), UtilBill.Hypothetical)
+            create_bill(date(2011,10,1), date(2011,11,15), UtilBill.Hypothetical)
+            create_bill(date(2011,11,15), date(2012,1,15), UtilBill.Hypothetical)
+            create_bill(date(2012,1,30), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,3,1), date(2012,4,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,8,20), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,9,1), UtilBill.Hypothetical)
 
             self.state_db.trim_hypothetical_utilbills(session, account,
                     service)
@@ -155,10 +167,10 @@ class StateTest(utils.TestCase):
 
     def test_new_reebill(self):
         with DBSession(self.state_db) as session:
-            b = self.state_db.new_rebill(session, '99999', 1)
+            b = self.state_db.new_reebill(session, '99999', 1)
             self.assertEqual('99999', b.customer.account)
             self.assertEqual(1, b.sequence)
-            self.assertEqual(0, b.max_version)
+            self.assertEqual(0, b.version)
             self.assertEqual(0, b.issued)
             session.commit()
 
@@ -169,95 +181,126 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             # initially max_version is 0, max_issued_version is None, and issued
             # is false
-            b = self.state_db.new_rebill(session, acc, seq)
+            b = self.state_db.new_reebill(session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(None, self.state_db.max_issued_version(session, acc,
-                seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
+
+            # adding versions of bills for other accounts should have no effect
+            session.add(Customer('someone', '11111', 0.5, 0.1, 'id goes here'))
+            session.add(Customer('someone', '22222', 0.5, 0.1, 'id goes here'))
+            self.state_db.new_reebill(session, '11111', 1)
+            self.state_db.new_reebill(session, '11111', 2)
+            self.state_db.new_reebill(session, '22222', 1)
+            self.state_db.issue(session, '11111', 1)
+            self.state_db.issue(session, '22222', 1)
+            self.state_db.increment_version(session, '11111', 1)
+            self.state_db.increment_version(session, '22222', 1)
+            self.state_db.issue(session, '22222', 1)
+            self.state_db.increment_version(session, '22222', 1)
+            self.assertEqual(0, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
+            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
             # incrementing version to 1 should fail when the bill is not issued
-            self.assertRaises(Exception, self.state_db.increment_version, session, acc, seq)
+            self.assertRaises(Exception, self.state_db.increment_version,
+                    session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(None, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=0))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
             # issue & increment version to 1
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(True, self.state_db.is_issued(session, acc, seq))
+            self.assertEqual(True, self.state_db.is_issued(session, acc, seq)) # default version for is_issued is highest, i.e. 1
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.state_db.increment_version(session, acc, seq)
             self.assertEqual(1, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(0, self.state_db.max_issued_version(session, acc, seq))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
+            self.assertEqual(0, self.state_db.max_issued_version(session, acc,
+                    seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=1))
+            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
-            # issue & increment version to 2
+            # issue version 1 & create version 2
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc,
+                    seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=1))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.state_db.increment_version(session, acc, seq)
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=1))
+                    version=1))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=2))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.assertEqual(2, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc,
+                    seq))
 
             # issue version 2
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(2, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(2, self.state_db.max_issued_version(session, acc,
+                    seq))
 
             session.commit()
 
     def test_get_unissued_corrections(self):
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
-            self.state_db.new_rebill(session, '99999', 1)
-            self.state_db.new_rebill(session, '99999', 2)
-            self.state_db.new_rebill(session, '99999', 3)
+            self.state_db.new_reebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 2)
+            self.state_db.new_reebill(session, '99999', 3)
             self.state_db.issue(session, '99999', 1)
             self.state_db.issue(session, '99999', 2)
             self.state_db.issue(session, '99999', 3)
@@ -284,32 +327,43 @@ class StateTest(utils.TestCase):
 
             session.commit()
 
+    @unittest.skip('StateDB.delete_reebill no longer exists; move elsewhere?')
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
             # un-issued bill version 0: row is actually deleted from the table
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
-            self.state_db.delete_reebill(session, account, 1)
+            customer = session.query(Customer).filter_by(account=account).one()
+            reebill = session.query(ReeBill).filter_by(customer=customer, sequence=1, version=0)
+            self.state_db.delete_reebill(session, reebill)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
             # issued bill can't be deleted
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             self.state_db.issue(session, account, 1)
-            self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
+            assert reebill.issued
+            # TODO check for a more specific exception
+            self.assertRaises(Exception, self.state_db.delete_reebill, session,
+                    reebill)
 
             # make a new version, which is not issued; that can be deleted by
             # decrementing max_version
             self.state_db.increment_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
             assert not self.state_db.is_issued(session, account, 1)
+            reebill_correction = session.query(ReeBill).filter_by(
+                    account=account, sequence=1, version=1)
+            assert not reebill_correction.issued
             self.state_db.delete_reebill(session, account, 1)
             self.assertEqual([1], self.state_db.listSequences(session, account))
             self.assertEqual(0, self.state_db.max_version(session, account, 1))
 
             # remaining version 0 can't be deleted
-            self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
+            # TODO check for a more specific exception
+            self.assertRaises(Exception, self.state_db.delete_reebill, session,
+                    account, 1)
 
             session.commit()
 
@@ -381,17 +435,19 @@ class StateTest(utils.TestCase):
             reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
             for r in reebills:
                 r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
-                    dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
+            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)), reebill=reebills[x])
+                    for x in xrange(0, 10)]
             for x in xrange(10):
                 session.add(reebills[x])
                 session.add(utilbills[x])
 
             # Add one utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*10),\
-                    period_end=dt+timedelta(days=30*11),\
-                    reebill=None)
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas'
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*10),
+                    period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
 
             utilbills = self.state_db.choose_next_utilbills(session, account, services)
@@ -413,29 +469,34 @@ class StateTest(utils.TestCase):
             reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
             for r in reebills:
                 r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
-                    dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
+            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)),
+                    reebill=reebills[x]) for x in xrange(0, 10)]
             for x in xrange(10):
                 session.add(reebills[x])
                 session.add(utilbills[x])
 
-            # Add multiple utilbills that come after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*10),\
-                    period_end=dt+timedelta(days=30*11),\
-                    reebill=None)
+            # Add multiple utilbills that come after the last utilbill from the
+            # above loop
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*10),
+                    period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*11),\
-                    period_end=dt+timedelta(days=30*12),\
-                    reebill=None))
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*12),\
-                    period_end=dt+timedelta(days=30*13),\
-                    reebill=None))
+            session.add(UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*11),
+                    period_end=dt+timedelta(days=30*12), reebill=None))
+            session.add(UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*12),
+                    period_end=dt+timedelta(days=30*13), reebill=None))
 
             # Same tests
-            utilbills = self.state_db.choose_next_utilbills(session, account, services)
+            utilbills = self.state_db.choose_next_utilbills(session, account,
+                    services)
             self.assertListEqual(services, [ub.service for ub in utilbills])
             self.assertEqual(len(utilbills), 1)
             self.assertIsNotNone(utilbills[0])
@@ -454,8 +515,10 @@ class StateTest(utils.TestCase):
             for r in reebills:
                 if r is not None:
                     r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
-                    dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
+            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)),
+                    reebill=reebills[x]) for x in xrange(0, 10)]
 
             # None entries in reebills won't go into the database, so they are stripped here
             reebills = reebills[3:]
@@ -467,10 +530,10 @@ class StateTest(utils.TestCase):
                 session.add(ub)
 
             # Add an unattached utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*10),\
-                    period_end=dt+timedelta(days=30*11),\
-                    reebill=None)
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*10),
+                    period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
 
             # Same tests
@@ -493,10 +556,16 @@ class StateTest(utils.TestCase):
             reebills = [ReeBill(customer, x+1) for x in xrange(1, 11)]
             for r in reebills:
                 r.issued = 1
-            gas_utilbills = [UtilBill(customer, 0, 'gas', dt_gas+timedelta(days=30*x),\
-                    dt_gas+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
-            elec_utilbills = [UtilBill(customer, 0, 'electric', dt_elec+timedelta(days=30*x),\
-                    dt_elec+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
+            gas_utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    dt_gas+timedelta(days=30*x),
+                    dt_gas+timedelta(days=30*(x+1)),
+                    reebill=reebills[x]) for x in xrange(0, 10)]
+            elec_utilbills = [UtilBill(customer, 0, 'electric', 'pepco',
+                    'DC Non Residential Non Heat',
+                    dt_elec+timedelta(days=30*x),\
+                    dt_elec+timedelta(days=30*(x+1)), reebill=reebills[x])
+                    for x in xrange(0, 10)]
 
             # Add twenty utilbills "associated" to reebills, ten of gas and ten of electric
             # The gas and electric bills are on different time periods
@@ -505,19 +574,20 @@ class StateTest(utils.TestCase):
                 session.add(gas_utilbills[x])
                 session.add(elec_utilbills[x])
 
-            target_gas_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt_gas+timedelta(days=30*10),\
-                    period_end=dt_gas+timedelta(days=30*11),\
-                    reebill=None)
+            target_gas_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt_gas+timedelta(days=30*10),
+                    period_end=dt_gas+timedelta(days=30*11), reebill=None)
             session.add(target_gas_utilbill)
 
-            target_elec_utilbill = UtilBill(customer=customer, state=0, service='electric',\
-                    period_start=dt_elec+timedelta(days=30*10),\
-                    period_end=dt_elec+timedelta(days=30*11),\
-                    reebill=None)
+            target_elec_utilbill = UtilBill(customer, 0, 'electric', 'pepco',
+                    'DC Non Residential Non Heat',
+                    period_start=dt_elec+timedelta(days=30*10),
+                    period_end=dt_elec+timedelta(days=30*11), reebill=None)
             session.add(target_elec_utilbill)
 
-            utilbills = self.state_db.choose_next_utilbills(session, account, services)
+            utilbills = self.state_db.choose_next_utilbills(session, account,
+                    services)
             self.assertListEqual(services, [ub.service for ub in utilbills])
             self.assertEqual(len(utilbills), 2)
             self.assertIsNotNone(utilbills[0])
@@ -536,8 +606,10 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             customer = self.state_db.get_customer(session, account)
 
-            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt, period_end=dt+timedelta(days=30), reebill=None)
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt, period_end=dt+timedelta(days=30),
+                    reebill=None)
             session.add(target_utilbill)
 
             utilbills = self.state_db.choose_next_utilbills(session, account, services)

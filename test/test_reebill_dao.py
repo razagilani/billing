@@ -3,29 +3,48 @@ import pymongo
 import sqlalchemy
 import copy
 from datetime import date, datetime, timedelta
+from bson import ObjectId
+import MySQLdb
 from billing.util import dateutils
 from billing.processing import mongo
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
-import MySQLdb
-from billing.test import example_data
+from billing.processing.state import StateDB
+from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
+from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException, float_to_decimal
 from billing.processing.session_contextmanager import DBSession
+from billing.util.dictutils import deep_map
+from billing.util.dateutils import date_to_datetime
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ReebillDAOTest(TestCaseWithSetup):
+class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
+    '''Tests for ReeBillDAO, which loads/saves utility bill and reebill
+    documents in mongo.
+    
+    Since this is a TestCaseWithSetup, there is a customer account in MySQL and
+    a utility bill template in Mongo before each test, but maybe that should be
+    removed since these are more low-level test than TestProcess.'''
+
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
-            # put some reebills in Mongo, including non-0 versions
-            b0 = example_data.get_reebill('99999', 0, start=date(2012,1,1), end=date(2012,2,1), version=0)
-            b1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=0)
-            b1_1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=1)
-            b1_2 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=2)
-            b2 = example_data.get_reebill('99999', 2, start=date(2012,3,1), end=date(2012,4,1), version=0)
-            b3 = example_data.get_reebill('99999', 3, start=date(2012,4,1), end=date(2012,5,1), version=0)
-            b3_1 = example_data.get_reebill('99999', 3, start=date(2012,4,1), end=date(2012,5,1), version=1)
+            # put some reebills in Mongo, including non-0 versions. note that a
+            # sequence-0 utility bill template is already present.
+            b0 = example_data.get_reebill('99999', 0, start=date(2012,1,1),
+                    end=date(2012,2,1), version=0)
+            b1 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=0)
+            b1_1 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=1)
+            b1_2 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=2)
+            b2 = example_data.get_reebill('99999', 2, start=date(2012,3,1),
+                    end=date(2012,4,1), version=0)
+            b3 = example_data.get_reebill('99999', 3, start=date(2012,4,1),
+                    end=date(2012,5,1), version=0)
+            b3_1 = example_data.get_reebill('99999', 3, start=date(2012,4,1),
+                    end=date(2012,5,1), version=1)
 
             # change something in each utility bill to make it identifiable:
             # meter identifier works as well as anything else
@@ -47,7 +66,7 @@ class ReebillDAOTest(TestCaseWithSetup):
             b3.issue_date = date(2012,3,1)
             b3_1.issue_date = date(2012,4,15)
 
-            # save reebill docs in Mongo, and add rows in MySQL with max
+            # save reebill docs in Mongo, and add rows in MySQL with each
             # version of each bill. issued reebills need their own frozen
             # utilbills in Mongo, which are created by saving with
             # freeze_utilbills=True.
@@ -58,17 +77,22 @@ class ReebillDAOTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(b2)
             self.reebill_dao.save_reebill(b3, freeze_utilbills=True)
             self.reebill_dao.save_reebill(b3_1)
-            self.state_db.new_rebill(session, '99999', 1, max_version=2)
-            self.state_db.new_rebill(session, '99999', 2, max_version=0)
-            self.state_db.new_rebill(session, '99999', 3, max_version=1)
+            self.state_db.new_reebill(session, '99999', 1, version=0)
+            self.state_db.new_reebill(session, '99999', 1, version=1)
+            self.state_db.new_reebill(session, '99999', 1, version=2)
+            self.state_db.new_reebill(session, '99999', 2, version=0)
+            self.state_db.new_reebill(session, '99999', 3, version=0)
+            self.state_db.new_reebill(session, '99999', 3, version=1)
 
             # freezing of utililty bills should have created one one frozen
             # copy for each issued reebill (3) in addition to the editable one
-            # for each sequence (4), for a total of 7
+            # for each sequence (4), plus the template that was already there,
+            # for a total of 8
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(7, len(all_utilbill_docs))
+            self.assertEquals(8, len(all_utilbill_docs))
 
-            # with no extra args to load_reebill(), maximum version should come out
+            # with no extra args to load_reebill(), it should load the maximum
+            # version
             b0_max = self.reebill_dao.load_reebill('99999', 0)
             b1_max = self.reebill_dao.load_reebill('99999', 1)
             b2_max = self.reebill_dao.load_reebill('99999', 2)
@@ -158,7 +182,7 @@ class ReebillDAOTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 1)
 
             # save frozen utility bills
             self.reebill_dao.save_reebill(b, freeze_utilbills=True)
@@ -171,23 +195,14 @@ class ReebillDAOTest(TestCaseWithSetup):
                     utility=u['utility'], service=u['service'],
                     start=u['start'], end=u['end'], sequence=1)
             
-            # reebill with frozen utility bills can still be saved, but it
-            # can't be saved again with freeze_utilbills=True
-            self.reebill_dao.save_reebill(b)
-            self.assertRaises(NotUniqueException,
-                    self.reebill_dao.save_reebill, b, freeze_utilbills=True)
+            # reebill with frozen utility bills can't be saved, because saving
+            # the utility bills fails
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+                    b)
+            # unless the "force" argument is used
+            self.reebill_dao.save_reebill(b, force=True)
 
-            # save again to make sure the failed call to
-            # save_reebill(freeze_utilbills=True) above did not modify
-            # _id, sequence, or version
-            self.reebill_dao.save_reebill(b)
-
-            # trying to make SQLAlchemy flush its cache
-            #from billing.processing.state import ReeBill
-            #session.query(ReeBill).all()
-            #sqlalchemy.flush()
-
-            # issued reebill can't be saved at all
+            # likewise, an issued reebill can't be saved
             self.state_db.issue(session, '99999', 1)
             self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
                     b)
@@ -195,28 +210,22 @@ class ReebillDAOTest(TestCaseWithSetup):
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
-        # nothing to load
-        self.assertRaises(NoSuchBillException,
-                self.reebill_dao.load_utilbill, '99999', 'gas', 'washgas',
-                date(2012,11,12), date(2012,12,14))
+        # template utility bill is already saved in Mongo; load it and make
+        # sure it's the same as the one in example_data.
+        # example_data bill must be modified to get it to match (the same type
+        # conversions happen when it's loaded out of mongo too)
+        ub = example_data.get_utilbill_dict(u'99999', start=date(1900,1,1),
+                end=date(1900,2,1), utility=u'washgas', service=u'gas')
 
-        # save a utilbill
-        ub = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(ub)
-
-        # load it
-        self.assertEqual(ub, self.reebill_dao.load_utilbill('99999', 'gas',
-                'washgas', date(2011,11,12), date(2011,12,14)))
+        self.maxDiff = None
+        self.assertDocumentsEqualExceptKeys(ub,
+                self.reebill_dao.load_utilbill('99999', 'gas', 'washgas',
+                date(1900,1,1), date(1900,2,1)), '_id', 'chargegroups')
 
         # TODO more
 
     def test_load_utilbills(self):
-        # no utility bills
-        self.assertEqual([], self.reebill_dao.load_utilbills())
-
-        # 1 utility bill
-        first = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(first)
+        # there's 1 utility bill already in the db
         self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
 
         # query by each _id field
@@ -227,29 +236,30 @@ class ReebillDAOTest(TestCaseWithSetup):
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 utility='washgas')))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                start=date(2011,11,12))))
+                start=date(1900,01,01))))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                end=date(2011,12,14))))
+                end=date(1900,02,01))))
 
         # query by everything together
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 account='99999', service='gas', utility='washgas',
-                start=date(2011,11,12), end=date(2011,12,14))))
+                start=date(1900,01,01), end=date(1900,02,01))))
 
         # everything together + nonexistence of "sequence", "version"
         # (load_utilbill insists on getting exactly 1 result)
         self.reebill_dao.load_utilbill(account='99999', service='gas',
-                utility='washgas', start=date(2011,11,12),
-                end=date(2011,12,14), sequence=False, version=False)
+                utility='washgas', start=date(1900,01,01),
+                end=date(1900,02,01), sequence=False, version=False)
 
         # a 2nd utility bill
         second = example_data.get_utilbill_dict('99999', start=date(2012,7,22),
                 end=date(2012,8,22))
         second['service'] = 'electric'
         second['utility'] = 'washgas'
-        self.reebill_dao._save_utilbill(second)
+        self.reebill_dao.save_utilbill(second)
         bills = self.reebill_dao.load_utilbills()
         self.assertEquals(2, len(bills))
+        first = self.reebill_dao.load_utilbills()[0]
         self.assertEquals(first, bills[0])
         self.assertEquals(second, bills[1])
 
@@ -263,7 +273,7 @@ class ReebillDAOTest(TestCaseWithSetup):
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 start=datetime(2012,7,22), end=datetime(2012,8,22))))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                end=datetime(2011,12,14))))
+                end=datetime(1900,02,01))))
         self.assertEquals([], self.reebill_dao.load_utilbills(
                 service='cold fusion'))
 
@@ -271,94 +281,69 @@ class ReebillDAOTest(TestCaseWithSetup):
         # ensure that a utilbill with "sequence" or "version" keys in it can
         # only be saved once
         utilbill = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(utilbill)
+        self.reebill_dao.save_utilbill(utilbill)
 
-        # multiple saves are possible when the utilbill doesn't belong to a
-        # utilbill
-        self.reebill_dao._save_utilbill(utilbill)
+        # it can be saved repeatedly
+        self.reebill_dao.save_utilbill(utilbill)
         
-        # put "sequence" and "version" keys in a copy of the utilbill, and save
+        # when a reebill is issued, "sequence" and "version" keys get added to
+        # the utility bill, so when it gets saved, a new document is created.
         attached_utilbill = copy.deepcopy(utilbill)
-        self.reebill_dao._save_utilbill(attached_utilbill,
+        self.reebill_dao.save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
-        # NOTE attached_utilbill is still saveable
-        self.reebill_dao._save_utilbill(attached_utilbill)
+        # this "frozen" utility bill should never change, so it can only be
+        # saved once.
+        self.assertRaises(IssuedBillError, self.reebill_dao.save_utilbill,
+                attached_utilbill)
 
-        # and so is the original utilbill
-        self.reebill_dao._save_utilbill(utilbill)
+        # but the original utility bill can still be saved
+        self.reebill_dao.save_utilbill(utilbill)
 
         # it should never be possible to save a utilbill with the same
         # account, utility, service, start, end as another
         other_utilbill = example_data.get_utilbill_dict('99999',
                 start=utilbill['start'], end=utilbill['end'],
                 service=utilbill['service'], utility=utilbill['utility'])
-        self.assertRaises(NotUniqueException, self.reebill_dao._save_utilbill,
+        self.assertRaises(NotUniqueException, self.reebill_dao.save_utilbill,
                 other_utilbill)
 
     def test_delete_reebill(self):
-        with DBSession(self.state_db) as session:
-            # save reebill (with utility bills)
-            b = example_data.get_reebill('99999', 1)
-            self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+        '''Tests deleting an unissued reebill document, which has no frozen
+        utility bill documents associated with it.'''
+        # save reebill (with utility bills)
+        b = example_data.get_reebill('99999', 1)
+        self.reebill_dao.save_reebill(b)
 
-            # reebill and utility bills should be in mongo
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(1, len(all_reebills))
-            self.assertEquals(1, len(all_utilbill_docs))
+        # reebill and utility bills should be in mongo. there are 2 utility
+        # bills because of the template document that is already there.
+        all_reebills = self.reebill_dao.load_reebills_in_period('99999',
+                version=0)
+        all_utilbill_docs = self.reebill_dao.load_utilbills(
+                account='99999')
+        self.assertEquals(1, len(all_reebills))
+        self.assertEquals(2, len(all_utilbill_docs))
 
-            # delete
-            self.reebill_dao.delete_reebill('99999', 1, 0)
+        # delete reebill
+        # (ReeBillDao.delete_reebill requires a state.ReeBill object so
+        # pretend)
+        class AnObject(object): pass
+        reebill = AnObject()
+        reebill.customer = AnObject()
+        reebill.customer.account = '99999'
+        reebill.sequence = 1
+        reebill.version = 0
+        self.reebill_dao.delete_reebill(reebill)
 
-            # both reebill and utilbills should be gone
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(0, len(all_reebills))
-            self.assertEquals(0, len(all_utilbill_docs))
-
-            # save reebill and utility bills again
-            b = example_data.get_reebill('99999', 1)
-            self.reebill_dao.save_reebill(b)
-
-            # if utility bill is frozen and verison == 0, both frozen utility
-            # bill and editable one should be deleted
-            self.reebill_dao.save_reebill(b, freeze_utilbills=True)
-            self.reebill_dao.delete_reebill('99999', 1, 0)
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(0, len(all_reebills))
-            self.assertEquals(0, len(all_utilbill_docs))
-
-            # if utility bill is frozen and version > 0, nothing should be
-            # deleted
-            self.state_db.issue(session, '99999', 1)
-            self.state_db.increment_version(session, '99999', 1)
-            correction = example_data.get_reebill('99999', 1, version=1)
-            self.reebill_dao.save_reebill(correction)
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(1, len(all_reebills))
-            self.assertEquals(1, all_reebills[0].version)
-            self.assertEquals(1, len(all_utilbill_docs))
-            self.assertFalse('sequence' in all_utilbill_docs[0])
-            self.assertFalse('version' in all_utilbill_docs[0])
-
-            # if utility bill is frozen and version > 0, frozen utility
-            # bill should be deleted but editable one should not
-            self.reebill_dao.save_reebill(correction, freeze_utilbills=True)
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            assert len(all_reebills) == 1
-            assert len(all_utilbill_docs) == 2
-            self.reebill_dao.delete_reebill('99999', 1, 1)
-            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
-            all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(0, len(all_reebills))
-            self.assertEquals(1, len(all_utilbill_docs))
-            self.assertFalse('sequence' in all_utilbill_docs[0])
-            self.assertFalse('version' in all_utilbill_docs[0])
+        # reebill should be gone, and utilbills should not.
+        all_reebills = self.reebill_dao.load_reebills_in_period('99999',
+                version=0)
+        all_utilbill_docs = self.reebill_dao.load_utilbills(
+                account='99999')
+        self.assertEquals(0, len(all_reebills))
+        self.assertEquals(2, len(all_utilbill_docs)) # includes template
+        self.assertEquals(ObjectId('000000000000000000000001'),
+                all_utilbill_docs[0]['_id'])
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)

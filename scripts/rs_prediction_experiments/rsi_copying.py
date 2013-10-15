@@ -38,7 +38,7 @@ with DBSession(state_db) as session:
 
         try:
             predecessor = bill_dao.load_reebill(acc, seq - 1, version=0)
-            process.compute_bill(session, predecessor, reebill)
+            process.compute_reebill(session, predecessor, reebill)
         except:
             continue
         total = reebill.actual_total_for_service(service)
