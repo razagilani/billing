@@ -2128,7 +2128,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             })
 
             # compute_utility_bill should update the document to match
-            import ipdb; ipdb.set_trace()
             self.process.compute_utility_bill(session, utilbill.id)
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEquals('99999', doc['account'])
