@@ -9,20 +9,14 @@ import fabric.contrib as fabcontrib
 from fabric.colors import red, green
 import os
 
-#fabapi.env.hosts = ['tyrell', 'ec2-107-21-175-174.compute-1.amazonaws.com']
-
-
 # these 'roles' are specified on the fab command line using '-R'
 fabapi.env.roledefs = {
-    'atsite': ['ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com'], 
-    'skyline': ['tyrell'],
-    'amazon':['ec2-user@ec2-23-21-137-54.compute-1.amazonaws.com'],
+    'amazon':['ec2-user@skyline-internal-prod.skylineinnovations.net'],
     }
 
 # how do keys get mapped to hosts? Works like magic.
 fabapi.env.key_filename = [
-    os.path.expanduser('~/Dropbox/IT/ec2keys/reebill-atsite.pem'),
-    os.path.expanduser('~/Dropbox/IT/ec2keys/tyrell-prod.pem')
+    os.path.expanduser('~/Dropbox/IT/ec2keys/skyline-internal-prod.pem')
 ]
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,8 +27,7 @@ exclude_from = 'fabexcludes.txt'
 # configurations that are global to a host
 host_configurations = {
     "tyrell": {"httpd":"apache2"},
-    "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
-    "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
+    "skyline-internal-prod.skylineinnovations.net": {"httpd":"httpd"}
 }
 
 # configurations that are global to an instance of the app
