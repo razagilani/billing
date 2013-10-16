@@ -5377,6 +5377,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="wettowel/Brooke.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Team Mo\' Money</font></td></tr></table>',
     });
 
     // end of tab widgets
