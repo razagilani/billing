@@ -334,9 +334,14 @@ class RateStructureDAO(object):
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
                 .filter(UtilBill.rate_class==rate_structure_name)\
-                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated).all()
         result = []
         for utilbill in utilbills:
+            # NOTE this warning should always appear for the newly-created bill
+            # for which the rate structure is being generated, because a
+            # uprs_document_id has not been assigned yet. if it appears for any
+            # other bill, that's bad because uprs_document_id should always
+            # be present.
             if utilbill.uprs_document_id is None:
                 self.logger.warning(('ignoring utility bill for %(account)s '
                     'from %(start)s to %(end)s: has state %(state)s but lacks '
