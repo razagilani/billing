@@ -2099,24 +2099,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # make sure there is an "URS" document so the utility bill can be
             # computed
-            self.rate_structure_dao.save_rs({
-                "_id" : {
-                    "type" : "URS",
-                    "rate_structure_name" : "General Service - Schedule C",
-                    "utility_name" : "BGE"
-                },
-                "registers" : [
-                    {
-                        "register_binding" : "REG_TOTAL",
-                        "description" : "Total therm register",
-                        "uuid" : "af65077e-01a9-11e1-af85-002421e88ffb",
-                        "quantityunits" : "therm",
-                        "quantity" : "0",
-                        "quantity_units" : "therm"
-                    }
-                ],
-                "rates" : [ ]
-            })
+            rate_structure2.URS(
+                rate_structure_name='General Service - Schedule C',
+                utility_name='BGE',
+                registers=[rate_structure2.Register(
+                    register_binding='REG_TOTAL',
+                    description= 'Total therm register',
+                    uuid="af65077e-01a9-11e1-af85-002421e88ffb",
+                    quantity_units='therm',
+                    quantity='0',
+                )],
+                rates = [],
+            )
 
             # compute_utility_bill should update the document to match
             self.process.compute_utility_bill(session, utilbill.id)
