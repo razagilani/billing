@@ -27,6 +27,7 @@ class RateStructureTest(TestCaseWithSetup):
 
     # TODO convert this to a real "unit test" (testing RateStructureDAO in
     # isolation) or move it into test_process.py
+    @unittest.skip('Not relevant to rate_structure2')
     def test_load_rate_structure(self):
         '''Tests loading the "probable RS" by combining the URS, UPRS, and CPRS
         rate structure documents.'''
