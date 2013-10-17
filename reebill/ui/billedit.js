@@ -440,6 +440,29 @@ function reeBillReady() {
         tbar: new Ext.Toolbar({
             items: [{
                 xtype: 'button',
+                id: 'utilbillComputeButton',
+                text: 'Compute',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                aChargesStore.reload();
+                            } else {
+                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                                    "\n" + jsonData.errors.details);
+                            }
+                        },
+                        failure: function() {
+                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+                        },
+                    });
+                }
+            },
+            {
+                xtype: 'button',
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
@@ -2450,7 +2473,7 @@ function reeBillReady() {
         items: [
             {
                 xtype: 'button',
-                id: 'utilbillComputeButton',
+                id: 'utilbillChargesComputeButton',
                 text: 'Recompute All',
                 handler: function() {
                     Ext.Ajax.request({
@@ -2659,10 +2682,10 @@ function reeBillReady() {
     chargesUBVersionMenu.on('select', function(combo, record, index) {
         //Only allow recomputing when the current version is selected
         if (record.data.sequence == null) {
-            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(false);
+            aChargesToolbar.getComponent('utilbillChargesComputeButton').setDisabled(false);
         }
         else {
-            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(true);
+            aChargesToolbar.getComponent('utilbillChargesComputeButton').setDisabled(true);
         }
     });
     
