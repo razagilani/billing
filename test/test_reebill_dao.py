@@ -5,6 +5,10 @@ import copy
 from datetime import date, datetime, timedelta
 from bson import ObjectId
 import MySQLdb
+from StringIO import StringIO
+import ConfigParser
+import logging
+import mongoengine
 from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
@@ -19,13 +23,91 @@ from billing.util.dateutils import date_to_datetime
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
+class ReebillDAOTest(utils.TestCase):
     '''Tests for ReeBillDAO, which loads/saves utility bill and reebill
     documents in mongo.
     
     Since this is a TestCaseWithSetup, there is a customer account in MySQL and
     a utility bill template in Mongo before each test, but maybe that should be
     removed since these are more low-level test than TestProcess.'''
+
+    def setUp(self):
+        # temporary hack to get a bill that's always the same
+        # this bill came straight out of mongo (except for .date() applied to
+        # datetimes)
+        ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
+        true, false = True, False
+
+        # customer database ("test" database has already been created with
+        # empty customer table)
+        statedb_config = {
+            'host': 'localhost',
+            'database': 'test',
+            'user': 'dev',
+            'password': 'dev'
+        }
+
+        # clear out tables in mysql test database (not relying on StateDB)
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
+        c.execute("delete from reebill")
+        c.execute("delete from utilbill")
+        c.execute("delete from customer")
+        # (note that status_days_since is a view and you neither can nor need
+        # to delete from it)
+        mysql_connection.commit()
+
+        # insert one customer
+        self.state_db = StateDB(**statedb_config)
+        session = self.state_db.session()
+        # name, account, discount rate, late charge rate
+        customer = Customer('Test Customer', '99999', .12, .34,
+                '000000000000000000000001')
+        session.add(customer)
+        session.commit()
+
+        # set up logger, but ingore all log output
+        logger = logging.getLogger('test')
+        logger.addHandler(logging.NullHandler())
+
+
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='utilbills')
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='ratestructure')
+
+        # insert template utilbill document for the customer in Mongo
+        db = pymongo.Connection('localhost')['test']
+        utilbill = example_data.get_utilbill_dict('99999',
+                start=date(1900,01,01), end=date(1900,02,01),
+                utility='washgas', service='gas')
+        utilbill['_id'] = ObjectId('000000000000000000000001')
+        db.utilbills.save(utilbill)
+
+        # insert URS documet for the customer's rate class in Mongo (note that
+        # UPRS and CPRS can be newly-created but URS must already exist)
+        example_data.get_urs(utility_name='washgas',
+                rate_structure_name='DC Non Residential Non Heat').save()
+
+        self.reebill_dao = mongo.ReebillDAO(self.state_db,
+                pymongo.Connection('localhost', 27017)['test'])
+
+    def tearDown(self):
+        '''Clears out databases.'''
+        # clear out mongo test database
+        mongo_connection = pymongo.Connection('localhost', 27017)
+        mongo_connection.drop_database('test')
+
+        # clear out tables in mysql test database (not relying on StateDB)
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
+        c.execute("delete from reebill")
+        c.execute("delete from utilbill")
+        c.execute("delete from customer")
+        mysql_connection.commit()
+
 
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
