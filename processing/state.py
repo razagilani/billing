@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python)
 """
 Utility functions to interact with state database
 """
@@ -69,6 +69,7 @@ class ReeBill(Base):
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
+    issue_date = Column(Date)
 
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
@@ -130,7 +131,12 @@ class ReeBill(Base):
     #     creator=lambda u: UtilbillReebill(u, self)
     # and for UtilBill,
     #     creator=lambda r: UtilbillReebill(self, r)
-    # but this will not actually work because 'self' is not available in class # scope; there is no instance of UtilBill or ReeBill at the time this code # is executed. it also does not work to move the code into __init__ and # assign the 'utilbills' attribute to a particular ReeBill instance or vice # versa. there may be a way to make SQLAlchemy do this (maybe by switching
+    # but this will not actually work because 'self' is not available in class
+    # # scope; there is no instance of UtilBill or ReeBill at the time this
+    # code is executed. it also does not work to move the code into __init__
+    # and assign the 'utilbills' attribute to a particular ReeBill instance
+    # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
+    # switching
     # to "classical" class-definition style?) but i decided it was sufficient
     # (for now) to have only a one-directional relationship from ReeBill to
     # UtilBill.
@@ -298,7 +304,8 @@ class UtilBill(Base):
         by version within the same sequence.
         '''
         return sorted(
-            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version}
+            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version,
+              'issue_date':ur.reebill.issue_date}
                  for ur in self._utilbill_reebills),
             key=lambda element: (element['sequence'], element['version'])
         )
@@ -357,7 +364,8 @@ class Payment(Base):
             'credit': self.credit,
             # the client uses this field to determine if users should be
             # allowed to edit this payment
-            'editable': datetime.utcnow() - self.date_received < timedelta(hours=24)
+            'editable': datetime.utcnow() - self.date_received \
+                    < timedelta(hours=24)
         }
 
     def __repr__(self):
@@ -406,7 +414,8 @@ def guess_utilbill_periods(start_date, end_date):
     # customers have 2-month utility bills.
     num_bills = max(1, int(round((end_date - start_date).days / 30.872)))
 
-    # each bill's period will have the same length (except possibly the last one)
+    # each bill's period will have the same length (except possibly the last
+    # one)
     period_length = (end_date - start_date).days / num_bills
 
     # generate periods: all periods except the last have length
@@ -420,76 +429,12 @@ def guess_utilbill_periods(start_date, end_date):
         end_date))
     return periods
 
-#def guess_utilbills_and_end_date(session, account, start_date):
-#    '''Returns a tuple (end_date, [utilbills]): a list of utility bills that
-#    will probably be associated with a newly-created reebill for the customer
-#    given by 'account' starting on 'start_date', and a guess for the reebills'
-#    end date.'''
-#    # TODO:25731853 test this method with multi-service customers. it works very well
-#    # for customers with one utility service, but the more utility bills the
-#    # customer has, the less accurate it will be.
-#
-#    # Rich added this because of bug 26512637, which is really a data problem
-#    # (reebill period dates are missing)
-#    # TODO remove this because it's a temporary workaround
-#    if start_date == None:
-#        print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
-#        return (None, []) 
-#
-#    # get length of last reebill (note that we don't store dates for reebills
-#    # in MySQL)
-#    customer = session.query(Customer).filter(Customer.account==account).one()
-#    previous_reebills = session.query(ReeBill) \
-#            .filter(ReeBill.customer_id==customer.id) \
-#            .order_by(desc(ReeBill.sequence))
-#    try:
-#        # get last reebill. note that SQLALchemy cursor object has no len (you
-##        # have to issue another query with func.count)
-#        last_reebill = previous_reebills[0]
-#    except IndexError:
-#        # if there are no previous bills, guess 30 days
-#        # TODO make this guess better?
-#        length = timedelta(days=30)
-#    else:
-#        # otherwise, get length of last bill period
-#        last_reebill_utilbills = session.query(UtilBill) \
-#                .filter(UtilBill.reebill_id==last_reebill.id)
-#        if list(last_reebill_utilbills) == []:
-#            raise Exception("Can't determine new reebill period without "
-#                    + "utility bills attached to the last reebill")
-#        earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
-#        latest_end = max(ub.period_end for ub in last_reebill_utilbills)
-#        length = (latest_end - earliest_start)
-#
-#    # first guess that this reebill's period has the same length as the last.
-#    # this guess will be adjusted to match the closest utility bill end date
-#    # after 'start_date', if there are any such utility bills.
-#    probable_end_date = start_date + length
-#
-#    # get all utility bills that end after start_date
-#    utilbills_after_start_date = session.query(UtilBill) \
-#            .filter(UtilBill.customer_id==customer.id) \
-#            .filter(UtilBill.period_end > start_date).all()
-#
-#    # if there are no utility bills that might be associated with this reebill,
-#    # we can't guess very well--just assume that this reebill's period will be
-#    # exactly the same length as its predecessor's.
-#    if len(utilbills_after_start_date) == 0:
-#        return probable_end_date, []
-#
-#    # otherwise, adjust the guess to the closest utility bill end date (either
-#    # forward or back); return that date and all utilbills that end in the date
-#    # interval (start_date, probable_end_date].
-#    probable_end_date = min([u.period_end for u in utilbills_after_start_date],
-#            key = lambda x: abs(probable_end_date - x))
-#    return probable_end_date, [u for u in utilbills_after_start_date if
-#            u.period_end <= probable_end_date]
 
 class StateDB(object):
 
     config = None
 
-    def __init__(self, host, database, user, password, db_connections=5):
+    def __init__(self, host, database, user, password, db_connections=5, logger=None):
         # put "echo=True" in the call to create_engine to print the SQL
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
@@ -501,12 +446,15 @@ class StateDB(object):
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
-        # global variable for the database session: SQLAlchemy will give an error if
-        # this is created more than once, so don't call _getSession() anywhere else
-        # wrapped by scoped_session for thread contextualization
+        # global variable for the database session: SQLAlchemy will give an
+        # error if this is created more than once, so don't call _getSession()
+        # anywhere else wrapped by scoped_session for thread contextualization
         # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
         self.session = scoped_session(sessionmaker(bind=engine,
                 autoflush=True))
+
+        # TODO don't default to None
+        self.logger = logger
 
     def get_customer(self, session, account):
         return session.query(Customer).filter(Customer.account==account).one()
@@ -577,8 +525,9 @@ class StateDB(object):
         overall, since a new version can't be created if the last one hasn't
         been issued.) If no version has ever been issued, returns None.'''
         # weird filtering on other table without a join
+        customer = self.get_customer(session, account)
         result = session.query(func.max(ReeBill.version))\
-                .filter(Customer.account==account)\
+                .filter(ReeBill.customer == customer)\
                 .filter(ReeBill.issued==1).one()[0]
         # SQLAlchemy returns None if no reebills with that customer are issued
         if result is None:
@@ -640,7 +589,7 @@ class StateDB(object):
     def last_sequence(self, session, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
         there are no reebills.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = self.get_customer(session, account)
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
@@ -654,8 +603,7 @@ class StateDB(object):
             include_corrections=False):
         '''Returns the sequence of the last issued reebill for 'account', or 0
         if there are no issued reebills.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
+        customer = self.get_customer(session, account)
         if include_corrections:
             filter_logic = sqlalchemy.or_(ReeBill.issued==1,
                     sqlalchemy.and_(ReeBill.issued==0, ReeBill.version>0))
@@ -693,8 +641,8 @@ class StateDB(object):
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
         by 'account', or None if there are no utilbills.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        query_results = session.query(sqlalchemy.func.max(UtilBill.period_end)) \
+        customer = self.get_customer(session, account)
+        query_results = session.query(sqlalchemy.func.max(UtilBill.period_end))\
                 .filter(UtilBill.customer_id==customer.id).one()
         if len(query_results) > 0:
             return query_results[0]
@@ -748,7 +696,8 @@ class StateDB(object):
 
     def account_exists(self, session, account):
         try:
-           customer = session.query(Customer).with_lockmode("read").filter(Customer.account==account).one()
+           customer = session.query(Customer).with_lockmode("read")\
+                   .filter(Customer.account==account).one()
         except NoResultFound:
             return False
 
@@ -758,7 +707,8 @@ class StateDB(object):
         '''List of all customer accounts (ordered).'''    
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
         result = map((lambda x: x[0]),
-                session.query(Customer.account).order_by(Customer.account).all())
+                session.query(Customer.account)\
+                .order_by(Customer.account).all())
         return result
 
     def list_accounts(self, session, start, limit):
@@ -785,8 +735,8 @@ class StateDB(object):
         return result
 
     def listReebills(self, session, start, limit, account, sort, dir, **kwargs):
-
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        query = session.query(ReeBill).join(Customer)\
+                .filter(Customer.account==account)
         
         if (dir == u'DESC'):
             order = desc
@@ -811,7 +761,8 @@ class StateDB(object):
         each account, and the size of the list.'''
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
-        min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
+        min_sequence = session.query(
+                unissued_v0_reebills.c.customer_id.label('customer_id'),
                 func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
                 .group_by(unissued_v0_reebills.c.customer_id).subquery()
         reebills = session.query(ReeBill)\
@@ -992,24 +943,29 @@ class StateDB(object):
         '''Deletes hypothetical utility bills for the given account and service
         whose periods precede the start date of the earliest non-hypothetical
         utility bill or follow the end date of the last utility bill.'''
-        customer = session.query(Customer).filter(Customer.account==account) \
-                .one()
-        first_real_utilbill = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state!=UtilBill.Hypothetical)\
+        customer = self.get_customer(session, account)
+        all_utilbills = session.query(UtilBill)\
+                .filter(UtilBill.customer == customer)
+        real_utilbills = all_utilbills\
+                .filter(UtilBill.state != UtilBill.Hypothetical)
+        hypothetical_utilbills = all_utilbills\
+                .filter(UtilBill.state == UtilBill.Hypothetical)
+
+        # if there are no real utility bills, delete all the hypothetical ones
+        # (i.e. all of the utility bills for this customer)
+        if real_utilbills.count() == 0:
+            for hb in hypothetical_utilbills:
+                session.delete(hb)
+            return
+
+        # if there are real utility bills, only delete the hypothetical ones
+        # whose entire period comes before end of first real bill or after
+        # start of last real bill
+        first_real_utilbill = real_utilbills\
                 .order_by(asc(UtilBill.period_start))[0]
         last_real_utilbill = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state!=UtilBill.Hypothetical)\
                 .order_by(desc(UtilBill.period_start))[0]
-        hypothetical_utilbills = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.state==UtilBill.Hypothetical)\
-                .order_by(asc(UtilBill.period_start)).all()
-
         for hb in hypothetical_utilbills:
-            # delete if entire period comes before end of first real bill or
-            # after start of last real bill
             if (hb.period_start <= first_real_utilbill.period_end \
                     and hb.period_end <= first_real_utilbill.period_end)\
                     or (hb.period_end >= last_real_utilbill.period_start\

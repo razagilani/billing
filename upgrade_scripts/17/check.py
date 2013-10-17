@@ -3,7 +3,9 @@ Check facts about the databases that should be true after all upgrade scripts ha
 see https://www.pivotaltracker.com/story/show/55042588
 '''
 from sys import stderr
+from bisect import bisect_left
 import pymongo
+from collections import defaultdict
 from bson import ObjectId
 from MySQLdb import Connection
 
@@ -30,13 +32,13 @@ if count > 0:
     print >> stderr, '%s rows in utilbill have null/empty rate_class' % count
 
 # all non-hypothetical utility bills should have 3 documents filled in
-cur.execute("select count(*) from utilbill where state < 3 and document_id is null or uprs_document_id is null or cprs_document_id is null")
+cur.execute("select count(*) from utilbill where state < 3 and (document_id is null or uprs_document_id is null or cprs_document_id is null)")
 count = cur.fetchall()[0]
 if count > 0:
     print >> stderr, '%s rows in utilbill have null documents but state < 3' % count
 
 # all non-hypothetical utility bills should have 0 documents filled in
-cur.execute("select count(*) from utilbill where state = 3 and document_id is not null or uprs_document_id is not null or cprs_document_id is not null")
+cur.execute("select count(*) from utilbill where state = 3 and (document_id is not null or uprs_document_id is not null or cprs_document_id is not null)")
 count = cur.fetchall()[0]
 if count > 0:
     print >> stderr, '%s rows in utilbill have documents but state = 3' % count
@@ -55,13 +57,12 @@ if count > 0:
 
 # there should be no duplicate document ids in the union of document_id, uprs_id, cprs_id in utilbill and utilbill_reebill
 for id_type in ('document_id', 'uprs_document_id', 'cprs_document_id'):
-    cur.execute("select count(*) from ((select %(id_type)s from utilbill) union all (select %(id_type)s from utilbill_reebill as a)) as t" % {'id_type': id_type})
+    cur.execute("select count(*) from ((select %(id_type)s from utilbill where %(id_type)s is not null) union all (select %(id_type)s from utilbill_reebill as a where %(id_type)s is not null)) as t" % {'id_type': id_type})
     total_count = cur.fetchone()[0]
-    cur.execute("select count(*) from ((select %(id_type)s from utilbill) union distinct (select %(id_type)s from utilbill_reebill as a)) as t" % {'id_type': id_type})
+    cur.execute("select count(*) from ((select %(id_type)s from utilbill where %(id_type)s is not null) union distinct (select %(id_type)s from utilbill_reebill as a where %(id_type)s is not null)) as t" % {'id_type': id_type})
     distinct_count = cur.fetchone()[0]
     duplicates = total_count - distinct_count
-    if duplicates > 0:
-        print >> stderr, '%s duplicate %ss' % (duplicates, id_type)
+    print >> stderr, '%s of %s non-null %ss have duplicates' % (duplicates, total_count, id_type)
 
 # every mongo document referenced by an id in mysql should exist
 cur.execute("(select document_id, uprs_document_id, cprs_document_id from utilbill) union distinct (select document_id, uprs_document_id, cprs_document_id from utilbill_reebill)")
@@ -103,3 +104,140 @@ for account, sequence, version in cur.fetchall():
     if doc is None:
         print >> stderr, "couldn't load reebill: %s" % query
 
+# count number of utility bill, UPRS, CPRS documents documents that are not
+# referenced in Mongo (these are not probably harmful, just evidence of
+# something else that went wrong, and they're clutter)
+def count_orphaned_docs(mysql_column, mongo_collection, mongo_query):
+    cur.execute("select %s from utilbill" % mysql_column)
+    mysql_ids = list(zip(*cur.fetchall())[0])
+    cur.execute("select %s from utilbill_reebill" % mysql_column)
+    mysql_ids.extend(zip(*cur.fetchall())[0])
+    # binary search sorted list of ids from MySQL column for each Mongo _id
+    # string
+    mysql_ids.sort()
+    orphaned_count, total_count = 0, 0
+    for doc in mongo_collection.find(mongo_query):
+        mysql_id_idx = bisect_left(mysql_ids, str(doc['_id']))
+        if not mysql_ids[mysql_id_idx] == str(doc['_id']):
+            orphaned_count += 1
+        total_count += 1
+    return orphaned_count, total_count
+print '%s of %s utility bill documents are orphaned' % count_orphaned_docs(
+        'document_id', db.utilbills, {})
+print '%s of %s UPRS documents are orphaned' % count_orphaned_docs(
+        'uprs_document_id', db.ratestructure, {'type': 'UPRS'})
+print '%s of %s CPRS documents are orphaned' % count_orphaned_docs(
+        'cprs_document_id', db.ratestructure, {'type': 'CPRS'})
+
+# count rate structure documents with old-style _ids
+count = db.ratestructure.find({'_id.account': {'$exists': True}}).count()
+print '%s rate structure documents have old-style _ids' % count
+
+# all utility bill documents referenced by document_id in utilbill should have
+# "sequence"/"version" keys
+count = 0
+cur.execute("select document_id from utilbill")
+for (document_id,) in cur.fetchall():
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if 'sequence' in doc or 'version' in doc:
+        count += 1
+print '%s editable utility bill documents have sequence/version keys' % count
+
+# no utility bill documents referenced by document_id in utilbill_reebill
+# should have "sequence"/"version" keys
+count = 0
+cur.execute("select document_id from utilbill_reebill")
+for (document_id,) in cur.fetchall():
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if 'sequence' not in doc or 'version' not in doc:
+        count += 1
+print '%s frozen utility bill documents lack sequence/version keys' % count
+
+# utility bill documents should have same account, start, ende, service,
+# utility, rate_class as MySQL rows
+counts, total_count = defaultdict(lambda: 0), 0
+cur.execute('''
+select account, period_start, period_end, service, utility, rate_class,
+document_id
+from utilbill join customer on customer_id = customer.id''')
+for account, start, end, service, utility, rate_class, document_id in cur.fetchall():
+    different = False
+    if document_id is None:
+        continue
+    doc = db.utilbills.find_one({'_id': ObjectId(document_id)})
+    if doc is None:
+        continue
+    if doc['account'] != account:
+        counts['account'] += 1
+        different = True
+    if doc['start'] != start:
+        counts['start'] += 1
+        different = True
+    if doc['end'] != end:
+        counts['end'] += 1
+        different = True
+    if doc['service'] != service:
+        counts['service'] += 1
+        different = True
+    if doc['utility'] != utility:
+        counts['utility'] += 1
+        different = True
+    if doc['rate_structure_binding'] != rate_class:
+        counts['rate_class'] += 1
+        different = True
+    if different:
+        total_count += 1
+print '%s utility bill documents differ from MySQL row in at least one "metadata" key: %s' % (total_count, dict(counts))
+
+# all reebill versions below highest should be issued
+cur.execute('''
+select count(*) from reebill where
+issued = 0 and (customer_id, sequence, version) not in (
+    select customer_id, sequence, max(version)
+    from reebill
+    group by customer_id, sequence
+    order by customer_id, sequence
+)
+''')
+count = cur.fetchall()[0]
+print '%s non-highest-version reebills are issued' % count
+
+# utility bill ids in reebill mongo documents match the ones in MySQL
+cur.execute('''
+select account, sequence, version, issued, utilbill_reebill.document_id, utilbill.document_id
+from customer join reebill on customer.id = customer_id
+join utilbill_reebill on reebill.id = reebill_id
+join utilbill on utilbill_id = utilbill.id''')
+count = 0
+for account, sequence, version, issued, frozen_document_id, editable_document_id in cur.fetchall():
+    reebill_doc = db.reebills.find_one({'_id.account': account,
+            '_id.sequence': sequence, '_id.version': version})
+    id_to_look_for = frozen_document_id if issued else editable_document_id
+    if ObjectId(id_to_look_for) not in (subdoc['id'] for subdoc in
+            reebill_doc['utilbills']):
+        count += 1
+print '%s reebill document ids do not match MySQL document_id column' % count
+
+# every reebill has a utility bill in MySQL
+cur.execute('''select count(*) from
+reebill left outer join utilbill_reebill on reebill_id = reebill.id
+where utilbill_id is null''')
+count = cur.fetchall()[0]
+print '%s rows in reebill table do not match rows of utilbill' % count
+
+# every utility bill has same customer_id as corresponding reebill
+cur.execute('''select count(*)
+from utilbill join utilbill_reebill on utilbill.id = utilbill_id
+join reebill on reebill_id = reebill.id
+where utilbill.customer_id != reebill.customer_id;
+''')
+count = cur.fetchall()[0]
+print '%s non-matching customer_ids between corresponding reebill and utilbill rows' % count

@@ -17,7 +17,7 @@ import uuid as UUID
 from itertools import chain
 from collections import defaultdict
 from tsort import topological_sort
-from billing.util.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
@@ -206,8 +206,8 @@ def _new_meter(utilbill_doc, identifier=None):
         identifier = 'Insert meter ID here'
     new_meter = {
         'identifier': identifier,
-        'present_read_date': None,
-        'prior_read_date': datetime.now(),
+        'present_read_date': utilbill_doc['end'],
+        'prior_read_date': utilbill_doc['start'],
         'registers': [],
     }
     utilbill_doc['meters'].append(new_meter)
@@ -288,6 +288,12 @@ def actual_chargegroups_flattened(utilbill_doc):
 # TODO make this a method of a utility bill document class when one exists
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
+
+def meter_read_period(utilbill_doc):
+    '''Returns the period dates of the first (i.e. only) meter in this bill.'''
+    assert len(utilbill_doc['meters']) >= 1
+    meter = utilbill_doc['meters'][0]
+    return meter['prior_read_date'], meter['present_read_date']
 
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
@@ -1296,11 +1302,13 @@ class MongoReebill(object):
         u = self._get_utilbill_for_service(service)
         u['start'], u['end'] = period
 
-    def meter_read_period(self, service):
-        '''Returns tuple of period dates for first meter found with the given
-        service.'''
-        meter = self.meters_for_service(service)[0]
-        return meter['prior_read_date'], meter['present_read_date']
+    def renewable_energy_period(self):
+        '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
+        the period of renewable energy consumption in this bill. In practice,
+        this means the read dates of the only meter in the utility bill which
+        is equivalent to the utility bill's period.'''
+        assert len(self._utilbills) == 1
+        return meter_read_period(self._utilbills[0])
 
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
@@ -2144,8 +2152,7 @@ class ReebillDAO(object):
             '_id.sequence': reebill.sequence,
             '_id.version': reebill.version,
         }, safe=True)
-        if result['err'] is not None or result['n'] == 0:
-            raise MongoError(result)
+        check_error(result)
 
     # TODO remove this method; this should be determined by looking at utility
     # bills in MySQL

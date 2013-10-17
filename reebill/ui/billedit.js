@@ -250,7 +250,7 @@ function reeBillReady() {
         proxy: utilbillStoreProxy,
         autoSave: true,
         writer: utilbillWriter,
-        baseParams: { start:0, limit: 25},
+        baseParams: { start:0, limit: 120},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
@@ -440,6 +440,29 @@ function reeBillReady() {
         tbar: new Ext.Toolbar({
             items: [{
                 xtype: 'button',
+                id: 'utilbillComputeButton',
+                text: 'Compute',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                aChargesStore.reload();
+                            } else {
+                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                                    "\n" + jsonData.errors.details);
+                            }
+                        },
+                        failure: function() {
+                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+                        },
+                    });
+                }
+            },
+            {
+                xtype: 'button',
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
@@ -500,13 +523,33 @@ function reeBillReady() {
                     // match the selected utility bill. there's always one row
                     // for the current version of the utility bill, and one row
                     // for each issued reebill version attached to it (if any)
-                    records = [[null, null]];
+                    records = [[null, null, null]];
                     for (var i = 0; i < selected_utilbill.reebills.length; i++) {
-                        records.push([
-                            selected_utilbill.reebills[i].sequence,
-                            selected_utilbill.reebills[i].version,
-                        ]);
+                        //Check that reebill associated with this version is issued
+                        // otherwise there is no associated frozen utilbill
+                        if (selected_utilbill.reebills[i].issue_date != null) {
+                            records.push([
+                                selected_utilbill.reebills[i].sequence,
+                                selected_utilbill.reebills[i].version,
+                                selected_utilbill.reebills[i].issue_date,
+                            ]);
+                        }
                     }
+                    records.sort(function (a, b) {
+                        if (a[2] == null) {
+                            return -1;
+                        }
+                        if (b[2] == null) {
+                            return 1;
+                        }
+                        if (b[2] > a[2]) {
+                            return 1;
+                        }
+                        if (b[2] == a[2]) {
+                            return 0;
+                        }
+                        return -1;
+                    });
                     //Go through the menus and load the data
                     menus = UBVersionMenu.prototype.ubVersionMenus
                     for (var i = 0;i < menus.length;i++) {
@@ -519,6 +562,7 @@ function reeBillReady() {
                         menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
                             sequence: null,
                             version: null,
+                            issue_date: null,
                         }), 0);
                     }
 
@@ -1435,13 +1479,6 @@ function reeBillReady() {
                                 reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                     reeBillGrid.getSelectionModel().selectFirstRow();
                                 }});
-
-                                utilbillGridStore.setDefaultSort('sequence', 'DESC');
-                                pageSize = utilbillGrid.getBottomToolbar().pageSize;
-                                utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                    utilbillGrid.getSelectionModel().selectFirstRow();
-                                    utilbillGridStore.setDefaultSort('period_end', 'DESC');
-                                }});
                             }
                         } catch (err) {
                             waitMask.hide();
@@ -1486,14 +1523,6 @@ function reeBillReady() {
                             pageSize = reeBillGrid.getBottomToolbar().pageSize;
                             reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
                                 reeBillGrid.getSelectionModel().selectFirstRow();
-                            }});
-
-                            utilbillGrid.getSelectionModel().clearSelections();
-                            utilbillGridStore.setDefaultSort('sequence', 'DESC');
-                            pageSize = utilbillGrid.getBottomToolbar().pageSize;
-                            utilbillGridStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                utilbillGrid.getSelectionModel().selectFirstRow();
-                                utilbillGridStore.setDefaultSort('period_end', 'DESC');
                             }});
                         }
                     } catch (err) {
@@ -2091,7 +2120,7 @@ function reeBillReady() {
                 tpl: new Ext.XTemplate(
                     '<tpl for="."><div class="x-combo-list-item">',
                     '<tpl if="sequence == null">Current version</tpl>',
-                    '<tpl if="sequence != null">Reebill {sequence}-{version}</tpl>',
+                    '<tpl if="sequence != null">Reebill {sequence}-{version}: {issue_date}</tpl>',
                     '</div></tpl>'
                 ),
                 
@@ -2124,8 +2153,9 @@ function reeBillReady() {
                         //These can be any type, since it isn't specified
                         {'name': 'sequence'},
                         {'name': 'version'},
+                        {'name': 'issue_date'},
                     ],
-                    data:[[null, null]],
+                    data:[[null, null, null]],
                 }),
             });
             this.selected_record = this.store[0];
@@ -2443,7 +2473,7 @@ function reeBillReady() {
         items: [
             {
                 xtype: 'button',
-                id: 'utilbillComputeButton',
+                id: 'utilbillChargesComputeButton',
                 text: 'Recompute All',
                 handler: function() {
                     Ext.Ajax.request({
@@ -2582,11 +2612,9 @@ function reeBillReady() {
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: aChargesSummary,
-        frame: true,
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
@@ -2654,10 +2682,10 @@ function reeBillReady() {
     chargesUBVersionMenu.on('select', function(combo, record, index) {
         //Only allow recomputing when the current version is selected
         if (record.data.sequence == null) {
-            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(false);
+            aChargesToolbar.getComponent('utilbillChargesComputeButton').setDisabled(false);
         }
         else {
-            aChargesToolbar.getComponent('utilbillComputeButton').setDisabled(true);
+            aChargesToolbar.getComponent('utilbillChargesComputeButton').setDisabled(true);
         }
     });
     
@@ -2988,7 +3016,6 @@ function reeBillReady() {
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        flex: 1,
         stripeRows: true,
         title: 'Individual Rate Structure Items',
         clicksToEdit: 2
@@ -3298,7 +3325,6 @@ function reeBillReady() {
         store: UPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        flex: 1,
         stripeRows: true,
         title: 'Shared Rate Structure Items',
         clicksToEdit: 2
@@ -3329,8 +3355,32 @@ function reeBillReady() {
         },
         items: [
             rsUBVersionMenu,
-            CPRSRSIGrid,
-            UPRSRSIGrid,
+            {
+                xtype:'panel',
+                flex: 1,
+                border: false,
+                layout:'border',
+                items: [
+                    {
+                        xtype: 'panel',
+                        region: 'north',
+                        border: false,
+                        split: true,
+                        layout: 'fit',
+                        items: [UPRSRSIGrid],
+                        minHeight: 0,
+                        height: 300,
+                    },
+                    {
+                        xtype: 'panel',
+                        region: 'center',
+                        border: false,
+                        split: true,
+                        layout: 'fit',
+                        items: [CPRSRSIGrid],
+                    },
+                ],
+            },
         ],
     });
 
@@ -3552,15 +3602,8 @@ function reeBillReady() {
         }),
         store: paymentStore,
         enableColumnMove: false,
-        frame: true,
-        collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Payments',
         clicksToEdit: 2
     });
 
@@ -3583,7 +3626,11 @@ function reeBillReady() {
         id: 'paymentTab',
         title: 'Payments',
         disabled: paymentPanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
         items: [paymentGrid, ],
     });
 
@@ -3794,14 +3841,11 @@ function reeBillReady() {
         store: mailReeBillStore,
         enableColumnMove: false,
         frame: true,
-        collapsible: true,
-        animCollapse: false,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Mail ReeBills',
     });
 
     mailReeBillGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3822,7 +3866,7 @@ function reeBillReady() {
         id: 'mailTab',
         title: 'Mail',
         disabled: mailPanelDisabled,
-        layout: 'vbox',
+        layout: 'fit',
         layoutConfig : {
             align : 'stretch',
             pack : 'start'
@@ -4162,16 +4206,7 @@ function reeBillReady() {
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, // disabled until account is selected
-            },{
-                id: 'dailyAverageEnergyExportButton',
-                iconCls: 'icon-application-go',
-                xtype: 'linkbutton',
-                // account parameter for URL is set in loadReeBillUIForAccount()
-                href: "http://"+location.host+"/reebill/daily_average_energy_xls",
-                text: 'Export Daily Average Utility Energy XLS',
-                disabled: true, // disabled until account is selected
-            }
-        ]
+            }]
     });
 
     // this grid tracks the state of the currently selected account
@@ -5365,6 +5400,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="wettowel/Brooke.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Team Mo\' Money</font></td></tr></table>',
     });
 
     // end of tab widgets
@@ -5646,7 +5682,6 @@ function reeBillReady() {
         autoExpandColumn: 'mailto',
         height: 900,
         width: 1000,
-        title: 'Reebills Ready to be Issued',
         clicksToEdit: 2,
         forceValidation: true,
     });
@@ -5669,7 +5704,8 @@ function reeBillReady() {
         id: 'issuableTab',
         title: 'Issuable Reebills',
         disabled: issuablePanelDisabled,
-        layout: 'accordion',
+        layout: 'fit',
+        layoutConfig : { align : 'stretch', pack : 'start' },
         items: [issuableGrid,],
     });
 
@@ -5836,18 +5872,20 @@ function reeBillReady() {
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: hChargesSummary,
-        frame: true,
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
-        title: 'Hypothetical Charges',
     });
 
     reebillChargesPanel = new Ext.Panel({
         id: 'hChargesPanelTab',
         title: 'Reebill Charges',
         disabled: reebillChargesPanelDisabled,
-        layout: 'accordion',
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
         items: [
             hChargesGrid,
         ],
@@ -6061,8 +6099,6 @@ function reeBillReady() {
         // enable export buttons 
         Ext.getCmp('exportAccountButton').setDisabled(false);
         Ext.getCmp('exportAccountButton').setParams({'account': account});
-        Ext.getCmp('dailyAverageEnergyExportButton').setDisabled(false);
-        Ext.getCmp('dailyAverageEnergyExportButton').setParams({'account': account});
         //Ext.getCmp('exportButton').setDisabled(false);
         Ext.getCmp('accountReeValueExportCSVBtn').setDisabled(false);
 

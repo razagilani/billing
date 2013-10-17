@@ -6,6 +6,7 @@ from billing.util.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
+from billing.processing.exceptions import MongoError
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
@@ -16,7 +17,8 @@ def python_convert(x):
     if type(x) is Decimal:
         return x
     if type(x) is unicode:
-    # do not convert unicode strings to ascii when retrieving documents from mongo: https://www.pivotaltracker.com/story/show/28857505
+    # do not convert unicode strings to ascii when retrieving documents from
+    # mongo: https://www.pivotaltracker.com/story/show/28857505
     #    return str(x)
         return x
     if type(x) is time:
@@ -41,7 +43,8 @@ def bson_convert(x):
     # TODO:  copy all or convert all in place?  Or, don't care and just keep
     # doing both scalars are converted in place, dicts are copied.
 
-    if type(x) in [type(None), str, float, int, bool, datetime, unicode, ObjectId]:
+    if type(x) in [type(None), str, float, int, bool, datetime, unicode,
+            ObjectId]:
         return x
     if type(x) is long:
         if x >= -maxint-1 and x <= maxint:
@@ -55,8 +58,7 @@ def bson_convert(x):
         return datetime(x.year, x.month, x.day)
     if type(x) is dict or type(x) is MutableNamedTuple:
         #TODO: don't copy dict
-        return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()])
-                #if item[1] is not None])
+        return {item[0]: bson_convert(item[1]) for item in x.iteritems()}
     if type(x) is list:
         return map(bson_convert, x)
 
@@ -93,5 +95,15 @@ def format_query(query_dict):
             return MongoBoolean(x)
         return x
 
-    #return deep_map(date_to_isodate, deep_map(unicode_to_ascii, query_dict))
-    return deep_map(unicode_to_ascii, deep_map(datetime_to_isodate, deep_map(boolean_to_mongoboolean, query_dict)))
+    return deep_map(unicode_to_ascii,
+            deep_map(datetime_to_isodate,
+                deep_map(boolean_to_mongoboolean, query_dict)))
+
+def check_error(mongo_result):
+    '''Raises exceptions.MongoError if the result of a result dictionary
+    (returned by pymongo.Collection.update and pymongo.Collection.remove)
+    indicates that something went wrong.
+    '''
+    if mongo_result['err'] is not None or mongo_result['n'] == 0:
+        raise MongoError(mongo_result)
+

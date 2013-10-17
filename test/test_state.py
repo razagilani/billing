@@ -4,8 +4,9 @@ from datetime import date, datetime
 import MySQLdb
 import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
+import pymongo
 from billing.processing import state
-from billing.processing.state import Customer, UtilBill
+from billing.processing.state import Customer, UtilBill, ReeBill
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
@@ -38,15 +39,14 @@ class StateTest(utils.TestCase):
                 ('Test Customer', 99999, .12, .34)''')
         mysql_connection.commit()
 
-        sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'test'
-        })
+        # NOTE for some reason, when this is enabled, all tests fail with a
+        # SQLAlchemy-related error; see 
+        # https://www.pivotaltracker.com/story/show/58851006
+        #sqlalchemy.orm.clear_mappers()
+
+        self.state_db = state.StateDB('localhost', 'test', 'dev', 'dev')
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(self.billdb_config['host'],
+                pymongo.Connection(billdb_config['host'],
                 int(billdb_config['port']))[billdb_config['database']])
 
     def tearDown(self):
@@ -99,39 +99,48 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
             today = datetime.utcnow().date()
+            customer = session.query(Customer).filter_by(account=account).one()
+
+            # when there are no utility bills, trim_hypothetical_utilbills
+            # should do nothing
+            assert session.query(UtilBill).count() == 0
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
+
+            # TODO add tests for other services to make sure e.g. "electric"
+            # bills are unaffected
+
+            # to simplify the utility-bill-creation API
+            def create_bill(start, end, state):
+                session.add(UtilBill(customer, state, 'gas',
+                        'washgas', 'DC Non Residential Non Heat',
+                        period_start=start, period_end=end,
+                        date_received=today))
+
+            # when there are only Hypothetical utility bills,
+            # trim_hypothetical_utilbills should remove all of them
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Hypothetical)
+            create_bill(date(2012,2,1), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
+            self.state_db.trim_hypothetical_utilbills(session, account,
+                    service)
+            self.assertEqual(0, session.query(UtilBill).count())
 
             # 2 Complete bills
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,1), date(2012,2,1), 0, today)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,15), date(2012,7,15), 0, today)
+            create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Complete)
+            create_bill(date(2012,6,15), date(2012,7,15), UtilBill.Complete)
 
             # Hypothetical bills before, between, and after the Complete bills
             # (including some overlaps with Complete bills and each other)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,9,1), date(2011,10,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,10,1), date(2011,11,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2011,11,15), date(2012,1,15), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,1,30), date(2012,3,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,3,1), date(2012,4,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,6,1), date(2012,7,1), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,8,20), 0, today,
-                    state=UtilBill.Hypothetical)
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, date(2012,7,20), date(2012,9,1), 0, today,
-                    state=UtilBill.Hypothetical)
+            create_bill(date(2011,9,1), date(2011,10,1), UtilBill.Hypothetical)
+            create_bill(date(2011,10,1), date(2011,11,15), UtilBill.Hypothetical)
+            create_bill(date(2011,11,15), date(2012,1,15), UtilBill.Hypothetical)
+            create_bill(date(2012,1,30), date(2012,3,1), UtilBill.Hypothetical)
+            create_bill(date(2012,3,1), date(2012,4,1), UtilBill.Hypothetical)
+            create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,8,20), UtilBill.Hypothetical)
+            create_bill(date(2012,7,20), date(2012,9,1), UtilBill.Hypothetical)
 
             self.state_db.trim_hypothetical_utilbills(session, account,
                     service)
@@ -187,6 +196,8 @@ class StateTest(utils.TestCase):
                     acc, seq, version=10)
 
             # adding versions of bills for other accounts should have no effect
+            session.add(Customer('someone', '11111', 0.5, 0.1, 'id goes here'))
+            session.add(Customer('someone', '22222', 0.5, 0.1, 'id goes here'))
             self.state_db.new_reebill(session, '11111', 1)
             self.state_db.new_reebill(session, '11111', 2)
             self.state_db.new_reebill(session, '22222', 1)
@@ -316,6 +327,7 @@ class StateTest(utils.TestCase):
 
             session.commit()
 
+    @unittest.skip('StateDB.delete_reebill no longer exists; move elsewhere?')
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
@@ -323,8 +335,8 @@ class StateTest(utils.TestCase):
             self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
-            reebill = session.query(ReeBill).filter_by(account=account,
-                    sequence=1, version=0)
+            customer = session.query(Customer).filter_by(account=account).one()
+            reebill = session.query(ReeBill).filter_by(customer=customer, sequence=1, version=0)
             self.state_db.delete_reebill(session, reebill)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
@@ -459,13 +471,15 @@ class StateTest(utils.TestCase):
                 r.issued = 1
             utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
-                    dt+timedelta(days=30*x),\ dt+timedelta(days=30*(x+1)),
+                    dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             for x in xrange(10):
                 session.add(reebills[x])
                 session.add(utilbills[x])
 
-            # Add multiple utilbills that come after the last utilbill from the above loop
+            # Add multiple utilbills that come after the last utilbill from the
+            # above loop
             target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
                     period_start=dt+timedelta(days=30*10),
@@ -481,7 +495,9 @@ class StateTest(utils.TestCase):
                     period_end=dt+timedelta(days=30*13), reebill=None))
 
             # Same tests
-            utilbills = self.state_db.choose_next_utilbills(session, account, services) self.assertListEqual(services, [ub.service for ub in utilbills])
+            utilbills = self.state_db.choose_next_utilbills(session, account,
+                    services)
+            self.assertListEqual(services, [ub.service for ub in utilbills])
             self.assertEqual(len(utilbills), 1)
             self.assertIsNotNone(utilbills[0])
             self.assertIsNone(utilbills[0].reebill)
@@ -542,7 +558,8 @@ class StateTest(utils.TestCase):
                 r.issued = 1
             gas_utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
                     'DC Non Residential Non Heat',
-                    dt_gas+timedelta(days=30*x),\ dt_gas+timedelta(days=30*(x+1)),
+                    dt_gas+timedelta(days=30*x),
+                    dt_gas+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             elec_utilbills = [UtilBill(customer, 0, 'electric', 'pepco',
                     'DC Non Residential Non Heat',

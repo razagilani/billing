@@ -211,7 +211,12 @@ class Process(object):
         oldest utility bill for the given account and service, "estimated"
         utility bills will be added to cover the gap between this bill's period
         and the previous newest or oldest one respectively. The total of all
-        charges on the utility bill may be given.'''
+        charges on the utility bill may be given.
+        
+        Currently 'utility' and 'rate_class' are ignored in favor of the
+        predecessor's (or template's) values; see
+        https://www.pivotaltracker.com/story/show/52495771
+        '''
         # validate arguments
         if end_date <= begin_date:
             raise ValueError("Start date %s must precede end date %s" %
@@ -486,8 +491,21 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+
+
+        # update Mongo document to match "metadata" columns in MySQL:
+        document.update({
+            'account': utilbill.customer.account,
+            'start': utilbill.period_start,
+            'end': utilbill.period_end,
+            'service': utilbill.service,
+            'utility': utilbill.utility,
+            'rate_structure_binding': utilbill.rate_class,
+        })
+
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+
         print '****************', type(uprs), type(cprs)
         mongo.compute_all_charges(document, uprs, cprs)
 

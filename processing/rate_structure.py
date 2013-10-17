@@ -232,8 +232,10 @@ class RateStructureDAO(object):
             for rsi in rs['rates']:
                 if any(other['rsi_binding'] == rsi['rsi_binding'] and other !=
                         rsi for other in rs['rates']):
+                    # NOTE RSIError requires 2 string arguments but it's not
+                    # clear what they're for
                     raise RSIError('Multiple RSIs have rsi_binding "%s"' %
-                            rsi['rsi_binding'])
+                            rsi['rsi_binding'], '')
 
         # RSIs in CRPS override RSIs in URS with same "rsi_binding"
         rsis = {rsi['rsi_binding']: rsi for rsi in uprs['rates']}
@@ -332,9 +334,14 @@ class RateStructureDAO(object):
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
                 .filter(UtilBill.rate_class==rate_structure_name)\
-                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated).all()
         result = []
         for utilbill in utilbills:
+            # NOTE this warning should always appear for the newly-created bill
+            # for which the rate structure is being generated, because a
+            # uprs_document_id has not been assigned yet. if it appears for any
+            # other bill, that's bad because uprs_document_id should always
+            # be present.
             if utilbill.uprs_document_id is None:
                 self.logger.warning(('ignoring utility bill for %(account)s '
                     'from %(start)s to %(end)s: has state %(state)s but lacks '
