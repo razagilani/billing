@@ -1631,7 +1631,6 @@ class BillToolBridge:
             # TODO this loads the RS doc again unnecessarily; the
             # solution may be that all this code moves into Process, which is
             # where belongs anyway.
-            self.process.compute_utility_bill(session, utilbill_id)
             return self.dumps({'success':True, 'rows':rows})
 
     @cherrypy.expose
@@ -2068,12 +2067,6 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
-
-                # todo this loads the utility bill doc again unnecessarily; the
-                # solution may be that all this code moves into process, which
-                # is where belongs anyway.
-                self.process.compute_utility_bill(session, utilbill_id)
-
                 return self.dumps({'success':True})
 
             if xaction == "create":
@@ -2086,11 +2079,6 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
-
-                # TODO this loads the utility bill doc again unnecessarily; the
-                # solution may be that all this code moves into Process, which
-                # is where belongs anyway.
-                self.process.compute_utility_bill(session, utilbill_id)
 
                 return self.dumps({'success':True, 'rows':rows})
 
@@ -2111,11 +2099,6 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
-
-                # TODO this loads the utility bill doc again unnecessarily; the
-                # solution may be that all this code moves into Process, which
-                # is where belongs anyway.
-                self.process.compute_utility_bill(session, utilbill_id)
 
                 return self.dumps({'success':True})
 
@@ -2295,7 +2278,6 @@ class BillToolBridge:
                         'total': len(registers_json)}
 
             self.reebill_dao.save_utilbill(utilbill_doc)
-            self.process.compute_utility_bill(session, utilbill_id)
             return self.dumps(result)
 
     #
