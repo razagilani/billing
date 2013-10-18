@@ -24,6 +24,21 @@ from billing.util.dateutils import date_to_datetime
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
+def make_mock_cursor(docs):
+    result = MagicMock(name='pymongo.Cursor')
+    result.__iter__.return_value = iter(docs)
+
+    # NOTE pymongo cursor's count is still present even after it is "used up"
+    result.count.return_value = len(docs)
+
+    # TODO: i don't know how to specify a return value dependent on
+    # arguments; maybe MagicMock is not meant to be used that way (you
+    # just assert what the arguments were afterward). anyway, i assume
+    # only the 1st item is gotten.
+    result.__getitem__.return_value = docs[0]
+
+    return result
+
 class ReebillDAOTest(utils.TestCase):
     '''Tests for ReeBillDAO, which loads/saves utility bill and reebill
     documents in mongo.
@@ -293,22 +308,6 @@ class ReebillDAOTest(utils.TestCase):
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
-
-        def make_mock_cursor(docs):
-            result = MagicMock(name='pymongo.Cursor')
-            result.__iter__.return_value = iter(docs)
-
-            # NOTE pymongo cursor's count is still present even after it is "used up"
-            result.count.return_value = len(docs)
-
-            # TODO: i don't know how to specify a return value dependent on
-            # arguments; maybe MagicMock is not meant to be used that way (you
-            # just assert what the arguments were afterward). anyway, i assume
-            # only the 1st item is gotten.
-            result.__getitem__.return_value = docs[0]
-
-            return result
-
         state_db = MagicMock(name='billing.processing.StateDB')
 
         database = MagicMock(name='pymongo.database')
@@ -342,7 +341,7 @@ class ReebillDAOTest(utils.TestCase):
             'end': datetime(1900,2,1),
         })
 
-        self.assertDocumentsEqualExceptKeys(ub, result, '_id', 'chargegroups')
+        self.assertEqual(ub, result)
 
         # TODO more
 
