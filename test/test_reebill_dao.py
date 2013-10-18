@@ -18,8 +18,9 @@ from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException, float_to_decimal
 from billing.processing.session_contextmanager import DBSession
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, dict_merge
 from billing.util.dateutils import date_to_datetime
+from billing.util.mongo_utils import bson_convert
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -277,35 +278,93 @@ class ReebillDAOTest(utils.TestCase):
                     self.reebill_dao.load_reebill, '99999', 1, version=5)
 
     def test_save_reebill(self):
-        with DBSession(self.state_db) as session:
+        state_db = MagicMock(name='billing.processing.StateDB')
+
+        database = MagicMock(name='pymongo.database')
+        utilbills_collection = MagicMock(name='pymongo.Collection')
+        reebills_collection = MagicMock(name='pymongo.Collection')
+        database.__getitem__ = MagicMock(name='pymongo.Collection.__getitem__',
+                side_effect=[reebills_collection, utilbills_collection])
+        dao = mongo.ReebillDAO(state_db, database)
+
+        # instantiate ReebillDAO: constructor should have called
+        # database.__getitem__ twice to get the utility bills and reebills
+        # collections
+        database.__getitem__.assert_any_call('reebills')
+        database.__getitem__.assert_any_call('utilbills')
+
+        with DBSession(state_db) as session:
+            state_db.is_issued.return_value = False
             b = example_data.get_reebill('99999', 1)
-            self.reebill_dao.save_reebill(b)
-            self.state_db.new_reebill(session, '99999', 1)
+
+            dao.save_reebill(b)
+
+            state_db.is_issued.assert_called_with(session,
+                    '99999', 1, version=0, nonexistent=False)
+            utilbills_collection.save.assert_called_with(
+                    bson_convert(b._utilbills[0]), safe=True)
+            reebills_collection.save.assert_called_with(
+                    bson_convert(b.reebill_dict), safe=True)
+
+            state_db.new_reebill(session, '99999', 1)
 
             # save frozen utility bills
-            self.reebill_dao.save_reebill(b, freeze_utilbills=True)
+            u = copy.deepcopy(b._utilbills[0])
+            dao.save_reebill(b, freeze_utilbills=True)
+
+            state_db.is_issued.assert_called_with(session,
+                    '99999', 1, version=0, nonexistent=False)
+            # utilbills_collection.save was called with a document slightly
+            # different from 'u'
+            self.assertDocumentsEqualExceptKeys(
+                    dict_merge(bson_convert(u), {'sequence':1, 'version':0}),
+                    utilbills_collection.save.call_args[0][0], '_id')
+            reebills_collection.save.assert_called_with(
+                    bson_convert(b.reebill_dict),
+                    safe=True)
+
             u = b._utilbills[0]
-            utilbills = self.reebill_dao.load_utilbills(account='99999',
+            utilbills_collection.find.return_value = make_mock_cursor(
+                    [b._utilbills[0]])
+            utilbills = dao.load_utilbills(account='99999',
                     utility=u['utility'], service=u['service'],
                     start=u['start'], end=u['end'])
-            self.assertEquals(2, len(utilbills))
-            utilbills = self.reebill_dao.load_utilbills(account='99999',
+            utilbills_collection.find.assert_called_with({
+                'account': '99999',
+                'utility': 'washgas',
+                'service': 'gas',
+                'start': date_to_datetime(u['start']),
+                'end': date_to_datetime(u['end']),
+            }, sort=[('start', pymongo.ASCENDING)])
+            self.assertEquals(1, len(utilbills))
+            utilbills_collection.find.return_value = make_mock_cursor(
+                    [b._utilbills[0]])
+            utilbills = dao.load_utilbills(account='99999',
                     utility=u['utility'], service=u['service'],
                     start=u['start'], end=u['end'], sequence=1)
+            utilbills_collection.find.assert_called_with({
+                'account': '99999',
+                'utility': 'washgas',
+                'service': 'gas',
+                'start': date_to_datetime(u['start']),
+                'end': date_to_datetime(u['end']),
+                'sequence': 1,
+            }, sort=[('start', pymongo.ASCENDING)])
+            self.assertEquals(1, len(utilbills))
             
             # reebill with frozen utility bills can't be saved, because saving
             # the utility bills fails
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+            self.assertRaises(IssuedBillError, dao.save_reebill,
                     b)
             # unless the "force" argument is used
-            self.reebill_dao.save_reebill(b, force=True)
+            dao.save_reebill(b, force=True)
 
             # likewise, an issued reebill can't be saved
-            self.state_db.issue(session, '99999', 1)
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+            state_db.issue(session, '99999', 1)
+            self.assertRaises(IssuedBillError, dao.save_reebill,
                     b)
             self.assertRaises(IssuedBillError,
-                    self.reebill_dao.save_reebill, b, freeze_utilbills=True)
+                    dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
         state_db = MagicMock(name='billing.processing.StateDB')
