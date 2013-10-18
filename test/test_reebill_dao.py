@@ -25,6 +25,8 @@ from billing.util.mongo_utils import bson_convert
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
+# TODO use "autospec" feature of Mock to limit methods that exist--see
+# http://www.voidspace.org.uk/python/mock/helpers.html#auto-speccing
 def make_mock_cursor(docs):
     result = MagicMock(name='pymongo.Cursor')
     result.__iter__.return_value = iter(docs)
