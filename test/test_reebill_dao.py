@@ -9,6 +9,7 @@ from StringIO import StringIO
 import ConfigParser
 import logging
 import mongoengine
+from mock import MagicMock
 from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
@@ -292,6 +293,36 @@ class ReebillDAOTest(utils.TestCase):
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
+
+        def make_mock_cursor(docs):
+            result = MagicMock(name='pymongo.Cursor')
+            result.__iter__.return_value = iter(docs)
+
+            # NOTE pymongo cursor's count is still present even after it is "used up"
+            result.count.return_value = len(docs)
+
+            # TODO: i don't know how to specify a return value dependent on
+            # arguments; maybe MagicMock is not meant to be used that way (you
+            # just assert what the arguments were afterward). anyway, i assume
+            # only the 1st item is gotten.
+            result.__getitem__.return_value = docs[0]
+
+            return result
+
+        state_db = MagicMock(name='billing.processing.StateDB')
+
+        database = MagicMock(name='pymongo.database')
+        utilbills_collection = MagicMock(name='pymongo.Collection')
+        reebills_collection = MagicMock(name='pymongo.Collection')
+        database.__getitem__ = MagicMock(name='pymongo.Collection.__getitem__',
+                side_effect=[reebills_collection, utilbills_collection])
+        dao = mongo.ReebillDAO(state_db, database)
+
+        # instantiate ReebillDAO: constructor should have called database.__getitem__
+        # twice to get the utility bills and reebills collections
+        database.__getitem__.assert_any_call('reebills')
+        database.__getitem__.assert_any_call('utilbills')
+
         # template utility bill is already saved in Mongo; load it and make
         # sure it's the same as the one in example_data.
         # example_data bill must be modified to get it to match (the same type
@@ -299,10 +330,19 @@ class ReebillDAOTest(utils.TestCase):
         ub = example_data.get_utilbill_dict(u'99999', start=date(1900,1,1),
                 end=date(1900,2,1), utility=u'washgas', service=u'gas')
 
-        self.maxDiff = None
-        self.assertDocumentsEqualExceptKeys(ub,
-                self.reebill_dao.load_utilbill('99999', 'gas', 'washgas',
-                date(1900,1,1), date(1900,2,1)), '_id', 'chargegroups')
+        utilbills_collection.find.return_value = make_mock_cursor([ub])
+
+        result = dao.load_utilbill('99999', 'gas', 'washgas',
+                date(1900,1,1), date(1900,2,1))
+        utilbills_collection.find.assert_called_with({
+            'account': '99999',
+            'utility': 'washgas',
+            'service': 'gas',
+            'start': datetime(1900,1,1),
+            'end': datetime(1900,2,1),
+        })
+
+        self.assertDocumentsEqualExceptKeys(ub, result, '_id', 'chargegroups')
 
         # TODO more
 
