@@ -6,6 +6,6 @@ import pymongo
 
 db = pymongo.Connection('localhost')['skyline-dev']
 
-#db.utilbills.update({'sequence': 0},
-        #{'$unset': {'sequence': 1, 'version':1}}, multi=True)
+db.utilbills.update({'sequence': 0},
+        {'$unset': {'sequence': 1, 'version':1}}, multi=True)
 
