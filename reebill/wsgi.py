@@ -1675,72 +1675,15 @@ class BillToolBridge:
     @json_exception
     def reebill(self, xaction, start, limit, account, sort = u'sequence', dir = u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
+        start, limit = int(start), int(limit)
         with DBSession(self.state_db) as session:
             if xaction == "read":
-                reebills, totalCount = self.state_db.listReebills(session,
-                        int(start), int(limit), account, sort, dir)
-                rows = []
-                for reebill in reebills:
-                    row_dict = {}
-                    mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
-
-                    # TODO: clean up. if a reebill lacks any of these keys,
-                    # that's an error we do not want to bury. and there would
-                    # be nothing wrong with putting a nice to_dict() method
-                    # inside MongoReebill.
-                    row_dict['id'] = reebill.sequence
-                    row_dict['sequence'] = reebill.sequence
-                    try: row_dict['issue_date'] = mongo_reebill.issue_date 
-                    except: pass
-                    try: row_dict['period_start'] = mongo_reebill.period_begin
-                    except: pass
-                    try: row_dict['period_end'] = mongo_reebill.period_end
-                    except: pass
-                    try: row_dict['hypothetical_total'] = mongo_reebill.hypothetical_total
-                    except: pass
-                    try: row_dict['actual_total'] = mongo_reebill.actual_total
-                    except: pass
-                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy()
-                    except: pass
-                    try: row_dict['ree_value'] = mongo_reebill.ree_value
-                    except: pass
-                    try: row_dict['prior_balance'] = mongo_reebill.prior_balance
-                    except: pass
-                    try: row_dict['payment_received'] = mongo_reebill.payment_received
-                    except: pass
-                    try: row_dict['total_adjustment'] = mongo_reebill.total_adjustment
-                    except: pass
-                    try: row_dict['balance_forward'] = mongo_reebill.balance_forward
-                    except: pass
-                    try: row_dict['ree_charges'] = mongo_reebill.ree_charges
-                    except: pass
-                    try: row_dict['balance_due'] = mongo_reebill.balance_due
-                    except: pass
-                    try: row_dict['services'] = [service.title() for service in mongo_reebill.services]
-                    except: pass
-
-                    # human-readable description of correction state
-                    version = self.state_db.max_version(session, account, reebill.sequence)
-                    issued = self.state_db.is_issued(session, account, reebill.sequence)
-                    if version > 0:
-                        if issued:
-                            row_dict['corrections'] = str(version)
-                        else:
-                            row_dict['corrections'] = '#%s not issued' % version
-                    else:
-                        row_dict['corrections'] = '-' if issued else '(never issued)'
-
-                    # version as machine-readable invisible column
-                    row_dict['max_version'] = version
-
-                    # other invisible columns
-                    row_dict['total_error'] = self.process.get_total_error(
-                            session, account, reebill.sequence)
-                    row_dict['issued'] = self.state_db.is_issued(session,
-                            account, reebill.sequence)
-
-                    rows.append(row_dict)
-                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+                rows = sorted(self.process.get_reebill_metadata_json(session,
+                        account), key=operator.itemgetter(sort))
+                if dir == 'desc':
+                    rows.reverse()
+                return self.dumps({'success': True, 'rows': rows[start:limit],
+                        'results':len(rows)})
 
             elif xaction == "update":
                 return self.dumps({'success':False})

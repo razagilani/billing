@@ -13,6 +13,7 @@ from optparse import OptionParser
 from decimal import * # BAD
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
+from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 import operator
 from bson import ObjectId
@@ -199,6 +200,68 @@ class Process(object):
                     period_end or utilbill.period_end)
 
         self.reebill_dao.save_utilbill(doc)
+
+
+    def get_reebill_metadata_json(self, session, account):
+        '''Returns data from both MySQL and Mongo describing reebills for the
+        given account, as list of JSON-ready dictionaries.
+        '''
+        customer = self.state_db.get_customer(session, account)
+        result = []
+        #min_sequence = session.query(
+                #unissued_v0_reebills.c.customer_id.label('customer_id'),
+                #func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                #.group_by(unissued_v0_reebills.c.customer_id).subquery()
+        for reebill, max_version in session.query(ReeBill,
+                sql_max(ReeBill.version)).filter_by(customer=customer)\
+                        .group_by(ReeBill.sequence).all():
+            assert reebill.version == max_version
+            assert len(reebill._utilbill_reebills) == 1
+
+            # start with data from MySQL
+            the_dict = {
+                'id': reebill.sequence,
+                'sequence': reebill.sequence,
+                'issue_date': reebill.issue_date,
+                'period_start': reebill.utilbills[0].period_start,
+                'period_end': reebill.utilbills[0].period_end,
+                # invisible columns
+                'max_version': max_version,
+                'total_error': self.get_total_error(session, account,
+                        reebill.sequence),
+                'issued': self.state_db.is_issued(session,
+                        account, reebill.sequence)
+            }
+            issued = self.state_db.is_issued(session, account, reebill.sequence)
+            if max_version > 0:
+                if issued:
+                    the_dict['corrections'] = str(version)
+                else:
+                    the_dict['corrections'] = '#%s not issued' % version
+            else:
+                the_dict['corrections'] = '-' if issued else '(never issued)'
+
+
+            # update it with additional data from Mongo doc
+            doc = self.reebill_dao.load_reebill(account, reebill.sequence,
+                    version=max_version)
+            the_dict.update({
+                'hypothetical_total': doc.hypothetical_total,
+                'actual_total': doc.actual_total,
+                'ree_quantity': doc.total_renewable_energy(),
+                'ree_value': doc.ree_value,
+                'prior_balance': doc.prior_balance,
+                'payment_received': doc.payment_received,
+                'total_adjustment': doc.total_adjustment,
+                'balance_forward': doc.balance_forward,
+                'ree_charges': doc.ree_charges,
+                'balance_due': doc.balance_due,
+                'services': [service.title() for service in doc.services],
+            })
+
+            result.append(the_dict)
+
+        return result
 
 
     def upload_utility_bill(self, session, account, service, utility,
