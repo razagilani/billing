@@ -1641,32 +1641,35 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
             self.process.create_next_reebill(session, acc)
-            one = self.reebill_dao.load_reebill(acc, 1)
+            one = self.state_db.get_reebill(session, acc, 1)
+            one_doc = self.reebill_dao.load_reebill(acc, 1)
             two = self.reebill_dao.load_reebill(acc, 2)
             utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
-            self.assertEquals(None, one.issue_date)
-            self.assertEquals(None, one.due_date)
+            self.assertEquals(None, one_doc.issue_date)
+            self.assertEquals(None, one_doc.due_date)
 
-            # two should not be issuable until one is issued
+            # two should not be issuable until one_doc is issued
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
             # issue one
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
-            one = self.reebill_dao.load_reebill(acc, 1)
+            one_doc = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
-            self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertIsInstance(one.bill_recipients, list)
-            self.assertEquals(len(one.bill_recipients), 0)
-            self.assertIsInstance(one.last_recipients, list)
-            self.assertEquals(len(one.last_recipients), 0)
+            self.assertEquals(datetime.utcnow().date(), one_doc.issue_date)
+            self.assertEquals(one_doc.issue_date + timedelta(30), one_doc.due_date)
+            self.assertIsInstance(one_doc.bill_recipients, list)
+            self.assertEquals(len(one_doc.bill_recipients), 0)
+            self.assertIsInstance(one_doc.last_recipients, list)
+            self.assertEquals(len(one_doc.last_recipients), 0)
 
-            #two = self.process.roll_bill(session, one)
+            #two = self.process.roll_bill(session, one_doc)
             two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
             self.reebill_dao.save_reebill(two)
             
