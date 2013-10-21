@@ -3,6 +3,7 @@ nose
 nose-progressive
 coverage
 minimock
+mock
 ipdb
 pudb
 #ipython # system-wide ipython works with virtualenv
