@@ -166,6 +166,7 @@ for account, sequence, max_version in cur.fetchall():
         # "version" keys in it
         try:
             assert 'sequence' in utilbill_doc and 'version' in utilbill_doc
+            # TODO assert sequence and version match MySQL values
         except AssertionError:
             print >> stderr, ('issued reebill lacks "sequence" and "version"'
                     ' in its utility bill: %s') % reebill_doc['_id']
