@@ -1156,6 +1156,7 @@ class Process(object):
         reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
 
         # mark as issued in mysql
+        #reebill.issued = 1
         self.state_db.issue(session, account, sequence)
 
 
