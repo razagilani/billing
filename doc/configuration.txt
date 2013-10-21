@@ -515,7 +515,7 @@ PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages
 MAILTO=randrews@skylineinnovations.com
 
 # m h  dom mon dow   command
-#0 3 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod.bash P4IMvFI9DRTd tyrell-prod stage  > /home/reebill-stage/destage_from_prod_stdout.log 2> /home/reebill-stage/destage_from_prod_stderr.log
+#0 3 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod_rsync.bash -ns skyline-internal-prod stage P4IMvFI9DRTd > /home/reebill-stage/destage_from_prod_stdout.log 2> /home/reebill-stage/destage_from_prod_stderr.log
 0 4 * * * source /var/local/reebill-stage/bin/activate && /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/reconciliation.py --reportoutputdir /var/local/reebill-stage/ --logoutputdir /var/local/reebill-stage --billdbhost localhost --statedb skyline_stage --stateuser reebill-stage --statepw KdvDzFZeawPy --billdb skyline-stage --olaphost localhost --olapdb stage --skip-oltp --nexushost nexus.skylineinnovations.net > /home/reebill-stage/reconciliation_stdout.log 2> /home/reebill-stage/reconciliation_stderr.log
 
 
