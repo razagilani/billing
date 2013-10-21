@@ -114,10 +114,10 @@ port = 27017
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
 
-        # insert URS documet for the customer's rate class in Mongo (note that
-        # UPRS and CPRS can be newly-created but URS must already exist)
-        example_data.get_urs(utility_name='washgas',
-                rate_structure_name='DC Non Residential Non Heat').save()
+        ## insert URS document for the customer's rate class in Mongo (note that
+        ## UPRS and CPRS can be newly-created but URS must already exist)
+        #example_data.get_urs(utility_name='washgas',
+                #rate_structure_name='DC Non Residential Non Heat').save()
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])

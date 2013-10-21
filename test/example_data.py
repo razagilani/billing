@@ -6,7 +6,7 @@ from billing.processing.mongo import MongoReebill, float_to_decimal
 from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
-from billing.processing.rate_structure2 import RateStructure, URS, URSID, RateStructureItem, Register
+from billing.processing.rate_structure2 import RateStructure, RateStructureItem, Register
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -355,144 +355,23 @@ example_reebill = {
 	}
 }
 
-#example_urs = {
-	#u"_id" : {
-		#u"type" : u"URS",
-		#u"rate_structure_name" : u"DC Non Residential Non Heat",
-		#u"utility_name" : u"washgas",
-        #u"effective": datetime(2000, 1, 1),
-        #u"expires": datetime(2020, 12, 31)
-	#},
-	#u"registers" : [
-		#{
-			#u"quantity_units" : u"therms",
-			#u"description" : u"Total therms register",
-			#u"uuid" : u"b11e375c-01a9-11e1-af85-002421e88ffb",
-			#u"register_binding" : u"REG_TOTAL",
-			#u"quantityunits" : u"therms",
-			#u"quantity" : u"0"
-		#}
-	#],
-	#u"rates" : [
-		#{
-			#u"rsi_binding" : u"SYSTEM_CHARGE",
-			#u"description" : u"System Charge",
-			#u"rate_units" : u"dollars",
-			#u"uuid" : u"b11e2500-01a9-11e1-af85-002421e88ffb",
-			#u"rate" : u"26.3",
-			#u"quantity" : 1
-		#},
-		#{
-			#u"description" : u"Delivery tax",
-			#u"rate" : u"0.07777",
-			#u"rsi_binding" : u"DELIVERY_TAX",
-			#u"uuid" : u"b11e3216-01a9-11e1-af85-002421e88ffb",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"description" : u"Sales tax",
-			#u"rate" : u"0.06",
-			#u"rsi_binding" : u"SALES_TAX",
-			#u"uuid" : u"b11e33d8-01a9-11e1-af85-002421e88ffb",
-			#u"quantity" : u"SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + PUC.total +  RIGHT_OF_WAY.total + SETF.total + EATF.total + DELIVERY_TAX.total + PGC.total"
-		#}
-	#]
-#}
+#example_urs = URS(
+    #id=URSID(
+        #type='URS',
+        #utility_name='washgas',
+        #rate_structure_name="DC Non Residential Non Heat",
+    #),
+    #type='URS',
+    #registers=[Register(
+        #register_binding='REG_TOTAL',
+        #description='Total therms register',
+        #uuid='b11e375c-01a9-11e1-af85-002421e88ffb',
+        #quantity='0', quantity_units='therms', rate='26.3',
+        #rate_units='therms'
+    #)],
+    #rates=[],
+#)
 
-example_urs = URS(
-    id=URSID(
-        type='URS',
-        utility_name='washgas',
-        rate_structure_name="DC Non Residential Non Heat",
-    ),
-    type='URS',
-    registers=[Register(
-        register_binding='REG_TOTAL',
-        description='Total therms register',
-        uuid='b11e375c-01a9-11e1-af85-002421e88ffb',
-        quantity='0', quantity_units='therms', rate='26.3',
-        rate_units='therms'
-    )],
-    rates=[],
-)
-
-
-#example_uprs = {
-    ## NOTE: u"_id" must be inserted at runtime in get_utilbill_dict() because it
-    ## should be different for each instance
-
-	#u"rates" : [
-		#{
-			#u"rsi_binding" : u"SYSTEM_CHARGE",
-			#u"description" : u"System Charge",
-			#u"rate_units" : u"dollars",
-			#u"uuid" : u"b11e2500-01a9-11e1-af85-002422358023",
-			#u"rate" : u"45.6",
-			#u"quantity" : 1
-		#},
-		#{
-			#u"description" : u"Delivery tax",
-			#u"rate" : u"0.1",
-			#u"rsi_binding" : u"DELIVERY_TAX",
-			#u"uuid" : u"b11e3216-01a9-11e1-af85-560964835ffb",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-        #{
-            #u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-            #u"description" : u"Distribution charge for all therms",
-            #u"quantity" : 750.10197727,
-            #u"rate_units" : u"dollars",
-            #u"rate" : 0.2935,
-            #u"quantity_units" : u"therms",
-            #u"uuid" : u"c9733ed2-2c16-11e1-8c7f-002421e88ffb"
-        #},
-        #{
-            #u"rsi_binding" : u"pgc",
-            #u"description" : u"purchased gas charge",
-            #u"quantity" : 750.10197727,
-            #u"rate_units" : u"dollars",
-            #u"rate" : 0.7653,
-            #u"quantity_units" : u"therms",
-            #u"uuid" : u"c97340da-2c16-11e1-8c7f-002421e88ffb"
-        #},
-        #{
-            #u"rsi_binding" : u"PUC",
-            #u"quantity_units" : u"kWh",
-            #u"quantity" : 1,
-            #u"description" : u"Peak Usage Charge",
-            #u"rate_units" : u"dollars",
-            #u"rate" : 23.14,
-            #u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb"
-        #},
-        #{
-            #u"rsi_binding" : u"RIGHT_OF_WAY",
-            #u"description" : u"DC Rights-of-Way Fee",
-            #u"quantity" : 750.10197727,
-            #u"rate_units" : u"dollars",
-            #u"rate" : 0.03059,
-            #u"quantity_units" : u"therms",
-            #u"uuid" : u"c97344f4-2c16-11e1-8c7f-002421e88ffb"
-        #},
-        #{
-            #u"rsi_binding" : u"SETF",
-            #u"description" : u"Sustainable Energy Trust Fund",
-            #u"quantity" : 750.10197727,
-            #u"rate_units" : u"dollars",
-            #u"rate" : 0.01399,
-            #u"quantity_units" : u"therms",
-            #u"uuid" : u"c97346f2-2c16-11e1-8c7f-002421e88ffb"
-        #},
-        #{
-            #u"rsi_binding" : u"EATF",
-            #u"description" : u"DC Energy Assistance Trust Fund",
-            #u"quantity" : 750.10197727,
-            #u"rate_units" : u"dollars",
-            #u"rate" : 0.006,
-            #u"quantity_units" : u"therms",
-            #u"uuid" : u"c9734af8-2c16-11e1-8c7f-002421e88ffb"
-        #},
-	#]
-#}
 
 example_uprs = RateStructure(
     type='UPRS',
@@ -765,22 +644,12 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         meter['present_read_date'] = end
     return utilbill_dict
 
-#def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
+#def get_urs(rate_structure_name='DC Non Residential Non Heat',
         #utility_name='washgas'):
-    #'''Returns an example utility global rate structure document.'''
-    #urs_dict = deepcopy(example_urs)
-    #urs_dict['_id'].update({
-        #'rate_structure_name': rate_structure_name,
-        #'utility_name': utility_name,
-    #})
-    #return urs_dict
-
-def get_urs(rate_structure_name='DC Non Residential Non Heat',
-        utility_name='washgas'):
-    result = deepcopy(example_urs)
-    result.id = URSID(rate_structure_name=rate_structure_name,
-            utility_name=utility_name, type='URS')
-    return result
+    #result = deepcopy(example_urs)
+    #result.id = URSID(rate_structure_name=rate_structure_name,
+            #utility_name=utility_name, type='URS')
+    #return result
 
 #def get_uprs_dict():
     #'''Returns an example customer periodic rate structure document.'''

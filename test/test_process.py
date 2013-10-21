@@ -207,10 +207,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     utilbill.id, 'UPRS')
             self.assertRaises(ValueError, self.process.get_rs_doc, session,
                     utilbill.id, 'CPRS')
-            self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    utilbill.id, 'urs')
-            self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    utilbill.id, 'URS')
+            #self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    #utilbill.id, 'urs')
+            #self.assertRaises(ValueError, self.process.get_rs_doc, session,
+                    #utilbill.id, 'URS')
 
             # documents loaded via get_utilbill_doc and get_rs_doc should be
             # the same as when loaded directly using reebill_dao
@@ -2097,20 +2097,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill.utility = 'BGE'
             utilbill.rate_class = 'General Service - Schedule C'
 
-            # make sure there is an "URS" document so the utility bill can be
-            # computed
-            rate_structure2.URS(
-                rate_structure_name='General Service - Schedule C',
-                utility_name='BGE',
-                registers=[rate_structure2.Register(
-                    register_binding='REG_TOTAL',
-                    description= 'Total therm register',
-                    uuid="af65077e-01a9-11e1-af85-002421e88ffb",
-                    quantity_units='therm',
-                    quantity='0',
-                )],
-                rates = [],
-            )
+            ## make sure there is an "URS" document so the utility bill can be
+            ## computed
+            #rate_structure2.URS(
+                #rate_structure_name='General Service - Schedule C',
+                #utility_name='BGE',
+                #registers=[rate_structure2.Register(
+                    #register_binding='REG_TOTAL',
+                    #description= 'Total therm register',
+                    #uuid="af65077e-01a9-11e1-af85-002421e88ffb",
+                    #quantity_units='therm',
+                    #quantity='0',
+                #)],
+                #rates = [],
+            #)
 
             # compute_utility_bill should update the document to match
             self.process.compute_utility_bill(session, utilbill.id)
