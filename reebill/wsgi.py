@@ -1626,11 +1626,7 @@ class BillToolBridge:
                 rows = []
 
             self.ratestructure_dao.save_rs(rate_structure)
-            pp.pprint(rate_structure)
 
-            # TODO this loads the RS doc again unnecessarily; the
-            # solution may be that all this code moves into Process, which is
-            # where belongs anyway.
             return self.dumps({'success':True, 'rows':rows})
 
     @cherrypy.expose
