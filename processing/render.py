@@ -635,7 +635,7 @@ class ReebillRenderer:
             currentCharges = [
                 [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
                 [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(late_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(Decimal('%.2f' % late_charges).quantize(Decimal(".00"))), styles['BillFieldRight'])]
             ]
         else:
             currentCharges = [
