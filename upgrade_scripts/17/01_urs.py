@@ -37,7 +37,8 @@ for uprs in db.ratestructure.find({'_id.type': 'UPRS'}):
     db.ratestructure.save(uprs)
 
 # remove "rates" from URS (register types still needed, maybe)
-db.ratestructure.update({'_id.type': 'UPRS'}, {'$set': {'rates': []}})
+db.ratestructure.update({'_id.type': 'URS'}, {'$set': {'rates': []}},
+        multi=True)
 
 try:
     assert db.ratestructure.find({'_id.type': 'UPRS'}).count() == uprs_count
