@@ -1,0 +1,8 @@
+fabric
+nose
+nose-progressive
+coverage
+minimock
+ipdb
+pudb
+#ipython # system-wide ipython works with virtualenv
