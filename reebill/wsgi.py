@@ -1679,9 +1679,10 @@ class BillToolBridge:
         start, limit = int(start), int(limit)
         with DBSession(self.state_db) as session:
             if xaction == "read":
+                # this is inefficient but length is always <= 120 rows
                 rows = sorted(self.process.get_reebill_metadata_json(session,
                         account), key=operator.itemgetter(sort))
-                if dir == 'desc':
+                if dir.lower() == 'desc':
                     rows.reverse()
 
                 # "limit" means number of rows to return, so the real limit is
