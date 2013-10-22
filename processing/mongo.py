@@ -1698,8 +1698,8 @@ class ReebillDAO(object):
         _id is in the utilbill_reebill table) if the reebill is issued.'''
         if utilbill.state == UtilBill.Hypothetical:
             assert utilbill.document_id == None
-            assert utilbill.uprs_id == None
-            assert utilbill.cprs_id == None
+            assert utilbill.uprs_document_id == None
+            assert utilbill.cprs_document_id == None
             raise ValueError('No document for hypothetical utilty bill: %s'
                     % utilbill)
         # empty document_ids are legitimate because "hypothetical" utility
