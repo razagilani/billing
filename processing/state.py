@@ -989,7 +989,7 @@ class StateDB(object):
             cursor = cursor.filter(UtilBill.utility == utility)
         if rate_class is not None:
             cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        result = cursor.order_by(UtilBill.period_end).first()
+        result = cursor.order_by(desc(UtilBill.period_end)).first()
         if result is None:
             raise NoSuchBillException
         return result
