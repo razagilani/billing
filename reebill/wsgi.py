@@ -1673,7 +1673,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill(self, xaction, start, limit, account, sort = u'sequence', dir = u'DESC', **kwargs):
+    def reebill(self, xaction, start, limit, account, sort = u'sequence',
+            dir=u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         start, limit = int(start), int(limit)
         with DBSession(self.state_db) as session:
@@ -1682,7 +1683,11 @@ class BillToolBridge:
                         account), key=operator.itemgetter(sort))
                 if dir == 'desc':
                     rows.reverse()
-                return self.dumps({'success': True, 'rows': rows[start:limit],
+
+                # "limit" means number of rows to return, so the real limit is
+                # start + limit
+                result = rows[start : start + limit]
+                return self.dumps({'success': True, 'rows': result,
                         'results':len(rows)})
 
             elif xaction == "update":
