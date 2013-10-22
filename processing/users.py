@@ -152,8 +152,6 @@ class UserDAO:
         existing user with the same identifier.'''
         # for the default user, do nothing
         if user is UserDAO.default_user:
-            # TODO 40962161 log msg, don't print
-            print "DID NOT SAVE USER BECAUSE THEY ARE DEFAULT"
             return
 
         self.collection.save(user.dictionary)
