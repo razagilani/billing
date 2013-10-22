@@ -852,7 +852,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,3,1), bills[2].period_start)
             self.assertEqual(date(2012,4,1), bills[2].period_end)
 
-            # 4th bill without a gap between it and th 3rd bill: hypothetical
+            # 4th bill without a gap between it and the 3rd bill: hypothetical
             # bills should be inserted
             file4 = StringIO("File of the July bill.")
             self.process.upload_utility_bill(session, account, service,
@@ -885,6 +885,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,7,1), bills[i].period_start)
             self.assertEqual(date(2012,8,1), bills[i].period_end)
             self.assertEqual(UtilBill.Complete, bills[i].state)
+
+            # change the utility and rate structure name of the last bill, to
+            # ensure that that one is used as the "predecessor" to determine
+            # these keys in the next bill
+            last_bill = bills[-1]
+            assert last_bill.period_start == date(2012,7,1)
+            assert last_bill.period_end == date(2012,8,1)
+            last_bill.utility = 'New Utility'
+            last_bill.rate_class = 'New Rate Class'
+            self.process.upload_utility_bill(session, account, service,
+                    'washgas', 'DC Non Residential Non Heat', date(2012,8,1),
+                    date(2012,9,1), StringIO('whatever'), 'august.pdf')
+            new_bill = session.query(UtilBill)\
+                    .filter_by(period_start=date(2012,8,1)).one()
+            self.assertEqual('New Utility', new_bill.utility)
+            self.assertEqual('New Rate Class', new_bill.rate_class)
 
     def test_delete_utility_bill(self):
         account = '99999'
