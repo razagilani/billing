@@ -21,6 +21,7 @@ import traceback
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
+import re
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
@@ -30,6 +31,7 @@ from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
+from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
@@ -208,42 +210,53 @@ class Process(object):
         '''
         customer = self.state_db.get_customer(session, account)
         result = []
-        #min_sequence = session.query(
-                #unissued_v0_reebills.c.customer_id.label('customer_id'),
-                #func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                #.group_by(unissued_v0_reebills.c.customer_id).subquery()
-        for reebill, max_version in session.query(ReeBill,
-                sql_max(ReeBill.version)).filter_by(customer=customer)\
-                        .group_by(ReeBill.sequence).all():
-            assert reebill.version == max_version
-            assert len(reebill._utilbill_reebills) == 1
 
+        # NOTE i can't figure out how to make SQLAlchemy do this query properly,
+        # so i gave up and used raw SQL. this is unnecessarily complicated, and
+        # bad for security. i could like to make it work like the commented-out
+        # code below, but the ReeBill object returned is not the one whose
+        # version matches the version returned by the query.
+        #for reebill, max_version in session.query(ReeBill,
+           #sql_max(ReeBill.version)).filter_by(customer=customer)\
+           #.group_by(ReeBill.sequence).all():
+        # if this is impossible in SQLAlchemy (unlikely) an alternative would be
+        # to create a view in the DB with a corresponding SQLAlchemy class and
+        # query that with SQLAlchemy.
+        assert re.match(ACCOUNT_NAME_REGEX, account)
+        statement = '''select sequence, max(version) as max_version,
+        period_start, period_end, issued, issue_date from
+        customer join reebill on customer.id = reebill.customer_id
+        join utilbill_reebill on reebill.id = reebill_id
+        join utilbill on utilbill_id = utilbill.id
+        where account = %s
+        group by reebill.customer_id, sequence, version''' % account
+        query = session.query('sequence', 'max_version', 'period_start',
+                'period_end', 'issued', 'issue_date').from_statement(statement)
+                   
+        for (sequence, max_version, period_start, period_end, issued,
+                issue_date) in query:
             # start with data from MySQL
             the_dict = {
-                'id': reebill.sequence,
-                'sequence': reebill.sequence,
-                'issue_date': reebill.issue_date,
-                'period_start': reebill.utilbills[0].period_start,
-                'period_end': reebill.utilbills[0].period_end,
+                'id': sequence,
+                'sequence': sequence,
+                'issue_date': issue_date,
+                'period_start': period_start,
+                'period_end': period_end,
                 # invisible columns
                 'max_version': max_version,
-                'total_error': self.get_total_error(session, account,
-                        reebill.sequence),
-                'issued': self.state_db.is_issued(session,
-                        account, reebill.sequence)
+                'issued': self.state_db.is_issued(session, account, sequence)
             }
-            issued = self.state_db.is_issued(session, account, reebill.sequence)
+            issued = self.state_db.is_issued(session, account, sequence)
             if max_version > 0:
                 if issued:
-                    the_dict['corrections'] = str(version)
+                    the_dict['corrections'] = str(max_version)
                 else:
-                    the_dict['corrections'] = '#%s not issued' % version
+                    the_dict['corrections'] = '#%s not issued' % max_version
             else:
                 the_dict['corrections'] = '-' if issued else '(never issued)'
 
-
             # update it with additional data from Mongo doc
-            doc = self.reebill_dao.load_reebill(account, reebill.sequence,
+            doc = self.reebill_dao.load_reebill(account, sequence,
                     version=max_version)
             the_dict.update({
                 'hypothetical_total': doc.hypothetical_total,
@@ -257,6 +270,8 @@ class Process(object):
                 'ree_charges': doc.ree_charges,
                 'balance_due': doc.balance_due,
                 'services': [service.title() for service in doc.services],
+                'total_error': self.get_total_error(session, account,
+                        sequence),
             })
 
             result.append(the_dict)
