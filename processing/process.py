@@ -229,7 +229,7 @@ class Process(object):
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
         where account = %s
-        group by reebill.customer_id, sequence, version''' % account
+        group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
                 'period_end', 'issued', 'issue_date').from_statement(statement)
                    
