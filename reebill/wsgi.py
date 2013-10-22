@@ -2379,9 +2379,9 @@ class BillToolBridge:
                     # bill corresponding to it).
                     'reebills': ub.sequence_version_json(),
                     'state': ub.state_name(),
-                    # utility bill rows are only editable if they don't have a
-                    # reebill attached to them
-                    'editable': not ub.is_attached()
+                    # utility bill rows are always editable (since editing them
+                    # should not affect utility bill data in issued reebills)
+                    'editable': True,
                 } for ub in utilbills]
 
                 return self.dumps({'success': True, 'rows':rows,
