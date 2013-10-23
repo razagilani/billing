@@ -322,10 +322,6 @@ class Process(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        # TODO get utility name and rate class as arguments instead of from
-        # template: see https://www.pivotaltracker.com/story/show/52495771
-        # (don't try to improve this code because it will go away when these
-        # parameters are passed in from the client)
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
