@@ -205,8 +205,8 @@ class Process(object):
 
 
     def get_reebill_metadata_json(self, session, account):
-        '''Returns data from both MySQL and Mongo describing reebills for the
-        given account, as list of JSON-ready dictionaries.
+        '''Returns data from both MySQL and Mongo describing all reebills for
+        the given account, as list of JSON-ready dictionaries.
         '''
         customer = self.state_db.get_customer(session, account)
         result = []
