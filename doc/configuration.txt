@@ -14,11 +14,12 @@ Create Skyliner config file
     cp billing/skyliner/cfg_tmpl.yaml billing/skyliner/config.yaml
 
 Link Apache config file for ReeBill from the repository to the appropriate directories:
+    TODO: Doc how to use a2ensite
     ln -s billing/reebill/reebill-dev /etc/apache2/sites-available/
     ln -s billing/reebill/reebill-dev /etc/apache2/sites-available/
 
 Configure Apache2
-    TODO: these apache configuration strategies need to be documented in host-setup.txt
+    TODO: these apache configuration strategies need to be documented in host-setup.txt - for developers only (passing env into apache is a bad idea for production)
     TODO: the development virtual host file should be depicted below
     Edit Apache "environment variables" (not actual shell environment variables) that give values to the variable names used in the config file.
     Append the following text to /etc/apache2/envvars:
