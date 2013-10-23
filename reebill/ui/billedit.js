@@ -4271,6 +4271,7 @@ function reeBillReady() {
         triggerAction: 'all',
         emptyText:'Select...',
         selectOnFocus:true,
+        allowBlank: false,
         readOnly: false,
     });
 
