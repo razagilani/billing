@@ -4471,14 +4471,6 @@ function reeBillReady() {
                                         accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
                                             accountGrid.getSelectionModel().selectFirstRow();
                                         }});
-                                        // reload grid to show new account
-                                        // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
-                                        reeBillStore.reload({
-                                            //callback: function(records, options, success) {
-                                            //    alert('loaded!');
-                                            //    console.log(records);
-                                            //}
-                                        });
                                         //Reset account info
                                         newAccountTemplateCombo.reset();
                                         //Addresses all have 'xtype' == 'textfield'
