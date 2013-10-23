@@ -205,8 +205,8 @@ class Process(object):
 
 
     def get_reebill_metadata_json(self, session, account):
-        '''Returns data from both MySQL and Mongo describing reebills for the
-        given account, as list of JSON-ready dictionaries.
+        '''Returns data from both MySQL and Mongo describing all reebills for
+        the given account, as list of JSON-ready dictionaries.
         '''
         customer = self.state_db.get_customer(session, account)
         result = []
@@ -333,8 +333,8 @@ class Process(object):
             utility = predecessor.utility
         except NoSuchBillException:
             template = self.reebill_dao.load_utilbill_template(session, account)
-            rate_class = template['rate_structure_binding']
-            utility = template['utility']
+            # NOTE template document may not have the same service and
+            # rate_class as this one
 
         if bill_file is not None:
             # if there is a file, get the Python file object and name
@@ -456,12 +456,18 @@ class Process(object):
             # bill document, and create new empty CPRS
             doc = self.reebill_dao.load_utilbill_template(session,
                     utilbill.customer.account)
-            # template document should have the same service/utility/rate class
-            # as this one; multiple services are not supported since there
-            # would need to be more than one template
-            assert doc['service'] == utilbill.service
-            assert doc['utility'] == utilbill.utility
-            assert doc['rate_structure_binding'] == utilbill.rate_class
+
+            # NOTE template document does not necessarily have the same
+            # service/utility/rate class as this one. if you chose the wrong
+            # template account, many things will probably be wrong, but you
+            # should be allowed to do it. so just update the new document with
+            # the chosen service/utility/rate class values.
+            doc.update({ 
+                # new _id will be created below
+                'service': utilbill.service,
+                'utility': utilbill.utility,
+                'rate_structure_binding': utilbill.rate_class,
+            })
             cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
         else:
             # the preceding utility bill does exist, so duplicate its CPRS to

@@ -902,6 +902,33 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('New Utility', new_bill.utility)
             self.assertEqual('New Rate Class', new_bill.rate_class)
 
+    def test_upload_new_service(self):
+        '''Tests uploading first utility bill with different service, utility,
+        rate_class from the template document for the account.'''
+        with DBSession(self.state_db) as session:
+            # account was created with the following values
+            template_doc = self.reebill_dao.load_utilbill_template(session,
+                    '99999')
+            assert template_doc['service'] == 'gas'
+            assert template_doc['utility'] == 'washgas'
+            assert template_doc['rate_structure_binding'] == \
+                    'DC Non Residential Non Heat'
+
+            self.process.upload_utility_bill(session, '99999', 'electric',
+                    'Pepco', 'Residential R Winter', date(2013,1,1),
+                    date(2013,2,1), StringIO('a file'), 'january.pdf')
+
+            bill = session.query(UtilBill).one()
+            self.assertEqual('electric', bill.service)
+            self.assertEqual('Pepco', bill.utility)
+            self.assertEqual('Residential R Winter', bill.rate_class)
+            doc = self.reebill_dao.load_doc_for_utilbill(bill)
+            self.assertEqual('electric', doc['service'])
+            self.assertEqual('Pepco', doc['utility'])
+            self.assertEqual('Residential R Winter',
+                    doc['rate_structure_binding'])
+
+
     def test_delete_utility_bill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
