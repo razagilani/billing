@@ -34,7 +34,7 @@ Install MySQL
     When prompted to create a root account, use the username and password "root".
 
 Create MySQL database and development user
-    echo "create database skyline_dev; create user dev@localhost identified by dev; grant all on skyline_dev.* to dev" | mysql -uroot -proot
+    echo "create database skyline_dev; create user reebill-dev@localhost identified by reebill-dev; grant all on skyline_dev.* to reebill-dev" | mysql -uroot -proot
 
 Create directory for bill PDF files
     sudo mkdir /db-dev; sudo chown [your username]:[your username] /db-dev
@@ -375,7 +375,7 @@ MySQL
 	    Use destage_from_prod.bash!
 
 
-        Manual database creation steps
+        Manual database creation steps for all environments
 
             mysql -ureebill-[env] -p[password] -Dskyline_[env] < [workspace]/billing/db/processing/billdb.sql
             - or -
@@ -394,25 +394,25 @@ MySQL
                 http://www.mysql.com/downloads/workbench/#downloads
 
             How to create a development database
-                create user 'dev'@'10.0.0.%' identified by 'dev'
+                create user 'reebill-dev'@'10.0.0.%' identified by 'reebill-dev'
                 create database skyline_stage
-                grant all on skyline_dev.* to 'dev'@'10.0.0.%' identified by 'dev';
+                grant all on skyline_dev.* to 'reebill-dev'@'10.0.0.%' identified by 'reebill-dev';
                 mysql --verbose -uroot -p -D skyline_dev < ~/20110606billing_mysql.dmp
 
             See /docs/host-setup.txt for details on installing MySQL
 
-            grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+            grant all on skyline.* to 'root'@'%.local' identified by 'root';
 
             create database skyline_[env]
             use skyline_[env]
 
-            create user 'reebill'@'%' identified by '[password]'
+            create user 'reebill-dev'@'%' identified by 'reebill-dev'
             # needs to be done to allow connections from localhost
-            create user 'reebill'@'localhost' identified by '[password]';
+            create user 'reebill-dev'@'localhost' identified by 'reebill-dev';
             # for connecting from anywhere
-            #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+            #grant all on skyline.* to 'reebill-dev'@'%' identified by 'reebill-dev';
             # for connecting from localhost
-            grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+            grant all on skyline.* to 'reebill'@'localhost' identified by 'reebill-dev';
 
 
             An example of creating staging on tyrell-prod
