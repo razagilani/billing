@@ -1000,6 +1000,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     self.state_db.get_utilbill(session, account, 'gas',
                     date(2013,3,1), date(2013,4,1)))
 
+            # test deletion of a Hypothetical utility bill (no file and no
+            # Mongo document)
+            self.process.upload_utility_bill(session, account, 'gas',
+                    'washgas', 'DC Non Residential Non Heat', date(2013,3,1),
+                    date(2013,4,1), None, 'no file name',
+                    state=UtilBill.Hypothetical)
+            self.process.delete_utility_bill(session,
+                    self.state_db.get_utilbill(session, account, 'gas',
+                    date(2013,3,1), date(2013,4,1)))
+
             # test deletion of utility bill with non-standard file extension
             self.process.upload_utility_bill(session, account, 'gas',
                     'washgas', 'DC Non Residential Non Heat', date(2013,4,1),
