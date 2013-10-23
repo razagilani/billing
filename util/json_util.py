@@ -3,7 +3,6 @@
 import simplejson as json
 import datetime
 from decimal import Decimal
-from mutable_named_tuple import MutableNamedTuple
 import dateutil.parser
 from bson.objectid import ObjectId
 import re
@@ -40,30 +39,10 @@ def __decode_str__(d):
                 return ObjectId(value)
     return d
 
-def __convert_to_mnt__(obj):
-    new_pairs = []
-    for name, value in obj:
-        #happens if your key's value is a string
-        if isinstance(value, basestring):
-            # TODO:  and the name of this string is in a dict of fields to be converted to dates
-            if date_pattern.match(value) is not None: 
-                value = datetime.datetime.strptime(value, "%Y-%m-%d").date()
-        #happens if your key's value is a list
-        elif type(value) is list:
-            for n,i in enumerate(value):
-                if isinstance(i, basestring):
-                    if date_pattern.search(i) is not None:
-                        value[n] = datetime.datetime.strptime(value,
-                                                              "%Y-%m-%d").date()
-        new_pairs.append((name, value))
-    return MutableNamedTuple(new_pairs)
-
-
 def dumps(obj):
     return json.dumps(obj, default=__encode_obj__, use_decimal=True)
 
 def loads(obj):
-    #return json.loads(obj, object_pairs_hook=__convert_to_mnt__, use_decimal=True)
     return json.loads(obj, object_hook=__decode_str__, use_decimal=True)
 
 
@@ -92,7 +71,6 @@ if __name__ == "__main__":
     print "my_struct dumped to json %s " % dump
 
     load = loads(dump)
-    #object_pairs_hook=convert_to_mnt, object_hook=decode_date, 
     print "my_struct loaded from json %s" % load
 
     print load == my_struct
