@@ -279,9 +279,9 @@ class Process(object):
         return result
 
 
-    def upload_utility_bill(self, session, account, service, utility,
-            rate_class, begin_date, end_date, bill_file, file_name, total=0,
-            state=UtilBill.Complete):
+    def upload_utility_bill(self, session, account, service, begin_date,
+            end_date, bill_file, file_name, utility=None, rate_class=None,
+            total=0, state=UtilBill.Complete):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table in MySQL and a document is added in Mongo
@@ -329,12 +329,18 @@ class Process(object):
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
-            rate_class = predecessor.rate_class
-            utility = predecessor.utility
+            if utility is None:
+                utility = predecessor.utility
+            if rate_class is None:
+                rate_class = predecessor.rate_class
         except NoSuchBillException:
             template = self.reebill_dao.load_utilbill_template(session, account)
-            # NOTE template document may not have the same service and
+            # NOTE template document may not have the same utility and
             # rate_class as this one
+            if utility is None:
+                utility = template['utility']
+            if rate_class is None:
+                rate_class = template['rate_structure_binding']
 
         if bill_file is not None:
             # if there is a file, get the Python file object and name

@@ -2250,20 +2250,6 @@ class BillToolBridge:
             UtilBill.validate_utilbill_period(begin_date_as_date,
                     end_date_as_date)
 
-            # these arguments are not provided by the client; look up the
-            # previous bill with the same service and use the same values as in
-            # that one, or if there is no previous bill, get it from the
-            # template
-            try:
-                predecessor = self.state_db.get_last_real_utilbill(session,
-                        account, begin_date, service=service)
-                rate_class = predecessor.rate_class
-                utility = predecessor.utility
-            except NoSuchBillException:
-                template = self.reebill_dao.load_utilbill_template(session, account)
-                rate_class = template['rate_structure_binding']
-                utility = template['utility']
-
             # NOTE 'file_to_upload.file' is always a CherryPy object; if no
             # file was specified, 'file_to_upload.file' will be None
 
@@ -2271,6 +2257,9 @@ class BillToolBridge:
                 self.process.upload_utility_bill(session, account, service,
                         utility, rate_class, begin_date_as_date,
                         end_date_as_date, file_to_upload.file,
+                        # determine these values from previous bills because
+                        # user does not want to specify them explicitly
+                        utility=None, rate_class=None,
                         file_to_upload.filename if file_to_upload else None,
                         total=total_charges_as_float, state=UtilBill.Complete
                         if file_to_upload.file else UtilBill.SkylineEstimated)
