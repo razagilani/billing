@@ -546,11 +546,16 @@ class Process(object):
         # TODO move to StateDB?
         session.delete(utilbill)
 
-        # delete utility bill document from Mongo
-        self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
-
-        # delete UPRS and CPRS documents from Mongo
-        self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
+        # delete utility bill, UPRS, and CPRS documents from Mongo (which should
+        # exist iff the utility bill is not "Hypothetical")
+        if utilbill.state < UtilBill.Hypothetical:
+            self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
+            self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
+        else:
+            assert utilbill.state == UtilBill.Hypothetical
+            assert utilbill.document_id is None
+            assert utilbill.uprs_document_id is None
+            assert utilbill.cprs_document_id is None
 
         return new_path
 
