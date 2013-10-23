@@ -920,11 +920,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             bill = session.query(UtilBill).one()
             self.assertEqual('electric', bill.service)
-            self.assertEqual('pepco', bill.utility)
+            self.assertEqual('Pepco', bill.utility)
             self.assertEqual('Residential R Winter', bill.rate_class)
             doc = self.reebill_dao.load_doc_for_utilbill(bill)
             self.assertEqual('electric', doc['service'])
-            self.assertEqual('pepco', doc['utility'])
+            self.assertEqual('Pepco', doc['utility'])
             self.assertEqual('Residential R Winter',
                     doc['rate_structure_binding'])
 
