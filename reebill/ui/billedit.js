@@ -4483,6 +4483,7 @@ function reeBillReady() {
                                         }
                                     }
                                     newAccountField.setValue(nextAccount);
+                                    newAccountTemplateStore.reload();
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
