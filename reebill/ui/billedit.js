@@ -4271,6 +4271,7 @@ function reeBillReady() {
         triggerAction: 'all',
         emptyText:'Select...',
         selectOnFocus:true,
+        allowBlank: false,
         readOnly: false,
     });
 
@@ -4483,6 +4484,7 @@ function reeBillReady() {
                                         }
                                     }
                                     newAccountField.setValue(nextAccount);
+                                    newAccountTemplateStore.reload();
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
