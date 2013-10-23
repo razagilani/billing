@@ -2,7 +2,6 @@ from sys import maxint
 import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
-from billing.util.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
@@ -29,7 +28,7 @@ def python_convert(x):
         return x
     if type(x) is ObjectId:
         return x
-    if type(x) is dict or type(x) is MutableNamedTuple:
+    if type(x) is dict:
         return dict([(item[0], python_convert(item[1])) for item in \
             #x.iteritems() if item[1] is not None])
             x.iteritems()])
@@ -56,7 +55,7 @@ def bson_convert(x):
         return str(x)
     if type(x) is date:
         return datetime(x.year, x.month, x.day)
-    if type(x) is dict or type(x) is MutableNamedTuple:
+    if type(x) is dict:
         #TODO: don't copy dict
         return {item[0]: bson_convert(item[1]) for item in x.iteritems()}
     if type(x) is list:
