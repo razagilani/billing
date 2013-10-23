@@ -334,7 +334,8 @@ class Process(object):
             if rate_class is None:
                 rate_class = predecessor.rate_class
         except NoSuchBillException:
-            template = self.reebill_dao.load_utilbill_template(session, account)
+            template = self.reebill_dao.load_utilbill_template(session,
+                    account)
             # NOTE template document may not have the same utility and
             # rate_class as this one
             if utility is None:

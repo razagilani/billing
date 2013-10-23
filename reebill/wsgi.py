@@ -2255,14 +2255,16 @@ class BillToolBridge:
 
             try:
                 self.process.upload_utility_bill(session, account, service,
-                        utility, rate_class, begin_date_as_date,
+                        begin_date_as_date,
                         end_date_as_date, file_to_upload.file,
+                        file_to_upload.filename if file_to_upload else None,
+                        total=total_charges_as_float,
+                        state=UtilBill.Complete if file_to_upload.file else \
+                                UtilBill.SkylineEstimated,
                         # determine these values from previous bills because
                         # user does not want to specify them explicitly
-                        utility=None, rate_class=None,
-                        file_to_upload.filename if file_to_upload else None,
-                        total=total_charges_as_float, state=UtilBill.Complete
-                        if file_to_upload.file else UtilBill.SkylineEstimated)
+                        utility=None,
+                        rate_class=None)
             except IOError:
                 self.logger.error('file upload failed:', begin_date, end_date,
                         file_to_upload.filename)
