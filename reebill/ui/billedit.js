@@ -286,6 +286,15 @@ function reeBillReady() {
     utilbillGridStore.on('load', function (store, records, options) {
         // the grid is disabled before loading, reenable it when complete
         utilbillGrid.setDisabled(false);
+        if (records.length > 0) {
+            last_record = records[0];
+            for (var i = 0;i < records.length;i++) {
+                if (records[i].data.period_end > last_record.data.period_end) {
+                    last_record = records[i];
+                }
+            }
+            upload_service.setValue(last_record.data.service);
+        }
     });
 
     // grid's data store callback for when data is edited
