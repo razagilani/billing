@@ -57,7 +57,10 @@ function reeBillReady() {
 
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
-    Ext.util.Observable.observeClass(Ext.data.Connection); 
+    Ext.util.Observable.observeClass(Ext.data.Connection);
+    Ext.data.Connection.on('requestexception', function(conn, response, options) {
+        Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
+    });
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
         try {
             var jsonData = Ext.util.JSON.decode(response.responseText);
