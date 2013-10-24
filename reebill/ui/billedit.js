@@ -75,7 +75,14 @@ function reeBillReady() {
                             // of which there may be many.
                             window.location.href = 'http://'+location.host+'/reebill/logout'
                         } else {
-                            //console.log(jsonData);
+                            string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
+                            while (string.search(/([^\n]{81})/) != -1) {
+                                string = string.replace(/([^\n]{80})([^\n])/, "$1\n$2");
+                            }
+                            string = string.replace(/</g,'&lt;');
+                            string = string.replace(/>/g,'&gt;');
+                            Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
+                            //console.log(jsonData)
                         }
                     }
                 } else {
@@ -459,13 +466,7 @@ function reeBillReady() {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
                                 aChargesStore.reload();
-                            } else {
-                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
-                                    "\n" + jsonData.errors.details);
                             }
-                        },
-                        failure: function() {
-                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
                         },
                     });
                 }
@@ -618,9 +619,6 @@ function reeBillReady() {
                                 }
                             },
                             // this is called when the server returns 500 as well as when there's no response
-                            failure: function () {
-                                Ext.MessageBox.alert('Ajax failure');
-                            },
                         });
 
                         // while waiting for the ajax request to finish, show a
@@ -732,13 +730,7 @@ function reeBillReady() {
                 Ext.Msg.hide();
                 if (jsonData.success == true) {
                     reeBillStore.reload();
-                } else {
-                    Ext.MessageBox.alert("Error", jsonData.errors.reason +
-                        "\n" + jsonData.errors.details);
                 }
-            },
-            failure: function() {
-                Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
             },
         });
     }
@@ -788,14 +780,10 @@ function reeBillReady() {
                     if (jsonData.success == true) {
                         reeBillStore.reload();
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
-                    } else {
-                        Ext.MessageBox.alert("Error", jsonData.errors.reason +
-                            "\n" + jsonData.errors.details);
                     }
                 },
                 failure: function() {
                     waitMask.hide();
-                    Ext.MessageBox.alert('Ajax failure', 'new_reebill_version request failed');
                 },
             });
         }
@@ -1323,9 +1311,7 @@ function reeBillReady() {
                 var jsonData = null;
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
+                    if (jsonData.success == true) {
                         Ext.getCmp('discount_rate').setValue(jsonData['discount_rate']);
                         Ext.getCmp('late_charge_rate').setValue(jsonData['late_charge_rate']);
 
@@ -1350,13 +1336,7 @@ function reeBillReady() {
                 }
             },
             failure: function(result, request) {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    accountInfoFormPanel.setDisabled(false);
-                }
+                accountInfoFormPanel.setDisabled(false);
             },
         });
     });
@@ -1392,29 +1372,11 @@ function reeBillReady() {
         computeBillOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    }
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    //Ext.Msg.hide();
-                    tabPanel.setDisabled(false);
-                    reeBillStore.reload()
-                }
+                tabPanel.setDisabled(false);
+                reeBillStore.reload()
             },
             failure: function(result, request) {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    //Ext.Msg.hide();
-                    tabPanel.setDisabled(false);
-                }
+                tabPanel.setDisabled(false);
             },
         });
     }
@@ -1432,26 +1394,10 @@ function reeBillReady() {
         bindREEOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
-                var jsonData = null;
                 waitMask.hide();
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    }
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                }
             },
             failure: function(result, request) {
                 waitMask.hide();
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                }
             },
         });
     }
@@ -1480,7 +1426,6 @@ function reeBillReady() {
                             jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == false) {
                                 waitMask.hide();
-                                Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                             } else {
                                 reeBillGrid.getSelectionModel().clearSelections();
                                 reeBillStore.setDefaultSort('sequence', 'DESC');
@@ -1500,13 +1445,7 @@ function reeBillReady() {
                     },
                     failure: function(result, request) {
                         waitMask.hide();
-                        try {
-                            Ext.MessageBox.alert('Server Error', result.responseText);
-                        } catch (err) {
-                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                        } finally {
-                            tabPanel.setDisabled(false);
-                        }
+                        tabPanel.setDisabled(false);
                     },
                     });
                 } else {
@@ -1525,7 +1464,6 @@ function reeBillReady() {
                         jsonData = Ext.util.JSON.decode(result.responseText);
                         if (jsonData.success == false) {
                             waitMask.hide();
-                            Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                         } else {
                             reeBillGrid.getSelectionModel().clearSelections();
                             reeBillStore.setDefaultSort('sequence', 'DESC');
@@ -1544,13 +1482,7 @@ function reeBillReady() {
                 },
                 failure: function(result, request) {
                     waitMask.hide();
-                    try {
-                        Ext.MessageBox.alert('Server Error', result.responseText);
-                    } catch (err) {
-                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                    } finally {
-                        tabPanel.setDisabled(false);
-                    }
+                    tabPanel.setDisabled(false);
                 },
             });
         }
@@ -1588,7 +1520,6 @@ function reeBillReady() {
                 }
             },
             failure: function () {
-                Ext.MessageBox.alert('Error', "Render response fail");
                 // handle failure if needed
                 Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
             }
@@ -2492,13 +2423,7 @@ function reeBillReady() {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
                                 aChargesStore.reload();
-                            } else {
-                                Ext.MessageBox.alert("Error", jsonData.errors.reason +
-                                    "\n" + jsonData.errors.details);
                             }
-                        },
-                        failure: function() {
-                            Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
                         },
                     });
                 }
@@ -4302,10 +4227,6 @@ function reeBillReady() {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
                 newAccountField.setValue(jsonData['account']);
             },
-            failure: function() {
-                 Ext.MessageBox.alert('Ajax failure', 'http://' + location.host
-                     + '/reebill/get_next_account_number');
-            },
         });
     });
 
@@ -4464,10 +4385,7 @@ function reeBillReady() {
                             try {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
-                                if (jsonData.success == false) {
-                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                } else {
+                                if (jsonData.success == true) {
                                     Ext.Msg.alert('Success', "New account created");
                                     accountGrid.getSelectionModel().clearSelections();
                                     if (moreAccountsCheckbox.getValue()) {
@@ -4503,7 +4421,6 @@ function reeBillReady() {
                             // TODO 22645885 confirm save and clear form
                         },
                         failure: function () {
-                            Ext.Msg.alert("Create new account request failed");
                             b.setDisabled(false);
                         }
                     });
@@ -4566,21 +4483,6 @@ function reeBillReady() {
             handler: function() {
                 setPreferencesDataConn.request({
                     params: { 'resolution': billImageResolutionField.getValue() },
-                    success: function(result, request) {
-                        var jsonData = null;
-                        try {
-                            jsonData = Ext.util.JSON.decode(result.responseText);
-                            if (jsonData.success == false) {
-                                Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
-                            }
-                            // handle failure here if necessary
-                        } catch (err) {
-                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                        }
-                    },
-                    failure: function () {
-                        Ext.Msg.alert("setBillImageResolution request failed");
-                    }
                 });
             }
         }),
@@ -4611,9 +4513,6 @@ function reeBillReady() {
                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
             }
         },
-        failure: function () {
-            Ext.Msg.alert("getBillImageResolution request failed");
-        }
     });
 
     var differenceThresholdField = new Ext.ux.form.SpinnerField({
@@ -4651,21 +4550,6 @@ function reeBillReady() {
             handler: function() {
                 setThresholdDataConn.request({
                     params: { 'threshold': differenceThresholdField.getValue()},
-                    success: function(result, request) {
-                        var jsonData = null;
-                        try {
-                            jsonData = Ext.util.JSON.decode(result.responseText);
-                            if (jsonData.success == false) {
-                                Ext.Msg.alert("setDifferenceThreshold failed: " + jsonData.errors)
-                            }
-                            // handle failure here if necessary
-                        } catch (err) {
-                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                        }
-                    },
-                    failure: function () {
-                        Ext.Msg.alert("setDifferencethreshold request failed");
-                    }
                 });
             }
         }),
@@ -4696,9 +4580,6 @@ function reeBillReady() {
                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
             }
         },
-        failure: function () {
-            Ext.Msg.alert("getDifferenceThreshold request failed");
-        }
     });
     
     //
@@ -4936,7 +4817,7 @@ function reeBillReady() {
         },
         // this is actually set in loadReeBillUIForAccount()
         title: 'Journal Entries for All Accounts',
-        clicksToEdit: 2
+        clicksToEdit: 2,
     });
 
     //
@@ -6246,8 +6127,6 @@ function reeBillReady() {
             },
             // this is called when the server returns 500 as well as when there's no response
             failure: function() { 
-                Ext.MessageBox.alert('ajax failure loading bill image'); 
-
                 // replace reebill image with a missing graphic
                 Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
                     html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
@@ -6455,9 +6334,6 @@ function loadDashboard()
             var username = jsonData['username'];
             Ext.DomHelper.overwrite('LOGIN_INFO',
                 "You're logged in as <b>" + username + "</b>; " + logoutLink)
-        },
-        failure: function() {
-             Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
         },
     });
 }
