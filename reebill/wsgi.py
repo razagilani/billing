@@ -1077,11 +1077,29 @@ class BillToolBridge:
         name_dicts = self.all_names_of_accounts(accounts)
 
         result = []
-        for account, all_names in name_dicts:
-            names = [account]
-            # Only include the names that exist in Nexus
-            names += [all_names[name] for name in ('codename', 'casualname', 'primus') if all_names.get(name)]
-            result.append(' - '.join(names))
+        with DBSession(self.state_db) as session:
+            for account, all_names in name_dicts:
+                res = account + ' - '
+                # Only include the names that exist in Nexus
+                names = [all_names[name] for name in
+                         ('codename', 'casualname', 'primus')
+                         if all_names.get(name)]
+                res += '/'.join(names)
+                if len(names) > 0:
+                    res += ' - '
+                #Append utility and rate_class from the last utilbill for the
+                #account if one exists as per
+                #https://www.pivotaltracker.com/story/show/58027082
+                try:
+                    last_utilbill = self.state_db.get_last_utilbill(
+                        session, account)
+                except NoSuchBillException:
+                    #No utilbill found, just don't append utility info 
+                    pass
+                else:
+                    res += "%s: %s" %(last_utilbill.utility,
+                                      last_utilbill.rate_class)
+                result.append(res)
         return result
 
     @cherrypy.expose
