@@ -238,13 +238,6 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
         # id of the meter containing the register can be changed.
         try:
             existing_meter_with_new_id = _meter(utilbill_doc, meter_id)
-            # insert register in new meter
-            new_register(utilbill_doc, meter_identifier=
-                    existing_meter_with_new_id['identifier'],
-                    identifier=original_register_id)
-            # remove register from old meter
-            delete_register(utilbill_doc, original_meter_id,
-                    original_register_id)
         except StopIteration:
             # if there are any other registers in the same meter, a new
             # meter must be created. if not, the meter id can just be
@@ -260,6 +253,14 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
                         original_register_id)
             else:
                 meter['identifier'] = meter_id
+        else:
+            # insert register in new meter
+            new_register(utilbill_doc, meter_identifier=
+                    existing_meter_with_new_id['identifier'],
+                    identifier=original_register_id)
+            # remove register from old meter
+            delete_register(utilbill_doc, original_meter_id,
+                    original_register_id)
     if description is not None:
         register['description'] = description
     if quantity is not None:
