@@ -275,6 +275,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
             # remove register from old meter
             delete_register(utilbill_doc, original_meter_id,
                     original_register_id)
+            meter = existing_meter_with_new_id
     if description is not None:
         register['description'] = description
     if quantity is not None:
