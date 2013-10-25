@@ -3,7 +3,7 @@
 
 var DEFAULT_RESOLUTION = 100;
 var DEFAULT_DIFFERENCE_THRESHOLD = 10;
-Ext.MessageBox.minWidth = 630;
+var ERROR_MESSAGE_BOX_WIDTH = 630;
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
@@ -87,8 +87,12 @@ function reeBillReady() {
                             }
                             string = string.replace(/</g,'&lt;');
                             string = string.replace(/>/g,'&gt;');
+
+                            oldMinWidth = Ext.MessageBox.minWidth;
+                            Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
                             Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
                             //console.log(jsonData)
+                            Ext.MessageBox.minWidth = oldMinWidth;
                         }
                     }
                 } else {
@@ -371,7 +375,7 @@ function reeBillReady() {
                 dataIndex: 'service',
                 editable: true,
                 editor: new Ext.form.TextField({}),
-                width: 70,
+                width: 50,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
@@ -427,7 +431,7 @@ function reeBillReady() {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
-                width: 150,
+                width: 60,
             },
             {
                 id: 'utility',
@@ -435,7 +439,7 @@ function reeBillReady() {
                 dataIndex: 'utility',
                 editable: true,
                 editor: new Ext.form.TextField({}),
-                width: 150,
+                width: 70,
             },
             {
                 id: 'rate_structure',

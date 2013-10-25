@@ -1289,6 +1289,7 @@ class BillToolBridge:
     def summary_ree_charges(self, start, limit, **args):
         '''Handles AJAX request for "Summary and Export" grid in "Accounts"
         tab.'''
+        return self.dumps({'success': True})
         with DBSession(self.state_db) as session:
             accounts, totalCount = self.state_db.list_accounts(session,
                     int(start), int(limit))
@@ -2084,14 +2085,6 @@ class BillToolBridge:
         if reebill is None:
             return self.dumps({'success':True, 'rows':[]})
 
-        # compute so the hypothetical charges in the reebill document are
-        # updated to make to actual charges in the utility bill document
-        # Don't compute if the bill is issued, since it cannot be modified.
-        with DBSession(self.state_db) as session:
-            if not self.state_db.is_issued(session, account, sequence):
-                self.process.compute_reebill(session, reebill)
-                self.reebill_dao.save_reebill(reebill)
-        
         utilbill_doc = reebill._get_utilbill_for_service(service)
         flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
         charge_dict_a = {c['rsi_binding']:c for c in flattened_charges_a}

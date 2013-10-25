@@ -237,9 +237,9 @@ class UtilBill(Base):
         as a utility bill period: "reasonable" means start < end and (end -
         start) < 1 year.'''
         if start >= end:
-            raise ValueError('Utility bill start date must precede end.')
+            raise ValueError('Utility bill start date must precede end')
         if (end - start).days > 365:
-            raise ValueError('Utility billing period lasts longer than a year?!')
+            raise ValueError('Utility billing period lasts longer than a year')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -248,10 +248,10 @@ class UtilBill(Base):
     # 2. Skyline estimated: a bill that is known to exist (and whose dates are
     # correct) but whose contents were estimated by Skyline.
     # 3. Hypothetical: Skyline supposes that there is probably a bill during a
-    # certain time period and estimates what its contents would be if it existed.
-    # Such a bill may not really exist (since we can't even know how many bills
-    # there are in a given period of time), and if it does exist, its actual dates
-    # will probably be different than the guessed ones.
+    # certain time period and estimates what its contents would be if it
+    # existed. Such a bill may not really exist (since we can't even know how
+    # many bills there are in a given period of time), and if it does exist,
+    # its actual dates will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
