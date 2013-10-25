@@ -261,7 +261,6 @@ class Process(object):
             the_dict.update({
                 'hypothetical_total': doc.hypothetical_total,
                 'actual_total': doc.actual_total,
-                'ree_quantity': doc.total_renewable_energy(),
                 'ree_value': doc.ree_value,
                 'prior_balance': doc.prior_balance,
                 'payment_received': doc.payment_received,
@@ -273,6 +272,14 @@ class Process(object):
                 'total_error': self.get_total_error(session, account,
                         sequence),
             })
+            # wrong energy unit can make this method fail causing the reebill
+            # grid to not load; see
+            # https://www.pivotaltracker.com/story/show/59594888
+            try:
+                the_dict['ree_quantity'] = doc.total_renewable_energy()
+            except ValueError as e:
+                the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+                
 
             result.append(the_dict)
 
