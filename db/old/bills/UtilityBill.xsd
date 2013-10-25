@@ -1,0 +1,731 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<xs:schema xmlns:ub="bill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="bill" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="bill">
+		<xs:annotation>
+			<xs:documentation>Root element</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="rebill" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Summary for renewable energy benefit that rolls up all services</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="car">
+								<xs:annotation>
+									<xs:documentation>Customer Account Record.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="serviceaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where utility service is received.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="billingaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where bills are sent</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="billperiodbegin"/>
+							<xs:element name="billperiodend"/>
+							<xs:element name="priorbalance">
+								<xs:annotation>
+									<xs:documentation>Balance from last bill</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="paymentreceived">
+								<xs:annotation>
+									<xs:documentation>payment from prior bills</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totaladjustment">
+								<xs:annotation>
+									<xs:documentation>Any adjustments made by Skyline for this bill period.  May be a result of a change from last bill. (e.g. estimated bill credit)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="balanceforward">
+								<xs:annotation>
+									<xs:documentation>balance between prior payments and bills</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="hypotheticalecharges">
+								<xs:annotation>
+									<xs:documentation>Total energy charges in absence of skyline system</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="actualecharges">
+								<xs:annotation>
+									<xs:documentation>Total energy charges from all services</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="revalue">
+								<xs:annotation>
+									<xs:documentation>Total value of renewable energy</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="recharges">
+								<xs:annotation>
+									<xs:documentation>85% hypothetical-actual due by customer this bill period</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="resavings">
+								<xs:annotation>
+									<xs:documentation>15% hypothetical-actual amount saved by customer</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="currentcharges">
+								<xs:annotation>
+									<xs:documentation>Sum total charges this bill period. BalanceForward + energycharges + nonenergy charges</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totaldue">
+								<xs:annotation>
+									<xs:documentation>Sum total charges this bill period. BalanceForward + current charges</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="duedate"/>
+							<xs:element name="issued"/>
+							<xs:element name="message" minOccurs="0"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="utilbill" maxOccurs="3">
+					<xs:annotation>
+						<xs:documentation>Bill summary by service.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="uar" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Utility Account Record - contact information for the utility.  Payee of this service</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="tin">
+											<xs:annotation>
+												<xs:documentation>Utility tax payer identification number</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="paymentlocation" type="ub:address" minOccurs="0" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="suppliercontact" type="ub:address" minOccurs="0"/>
+										<xs:element name="emergencycontact" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="utilitycommission" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Regulatory commission.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="writteninquiries" type="ub:address" minOccurs="0"/>
+										<xs:element name="missutility" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Utility/contractor coordinate number.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="serviceoutage" type="ub:address" minOccurs="0"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="car">
+								<xs:annotation>
+									<xs:documentation>Customer Account Record.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="accountnumber" type="xs:string">
+											<xs:annotation>
+												<xs:documentation>Customer account number used by the utility</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="serviceaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where utility service is received.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="billingaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where bills are sent</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="billperiodbegin" type="xs:date">
+								<xs:annotation>
+									<xs:documentation>Begin date for this bill.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="billperiodend" type="xs:date">
+								<xs:annotation>
+									<xs:documentation>End date for this bill.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="hypotheticalecharges">
+								<xs:annotation>
+									<xs:documentation>Energy charges in absence of Skyline</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal"/>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="actualecharges">
+								<xs:annotation>
+									<xs:documentation>Total for this bill period including distribution and  taxes and various other energy charges.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal"/>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="revalue">
+								<xs:annotation>
+									<xs:documentation>Value of energy generated by skyline Hypothetical - current charges</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal"/>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="recharges">
+								<xs:annotation>
+									<xs:documentation>85% (hypothetical - actual)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="resavings" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>15% hypothetical - actual   itemized savings by fuel type</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
+						<xs:attribute name="rsbinding"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="details" maxOccurs="3">
+					<xs:annotation>
+						<xs:documentation>Details necessary for bill computation.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="rateschedule">
+								<xs:annotation>
+									<xs:documentation>Name of rate.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="name"/>
+										<xs:element name="rateineffect" minOccurs="0"/>
+									</xs:sequence>
+									<xs:attribute name="rsbinding"/>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="chargegroup" maxOccurs="4">
+								<xs:annotation>
+									<xs:documentation>Group of charges by industry segment, company or other type of category on bill</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="charges" maxOccurs="2">
+											<xs:annotation>
+												<xs:documentation>Actual or Hypothetical Detail charges</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="charge" maxOccurs="unbounded">
+														<xs:complexType>
+															<xs:complexContent>
+																<xs:extension base="ub:charge">
+																	<xs:attribute name="rsbinding">
+																		<xs:annotation>
+																			<xs:documentation>Rate structure binding for charge item specific logic such as tax on total energy, or tax on a subset of charge elements.</xs:documentation>
+																		</xs:annotation>
+																	</xs:attribute>
+																</xs:extension>
+															</xs:complexContent>
+														</xs:complexType>
+													</xs:element>
+													<xs:element name="total" type="xs:decimal"/>
+												</xs:sequence>
+												<xs:attributeGroup ref="ub:billtype"/>
+												<xs:attribute name="rsbinding"/>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+									<xs:attribute name="type" use="required">
+										<xs:annotation>
+											<xs:documentation>type of charges e.g. supply or distribution</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="Generation/Supply"/>
+												<xs:enumeration value="Transmission"/>
+												<xs:enumeration value="Distribution"/>
+												<xs:enumeration value="Tax"/>
+												<xs:enumeration value="All Charges"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="total" maxOccurs="2">
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal">
+											<xs:attributeGroup ref="ub:billtype"/>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="billableusage" maxOccurs="3">
+					<xs:annotation>
+						<xs:documentation>Billable usage which may differ from measured usage</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="rateschedule">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="name"/>
+										<xs:element name="rateineffect" minOccurs="0"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="usage" type="ub:usage" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:element name="total" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>total billable</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="measuredusage" maxOccurs="3">
+					<xs:annotation>
+						<xs:documentation>Meters associated with service location.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="meter" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:complexContent>
+										<xs:extension base="ub:meter"/>
+									</xs:complexContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="nextreaddate" type="xs:date" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>For premises wide next read date.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="usagehistory" minOccurs="0" maxOccurs="3">
+					<xs:annotation>
+						<xs:documentation>Summary of prior usage by period.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="usage" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="date" type="xs:date">
+											<xs:annotation>
+												<xs:documentation>usage period date, usually in the form of YYYY-MM use DD 01 if missing.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="days" type="xs:integer" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Number of days in period.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="register">
+											<xs:annotation>
+												<xs:documentation>Net and submeter registers. May be identified by id or type/bucket.</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="identifier"/>
+													<xs:element name="total">
+														<xs:complexType>
+															<xs:simpleContent>
+																<xs:extension base="xs:integer">
+																	<xs:attribute name="units"/>
+																</xs:extension>
+															</xs:simpleContent>
+														</xs:complexType>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="total">
+											<xs:complexType>
+												<xs:simpleContent>
+													<xs:extension base="xs:integer">
+														<xs:attribute name="units"/>
+													</xs:extension>
+												</xs:simpleContent>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="statistics" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="conventionalconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs conventional energy used</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs consumed from step</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableutilization" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>renewable consumed over (conventional + renewable)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="conventionalutilization" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>conventional consumed over (conventional + renewable)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableproduced" type="xs:integer" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>BTUs produced from step</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="co2offset" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>Pounds CO2 offset by renewables; gas 13.46lbs/therm; elec 13.46lbs/kWh</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalsavings" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>total dollar savings to date</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalrenewableconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs consumed over system life</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalrenewableproduced" type="xs:integer" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>BTUs produced over system life</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totaltrees" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>Trees sequestering CO2 (total pounds CO2  * 1300 pounds per tree)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalco2offset" type="xs:decimal"/>
+							<xs:element name="consumptiontrend">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="period" minOccurs="6" maxOccurs="12">
+											<xs:complexType>
+												<xs:attribute name="month" type="xs:string" use="required"/>
+												<xs:attribute name="quantity" type="xs:decimal" use="required">
+													<xs:annotation>
+														<xs:documentation>100k's of BTUs</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="id" use="required">
+				<xs:annotation>
+					<xs:documentation>The unique SI identifier for this bill</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="account"/>
+			<xs:attribute name="version">
+				<xs:annotation>
+					<xs:documentation>Model version</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="address">
+		<xs:sequence>
+			<xs:element name="addressee"/>
+			<xs:element name="street"/>
+			<xs:element name="city"/>
+			<xs:element name="state"/>
+			<xs:element name="country"/>
+			<xs:element name="postalcode"/>
+			<xs:element name="telephonenumber"/>
+			<xs:element name="hours"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="meter">
+		<xs:sequence>
+			<xs:element name="estimated" type="xs:boolean"/>
+			<xs:element name="priorreaddate" type="xs:date"/>
+			<xs:element name="presentreaddate" type="xs:date"/>
+			<xs:element name="nextreaddate" type="xs:date" minOccurs="0"/>
+			<xs:element name="identifier">
+				<xs:annotation>
+					<xs:documentation>Identifier for the physical meter</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="register" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Registers.  May be identified by id or type/bucket. (e.g. kWh)</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="identifier">
+							<xs:annotation>
+								<xs:documentation>Identifier for register.  Use meter identifier if unavailable.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="description"/>
+						<xs:element name="effective" type="ub:effective" minOccurs="0" maxOccurs="2">
+							<xs:annotation>
+								<xs:documentation>Multiple effectives can be added for registers with effective times that vary by day of week</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="units" minOccurs="0">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="therms"/>
+									<xs:enumeration value="kWh"/>
+									<xs:enumeration value="Ccf"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="priorreading" type="xs:decimal" minOccurs="0"/>
+						<xs:element name="presentreading" type="xs:decimal" minOccurs="0"/>
+						<xs:element name="factor" type="xs:decimal" minOccurs="0"/>
+						<xs:element name="total" type="xs:decimal"/>
+					</xs:sequence>
+					<xs:attribute name="shadow" type="xs:boolean" use="required"/>
+					<xs:attribute name="rsbinding"/>
+					<xs:attribute name="type" use="required">
+						<xs:annotation>
+							<xs:documentation>For all used energy, there must be at least one register of type 'total' that reflects total usage.</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="total"/>
+								<xs:enumeration value="tou"/>
+								<xs:enumeration value="demand"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="amount"/>
+	<xs:complexType name="payment">
+		<xs:sequence>
+			<xs:element name="payee"/>
+			<xs:element name="amount" type="xs:decimal"/>
+			<xs:element name="date" type="xs:date" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="charge">
+		<xs:all>
+			<xs:element name="description"/>
+			<xs:element name="quantity" minOccurs="0">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attributeGroup ref="ub:quantityunits"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="rate" minOccurs="0">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attributeGroup ref="ub:rateunits"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="flatrate" minOccurs="0"/>
+			<xs:element name="total" nillable="false">
+				<xs:simpleType>
+					<xs:restriction base="xs:decimal"/>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="processingnote" minOccurs="0"/>
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="usage">
+		<xs:all>
+			<xs:element name="description"/>
+			<xs:element name="quantity">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attribute name="units">
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:enumeration value="kWh"/>
+										<xs:enumeration value="Ccf"/>
+										<xs:enumeration value="kW"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<xs:attributeGroup name="rateunits">
+		<xs:attribute name="units" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="dollars"/>
+					<xs:enumeration value="cents"/>
+					<xs:enumeration value="percent"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="quantityunits">
+		<xs:attribute name="units" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="kWh"/>
+					<xs:enumeration value="KWD"/>
+					<xs:enumeration value="KQH"/>
+					<xs:enumeration value="Ccf"/>
+					<xs:enumeration value="Therms"/>
+					<xs:enumeration value="dollars"/>
+					<xs:enumeration value="rkVA"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="service">
+		<xs:attribute name="service" use="required">
+			<xs:annotation>
+				<xs:documentation>Utility service type</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="Gas"/>
+					<xs:enumeration value="Electric"/>
+					<xs:enumeration value="Propane"/>
+					<xs:enumeration value="Oil"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:complexType name="effective">
+		<xs:sequence>
+			<xs:element name="inclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="exclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Exclusions can only contain holidays</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="timerange">
+		<xs:choice>
+			<xs:sequence>
+				<xs:sequence>
+					<xs:element name="fromhour" type="xs:time">
+						<xs:annotation>
+							<xs:documentation>Beginning on hour</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="tohour" type="xs:time">
+						<xs:annotation>
+							<xs:documentation>Ending including this entire</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+				<xs:element name="weekday" maxOccurs="7">
+					<xs:annotation>
+						<xs:documentation>1=Monday...7=Sunday</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:unsignedInt">
+							<xs:totalDigits value="1"/>
+							<xs:fractionDigits value="0"/>
+							<xs:minInclusive value="1"/>
+							<xs:maxInclusive value="7"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+			</xs:sequence>
+			<xs:element name="holiday" minOccurs="0" maxOccurs="365">
+				<xs:annotation>
+					<xs:documentation>Used to include/exclude rate based on holiday</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:date">
+							<xs:attribute name="description"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:choice>
+		<xs:attribute name="description"/>
+	</xs:complexType>
+	<xs:attributeGroup name="billtype">
+		<xs:annotation>
+			<xs:documentation>Actual or Hypothetical charge</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="type" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="actual"/>
+					<xs:enumeration value="hypothetical"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+</xs:schema>
