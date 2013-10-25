@@ -1127,7 +1127,7 @@ function reeBillReady() {
             store: reeBillStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No ReeBills to display",
+            emptyMsg: "No Reebills to display",
         }),
         colModel: reeBillColModel,
         selModel: new Ext.grid.RowSelectionModel({
@@ -1150,7 +1150,7 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        title: 'ReeBills',
+        title: 'Reebills',
     });
 
     reeBillGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -1355,7 +1355,7 @@ function reeBillReady() {
     // finally, set up the tabe that will contain the above widgets
     var reeBillPanel = new Ext.Panel({
         id: 'reeBillTab',
-        title: 'ReeBills',
+        title: 'Reebills',
         disabled: reeBillPanelDisabled,
         layout: 'accordion',
         items: [reeBillGrid, accountInfoFormPanel ],
@@ -3781,7 +3781,7 @@ function reeBillReady() {
             store: mailReeBillStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No ReeBills to display",
+            emptyMsg: "No Reebills to display",
         }),
         colModel: mailReebillColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
@@ -5561,7 +5561,7 @@ function reeBillReady() {
             store: issuableStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: 'No ReeBills to display',
+            emptyMsg: 'No Reebills to display',
         }),
         store: issuableStore,
         enableColumnMove: false,

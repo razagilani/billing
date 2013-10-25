@@ -1908,9 +1908,9 @@ class BillToolBridge:
         ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street, sa_city, sa_state, sa_postal_code,
         **kwargs):
+        """ Update account information in "Sequential Account Information form.
         """
-        Update account information
-        """
+        sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # TODO: 27042211 numerical types
