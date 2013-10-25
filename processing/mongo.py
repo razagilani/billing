@@ -159,7 +159,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     new_actual_register = {
         "description" : "Insert description",
         "quantity" : Decimal(0),
-        "quantity_units" : "No Units",
+        "quantity_units" : "therms",
         "shadow" : False,
         "identifier" : identifier,
         "type" : "total",
@@ -168,7 +168,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     new_shadow_register = {
         "description" : "Insert description",
         "quantity" : Decimal(0),
-        "quantity_units" : "Therms",
+        "quantity_units" : "therms",
         "shadow" : True,
         "identifier" : identifier,
         "type" : "total",
