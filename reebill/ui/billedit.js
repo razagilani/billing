@@ -60,6 +60,8 @@ function reeBillReady() {
     // monitor session status and display login panel if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection);
     Ext.data.Connection.on('requestexception', function(conn, response, options) {
+        // when a request times out, response.statuText will be "transaction
+        // aborted". when the server is restarted it is "communication failure"
         Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
     });
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
