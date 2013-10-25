@@ -230,7 +230,12 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     meter = _meter(utilbill_doc, original_meter_id)
     register = next(r for r in meter['registers'] if r['identifier'] ==
             original_register_id)
-
+    if register_id is not None:
+        existing_registers = [r for r in meter['registers'] if r['identifier']
+                              == register_id]
+        if len(existing_registers) > 0:
+            raise ValueError("There is already a register with id %s and meter"
+                             " id %sj" %(register_id, original_meter_id))
     if meter_id is not None:
         # meter id is being updated, and there is an existing meter with
         # the given id, the register must be removed from its old meter and
@@ -254,6 +259,14 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
             else:
                 meter['identifier'] = meter_id
         else:
+            existing_registers = [r for r in existing_meter_with_new_id
+                                  ['registers'] if r['identifier']
+                                  == register_id]
+            if len(existing_registers) > 0:
+                raise ValueError("There is already a register with id %s and"
+                                 " meter id %s"
+                                 %(original_register_id, meter_id))
+                
             # insert register in new meter
             new_register(utilbill_doc, meter_identifier=
                     existing_meter_with_new_id['identifier'],
