@@ -3,6 +3,7 @@ document, when there finally is one.
 '''
 from datetime import date
 from bson import ObjectId
+from decimal import Decimal
 from unittest import TestCase
 from billing.test import example_data
 from billing.test import utils
@@ -16,7 +17,7 @@ class UtilBillTest(TestCase):
         # its contents
         utilbill_doc = {
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
-            'start': date(2000,1,1), 'end': date(2000,1,1),
+            'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_structure_binding': "won't be loaded from the db anyway",
             'chargegroups': {'All Charges': [
                 {'rsi_binding': 'CONSTANT', 'quantity': 0},
@@ -145,3 +146,141 @@ class UtilBillTest(TestCase):
         self.assertEquals(0, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
+    def test_register_editing(self):
+        '''So far, regression test for bug 59517110 in which it was possible to
+        create registers with the same identifier. Should be expanded to test
+        all aspects of editing meter/register data.
+        '''
+        utilbill_doc = {
+            'account': '12345', 'service': 'gas', 'utility': 'washgas',
+            'start': date(2000,1,1), 'end': date(2000,2,1),
+            'rate_structure_binding': "won't be loaded from the db anyway",
+            'chargegroups': {'All Charges': [
+                {'rsi_binding': 'LINEAR', 'quantity': 0},
+            ]},
+            'meters': [],
+            'billing_address': {}, # addresses are irrelevant
+            'service_address': {},
+        }
+        
+        mongo.new_register(utilbill_doc)
+        self.assertEquals([{
+            'prior_read_date': date(2000,1,1),
+            'present_read_date': date(2000,2,1),
+            'identifier': 'Insert meter ID here',
+            'registers': [{
+                'identifier': 'Insert register ID here',
+                'register_binding': 'Insert register binding here',
+                'quantity': Decimal('0'),
+                'quantity_units': 'No Units',
+                'type': 'total',
+                'description': 'Insert description',
+                'shadow': False,
+            }],
+        }], utilbill_doc['meters'])
+
+        new_meter_id, new_reg_id = mongo.update_register(
+                utilbill_doc, 'Insert meter ID here',
+                'Insert register ID here', meter_id='METER')
+        self.assertEqual('METER', new_meter_id)
+        self.assertEqual('Insert register ID here', new_reg_id)
+        self.assertEqual([{
+            'prior_read_date': date(2000,1,1),
+            'present_read_date': date(2000,2,1),
+            'identifier': 'METER',
+            'registers': [{
+                'identifier': 'Insert register ID here',
+                'register_binding': 'Insert register binding here',
+                'quantity': Decimal('0'),
+                'quantity_units': 'No Units',
+                'type': 'total',
+                'description': 'Insert description',
+                'shadow': False,
+            }],
+        }], utilbill_doc['meters'])
+
+        new_meter_id, new_reg_id = mongo.update_register(
+                utilbill_doc, 'METER', 'Insert register ID here',
+                register_id='REGISTER')
+        self.assertEqual('METER', new_meter_id)
+        self.assertEqual('REGISTER', new_reg_id)
+        self.assertEqual([{
+            'prior_read_date': date(2000,1,1),
+            'present_read_date': date(2000,2,1),
+            'identifier': 'METER',
+            'registers': [{
+                'identifier': 'REGISTER',
+                'register_binding': 'Insert register binding here',
+                'quantity': Decimal('0'),
+                'quantity_units': 'No Units',
+                'type': 'total',
+                'description': 'Insert description',
+                'shadow': False,
+            }],
+        }], utilbill_doc['meters'])
+
+        mongo.new_register(utilbill_doc)
+        self.assertEquals([
+            {
+                'prior_read_date': date(2000,1,1),
+                'present_read_date': date(2000,2,1),
+                'identifier': 'METER',
+                'registers': [{
+                    'identifier': 'REGISTER',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': Decimal('0'),
+                    'quantity_units': 'No Units',
+                    'type': 'total',
+                    'description': 'Insert description',
+                    'shadow': False,
+                }],
+            },
+            {
+                'prior_read_date': date(2000,1,1),
+                'present_read_date': date(2000,2,1),
+                'identifier': 'Insert meter ID here',
+                'registers': [{
+                    'identifier': 'Insert register ID here',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': Decimal('0'),
+                    'quantity_units': 'No Units',
+                    'type': 'total',
+                    'description': 'Insert description',
+                    'shadow': False,
+                }],
+            },
+        ], utilbill_doc['meters'])
+
+        new_meter_id, new_reg_id = mongo.update_register(
+                utilbill_doc, 'Insert meter ID here',
+                'Insert register ID here', meter_id='METER')
+        self.assertEqual('METER', new_meter_id)
+        self.assertEqual('Insert register ID here', new_reg_id)
+        self.assertEqual([{
+            'prior_read_date': date(2000,1,1),
+            'present_read_date': date(2000,2,1),
+            'identifier': 'METER',
+            'registers': [
+                {
+                    'identifier': 'REGISTER',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': Decimal('0'),
+                    'quantity_units': 'No Units',
+                    'type': 'total',
+                    'description': 'Insert description',
+                    'shadow': False,
+                },{
+                    'identifier': 'Insert register ID here',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': Decimal('0'),
+                    'quantity_units': 'No Units',
+                    'type': 'total',
+                    'description': 'Insert description',
+                    'shadow': False,
+                },
+            ],
+        }], utilbill_doc['meters'])
+
+        # can't set both meter ID and register ID the same as another register
+        self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
+                'METER', 'Insert register ID here', register_id='REGISTER')
