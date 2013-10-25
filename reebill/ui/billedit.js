@@ -575,11 +575,12 @@ function reeBillReady() {
                     if (menus.length > 0) {
                         //Fires the event 'select', which takes a combobox, record, and index as arguments
                         //Gets the correct record type from the combobox's store
+                        //Uses an index of -1 to tell the menu not to reload the associated store
                         menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
                             sequence: null,
                             version: null,
                             issue_date: null,
-                        }), 0);
+                        }), -1);
                     }
 
                     // a row was selected in the UI, update subordinate ReeBill Data
@@ -2088,8 +2089,11 @@ function reeBillReady() {
                                 menus[i].fireEvent('select', menus[i], record, index);
                             }
                         }
-                        for (var i = 0;i < stores_to_reload.length;i++) {
-                            stores_to_reload[i].load();
+                        //Interpret an index of -1 as a sign not to load any stores
+                        if (index != -1) {
+                            for (var i = 0;i < stores_to_reload.length;i++) {
+                                stores_to_reload[i].load();
+                            }
                         }
                         UBVersionMenu.prototype.inSelect = false;
                     },
