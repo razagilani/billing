@@ -306,6 +306,9 @@ function reeBillReady() {
         if (records.length > 0) {
             last_record = records[0];
             for (var i = 0;i < records.length;i++) {
+                if (selected_utilbill != null && records[i].data.id == selected_utilbill.id) {
+                    selected_utilbill = records[i].data;
+                }
                 if (records[i].data.period_end > last_record.data.period_end) {
                     last_record = records[i];
                 }
@@ -533,59 +536,7 @@ function reeBillReady() {
                 
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
-                    ubMeasuredUsagesPanel.setDisabled(record.data.state == "Missing");
-                    ubRegisterGrid.setEditable(true);
-                    rateStructurePanel.setDisabled(record.data.state == "Missing");
-                    chargeItemsPanel.setDisabled(record.data.state == "Missing");
-
-                    // replace the records in 'ubVersionStore' with new ones,
-                    // so the contents of the 3 utility bill version menus
-                    // match the selected utility bill. there's always one row
-                    // for the current version of the utility bill, and one row
-                    // for each issued reebill version attached to it (if any)
-                    records = [[null, null, null]];
-                    for (var i = 0; i < selected_utilbill.reebills.length; i++) {
-                        //Check that reebill associated with this version is issued
-                        // otherwise there is no associated frozen utilbill
-                        if (selected_utilbill.reebills[i].issue_date != null) {
-                            records.push([
-                                selected_utilbill.reebills[i].sequence,
-                                selected_utilbill.reebills[i].version,
-                                selected_utilbill.reebills[i].issue_date,
-                            ]);
-                        }
-                    }
-                    records.sort(function (a, b) {
-                        if (a[2] == null) {
-                            return -1;
-                        }
-                        if (b[2] == null) {
-                            return 1;
-                        }
-                        if (b[2] > a[2]) {
-                            return 1;
-                        }
-                        if (b[2] == a[2]) {
-                            return 0;
-                        }
-                        return -1;
-                    });
-                    //Go through the menus and load the data
-                    menus = UBVersionMenu.prototype.ubVersionMenus
-                    for (var i = 0;i < menus.length;i++) {
-                        menus[i].store.loadData(records);
-                    }
-                    //Select the 'Current Version'.  Only has to be selected once since they are all connected
-                    if (menus.length > 0) {
-                        //Fires the event 'select', which takes a combobox, record, and index as arguments
-                        //Gets the correct record type from the combobox's store
-                        //Uses an index of -1 to tell the menu not to reload the associated store
-                        menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
-                            sequence: null,
-                            version: null,
-                            issue_date: null,
-                        }), -1);
-                    }
+                    refreshUBVersionMenus();
 
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
@@ -2116,6 +2067,63 @@ function reeBillReady() {
             UBVersionMenu.prototype.ubVersionMenus.push(this);
         }
     });
+
+    function refreshUBVersionMenus() {
+        if (selected_utilbill == null) return;
+        ubMeasuredUsagesPanel.setDisabled(selected_utilbill.state == "Missing");
+        ubRegisterGrid.setEditable(true);
+        rateStructurePanel.setDisabled(selected_utilbill.state == "Missing");
+        chargeItemsPanel.setDisabled(selected_utilbill.state == "Missing");
+        
+        // replace the records in 'ubVersionStore' with new ones,
+        // so the contents of the 3 utility bill version menus
+        // match the selected utility bill. there's always one row
+        // for the current version of the utility bill, and one row
+        // for each issued reebill version attached to it (if any)
+        records = [[null, null, null]];
+        for (var i = 0; i < selected_utilbill.reebills.length; i++) {
+            //Check that reebill associated with this version is issued
+            // otherwise there is no associated frozen utilbill
+            if (selected_utilbill.reebills[i].issue_date != null) {
+                records.push([
+                    selected_utilbill.reebills[i].sequence,
+                    selected_utilbill.reebills[i].version,
+                    selected_utilbill.reebills[i].issue_date,
+                ]);
+            }
+        }
+        records.sort(function (a, b) {
+            if (a[2] == null) {
+                return -1;
+            }
+            if (b[2] == null) {
+                return 1;
+            }
+            if (b[2] > a[2]) {
+                return 1;
+            }
+            if (b[2] == a[2]) {
+                return 0;
+            }
+            return -1;
+        });
+        //Go through the menus and load the data
+        menus = UBVersionMenu.prototype.ubVersionMenus
+        for (var i = 0;i < menus.length;i++) {
+            menus[i].store.loadData(records);
+        }
+        //Select the 'Current Version'.  Only has to be selected once since they are all connected
+        if (menus.length > 0) {
+            //Fires the event 'select', which takes a combobox, record, and index as arguments
+            //Gets the correct record type from the combobox's store
+            //Uses an index of -1 to tell the menu not to reload the associated store
+            menus[0].fireEvent('select', menus[0], new (menus[0].store.recordType)({
+                sequence: null,
+                version: null,
+                issue_date: null,
+            }), -1);
+        }
+    }
 
     measuredUsageUBVersionMenu = new UBVersionMenu([ubRegisterStore]);
     
@@ -5495,6 +5503,8 @@ function reeBillReady() {
                         issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
+                        utilbillGridStore.reload();
+                        refreshUBVersionMenus();
                     }
                     else if (o.success !== true && o.corrections != undefined) {
                         var result = Ext.Msg.confirm('Corrections must be applied',
@@ -5514,6 +5524,8 @@ function reeBillReady() {
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
+                                                utilbillGridStore.reload();
+                                                refreshUBVersionMenus();
                                             },
                                             failure: function() {
                                                 Ext.Msg.alert('Failure', "Connection Failure");
