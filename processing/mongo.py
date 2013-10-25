@@ -251,6 +251,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
                 # remove register from old meter
                 delete_register(utilbill_doc, original_meter_id,
                         original_register_id)
+                meter = new_meter
             else:
                 meter['identifier'] = meter_id
         else:
