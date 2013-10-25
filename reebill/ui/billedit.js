@@ -529,10 +529,10 @@ function reeBillReady() {
                 
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
-                    ubMeasuredUsagesPanel.setDisabled(false);
+                    ubMeasuredUsagesPanel.setDisabled(record.data.state == "Missing");
                     ubRegisterGrid.setEditable(true);
-                    rateStructurePanel.setDisabled(false);
-                    chargeItemsPanel.setDisabled(false);
+                    rateStructurePanel.setDisabled(record.data.state == "Missing");
+                    chargeItemsPanel.setDisabled(record.data.state == "Missing");
 
                     // replace the records in 'ubVersionStore' with new ones,
                     // so the contents of the 3 utility bill version menus
