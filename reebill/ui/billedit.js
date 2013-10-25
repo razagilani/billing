@@ -2345,7 +2345,8 @@ function reeBillReady() {
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
+                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true}),
+                editable: false,
             },{
                 header: 'Units',
                 width: 75,
@@ -2368,14 +2369,15 @@ function reeBillReady() {
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
-                })
+                }),
                 
             },{
                 header: 'Rate',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
+                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true}),
+                editable: false,
             },{
                 header: 'Units',
                 width: 75,
@@ -2398,7 +2400,7 @@ function reeBillReady() {
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
-                })
+                }),
             },{
                 header: 'Total', 
                 width: 75, 
@@ -2410,7 +2412,8 @@ function reeBillReady() {
                 renderer: function(v, params, record)
                 {
                     return Ext.util.Format.usMoney(record.data.total);
-                }
+                },
+                editable: false,
             },
         ]
     });
@@ -5700,11 +5703,13 @@ function reeBillReady() {
                 width: 75,
                 sortable: true,
                 dataIndex: 'actual_quantity',
+                editable: false,
             },{
                 header: 'Hypo Quantity',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
+                editable: false,
             },{
                 header: 'Units',
                 width: 75,
@@ -5715,11 +5720,13 @@ function reeBillReady() {
                 width: 75,
                 sortable: true,
                 dataIndex: 'actual_rate',
+                editable: false,
             },{
                 header: 'Hypo Rate',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
+                editable: false,
             },{
                 header: 'Units',
                 width: 75,
@@ -5734,7 +5741,8 @@ function reeBillReady() {
                 renderer: function(v, params, record)
                 {
                     return Ext.util.Format.usMoney(record.data.actual_total);
-                }
+                },
+                editable: false,
             },{
                 header: 'Hypo Total', 
                 width: 75, 
@@ -5744,7 +5752,8 @@ function reeBillReady() {
                 renderer: function(v, params, record)
                 {
                     return Ext.util.Format.usMoney(record.data.total);
-                }
+                },
+                editable: false,
             },
         ]
     });
