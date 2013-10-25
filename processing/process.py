@@ -868,8 +868,8 @@ class Process(object):
                 .filter(UtilBill.period_start >= utilbill.period_end)\
                 .order_by(UtilBill.period_end).first()
             if successor == None:
-                raise NoSuchBillException(("Couldn't find an unattached "
-                "successor to %s") % utilbill)
+                raise NoSuchBillException(("Couldn't find next "
+                        "utility bill following %s") % utilbill)
             if successor.state == UtilBill.Hypothetical:
                 raise NoSuchBillException(('The next utility bill is '
                     '"hypothetical" so a reebill can\'t be based on it'))
