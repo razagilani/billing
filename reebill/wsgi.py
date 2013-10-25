@@ -1854,7 +1854,9 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def account_info(self, account, sequence, **args):
-        """ Return information about the account """
+        '''Handles AJAX request for "Sequential Account Information form.
+        '''
+        sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # It is possible that there is no reebill for the requested addresses
@@ -1867,7 +1869,7 @@ class BillToolBridge:
         ba = reebill.billing_address
         sa = reebill.service_address
         
-        account_info = {}
+        account_info = {'success': True}
 
         account_info['billing_address'] = {
             'addressee': ba['addressee'] if 'addressee' in ba else '',

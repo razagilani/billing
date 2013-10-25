@@ -383,7 +383,7 @@ class ReebillRenderer:
         # populate due date and amount
         dueDateAndAmount = [
             [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill.due_date.strftime('%m-%d-%Y') if reebill.due_date is not None else 'None', styles['BillFieldRight'])], 
-            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
+            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.balance_due)).quantize(Decimal("0.00"))), styles['BillFieldRight'])]
         ]
         
         t = Table(dueDateAndAmount, [135,85])
