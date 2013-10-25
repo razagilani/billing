@@ -562,6 +562,9 @@ class Process(object):
         # TODO move to StateDB?
         session.delete(utilbill)
 
+        self.state_db.trim_hypothetical_utilbills(session,
+                utilbill.customer.account, utilbill.service)
+
         # delete utility bill, UPRS, and CPRS documents from Mongo (which should
         # exist iff the utility bill is not "Hypothetical")
         if utilbill.state < UtilBill.Hypothetical:
