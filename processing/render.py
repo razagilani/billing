@@ -599,8 +599,8 @@ class ReebillRenderer:
 
         # populate balances
         balances = [
-            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
-            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.prior_balance)).quantize(Decimal(".00"))),styles['BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.payment_received)).quantize(Decimal(".00"))), styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
