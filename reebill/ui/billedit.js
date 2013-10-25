@@ -3,6 +3,7 @@
 
 var DEFAULT_RESOLUTION = 100;
 var DEFAULT_DIFFERENCE_THRESHOLD = 10;
+Ext.MessageBox.minWidth = 630;
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
@@ -79,8 +80,8 @@ function reeBillReady() {
                             window.location.href = 'http://'+location.host+'/reebill/logout'
                         } else {
                             string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
-                            while (string.search(/([^\n]{81})/) != -1) {
-                                string = string.replace(/([^\n]{80})([^\n])/, "$1\n$2");
+                            while (string.search(/([^\n]{85})/) != -1) {
+                                string = string.replace(/([^\n]{84})([^\n])/, "$1\n$2");
                             }
                             string = string.replace(/</g,'&lt;');
                             string = string.replace(/>/g,'&gt;');
