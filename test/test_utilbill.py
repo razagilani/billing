@@ -151,6 +151,7 @@ class UtilBillTest(TestCase):
         create registers with the same identifier. Should be expanded to test
         all aspects of editing meter/register data.
         '''
+        # utility bill with empty "meters" list
         utilbill_doc = {
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
@@ -163,6 +164,7 @@ class UtilBillTest(TestCase):
             'service_address': {},
         }
         
+        # add a register; check default values of fields
         mongo.new_register(utilbill_doc)
         self.assertEquals([{
             'prior_read_date': date(2000,1,1),
@@ -179,6 +181,7 @@ class UtilBillTest(TestCase):
             }],
         }], utilbill_doc['meters'])
 
+        # update meter ID
         new_meter_id, new_reg_id = mongo.update_register(
                 utilbill_doc, 'Insert meter ID here',
                 'Insert register ID here', meter_id='METER')
@@ -199,6 +202,7 @@ class UtilBillTest(TestCase):
             }],
         }], utilbill_doc['meters'])
 
+        # update register ID
         new_meter_id, new_reg_id = mongo.update_register(
                 utilbill_doc, 'METER', 'Insert register ID here',
                 register_id='REGISTER')
@@ -219,6 +223,8 @@ class UtilBillTest(TestCase):
             }],
         }], utilbill_doc['meters'])
 
+        # create new register with default values; since its meter ID is
+        # different, there are 2 meters
         mongo.new_register(utilbill_doc)
         self.assertEquals([
             {
@@ -251,6 +257,8 @@ class UtilBillTest(TestCase):
             },
         ], utilbill_doc['meters'])
 
+        # update meter ID of 2nd register so both registers are inside the same
+        # meter
         new_meter_id, new_reg_id = mongo.update_register(
                 utilbill_doc, 'Insert meter ID here',
                 'Insert register ID here', meter_id='METER')
