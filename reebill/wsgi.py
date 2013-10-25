@@ -2469,7 +2469,10 @@ class BillToolBridge:
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
+        try:
+            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
+        except IOError:
+            return self.dumps({'success':False})
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
@@ -2481,7 +2484,10 @@ class BillToolBridge:
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
+        try:
+            result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
+        except IOError:
+            return self.dumps({'success':False})
         return self.dumps({'success':True, 'imageName':result})
     
     @cherrypy.expose
