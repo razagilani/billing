@@ -5503,8 +5503,7 @@ function reeBillReady() {
                         issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
-                        utilbillGridStore.reload();
-                        refreshUBVersionMenus();
+                        utilbillGridStore.reload({callback: refreshUBVersionMenus});
                     }
                     else if (o.success !== true && o.corrections != undefined) {
                         var result = Ext.Msg.confirm('Corrections must be applied',
@@ -5524,8 +5523,7 @@ function reeBillReady() {
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
-                                                utilbillGridStore.reload();
-                                                refreshUBVersionMenus();
+                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
                                             },
                                             failure: function() {
                                                 Ext.Msg.alert('Failure', "Connection Failure");
