@@ -602,11 +602,18 @@ class Process(object):
 
         # also compute documents of any unissued reebills associated with this
         # utility bill
-        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills):
+        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills if not
+                ur.reebill.issued):
             reebill_doc = self.reebill_dao.load_reebill(
                     reebill.customer.account, reebill.sequence,
                     version=reebill.version)
-            self.compute_reebill(session, reebill_doc)
+            try:
+                self.compute_reebill(session, reebill_doc)
+            except Exception as e:
+                self.logger.error("Error when computing reebill %s: %s" % (
+                    reebill, e))
+            else:
+                self.reebill_dao.save_reebill(reebill_doc)
 
         self.reebill_dao.save_utilbill(document)
 
