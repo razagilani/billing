@@ -180,9 +180,8 @@ class RateStructureDAO(object):
         '''Returns a guess of the rate structure for a new utility bill of the
         given utility name, service, and dates.
         
-        'ignore' is a boolean-valued
-        function that should return True when given a UPRS document that should
-        be excluded from prediction.
+        'ignore' is a boolean-valued function that should return True when
+        given a UPRS document should be excluded from prediction.
         
         The returned document has no _id, so the caller can add one before
         saving.'''
