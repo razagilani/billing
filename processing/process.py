@@ -13,6 +13,7 @@ from optparse import OptionParser
 from decimal import * # BAD
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
+from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 import operator
 from bson import ObjectId
@@ -20,6 +21,7 @@ import traceback
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
+import re
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
@@ -29,6 +31,7 @@ from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
+from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
@@ -201,9 +204,91 @@ class Process(object):
         self.reebill_dao.save_utilbill(doc)
 
 
-    def upload_utility_bill(self, session, account, service, utility,
-            rate_class, begin_date, end_date, bill_file, file_name, total=0,
-            state=UtilBill.Complete):
+    def get_reebill_metadata_json(self, session, account):
+        '''Returns data from both MySQL and Mongo describing all reebills for
+        the given account, as list of JSON-ready dictionaries.
+        '''
+        customer = self.state_db.get_customer(session, account)
+        result = []
+
+        # NOTE i can't figure out how to make SQLAlchemy do this query properly,
+        # so i gave up and used raw SQL. this is unnecessarily complicated, and
+        # bad for security. i could like to make it work like the commented-out
+        # code below, but the ReeBill object returned is not the one whose
+        # version matches the version returned by the query.
+        #for reebill, max_version in session.query(ReeBill,
+           #sql_max(ReeBill.version)).filter_by(customer=customer)\
+           #.group_by(ReeBill.sequence).all():
+        # if this is impossible in SQLAlchemy (unlikely) an alternative would be
+        # to create a view in the DB with a corresponding SQLAlchemy class and
+        # query that with SQLAlchemy.
+        assert re.match(ACCOUNT_NAME_REGEX, account)
+        statement = '''select sequence, max(version) as max_version,
+        period_start, period_end, issued, issue_date from
+        customer join reebill on customer.id = reebill.customer_id
+        join utilbill_reebill on reebill.id = reebill_id
+        join utilbill on utilbill_id = utilbill.id
+        where account = %s
+        group by reebill.customer_id, sequence''' % account
+        query = session.query('sequence', 'max_version', 'period_start',
+                'period_end', 'issued', 'issue_date').from_statement(statement)
+                   
+        for (sequence, max_version, period_start, period_end, issued,
+                issue_date) in query:
+            # start with data from MySQL
+            the_dict = {
+                'id': sequence,
+                'sequence': sequence,
+                'issue_date': issue_date,
+                'period_start': period_start,
+                'period_end': period_end,
+                # invisible columns
+                'max_version': max_version,
+                'issued': self.state_db.is_issued(session, account, sequence)
+            }
+            issued = self.state_db.is_issued(session, account, sequence)
+            if max_version > 0:
+                if issued:
+                    the_dict['corrections'] = str(max_version)
+                else:
+                    the_dict['corrections'] = '#%s not issued' % max_version
+            else:
+                the_dict['corrections'] = '-' if issued else '(never issued)'
+
+            # update it with additional data from Mongo doc
+            doc = self.reebill_dao.load_reebill(account, sequence,
+                    version=max_version)
+            the_dict.update({
+                'hypothetical_total': doc.hypothetical_total,
+                'actual_total': doc.actual_total,
+                'ree_value': doc.ree_value,
+                'prior_balance': doc.prior_balance,
+                'payment_received': doc.payment_received,
+                'total_adjustment': doc.total_adjustment,
+                'balance_forward': doc.balance_forward,
+                'ree_charges': doc.ree_charges,
+                'balance_due': doc.balance_due,
+                'services': [service.title() for service in doc.services],
+                'total_error': self.get_total_error(session, account,
+                        sequence),
+            })
+            # wrong energy unit can make this method fail causing the reebill
+            # grid to not load; see
+            # https://www.pivotaltracker.com/story/show/59594888
+            try:
+                the_dict['ree_quantity'] = doc.total_renewable_energy()
+            except ValueError as e:
+                the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+                
+
+            result.append(the_dict)
+
+        return result
+
+
+    def upload_utility_bill(self, session, account, service, begin_date,
+            end_date, bill_file, file_name, utility=None, rate_class=None,
+            total=0, state=UtilBill.Complete):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table in MySQL and a document is added in Mongo
@@ -244,19 +329,22 @@ class Process(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        # TODO get utility name and rate class as arguments instead of from
-        # template: see https://www.pivotaltracker.com/story/show/52495771
-        # (don't try to improve this code because it will go away when these
-        # parameters are passed in from the client)
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
-            rate_class = predecessor.rate_class
-            utility = predecessor.utility
+            if utility is None:
+                utility = predecessor.utility
+            if rate_class is None:
+                rate_class = predecessor.rate_class
         except NoSuchBillException:
-            template = self.reebill_dao.load_utilbill_template(session, account)
-            rate_class = template['rate_structure_binding']
-            utility = template['utility']
+            template = self.reebill_dao.load_utilbill_template(session,
+                    account)
+            # NOTE template document may not have the same utility and
+            # rate_class as this one
+            if utility is None:
+                utility = template['utility']
+            if rate_class is None:
+                rate_class = template['rate_structure_binding']
 
         if bill_file is not None:
             # if there is a file, get the Python file object and name
@@ -378,12 +466,18 @@ class Process(object):
             # bill document, and create new empty CPRS
             doc = self.reebill_dao.load_utilbill_template(session,
                     utilbill.customer.account)
-            # template document should have the same service/utility/rate class
-            # as this one; multiple services are not supported since there
-            # would need to be more than one template
-            assert doc['service'] == utilbill.service
-            assert doc['utility'] == utilbill.utility
-            assert doc['rate_structure_binding'] == utilbill.rate_class
+
+            # NOTE template document does not necessarily have the same
+            # service/utility/rate class as this one. if you chose the wrong
+            # template account, many things will probably be wrong, but you
+            # should be allowed to do it. so just update the new document with
+            # the chosen service/utility/rate class values.
+            doc.update({ 
+                # new _id will be created below
+                'service': utilbill.service,
+                'utility': utilbill.utility,
+                'rate_structure_binding': utilbill.rate_class,
+            })
             cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         else:
             # the preceding utility bill does exist, so duplicate its CPRS to
@@ -476,11 +570,19 @@ class Process(object):
         # TODO move to StateDB?
         session.delete(utilbill)
 
-        # delete utility bill document from Mongo
-        self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
+        self.state_db.trim_hypothetical_utilbills(session,
+                utilbill.customer.account, utilbill.service)
 
-        # delete UPRS and CPRS documents from Mongo
-        self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
+        # delete utility bill, UPRS, and CPRS documents from Mongo (which should
+        # exist iff the utility bill is not "Hypothetical")
+        if utilbill.state < UtilBill.Hypothetical:
+            self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
+            self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
+        else:
+            assert utilbill.state == UtilBill.Hypothetical
+            assert utilbill.document_id is None
+            assert utilbill.uprs_document_id is None
+            assert utilbill.cprs_document_id is None
 
         return new_path
 
@@ -511,11 +613,18 @@ class Process(object):
 
         # also compute documents of any unissued reebills associated with this
         # utility bill
-        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills):
+        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills if not
+                ur.reebill.issued):
             reebill_doc = self.reebill_dao.load_reebill(
                     reebill.customer.account, reebill.sequence,
                     version=reebill.version)
-            self.compute_reebill(session, reebill_doc)
+            try:
+                self.compute_reebill(session, reebill_doc)
+            except Exception as e:
+                self.logger.error("Error when computing reebill %s: %s" % (
+                    reebill, e))
+            else:
+                self.reebill_dao.save_reebill(reebill_doc)
 
         self.reebill_dao.save_utilbill(document)
 
@@ -788,8 +897,8 @@ class Process(object):
                 .filter(UtilBill.period_start >= utilbill.period_end)\
                 .order_by(UtilBill.period_end).first()
             if successor == None:
-                raise NoSuchBillException(("Couldn't find an unattached "
-                "successor to %s") % utilbill)
+                raise NoSuchBillException(("Couldn't find next "
+                        "utility bill following %s") % utilbill)
             if successor.state == UtilBill.Hypothetical:
                 raise NoSuchBillException(('The next utility bill is '
                     '"hypothetical" so a reebill can\'t be based on it'))
@@ -860,8 +969,8 @@ class Process(object):
         # replace utility bill documents with the "current" ones, and update
         # "hypothetical" utility bill data in the reebill document to match
         # (note that utility bill subdocuments in the reebill also get updated
-        # in 'compute_bill' below, but 'fetch_oltp_data' won't work unless they
-        # are updated)
+        # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
+        # they are updated)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
                 for u in reebill.utilbills]
         reebill_doc.update_utilbill_subdocs()

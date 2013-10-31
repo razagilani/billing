@@ -714,7 +714,7 @@ class RateStructureItem(object):
                 value = str(value)
 
                 if len(value) == 0:
-                    raise ValueError('0-length property name not allowed')
+                    #raise ValueError('0-length property name not allowed')
                     # place these propery values in self, but prepend the _ so @property methods of self
                     # do not access them since @property methods are used for expression evaluation
                     setattr(self, "_"+key, value)
