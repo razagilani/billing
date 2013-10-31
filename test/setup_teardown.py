@@ -122,8 +122,8 @@ port = 27017
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])
 
-        self.rate_structure_dao = rate_structure2.RateStructureDAO('localhost',
-                27017, 'test', self.reebill_dao, logger=logger)
+        self.rate_structure_dao = rate_structure2.RateStructureDAO(
+                self.reebill_dao, logger=logger)
 
         self.nexus_util = MockNexusUtil([
             {
