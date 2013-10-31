@@ -897,6 +897,17 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def regenerate_rate_structure(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            self.process.regenerate_rate_structure(session, utilbill_id)
+            # NOTE utility bill is not automatically computed after rate
+            # structure is changed. nor are charges updated to match.
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def render(self, account, sequence, **args):
         sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):

@@ -586,6 +586,32 @@ class Process(object):
 
         return new_path
 
+    def regenerate_rate_structure(self, session, utilbill_id):
+        '''Resets the rate structure of this utility bill to match the
+        predicted one.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                utilbill)
+        existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+                utilbill)
+
+        # update UPRS to prediction
+        new_uprs = self.rate_structure_dao.get_probable_uprs(session,
+                utilbill.utility, utilbill.service, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end,
+                ignore=lambda uprs: uprs.id == existing_uprs.id)
+        existing_uprs.rates = new_uprs.rates
+
+        # update CPRS to predecessor
+        predecessor = self.state_db.get_last_real_utilbill(session, utilbill)
+        predecessor_cprs = self.state_db.load_cprs_for_utilbill(predecessor)
+        existing_cprs.rates = predecessor_cprs.rates
+
+        existing_uprs.save()
+        existing_cprs.save()
+
+        
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and

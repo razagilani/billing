@@ -3249,7 +3249,25 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },
+            {
+                xtype: 'button',
+                id: 'regenerateUPRSButton',
+                text: 'Regenerate Rate Structure',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/regenerate_rate_structure',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                aChargesStore.reload();
+                            }
+                        },
+                    });
+                }
+            },
+                /*{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'UPRSRSISaveBtn',
