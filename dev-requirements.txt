@@ -1,9 +1,8 @@
-fabric
-nose
-nose-progressive
 coverage
+fabric
+ipdb
 minimock
 mock
-ipdb
+nose
+nose-progressive
 pudb
-#ipython # system-wide ipython works with virtualenv

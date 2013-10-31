@@ -23,9 +23,10 @@ class ReebillTest(TestCaseWithSetup):
     def test_utilbill_periods(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf', utility='washgas',
+                    rate_class='DC Non Residential Non Heat')
             self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
             b = self.reebill_dao.load_reebill(acc, 1)
