@@ -3261,7 +3261,7 @@ function reeBillReady() {
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
-                                aChargesStore.reload();
+                                UPRSRSIStore.reload();
                             }
                         },
                     });
