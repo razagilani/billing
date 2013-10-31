@@ -78,18 +78,10 @@ class RateStructureDAO(object):
     processing information.
     '''
 
-    def __init__(self, host, port, database, reebill_dao, logger=None,
-            **kwargs):
+    def __init__(self, reebill_dao, logger=None, **kwargs):
         # TODO **kwargs == bad and should go away
         '''kwargs catches extra junk from config dictionary unpacked into
         constructor arguments.'''
-        #try:
-            #self.connection = pymongo.Connection(host, int(port))
-        #except Exception as e: 
-            #print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
-            #raise e
-        #self.database = self.connection[database]
-        #self.collection = self.database['ratestructure']
         self.reebill_dao = reebill_dao
         self.logger = logger
 
