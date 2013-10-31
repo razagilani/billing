@@ -27,5 +27,7 @@ echo "******************************************************** 07_rs_ids.py"
 python $scripts_dir/07_rs_ids.py
 echo "******************************************************** 08_issue_dates.py"
 python $scripts_dir/08_issue_dates.py
+echo "******************************************************** 09_template_keys.py"
+python $scripts_dir/09_template_keys.py
 echo "******************************************************** check"
 python $scripts_dir/check.py

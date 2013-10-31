@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 import fabric.api as fabapi
 import fabric.utils as fabutils
 import fabric.operations as fabops

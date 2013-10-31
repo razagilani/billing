@@ -241,3 +241,7 @@ where utilbill.customer_id != reebill.customer_id;
 ''')
 count = cur.fetchall()[0]
 print '%s non-matching customer_ids between corresponding reebill and utilbill rows' % count
+
+# all URS documents have empty "rates" list
+print '%s URS documents contain RSIs' % db.ratestructure.find(
+        {'_id.type': 'URS', 'rates': {'$ne': []}}).count()

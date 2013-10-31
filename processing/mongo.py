@@ -161,7 +161,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     new_actual_register = {
         "description" : "Insert description",
         "quantity" : Decimal(0),
-        "quantity_units" : "No Units",
+        "quantity_units" : "therms",
         "shadow" : False,
         "identifier" : identifier,
         "type" : "total",
@@ -170,7 +170,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     new_shadow_register = {
         "description" : "Insert description",
         "quantity" : Decimal(0),
-        "quantity_units" : "Therms",
+        "quantity_units" : "therms",
         "shadow" : True,
         "identifier" : identifier,
         "type" : "total",
@@ -232,7 +232,12 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     meter = _meter(utilbill_doc, original_meter_id)
     register = next(r for r in meter['registers'] if r['identifier'] ==
             original_register_id)
-
+    if register_id is not None:
+        existing_registers = [r for r in meter['registers'] if r['identifier']
+                              == register_id]
+        if len(existing_registers) > 0:
+            raise ValueError("There is already a register with id %s and meter"
+                             " id %sj" %(register_id, original_meter_id))
     if meter_id is not None:
         # meter id is being updated, and there is an existing meter with
         # the given id, the register must be removed from its old meter and
@@ -240,13 +245,6 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
         # id of the meter containing the register can be changed.
         try:
             existing_meter_with_new_id = _meter(utilbill_doc, meter_id)
-            # insert register in new meter
-            new_register(utilbill_doc, meter_identifier=
-                    existing_meter_with_new_id['identifier'],
-                    identifier=original_register_id)
-            # remove register from old meter
-            delete_register(utilbill_doc, original_meter_id,
-                    original_register_id)
         except StopIteration:
             # if there are any other registers in the same meter, a new
             # meter must be created. if not, the meter id can just be
@@ -260,8 +258,26 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
                 # remove register from old meter
                 delete_register(utilbill_doc, original_meter_id,
                         original_register_id)
+                meter = new_meter
             else:
                 meter['identifier'] = meter_id
+        else:
+            existing_registers = [r for r in existing_meter_with_new_id
+                                  ['registers'] if r['identifier']
+                                  == register_id]
+            if len(existing_registers) > 0:
+                raise ValueError("There is already a register with id %s and"
+                                 " meter id %s"
+                                 %(original_register_id, meter_id))
+                
+            # insert register in new meter
+            new_register(utilbill_doc, meter_identifier=
+                    existing_meter_with_new_id['identifier'],
+                    identifier=original_register_id)
+            # remove register from old meter
+            delete_register(utilbill_doc, original_meter_id,
+                    original_register_id)
+            meter = existing_meter_with_new_id
     if description is not None:
         register['description'] = description
     if quantity is not None:
@@ -508,34 +524,34 @@ class MongoReebill(object):
             "total_adjustment" : 0,
             "manual_adjustment" : 0,
             "ree_savings" : 0,
-            "statistics" : {
-                "renewable_utilization" : 0,
-                "renewable_produced" : None,
-                "total_conventional_consumed" : 0,
-                "total_co2_offset" : 0,
-                "conventional_consumed" : 0,
-                "total_renewable_produced" : None,
-                "total_savings" : 0,
-                "consumption_trend" : [
-                    { "quantity" : 0, "month" : "Dec" },
-                    { "quantity" : 0, "month" : "Jan" },
-                    { "quantity" : 0, "month" : "Feb" },
-                    { "quantity" : 0, "month" : "Mar" },
-                    { "quantity" : 0, "month" : "Apr" },
-                    { "quantity" : 0, "month" : "May" },
-                    { "quantity" : 0, "month" : "Jun" },
-                    { "quantity" : 0, "month" : "Jul" },
-                    { "quantity" : 0, "month" : "Aug" },
-                    { "quantity" : 0, "month" : "Sep" },
-                    { "quantity" : 0, "month" : "Oct" },
-                    { "quantity" : 0, "month" : "Nov" }
-                ],
-                "conventional_utilization" : 0,
-                "total_trees" : 0,
-                "co2_offset" : 0,
-                "total_renewable_consumed" : 0,
-                "renewable_consumed" : 0,
-            },
+            #"statistics" : {
+                #"renewable_utilization" : 0,
+                #"renewable_produced" : None,
+                #"total_conventional_consumed" : 0,
+                #"total_co2_offset" : 0,
+                #"conventional_consumed" : 0,
+                #"total_renewable_produced" : None,
+                #"total_savings" : 0,
+                #"consumption_trend" : [
+                    #{ "quantity" : 0, "month" : "Dec" },
+                    #{ "quantity" : 0, "month" : "Jan" },
+                    #{ "quantity" : 0, "month" : "Feb" },
+                    #{ "quantity" : 0, "month" : "Mar" },
+                    #{ "quantity" : 0, "month" : "Apr" },
+                    #{ "quantity" : 0, "month" : "May" },
+                    #{ "quantity" : 0, "month" : "Jun" },
+                    #{ "quantity" : 0, "month" : "Jul" },
+                    #{ "quantity" : 0, "month" : "Aug" },
+                    #{ "quantity" : 0, "month" : "Sep" },
+                    #{ "quantity" : 0, "month" : "Oct" },
+                    #{ "quantity" : 0, "month" : "Nov" }
+                #],
+                #"conventional_utilization" : 0,
+                #"total_trees" : 0,
+                #"co2_offset" : 0,
+                #"total_renewable_consumed" : 0,
+                #"renewable_consumed" : 0,
+            #},
             "balance_due" : 0,
             "prior_balance" : 0,
             "hypothetical_total" : 0,
@@ -1809,8 +1825,8 @@ class ReebillDAO(object):
         _id is in the utilbill_reebill table) if the reebill is issued.'''
         if utilbill.state == UtilBill.Hypothetical:
             assert utilbill.document_id == None
-            assert utilbill.uprs_id == None
-            assert utilbill.cprs_id == None
+            assert utilbill.uprs_document_id == None
+            assert utilbill.cprs_document_id == None
             raise ValueError('No document for hypothetical utilty bill: %s'
                     % utilbill)
         # empty document_ids are legitimate because "hypothetical" utility

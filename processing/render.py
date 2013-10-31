@@ -383,7 +383,7 @@ class ReebillRenderer:
         # populate due date and amount
         dueDateAndAmount = [
             [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill.due_date.strftime('%m-%d-%Y') if reebill.due_date is not None else 'None', styles['BillFieldRight'])], 
-            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
+            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.balance_due)).quantize(Decimal("0.00"))), styles['BillFieldRight'])]
         ]
         
         t = Table(dueDateAndAmount, [135,85])
@@ -599,8 +599,8 @@ class ReebillRenderer:
 
         # populate balances
         balances = [
-            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
-            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.prior_balance)).quantize(Decimal(".00"))),styles['BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.payment_received)).quantize(Decimal(".00"))), styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
@@ -635,7 +635,7 @@ class ReebillRenderer:
             currentCharges = [
                 [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
                 [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(late_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(Decimal('%.2f' % late_charges).quantize(Decimal(".00"))), styles['BillFieldRight'])]
             ]
         else:
             currentCharges = [

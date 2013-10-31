@@ -90,8 +90,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create first utility bill and reebill
             self.process.upload_utility_bill(session, '88888', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).filter_by(customer=customer)\
                     .one()
             self.process.create_first_reebill(session, utilbill)
@@ -193,11 +193,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # upload some utility bills (only the first will be loaded)
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,2,1),
-                    date(2013,3,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,2,1), date(2013,3,1), StringIO('January 2013'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).order_by(UtilBill.period_start)\
                     .first()
             assert utilbill.period_start == date(2013,1,1)
@@ -271,9 +271,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf',
-                    total=100)
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf', total=100)
             utilbill = session.query(UtilBill).one()
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             assert utilbill.period_start == doc['start'] == date(2013,1,1)
@@ -366,9 +365,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.state_db.get_customer(session, acc).latechargerate = .34
 
             # create utility bill and first reebill, with no late charge
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('January 2012'), 'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
             self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
             bill1 = self.reebill_dao.load_reebill(acc, 1)
@@ -404,9 +403,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_reebill(bill1, force=True)
 
             # create 2nd utility bill and reebill
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO('February 2012'), 'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                    'february.pdf')
             self.process.create_next_reebill(session, acc)
             bill2 = self.reebill_dao.load_reebill(acc, 2)
             bill2.balance_due = Decimal('200.')
@@ -564,11 +563,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         account = '99999'
         with DBSession(self.state_db) as session:
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), file1, 'january.pdf')
+                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), file1, 'february.pdf')
+                     date(2012,1,1), date(2012,2,1), file1, 'february.pdf')
 
             # generic reebill
             bill0 = example_data.get_reebill(account, 0)
@@ -608,8 +605,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create utility bill and reebill
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('January 2012'), 'january.pdf')
+                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                     'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
 
@@ -794,8 +791,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # one utility bill
             file1 = StringIO("Let's pretend this is a PDF")
             self.process.upload_utility_bill(session, account, service,
-                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), file1, 'january.pdf')
+                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
             self.assertEqual(1, len(bills))
@@ -818,11 +814,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual([0], [r['quantity'] for r in
                     document['meters'][0]['registers']])
 
-            # second contiguous bill
+            # second contiguous bill (explicitly specifying utility/rate class)
             file2 = StringIO("Let's pretend this is a PDF")
             self.process.upload_utility_bill(session, account, service,
-                    'washgas', 'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), file2, 'february.pdf')
+                    date(2012,2,1), date(2012,3,1), file2, 'february.pdf',
+                    utility='washgas',
+                    rate_class='DC Non Residential Non Heat')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
             bills = [a for a in reversed(bills)]
@@ -836,8 +833,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # 3rd bill "Skyline estimated", without a file
             self.process.upload_utility_bill(session, account, service,
-                    'washgas', 'DC Non Residential Non Heat', date(2012,3,1),
-                    date(2012,4,1), None, None,
+                    date(2012,3,1), date(2012,4,1), None, None,
                     state=UtilBill.SkylineEstimated)
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
@@ -853,12 +849,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,3,1), bills[2].period_start)
             self.assertEqual(date(2012,4,1), bills[2].period_end)
 
-            # 4th bill without a gap between it and th 3rd bill: hypothetical
+            # 4th bill without a gap between it and the 3rd bill: hypothetical
             # bills should be inserted
             file4 = StringIO("File of the July bill.")
             self.process.upload_utility_bill(session, account, service,
-                    'washgas', 'DC Non Residential Non Heat', date(2012,7,1),
-                    date(2012,8,1), file4, 'july.pdf')
+                     date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
             bills = [a for a in reversed(bills)]
@@ -887,6 +882,50 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,8,1), bills[i].period_end)
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
+            # change the utility and rate structure name of the last bill, to
+            # ensure that that one is used as the "predecessor" to determine
+            # these keys in the next bill
+            last_bill = bills[-1]
+            assert last_bill.period_start == date(2012,7,1)
+            assert last_bill.period_end == date(2012,8,1)
+            last_bill.utility = 'New Utility'
+            last_bill.rate_class = 'New Rate Class'
+            self.process.upload_utility_bill(session, account, service,
+                    date(2012,8,1), date(2012,9,1), StringIO('whatever'),
+                    'august.pdf')
+            new_bill = session.query(UtilBill)\
+                    .filter_by(period_start=date(2012,8,1)).one()
+            self.assertEqual('New Utility', new_bill.utility)
+            self.assertEqual('New Rate Class', new_bill.rate_class)
+
+    def test_upload_new_service(self):
+        '''Tests uploading first utility bill with different service, utility,
+        rate_class from the template document for the account.'''
+        with DBSession(self.state_db) as session:
+            # account was created with the following values
+            template_doc = self.reebill_dao.load_utilbill_template(session,
+                    '99999')
+            assert template_doc['service'] == 'gas'
+            assert template_doc['utility'] == 'washgas'
+            assert template_doc['rate_structure_binding'] == \
+                    'DC Non Residential Non Heat'
+
+            self.process.upload_utility_bill(session, '99999', 'electric',
+                    date(2013,1,1), date(2013,2,1), StringIO('a file'),
+                    'january.pdf', utility='Pepco',
+                    rate_class='Residential R Winter')
+
+            bill = session.query(UtilBill).one()
+            self.assertEqual('electric', bill.service)
+            self.assertEqual('Pepco', bill.utility)
+            self.assertEqual('Residential R Winter', bill.rate_class)
+            doc = self.reebill_dao.load_doc_for_utilbill(bill)
+            self.assertEqual('electric', doc['service'])
+            self.assertEqual('Pepco', doc['utility'])
+            self.assertEqual('Residential R Winter',
+                    doc['rate_structure_binding'])
+
+
     def test_delete_utility_bill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
@@ -895,8 +934,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create utility bill in MySQL, Mongo, and filesystem (and make
             # sure it exists all 3 places)
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', start, end,
-                    StringIO("test"), 'january.pdf')
+                    start, end, StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
@@ -929,8 +967,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # re-upload the bill
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', start, end,
-                    StringIO("test"), 'january-gas.pdf')
+                    start, end, StringIO("test"), 'january-gas.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -956,8 +993,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, account, 1)
             self.process.new_version(session, account, 1)
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO("test"), 'january-electric.pdf')
+                    date(2012,2,1), date(2012,3,1), StringIO("test"),
+                    'january-electric.pdf')
             other_utility_bill = self.state_db.get_utilbill(session, account,
                     'gas', date(2012,2,1), date(2012,3,1))
             new_version_reebill = self.state_db.get_reebill(session, account,
@@ -978,17 +1015,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # test deletion of a Skyline-estimated utility bill (no file)
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,3,1),
-                    date(2013,4,1), None, 'no file name',
+                    date(2013,3,1), date(2013,4,1), None, 'no file name',
                     state=UtilBill.SkylineEstimated)
+            self.process.delete_utility_bill(session,
+                    self.state_db.get_utilbill(session, account, 'gas',
+                    date(2013,3,1), date(2013,4,1)))
+
+            # test deletion of a Hypothetical utility bill (no file and no
+            # Mongo document)
+            self.process.upload_utility_bill(session, account, 'gas',
+                     date(2013,3,1), date(2013,4,1), None, 'no file name',
+                    state=UtilBill.Hypothetical)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
                     date(2013,3,1), date(2013,4,1)))
 
             # test deletion of utility bill with non-standard file extension
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,4,1),
-                    date(2013,5,1), StringIO("a bill"), 'billfile.abcdef')
+                     date(2013,4,1), date(2013,5,1), StringIO("a bill"),
+                     'billfile.abcdef')
             the_path = self.billupload.get_utilbill_file_path(account,
                     date(2013,4,1), date(2013,5,1))
             assert os.access(the_path, os.F_OK)
@@ -999,8 +1044,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # test deletion of utility bill with no file extension
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,2,1),
-                    date(2013,3,1), StringIO("a bill"), 'billwithnoextension')
+                     date(2013,2,1), date(2013,3,1), StringIO("a bill"),
+                     'billwithnoextension')
             the_path = self.billupload.get_utilbill_file_path(account,
                     date(2013,2,1), date(2013,3,1))
             assert os.access(the_path, os.F_OK)
@@ -1013,9 +1058,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         with DBSession(self.state_db) as session:
             # create utility bill and reebill
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('january 2012'), 'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                     'january.pdf')
             self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
 
@@ -1185,8 +1230,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             dates = [base_date + timedelta(days=30*x) for x in xrange(5)]
             for n in xrange(4):
                 self.process.upload_utility_bill(session, acc, 'gas',
-                        'washgas', 'DC Non Residential Non Heat', dates[n],
-                        dates[n+1], StringIO('a utility bill'), 'filename.pdf')
+                        dates[n], dates[n+1], StringIO('a utility bill'),
+                        'filename.pdf')
             
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
@@ -1278,12 +1323,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         with DBSession(self.state_db) as session:
             # 2 utility bills
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('January 2012'), 'january.pdf')
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO('February 2012'), 'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                     'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                     'february.pdf')
 
             # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
             # (so it's 10 days late)
@@ -1342,11 +1387,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create 2 utility bills
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,4,4),
-                    date(2013,5,2), StringIO('April 2013'), 'april.pdf')
+                    date(2013,4,4), date(2013,5,2), StringIO('April 2013'),
+                    'april.pdf')
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,5,2),
-                    date(2013,6,3), StringIO('May 2013'), 'may.pdf')
+                    date(2013,5,2), date(2013,6,3), StringIO('May 2013'),
+                    'may.pdf')
 
             # create reebill based on first utility bill
             self.process.create_first_reebill(session,
@@ -1373,12 +1418,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,6,3),
-                    date(2013,7,1), None, 'no file',
+                    date(2013,6,3), date(2013,7,1), None, 'no file',
                     state=UtilBill.Hypothetical)
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,7,1),
-                    date(2013,7,30), StringIO('July 2013'), 'july.pdf')
+                     date(2013,7,1), date(2013,7,30), StringIO('July 2013'),
+                     'july.pdf')
             hypo_utilbill, later_utilbill = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()[2:4]
             assert hypo_utilbill.state == UtilBill.Hypothetical
@@ -1392,9 +1436,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # replace 'hypo_utilbill' with a UtilityEstimated one, so it has a
             # document and a reebill can be attached to it
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,6,3),
-                    date(2013,7,1), StringIO('June 2013'), 'june.pdf',
-                    state=UtilBill.UtilityEstimated)
+                    date(2013,6,3), date(2013,7,1), StringIO('June 2013'),
+                    'june.pdf', state=UtilBill.UtilityEstimated)
             formerly_hypo_utilbill = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()[2]
             assert formerly_hypo_utilbill.state == UtilBill.UtilityEstimated
@@ -1484,17 +1527,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
-            self.process.upload_utility_bill(session, acc_a, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013 A'),
+            self.process.upload_utility_bill(session, acc_a, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_b, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013 B'),
+            self.process.upload_utility_bill(session, acc_b, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_c, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013 C'),
+            self.process.upload_utility_bill(session, acc_c, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .filter(UtilBill.customer==customer_a).one())
@@ -1555,10 +1595,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs_a.save(); uprs_b.save(); uprs_c.save()
 
             # create utility bill and reebill #2 for A
-            self.process.upload_utility_bill(session, acc_a, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,2,1),
-                    date(2013,3,1), StringIO('February 2013 A'),
-                    'february-a.pdf', total=0, state=UtilBill.Complete)
+            self.process.upload_utility_bill(session, acc_a, 'gas',
+                     date(2013,2,1), date(2013,3,1),
+                     StringIO('February 2013 A'), 'february-a.pdf', total=0,
+                     state=UtilBill.Complete)
             self.process.create_next_reebill(session, acc_a)
 
             # the UPRS of A's reebill #2 should match B and C, i.e. it should
@@ -1596,9 +1636,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # roll B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
             # the latter are more numerous, but A-1 should outweigh them
             # because weight decreases quickly with distance.
-            self.process.upload_utility_bill(session, acc_b, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2013,2,5),
-                    date(2013,3,5), StringIO('February 2013 B'),
+            self.process.upload_utility_bill(session, acc_b, 'gas',
+                     date(2013,2,5), date(2013,3,5),
+                     StringIO('February 2013 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.process.create_next_reebill(session, acc_b)
             uprs_b_2 = self.rate_structure_dao.load_uprs_for_utilbill(
@@ -1623,41 +1663,44 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         with DBSession(self.state_db) as session:
             # two utilbills, with reebills
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('january 2012'), 'january.pdf')
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO('february 2012'), 'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                     'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
+                     'february.pdf')
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
             self.process.create_next_reebill(session, acc)
-            one = self.reebill_dao.load_reebill(acc, 1)
+            one = self.state_db.get_reebill(session, acc, 1)
+            one_doc = self.reebill_dao.load_reebill(acc, 1)
             two = self.reebill_dao.load_reebill(acc, 2)
             utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
-            self.assertEquals(None, one.issue_date)
-            self.assertEquals(None, one.due_date)
+            self.assertEquals(None, one_doc.issue_date)
+            self.assertEquals(None, one_doc.due_date)
 
-            # two should not be issuable until one is issued
+            # two should not be issuable until one_doc is issued
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
             # issue one
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
-            one = self.reebill_dao.load_reebill(acc, 1)
+            one_doc = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
-            self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertIsInstance(one.bill_recipients, list)
-            self.assertEquals(len(one.bill_recipients), 0)
-            self.assertIsInstance(one.last_recipients, list)
-            self.assertEquals(len(one.last_recipients), 0)
+            self.assertEquals(datetime.utcnow().date(), one_doc.issue_date)
+            self.assertEquals(one_doc.issue_date + timedelta(30), one_doc.due_date)
+            self.assertIsInstance(one_doc.bill_recipients, list)
+            self.assertEquals(len(one_doc.bill_recipients), 0)
+            self.assertIsInstance(one_doc.last_recipients, list)
+            self.assertEquals(len(one_doc.last_recipients), 0)
 
-            #two = self.process.roll_bill(session, one)
+            #two = self.process.roll_bill(session, one_doc)
             two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
             self.reebill_dao.save_reebill(two)
             
@@ -1679,8 +1722,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create utility bill and first reebill, for January 2012
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('january 2012'), 'january.pdf')
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
             reebill = session.query(ReeBill).one()
@@ -1738,9 +1781,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_ids, uprs_ids, cprs_ids = [], [], []
             for i in range(3):
                 self.process.upload_utility_bill(session, acc, 'gas',
-                        'washgas', 'DC Non Residential Non Heat', date(2012,
-                            i+1, 1), date(2012, i+2, 1),
-                            StringIO('a utility bill'), 'filename.pdf')
+                        date(2012, i+1, 1), date(2012, i+2, 1),
+                        StringIO('a utility bill'), 'filename.pdf')
             
             # create 1st reebill and issue it
             self.process.create_first_reebill(session, session.query(UtilBill)
@@ -1771,12 +1813,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_payment_application(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('january 2012'), 'january.pdf')
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO('february 2012'), 'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
+                    'february.pdf')
 
             # create and issue reebill #1
             self.process.create_first_reebill(session, session.query(UtilBill)
@@ -1817,9 +1859,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # corresponding to them from example_data. (this is the same way
             # the user would manually add RSIs and charges when processing the
             # first bill for a given rate structure.)
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,1,1),
-                    date(2012,2,1), StringIO('January 2012'), 'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
             utilbill_jan = session.query(UtilBill).one()
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                     utilbill_jan)
@@ -1834,9 +1876,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bill for February. thie UPRS and charges will be
             # the same as the one for January.
-            self.process.upload_utility_bill(session, acc, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', date(2012,2,1),
-                    date(2012,3,1), StringIO('February 2012'), 'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                     date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                     'february.pdf')
             utilbill_feb = session.query(UtilBill)\
                     .order_by(desc(UtilBill.period_start)).first()
 
@@ -1913,11 +1955,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # add 2 utility bills
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,2,1),
-                    date(2013,3,1), StringIO('February 2013'), 'february.pdf')
+                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
+                    'february.pdf')
             u1, u2 = session.query(UtilBill).order_by(UtilBill.period_start)\
                     .all()
 
@@ -1983,8 +2025,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         account's utility bill document template.'''
         with DBSession(self.state_db) as session:
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
             
@@ -2014,8 +2056,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create reebill and utility bill
             self.process.upload_utility_bill(session, account, 'gas',
-                    'washgas', 'DC Non Residential Non Heat', date(2013,1,1),
-                    date(2013,2,1), StringIO('January 2013'), 'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
             utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session, account)).one()
             self.process.create_first_reebill(session, utilbill)
@@ -2072,8 +2114,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # NOTE Process._generate_docs_for_new_utility_bill requires utility
             # and rate_class arguments to match those of the template
             self.process.upload_utility_bill(session, '99999', 'gas',
-                    'washgas', 'some rate structure', date(2013,5,6),
-                    date(2013,7,8), StringIO('A Water Bill'), 'waterbill.pdf')
+                     date(2013,5,6), date(2013,7,8), StringIO('A Water Bill'),
+                     'waterbill.pdf', utility='washgas',
+                     rate_class='some rate structure')
             utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session,
                     '99999')).one()
