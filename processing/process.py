@@ -604,8 +604,11 @@ class Process(object):
         existing_uprs.rates = new_uprs.rates
 
         # update CPRS to predecessor
-        predecessor = self.state_db.get_last_real_utilbill(session, utilbill)
-        predecessor_cprs = self.state_db.load_cprs_for_utilbill(predecessor)
+        predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start,
+                service=utilbill.service)
+        predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+                predecessor)
         existing_cprs.rates = predecessor_cprs.rates
 
         existing_uprs.save()
@@ -634,7 +637,6 @@ class Process(object):
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
 
-        print '****************', type(uprs), type(cprs)
         mongo.compute_all_charges(document, uprs, cprs)
 
         # also compute documents of any unissued reebills associated with this
