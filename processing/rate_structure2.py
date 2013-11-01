@@ -436,3 +436,10 @@ class RateStructure(Document):
 #    id = EmbeddedDocumentField(URSID, primary_key=True)
 #    #utility_name = StringField(required=True)
 #    #rate_structure_name = StringField(required=True)
+
+if __name__ == '__main__':
+    import mongoengine
+    mongoengine.connect('skyline-dev', host='localhost', port=27017,
+            alias='ratestructure')
+    print RateStructure.objects.count()
+    RateStructure.objects.get(id=ObjectId('527001537eb49a64dde28ac4'))
