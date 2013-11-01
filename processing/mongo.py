@@ -1560,14 +1560,14 @@ class MongoReebill(object):
                     # convert units
                     if register['quantity_units'].lower() == 'kwh':
                         # TODO physical constants must be global
-                        quantity /= '3412.14'
+                        quantity /= 3412.14
                     elif register['quantity_units'].lower() == 'therms':
                         # TODO physical constants must be global
-                        quantity /= '100000.0'
+                        quantity /= 100000.0
                     elif register['quantity_units'].lower() == 'ccf':
                         # TODO 28247371: this is an unfair conversion
                         # TODO physical constants must be global
-                        quantity /= '100000.0'
+                        quantity /= 100000.0
                     else:
                         raise ValueError('unknown energy unit %s' %
                                 register['quantity_units'])

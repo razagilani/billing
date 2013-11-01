@@ -6,6 +6,7 @@ from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem, Register
+from billing.processing.mongo import MongoReebill
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
