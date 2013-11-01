@@ -748,9 +748,8 @@ class Process(object):
         present_reebill.actual_total = present_reebill.actual_total + actual_total
 
         present_reebill.ree_value = present_reebill.ree_value + ree_value
-        from decimal import Decimal
-        present_reebill.ree_charges = float((present_reebill.ree_charges + ree_charges).quantize(Decimal('.00'), rounding=ROUND_DOWN))
-        present_reebill.ree_savings = float(Decimal(present_reebill.ree_savings + ree_savings).quantize(Decimal('.00'), rounding=ROUND_UP))
+        present_reebill.ree_charges = present_reebill.ree_charges + ree_charges
+        present_reebill.ree_savings = present_reebill.ree_savings + ree_savings
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
@@ -869,9 +868,8 @@ class Process(object):
         # document, and save the reebill document
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
-                utilbill.customer.account, 1, 0, customer.discountrate,
-                utilbill.customer.latechargerate, [utilbill_doc])
-        import ipdb; ipdb.set_trace()
+                utilbill.customer.account, 1, 0, customer.get_discount_rate(),
+                utilbill.customer.get_late_charge_rate(), [utilbill_doc])
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
@@ -924,8 +922,8 @@ class Process(object):
         # "current" values for the customer in MySQL. the sequence is 1 greater
         # than the predecessor's and the version is always 0.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                last_reebill_row.sequence + 1, 0, customer.discountrate,
-                customer.latechargerate, new_utilbill_docs)
+                last_reebill_row.sequence + 1, 0, customer.get_discount_rate(),
+                customer.get_late_charge_rate(), new_utilbill_docs)
 
         # copy 'suspended_services' list from predecessor reebill's document
         last_reebill_doc = self.reebill_dao.load_reebill(account,
