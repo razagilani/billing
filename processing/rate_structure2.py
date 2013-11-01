@@ -414,29 +414,6 @@ class RateStructure(Document):
             result[binding] = rsi
         return result
 
-#class URSID(EmbeddedDocument):
-#    type = StringField(required=True) # TODO figure out how to hard-code this as "URS"
-#    rate_structure_name=StringField(required=True)
-#    utility_name=StringField(required=True)
-#
-#    # these are not used for anything but may be in some existing documents
-#    effective=DateTimeField()
-#    expires=DateTimeField()
-#
-## TODO deal with problem of "type" being in URS id and in URS itself since it
-## inherits from RateStructure--the solution is probably to remove the "type"
-## field and make them separate classes
-#class URS(RateStructure):
-#    meta = {
-#        'db_alias': 'ratestructure',
-#        #'collection': 'rate_structure',
-#        #'allow_inheritance': True
-#    }
-#    # MongoEngine uses the name "id" for the document's _id
-#    id = EmbeddedDocumentField(URSID, primary_key=True)
-#    #utility_name = StringField(required=True)
-#    #rate_structure_name = StringField(required=True)
-
 if __name__ == '__main__':
     import mongoengine
     mongoengine.connect('skyline-dev', host='localhost', port=27017,
