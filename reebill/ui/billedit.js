@@ -2711,10 +2711,10 @@ function reeBillReady() {
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
     });
@@ -2745,10 +2745,10 @@ function reeBillReady() {
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
-            {name: 'quantityunits'},
+            {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
+            {name: 'rate_units'},
+            {name: 'round_rule'},
             {name: 'total'},
         ],
     });
@@ -2856,7 +2856,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -2868,13 +2868,13 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
-                dataIndex: 'roundrule',
+                dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
             //},{
@@ -3012,10 +3012,10 @@ function reeBillReady() {
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
     });
@@ -3048,10 +3048,10 @@ function reeBillReady() {
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
-            {name: 'quantityunits'},
+            {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
+            {name: 'rate_units'},
+            {name: 'round_rule'},
             {name: 'total'},
         ],
     });
@@ -3161,7 +3161,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -3173,13 +3173,13 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
-                dataIndex: 'roundrule',
+                dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
             //},{
