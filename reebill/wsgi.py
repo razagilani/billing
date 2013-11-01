@@ -1618,18 +1618,18 @@ class BillToolBridge:
                         setattr(rsi, key, value)
 
             if xaction == "create":
-                new_rate = rs.RateStructureItem(**{
-                    'rsi_binding': 'Insert binding here',
-                    'description': 'Insert description here',
-                    'quantity': 'Insert quantity here',
-                    'quantity_units': 'Insert units here',
-                    'rate': 'Instert rate here',
-                    'rate_units': 'Insert units here',
-                    'roundrule': 'Insert roundrule here',
-                    "uuid": str(UUID.uuid1()),
-                })
-                rates.append(new_rate)
-                rows = [new_rate.to_dict()]
+                new_rsi = rs.RateStructureItem(
+                    rsi_binding='Insert binding here',
+                    description='Insert description here',
+                    quantity='Insert quantity here',
+                    quantity_units='',
+                    rate='Insert rate here',
+                    rate_units='',
+                    round_rule='',
+                    uuid=str(UUID.uuid1()),
+                )
+                rates.append(new_rsi)
+                rows = [new_rsi.to_dict()]
 
             if xaction == "destroy":
                 uuids = rows
