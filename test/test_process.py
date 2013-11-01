@@ -74,8 +74,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # check MySQL customer
             customer = self.state_db.get_customer(session, '88888')
             self.assertEquals('88888', customer.account)
-            self.assertEquals(0.6, customer.discountrate)
-            self.assertEquals(0.2, customer.latechargerate)
+            self.assertEquals(0.6, customer.get_discount_rate())
+            self.assertEquals(0.2, customer.get_late_charge_rate())
             template_customer = self.state_db.get_customer(session, '99999')
             self.assertNotEqual(template_customer.utilbill_template_id,
                     customer.utilbill_template_id)
@@ -361,7 +361,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         with DBSession(self.state_db) as session:
             # set customer late charge rate
-            self.state_db.get_customer(session, acc).latechargerate = .34
+            self.state_db.get_customer(session, acc).set_late_charge_rate(.34)
 
             # create utility bill and first reebill, with no late charge
             self.process.upload_utility_bill(session, acc, 'gas',
@@ -1251,8 +1251,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # no unissued corrections yet
             self.assertEquals([],
                     self.process.get_unissued_corrections(session, acc))
-            self.assertIs(float,
-                    type(self.process.get_total_adjustment(session, acc)))
             self.assertEquals(0, self.process.get_total_adjustment(session, acc))
 
             # try to issue nonexistent corrections
@@ -1274,8 +1272,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
             self.assertEqual([(1, 1, 20), (3, 1, -5)],
                     self.process.get_unissued_corrections(session, acc))
-            self.assertIs(float,
-                    type(self.process.get_total_adjustment(session, acc)))
             self.assertEqual(15, self.process.get_total_adjustment(session, acc))
 
             # try to apply corrections to an issued bill
@@ -1900,12 +1896,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # this function checks that current values match the orignals
                 def check():
                     # in approximate "causal" order
-                    self.assertEqual(ree, reebill2.total_renewable_energy)
-                    self.assertEqual(actual, reebill2.actual_total)
-                    self.assertEqual(hypo, reebill2.hypothetical_total)
-                    self.assertEqual(ree_value, reebill2.ree_value)
-                    self.assertEqual(ree_charges, reebill2.ree_charges)
-                    self.assertEqual(total, reebill2.total)
+                    self.assertAlmostEqual(ree, reebill2.total_renewable_energy)
+                    self.assertAlmostEqual(actual, reebill2.actual_total)
+                    self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
+                    self.assertAlmostEqual(ree_value, reebill2.ree_value)
+                    self.assertAlmostEqual(ree_charges, reebill2.ree_charges)
+                    self.assertAlmostEqual(total, reebill2.total)
                     self.assertEqual(balance_due, reebill2.balance_due)
 
                 # this better succeed, since nothing was done

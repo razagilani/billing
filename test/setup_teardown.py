@@ -93,7 +93,6 @@ port = 27017
         # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34,
                 '000000000000000000000001')
-        import ipdb; ipdb.set_trace()
         session.add(customer)
         session.commit()
 
