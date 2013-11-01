@@ -10,7 +10,7 @@ chardet==1.1
 fabulous==0.1.5
 grapefruit==0.1a3
 greenlet==0.4.0
-mongoengine==0.6.13
+mongoengine==0.8.4
 numpy==1.6.2
 ordereddict==1.1
 py-bcrypt==0.4
@@ -21,6 +21,7 @@ reportlab==2.5
 requests==0.14.0
 simplejson==2.6.0
 six==1.1.0
+tsort==0.0.1
 tablib==0.9.11
 wsgiref==0.1.2
 xlwt==0.7.4
