@@ -1613,20 +1613,9 @@ class BillToolBridge:
                         raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
 
-                    ## eliminate attributes that have empty strings or None as these mustn't 
-                    ## be added to the RSI so the RSI knows to compute for those values
-                    #for k,v in row.items():
-                        #if v is None or v == "":
-                            #del row[k]
-                    ## now that blank values are removed, ensure that required fields were sent from client 
-                    #if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                    #if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-                    ## now take the legitimate values from the posted data and update the RSI
-                    ## clear it so that the old emptied attributes are removed
-                    #rsi.clear()
-                    #rsi.update(row)
-
-                    rsi.update(**row)
+                    for key, value in row.iteritems():
+                        assert hasattr(rsi, key)
+                        setattr(rsi, key, value)
 
             if xaction == "create":
                 new_rate = {
