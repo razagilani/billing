@@ -5,7 +5,6 @@ from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from datetime import datetime, date
 from collections import defaultdict
-from decimal import Decimal
 import copy
 import inspect
 import jinja2
