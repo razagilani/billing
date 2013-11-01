@@ -22,7 +22,6 @@ from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
-from decimal import Decimal
 from billing.util.dictutils import deep_map
 import MySQLdb
 from billing.util.mongo_utils import python_convert
@@ -75,8 +74,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # check MySQL customer
             customer = self.state_db.get_customer(session, '88888')
             self.assertEquals('88888', customer.account)
-            self.assertEquals(Decimal('0.6'), customer.discountrate)
-            self.assertEquals(Decimal('0.2'), customer.latechargerate)
+            self.assertEquals(0.6, customer.discountrate)
+            self.assertEquals(0.2, customer.latechargerate)
             template_customer = self.state_db.get_customer(session, '99999')
             self.assertNotEqual(template_customer.utilbill_template_id,
                     customer.utilbill_template_id)
@@ -144,8 +143,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 if ke.message != 'late_charges':
                     raise
             self.assertEqual(0, reebill_doc.ree_value)
-            self.assertEqual(Decimal('0.6'), reebill_doc.discount_rate)
-            self.assertEqual(Decimal('0.2'), reebill_doc.late_charge_rate)
+            self.assertEqual(0.6, reebill_doc.discount_rate)
+            self.assertEqual(0.2, reebill_doc.late_charge_rate)
             self.assertEqual(None, reebill_doc.motd)
             self.assertEqual(None, reebill_doc.issue_date)
             self.assertEqual([utilbill_doc['_id']], [ObjectId(u['id']) for u in
@@ -399,7 +398,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
  
             # but compute_reebill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
-            bill1.balance_due = Decimal('100.')
+            bill1.balance_due = 100
             self.reebill_dao.save_reebill(bill1, force=True)
 
             # create 2nd utility bill and reebill
@@ -408,7 +407,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february.pdf')
             self.process.create_next_reebill(session, acc)
             bill2 = self.reebill_dao.load_reebill(acc, 2)
-            bill2.balance_due = Decimal('200.')
+            bill2.balance_due = 200
 
             # bill2's late charge should be 0 before bill1's due date, and
             # after the due date, it's balance * late charge rate, i.e.
@@ -432,7 +431,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
             bill3 = example_data.get_reebill(acc, 3)
-            bill3.balance_due = Decimal('300.')
+            bill3.balance_due = 300
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
@@ -713,67 +712,56 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
             hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
 
-            # NOTE numbers in charges that were loaded from Mongo are all
-            # Decimals. i think they did not need to be Decimals above because
-            # the bill was computed without being saved and re-loaded, which is
-            # not normally done. (?) my conclusion is that there is a bug in
-            # bind_rate_structure which causes charges to be floats, but this
-            # never matters because the bill is always saved into Mongo and
-            # loaded out again before the values are accessed.
-            
-            # also NOTE that Decimal(11.2) == 11.2 but Decimal('11.2') does
-            # not.
-
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in hypothetical_charges if
                     c['rsi_binding'] == 'SYSTEM_CHARGE'][0]
-            self.assertDecimalAlmostEqual(Decimal('11.2'), system_charge['total'])
+            self.assertDecimalAlmostEqual(11.2, system_charge['total'])
 
             # right-of-way fee
             row_charge = [c for c in hypothetical_charges if c['rsi_binding']
                     == 'RIGHT_OF_WAY'][0]
-            self.assertDecimalAlmostEqual(Decimal(0.03059 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(0.03059 * hypothetical_quantity,
                     row_charge['total'], places=2) # TODO OK to be so inaccurate?
             
             # sustainable energy trust fund
             setf_charge = [c for c in hypothetical_charges if c['rsi_binding']
                     == 'SETF'][0]
-            self.assertDecimalAlmostEqual(Decimal(0.01399 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(0.01399 * hypothetical_quantity,
                     setf_charge['total'], places=1) # TODO OK to be so inaccurate?
 
             # energy assistance trust fund
             eatf_charge = [c for c in hypothetical_charges if c['rsi_binding']
                     == 'EATF'][0]
-            self.assertDecimalAlmostEqual(Decimal(0.006 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(0.006 * hypothetical_quantity,
                     eatf_charge['total'], places=2)
 
             # delivery tax
             delivery_tax = [c for c in hypothetical_charges if c['rsi_binding']
                     == 'DELIVERY_TAX'][0]
-            self.assertDecimalAlmostEqual(Decimal(0.07777 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(0.07777 * hypothetical_quantity,
                     delivery_tax['total'], places=2)
 
             # peak usage charge
             peak_usage_charge = [c for c in hypothetical_charges if
                     c['rsi_binding'] == 'PUC'][0]
-            self.assertDecimalAlmostEqual(Decimal('23.14'), peak_usage_charge['total'])
+            self.assertDecimalAlmostEqual(23.14, peak_usage_charge['total'])
 
             # distribution charge
             distribution_charge = [c for c in hypothetical_charges if
                     c['rsi_binding'] == 'DISTRIBUTION_CHARGE'][0]
-            self.assertDecimalAlmostEqual(Decimal(.2935 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(.2935 * hypothetical_quantity,
                     distribution_charge['total'], places=1)
             
             # purchased gas charge
             purchased_gas_charge = [c for c in hypothetical_charges if
                     c['rsi_binding'] == 'PGC'][0]
-            self.assertDecimalAlmostEqual(Decimal(.7653 * hypothetical_quantity),
+            self.assertDecimalAlmostEqual(.7653 * hypothetical_quantity,
                     purchased_gas_charge['total'], places=2)
 
             # sales tax: depends on all of the above
             sales_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SALES_TAX'][0]
-            self.assertDecimalAlmostEqual(Decimal('0.06') * (system_charge['total'] +
+            self.assertDecimalAlmostEqual(0.06 * (system_charge['total'] +
                 distribution_charge['total'] + purchased_gas_charge['total'] +
                 row_charge['total'] + peak_usage_charge['total'] +
                 setf_charge['total'] + eatf_charge['total'] +
@@ -1263,7 +1251,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # no unissued corrections yet
             self.assertEquals([],
                     self.process.get_unissued_corrections(session, acc))
-            self.assertIs(Decimal,
+            self.assertIs(float,
                     type(self.process.get_total_adjustment(session, acc)))
             self.assertEquals(0, self.process.get_total_adjustment(session, acc))
 
@@ -1286,7 +1274,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
             self.assertEqual([(1, 1, 20), (3, 1, -5)],
                     self.process.get_unissued_corrections(session, acc))
-            self.assertIs(Decimal,
+            self.assertIs(float,
                     type(self.process.get_total_adjustment(session, acc)))
             self.assertEqual(15, self.process.get_total_adjustment(session, acc))
 
@@ -1375,7 +1363,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # that difference should show up as an error
             corrections = self.process.get_unissued_corrections(session, acc)
             assert len(corrections) == 1
-            self.assertEquals((2, 1, Decimal(-40)), corrections[0])
+            self.assertEquals((2, 1, -40), corrections[0])
 
     # TODO rename
     def test_roll(self):
@@ -1834,7 +1822,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
             self.process.compute_reebill(session, two_doc)
             self.reebill_dao.save_reebill(two_doc)
-            self.assertEqual(Decimal('123.45'), two_doc.payment_received)
+            self.assertEqual(123.45, two_doc.payment_received)
 
             # make a correction on reebill #1: payment does not get applied to
             # #1 and does get applied to #2
@@ -1842,8 +1830,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
             self.process.compute_reebill(session, one_doc)
             self.process.compute_reebill(session, two_doc)
-            self.assertEqual(Decimal(0), one_doc.payment_received)
-            self.assertEqual(Decimal('123.45'), two_doc.payment_received)
+            self.assertEqual(0, one_doc.payment_received)
+            self.assertEqual(123.45, two_doc.payment_received)
 
 
     def test_bind_and_compute_consistency(self):
