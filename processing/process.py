@@ -871,6 +871,7 @@ class Process(object):
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
                 utilbill.customer.account, 1, 0, customer.discountrate,
                 utilbill.customer.latechargerate, [utilbill_doc])
+        import ipdb; ipdb.set_trace()
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
