@@ -1618,7 +1618,7 @@ class BillToolBridge:
                         setattr(rsi, key, value)
 
             if xaction == "create":
-                new_rate = {
+                new_rate = rs.RateStructureItem(**{
                     'rsi_binding': 'Insert binding here',
                     'description': 'Insert description here',
                     'quantity': 'Insert quantity here',
@@ -1627,13 +1627,9 @@ class BillToolBridge:
                     'rate_units': 'Insert units here',
                     'roundrule': 'Insert roundrule here',
                     "uuid": str(UUID.uuid1()),
-                }
-                from billing.processing.rate_structure import RateStructureItem
-                RateStructureItem(new_rate, copy.deepcopy(rate_structure))
-                # find an oprhan binding and set it here
-                #new_rate['rsi_binding'] = "Temporary RSI Binding"
+                })
                 rates.append(new_rate)
-                rows = [new_rate]
+                rows = [new_rate.to_dict()]
 
             if xaction == "destroy":
                 uuids = rows
