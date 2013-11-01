@@ -11,7 +11,6 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal, DivisionByZero, InvalidOperation
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
@@ -998,6 +997,7 @@ class BillToolBridge:
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
             merge_fields["street"] = mongo_reebill.service_address.get("street","")
+            from decimal import Decimal
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
@@ -1756,10 +1756,8 @@ class BillToolBridge:
                     row_dict['reebill_total'] = mongo_reebill.actual_total
                     try:
                         row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
-                    except DivisionByZero:
-                        row_dict['difference'] = Decimal('Infinity')
-                    except InvalidOperation:
-                        row_dict['difference'] = Decimal(0.0)
+                    except ZeroDivisionError:
+                        row_dict['difference'] = float('inf')
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
                 rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
@@ -1917,16 +1915,16 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # TODO: 27042211 numerical types
-        reebill.discount_rate = Decimal(discount_rate)
+        reebill.discount_rate = discount_rate
 
         # process late_charge_rate
         # strip out anything unrelated to a decimal number
         late_charge_rate = re.sub('[^0-9\.-]+', '', late_charge_rate)
         if late_charge_rate:
-            late_charge_rate = Decimal(late_charge_rate)
+            late_charge_rate = late_charge_rate
             if late_charge_rate < 0 or late_charge_rate >1:
                 return self.dumps({'success': False, 'errors': {'reason':'Late Charge Rate', 'details':'must be between 0 and 1', 'late_charge_rate':'Invalid late charge rate'}})
-            reebill.late_charge_rate = Decimal(late_charge_rate)
+            reebill.late_charge_rate = late_charge_rate
         
         ba = {}
         sa = {}
