@@ -350,27 +350,27 @@ class RateStructureItem(EmbeddedDocument):
         return {
             'rsi_binding': self.rsi_binding,
             'quantity': self.quantity,
-            'quantityunits': self.quantity_units,
+            'quantity_units': self.quantity_units,
             'rate': self.rate,
-            'rateunits': self.rate_units,
-            'roundrule': self.round_rule,
+            'rate_units': self.rate_units,
+            'round_rule': self.round_rule,
             'description': self.description,
             'uuid': self.uuid,
         }
 
-    def update(self, rsi_binding=None, quantity=None, quantityunits=None,
-            rate=None, rateunits=None, roundrule=None, description=None,
+    def update(self, rsi_binding=None, quantity=None, quantity_units=None,
+            rate=None, rate_units=None, round_rule=None, description=None,
             uuid=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
         if quantity is not None:
             self.quantity = quantity
-        if quantityunits is not None:
-            self.quantityunits = quantityunits
+        if quantity_units is not None:
+            self.quantity_units = quantity_units
         if rate is not None:
             self.rate = rate
-        if rateunits is not None:
-            self.rateunits = rateunits
+        if rate_units is not None:
+            self.rate_units = rate_units
         if roundrule is not None:
             self.roundrule = roundrule
         if description is not None:
