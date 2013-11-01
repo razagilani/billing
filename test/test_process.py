@@ -1902,7 +1902,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
                     self.assertAlmostEqual(ree_charges, reebill2.ree_charges)
                     self.assertAlmostEqual(total, reebill2.total)
-                    self.assertEqual(balance_due, reebill2.balance_due)
+                    self.assertAlmostEqual(balance_due, reebill2.balance_due)
 
                 # this better succeed, since nothing was done
                 check()
