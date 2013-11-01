@@ -6,7 +6,6 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from decimal import Decimal
 from itertools import groupby
 from operator import attrgetter, itemgetter
 import sqlalchemy
@@ -1048,14 +1047,15 @@ class StateDB(object):
     def get_total_payment_since(self, session, account, start,
             end=datetime.utcnow().date()):
         '''Returns sum of all account's payments applied on or after 'start'
-        and before 'end' (today by default), as a Decimal. If 'start' is None,
-        the beginning of the interval extends to the beginning of time.'''
+        and before 'end' (today by default). If 'start' is None, the beginning
+        of the interval extends to the beginning of time.
+        '''
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
-        return Decimal(sum(payment.credit for payment in payments.all()))
+        return sum(payment.credit for payment in payments.all())
 
     def payments(self, session, account):
         '''Returns list of all payments for the given account ordered by
