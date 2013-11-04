@@ -704,8 +704,8 @@ class Process(object):
 
         # reset hypothetical and actual totals so we can accumulate across all
         # services
-        present_reebill.hypothetical_total = 0
-        present_reebill.actual_total = 0
+        #present_reebill.hypothetical_total = 0
+        #present_reebill.actual_total = 0
 
         # sum up chargegroups into total per utility bill and accumulate
         # reebill values
@@ -728,9 +728,9 @@ class Process(object):
                     hypothetical_total += charge["total"]
 
             # calculate utilbill level numbers
-            present_reebill.set_actual_total_for_service(service, actual_total)
-            present_reebill.set_hypothetical_total_for_service(service,
-                    hypothetical_total)
+            #present_reebill.set_actual_total_for_service(service, actual_total)
+            #present_reebill.set_hypothetical_total_for_service(service,
+                    #hypothetical_total)
 
             ree_value = hypothetical_total - actual_total
             ree_charges = (1 - present_reebill.discount_rate) * \
@@ -743,9 +743,9 @@ class Process(object):
             present_reebill.set_ree_savings_for_service(service, ree_savings)
 
         # accumulate at the reebill level
-        present_reebill.hypothetical_total = present_reebill.hypothetical_total\
-                + hypothetical_total
-        present_reebill.actual_total = present_reebill.actual_total + actual_total
+        #present_reebill.hypothetical_total = present_reebill.hypothetical_total\
+                #+ hypothetical_total
+        #present_reebill.actual_total = present_reebill.actual_total + actual_total
 
         present_reebill.ree_value = present_reebill.ree_value + ree_value
         present_reebill.ree_charges = present_reebill.ree_charges + ree_charges

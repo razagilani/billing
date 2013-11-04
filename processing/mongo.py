@@ -404,7 +404,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         identifiers[charge['rsi_binding']]['total'] = charge['total']
 
 def total_of_all_charges(utilbill_doc):
-    '''Returns some of "total" field of all charges in the utility bill.
+    '''Returns sum of "total" fields of all charges in the utility bill.
     '''
     return sum(charge['total'] for charge in
             chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
@@ -517,7 +517,6 @@ class MongoReebill(object):
             "issue_date" : None,
             "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
-            "actual_total" : 0,
             "due_date" : None,
             "total_adjustment" : 0,
             "manual_adjustment" : 0,
@@ -552,7 +551,7 @@ class MongoReebill(object):
             #},
             "balance_due" : 0,
             "prior_balance" : 0,
-            "hypothetical_total" : 0,
+            #"hypothetical_total" : 0,
             "balance_forward" : 0,
             # NOTE these address fields are containers for utility bill
             # addresses. these addresses will eventually move into utility bill
@@ -603,8 +602,7 @@ class MongoReebill(object):
         # process rebill
         self.total_adjustment = 0
         self.manual_adjustment = 0
-        self.hypothetical_total = 0
-        self.actual_total = 0
+        #self.hypothetical_total = 0
         self.ree_value = 0
         self.ree_charges = 0
         self.ree_savings = 0
@@ -665,9 +663,10 @@ class MongoReebill(object):
                 for shadow_register in self.shadow_registers(service):
                     self.set_shadow_register_quantity(shadow_register['identifier'], 0)
 
-            # if "statistics" section exists in the bill, remove it
-            if 'statistics' in self.reebill_dict:
-                del self.reebill_dict['statistics']
+            # if these keys exist in the document, remove them
+            for bad_key in 'statistics', 'actual_total', 'hypothetical_total':
+                if bad_key in self.reebill_dict:
+                    del self.reebill_dict[bad_key]
 
 
     def convert_to_new_account(self, account):
@@ -1063,17 +1062,19 @@ class MongoReebill(object):
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
     def actual_total(self):
-        return self.reebill_dict['actual_total']
-    @actual_total.setter
-    def actual_total(self, value):
-        self.reebill_dict['actual_total'] = value
+        '''Returns total of all charges of all utility bills belonging to this
+        reebill.
+        '''
+        return sum(total_of_all_charges(u) for u in self._utilbills)
 
     @property
     def hypothetical_total(self):
-        return self.reebill_dict['hypothetical_total']
-    @hypothetical_total.setter
-    def hypothetical_total(self, value):
-        self.reebill_dict['hypothetical_total'] = value
+        '''Returns total of all charges of all "hypothetical utility bill"
+        subdocuments belongong to this reebill.
+        '''
+        return sum(sum(charge['total'] for charge in
+            chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+            for subdoc in self.reebill_dict['utilbills'])
 
     @property
     def ree_value(self):
@@ -1189,22 +1190,22 @@ class MongoReebill(object):
         # replace that one with 'new_utilbill_doc'
         self._utilbills[matching_indices[0]] = new_utilbill_doc
 
-    def hypothetical_total_for_service(self, service_name):
-        '''Returns the total of hypothetical charges for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_handle_for_service(service_name)['hypothetical_total']
+    #def hypothetical_total_for_service(self, service_name):
+        #'''Returns the total of hypothetical charges for the utilbill whose
+        #service is 'service_name'. There's not supposed to be more than one
+        #utilbill per service, so an exception is raised if that happens (or if
+        #there's no utilbill for that service).'''
+        #return self._get_handle_for_service(service_name)['hypothetical_total']
 
-    def set_hypothetical_total_for_service(self, service_name, new_total):
-        self._get_handle_for_service(service_name)['hypothetical_total'] \
-                = new_total
+    #def set_hypothetical_total_for_service(self, service_name, new_total):
+        #self._get_handle_for_service(service_name)['hypothetical_total'] \
+                #= new_total
 
-    def actual_total_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['total']
+    #def actual_total_for_service(self, service_name):
+        #return self._get_utilbill_for_service(service_name)['total']
 
-    def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['total'] = new_total
+    #def set_actual_total_for_service(self, service_name, new_total):
+        #self._get_utilbill_for_service(service_name)['total'] = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
