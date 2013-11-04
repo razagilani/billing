@@ -130,6 +130,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(126, mongo.total_of_all_charges(utilbill_doc))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
         # try a different quantity: 250 therms
@@ -141,6 +142,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(201, mongo.total_of_all_charges(utilbill_doc))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
         # and another quantity: 0
@@ -152,6 +154,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(11, mongo.total_of_all_charges(utilbill_doc))
         self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
 
     def test_register_editing(self):
@@ -300,3 +303,4 @@ class UtilBillTest(utils.TestCase):
         # can't set both meter ID and register ID the same as another register
         self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
                 'METER', 'Insert register ID here', register_id='REGISTER')
+
