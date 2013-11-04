@@ -1887,7 +1887,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # save original values
                 # (more fields could be added here)
                 hypo = reebill2.hypothetical_total
-                actual = reebill2.actual_total
+                #actual = reebill2.actual_total
                 ree = reebill2.total_renewable_energy
                 ree_value = reebill2.ree_value
                 ree_charges = reebill2.ree_charges
@@ -1899,7 +1899,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
                             reebill2.total_renewable_energy)
-                    self.assertAlmostEqual(actual, reebill2.actual_total)
+                    #self.assertAlmostEqual(actual, reebill2.actual_total)
                     self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
                     self.assertAlmostEqual(ree_charges, reebill2.ree_charges)
