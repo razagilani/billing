@@ -1882,12 +1882,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 olap_id = 'MockSplinter ignores olap id'
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
                         use_olap=use_olap)
+                self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, reebill2)
 
                 # save original values
                 # (more fields could be added here)
                 hypo = reebill2.hypothetical_total
-                #actual = reebill2.actual_total
+                actual = reebill2.actual_total
                 ree = reebill2.total_renewable_energy
                 ree_value = reebill2.ree_value
                 ree_charges = reebill2.ree_charges
@@ -1899,7 +1900,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
                             reebill2.total_renewable_energy)
-                    #self.assertAlmostEqual(actual, reebill2.actual_total)
+                    self.assertAlmostEqual(actual, reebill2.actual_total)
                     self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
                     self.assertAlmostEqual(ree_charges, reebill2.ree_charges)
