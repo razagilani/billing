@@ -1873,14 +1873,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill1 = self.reebill_dao.load_reebill(acc, 1)
             self.process.create_next_reebill(session, acc)
 
-            for use_olap in (True, False):
+            for use_olap in True, False:
                 reebill2 = self.reebill_dao.load_reebill(acc, 2)
                 # NOTE changes to 'reebill2' do not persist in db
 
                 # bind & compute once to start. this change should be
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2, use_olap=use_olap)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
                 self.process.compute_reebill(session, reebill2)
 
                 # save original values
@@ -1896,7 +1897,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # this function checks that current values match the orignals
                 def check():
                     # in approximate "causal" order
-                    self.assertAlmostEqual(ree, reebill2.total_renewable_energy)
+                    self.assertAlmostEqual(ree,
+                            reebill2.total_renewable_energy)
                     self.assertAlmostEqual(actual, reebill2.actual_total)
                     self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
