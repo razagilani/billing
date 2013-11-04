@@ -1910,19 +1910,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # bind and compute repeatedly
                 self.process.compute_reebill(session, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
                 check()
                 self.process.compute_reebill(session, reebill2)
                 check()
                 self.process.compute_reebill(session, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
                 check()
                 self.process.compute_reebill(session, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
+                        use_olap=use_olap)
                 check()
                 self.process.compute_reebill(session, reebill2)
                 check()
