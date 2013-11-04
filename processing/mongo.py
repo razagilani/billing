@@ -403,6 +403,12 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         identifiers[charge['rsi_binding']]['rate'] = charge['rate']
         identifiers[charge['rsi_binding']]['total'] = charge['total']
 
+def total_of_all_charges(utilbill_doc):
+    '''Returns some of "total" field of all charges in the utility bill.
+    '''
+    return sum(charge['total'] for charge in
+            chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
+
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
     data is stored in 'dictionary', which is a Python dict that PyMongo could
