@@ -715,16 +715,12 @@ class Process(object):
 
             for chargegroup, charges in present_reebill.\
                     actual_chargegroups_for_service(service).items():
-                actual_subtotal = 0
                 for charge in charges:
-                    actual_subtotal += charge["total"]
                     actual_total += charge["total"]
 
             for chargegroup, charges in present_reebill.\
                     hypothetical_chargegroups_for_service(service).items():
-                hypothetical_subtotal = 0
                 for charge in charges:
-                    hypothetical_subtotal += charge["total"]
                     hypothetical_total += charge["total"]
 
             # calculate utilbill level numbers
