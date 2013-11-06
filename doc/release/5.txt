@@ -1,0 +1,60 @@
+Bugs Fixed
+
+26812555    account list does not match nexus data
+26921991    10013 - utility bills don't list
+26753649    Version 4 deployment issue - configuration item missing
+26512637    Runtime error - guess_utilbills_and_end_date()
+26953955    Requesting "/" (i.e. BTB index() method) causes exception
+27198897    Mysql timeout wtf
+27227979    Why is late charge rate a decimal(3,2)? Is it supposed to be < 1 or > 1?
+27260955    Rendering error due to new late charges feature
+27254833    New bug? 10006-4 - compute bill
+26500689    Discount rate design limitation: Instantaneous rate used in bill summation
+27308019    Missing reconciliation report error to be shown in UI
+27417993    ReeBill won't respond to requests if in a long bind operation
+27306029    Create new account fails because of new customer constructor
+27317505    Newly inserted UPRS RSI does not initially save
+27728489    Newly inserted charge items do not realize their new key
+27799771    journal entries cannot be made
+
+New Features
+
+25869535    reevalue export - now in xls format
+25788361    Delete ReeBill - if one cannot be deleted, alert the user
+25207303    Use json.dumps to create reconciliation report string
+25282041    Account created on date and reebill rolled date
+24219149    Visualizations for RE and CE costs
+25721727    ReeBill Periods must be able to precede OLTP/OLAP dates
+25738911    Automatically select next account number
+25268713    Interpolated/Averaged calendar month energy report
+24852467    Late Payment Fees and Penalties
+27101687    Export single or all bills has to have dates
+11282095    Processing: commit (re-issue) bill function now covered by attach to utility bill or mail function
+26951323    Rename set_address because sequential account information sets more
+27253777    Design server side form validation pattern
+27249777    Rename account info panel on ReeBill grid
+17432883    Copy actual to hypothetical charges now done automatically
+25654705    All proxies need to have their own connection instance versus rely on Ext.ajax
+27199685    Enhance Interval Data Import with column mappings and time format
+25277431    Transmit UI configuration to client
+27312463    Get actual and hypothetical charge stores to save
+27610051    UUID's have to be added to charge items
+27181227    Support accrual accounting in ReeBill
+27805397    Journal Grid needs to show event type
+26508527    Days since last bill - does not sort numerically
+27776019    Precache images - first load is ugly
+26326111    Update journal grid to show all events with their event type
+26323727    Journal entries/event logs should contain usernames
+27813335    Journal improvements
+
+Other
+
+27192153    Create test state database
+25567477    Turn check_authentication into a decorator, if possible
+26354459    Clean up production data - utility bills and service
+26148601    Split up dateutils.py
+26389471    ReeBill has GAS
+26032839    Design Pattern for DataStores and reloading
+27710241    customer.account unique - not applied to production db
+23830853    Enumerate business events that should be logged by ReeBill
+
