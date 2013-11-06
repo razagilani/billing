@@ -15,7 +15,7 @@ pp = pprint.PrettyPrinter(indent=2)
 
 # these 'roles' are specified on the fab command line using '-R [rolename]'
 common.CommonFabTask.update_fabenv_roles({
-    'skyline': ['ec2-user@ec2-54-227-167-40.compute-1.amazonaws.com'],
+    'skyline': ['ec2-user@skyline-internal-prod.skylineinnovations.net'],
 })
 
 
