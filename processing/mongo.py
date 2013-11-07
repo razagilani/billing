@@ -1108,9 +1108,9 @@ class MongoReebill(object):
         '''Returns total of all charges of all "hypothetical utility bill"
         subdocuments belongong to this reebill.
         '''
-        return sum(sum(charge['total'] for charge in
-            chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
-            for subdoc in self.reebill_dict['utilbills'])
+        return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
+                subdoc['hypothetical_chargegroups'].itervalues()))
+                for subdoc in self.reebill_dict['utilbills'])
 
     @property
     def ree_value(self):
