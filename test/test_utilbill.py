@@ -126,33 +126,45 @@ class UtilBillTest(utils.TestCase):
         # structure.
         self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(31, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(31,
+                the_charge_named('LINEAR_PLUS_CONSTANT'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
+        self.assertRaises(StopIteration, the_charge_named,
+                'NO_CHARGE_FOR_THIS_RSI')
+        self.assertDecimalAlmostEqual(126,
+                mongo.total_of_all_charges(utilbill_doc))
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
         self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(51, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(51,
+                the_charge_named('LINEAR_PLUS_CONSTANT'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
-        self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
+        self.assertRaises(StopIteration, the_charge_named,
+                'NO_CHARGE_FOR_THIS_RSI')
+        self.assertDecimalAlmostEqual(201,
+                mongo.total_of_all_charges(utilbill_doc))
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
         self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(1, the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(1,
+                the_charge_named('LINEAR_PLUS_CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertRaises(StopIteration, the_charge_named, 'NO_CHARGE_FOR_THIS_RSI')
+        self.assertRaises(StopIteration, the_charge_named,
+                'NO_CHARGE_FOR_THIS_RSI')
+        self.assertDecimalAlmostEqual(11,
+                mongo.total_of_all_charges(utilbill_doc))
 
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
@@ -300,3 +312,4 @@ class UtilBillTest(utils.TestCase):
         # can't set both meter ID and register ID the same as another register
         self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
                 'METER', 'Insert register ID here', register_id='REGISTER')
+

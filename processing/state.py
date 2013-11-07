@@ -6,11 +6,10 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from decimal import Decimal
 from itertools import groupby
 from operator import attrgetter, itemgetter
 import sqlalchemy
-from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
+from sqlalchemy import Table, Column, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
@@ -20,7 +19,7 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, DateTime
+from sqlalchemy.types import Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
@@ -42,11 +41,20 @@ class Customer(Base):
     id = Column(Integer, primary_key=True)
     account = Column(String, nullable=False)
     name = Column(String)
-    discountrate = Column(Float, nullable=False)
-    latechargerate = Column(Float, nullable=False)
+    discountrate = Column(Float(asdecimal=False), nullable=False)
+    latechargerate = Column(Float(asdecimal=False), nullable=False)
     # this can be null for existing accounts because accounts only use the
     # template document for their first-ever utility bill
     utilbill_template_id = Column(String)
+
+    def get_discount_rate(self):
+        return self.discountrate
+    def set_discountrate(self):
+        self.discountrate = value
+    def get_late_charge_rate(self):
+        return self.latechargerate
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
             utilbill_template_id):
@@ -576,13 +584,13 @@ class StateDB(object):
     def discount_rate(self, session, account):
         '''Returns the discount rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one().\
-                discountrate
+                get_discount_rate()
         return result
         
     def late_charge_rate(self, session, account):
         '''Returns the late charge rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one()\
-                .latechargerate
+                .get_late_charge_rate()
         return result
 
     # TODO: 22598787 branches
@@ -1048,14 +1056,15 @@ class StateDB(object):
     def get_total_payment_since(self, session, account, start,
             end=datetime.utcnow().date()):
         '''Returns sum of all account's payments applied on or after 'start'
-        and before 'end' (today by default), as a Decimal. If 'start' is None,
-        the beginning of the interval extends to the beginning of time.'''
+        and before 'end' (today by default). If 'start' is None, the beginning
+        of the interval extends to the beginning of time.
+        '''
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
-        return Decimal(sum(payment.credit for payment in payments.all()))
+        return float(sum(payment.credit for payment in payments.all()))
 
     def payments(self, session, account):
         '''Returns list of all payments for the given account ordered by

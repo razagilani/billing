@@ -26,7 +26,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas  
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
-
 #
 # for chart graphics
 #
@@ -46,7 +45,20 @@ from billing.processing.billupload import create_directory_if_necessary
 
 sys.stdout = sys.stderr
 
+def round_for_display(x, places=2):
+    '''Rounds the float 'x' for display as dollars according to the previous
+    behavior in render.py using Decimals, which was to round to the nearest
+    cent (.005 up to .01). If 'places' is given, a different number of decimal
+    places can be used.
+    '''
+    return round(x * 10**places) / float(10**places)
 
+def format_for_display(x, places=2):
+    '''Formats the float 'x' for display as dollars by rounding it to the given
+    number of places (default 2) and displaying as a string right-padded with
+    0s to that many places.
+    '''
+    return ('%%.%sf' % places) % round_for_display(x, places)
 #
 # Globals
 #
@@ -383,7 +395,7 @@ class ReebillRenderer:
         # populate due date and amount
         dueDateAndAmount = [
             [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill.due_date.strftime('%m-%d-%Y') if reebill.due_date is not None else 'None', styles['BillFieldRight'])], 
-            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.balance_due)).quantize(Decimal("0.00"))), styles['BillFieldRight'])]
+            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(format_for_display(reebill.balance_due), styles['BillFieldRight'])]
         ]
         
         t = Table(dueDateAndAmount, [135,85])
@@ -585,10 +597,10 @@ class ReebillRenderer:
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
         ]+[
             [
-                Paragraph(str(reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
-                Paragraph(str(reebill.actual_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
-                Paragraph(str(reebill.ree_value_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight'])
-            ] for service in reebill.services
+                Paragraph(str(format_for_display(reebill.hypothetical_total)),styles['BillFieldRight']), 
+                Paragraph(str(format_for_display(reebill.actual_total)),styles['BillFieldRight']), 
+                Paragraph(str(format_for_display(reebill.ree_value)),styles['BillFieldRight'])
+            ]
         ]
 
         t = Table(utilitycharges, colWidths=[84,84,84])
@@ -599,8 +611,8 @@ class ReebillRenderer:
 
         # populate balances
         balances = [
-            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.prior_balance)).quantize(Decimal(".00"))),styles['BillFieldRight'])],
-            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(Decimal(str(reebill.payment_received)).quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.prior_balance)),styles['BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.payment_received)), styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
@@ -612,8 +624,8 @@ class ReebillRenderer:
         manual_adjustments = reebill.manual_adjustment
         other_adjustments = reebill.total_adjustment
         adjustments = [
-            [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(manual_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-            [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(other_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(manual_adjustments)), styles['BillFieldRight'])],
+            [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(other_adjustments)), styles['BillFieldRight'])]
         ]
         
         t = Table(adjustments, [180,85])
@@ -633,14 +645,14 @@ class ReebillRenderer:
         # to allow the template to do fancy formatting
         if late_charges is not None:
             currentCharges = [
-                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(Decimal('%.2f' % late_charges).quantize(Decimal(".00"))), styles['BillFieldRight'])]
+                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_savings)), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charges)), styles['BillFieldRight'])],
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(late_charges)), styles['BillFieldRight'])]
             ]
         else:
             currentCharges = [
-                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_savings)), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charges)), styles['BillFieldRight'])],
                 [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str("n/a"), styles['BillFieldRight'])]
             ]
 
@@ -651,7 +663,7 @@ class ReebillRenderer:
 
         # populate balanceForward
         balance = [
-            [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(reebill.balance_forward.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.balance_forward)), styles['BillFieldRight'])]
         ]
 
         t = Table(balance, [135,85])
@@ -663,7 +675,7 @@ class ReebillRenderer:
 
         # populate balanceDueFrame
         balanceDue = [
-            [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(reebill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(format_for_display(reebill.balance_due)), styles['BillFieldRight'])]
         ]
 
         t = Table(balanceDue, [135,85])
@@ -732,9 +744,9 @@ class ReebillRenderer:
                         register['description'],
                         # as in the case of a second meter that doesn't have a shadow register (see family laundry)
                         # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
-                        shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
+                        round_for_display(shadow_total) if shadow_total is not None else "",
                         utility_total,
-                        total.quantize(Decimal("0.00")),
+                        round_for_display(total),
                         register['quantity_units'],
                     ])
 
@@ -786,6 +798,8 @@ class ReebillRenderer:
             [None, None, None, None, None, None, None]
         ]
 
+        # muliple services are not supported
+        assert len(reebill.services) == 1
         for service in reebill.services:
             # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
             # mapping charge types (e.g. "All Charges") to lists of chargegroups.
@@ -796,15 +810,15 @@ class ReebillRenderer:
                     chargeDetails.append([
                         charge_type if i == 0 else "",
                         charge.get('description', "No description"),
-                        charge['quantity'].quantize(Decimal(".000")) if 'quantity' in charge else Decimal("1"),
+                        format_for_display(charge['quantity'], places=3) if 'quantity' in charge else Decimal("1"),
                         charge.get('quantity_units', ""),
-                        charge['rate'].quantize(Decimal(".00000")) if 'rate' in charge else "",
+                        format_for_display(charge['rate'], places=5) if 'rate' in charge else "",
                         charge.get('rate_units', ""), 
-                        charge['total'].quantize(Decimal(".00")) if 'total' in charge else "",
+                        format_for_display(charge['total'], places=2) if 'total' in charge else "",
                     ])
             # spacer
             chargeDetails.append([None, None, None, None, None, None, None])
-            chargeDetails.append([None, None, None, None, None, None, reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))])
+            chargeDetails.append([None, None, None, None, None, None, format_for_display(reebill.hypothetical_total)])
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 

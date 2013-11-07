@@ -2,7 +2,6 @@
 import sys
 import datetime
 from datetime import date, time, datetime
-from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_EVEN
 import pymongo
 import bson # part of pymongo package
 import functools
@@ -62,12 +61,6 @@ def reebill_address_to_utilbill_address(address):
     }
 
 # type-conversion functions
-
-def float_to_decimal(x):
-    '''Converts float into Decimal. Used in getter methods.'''
-    # str() tells Decimal to automatically figure out how many digts of
-    # precision we want
-    return Decimal(str(x)) if type(x) is float else x
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     # TODO combine this into python_convert(), and include the ancestor_key
@@ -160,7 +153,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
         identifier = 'Insert register ID here'
     new_actual_register = {
         "description" : "Insert description",
-        "quantity" : Decimal(0),
+        "quantity" : 0,
         "quantity_units" : "therms",
         "shadow" : False,
         "identifier" : identifier,
@@ -169,7 +162,7 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     }
     new_shadow_register = {
         "description" : "Insert description",
-        "quantity" : Decimal(0),
+        "quantity" : 0,
         "quantity_units" : "therms",
         "shadow" : True,
         "identifier" : identifier,
@@ -281,7 +274,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     if description is not None:
         register['description'] = description
     if quantity is not None:
-        register['quantity'] = Decimal(str(quantity))
+        register['quantity'] = str(quantity)
     if description is not None:
         register['description'] = description
     if quantity_units is not None:
@@ -403,13 +396,18 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         charge = all_charges[charge_number]
         rsi = rsis[charge['rsi_binding']]
         quantity, rate = rsi.compute_charge(identifiers)
-        charge['quantity'] = Decimal(quantity)
-        charge['rate'] = Decimal(rate)
-        charge['total'] = Decimal(quantity) * Decimal(rate)
-        # TODO maybe use float here instead of decimal
+        charge['quantity'] = quantity
+        charge['rate'] = rate
+        charge['total'] = quantity * rate
         identifiers[charge['rsi_binding']]['quantity'] = charge['quantity']
         identifiers[charge['rsi_binding']]['rate'] = charge['rate']
         identifiers[charge['rsi_binding']]['total'] = charge['total']
+
+def total_of_all_charges(utilbill_doc):
+    '''Returns sum of "total" fields of all charges in the utility bill.
+    '''
+    return sum(charge.get('total', 0) for charge in
+            chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -519,7 +517,6 @@ class MongoReebill(object):
             "issue_date" : None,
             "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
-            "actual_total" : 0,
             "due_date" : None,
             "total_adjustment" : 0,
             "manual_adjustment" : 0,
@@ -554,7 +551,7 @@ class MongoReebill(object):
             #},
             "balance_due" : 0,
             "prior_balance" : 0,
-            "hypothetical_total" : 0,
+            #"hypothetical_total" : 0,
             "balance_forward" : 0,
             # NOTE these address fields are containers for utility bill
             # addresses. these addresses will eventually move into utility bill
@@ -603,39 +600,38 @@ class MongoReebill(object):
         #    self.set_utilbill_period_for_service(service, (prev_end, None))
 
         # process rebill
-        self.total_adjustment = Decimal("0.00")
-        self.manual_adjustment = Decimal("0.00")
-        self.hypothetical_total = Decimal("0.00")
-        self.actual_total = Decimal("0.00")
-        self.ree_value = Decimal("0.00")
-        self.ree_charges = Decimal("0.00")
-        self.ree_savings = Decimal("0.00")
+        self.total_adjustment = 0
+        self.manual_adjustment = 0
+        #self.hypothetical_total = 0
+        self.ree_value = 0
+        self.ree_charges = 0
+        self.ree_savings = 0
         self.due_date = None
         self.issue_date = None
         self.motd = None
 
         # this should always be set from the value in MySQL, which holds the
         # "current" discount rate for each customer
-        self.discount_rate = Decimal("0.00")
+        self.discount_rate = 0
 
-        self.prior_balance = Decimal("0.00")
-        self.total_due = Decimal("0.00")
-        self.balance_due = Decimal("0.00")
-        self.payment_received = Decimal("0.00")
-        self.balance_forward = Decimal("0.00")
+        self.prior_balance = 0
+        self.total_due = 0
+        self.balance_due = 0
+        self.payment_received = 0
+        self.balance_forward = 0
         # some customers are supposed to lack late_charges key, some are
         # supposed to have late_charges: None, and others have
         # self.late_charges: 0
         if 'late_charges' in self.reebill_dict and self.late_charges is not None:
-            self.late_charges = Decimal("0.00")
+            self.late_charges = 0
 
         for service in self.services:
             # get utilbill numbers and zero them out
-            self.set_actual_total_for_service(service, Decimal("0.00")) 
-            self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
-            self.set_ree_value_for_service(service, Decimal("0.00")) 
-            self.set_ree_savings_for_service(service, Decimal("0.00")) 
-            self.set_ree_charges_for_service(service, Decimal("0.00")) 
+            self.set_actual_total_for_service(service, 0)
+            self.set_hypothetical_total_for_service(service, 0)
+            self.set_ree_value_for_service(service, 0)
+            self.set_ree_savings_for_service(service, 0)
+            self.set_ree_charges_for_service(service, 0)
 
             # set new UUID's & clear out the last bound charges
             actual_chargegroups = self.actual_chargegroups_for_service(service)
@@ -663,13 +659,14 @@ class MongoReebill(object):
                 for meter in self.meters_for_service(service):
                     self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
                 for actual_register in self.actual_registers(service):
-                    self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
+                    self.set_actual_register_quantity(actual_register['identifier'], 0)
                 for shadow_register in self.shadow_registers(service):
-                    self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
+                    self.set_shadow_register_quantity(shadow_register['identifier'], 0)
 
-            # if "statistics" section exists in the bill, remove it
-            if 'statistics' in self.reebill_dict:
-                del self.reebill_dict['statistics']
+            # if these keys exist in the document, remove them
+            for bad_key in 'statistics', 'actual_total', 'hypothetical_total':
+                if bad_key in self.reebill_dict:
+                    del self.reebill_dict[bad_key]
 
 
     def convert_to_new_account(self, account):
@@ -718,6 +715,18 @@ class MongoReebill(object):
         self.reebill_dict['utilbills'] = \
                 [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
+
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
 
                 
     def compute_charges(self, uprs, cprs):
@@ -868,6 +877,30 @@ class MongoReebill(object):
             ## don't have to set this because we modified the hypothetical_chargegroups
             ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
+    def update_summary_values(self):
+        '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
+        the reebill document. This should be done whenever the bill is
+        computed. Eventually code in Process.compute_reebill should move into
+        here and this method should be renamed to something more general.
+        '''
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
+        
+        self.ree_value = sum(subdoc['ree_value'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_charges = sum(subdoc['ree_charges'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_savings = sum(subdoc['ree_savings'] for subdoc in
+                self.reebill_dict['utilbills'])
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -928,7 +961,6 @@ class MongoReebill(object):
     
     @property
     def discount_rate(self):
-        '''Discount rate is a Decimal.'''
         return self.reebill_dict['discount_rate']
     @discount_rate.setter
     def discount_rate(self, value):
@@ -950,8 +982,8 @@ class MongoReebill(object):
     @property
     def balance_due(self):
         '''Overall balance of the customer's account at the time this bill was
-        issued, including unpaid charges from previous bills. Returns a
-        Decimal.'''
+        issued, including unpaid charges from previous bills.
+        '''
         return self.reebill_dict['balance_due']
     @balance_due.setter
     def balance_due(self, value):
@@ -959,7 +991,6 @@ class MongoReebill(object):
 
     @property
     def late_charge_rate(self):
-        '''Late charges rate is a Decimal.'''
         # currently, there is a population of reebills that do not have a late_charge_rate
         # because late_charge_rate was not yet implemented.
         # and since we may want to know this, let the key exception be raised.
@@ -978,7 +1009,6 @@ class MongoReebill(object):
 
     @late_charges.setter
     def late_charges(self, value):
-        if type(value) is not Decimal: raise ValueError("Requires Decimal")
         self.reebill_dict['late_charges'] = value
 
     @property
@@ -1030,10 +1060,10 @@ class MongoReebill(object):
 
     @property
     def manual_adjustment(self):
-        return Decimal(self.reebill_dict['manual_adjustment'])
+        return self.reebill_dict['manual_adjustment']
     @manual_adjustment.setter
     def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = Decimal(value)
+        self.reebill_dict['manual_adjustment'] = value
 
     @property
     def ree_charges(self):
@@ -1068,17 +1098,19 @@ class MongoReebill(object):
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
     def actual_total(self):
-        return self.reebill_dict['actual_total']
-    @actual_total.setter
-    def actual_total(self, value):
-        self.reebill_dict['actual_total'] = value
+        '''Returns total of all charges of all utility bills belonging to this
+        reebill.
+        '''
+        return sum(total_of_all_charges(u) for u in self._utilbills)
 
     @property
     def hypothetical_total(self):
-        return self.reebill_dict['hypothetical_total']
-    @hypothetical_total.setter
-    def hypothetical_total(self, value):
-        self.reebill_dict['hypothetical_total'] = value
+        '''Returns total of all charges of all "hypothetical utility bill"
+        subdocuments belongong to this reebill.
+        '''
+        return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
+                subdoc['hypothetical_chargegroups'].itervalues()))
+                for subdoc in self.reebill_dict['utilbills'])
 
     @property
     def ree_value(self):
@@ -1194,22 +1226,22 @@ class MongoReebill(object):
         # replace that one with 'new_utilbill_doc'
         self._utilbills[matching_indices[0]] = new_utilbill_doc
 
-    def hypothetical_total_for_service(self, service_name):
-        '''Returns the total of hypothetical charges for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_handle_for_service(service_name)['hypothetical_total']
+    #def hypothetical_total_for_service(self, service_name):
+        #'''Returns the total of hypothetical charges for the utilbill whose
+        #service is 'service_name'. There's not supposed to be more than one
+        #utilbill per service, so an exception is raised if that happens (or if
+        #there's no utilbill for that service).'''
+        #return self._get_handle_for_service(service_name)['hypothetical_total']
 
-    def set_hypothetical_total_for_service(self, service_name, new_total):
-        self._get_handle_for_service(service_name)['hypothetical_total'] \
-                = new_total
+    #def set_hypothetical_total_for_service(self, service_name, new_total):
+        #self._get_handle_for_service(service_name)['hypothetical_total'] \
+                #= new_total
 
-    def actual_total_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['total']
+    #def actual_total_for_service(self, service_name):
+        #return self._get_utilbill_for_service(service_name)['total']
 
-    def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['total'] = new_total
+    #def set_actual_total_for_service(self, service_name, new_total):
+        #self._get_utilbill_for_service(service_name)['total'] = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
@@ -1413,7 +1445,7 @@ class MongoReebill(object):
                         # shadow register dictionary does not exist; create it
                         handle['shadow_registers'].append({
                             'identifier': r['identifier'],
-                            'quantity': Decimal(0),
+                            'quantity': 0,
                             'quantity_units': r['quantity_units'],
                             'description': r['description'],
                             'register_binding': r['register_binding'],
@@ -1571,14 +1603,14 @@ class MongoReebill(object):
                     # convert units
                     if register['quantity_units'].lower() == 'kwh':
                         # TODO physical constants must be global
-                        quantity /= Decimal('3412.14')
+                        quantity /= 3412.14
                     elif register['quantity_units'].lower() == 'therms':
                         # TODO physical constants must be global
-                        quantity /= Decimal('100000.0')
+                        quantity /= 100000.0
                     elif register['quantity_units'].lower() == 'ccf':
                         # TODO 28247371: this is an unfair conversion
                         # TODO physical constants must be global
-                        quantity /= Decimal('100000.0')
+                        quantity /= 100000.0
                     else:
                         raise ValueError('unknown energy unit %s' %
                                 register['quantity_units'])
@@ -1604,13 +1636,13 @@ class MongoReebill(object):
         '''Returns all renewable energy distributed among shadow registers of
         this reebill, in therms.'''
         # TODO switch to BTU
-        if type(ccf_conversion_factor) not in (type(None), Decimal):
-            raise ValueError("ccf conversion factor must be a Decimal")
+        if type(ccf_conversion_factor) not in (type(None), float):
+            raise ValueError("ccf conversion factor must be a float")
         # TODO: CCF is not an energy unit, and registers actually hold CCF
         # instead of therms. we need to start keeping track of CCF-to-therms
         # conversion factors.
         # https://www.pivotaltracker.com/story/show/22171391
-        total_therms = Decimal(0)
+        total_therms = 0
         for register in self.all_shadow_registers():
             quantity = register['quantity']
             unit = register['quantity_units'].lower()
@@ -1618,10 +1650,10 @@ class MongoReebill(object):
                 total_therms += quantity
             elif unit == 'btu':
                 # TODO physical constants must be global
-                total_therms += quantity / Decimal("100000.0")
+                total_therms += quantity / 100000.0
             elif unit == 'kwh':
                 # TODO physical constants must be global
-                total_therms += quantity / Decimal(".0341214163")
+                total_therms += quantity / .0341214163
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
                     total_therms += quantity * ccf_conversion_factor
@@ -1808,7 +1840,6 @@ class ReebillDAO(object):
                     % _id)
         assert docs.count() == 1
         result = docs[0]
-        result = deep_map(float_to_decimal, result)
         result = convert_datetimes(result)
         return result
 
@@ -1867,7 +1898,6 @@ class ReebillDAO(object):
         utilbill_doc = docs[0]
 
         # convert types
-        utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
         utilbill_doc = convert_datetimes(utilbill_doc)
 
         return utilbill_doc
@@ -1890,7 +1920,6 @@ class ReebillDAO(object):
 
 
             # convert types
-            utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
 
             result.append(utilbill_doc)
@@ -1954,7 +1983,6 @@ class ReebillDAO(object):
                     % (self.reebills_collection, format_query(query)))
 
         # convert types in reebill document
-        mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
         # load utility bills
@@ -2013,7 +2041,6 @@ class ReebillDAO(object):
             docs = self.reebills_collection.find(query).sort('sequence')
             for mongo_doc in self.reebills_collection.find(query):
                 mongo_doc = convert_datetimes(mongo_doc)
-                mongo_doc = deep_map(float_to_decimal, mongo_doc)
                 utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
