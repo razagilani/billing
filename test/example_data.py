@@ -2,11 +2,11 @@
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
-from billing.processing.mongo import MongoReebill, float_to_decimal
 from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem, Register
+from billing.processing.mongo import MongoReebill
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -599,8 +599,8 @@ example_cprs = RateStructure(type='CPRS',
 
 def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
-    '''Returns an example reebill with the given account, sequence, and dates. It comes
-    with one utility bill having the same dates.'''
+    '''Returns an example reebill with the given account, sequence, and dates.
+    It comes with one utility bill having the same dates.'''
     reebill_dict = deepcopy(example_reebill)
     reebill_dict['_id'].update({
         'account': account,
@@ -623,8 +623,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'end': end
     })
 
-    return MongoReebill(deep_map(float_to_decimal, reebill_dict),
-            [deepcopy(deep_map(float_to_decimal, u))])
+    return MongoReebill(reebill_dict, [deepcopy(u)])
 
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):

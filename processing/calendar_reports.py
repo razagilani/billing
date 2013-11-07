@@ -5,7 +5,6 @@ import traceback
 import argparse
 from datetime import date, timedelta
 from calendar import Calendar
-from decimal import Decimal
 from billing.processing import mongo
 from billing.util import dateutils
 import xlwt
@@ -51,9 +50,9 @@ def daily_average_energy(reebill_dao, account, day, service='gas',
         if quantity_unit == 'therms':
             total_therms += quantity
         elif quantity_unit == 'btu':
-            total_therms += quantity / Decimal(100000.0)
+            total_therms += quantity / 100000.0
         elif quantity_unit == 'kwh':
-            total_therms += quantity / Decimal(.0341214163)
+            total_therms += quantity / .0341214163
         elif quantity_unit == 'ccf':
             # TODO: 28825375 - need the conversion factor for this
             print ("Register in reebill %s-%s-%s contains gas measured "
@@ -70,9 +69,9 @@ def daily_average_energy(reebill_dao, account, day, service='gas',
     if unit == 'therms':
         total_energy = total_therms
     elif unit == 'btu':
-        total_energy = total_therms * Decimal(100000.0)
+        total_energy = total_therms * 100000.0
     elif unit == 'kwh':
-        total_energy = total_therms * Decimal(.0341214163)
+        total_energy = total_therms * .0341214163
     else:
         raise Exception('Unknown energy unit: "%s"' % unit)
 
