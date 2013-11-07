@@ -1889,7 +1889,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # (more fields could be added here)
                 hypo = reebill2.hypothetical_total
                 actual = reebill2.actual_total
-                ree = reebill2.total_renewable_energy
+                ree = reebill2.total_renewable_energy()
                 ree_value = reebill2.ree_value
                 ree_charges = reebill2.ree_charges
                 total = reebill2.total
@@ -1897,9 +1897,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # this function checks that current values match the orignals
                 def check():
+                    # re-load reebill document from database because
+                    # compute_utility_bill loads it, updates it, and saves it
+                    # without affecting the document already loaded into memory
+                    reebill2 = self.reebill_dao.load_reebill(acc, 2)
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
-                            reebill2.total_renewable_energy)
+                            reebill2.total_renewable_energy())
                     self.assertAlmostEqual(actual, reebill2.actual_total)
                     self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
