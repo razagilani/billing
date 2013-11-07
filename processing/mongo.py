@@ -406,7 +406,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 def total_of_all_charges(utilbill_doc):
     '''Returns sum of "total" fields of all charges in the utility bill.
     '''
-    return sum(charge['total'] for charge in
+    return sum(charge.get('total', 0) for charge in
             chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
 
 class MongoReebill(object):
