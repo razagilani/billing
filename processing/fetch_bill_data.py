@@ -23,7 +23,6 @@ from billing.util.dictutils import dict_merge
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
 from billing.processing.exceptions import MissingDataError
-from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end,
         ignore_missing=True, verbose=False):
@@ -38,7 +37,7 @@ def get_billable_energy_timeseries(splinter, install, start, end,
     result = []
     for hour in cross_range(start, end):
         if any([a.contains(hour) for a in unbillable_annotations]):
-            result.append(Decimal(0))
+            result.append(0)
             if verbose:
                 print >> sys.stderr, "skipping %s's %s: unbillable" % (
                         install.name, hour)
@@ -66,14 +65,14 @@ def get_billable_energy_timeseries(splinter, install, start, end,
             except MissingDataError as e:
                 if ignore_missing:
                     print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
-                    result.append(Decimal(0))
+                    result.append(0)
                 else:
                     raise
             else:
                 if verbose:
                     print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
                             install.name, hour, energy_sold)
-                result.append(Decimal(energy_sold))
+                result.append(energy_sold)
     return result
 
 # TODO 35345191 rename this function
@@ -94,7 +93,7 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=False):
         # die_fast=False, this timeseries may be shorter than anticipated and
         # energy_function below will fail.
         # TODO support die_fast=False: 35547299
-        timeseries = [Decimal(pair[1]) for pair in
+        timeseries = [pair[1] for pair in
                 install_obj.get_billable_energy_timeseries(
                 date_to_datetime(start), date_to_datetime(end))]
 
@@ -224,7 +223,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
 
         # iterate over the hour range, adding up energy at 15-mintute intervals
         # and also checking timestamps
-        total = Decimal(0)
+        total = 0
         i = first_timestamp_index
         while timestamps[i] < last_timestamp:
             expected_timestamp = first_timestamp + timedelta(
@@ -233,7 +232,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
                 raise Exception(('Bad timestamps for hour range %s %s: '
                     'expected %s, found %s') % (day, hour_range,
                         expected_timestamp, timestamps[i]))
-            total += Decimal(values[i])
+            total += values[i]
             i+= 1
         # unfortunately the last energy value must be gotten separately.
         # TODO: add a do-while loop to python
@@ -241,7 +240,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
             raise Exception(('Bad timestamps for hour range %s %s: '
                 'expected %s, found %s') % (day, hour_range,
                     expected_timestamp, timestamps[i]))
-        total += Decimal(values[i])
+        total += values[i]
 
         return total
 
@@ -272,9 +271,9 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
 def aggregate_total(energy_function, start, end, verbose=False):
     '''Returns all energy given by 'energy_function' in the date range [start,
     end), in BTU. 'energy_function' should be a function mapping a date and an
-    hour range (2-tuple of integers in [0,23]) to a Decimal representing energy
+    hour range (2-tuple of integers in [0,23]) to a float representing energy
     used during that time in BTU.'''
-    result = Decimal(0)
+    result = 0
     for day in dateutils.date_generator(start, end):
         print 'getting energy for %s' % day
         result += energy_function(day, (0, 23))
@@ -285,8 +284,8 @@ def aggregate_tou(day_type, hour_range, energy_function, start, end, verbose=Fal
     'hour_range' (a 2-tuple of integers in [0,24)) on days of type 'day_type'
     ("weekday", "weekend", or "holiday"). 'energy_function' should be a
     function mapping a date and an hour range (2-tuple of integers in [0,23])
-    to a Decimal representing energy used during that time in BTU.'''
-    result = Decimal(0)
+    to a float representing energy used during that time in BTU.'''
+    result = 0
     for day in dateutils.date_generator(start, end):
         if holidays.get_day_type(day) != day_type:
             print 'getting energy for %s %s' % (day, hour_range)
@@ -298,7 +297,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
-    range (pair of integers in [0,23]) to a Decimal representing energy used
+    range (pair of integers in [0,23]) to a float representing energy used
     during that time. (Energy is measured in therms, even if it's gas.) If
     meter_identifier is given, accumulate energy only into the shadow registers
     of meters with that identifier.'''
@@ -385,6 +384,6 @@ def usage_data_to_virtual_register(reebill, energy_function,
 
         # update the reebill: put the total skyline energy in the shadow register
         reebill.set_shadow_register_quantity(register['identifier'],
-                Decimal(total_energy))
+                total_energy)
 
 
