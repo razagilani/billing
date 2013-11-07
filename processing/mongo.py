@@ -716,6 +716,18 @@ class MongoReebill(object):
                 [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
+
                 
     def compute_charges(self, uprs, cprs):
         """This function binds a rate structure against the actual and
@@ -865,6 +877,30 @@ class MongoReebill(object):
             ## don't have to set this because we modified the hypothetical_chargegroups
             ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
+    def update_summary_values(self):
+        '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
+        the reebill document. This should be done whenever the bill is
+        computed. Eventually code in Process.compute_reebill should move into
+        here and this method should be renamed to something more general.
+        '''
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
+        
+        self.ree_value = sum(subdoc['ree_value'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_charges = sum(subdoc['ree_charges'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_savings = sum(subdoc['ree_savings'] for subdoc in
+                self.reebill_dict['utilbills'])
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
