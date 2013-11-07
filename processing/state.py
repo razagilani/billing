@@ -9,7 +9,6 @@ from datetime import timedelta, datetime, date
 from itertools import groupby
 from operator import attrgetter, itemgetter
 import sqlalchemy
-from decimal import Decimal
 from sqlalchemy import Table, Column, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
@@ -48,6 +47,15 @@ class Customer(Base):
     # template document for their first-ever utility bill
     utilbill_template_id = Column(String)
 
+    def get_discount_rate(self):
+        return self.discountrate
+    def set_discountrate(self):
+        self.discountrate = value
+    def get_late_charge_rate(self):
+        return self.latechargerate
+    def set_late_charge_rate(self, value):
+        self.latechargerate = value
+
     def __init__(self, name, account, discount_rate, late_charge_rate,
             utilbill_template_id):
         self.name = name
@@ -55,20 +63,6 @@ class Customer(Base):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
         self.utilbill_template_id = utilbill_template_id
-
-    # NOTE these methods are temporary hacks to get 'latechargerate' and
-    # 'discount_rate' looking like floats, because SQLAlchemy automatically
-    # makes them Decimals even when told not to.
-    # see https://www.pivotaltracker.com/story/show/60009242
-    # TODO fix it
-    def get_discount_rate(self):
-        return float(self.discountrate)
-    def set_discountrate(self):
-        self.discountrate = Decimal(value)
-    def get_late_charge_rate(self):
-        return float(self.latechargerate)
-    def set_late_charge_rate(self, value):
-        self.latechargerate = Decimal(value)
 
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \
