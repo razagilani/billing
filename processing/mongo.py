@@ -21,7 +21,7 @@ from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -366,7 +366,12 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             for identifier in rsi.get_identifiers():
                 if identifier in identifiers:
                     continue
-                other_charge_num = charge_numbers[identifier]
+                try:
+                    other_charge_num = charge_numbers[identifier]
+                except KeyError:
+                    raise FormulaError(('Unknown variable in formula of RSI "%s" '
+                            '(%s): %s') % (rsi.description, rsi.rsi_binding,
+                            identifier))
                 # a pair (x,y) means x precedes y, i.e. y depends on x
                 dependency_graph.append((other_charge_num, this_charge_num))
                 independent_charge_numbers.discard(other_charge_num)
