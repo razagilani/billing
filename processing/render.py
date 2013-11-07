@@ -47,11 +47,11 @@ sys.stdout = sys.stderr
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
-    behavior in render.py using Decimals, which was to round down to the
-    nearest cent. If 'places' is given, a different number of decimal places
-    can be used.
+    behavior in render.py using Decimals, which was to round to the nearest
+    cent (.005 up to .01). If 'places' is given, a different number of decimal
+    places can be used.
     '''
-    return math.floor(x * 10**places) / 10**places
+    return round(x * 10**places) / float(10**places)
 
 def format_for_display(x, places=2):
     '''Formats the float 'x' for display as dollars by rounding it to the given
