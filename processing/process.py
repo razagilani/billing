@@ -707,45 +707,7 @@ class Process(object):
         #present_reebill.hypothetical_total = 0
         #present_reebill.actual_total = 0
 
-        # sum up chargegroups into total per utility bill and accumulate
-        # reebill values
-        for service in present_reebill.services:
-            actual_total = 0
-            hypothetical_total = 0
-
-            for chargegroup, charges in present_reebill.\
-                    actual_chargegroups_for_service(service).items():
-                for charge in charges:
-                    actual_total += charge["total"]
-
-            for chargegroup, charges in present_reebill.\
-                    hypothetical_chargegroups_for_service(service).items():
-                for charge in charges:
-                    hypothetical_total += charge["total"]
-
-            # calculate utilbill level numbers
-            #present_reebill.set_actual_total_for_service(service, actual_total)
-            #present_reebill.set_hypothetical_total_for_service(service,
-                    #hypothetical_total)
-
-            ree_value = hypothetical_total - actual_total
-            ree_charges = (1 - present_reebill.discount_rate) * \
-                    (hypothetical_total - actual_total)
-            ree_savings = present_reebill.discount_rate * (hypothetical_total -
-                    actual_total)
-
-            present_reebill.set_ree_value_for_service(service, ree_value)
-            present_reebill.set_ree_charges_for_service(service, ree_charges)
-            present_reebill.set_ree_savings_for_service(service, ree_savings)
-
-        # accumulate at the reebill level
-        #present_reebill.hypothetical_total = present_reebill.hypothetical_total\
-                #+ hypothetical_total
-        #present_reebill.actual_total = present_reebill.actual_total + actual_total
-
-        present_reebill.ree_value = present_reebill.ree_value + ree_value
-        present_reebill.ree_charges = present_reebill.ree_charges + ree_charges
-        present_reebill.ree_savings = present_reebill.ree_savings + ree_savings
+        present_reebill.update_summary_values()
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
