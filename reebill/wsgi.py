@@ -344,8 +344,7 @@ class BillToolBridge:
                 host=rsdb_config_section['host'],
                 port=int(rsdb_config_section['port']),
                 alias='ratestructure')
-        self.ratestructure_dao = rs.RateStructureDAO(self.reebill_dao,
-                logger=self.logger)
+        self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
