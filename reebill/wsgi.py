@@ -21,7 +21,7 @@ import copy
 import functools
 import re
 import md5
-import operator
+from operator import itemgetter
 import errno
 from StringIO import StringIO
 from itertools import chain
@@ -1193,26 +1193,21 @@ class BillToolBridge:
             name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
 
             rows = []
-            for i, status in enumerate(statuses):
-
-                last_issued_sequence = self.state_db.last_issued_sequence(
-                        session, status.account)
-                if last_issued_sequence == 0:
+            for status in statuses:
+                last_reebill = self.state_db.get_last_reebill(session,
+                        status.account)
+                if last_reebill is None:
                     utility_service_addresses = ''
                 else:
-                    reebill = self.reebill_dao.load_reebill(status.account,
-                            self.state_db.last_issued_sequence(session, status.account))
-
-                    # get service address from utility bill document, convert JSON
-                    # to string using the function above
+                    # get service address from utility bill document, convert
+                    # JSON to string using the function above
+                    last_reebill_doc = self.reebill_dao.load_reebill(
+                            last_reebill.customer.account,
+                            last_reebill.sequence, last_reebill.version)
                     utility_service_addresses = format_service_address(
-                            reebill._utilbills[0])
-
-                last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
-                        not None else 'Never Issued'
+                            last_reebill_doc._utilbills[0])
                 lastevent = self.journal_dao.last_event_summary(status.account)
-
-                row = {
+                rows.append({
                     'account': status.account,
                     'codename': name_dicts[status.account]['codename'] if
                            'codename' in name_dicts[status.account] else '',
@@ -1222,60 +1217,45 @@ class BillToolBridge:
                            'primus' in name_dicts[status.account] else '',
                     'utilityserviceaddress': utility_service_addresses,
                     'dayssince': status.dayssince,
-                    'lastissuedate': last_issue_date,
+                    'lastissuedate': last_reebill.issue_date if last_reebill \
+                            else '',
                     'lastevent': lastevent,
                     'provisionable': False,
-                }
-                
-                rows.append(row)
+                })
+            rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
-            if sortcol == 'account':
-                rows.sort(key=lambda r: r['account'], reverse=sortreverse)
-            elif sortcol == 'codename':
-                rows.sort(key=lambda r: r['codename'], reverse=sortreverse)
-            elif sortcol == 'casualname':
-                rows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
-            elif sortcol == 'primusname':
-                rows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
-            elif sortcol == 'dayssince':
-                rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
-            elif sortcol == 'lastissuedate':
-                rows.sort(key=lambda r: r['lastissuedate'] if r['lastissuedate'] != 'Never Issued' else '', reverse=sortreverse)
-            elif sortcol == 'lastevent':
-                rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
+            ## also get customers from Nexus who don't exist in billing yet
+            ## (do not sort these; just append them to the end)
+            ## TODO: we DO want to sort these, but we just want to them to come
+            ## after all the billing billing customers
+            #non_billing_customers = self.nexus_util.get_non_billing_customers()
+            #morerows = []
+            #for customer in non_billing_customers:
+                #morerows.append(dict([
+                    ## we have the olap_id too but we don't show it
+                    #('account', 'n/a'),
+                    #('codename', customer['codename']),
+                    #('casualname', customer['casualname']),
+                    #('primusname', customer['primus']),
+                    #('dayssince', 'n/a'),
+                    #('lastevent', 'n/a'),
+                    #('provisionable', True)
+                #]))
 
-            # also get customers from Nexus who don't exist in billing yet
-            # (do not sort these; just append them to the end)
-            # TODO: we DO want to sort these, but we just want to them to come
-            # after all the billing billing customers
-            non_billing_customers = self.nexus_util.get_non_billing_customers()
-            morerows = []
-            for customer in non_billing_customers:
-                morerows.append(dict([
-                    # we have the olap_id too but we don't show it
-                    ('account', 'n/a'),
-                    ('codename', customer['codename']),
-                    ('casualname', customer['casualname']),
-                    ('primusname', customer['primus']),
-                    ('dayssince', 'n/a'),
-                    ('lastevent', 'n/a'),
-                    ('provisionable', True)
-                ]))
+            #if sortcol == 'account':
+                #morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
+            #elif sortcol == 'codename':
+                #morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
+            #elif sortcol == 'casualname':
+                #morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
+            #elif sortcol == 'primusname':
+                #morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
+            #elif sortcol == 'dayssince':
+                #morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
+            #elif sortcol == 'lastevent':
+                #morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
 
-            if sortcol == 'account':
-                morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
-            elif sortcol == 'codename':
-                morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
-            elif sortcol == 'casualname':
-                morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
-            elif sortcol == 'primusname':
-                morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
-            elif sortcol == 'dayssince':
-                morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
-            elif sortcol == 'lastevent':
-                morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
-
-            rows.extend(morerows)
+            #rows.extend(morerows)
 
             # count includes both billing and non-billing customers (front end
             # needs this for pagination)
@@ -1701,7 +1681,7 @@ class BillToolBridge:
             if xaction == "read":
                 # this is inefficient but length is always <= 120 rows
                 rows = sorted(self.process.get_reebill_metadata_json(session,
-                        account), key=operator.itemgetter(sort))
+                        account), key=itemgetter(sort))
                 if dir.lower() == 'desc':
                     rows.reverse()
 
