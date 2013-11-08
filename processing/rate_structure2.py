@@ -310,15 +310,16 @@ class RateStructureItem(EmbeddedDocument):
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
-                raise FormulaSyntaxError('Syntax error in %s formula of RSI "%s":'
-                        '\n%s' % (name, self.rsi_binding, getattr(self, name)))
+                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
+                        '"%s":\n%s' % (name, self.rsi_binding,
+                        getattr(self, name)))
         return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
         '''Generates names of all identifiers occuring in this RSI's 'quantity'
         and 'rate' formulas (excluding built-in functions). Raises
-        FormulaSyntaxError if the quantity or rate formula could not be parsed, so
-        this method also provides syntax checking.
+        FormulaSyntaxError if the quantity or rate formula could not be parsed,
+        so this method also provides syntax checking.
         '''
         def _is_built_in_function(node):
             '''This is a horrible way to find out if an ast node is a builtin
@@ -345,8 +346,8 @@ class RateStructureItem(EmbeddedDocument):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
         register names to quantities), and returns (quantity result, rate
-        result). Raises FormulaSyntaxError if either of the formulas could not be
-        parsed.
+        result). Raises FormulaSyntaxError if either of the formulas could not
+        be parsed.
         '''
         # check syntax
         self._parse_formulas()
