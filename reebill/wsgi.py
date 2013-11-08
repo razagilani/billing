@@ -1195,7 +1195,7 @@ class BillToolBridge:
             rows = []
             for status in statuses:
                 last_reebill = self.state_db.get_last_reebill(session,
-                        status.account)
+                        status.account, issued_only=True)
                 if last_reebill is None:
                     utility_service_addresses = ''
                 else:
