@@ -75,8 +75,8 @@ class RateStructureDAO(object):
                 bindings.add(rsi.rsi_binding)
         
         # for each UPRS period, update the presence/absence score, total
-        # presence/absence weight (for normalization), and full RSI dictionary
-        # for the occurrence of each RSI binding closest to the target period
+        # presence/absence weight (for normalization), and full RSI for the
+        # occurrence of each RSI binding closest to the target period
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
@@ -93,8 +93,8 @@ class RateStructureDAO(object):
                             rsi.rsi_binding == binding)
                     # binding present in UPRS: add 1 * weight to score
                     scores[binding] += weight 
-                    # if this distance is closer than the closest occurence seen so
-                    # far, put the RSI dictionary in closest_occurrence
+                    # if this distance is closer than the closest occurence
+                    # seen so far, put the RSI object in closest_occurrence
                     if distance < closest_occurrence[binding][0]:
                         closest_occurrence[binding] = (distance, rsi_dict)
                 except StopIteration:
@@ -187,8 +187,7 @@ class RateStructureDAO(object):
         return doc
 
     def _delete_rs_by_id(self, _id):
-        '''Deletes the rate structure document with the given _id. Raises a
-        MongoError if deletion fails.
+        '''Deletes the rate structure document with the given _id.
         '''
         result = RateStructure.objects.get(id=ObjectId(_id)).delete()
         # TODO is there a way to specify safe mode or get the result "err" and
@@ -196,8 +195,9 @@ class RateStructureDAO(object):
 
     def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
-        '''Returns list of (UPRS document, start date, end date) tuples
-        with the given utility and rate structure name.'''
+        '''Returns a list of (UPRS document, start date, end date) tuples with
+        the given utility and rate structure name.
+        '''
         # skip Hypothetical utility bills--they have a UPRS document, but it's
         # fake, so it should not count toward the probability of RSIs being
         # included in other bills. (ignore utility bills that are
@@ -231,8 +231,7 @@ class RateStructureDAO(object):
 
     def delete_rs_docs_for_utilbill(self, utilbill):
         '''Removes the UPRS and CPRS documents for the given state.UtilBill.
-        This should be done when the utility bill is deleted. Raises a
-        MongoError if deletion fails.'''
+        '''
         self._delete_rs_by_id(utilbill.uprs_document_id)
         self._delete_rs_by_id(utilbill.cprs_document_id)
 
@@ -266,7 +265,7 @@ class RateStructureItem(EmbeddedDocument):
     def _parse_formulas(self):
         '''Parses the 'quantity' and 'rate' formulas as Python code using the
         'ast' module, and returns the tuple (quantity formula AST, rate formula
-        AST). Raises FormulaSyntaxError either one couldn't be parsed.
+        AST). Raises FormulaSyntaxError if either one couldn't be parsed.
         '''
         def parse_formula(name):
             try:
