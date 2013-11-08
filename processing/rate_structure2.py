@@ -149,14 +149,6 @@ class RateStructureDAO(object):
                 session, utility, service, rate_structure_name, (start, end),
                 ignore=ignore))
 
-    def load_urs(self, utility_name, rate_structure_name):
-        '''Loads Utility (global) Rate Structure document from Mongo.
-        '''
-        result = URS.objects.get(id__type='URS', id__utility_name=utility_name,
-                id__rate_structure_name=rate_structure_name)
-        assert result.id.type == 'URS'
-        return result
-
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a UPRS document for the given state.Utilbill.
 
