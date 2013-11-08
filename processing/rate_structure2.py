@@ -284,27 +284,36 @@ class RateStructureDAO(object):
 
 
 
-
-
-class RSIFormulaIdentifier(object):
-    def __init__(self, quantity=None, rate=None, total=None):
-        self.quantity = quantity
-        self.rate = rate
-        self.total = total
-
 class RateStructureItem(EmbeddedDocument):
+    '''A Rate Structure Item describes how a particlar charge is computed, and
+    computes the charge according to a formula using various named values as
+    inputs (include register readings from a utility meter and other charges in
+    the same bill).
+    '''
+    # unique name that matches this RSI with a charge on a bill
     rsi_binding = StringField(required=True)
+
+    # descriptive human-readable name (rarely used)
+    description = StringField()
+
+    # the 'quantity' and 'rate' formulas provide the formula for computing the
+    # charge when multiplied together; the separation into 'quantity' and
+    # 'rate' is somewhat arbitrary
     quantity = StringField(required=True)
     quantity_units = StringField()
     rate = StringField(required=True)
     rate_units = StringField()
+
+    # currently not used
     round_rule = StringField()
-    description = StringField()
+
+    # a way of identifying a particular RSI when edited in the browser
     uuid = StringField()
 
     def _parse_formulas(self):
-        '''Returns tuple (quantity formula AST, rate formula AST), or raises
-        FormulaSyntaxError either one couldn't be parsed.
+        '''Parses the 'quantity' and 'rate' formulas as Python code using the
+        'ast' module, and returns the tuple (quantity formula AST, rate formula
+        AST). Raises FormulaSyntaxError either one couldn't be parsed.
         '''
         def parse_formula(name):
             try:
@@ -321,21 +330,21 @@ class RateStructureItem(EmbeddedDocument):
         FormulaSyntaxError if the quantity or rate formula could not be parsed,
         so this method also provides syntax checking.
         '''
+        # This is a horrible way to find out if an ast node is a builtin
+        # function, but it seems to work, and I can't come up with a better
+        # way. (Note that the type 'builtin_function_or_method' is not a
+        # variable in global scope, like 'int' or 'str', so you can't refer to
+        # it directly.)
         def _is_built_in_function(node):
-            '''This is a horrible way to find out if an ast node is a builtin
-            function, used below in compute_charge. It seems to work, and I
-            can't come up with a better way. (Note that the type
-            'builtin_function_or_method' is not a variable in global scope,
-            like 'int' or 'str', so you can't refer to it directly.) '''
             try:
                 return eval('type(%s)' % node.id).__name__ \
                         == 'builtin_function_or_method'
             except NameError:
                 return False
 
-        # use 'ast' module to parse the two formulas, and return nodes of the
-        # resulting parse tree whose type is ast.Name (and are not a built-in
-        # functions as determined by the function above)
+        # parse the two formulas, and return nodes of the resulting parse tree
+        # whose type is ast.Name (and are not a built-in functions as
+        # determined by the function above)
         quantity_tree, rate_tree = self._parse_formulas()
         for node in chain.from_iterable((ast.walk(quantity_tree),
                 ast.walk(rate_tree))):
@@ -356,16 +365,22 @@ class RateStructureItem(EmbeddedDocument):
         # the only way to evaluate these as Python code is to turn each of the
         # key/value pairs in 'register_quantities' into an object with a
         # "quantity" attribute
+        class RSIFormulaIdentifier(object):
+            def __init__(self, quantity=None, rate=None, total=None):
+                self.quantity = quantity
+                self.rate = rate
+                self.total = total
         register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
                 reg_name, data in register_quantities.iteritems()}
-        try:
-            quantity = eval(self.quantity, {}, register_quantities)
-        except Exception as e:
-            raise FormulaError(('Error when computing quantity for RSI "%s": '
-                    '%s') % (self.rsi_binding, self.description,
-                    str(e)))
-        rate = eval(self.rate, {}, register_quantities)
-        return quantity, rate
+
+        def compute(name):
+            formula = getattr(self, name)
+            try:
+                return eval(formula, {}, register_quantities)
+            except Exception as e:
+                raise FormulaError(('Error when computing %s for RSI "%s": '
+                        '%s') % (name, self.rsi_binding, self.description, e))
+        return compute('quantity'), compute('rate')
 
     def to_dict(self):
         '''String representation of this RateStructureItem to send as JSON to
