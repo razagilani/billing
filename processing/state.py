@@ -625,6 +625,20 @@ class StateDB(object):
             max_sequence = 0
         return max_sequence
 
+    def get_last_reebill(self, session, account, issued_only=False):
+        '''Returns the highest-sequence, highest-version ReeBill object for the
+        given account, or None if no reebills exist. if issued_only is True,
+        returns the highest-sequence/version issued reebill.
+        '''
+        customer = self.get_customer(session, account)
+        cursor = session.query(ReeBill).filter_by(customer=customer)\
+                .order_by(desc(ReeBill.sequence), desc(ReeBill.version))
+        if issued_only:
+            cursor.filter_by(issued=True)
+        if cursor.count() == 0:
+            return None
+        return cursor.first()
+
     def get_last_utilbill(self, session, account, service=None, utility=None,
             rate_class=None, end=None):
         '''Returns the latest (i.e. last-ending) utility bill for the given
