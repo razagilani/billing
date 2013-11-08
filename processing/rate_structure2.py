@@ -17,7 +17,7 @@ import uuid
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError, FormulaError
 from billing.processing.state import UtilBill
 from copy import deepcopy
 
@@ -302,16 +302,33 @@ class RateStructureItem(EmbeddedDocument):
     description = StringField()
     uuid = StringField()
 
+    def check_syntax(self):
+        '''Raises SyntaxError if either the "quantity" or "rate" formula of
+        this RSI can't be parsed.
+        '''
+        def check_formula(name):
+            try:
+                ast.parse(getattr(self, name))
+            except SyntaxError:
+                raise SyntaxError(('Syntax error in %s formula of RSI "%s" '
+                        '(%s):\n%s') % (name, self.description,
+                        self.rsi_binding, getattr(self, name)))
+        check_formula('quantity')
+        check_formula('rate')
+
     def get_identifiers(self):
         '''Generates names of all identifiers occuring in this RSI's 'quantity'
         and 'rate' formulas (excluding built-in functions).
         '''
+        # getting identifier requires parsing; check for syntax errors first
+        self.check_syntax()
+
         def _is_built_in_function(node):
-            '''This is a horrible way to find out if an ast node is a builtin function,
-            used below in compute_all_charges. It seems to work, and I can't come up
-            with a better way. (Note that the type 'builtin_function_or_method' is not
-            a variable in global scope, like 'int' or 'str', so you can't refer to it
-            directly.) '''
+            '''This is a horrible way to find out if an ast node is a builtin
+            function, used below in compute_charge. It seems to work, and I
+            can't come up with a better way. (Note that the type
+            'builtin_function_or_method' is not a variable in global scope,
+            like 'int' or 'str', so you can't refer to it directly.) '''
             try:
                 return eval('type(%s)' % node.id).__name__ \
                         == 'builtin_function_or_method'
@@ -338,7 +355,12 @@ class RateStructureItem(EmbeddedDocument):
         # "quantity" attribute
         register_quantities = {reg_name: RSIFormulaIdentifier(**data) for reg_name,
                 data in register_quantities.iteritems()}
-        quantity = eval(self.quantity, {}, register_quantities)
+        try:
+            quantity = eval(self.quantity, {}, register_quantities)
+        except Exception as e:
+            raise FormulaError(('Error when computing quantity for RSI "%s" '
+                    '(%s): ' '%s') % (self.rsi_binding, self.description,
+                    str(e)))
         rate = eval(self.rate, {}, register_quantities)
         return quantity, rate
 
