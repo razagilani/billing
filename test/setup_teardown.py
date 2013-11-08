@@ -123,7 +123,7 @@ port = 27017
                 pymongo.Connection('localhost', 27017)['test'])
 
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
-                self.reebill_dao, logger=logger)
+                logger=logger)
 
         self.nexus_util = MockNexusUtil([
             {

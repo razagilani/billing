@@ -43,9 +43,9 @@ class RateStructureDAO(object):
     '''Loads and saves RateStructure objects. Also responsible for generating
     predicted UPRSs based on existing ones.
     '''
-
-    def __init__(self, reebill_dao, logger=None):
-        self.reebill_dao = reebill_dao
+    def __init__(self, logger=None):
+        # TODO instead of using None as logger, use a logger that does nothing,
+        # to avoid checking if it's None
         self.logger = logger
 
     def _get_probable_rsis(self, session, utility, service,
