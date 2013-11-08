@@ -310,9 +310,8 @@ class RateStructureItem(EmbeddedDocument):
             try:
                 ast.parse(getattr(self, name))
             except SyntaxError:
-                raise SyntaxError(('Syntax error in %s formula of RSI "%s" '
-                        '(%s):\n%s') % (name, self.description,
-                        self.rsi_binding, getattr(self, name)))
+                raise SyntaxError('Syntax error in %s formula of RSI "%s":\n%s'
+                        % (name, self.rsi_binding, getattr(self, name)))
         check_formula('quantity')
         check_formula('rate')
 
@@ -358,8 +357,8 @@ class RateStructureItem(EmbeddedDocument):
         try:
             quantity = eval(self.quantity, {}, register_quantities)
         except Exception as e:
-            raise FormulaError(('Error when computing quantity for RSI "%s" '
-                    '(%s): ' '%s') % (self.rsi_binding, self.description,
+            raise FormulaError(('Error when computing quantity for RSI "%s": '
+                    '%s') % (self.rsi_binding, self.description,
                     str(e)))
         rate = eval(self.rate, {}, register_quantities)
         return quantity, rate

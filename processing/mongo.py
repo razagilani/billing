@@ -372,9 +372,8 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
                 except KeyError:
                     # TODO might want to validate identifiers before computing
                     # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI "%s" '
-                            '(%s): %s') % (rsi.description, rsi.rsi_binding,
-                            identifier))
+                    raise FormulaError(('Unknown variable in formula of RSI '
+                            '"%s": %s') % (rsi.rsi_binding, identifier))
                 # a pair (x,y) means x precedes y, i.e. y depends on x
                 dependency_graph.append((other_charge_num, this_charge_num))
                 independent_charge_numbers.discard(other_charge_num)
