@@ -284,14 +284,6 @@ class RateStructureDAO(object):
 
 
 
-
-
-class RSIFormulaIdentifier(object):
-    def __init__(self, quantity=None, rate=None, total=None):
-        self.quantity = quantity
-        self.rate = rate
-        self.total = total
-
 class RateStructureItem(EmbeddedDocument):
     '''A Rate Structure Item describes how a particlar charge is computed, and
     computes the charge according to a formula using various named values as
@@ -373,15 +365,22 @@ class RateStructureItem(EmbeddedDocument):
         # the only way to evaluate these as Python code is to turn each of the
         # key/value pairs in 'register_quantities' into an object with a
         # "quantity" attribute
+        class RSIFormulaIdentifier(object):
+            def __init__(self, quantity=None, rate=None, total=None):
+                self.quantity = quantity
+                self.rate = rate
+                self.total = total
         register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
                 reg_name, data in register_quantities.iteritems()}
-        try:
-            quantity = eval(self.quantity, {}, register_quantities)
-        except Exception as e:
-            raise FormulaError(('Error when computing quantity for RSI "%s": '
-                    '%s') % (self.rsi_binding, self.description,
-                    str(e))) rate = eval(self.rate, {}, register_quantities)
-        return quantity, rate
+
+        def compute(name):
+            formula = getattr(self, name)
+            try:
+                return eval(formula, {}, register_quantities)
+            except Exception as e:
+                raise FormulaError(('Error when computing %s for RSI "%s": '
+                        '%s') % (name, self.rsi_binding, self.description, e))
+        return compute('quantity'), compute('rate')
 
     def to_dict(self):
         '''String representation of this RateStructureItem to send as JSON to
