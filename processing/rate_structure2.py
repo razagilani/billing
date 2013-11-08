@@ -44,10 +44,7 @@ class RateStructureDAO(object):
     predicted UPRSs based on existing ones.
     '''
 
-    def __init__(self, reebill_dao, logger=None, **kwargs):
-        # TODO **kwargs == bad and should go away
-        '''kwargs catches extra junk from config dictionary unpacked into
-        constructor arguments.'''
+    def __init__(self, reebill_dao, logger=None):
         self.reebill_dao = reebill_dao
         self.logger = logger
 
