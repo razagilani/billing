@@ -392,7 +392,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
         names_in_cycle = ', '.join(all_charges[i] for i in ge.args[1])
-        raise ValueError('Circular dependency: %' % names_in_cycle)
+        raise RSIError('Circular dependency: %' % names_in_cycle)
     assert len(evaluation_order) == len(all_charges)
 
     # compute each charge, using its corresponding RSI, in the above order.
