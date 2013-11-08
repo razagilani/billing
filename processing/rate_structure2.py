@@ -1,25 +1,17 @@
 from __future__ import division
 import ast
 from itertools import chain
-from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from datetime import datetime, date
 from collections import defaultdict
-import copy
-import inspect
-import jinja2
-import os
-import pymongo
-from bson import ObjectId
 import sys
-import traceback
 import uuid
-import yaml
 from math import sqrt, log, exp
+from bson import ObjectId
+from mongoengine import Document, EmbeddedDocument
+from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError, FormulaError, FormulaSyntaxError
+from billing.processing.exceptions import FormulaError, FormulaSyntaxError
 from billing.processing.state import UtilBill
-from copy import deepcopy
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
@@ -48,33 +40,8 @@ def exp_weight_with_min(a, b, minimum):
 
 
 class RateStructureDAO(object):
-    '''
-    Manages loading and saving rate structures.
-
-    Rate structures are composites from three sources:
-    URS - Utility Rate Structure 
-    - bill cycle independent global data
-    - contains meter requirements to be satisfied by a ReeBill
-    - contains RS name and information about the effective period for the  URS
-    UPRS - Utility Periodic Rate Structure 
-    - bill cycle dependent global data
-    - typically contains monthly rate data
-    CPRS - Customer Periodic Rate Structure 
-    - bill cycle data specific to customer
-    - typically contains one or two corrections to accurately compute bill
-
-    When a rate structure is requested for a given ReeBill, the URS is first 
-    looked up and its keys merged with what is found in the UPRS and then
-    CPRS.  This way, the CPRS augments the UPRS which overrides the URS.
-
-    There will be rules to how this augmentation works.
-        Matching keys might just be outright replaced
-        Matching keys might have their values be merged into a list
-        Matching keys might be renamed
-
-    When the URS, UPRS and CPRS are merged, a probable rate structure exists.
-    It may be used to calculate a bill, or prompt a user for additional 
-    processing information.
+    '''Loads and saves RateStructure objects. Also responsible for generating
+    predicted UPRSs based on existing ones.
     '''
 
     def __init__(self, reebill_dao, logger=None, **kwargs):
@@ -89,12 +56,12 @@ class RateStructureDAO(object):
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
             verbose=False):
-        '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
-        new bill for the given rate structure during the given period. The list
-        will be empty if no guess could be made. 'threshold' is the minimum
-        score (between 0 and 1) for an RSI to be included. 'ignore' is an
-        optional function to exclude UPRSs from the input data (used for
-        testing).'''
+        '''Returns list of RateStructureItems: a guess of what RSIs will be in
+        a new bill for the given rate structure during the given period. The
+        list will be empty if no guess could be made. 'threshold' is the
+        minimum score (between 0 and 1) for an RSI to be included. 'ignore' is
+        an optional function to exclude UPRSs from the input data.
+        '''
         # load all UPRSs and their utility bill period dates (to avoid repeated
         # queries)
         all_uprss = [(uprs, start, end) for (uprs, start, end) in
@@ -115,13 +82,6 @@ class RateStructureDAO(object):
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
             for uprs, start, end in all_uprss:
-                # get period dates: unfortunately this requires loading the
-                # bill TODO this sucks--figure out how to avoid it, especially
-                # the part that involves using supposedly private methods and
-                # directly accessing document structure
-                #reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
-                        #uprs['_id']['sequence'], version=uprs['_id']['version'])
-
                 # calculate weighted distance of this UPRS period from the
                 # target period
                 distance = distance_func((start, end), period)
@@ -132,8 +92,7 @@ class RateStructureDAO(object):
                     rsi_dict = next(rsi for rsi in uprs.rates if
                             rsi.rsi_binding == binding)
                     # binding present in UPRS: add 1 * weight to score
-                    scores[binding] += weight
-
+                    scores[binding] += weight 
                     # if this distance is closer than the closest occurence seen so
                     # far, put the RSI dictionary in closest_occurrence
                     if distance < closest_occurrence[binding][0]:
@@ -152,12 +111,14 @@ class RateStructureDAO(object):
         if verbose:
             self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
                     rate_structure_name, period[0], period[1]))
-            self.logger.info('%35s %s %s' % ('binding:', 'weight:', 'normalized weight %:'))
+            self.logger.info('%35s %s %s' % ('binding:', 'weight:',
+                'normalized weight %:'))
         for binding, weight in scores.iteritems():
             normalized_weight = weight / total_weight[binding] if \
                     total_weight[binding] != 0 else 0
             if self.logger:
-                self.logger.info('%35s %f %5d' % (binding, weight, 100 * normalized_weight))
+                self.logger.info('%35s %f %5d' % (binding, weight,
+                        100 * normalized_weight))
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
@@ -227,17 +188,19 @@ class RateStructureDAO(object):
         return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
 
     def _load_rs_by_id(self, _id):
-        '''Loads and returns a rate structure document by its _id.'''
+        '''Loads and returns a rate structure document by its _id (string).
+        '''
         assert isinstance(_id, basestring)
         doc = RateStructure.objects.get(id=ObjectId(_id))
         return doc
 
     def _delete_rs_by_id(self, _id):
         '''Deletes the rate structure document with the given _id. Raises a
-        MongoError if deletion fails.'''
+        MongoError if deletion fails.
+        '''
         result = RateStructure.objects.get(id=ObjectId(_id)).delete()
-        # TODO is there a way to specify safe mode or get the result "err" and "n"?
-        # look at 'write_concern' argument
+        # TODO is there a way to specify safe mode or get the result "err" and
+        # "n"? look at 'write_concern' argument
 
     def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
@@ -282,10 +245,8 @@ class RateStructureDAO(object):
         self._delete_rs_by_id(utilbill.cprs_document_id)
 
 
-
-
 class RateStructureItem(EmbeddedDocument):
-    '''A Rate Structure Item describes how a particlar charge is computed, and
+    '''A Rate Structure Item describes how a particular charge is computed, and
     computes the charge according to a formula using various named values as
     inputs (include register readings from a utility meter and other charges in
     the same bill).
@@ -438,9 +399,6 @@ class RateStructure(Document):
     type = StringField(required=True)
     registers = ListField(field=EmbeddedDocumentField(Register), default=[])
 
-    # NOTE for a ListField, required=True means it must be nonempty; it is not
-    # possible to have an optional ListField (?) because there is a default
-    # value of []
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
             default=[])
 
