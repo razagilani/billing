@@ -17,7 +17,7 @@ import uuid
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError, FormulaError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError, FormulaError, FormulaSyntaxError
 from billing.processing.state import UtilBill
 from copy import deepcopy
 
@@ -302,26 +302,24 @@ class RateStructureItem(EmbeddedDocument):
     description = StringField()
     uuid = StringField()
 
-    def check_syntax(self):
-        '''Raises SyntaxError if either the "quantity" or "rate" formula of
-        this RSI can't be parsed.
+    def _parse_formulas(self):
+        '''Returns tuple (quantity formula AST, rate formula AST), or raises
+        FormulaSyntaxError either one couldn't be parsed.
         '''
-        def check_formula(name):
+        def parse_formula(name):
             try:
-                ast.parse(getattr(self, name))
+                return ast.parse(getattr(self, name))
             except SyntaxError:
-                raise SyntaxError('Syntax error in %s formula of RSI "%s":\n%s'
-                        % (name, self.rsi_binding, getattr(self, name)))
-        check_formula('quantity')
-        check_formula('rate')
+                raise FormulaSyntaxError('Syntax error in %s formula of RSI "%s":'
+                        '\n%s' % (name, self.rsi_binding, getattr(self, name)))
+        return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
         '''Generates names of all identifiers occuring in this RSI's 'quantity'
-        and 'rate' formulas (excluding built-in functions).
+        and 'rate' formulas (excluding built-in functions). Raises
+        FormulaSyntaxError if the quantity or rate formula could not be parsed, so
+        this method also provides syntax checking.
         '''
-        # getting identifier requires parsing; check for syntax errors first
-        self.check_syntax()
-
         def _is_built_in_function(node):
             '''This is a horrible way to find out if an ast node is a builtin
             function, used below in compute_charge. It seems to work, and I
@@ -337,8 +335,9 @@ class RateStructureItem(EmbeddedDocument):
         # use 'ast' module to parse the two formulas, and return nodes of the
         # resulting parse tree whose type is ast.Name (and are not a built-in
         # functions as determined by the function above)
-        for node in chain.from_iterable((ast.walk(ast.parse(self.quantity)),
-                ast.walk(ast.parse(self.rate)))):
+        quantity_tree, rate_tree = self._parse_formulas()
+        for node in chain.from_iterable((ast.walk(quantity_tree),
+                ast.walk(rate_tree))):
             if isinstance(node, ast.Name) and not _is_built_in_function(node):
                 yield node.id
 
@@ -346,14 +345,18 @@ class RateStructureItem(EmbeddedDocument):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
         register names to quantities), and returns (quantity result, rate
-        result).
+        result). Raises FormulaSyntaxError if either of the formulas could not be
+        parsed.
         '''
+        # check syntax
+        self._parse_formulas()
+
         # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
         # the only way to evaluate these as Python code is to turn each of the
         # key/value pairs in 'register_quantities' into an object with a
         # "quantity" attribute
-        register_quantities = {reg_name: RSIFormulaIdentifier(**data) for reg_name,
-                data in register_quantities.iteritems()}
+        register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
+                reg_name, data in register_quantities.iteritems()}
         try:
             quantity = eval(self.quantity, {}, register_quantities)
         except Exception as e:
