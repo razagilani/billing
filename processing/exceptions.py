@@ -46,6 +46,12 @@ class FormulaError(RSIError):
     '''
     pass
 
+class FormulaSyntaxError(FormulaError):
+    '''Syntax error in the "quantity"/"rate" formula of a Rate Structure Item.
+    Python SyntaxError should not be caught for obvious reasons.
+    '''
+    pass
+
 class RecursionError(RSIError):
     pass
 

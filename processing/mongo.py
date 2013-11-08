@@ -363,12 +363,15 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
+            rsi_identifiers = rsi.get_identifiers()
             for identifier in rsi.get_identifiers():
                 if identifier in identifiers:
                     continue
                 try:
                     other_charge_num = charge_numbers[identifier]
                 except KeyError:
+                    # TODO might want to validate identifiers before computing
+                    # for clarity
                     raise FormulaError(('Unknown variable in formula of RSI "%s" '
                             '(%s): %s') % (rsi.description, rsi.rsi_binding,
                             identifier))
