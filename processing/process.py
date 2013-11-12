@@ -644,7 +644,7 @@ class Process(object):
         # generated directly from the reebill's '_utilbills'. these will
         # contain hypothetical charges that matche the actual charges until
         # updated.
-        present_reebill.update_utilbill_subdocs()
+        #present_reebill.update_utilbill_subdocs()
 
         ## "TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types"
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)

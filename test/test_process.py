@@ -1843,7 +1843,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
             self.process.compute_reebill(session, two_doc)
             self.reebill_dao.save_reebill(two_doc)
-            self.assertEqual(Decimal('123.45'), two_doc.payment_received)
+            self.assertDecimalAlmostEqual(Decimal('123.45'), two_doc.payment_received)
 
             # make a correction on reebill #1: payment does not get applied to
             # #1 and does get applied to #2
@@ -1934,13 +1934,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # this function checks that current values match the orignals
                 def check():
                     # in approximate "causal" order
-                    self.assertEqual(ree, reebill2.total_renewable_energy())
-                    self.assertEqual(actual, reebill2.actual_total)
-                    self.assertEqual(hypo, reebill2.hypothetical_total)
-                    self.assertEqual(ree_value, reebill2.ree_value)
-                    self.assertEqual(ree_charges, reebill2.ree_charges)
-                    self.assertEqual(total, reebill2.total)
-                    self.assertEqual(balance_due, reebill2.balance_due)
+                    self.assertAlmostEqual(ree,
+                            reebill2.total_renewable_energy())
+                    self.assertAlmostEqual(actual, reebill2.actual_total)
+                    self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
+                    self.assertAlmostEqual(ree_value, reebill2.ree_value)
+                    self.assertAlmostEqual(ree_charges, reebill2.ree_charges)
+                    self.assertAlmostEqual(total, reebill2.total)
+                    self.assertAlmostEqual(balance_due, reebill2.balance_due)
 
                 # this better succeed, since nothing was done
                 check()
