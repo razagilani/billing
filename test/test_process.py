@@ -1891,6 +1891,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_feb = session.query(UtilBill)\
                     .order_by(desc(UtilBill.period_start)).first()
 
+            # edit renewable energy quantity like the user does--this gives it
+            # a known value that can be checked later
+            doc_feb = self.reebill_dao.load_doc_for_utilbill(utilbill_feb)
+            doc_feb['meters'][0]['registers'][0]['quantity'] = \
+                    Decimal('123.45')
+            self.reebill_dao.save_utilbill(doc_feb)
+
             # create a reebill for each utility bill. #2 will be computed
             # repeatedly and #1 will serve as its predecessor when computing
             # below.
@@ -1906,13 +1913,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2, use_olap=use_olap)
+                ree1 = reebill2.total_renewable_energy()
                 self.process.compute_reebill(session, reebill2)
 
-                # save original values
+                # check that total renewable enrgy quantity has not been
+                # changed by computing the bill for the first time (this
+                # happened in bug #60548728)
+                ree = reebill2.total_renewable_energy()
+                self.assertEqual(ree1, ree)
+
+                # save other values that will be checked repeatedly
                 # (more fields could be added here)
                 hypo = reebill2.hypothetical_total
                 actual = reebill2.actual_total
-                ree = reebill2.total_renewable_energy()
                 ree_value = reebill2.ree_value
                 ree_charges = reebill2.ree_charges
                 total = reebill2.total
