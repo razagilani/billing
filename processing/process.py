@@ -681,7 +681,7 @@ class Process(object):
         # generated directly from the reebill's '_utilbills'. these will
         # contain hypothetical charges that matche the actual charges until
         # updated.
-        present_reebill.update_utilbill_subdocs()
+        #present_reebill.update_utilbill_subdocs()
 
         # get MySQL reebill row corresponding to the document 'present_reebill'
         # (would be better to pass in the state.ReeBill itself: see
