@@ -1882,14 +1882,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 olap_id = 'MockSplinter ignores olap id'
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2,
                         use_olap=use_olap)
+                ree1 = reebill2.total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, reebill2)
 
-                # save original values
+                # check that total renewable enrgy quantity has not been
+                # changed by computing the bill for the first time (this
+                # happened in bug #60548728)
+                ree = reebill2.total_renewable_energy()
+                self.assertEqual(ree1, ree)
+
+                # save other values that will be checked repeatedly
                 # (more fields could be added here)
                 hypo = reebill2.hypothetical_total
                 actual = reebill2.actual_total
-                ree = reebill2.total_renewable_energy()
                 ree_value = reebill2.ree_value
                 ree_charges = reebill2.ree_charges
                 total = reebill2.total
