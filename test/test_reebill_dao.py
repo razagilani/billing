@@ -11,7 +11,7 @@ from billing.processing.state import StateDB
 from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException, float_to_decimal
+from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime
