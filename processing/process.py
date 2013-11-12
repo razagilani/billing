@@ -681,6 +681,8 @@ class Process(object):
         # generated directly from the reebill's '_utilbills'. these will
         # contain hypothetical charges that matche the actual charges until
         # updated.
+        # TODO this causes bug 60548728; for solution, see
+        # https://www.pivotaltracker.com/story/show/60611838
         #present_reebill.update_utilbill_subdocs()
 
         # get MySQL reebill row corresponding to the document 'present_reebill'
@@ -939,8 +941,6 @@ class Process(object):
         # they are updated)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
                 for u in reebill.utilbills]
-        # TODO this causes bug 60548728; for solution, see
-        # https://www.pivotaltracker.com/story/show/60611838
         reebill_doc.update_utilbill_subdocs()
 
         # re-bind and compute
