@@ -2946,7 +2946,7 @@ function reeBillReady() {
             },
             {
                 xtype: 'button',
-                id: 'regenerateUPRSButton',
+                id: 'regenerateCPRSButton',
                 text: 'Regenerate from Predecessor',
                 handler: function() {
                     Ext.Ajax.request({
@@ -2955,9 +2955,9 @@ function reeBillReady() {
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
-                                UPRSRSIGrid.setDisabled(true);
                                 CPRSRSIGrid.setDisabled(true);
-                                UPRSRSIStore.reload();
+                                CPRSRSIGrid.setDisabled(true);
+                                CPRSRSIStore.reload();
                                 CPRSRSIStore.reload();
                             }
                         },
