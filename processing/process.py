@@ -4,7 +4,7 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
-import os  
+import os
 import copy
 import datetime
 from datetime import date, datetime, timedelta
@@ -57,7 +57,7 @@ class Process(object):
     """
 
     config = None
-    
+
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
             nexus_util, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
@@ -141,7 +141,7 @@ class Process(object):
 
         # load Mongo document
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-        
+
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
         assert 'sequence' not in doc
@@ -157,7 +157,7 @@ class Process(object):
         if service is not None:
             doc['service'] = service
             utilbill.service = service
-            
+
         if period_start is not None:
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
@@ -230,7 +230,7 @@ class Process(object):
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
                 'period_end', 'issued', 'issue_date').from_statement(statement)
-                   
+
         for (sequence, max_version, period_start, period_end, issued,
                 issue_date) in query:
             # start with data from MySQL
@@ -277,7 +277,7 @@ class Process(object):
                 the_dict['ree_quantity'] = doc.total_renewable_energy()
             except ValueError as e:
                 the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-                
+
 
             result.append(the_dict)
 
@@ -470,7 +470,7 @@ class Process(object):
             # template account, many things will probably be wrong, but you
             # should be allowed to do it. so just update the new document with
             # the chosen service/utility/rate class values.
-            doc.update({ 
+            doc.update({
                 # new _id will be created below
                 'service': utilbill.service,
                 'utility': utilbill.utility,
@@ -584,35 +584,34 @@ class Process(object):
 
         return new_path
 
-    def regenerate_rate_structure(self, session, utilbill_id):
-        '''Resets the rate structure of this utility bill to match the
-        predicted one.
+    def regenerate_uprs(self, session, utilbill_id):
+        '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
-        existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                utilbill)
-
-        # update UPRS to prediction
         new_uprs = self.rate_structure_dao.get_probable_uprs(session,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: uprs.id == existing_uprs.id)
         existing_uprs.rates = new_uprs.rates
+        existing_uprs.save()
 
-        # update CPRS to predecessor
+
+    def regenerate_cprs(self, session, utilbill_id):
+        '''Resets the CPRS this utility bill to match that of its predecessor.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+            utilbill)
         predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.customer.account, utilbill.period_start,
-                service=utilbill.service)
+                utilbill.customer.account, utilbill.period_start)
         predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 predecessor)
         existing_cprs.rates = predecessor_cprs.rates
-
-        existing_uprs.save()
         existing_cprs.save()
 
-        
+
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
@@ -823,7 +822,7 @@ class Process(object):
         if num_existing_reebills > 0:
             raise ValueError("%s reebill(s) already exist for account %s" %
                     (num_existing_reebills, customer.account))
-        
+
         # load document for the 'utilbill', use it to create the reebill
         # document, and save the reebill document
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -905,7 +904,7 @@ class Process(object):
         skipped. Returns a list of the new reebill objects.'''
         sequences = range(sequence, self.state_db.last_sequence(session,
                 account) + 1)
-        return [self.new_version(session, account, s) for s in sequences if 
+        return [self.new_version(session, account, s) for s in sequences if
                 self.state_db.is_issued(session, account, s)]
 
     def new_version(self, session, account, sequence):
@@ -1005,7 +1004,7 @@ class Process(object):
                 account)
         if len(all_unissued_corrections) == 0:
             raise ValueError('%s has no corrections to apply' % account)
-        
+
         # load target reebill from mongo
         target_reebill = self.reebill_dao.load_reebill(account,
                 target_sequence, version=target_max_version)
@@ -1052,7 +1051,7 @@ class Process(object):
 
         # ensure that a large charge rate exists in the reebill
         # if not, do not process a late_charge_rate (treat as zero)
-        try: 
+        try:
             reebill.late_charge_rate
         except KeyError:
             return None
@@ -1254,7 +1253,7 @@ class Process(object):
 
     def reebill_report_altitude(self, session):
         accounts = self.state_db.listAccounts(session)
-        rows = [] 
+        rows = []
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
@@ -1312,7 +1311,7 @@ class Process(object):
 
     def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
-        rows = [] 
+        rows = []
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
@@ -1401,7 +1400,7 @@ class Process(object):
                         row['actual_charges'] = None
                         row['hypothetical_charges'] = None
                         row['total_ree'] = None
-                        row['average_rate_unit_ree'] = None 
+                        row['average_rate_unit_ree'] = None
                         row['ree_value'] = None
                         row['prior_balance'] = None
                         row['balance_forward'] = None
@@ -1438,7 +1437,7 @@ class Process(object):
             row['actual_charges'] = None
             row['hypothetical_charges'] = None
             row['total_ree'] = None
-            row['average_rate_unit_ree'] = None 
+            row['average_rate_unit_ree'] = None
             row['ree_value'] = None
             row['prior_balance'] = None
             row['balance_forward'] = None
@@ -1462,8 +1461,8 @@ class Process(object):
             for reebill in reebills:
                 total_energy += reebill.total_renewable_energy()
             return total_energy
-        
-        rows = [] 
+
+        rows = []
         for i, account in enumerate(accounts):
             row = {}
             reebills = self.reebill_dao.load_reebills_for(account)
@@ -1512,7 +1511,7 @@ class Process(object):
         # month is this month
         sequences_for_month = [r.sequence for r in reebills if
                 estimate_month(r.period_begin, r.period_end) == (year, month)]
-        
+
         # if there's at least one sequence, return the list of sequences
         if sequences_for_month != []:
             return sequences_for_month
@@ -1552,7 +1551,7 @@ class Process(object):
         sequences_for_month = [r.sequence for r in
                 self.reebill_dao.load_reebills_in_period(account,
                 start_date=query_month.first, end_date=query_month.last)]
-        
+
         # get sequence of last reebill and the month in which its period ends,
         # which will be useful below
         last_sequence = self.state_db.last_sequence(session, account)
