@@ -1265,7 +1265,6 @@ class Process(object):
 
                 row = {}
 
-                from Deicmal import Deicmal
                 row['account'] = account
                 row['sequence'] = reebill.sequence
                 row['billing_address'] = reebill.billing_address
