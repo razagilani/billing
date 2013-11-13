@@ -895,9 +895,20 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def regenerate_rate_structure(self, utilbill_id, **args):
+    def regenerate_uprs(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
-            self.process.regenerate_rate_structure(session, utilbill_id)
+            self.process.regenerate_uprs(session, utilbill_id)
+            # NOTE utility bill is not automatically computed after rate
+            # structure is changed. nor are charges updated to match.
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def regenerate_cprs(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            self.process.regenerate_cprs(session, utilbill_id)
             # NOTE utility bill is not automatically computed after rate
             # structure is changed. nor are charges updated to match.
             return self.dumps({'success': True})
@@ -919,7 +930,7 @@ class BillToolBridge:
                 session,
                 account,
                 sequence,
-                self.config.get("billdb", "billpath")+ "%s" % account, 
+                self.config.get("billdb", "billpath")+ "%s" % account,
                 "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
@@ -990,8 +1001,8 @@ class BillToolBridge:
                         'adjustment': unissued_correction_adjustment })
             self.issue_reebills(session, account, [sequence], apply_corrections=apply_corrections)
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.renderer.render_max_version(session, account, sequence, 
-                                             self.config.get("billdb", "billpath")+ "%s" % account, 
+            self.renderer.render_max_version(session, account, sequence,
+                                             self.config.get("billdb", "billpath")+ "%s" % account,
                                              "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
@@ -1003,7 +1014,7 @@ class BillToolBridge:
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
-            
+
             last_sequence = self.state_db.last_sequence(session, account)
             if sequence != last_sequence:
                 next_bill = self.reebill_dao.load_reebill(account, sequence+1)
@@ -1011,7 +1022,7 @@ class BillToolBridge:
                 self.reebill_dao.save_reebill(next_bill)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                                                      account, sequence, ", ".join(recipients))
-            
+
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -1022,7 +1033,7 @@ class BillToolBridge:
         # Go from comma-separated e-mail addresses to a list of e-mail addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-        # sequences will come in as a string if there is one element in post data. 
+        # sequences will come in as a string if there is one element in post data.
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
             sequences = sorted(map(int, sequences))
@@ -1037,8 +1048,8 @@ class BillToolBridge:
             # TODO 25560415 this fails if reebill rendering is turned
             # off--there should be a better error message
             for reebill in all_bills:
-                self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
-                    self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
+                self.renderer.render_max_version(session, reebill.account, reebill.sequence,
+                    self.config.get("billdb", "billpath")+ "%s" % reebill.account,
                     "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)), True)
 
             # "the last element" (???)
@@ -1102,7 +1113,7 @@ class BillToolBridge:
                     last_utilbill = self.state_db.get_last_utilbill(
                         session, account)
                 except NoSuchBillException:
-                    #No utilbill found, just don't append utility info 
+                    #No utilbill found, just don't append utility info
                     pass
                 else:
                     res += "%s: %s" %(last_utilbill.utility,
@@ -1267,7 +1278,7 @@ class BillToolBridge:
             cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
             cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
             self.user_dao.save_user(cherrypy.session['user'])
-    
+
             return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
@@ -1297,7 +1308,7 @@ class BillToolBridge:
                         if reebills_since and reebills_since[0].due_date:
                             days_since_due_date = (date.today() -
                                     reebills_since[0].due_date).days
-                
+
                 row.update({'outstandingbalance': '$%.2f' % outstanding_balance,
                            'days_late': days_since_due_date})
             return self.dumps({'success': True, 'rows':rows,
@@ -1327,9 +1338,9 @@ class BillToolBridge:
 
             headings = ['Account','Sequence', 'Version',
                 'Billing Addressee', 'Service Addressee',
-                'Issue Date', 'Period Begin', 'Period End', 
-                'Hypothesized Charges', 'Actual Utility Charges', 
-                'RE&E Value', 
+                'Issue Date', 'Period Begin', 'Period End',
+                'Hypothesized Charges', 'Actual Utility Charges',
+                'RE&E Value',
                 'Prior Balance',
                 'Payment Applied',
                 'Payment Date',
@@ -1368,10 +1379,10 @@ class BillToolBridge:
                 )
 
                 actual_row = [row['account'], row['sequence'], row['version'],
-                        bill_addr_str, service_addr_str, 
+                        bill_addr_str, service_addr_str,
                         row['issue_date'], row['period_begin'], row['period_end'],
-                        row['hypothetical_charges'], row['actual_charges'], 
-                        row['ree_value'], 
+                        row['hypothetical_charges'], row['actual_charges'],
+                        row['ree_value'],
                         row['prior_balance'],
                         row['payment_applied'],
                         row['payment_date'],
@@ -1513,7 +1524,7 @@ class BillToolBridge:
         '''Responds with an excel spreadsheet containing daily average energy
         over all time for the given account.'''
         with DBSession(self.state_db) as session:
-            buf = StringIO() 
+            buf = StringIO()
             # TODO: include all services
             calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='gas')
 
@@ -1568,7 +1579,7 @@ class BillToolBridge:
             # arguments are given
             if (reebill_sequence, reebill_version) != (None, None):
                 raise IssuedBillError('Issued reebills cannot be modified')
-            
+
             rows = json.loads(rows)
 
             if 'total' in rows:

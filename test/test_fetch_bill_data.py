@@ -1,13 +1,11 @@
 #!/usr/bin/python
 from StringIO import StringIO
-from datetime import date
 from decimal import Decimal
-import MySQLdb
 import csv
 import random
-import sqlalchemy
-import sys
 import unittest
+import sqlalchemy
+import pymongo
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils

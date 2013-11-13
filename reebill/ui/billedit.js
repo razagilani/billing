@@ -2943,27 +2943,27 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },
+            {
                 xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'CPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    CPRSRSIGrid.stopEditing();
-
-                    CPRSRSIStore.save(); 
-
+                id: 'regenerateUPRSButton',
+                text: 'Regenerate from Predecessor',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/regenerate_cprs',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                UPRSRSIGrid.setDisabled(true);
+                                CPRSRSIGrid.setDisabled(true);
+                                UPRSRSIStore.reload();
+                                CPRSRSIStore.reload();
+                            }
+                        },
+                    });
                 }
-            }*/
+            },
         ]
     });
 
@@ -3182,13 +3182,6 @@ function reeBillReady() {
                 dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
-            //},{
-                //header: 'Total', 
-                //sortable: true, 
-                //dataIndex: 'total', 
-                //summaryType: 'sum',
-                //align: 'right',
-                //editor: new Ext.form.TextField({allowBlank: true})
             }
         ]
     });
@@ -3253,10 +3246,10 @@ function reeBillReady() {
             {
                 xtype: 'button',
                 id: 'regenerateUPRSButton',
-                text: 'Regenerate Rate Structure',
+                text: 'Regenerate from Prediction',
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/regenerate_rate_structure',
+                        url: 'http://'+location.host+'/reebill/regenerate_uprs',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -3270,30 +3263,6 @@ function reeBillReady() {
                     });
                 }
             },
-                /*{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'UPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    UPRSRSIGrid.stopEditing();
-
-                    UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    UPRSRSIStore.setBaseParam("account", selected_account);
-                    UPRSRSIStore.setBaseParam("sequence", selected_sequence);
-
-                    UPRSRSIStore.save(); 
-                }
-            }*/
         ]
     });
 
