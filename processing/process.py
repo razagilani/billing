@@ -603,7 +603,7 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-            utilbill)
+                utilbill)
         predecessor = self.state_db.get_last_real_utilbill(session,
                 utilbill.customer.account, utilbill.period_start)
         predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
