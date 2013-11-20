@@ -1522,7 +1522,9 @@ class BillToolBridge:
     @json_exception
     def excel_energy_export(self, account=None, **kwargs):
         '''
-        TODO
+        Responds with an excel spreadsheet containing all actual charges, total
+        energy and rate structure for all utility bills for the given account,
+        or every account (1 per sheet) if 'account' is not given,
         '''
         with DBSession(self.state_db) as session:
             if account is not None:
