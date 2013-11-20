@@ -1507,8 +1507,34 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account, start_date=start_date,
+            exporter.export_account_charges(session, buf, account, start_date=start_date,
                             end_date=end_date)
+
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+            return buf.getvalue()
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate
+    @json_exception
+    def excel_energy_export(self, account=None, **kwargs):
+        '''
+        TODO
+        '''
+        with DBSession(self.state_db) as session:
+            if account is not None:
+                spreadsheet_name = account + '.xls'
+            else:
+                spreadsheet_name = 'xbill_accounts.xls'
+
+            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_energy_usage(session, buf, account)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
