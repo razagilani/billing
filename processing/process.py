@@ -788,10 +788,10 @@ class Process(object):
                 # the account's first unissued bill)
                 present_reebill.payment_received = 0
 
-                present_reebill.prior_balance = prior_reebill.balance_due
-                present_reebill.balance_forward = prior_reebill.balance_due - \
-                        present_reebill.payment_received + \
-                        present_reebill.total_adjustment
+            present_reebill.prior_balance = prior_reebill.balance_due
+            present_reebill.balance_forward = prior_reebill.balance_due - \
+                    present_reebill.payment_received + \
+                    present_reebill.total_adjustment
 
         # include manually applied adjustment
         present_reebill.balance_forward += present_reebill.manual_adjustment
