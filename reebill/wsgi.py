@@ -895,6 +895,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def refresh_charges(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            self.process.refresh_charges(session, utilbill_id)
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def regenerate_uprs(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.regenerate_uprs(session, utilbill_id)

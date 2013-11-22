@@ -305,6 +305,28 @@ def meter_read_period(utilbill_doc):
     return meter['prior_read_date'], meter['present_read_date']
 
 # TODO make this a method of a utility bill document class when one exists
+def refresh_charges(utilbill_doc, uprs, cprs):
+    '''Replaces charges in the utility bill document with newly-created ones
+    based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
+    for every RSI. The charges are computed according to the rate structures.
+    '''
+    # get dictionary mapping rsi_bindings to RateStructureItem objects from
+    # 'uprs', then replace any items in it with RateStructureItems from 'cprs'
+    # with the same rsi_bindings
+    rsis = uprs.rsis_dict()
+    rsis.update(cprs.rsis_dict())
+
+    utilbill_doc['chargegroups'] = {'All Charges': [{
+        'rsi_binding': rsi.rsi_binding,
+        'quantity': 0,
+        'quantity_units': 0,
+        'rate': 0,
+        'rate_units': 0,
+        'total': 0,
+    } for rsi in rsis.values()]}
+    compute_all_charges(utilbill_doc, uprs, cprs)
+
+# TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
     utility bill document so they're correct accoding to the formulas in the
@@ -393,6 +415,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         # message with the charge numbers converted back to names
         names_in_cycle = ', '.join(all_charges[i] for i in ge.args[1])
         raise RSIError('Circular dependency: %' % names_in_cycle)
+
     assert len(evaluation_order) == len(all_charges)
 
     # compute each charge, using its corresponding RSI, in the above order.
