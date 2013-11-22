@@ -22,6 +22,7 @@ from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError
+from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -310,12 +311,6 @@ def refresh_charges(utilbill_doc, uprs, cprs):
     based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
     for every RSI. The charges are computed according to the rate structures.
     '''
-    # get dictionary mapping rsi_bindings to RateStructureItem objects from
-    # 'uprs', then replace any items in it with RateStructureItems from 'cprs'
-    # with the same rsi_bindings
-    rsis = uprs.rsis_dict()
-    rsis.update(cprs.rsis_dict())
-
     utilbill_doc['chargegroups'] = {'All Charges': [{
         'rsi_binding': rsi.rsi_binding,
         'quantity': 0,
@@ -323,7 +318,7 @@ def refresh_charges(utilbill_doc, uprs, cprs):
         'rate': 0,
         'rate_units': 0,
         'total': 0,
-    } for rsi in rsis.values()]}
+    } for rsi in RateStructure.combine(uprs, cprs).rates]}
     compute_all_charges(utilbill_doc, uprs, cprs)
 
 # TODO make this a method of a utility bill document class when one exists
@@ -347,11 +342,9 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             identifiers[register['register_binding']]['quantity'] = \
                     register['quantity']
 
-    # get dictionary mapping rsi_bindings to RateStructureItem objects from
-    # 'uprs', then replace any items in it with RateStructureItems from 'cprs'
-    # with the same rsi_bindings
-    rsis = uprs.rsis_dict()
-    rsis.update(cprs.rsis_dict())
+    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
+    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
+    rsis = RateStructure.combine(uprs, cprs).rates
 
     # get dictionary mapping charge names to their indices in an alphabetical
     # list. this assigns a number to each charge.
