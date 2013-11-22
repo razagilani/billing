@@ -2555,7 +2555,24 @@ function reeBillReady() {
                     }
                 )
             }
-        },
+        },{
+            xtype: 'button',
+            id: 'aChargesAddGroupBtn',
+            text: 'Regenerate from Rate Structure',
+            enabled: true,
+            handler: function() {
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/reebill/refresh_charges',
+                    params: { utilbill_id: selected_utilbill.id },
+                    success: function(result, request) {
+                        var jsonData = Ext.util.JSON.decode(result.responseText);
+                        if (jsonData.success == true) {
+                            aChargesStore.reload();
+                        }
+                    },
+                });
+            }
+    },
     ]
 });
 
