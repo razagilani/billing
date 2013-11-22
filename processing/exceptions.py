@@ -37,14 +37,20 @@ class NotIssuable(BillStateError):
     '''Trying to issue a bill that is not issuable.'''
 
 class RSIError(Exception):
-    """Base class for exceptions in this module."""
-    def __init__(self, descriptor, msg):
-        self.descriptor = descriptor
-        self.msg = msg
-    def __str__(self):
-        return "%s %s" % (self.descriptor, self.msg)
+    '''Error involving a Rate Structure Item.
+    '''
+    pass
 
-# errors that occur during evaluation of rate structure "quantity" expressions
+class FormulaError(RSIError):
+    '''Error in the "quantity"/"rate" formula of a Rate Structure Item.
+    '''
+    pass
+
+class FormulaSyntaxError(FormulaError):
+    '''Syntax error in the "quantity"/"rate" formula of a Rate Structure Item.
+    Python SyntaxError should not be caught for obvious reasons.
+    '''
+    pass
 
 class RecursionError(RSIError):
     pass

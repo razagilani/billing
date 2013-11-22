@@ -2711,10 +2711,10 @@ function reeBillReady() {
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
     });
@@ -2745,10 +2745,10 @@ function reeBillReady() {
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
-            {name: 'quantityunits'},
+            {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
+            {name: 'rate_units'},
+            {name: 'round_rule'},
             {name: 'total'},
         ],
     });
@@ -2856,7 +2856,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -2868,13 +2868,13 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
-                dataIndex: 'roundrule',
+                dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
             //},{
@@ -2943,27 +2943,27 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },
+            {
                 xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'CPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    CPRSRSIGrid.stopEditing();
-
-                    CPRSRSIStore.save(); 
-
+                id: 'regenerateCPRSButton',
+                text: 'Regenerate from Predecessor',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/regenerate_cprs',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                CPRSRSIGrid.setDisabled(true);
+                                CPRSRSIGrid.setDisabled(true);
+                                CPRSRSIStore.reload();
+                                CPRSRSIStore.reload();
+                            }
+                        },
+                    });
                 }
-            }*/
+            },
         ]
     });
 
@@ -3012,10 +3012,10 @@ function reeBillReady() {
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
     });
@@ -3048,10 +3048,10 @@ function reeBillReady() {
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
-            {name: 'quantityunits'},
+            {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
+            {name: 'rate_units'},
+            {name: 'round_rule'},
             {name: 'total'},
         ],
     });
@@ -3161,7 +3161,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -3173,22 +3173,15 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
-                dataIndex: 'roundrule',
+                dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
-            //},{
-                //header: 'Total', 
-                //sortable: true, 
-                //dataIndex: 'total', 
-                //summaryType: 'sum',
-                //align: 'right',
-                //editor: new Ext.form.TextField({allowBlank: true})
             }
         ]
     });
@@ -3249,30 +3242,27 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },
+            {
                 xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'UPRSRSISaveBtn',
-                iconCls: 'icon-save',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    UPRSRSIGrid.stopEditing();
-
-                    UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    UPRSRSIStore.setBaseParam("account", selected_account);
-                    UPRSRSIStore.setBaseParam("sequence", selected_sequence);
-
-                    UPRSRSIStore.save(); 
+                id: 'regenerateUPRSButton',
+                text: 'Regenerate from Prediction',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/regenerate_uprs',
+                        params: { utilbill_id: selected_utilbill.id },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                UPRSRSIGrid.setDisabled(true);
+                                CPRSRSIGrid.setDisabled(true);
+                                UPRSRSIStore.reload();
+                                CPRSRSIStore.reload();
+                            }
+                        },
+                    });
                 }
-            }*/
+            },
         ]
     });
 

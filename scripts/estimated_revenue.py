@@ -54,8 +54,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     reebill_dao = mongo.ReebillDAO(state_db,
             pymongo.Connection(billdb_config['host'],
             int(billdb_config['port']))[billdb_config['database']])
-    ratestructure_dao = rs.RateStructureDAO(billdb_config['host'], billdb_config['port'], billdb_config['database'],
-        reebill_dao)
+    ratestructure_dao = rs.RateStructureDAO(reebill_dao)
 
     # not needed to run estimated revenue report
     billUpload = None
