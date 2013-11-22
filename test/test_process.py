@@ -2179,7 +2179,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # set balance_due in the fist document to a non-0 value so that it
             # can be checked against next bill's "prior balance" below.
             # TOOD remove this when it can be made to have a non-0 balance_due
-            doc1.balance_due = Decimal('1234.56')
+            doc1.balance_due = 1234.56
             self.reebill_dao.save_reebill(doc1)
             self.process.issue(session, account, 1)
 
@@ -2188,7 +2188,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(0, doc1.payment_received)
             self.assertEquals(0, doc1.balance_forward)
             # TODO insert real balance_due value
-            self.assertEquals(Decimal('1234.56'), doc1.balance_due)
+            self.assertEquals(1234.56, doc1.balance_due)
             # TODO check everything else...
 
             # TODO add a payment so payment_received is not 0
