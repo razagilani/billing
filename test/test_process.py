@@ -2181,7 +2181,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TOOD remove this when it can be made to have a non-0 balance_due
             doc1.balance_due = 1234.56
             self.reebill_dao.save_reebill(doc1)
-            self.process.issue(session, account, 1)
+            self.process.issue(session, account, 1, issue_date=date(2013,2,15))
 
             doc1 = self.reebill_dao.load_reebill(account, 1)
             self.assertEquals(0, doc1.prior_balance)
@@ -2191,9 +2191,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(1234.56, doc1.balance_due)
             # TODO check everything else...
 
-            # TODO add a payment so payment_received is not 0
-            payment_amount = 0
-
+            # add a payment so payment_received is not 0
+            payment_amount = 100
+            self.state_db.create_payment(session, account, date(2013,2,17),
+                    'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
             self.process.create_next_reebill(session, account)
