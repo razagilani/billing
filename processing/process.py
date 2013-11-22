@@ -612,6 +612,20 @@ class Process(object):
         existing_cprs.save()
 
 
+    def refresh_charges(self, session, utilbill_id):
+        '''Replaces charges in the utility bill document with newly-created
+        ones based on its rate structures. A charge is created for every Rate
+        Structure Item in both the UPRS and the CPRS. The charges are computed
+        according to the rate structures.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+
+        mongo.refresh_charges(document, uprs, cprs)
+        self.reebill_dao.save_utilbill(document)
+
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
