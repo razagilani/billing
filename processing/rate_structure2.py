@@ -400,6 +400,16 @@ class RateStructure(Document):
             result[binding] = rsi
         return result
 
+    @classmethod
+    def combine(cls, uprs, cprs):
+        '''Returns a RateStructure object not corresponding to any Mongo
+        document, containing RSIs from the two RateStructures 'uprs' and
+        'cprs'. Do not save this object in the database!
+        '''
+        rsis = uprs.rsis_dict()
+        rsis.update(cprs.rsis_dict())
+        return RateStructure(registers=[], rates=rsis)
+
 if __name__ == '__main__':
     import mongoengine
     mongoengine.connect('skyline-dev', host='localhost', port=27017,
