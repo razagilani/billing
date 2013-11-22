@@ -2196,6 +2196,57 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     doc['rate_structure_binding'])
 
 
+    def test_compute_reebill(self):
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
+                    'february.pdf')
+
+            # create reebill and utility bill
+            first_utilbill = session.query(UtilBill).filter_by(
+                    customer=self.state_db.get_customer(session, account))\
+                    .order_by(UtilBill.period_start).first()
+            self.process.create_first_reebill(session, first_utilbill)
+
+            # bind, compute, issue
+            doc1 = self.reebill_dao.load_reebill(account, 1)
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id(account), doc1, use_olap=True)
+            self.process.compute_reebill(session, doc1)
+            self.reebill_dao.save_reebill(doc1)
+            # set balance_due in the fist document to a non-0 value so that it
+            # can be checked against next bill's "prior balance" below.
+            # TOOD remove this when it can be made to have a non-0 balance_due
+            doc1.balance_due = Decimal('1234.56')
+            self.reebill_dao.save_reebill(doc1)
+            self.process.issue(session, account, 1)
+
+            doc1 = self.reebill_dao.load_reebill(account, 1)
+            self.assertEquals(0, doc1.prior_balance)
+            self.assertEquals(0, doc1.payment_received)
+            self.assertEquals(0, doc1.balance_forward)
+            # TODO insert real balance_due value
+            self.assertEquals(Decimal('1234.56'), doc1.balance_due)
+            # TODO check everything else...
+
+            # TODO add a payment so payment_received is not 0
+            payment_amount = 0
+
+
+            # 2nd reebill
+            self.process.create_next_reebill(session, account)
+            doc2 = self.reebill_dao.load_reebill(account, 2)
+            self.process.compute_reebill(session, doc2)
+            self.assertEquals(doc1.balance_due, doc2.prior_balance)
+            self.assertEquals(payment_amount, doc2.payment_received)
+            self.assertEquals(doc1.balance_due - payment_amount,
+                    doc2.balance_forward)
+            # TODO check everything else...
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
