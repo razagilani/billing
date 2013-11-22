@@ -4,13 +4,12 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
-import os  
+import os
 import copy
 import datetime
 from datetime import date, datetime, timedelta
 import calendar
 from optparse import OptionParser
-from decimal import * # BAD
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
 from sqlalchemy.sql.functions import max as sql_max
@@ -26,11 +25,10 @@ import skyliner
 from billing.processing import state
 from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
-from billing.processing.rate_structure import RateStructureDAO
+from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
-from billing.processing.mongo import float_to_decimal
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.util import nexus_util
 from billing.util import dateutils
@@ -59,7 +57,7 @@ class Process(object):
     """
 
     config = None
-    
+
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
             nexus_util, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
@@ -143,7 +141,7 @@ class Process(object):
 
         # load Mongo document
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-        
+
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
         assert 'sequence' not in doc
@@ -159,7 +157,7 @@ class Process(object):
         if service is not None:
             doc['service'] = service
             utilbill.service = service
-            
+
         if period_start is not None:
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
@@ -232,7 +230,7 @@ class Process(object):
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
                 'period_end', 'issued', 'issue_date').from_statement(statement)
-                   
+
         for (sequence, max_version, period_start, period_end, issued,
                 issue_date) in query:
             # start with data from MySQL
@@ -279,7 +277,7 @@ class Process(object):
                 the_dict['ree_quantity'] = doc.total_renewable_energy()
             except ValueError as e:
                 the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-                
+
 
             result.append(the_dict)
 
@@ -380,12 +378,12 @@ class Process(object):
         if state < UtilBill.Hypothetical:
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
                     new_utilbill)
-            new_utilbill.document_id = doc['_id']
-            new_utilbill.uprs_document_id = uprs['_id']
-            new_utilbill.cprs_document_id = cprs['_id']
+            new_utilbill.document_id = str(doc['_id'])
+            new_utilbill.uprs_document_id = str(uprs.id)
+            new_utilbill.cprs_document_id = str(cprs.id)
             self.reebill_dao.save_utilbill(doc)
-            self.rate_structure_dao.save_rs(uprs)
-            self.rate_structure_dao.save_rs(cprs)
+            uprs.save()
+            cprs.save()
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -472,19 +470,23 @@ class Process(object):
             # template account, many things will probably be wrong, but you
             # should be allowed to do it. so just update the new document with
             # the chosen service/utility/rate class values.
-            doc.update({ 
+            doc.update({
                 # new _id will be created below
                 'service': utilbill.service,
                 'utility': utilbill.utility,
                 'rate_structure_binding': utilbill.rate_class,
             })
-            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+            cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         else:
             # the preceding utility bill does exist, so duplicate its CPRS to
             # produce the CPRS for this bill
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
             cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs['_id'] = ObjectId()
+            cprs.id = ObjectId()
+            # NOTE this is a temporary workaround for a bug in MongoEngine
+            # 0.8.4 described here:
+            # https://www.pivotaltracker.com/story/show/57593308
+            cprs._created = True
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -504,19 +506,23 @@ class Process(object):
             meter['prior_read_date'] = utilbill.period_start
             meter['present_read_date'] = utilbill.period_end
             for register in meter['registers']:
-                register['quantity'] = Decimal('0')
+                register['quantity'] = 0
 
         # generate predicted UPRS
         uprs = self.rate_structure_dao.get_probable_uprs(session,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
-        uprs['_id'] = ObjectId()
+        uprs.id = ObjectId()
+        # NOTE this is a temporary workaround for a bug in MongoEngine
+        # 0.8.4 described here:
+        # https://www.pivotaltracker.com/story/show/57593308
+        cprs._created = True
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
-        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                cprs['rates']}
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates +
+                cprs.rates}
         for group, charges in doc['chargegroups'].iteritems():
             i = 0
             while i < len(charges):
@@ -578,6 +584,34 @@ class Process(object):
 
         return new_path
 
+    def regenerate_uprs(self, session, utilbill_id):
+        '''Resets the UPRS of this utility bill to match the predicted one.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                utilbill)
+        new_uprs = self.rate_structure_dao.get_probable_uprs(session,
+                utilbill.utility, utilbill.service, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end,
+                ignore=lambda uprs: uprs.id == existing_uprs.id)
+        existing_uprs.rates = new_uprs.rates
+        existing_uprs.save()
+
+
+    def regenerate_cprs(self, session, utilbill_id):
+        '''Resets the CPRS this utility bill to match that of its predecessor.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+                utilbill)
+        predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start)
+        predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
+                predecessor)
+        existing_cprs.rates = predecessor_cprs.rates
+        existing_cprs.save()
+
+
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
@@ -585,6 +619,7 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+
 
         # update Mongo document to match "metadata" columns in MySQL:
         document.update({
@@ -596,9 +631,10 @@ class Process(object):
             'rate_structure_binding': utilbill.rate_class,
         })
 
-        # compute the charges
-        rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
-        mongo.compute_utility_bill(document, rate_structure)
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+
+        mongo.compute_all_charges(document, uprs, cprs)
 
         # also compute documents of any unissued reebills associated with this
         # utility bill
@@ -644,12 +680,9 @@ class Process(object):
         # generated directly from the reebill's '_utilbills'. these will
         # contain hypothetical charges that matche the actual charges until
         # updated.
+        # TODO this causes bug 60548728; for solution, see
+        # https://www.pivotaltracker.com/story/show/60611838
         #present_reebill.update_utilbill_subdocs()
-
-        ## "TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types"
-        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
-        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
-                present_reebill._utilbills]
 
         # get MySQL reebill row corresponding to the document 'present_reebill'
         # (would be better to pass in the state.ReeBill itself: see
@@ -660,69 +693,22 @@ class Process(object):
                 .filter(ReeBill.sequence == present_reebill.sequence)\
                 .filter(ReeBill.version == present_reebill.version).one()
         for utilbill in reebill_row.utilbills:
-            rs = self.rate_structure_dao.load_rate_structure(utilbill)
-            present_reebill.compute_charges(rs)
-
-        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
-        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
-                present_reebill._utilbills]
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
+            present_reebill.compute_charges(uprs, cprs)
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
-        present_reebill.ree_value = Decimal("0")
-        present_reebill.ree_charges = Decimal("0")
-        present_reebill.ree_savings = Decimal("0")
+        present_reebill.ree_value = 0
+        present_reebill.ree_charges = 0
+        present_reebill.ree_savings = 0
 
         # reset hypothetical and actual totals so we can accumulate across all
         # services
-        present_reebill.hypothetical_total = Decimal("0")
-        present_reebill.actual_total = Decimal("0")
+        #present_reebill.hypothetical_total = 0
+        #present_reebill.actual_total = 0
 
-        # sum up chargegroups into total per utility bill and accumulate
-        # reebill values
-        for service in present_reebill.services:
-            actual_total = Decimal("0")
-            hypothetical_total = Decimal("0")
-
-            for chargegroup, charges in present_reebill.\
-                    actual_chargegroups_for_service(service).items():
-                actual_subtotal = Decimal("0")
-                for charge in charges:
-                    actual_subtotal += charge["total"]
-                    actual_total += charge["total"]
-
-            for chargegroup, charges in present_reebill.\
-                    hypothetical_chargegroups_for_service(service).items():
-                hypothetical_subtotal = Decimal("0")
-                for charge in charges:
-                    hypothetical_subtotal += charge["total"]
-                    hypothetical_total += charge["total"]
-
-            # calculate utilbill level numbers
-            present_reebill.set_actual_total_for_service(service, actual_total)
-            present_reebill.set_hypothetical_total_for_service(service,
-                    hypothetical_total)
-
-            ree_value = hypothetical_total - actual_total
-            ree_charges = (Decimal("1") - present_reebill.discount_rate) * \
-                    (hypothetical_total - actual_total)
-            ree_savings = present_reebill.discount_rate * (hypothetical_total -
-                    actual_total)
-
-            present_reebill.set_ree_value_for_service(service, 
-                    ree_value.quantize(Decimal('.00')))
-            present_reebill.set_ree_charges_for_service(service, ree_charges)
-            present_reebill.set_ree_savings_for_service(service, ree_savings)
-
-        # accumulate at the reebill level
-        present_reebill.hypothetical_total = present_reebill.hypothetical_total\
-                + hypothetical_total
-        present_reebill.actual_total = present_reebill.actual_total + actual_total
-
-        present_reebill.ree_value = Decimal(present_reebill.ree_value + ree_value).quantize(Decimal('.00'))
-        present_reebill.ree_charges = Decimal(present_reebill.ree_charges + ree_charges).quantize(Decimal('.00'), rounding=ROUND_DOWN)
-        present_reebill.ree_savings = Decimal(present_reebill.ree_savings + ree_savings).quantize(Decimal('.00'), rounding=ROUND_UP)
+        present_reebill.update_summary_values()
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
@@ -740,7 +726,7 @@ class Process(object):
             present_reebill.total_adjustment = self.get_total_adjustment(
                     session, present_reebill.account)
         else:
-            present_reebill.total_adjustment = Decimal(0)
+            present_reebill.total_adjustment = 0
 
         if prior_reebill is None:
             # this is the first reebill
@@ -763,8 +749,8 @@ class Process(object):
                         state.MYSQLDB_DATETIME_MIN,
                         end=present_v0_issue_date)
             # obviously balances are 0
-            present_reebill.prior_balance = Decimal(0)
-            present_reebill.balance_forward = Decimal(0)
+            present_reebill.prior_balance = 0
+            present_reebill.balance_forward = 0
 
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
@@ -800,7 +786,7 @@ class Process(object):
                 # payments will go in this bill instead of a previous bill, so
                 # assume there are none (all payments since last issue date go in
                 # the account's first unissued bill)
-                present_reebill.payment_received = Decimal(0)
+                present_reebill.payment_received = 0
 
             present_reebill.prior_balance = prior_reebill.balance_due
             present_reebill.balance_forward = prior_reebill.balance_due - \
@@ -821,13 +807,6 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
-        ## TODO: 22726549  hack to ensure the computations from bind_rs come
-        # back as decimal types
-        present_reebill.reebill_dict = deep_map(float_to_decimal,
-                present_reebill.reebill_dict)
-        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
-                present_reebill._utilbills]
-        
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
@@ -843,13 +822,13 @@ class Process(object):
         if num_existing_reebills > 0:
             raise ValueError("%s reebill(s) already exist for account %s" %
                     (num_existing_reebills, customer.account))
-        
+
         # load document for the 'utilbill', use it to create the reebill
         # document, and save the reebill document
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
-                utilbill.customer.account, 1, 0, customer.discountrate,
-                utilbill.customer.latechargerate, [utilbill_doc])
+                utilbill.customer.account, 1, 0, customer.get_discount_rate(),
+                utilbill.customer.get_late_charge_rate(), [utilbill_doc])
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
@@ -902,8 +881,8 @@ class Process(object):
         # "current" values for the customer in MySQL. the sequence is 1 greater
         # than the predecessor's and the version is always 0.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                last_reebill_row.sequence + 1, 0, customer.discountrate,
-                customer.latechargerate, new_utilbill_docs)
+                last_reebill_row.sequence + 1, 0, customer.get_discount_rate(),
+                customer.get_late_charge_rate(), new_utilbill_docs)
 
         # copy 'suspended_services' list from predecessor reebill's document
         last_reebill_doc = self.reebill_dao.load_reebill(account,
@@ -925,7 +904,7 @@ class Process(object):
         skipped. Returns a list of the new reebill objects.'''
         sequences = range(sequence, self.state_db.last_sequence(session,
                 account) + 1)
-        return [self.new_version(session, account, s) for s in sequences if 
+        return [self.new_version(session, account, s) for s in sequences if
                 self.state_db.is_issued(session, account, s)]
 
     def new_version(self, session, account, sequence):
@@ -1025,7 +1004,7 @@ class Process(object):
                 account)
         if len(all_unissued_corrections) == 0:
             raise ValueError('%s has no corrections to apply' % account)
-        
+
         # load target reebill from mongo
         target_reebill = self.reebill_dao.load_reebill(account,
                 target_sequence, version=target_max_version)
@@ -1044,8 +1023,8 @@ class Process(object):
         reebill for 'account' (i.e. the earliest unissued version-0 reebill).
         This adjustment is the sum of differences in totals between each
         unissued correction and the previous version it corrects.'''
-        return Decimal(sum(adjustment for (sequence, version, adjustment) in
-                self.get_unissued_corrections(session, account)))
+        return sum(adjustment for (sequence, version, adjustment) in
+                self.get_unissued_corrections(session, account))
 
     def get_total_error(self, session, account, sequence):
         '''Returns the net difference between the total of the latest
@@ -1068,11 +1047,11 @@ class Process(object):
         acc, seq = reebill.account, reebill.sequence
 
         if reebill.sequence <= 1:
-            return Decimal(0)
+            return 0
 
         # ensure that a large charge rate exists in the reebill
         # if not, do not process a late_charge_rate (treat as zero)
-        try: 
+        try:
             reebill.late_charge_rate
         except KeyError:
             return None
@@ -1084,7 +1063,7 @@ class Process(object):
         # late charge is 0 if version 0 of the previous bill is not overdue
         predecessor0 = self.reebill_dao.load_reebill(acc, seq - 1, version=0)
         if day <= predecessor0.due_date:
-            return Decimal(0)
+            return 0
 
         # the balance on which a late charge is based is not necessarily the
         # current bill's balance_forward or the "outstanding balance": it's the
@@ -1112,14 +1091,14 @@ class Process(object):
         if sequence == None:
             sequence = self.state_db.last_issued_sequence(session, account)
         if sequence == 0:
-            return Decimal(0)
+            return 0
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         if reebill.issue_date == None:
-            return Decimal(0)
+            return 0
 
         # result cannot be negative
-        return max(Decimal(0), reebill.balance_due -
+        return max(0, reebill.balance_due -
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
@@ -1258,11 +1237,15 @@ class Process(object):
                 reebill.utilbills[0])
         cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 reebill.utilbills[0])
-        uprs['_id'], cprs['_id'] = frozen_uprs_id, frozen_cprs_id
-        self.rate_structure_dao.save_rs(uprs)
-        self.rate_structure_dao.save_rs(cprs)
-        reebill._utilbill_reebills[0].uprs_document_id = frozen_uprs_id
-        reebill._utilbill_reebills[0].cprs_document_id = frozen_cprs_id
+        uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
+        # NOTE this is a temporary workaround for a bug in MongoEngine
+        # 0.8.4 described here:
+        # https://www.pivotaltracker.com/story/show/57593308
+        uprs._created = True; cprs._created = True
+        uprs.save()
+        cprs.save()
+        reebill._utilbill_reebills[0].uprs_document_id = str(frozen_uprs_id)
+        reebill._utilbill_reebills[0].cprs_document_id = str(frozen_cprs_id)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
@@ -1270,7 +1253,7 @@ class Process(object):
 
     def reebill_report_altitude(self, session):
         accounts = self.state_db.listAccounts(session)
-        rows = [] 
+        rows = []
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
@@ -1289,53 +1272,36 @@ class Process(object):
                 row['issue_date'] = reebill.issue_date
                 row['period_begin'] = reebill.period_begin
                 row['period_end'] = reebill.period_end
-                row['actual_charges'] = reebill.actual_total.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = reebill.total_renewable_energy()\
-                        .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
+                row['actual_charges'] = reebill.actual_total
+                row['hypothetical_charges'] = reebill.hypothetical_total
+                total_ree = reebill.total_renewable_energy()
                 row['total_ree'] = total_ree
-                if total_ree != Decimal(0):
-                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
-                            reebill.actual_total)/total_ree)\
-                            .quantize(Decimal(".00"),
-                            rounding=ROUND_HALF_EVEN)
+                if total_ree != 0:
+                    row['average_rate_unit_ree'] = (reebill.hypothetical_total -
+                            reebill.actual_total)/total_ree
                 else:
                     row['average_rate_unit_ree'] = 0
-                row['ree_value'] = reebill.ree_value.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['prior_balance'] = reebill.prior_balance.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['balance_forward'] = reebill.balance_forward.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['ree_value'] = reebill.ree_value
+                row['prior_balance'] = reebill.prior_balance
+                row['balance_forward'] = reebill.balance_forward
                 try:
-                    row['total_adjustment'] = reebill.total_adjustment.quantize(
-                            Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                    row['total_adjustment'] = reebill.total_adjustment
                 except:
                     row['total_adjustment'] = None
-                row['payment_applied'] = reebill.payment_received.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-
-                row['ree_charges'] = reebill.ree_charges.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['payment_applied'] = reebill.payment_received
+                row['ree_charges'] = reebill.ree_charges
                 try:
-                    row['late_charges'] = reebill.late_charges.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                    row['late_charges'] = reebill.late_charges
                 except KeyError:
                     row['late_charges'] = None
 
-                row['balance_due'] = reebill.balance_due.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-
+                row['balance_due'] = reebill.balance_due
                 row['discount_rate'] = reebill.discount_rate
 
                 savings = reebill.ree_value - reebill.ree_charges
                 cumulative_savings += savings
-                row['savings'] = savings.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['cumulative_savings'] = cumulative_savings.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['savings'] = savings
+                row['cumulative_savings'] = cumulative_savings
 
                 rows.append(row)
                 totalCount += 1
@@ -1344,7 +1310,7 @@ class Process(object):
 
     def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
-        rows = [] 
+        rows = []
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
@@ -1359,8 +1325,7 @@ class Process(object):
                 reebill_begins_in_this_period = begin_date and reebill.period_begin >= begin_date
                 reebill_ends_in_this_period = end_date and reebill.period_end <= end_date
                 reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
-                if have_period_dates and not reebill_in_this_period:
-                    continue
+                if have_period_dates and not reebill_in_this_period: continue
 
                 row = {}
                 # iterate the payments and find the ones that apply. 
@@ -1382,51 +1347,36 @@ class Process(object):
                 row['issue_date'] = reebill.issue_date
                 row['period_begin'] = reebill.period_begin
                 row['period_end'] = reebill.period_end
-                row['actual_charges'] = reebill.actual_total.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = reebill.total_renewable_energy()\
-                        .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
+                row['actual_charges'] = reebill.actual_total
+                row['hypothetical_charges'] = reebill.hypothetical_total
+                total_ree = reebill.total_renewable_energy()
                 row['total_ree'] = total_ree
-                if total_ree != Decimal(0):
-                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
-                            reebill.actual_total)/total_ree)\
-                            .quantize(Decimal(".00"),
-                            rounding=ROUND_HALF_EVEN)
+                if total_ree != 0:
+                    row['average_rate_unit_ree'] = (reebill.hypothetical_total -
+                            reebill.actual_total)/total_ree
                 else:
                     row['average_rate_unit_ree'] = 0
-                row['ree_value'] = reebill.ree_value.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['prior_balance'] = reebill.prior_balance.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['balance_forward'] = reebill.balance_forward.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['ree_value'] = reebill.ree_value
+                row['prior_balance'] = reebill.prior_balance
+                row['balance_forward'] = reebill.balance_forward
                 try:
-                    row['total_adjustment'] = reebill.total_adjustment.quantize(
-                            Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                    row['total_adjustment'] = reebill.total_adjustment
                 except:
                     row['total_adjustment'] = None
-                row['payment_applied'] = reebill.payment_received.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['payment_applied'] = reebill.payment_received
 
-                row['ree_charges'] = reebill.ree_charges.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['ree_charges'] = reebill.ree_charges
                 try:
-                    row['late_charges'] = reebill.late_charges.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                    row['late_charges'] = reebill.late_charges
                 except KeyError:
                     row['late_charges'] = None
 
-                row['balance_due'] = reebill.balance_due.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_due'] = reebill.balance_due
 
                 savings = reebill.ree_value - reebill.ree_charges
                 cumulative_savings += savings
-                row['savings'] = savings.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['cumulative_savings'] = cumulative_savings.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['savings'] = savings
+                row['cumulative_savings'] = cumulative_savings
 
                 # normally, only one payment.  Multiple payments their own new rows...
                 if applicable_payments:
@@ -1449,7 +1399,7 @@ class Process(object):
                         row['actual_charges'] = None
                         row['hypothetical_charges'] = None
                         row['total_ree'] = None
-                        row['average_rate_unit_ree'] = None 
+                        row['average_rate_unit_ree'] = None
                         row['ree_value'] = None
                         row['prior_balance'] = None
                         row['balance_forward'] = None
@@ -1486,7 +1436,7 @@ class Process(object):
             row['actual_charges'] = None
             row['hypothetical_charges'] = None
             row['total_ree'] = None
-            row['average_rate_unit_ree'] = None 
+            row['average_rate_unit_ree'] = None
             row['ree_value'] = None
             row['prior_balance'] = None
             row['balance_forward'] = None
@@ -1506,23 +1456,23 @@ class Process(object):
 
     def summary_ree_charges(self, session, accounts, all_names):
         def total_ree_in_reebills(self, reebills):
-            total_energy = Decimal(0)
+            total_energy = 0
             for reebill in reebills:
                 total_energy += reebill.total_renewable_energy()
             return total_energy
-        
-        rows = [] 
+
+        rows = []
         for i, account in enumerate(accounts):
             row = {}
             reebills = self.reebill_dao.load_reebills_for(account)
-            ree_charges = Decimal(sum([reebill.ree_charges for reebill in reebills]))
-            actual_total = Decimal(sum([reebill.actual_total for reebill in reebills]))
-            hypothetical_total = Decimal(sum([reebill.hypothetical_total for reebill in reebills]))
-            total_energy = Decimal(0)
-            average_ree_rate = Decimal(0)
+            ree_charges = sum([reebill.ree_charges for reebill in reebills])
+            actual_total = sum([reebill.actual_total for reebill in reebills])
+            hypothetical_total = sum([reebill.hypothetical_total for reebill in reebills])
+            total_energy = 0
+            average_ree_rate = 0
             total_energy = total_ree_in_reebills(reebills)
 
-            if total_energy != Decimal(0):
+            if total_energy != 0:
                 average_ree_rate = (hypothetical_total - actual_total)/total_energy
 
             row['account'] = account
@@ -1530,11 +1480,11 @@ class Process(object):
             row['casual_name'] = all_names[i][1].get('casualname', '')
             row['primus_name'] = all_names[i][1].get('primus', '')
             row['ree_charges'] = ree_charges
-            row['actual_charges'] = actual_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-            row['hypothetical_charges'] = hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-            row['total_energy'] = total_energy.quantize(Decimal("0"))
+            row['actual_charges'] = actual_total
+            row['hypothetical_charges'] = hypothetical_total
+            row['total_energy'] = total_energy
             # per therm
-            row['average_ree_rate'] = (average_ree_rate).quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+            row['average_ree_rate'] = average_ree_rate
             rows.append(row)
 
         return rows
@@ -1560,7 +1510,7 @@ class Process(object):
         # month is this month
         sequences_for_month = [r.sequence for r in reebills if
                 estimate_month(r.period_begin, r.period_end) == (year, month)]
-        
+
         # if there's at least one sequence, return the list of sequences
         if sequences_for_month != []:
             return sequences_for_month
@@ -1600,7 +1550,7 @@ class Process(object):
         sequences_for_month = [r.sequence for r in
                 self.reebill_dao.load_reebills_in_period(account,
                 start_date=query_month.first, end_date=query_month.last)]
-        
+
         # get sequence of last reebill and the month in which its period ends,
         # which will be useful below
         last_sequence = self.state_db.last_sequence(session, account)
