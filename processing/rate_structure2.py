@@ -252,7 +252,7 @@ class RateStructureItem(EmbeddedDocument):
     quantity = StringField(required=True)
     quantity_units = StringField()
     rate = StringField(required=True)
-    rate_units = StringField()
+    #rate_units = StringField()
 
     # currently not used
     round_rule = StringField()
@@ -341,14 +341,14 @@ class RateStructureItem(EmbeddedDocument):
             'quantity': self.quantity,
             'quantity_units': self.quantity_units,
             'rate': self.rate,
-            'rate_units': self.rate_units,
+            #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
             'uuid': self.uuid,
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-            rate=None, rate_units=None, round_rule=None, description=None,
+            rate=None, round_rule=None, description=None,
             uuid=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
@@ -358,8 +358,6 @@ class RateStructureItem(EmbeddedDocument):
             self.quantity_units = quantity_units
         if rate is not None:
             self.rate = rate
-        if rate_units is not None:
-            self.rate_units = rate_units
         if roundrule is not None:
             self.roundrule = roundrule
         if description is not None:

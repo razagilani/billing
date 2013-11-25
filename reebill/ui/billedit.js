@@ -2216,7 +2216,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
         ]
@@ -2390,29 +2390,29 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true}),
                 editable: false,
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                }),
+            //},{
+                //header: 'Units',
+                //width: 75,
+                //sortable: true,
+                //dataIndex: 'rate_units',
+                //editor: new Ext.form.ComboBox({
+                    //typeAhead: true,
+                    //triggerAction: 'all',
+                    //// transform the data already specified in html
+                    ////transform: 'light',
+                    //lazyRender: true,
+                    //listClass: 'x-combo-list-small',
+                    //mode: 'local',
+                    //store: new Ext.data.ArrayStore({
+                        //fields: [
+                            //'displayText'
+                        //],
+                        //// TODO: externalize these units
+                        //data: [['dollars'], ['cents']]
+                    //}),
+                    //valueField: 'displayText',
+                    //displayField: 'displayText'
+                //}),
             },{
                 header: 'Total', 
                 width: 75, 
@@ -2482,7 +2482,7 @@ function reeBillReady() {
                         quantity: 0,
                         quantity_units: 'kWh',
                         rate: 0,
-                        rate_units: 'dollars',
+                        //rate_units: 'dollars',
                         total: 0,
                         //autototal: 0
                     };
@@ -2537,7 +2537,7 @@ function reeBillReady() {
                             quantity: 0,
                             quantity_units: 'kWh',
                             rate: 0,
-                            rate_units: 'dollars',
+                            //rate_units: 'dollars',
                             total: 0,
                         });
             
@@ -2726,7 +2726,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
@@ -2760,7 +2760,7 @@ function reeBillReady() {
             {name: 'quantity'},
             {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rate_units'},
+            //{name: 'rate_units'},
             {name: 'round_rule'},
             {name: 'total'},
         ],
@@ -2881,7 +2881,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rate_units',
+                //dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -3027,7 +3027,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
@@ -3063,7 +3063,7 @@ function reeBillReady() {
             {name: 'quantity'},
             {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rate_units'},
+            //{name: 'rate_units'},
             {name: 'round_rule'},
             {name: 'total'},
         ],
@@ -3183,12 +3183,12 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
+            //},{
+                //header: 'Units',
+                //sortable: true,
+                //dataIndex: 'rate_units',
+                //editor: new Ext.form.TextField({allowBlank: true}),
+                //width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
@@ -5648,7 +5648,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'actual_rate', mapping: 'actual_rate'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'actual_total', mapping: 'actual_total', type: 'float'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
@@ -5748,11 +5748,11 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'rate',
                 editable: false,
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
+            //},{
+                //header: 'Units',
+                //width: 75,
+                //sortable: true,
+                //dataIndex: 'rate_units',
             },{
                 header: 'Actual Total', 
                 width: 75, 
