@@ -274,29 +274,19 @@ function reeBillReady() {
         // defaults to id? probably should explicity state it until we are ext experts
         //idProperty: 'sequence',
         fields: [
-        {name: 'id'},
-        {name: 'name'},
-        {name: 'account'},
-        {name: 'rate_structure'},
-        {name: 'utility'},
-        {
-            name: 'period_start', 
-            type: 'date',
-            dateFormat: 'Y-m-d'
-        },
-        {   
-            name: 'period_end',
-            type: 'date',
-            dateFormat: 'Y-m-d'
-        },
-        {
-            name: 'total_charges',
-            type: 'float'
-        },
-        {name: 'reebills'},
-        {name: 'state'},
-        {name: 'service'},
-        {name: 'editable'},
+            {name: 'id'},
+            {name: 'name'},
+            {name: 'account'},
+            {name: 'rate_structure'},
+            {name: 'utility'},
+            {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
+            {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
+            {name: 'total_charges', type: 'float' },
+            {name: 'computed_total', type: 'float'},
+            {name: 'reebills'},
+            {name: 'state'},
+            {name: 'service'},
+            {name: 'editable'},
         ],
     });
 
@@ -395,15 +385,21 @@ function reeBillReady() {
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
                 width: 70
-            }),
-            {
+            }), new Ext.grid.NumberColumn({
                 id: 'total_charges',
-                header: 'Total Charges',
+                header: 'Total',
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 70,
+            }), new Ext.grid.NumberColumn({
+                id: 'computed_total',
+                header: 'Calculated',
+                dataIndex: 'computed_total',
+                editable: true,
+                editor: new Ext.form.NumberField({allowBlank: false}),
                 width: 90,
-            },{
+            }),{
                 id: 'sequence',
                 header: 'Reebill Sequence/Version',
                 dataIndex: 'reebills',
