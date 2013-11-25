@@ -723,13 +723,10 @@ class MongoReebill(object):
 
                 
     def compute_charges(self, uprs, cprs):
-        """This function binds a rate structure against the actual and
-        hypothetical charges found in a bill. If and RSI specifies information
-        no in the bill, it is added to the bill. If the bill specifies
-        information in a charge that is not in the RSI, the charge is left
-        untouched."""
+        '''Recomputes hypothetical versions of all charges based on the
+        associated utility bill.
+        '''
         account, sequence = self.account, self.sequence
-
         # process rate structures for all services
         for service in self.services:
             utilbill_doc = self._get_utilbill_for_service(service)
@@ -738,7 +735,8 @@ class MongoReebill(object):
             # TODO temporary hack: duplicate the utility bill, set its register
             # quantities to the hypothetical values, recompute it, and then
             # copy all the charges back into the reebill
-            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(service))
+            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(
+                    service))
 
             # these three generators iterate through "actual registers" of the
             # real utility bill (describing conventional energy usage), "shadow
@@ -777,6 +775,11 @@ class MongoReebill(object):
 
 
 
+            """This function binds a rate structure against the actual and
+            hypothetical charges found in a bill. If and RSI specifies information
+            no in the bill, it is added to the bill. If the bill specifies
+            information in a charge that is not in the RSI, the charge is left
+            untouched."""
             ###
             ### All registers for all meters in a given service are made available
             ### to the rate structure for the given service.
