@@ -286,6 +286,7 @@ function reeBillReady() {
             {name: 'reebills'},
             {name: 'state'},
             {name: 'service'},
+            {name: 'processed'},
             {name: 'editable'},
         ],
     });
