@@ -231,7 +231,13 @@ class UtilBill(Base):
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
     date_received = Column(DateTime)
+
+    # whether this utility bill is considered "done" by the user--mainly
+    # meaning that its rate structure and charges are supposed to be accurate
+    # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
+
+    # _ids of Mongo documents
     document_id = Column(String)
     cprs_document_id = Column(String)
     uprs_document_id = Column(String)
