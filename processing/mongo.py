@@ -537,7 +537,6 @@ class MongoReebill(object):
             'late_charge_rate': late_charge_rate,
             'late_charges': 0,
             "message" : None,
-            "issue_date" : None,
             "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
             "due_date" : None,
@@ -602,7 +601,6 @@ class MongoReebill(object):
         self.ree_charges = 0
         self.ree_savings = 0
         self.due_date = None
-        self.issue_date = None
         self.motd = None
 
         # this should always be set from the value in MySQL, which holds the
@@ -924,21 +922,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    @property
-    def issue_date(self):
-        """ This is a mandatory property of a ReeBill. Consequently, there is
-        no information to be had by throwing a key exception on a missing
-        issue_date.  """
-
-        if 'issue_date' in self.reebill_dict:
-            return python_convert(self.reebill_dict['issue_date'])
-
-        return None
-
-    @issue_date.setter
-    def issue_date(self, value):
-        self.reebill_dict['issue_date'] = value
-
     @property
     def due_date(self):
         return python_convert(self.reebill_dict['due_date'])
@@ -1959,16 +1942,16 @@ class ReebillDAO(object):
             except NoResultFound:
                 # customer not found in MySQL
                 mongo_doc = None
-        elif isinstance(version, date):
-            version_dt = date_to_datetime(version)
-            docs = self.reebills_collection.find(query, sort=[('_id.version',
-                    pymongo.ASCENDING)])
-            earliest_issue_date = docs[0]['issue_date']
-            if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                mongo_doc = docs_before_date[len(docs_before_date)-1]
-            else:
-                mongo_doc = docs[docs.count()-1]
+        #elif isinstance(version, date):
+            #version_dt = date_to_datetime(version)
+            #docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    #pymongo.ASCENDING)])
+            #earliest_issue_date = docs[0]['issue_date']
+            #if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                #docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                #mongo_doc = docs_before_date[len(docs_before_date)-1]
+            #else:
+                #mongo_doc = docs[docs.count()-1]
         else:
             raise ValueError('Unknown version specifier "%s" (%s)' %
                     (version, type(version)))
@@ -2192,16 +2175,3 @@ class ReebillDAO(object):
         }, safe=True)
         check_error(result)
 
-    # TODO remove this method; this should be determined by looking at utility
-    # bills in MySQL
-    def get_first_issue_date_for_account(self, account):
-        '''Returns the issue date of the account's earliest reebill, or None if
-        no reebills exist for the customer.'''
-        query = {
-            '_id.account': account,
-            '_id.sequence': 1,
-        }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
-            return None
-        return MongoReebill(result).issue_date
