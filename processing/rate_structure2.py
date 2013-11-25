@@ -49,7 +49,7 @@ class RateStructureDAO(object):
         self.logger = logger
 
     def _get_probable_rsis(self, session, utility, service,
-            rate_structure_name, period, distance_func=manhattan_distance,
+            rate_class, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
             verbose=False):
@@ -63,7 +63,7 @@ class RateStructureDAO(object):
         # queries)
         all_uprss = [(uprs, start, end) for (uprs, start, end) in
                 self._load_uprss_for_prediction(session, utility,
-                service, rate_structure_name) if not ignore(uprs)]
+                service, rate_class) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
         bindings = set()
@@ -108,7 +108,7 @@ class RateStructureDAO(object):
         result = []
         if verbose:
             self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
-                    rate_structure_name, period[0], period[1]))
+                    rate_class, period[0], period[1]))
             self.logger.info('%35s %s %s' % ('binding:', 'weight:',
                 'normalized weight %:'))
         for binding, weight in scores.iteritems():
@@ -133,7 +133,7 @@ class RateStructureDAO(object):
                     quantity=quantity, uuid1=str(uuid.uuid1())))
         return result
 
-    def get_probable_uprs(self, session, utility, service, rate_structure_name,
+    def get_probable_uprs(self, session, utility, service, rate_class,
             start, end, ignore=lambda x: False):
         '''Returns a guess of the rate structure for a new utility bill of the
         given utility name, service, and dates.
@@ -144,7 +144,7 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.'''
         return RateStructure(type='UPRS', rates=self._get_probable_rsis(
-                session, utility, service, rate_structure_name, (start, end),
+                session, utility, service, rate_class, (start, end),
                 ignore=ignore))
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
@@ -192,7 +192,7 @@ class RateStructureDAO(object):
         # "n"? look at 'write_concern' argument
 
     def _load_uprss_for_prediction(self, session, utility_name, service,
-            rate_structure_name, verbose=False):
+            rate_class, verbose=False):
         '''Returns a list of (UPRS document, start date, end date) tuples with
         the given utility and rate structure name.
         '''
@@ -203,7 +203,7 @@ class RateStructureDAO(object):
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
-                .filter(UtilBill.rate_class==rate_structure_name)\
+                .filter(UtilBill.rate_class==rate_class)\
                 .filter(UtilBill.state <= UtilBill.SkylineEstimated)
         result = []
         for utilbill in utilbills:

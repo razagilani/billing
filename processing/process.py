@@ -128,7 +128,7 @@ class Process(object):
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
-            rate_structure=None):
+            rate_class=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -176,9 +176,9 @@ class Process(object):
             utilbill.utility = utility
             doc['utility'] = utility
 
-        if rate_structure is not None:
-            utilbill.rate_class = rate_structure
-            doc['rate_structure_binding'] = rate_structure
+        if rate_class is not None:
+            utilbill.rate_class = rate_class
+            doc['rate_class'] = rate_class
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
@@ -342,7 +342,7 @@ class Process(object):
             if utility is None:
                 utility = template['utility']
             if rate_class is None:
-                rate_class = template['rate_structure_binding']
+                rate_class = template['rate_class']
 
         if bill_file is not None:
             # if there is a file, get the Python file object and name
@@ -474,7 +474,7 @@ class Process(object):
                 # new _id will be created below
                 'service': utilbill.service,
                 'utility': utilbill.utility,
-                'rate_structure_binding': utilbill.rate_class,
+                'rate_class': utilbill.rate_class,
             })
             cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         else:
@@ -642,7 +642,7 @@ class Process(object):
             'end': utilbill.period_end,
             'service': utilbill.service,
             'utility': utilbill.utility,
-            'rate_structure_binding': utilbill.rate_class,
+            'rate_class': utilbill.rate_class,
         })
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)

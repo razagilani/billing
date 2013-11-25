@@ -279,7 +279,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert utilbill.service == doc['service'] == 'gas'
             assert utilbill.utility == doc['utility'] == 'washgas'
             assert utilbill.total_charges == 100
-            assert utilbill.rate_class == doc['rate_structure_binding'] == 'DC Non Residential Non Heat'
+            assert utilbill.rate_class == doc['rate_class'] == 'DC Non Residential Non Heat'
 
             # invalid date ranges
             self.assertRaises(ValueError,
@@ -336,7 +336,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate_structure='something else')
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual('something else', utilbill.rate_class)
-            self.assertEqual('something else', doc['rate_structure_binding'])
+            self.assertEqual('something else', doc['rate_class'])
 
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
@@ -896,8 +896,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     '99999')
             assert template_doc['service'] == 'gas'
             assert template_doc['utility'] == 'washgas'
-            assert template_doc['rate_structure_binding'] == \
-                    'DC Non Residential Non Heat'
+            assert template_doc['rate_class'] == 'DC Non Residential Non Heat'
 
             self.process.upload_utility_bill(session, '99999', 'electric',
                     date(2013,1,1), date(2013,2,1), StringIO('a file'),
@@ -911,8 +910,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(bill)
             self.assertEqual('electric', doc['service'])
             self.assertEqual('Pepco', doc['utility'])
-            self.assertEqual('Residential R Winter',
-                    doc['rate_structure_binding'])
+            self.assertEqual('Residential R Winter', doc['rate_class'])
 
 
     def test_delete_utility_bill(self):
@@ -2133,7 +2131,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # match the template.
             #self.assertEquals('water', doc['service'])
             #self.assertEquals('pepco', doc['utility'])
-            #self.assertEquals('pepco', doc['rate_structure_binding'])
+            #self.assertEquals('pepco', doc['rate_class'])
 
             # modify the MySQL utility bill
             utilbill.period_start = date(2014,1,1)
@@ -2151,7 +2149,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals('electricity', doc['service'])
             self.assertEquals('BGE', doc['utility'])
             self.assertEquals('General Service - Schedule C',
-                    doc['rate_structure_binding'])
+                    doc['rate_class'])
 
 
     def test_compute_reebill(self):
