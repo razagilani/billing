@@ -15,13 +15,13 @@ from copy import deepcopy
 import uuid as UUID
 from itertools import chain
 from collections import defaultdict
-from tsort import topological_sort
+import tsort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError, RSIError
 from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -402,12 +402,13 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # have dependencies. topological sort the dependency graph to find an
     # evaluation order that works for the charges that do have dependencies.
     try:
-        evaluation_order.extend(topological_sort(dependency_graph))
-    except GraphError as g:
+        evaluation_order.extend(tsort.topological_sort(dependency_graph))
+    except tsort.GraphError as g:
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
-        names_in_cycle = ', '.join(all_charges[i] for i in ge.args[1])
-        raise RSIError('Circular dependency: %' % names_in_cycle)
+        names_in_cycle = ', '.join(all_charges[i]['rsi_binding'] for i in
+                g.args[1])
+        raise RSIError('Circular dependency: %s' % names_in_cycle)
 
     assert len(evaluation_order) == len(all_charges)
 
