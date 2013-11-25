@@ -57,7 +57,7 @@ class UtilBillTest(utils.TestCase):
                   rsi_binding='CONSTANT',
                   quantity='50',
                   quantity_units='dollars',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                   rate='0.2',
                 ),
                 RateStructureItem(
@@ -65,13 +65,13 @@ class UtilBillTest(utils.TestCase):
                   quantity='REG_TOTAL.quantity * 3',
                   quantity_units='therms',
                   rate='0.1',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                 ),
                 RateStructureItem(
                   rsi_binding='LINEAR_PLUS_CONSTANT',
                   quantity='REG_TOTAL.quantity * 2 + 10',
                   quantity_units='therms',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                   rate='0.1',
                 ),
                 RateStructureItem(
@@ -79,28 +79,28 @@ class UtilBillTest(utils.TestCase):
                   quantity='min(100, REG_TOTAL.quantity)',
                   quantity_units='therms',
                   rate='0.3',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                 ),
                 RateStructureItem(
                   rsi_binding='BLOCK_2',
                   quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
                   quantity_units='therms',
                   rate='0.2',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                 ),
                 RateStructureItem(
                   rsi_binding='BLOCK_3',
                   quantity='max(0, REG_TOTAL.quantity - 200)',
                   quantity_units='therms',
                   rate='0.1',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                 ),
                 RateStructureItem(
                   rsi_binding='NO_CHARGE_FOR_THIS_RSI',
                   quantity='1',
                   quantity_units='therms',
                   rate='1',
-                  rate_units='dollars',
+                  #rate_units='dollars',
                 ),
             ]
         )

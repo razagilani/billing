@@ -1622,7 +1622,6 @@ class BillToolBridge:
                     quantity='Insert quantity here',
                     quantity_units='',
                     rate='Insert rate here',
-                    rate_units='',
                     round_rule='',
                     uuid=str(UUID.uuid1()),
                 )
