@@ -679,16 +679,16 @@ class StateDB(object):
         session.add(new_reebill)
         return new_reebill
 
-    def issue(self, session, account, sequence):
+    def issue(self, session, account, sequence, issue_date=datetime.utcnow()):
         '''Marks the highest version of the reebill given by account, sequence
-        as issued. Does not set the issue date or due date, since those are
-        stored in Mongo).'''
+        as issued.
+        '''
         reebill = self.get_reebill(session, account, sequence)
         if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
         reebill.issued = 1
-        reebill.issue_date = datetime.utcnow().date()
+        reebill.issue_date = issue_date
 
     def is_issued(self, session, account, sequence, version='max',
             nonexistent=None):
@@ -1073,6 +1073,7 @@ class StateDB(object):
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
+        assert type(start), type(end) == (date, date)
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)
