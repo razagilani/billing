@@ -295,6 +295,8 @@ class Process(object):
         utility bills will be added to cover the gap between this bill's period
         and the previous newest or oldest one respectively. The total of all
         charges on the utility bill may be given.
+
+        Returns the newly created UtilBill object.
         
         Currently 'utility' and 'rate_class' are ignored in favor of the
         predecessor's (or template's) values; see
@@ -394,6 +396,8 @@ class Process(object):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, utility, rate_class, original_last_end,
                     begin_date)
+
+        return new_utilbill
 
     def _find_replaceable_utility_bill(self, session, customer, service, start,
             end, state):
