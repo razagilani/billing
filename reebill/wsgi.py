@@ -2375,6 +2375,8 @@ class BillToolBridge:
                     'period_start': ub.period_start,
                     'period_end': ub.period_end,
                     'total_charges': ub.total_charges,
+                    'computed_total': mongo.total_of_all_charges(
+                            self.reebill_dao.load_doc_for_utilbill(ub)),
                     # NOTE the value of 'issue_date' in this JSON object is
                     # used by the client to determine whether a frozen utility
                     # bill version exists (when issue date == null, the reebill
