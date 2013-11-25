@@ -404,9 +404,9 @@ class RateStructure(Document):
         document, containing RSIs from the two RateStructures 'uprs' and
         'cprs'. Do not save this object in the database!
         '''
-        rsis = uprs.rsis_dict()
-        rsis.update(cprs.rsis_dict())
-        return RateStructure(registers=[], rates=rsis)
+        combined_dict = uprs.rsis_dict()
+        combined_dict.update(cprs.rsis_dict())
+        return RateStructure(registers=[], rates=combined_dict.values())
 
 if __name__ == '__main__':
     import mongoengine

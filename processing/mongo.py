@@ -344,7 +344,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     # get RSIs from a fake RateStructure in which anything in 'uprs' with the
     # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    rsis = RateStructure.combine(uprs, cprs).rates
+    rsis = RateStructure.combine(uprs, cprs).rsis_dict()
 
     # get dictionary mapping charge names to their indices in an alphabetical
     # list. this assigns a number to each charge.
