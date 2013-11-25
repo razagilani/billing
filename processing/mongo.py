@@ -316,7 +316,7 @@ def refresh_charges(utilbill_doc, uprs, cprs):
         'quantity': 0,
         'quantity_units': 0,
         'rate': 0,
-        'rate_units': 0,
+        #'rate_units': 0,
         'total': 0,
     } for rsi in RateStructure.combine(uprs, cprs).rates]}
     compute_all_charges(utilbill_doc, uprs, cprs)

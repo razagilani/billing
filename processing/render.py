@@ -813,7 +813,7 @@ class ReebillRenderer:
                         format_for_display(charge['quantity'], places=3) if 'quantity' in charge else Decimal("1"),
                         charge.get('quantity_units', ""),
                         format_for_display(charge['rate'], places=5) if 'rate' in charge else "",
-                        charge.get('rate_units', ""), 
+                        #charge.get('rate_units', ""), 
                         format_for_display(charge['total'], places=2) if 'total' in charge else "",
                     ])
             # spacer
