@@ -1510,21 +1510,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
-            self.process.upload_utility_bill(session, acc_a, 'gas',
+            utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_b, 'gas',
+            utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_c, 'gas',
+            utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_a).one())
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_b).one())
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_c).one())
+            self.process.create_first_reebill(session, utilbill_a)
+            self.process.create_first_reebill(session, utilbill_b)
+            self.process.create_first_reebill(session, utilbill_c)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating
@@ -1578,15 +1575,30 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs_a.save(); uprs_b.save(); uprs_c.save()
 
             # create utility bill and reebill #2 for A
-            self.process.upload_utility_bill(session, acc_a, 'gas',
-                     date(2013,2,1), date(2013,3,1),
+            utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
+                    'gas', date(2013,2,1), date(2013,3,1),
                      StringIO('February 2013 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
             self.process.create_next_reebill(session, acc_a)
 
-            # the UPRS of A's reebill #2 should match B and C, i.e. it should
-            # contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE, because
-            # together the other two have greater weight than A's reebill #1
+            # initially there will be no RSIs in A's 2nd utility bill, because
+            # there are no "processed" utility bills yet.
+            uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_a,
+                    period_start=date(2013,2,1)).one())
+            self.assertEqual([], uprs_a_2.rates)
+
+            # when the other bills have been marked as "procesed", they should
+            # affect the new one.
+            utilbill_a.processed = True
+            utilbill_b.processed = True
+            utilbill_c.processed = True
+            self.process.regenerate_uprs(session, utilbill_a_2.id)
+
+            # the UPRS of A's reebill #2 should now match B and C, i.e. it
+            # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
+            # because together the other two have greater weight than A's
+            # reebill #1
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
@@ -1640,6 +1652,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     #._get_handle_for_service('gas')\
                     #['hypothetical_chargegroups']['All Charges']]
 
+    def test_rs_prediction_processed(self):
+        '''Tests that rate structure prediction includes all and only utility
+        bills that are "processed". '''
 
     def test_issue(self):
         '''Tests issuing of reebills.'''

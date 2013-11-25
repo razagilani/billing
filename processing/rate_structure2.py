@@ -204,7 +204,8 @@ class RateStructureDAO(object):
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
                 .filter(UtilBill.rate_class==rate_class)\
-                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
+                .filter(UtilBill.processed==True)
         result = []
         for utilbill in utilbills:
             if utilbill.uprs_document_id is None:
