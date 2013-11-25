@@ -2385,6 +2385,7 @@ class BillToolBridge:
                     'state': ub.state_name(),
                     # utility bill rows are always editable (since editing them
                     # should not affect utility bill data in issued reebills)
+                    'processed': ub.processed,
                     'editable': True,
                 } for ub in utilbills]
 
