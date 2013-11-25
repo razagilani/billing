@@ -18,7 +18,7 @@ class UtilBillTest(utils.TestCase):
         utilbill_doc = {
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_structure_binding': "won't be loaded from the db anyway",
+            'rate_class': "won't be loaded from the db anyway",
             'chargegroups': {'All Charges': [
                 {'rsi_binding': 'CONSTANT', 'quantity': 0},
                 {'rsi_binding': 'LINEAR', 'quantity': 0},
@@ -175,7 +175,7 @@ class UtilBillTest(utils.TestCase):
         utilbill_doc = {
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_structure_binding': "won't be loaded from the db anyway",
+            'rate_class': "won't be loaded from the db anyway",
             'chargegroups': {'All Charges': [
                 {'rsi_binding': 'LINEAR', 'quantity': 0},
             ]},

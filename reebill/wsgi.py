@@ -2410,6 +2410,9 @@ class BillToolBridge:
                                 ISO_8601_DATETIME_WITHOUT_ZONE).date()
                     elif k == 'service':
                         update_args[k] = v.lower()
+                    elif k == 'rate_structure':
+                        # translate wrong name into right one 
+                        update_args['rate_class'] = v
                     elif k != 'id':
                         update_args[k] = v
 
