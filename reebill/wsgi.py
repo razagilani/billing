@@ -2366,7 +2366,7 @@ class BillToolBridge:
                     'account': ub.customer.account,
                     'name': full_name,
                     'utility': ub.utility,
-                    'rate_structure': ub.rate_class,
+                    'rate_class': ub.rate_class,
                     # capitalize service name
                     'service': 'Unknown' if ub.service is None else
                            ub.service[0].upper() + ub.service[1:],
@@ -2410,9 +2410,6 @@ class BillToolBridge:
                                 ISO_8601_DATETIME_WITHOUT_ZONE).date()
                     elif k == 'service':
                         update_args[k] = v.lower()
-                    elif k == 'rate_structure':
-                        # translate wrong name into right one 
-                        update_args['rate_class'] = v
                     elif k != 'id':
                         update_args[k] = v
 
