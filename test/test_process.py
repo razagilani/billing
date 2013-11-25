@@ -1398,7 +1398,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create reebill based on first utility bill
             self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start).first())
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
 
             # Make sure the reebill period matches the utility bill
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
@@ -1418,6 +1419,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .order_by(UtilBill.period_start).all()
             self.assertEquals([utilbills[0]], reebills[0].utilbills)
             self.assertEquals([utilbills[1]], reebills[1].utilbills)
+
+            # addresses should be preserved from one reebill document to the
+            # next
+            reebill_doc_1 = self.reebill_dao.load_reebill(account, 1)
+            reebill_doc_2 = self.reebill_dao.load_reebill(account, 2)
+            self.assertEquals(reebill_doc_1.billing_address,
+                    reebill_doc_2.billing_address)
+            self.assertEquals(reebill_doc_1.service_address,
+                    reebill_doc_2.service_address)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
