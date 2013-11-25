@@ -1019,7 +1019,6 @@ class BillToolBridge:
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
-            print recipients,merge_fields, os.path.join(self.config.get('billdb', 'billpath'), account), [bill_name]
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
