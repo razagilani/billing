@@ -789,19 +789,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,2,1), bills[0].period_end)
 
             # check that "metadata" of the document in Mongo match MySQL
-            document = self.reebill_dao.load_doc_for_utilbill(bills[0])
-            self.assertEqual(account, document['account'])
-            self.assertEqual('gas', document['service'])
-            self.assertEqual('washgas', document['utility'])
-            self.assertEqual(date(2012,1,1), document['start'])
-            self.assertEqual(date(2012,2,1), document['end'])
-            self.assertEqual(1, len(document['meters']))
+            doc1 = self.reebill_dao.load_doc_for_utilbill(bills[0])
+            self.assertEqual(account, doc1['account'])
+            self.assertEqual('gas', doc1['service'])
+            self.assertEqual('washgas', doc1['utility'])
+            self.assertEqual('DC Non Residential Non Heat', doc1['rate_class'])
+            self.assertEqual({
+                "postal_code" : u"20910",
+                "city" : u"Silver Spring",
+                "state" : u"MD",
+                "addressee" : u"Managing Member Monroe Towers",
+                "street" : u"3501 13TH ST NW LLC"
+            }, doc1['billing_address'])
+            self.assertEqual({
+                u"postal_code" : u"20010",
+                u"city" : u"Washington",
+                u"state" : u"DC",
+                u"addressee" : u"Monroe Towers",
+                u"street" : u"3501 13TH ST NW #WH"
+            }, doc1['service_address'])
+            self.assertEqual(date(2012,1,1), doc1['start'])
+            self.assertEqual(date(2012,2,1), doc1['end'])
+            self.assertEqual(1, len(doc1['meters']))
             self.assertEqual(date(2012,1,1),
-                    document['meters'][0]['prior_read_date'])
+                    doc1['meters'][0]['prior_read_date'])
             self.assertEqual(date(2012,2,1),
-                    document['meters'][0]['present_read_date'])
+                    doc1['meters'][0]['present_read_date'])
             self.assertEqual([0], [r['quantity'] for r in
-                    document['meters'][0]['registers']])
+                    doc1['meters'][0]['registers']])
 
             # second contiguous bill (explicitly specifying utility/rate class)
             file2 = StringIO("Let's pretend this is a PDF")
@@ -819,6 +834,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[1].state)
             self.assertEqual(date(2012,2,1), bills[1].period_start)
             self.assertEqual(date(2012,3,1), bills[1].period_end)
+            doc2 = self.reebill_dao.load_doc_for_utilbill(bills[1])
+            self.assertEquals(doc1['billing_address'],
+                    doc2['billing_address'])
+            self.assertEquals(doc1['service_address'],
+                    doc2['service_address'])
 
             # 3rd bill "Skyline estimated", without a file
             self.process.upload_utility_bill(session, account, service,
