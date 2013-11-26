@@ -555,8 +555,7 @@ function reeBillReady() {
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
                     var formatted_end_date_string = record.data.period_end.format('Y-m-d');
-
-
+                    
                     // image rendering resolution
                     // TODO Ext.getCmp vs doc.getElement
                     var menu = document.getElementById('billresolutionmenu');
@@ -608,8 +607,17 @@ function reeBillReady() {
 
     utilbillGrid.getSelectionModel().on('selectionchange', function(sm){
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
-        var enable = sm.getSelections().every(function(r) {return r.data.editable});
-        utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(!enable);
+        
+        // Check if data is editable
+        var editable = sm.getSelections().every(function(r) {return r.data.editable});
+        // Check if there are Reebills associated with this Utility Bill
+        var has_reebills = sm.getSelections().every(function(r) {return (r.data.reebills.length > 0)});
+        if (editable && !has_reebills){
+            utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
+        }
+        else{
+            utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(true);
+        }
     });
   
 
