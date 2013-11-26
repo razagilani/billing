@@ -895,6 +895,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def refresh_charges(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            self.process.refresh_charges(session, utilbill_id)
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def regenerate_uprs(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.regenerate_uprs(session, utilbill_id)
@@ -1010,7 +1019,6 @@ class BillToolBridge:
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
-            print recipients,merge_fields, os.path.join(self.config.get('billdb', 'billpath'), account), [bill_name]
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
@@ -1641,7 +1649,6 @@ class BillToolBridge:
                     quantity='Insert quantity here',
                     quantity_units='',
                     rate='Insert rate here',
-                    rate_units='',
                     round_rule='',
                     uuid=str(UUID.uuid1()),
                 )
@@ -2387,13 +2394,15 @@ class BillToolBridge:
                     'account': ub.customer.account,
                     'name': full_name,
                     'utility': ub.utility,
-                    'rate_structure': ub.rate_class,
+                    'rate_class': ub.rate_class,
                     # capitalize service name
                     'service': 'Unknown' if ub.service is None else
                            ub.service[0].upper() + ub.service[1:],
                     'period_start': ub.period_start,
                     'period_end': ub.period_end,
                     'total_charges': ub.total_charges,
+                    'computed_total': mongo.total_of_all_charges(
+                            self.reebill_dao.load_doc_for_utilbill(ub)),
                     # NOTE the value of 'issue_date' in this JSON object is
                     # used by the client to determine whether a frozen utility
                     # bill version exists (when issue date == null, the reebill
@@ -2403,6 +2412,7 @@ class BillToolBridge:
                     'state': ub.state_name(),
                     # utility bill rows are always editable (since editing them
                     # should not affect utility bill data in issued reebills)
+                    'processed': ub.processed,
                     'editable': True,
                 } for ub in utilbills]
 

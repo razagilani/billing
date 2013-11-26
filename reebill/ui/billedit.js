@@ -274,29 +274,20 @@ function reeBillReady() {
         // defaults to id? probably should explicity state it until we are ext experts
         //idProperty: 'sequence',
         fields: [
-        {name: 'id'},
-        {name: 'name'},
-        {name: 'account'},
-        {name: 'rate_structure'},
-        {name: 'utility'},
-        {
-            name: 'period_start', 
-            type: 'date',
-            dateFormat: 'Y-m-d'
-        },
-        {   
-            name: 'period_end',
-            type: 'date',
-            dateFormat: 'Y-m-d'
-        },
-        {
-            name: 'total_charges',
-            type: 'float'
-        },
-        {name: 'reebills'},
-        {name: 'state'},
-        {name: 'service'},
-        {name: 'editable'},
+            {name: 'id'},
+            {name: 'name'},
+            {name: 'account'},
+            {name: 'rate_class'},
+            {name: 'utility'},
+            {name: 'period_start', type: 'date', dateFormat: 'Y-m-d' },
+            {name: 'period_end', type: 'date', dateFormat: 'Y-m-d' },
+            {name: 'total_charges', type: 'float' },
+            {name: 'computed_total', type: 'float'},
+            {name: 'reebills'},
+            {name: 'state'},
+            {name: 'service'},
+            {name: 'processed'},
+            {name: 'editable'},
         ],
     });
 
@@ -395,15 +386,21 @@ function reeBillReady() {
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
                 width: 70
-            }),
-            {
+            }), new Ext.grid.NumberColumn({
                 id: 'total_charges',
-                header: 'Total Charges',
+                header: 'Total',
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 70,
+            }), new Ext.grid.NumberColumn({
+                id: 'computed_total',
+                header: 'Calculated',
+                dataIndex: 'computed_total',
+                editable: true,
+                editor: new Ext.form.NumberField({allowBlank: false}),
                 width: 90,
-            },{
+            }),{
                 id: 'sequence',
                 header: 'Reebill Sequence/Version',
                 dataIndex: 'reebills',
@@ -445,9 +442,9 @@ function reeBillReady() {
                 width: 70,
             },
             {
-                id: 'rate_structure',
-                header: 'Rate Structure',
-                dataIndex: 'rate_structure',
+                id: 'rate_class',
+                header: 'Rate Class',
+                dataIndex: 'rate_class',
                 editable: true,
                 editor: new Ext.form.TextField({}),
             },
@@ -515,7 +512,7 @@ function reeBillReady() {
         //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
-        autoExpandColumn: 'rate_structure',
+        autoExpandColumn: 'rate_class',
         frame: true,
         collapsible: true,
         animCollapse: false,
@@ -698,7 +695,7 @@ function reeBillReady() {
     }
 
     var deleteButton = new Ext.Button({
-        text: 'Delete selected reebill',
+        text: 'Delete',
         iconCls: 'icon-delete',
         disabled: true,
         handler: function() {
@@ -1039,7 +1036,7 @@ function reeBillReady() {
         items: [
             {
                 xtype: 'panel',
-                width: 200,
+                width: 100,
                 items: [
                     // TODO:21046353
                     new Ext.form.ComboBox({
@@ -1053,20 +1050,24 @@ function reeBillReady() {
                         }),
                         valueField: 'service',
                         displayField: 'service',
-                        width: 200,
+                        width: 100,
                     }),
                 ],
             },
-            { xtype: 'tbseparator' },
-            {
-                xtype: 'panel',
-                items: [
-                    billOperationButton,
-                ],
-            },
-
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Create Next', handler: rollOperation},
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Bind RE&E Offset', handler:
+                bindREEOperation},
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Compute', handler:
+                computeBillOperation},
+            {xtype: 'tbseparator'},
             deleteButton,
-            versionButton
+            {xtype: 'tbseparator'},
+            versionButton,
+            {xtype: 'tbseparator'},
+            {text: 'Render PDF', handler: renderOperation},
         ]
     });
 
@@ -2220,7 +2221,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
         ]
@@ -2394,29 +2395,29 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true}),
                 editable: false,
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                }),
+            //},{
+                //header: 'Units',
+                //width: 75,
+                //sortable: true,
+                //dataIndex: 'rate_units',
+                //editor: new Ext.form.ComboBox({
+                    //typeAhead: true,
+                    //triggerAction: 'all',
+                    //// transform the data already specified in html
+                    ////transform: 'light',
+                    //lazyRender: true,
+                    //listClass: 'x-combo-list-small',
+                    //mode: 'local',
+                    //store: new Ext.data.ArrayStore({
+                        //fields: [
+                            //'displayText'
+                        //],
+                        //// TODO: externalize these units
+                        //data: [['dollars'], ['cents']]
+                    //}),
+                    //valueField: 'displayText',
+                    //displayField: 'displayText'
+                //}),
             },{
                 header: 'Total', 
                 width: 75, 
@@ -2486,7 +2487,7 @@ function reeBillReady() {
                         quantity: 0,
                         quantity_units: 'kWh',
                         rate: 0,
-                        rate_units: 'dollars',
+                        //rate_units: 'dollars',
                         total: 0,
                         //autototal: 0
                     };
@@ -2541,7 +2542,7 @@ function reeBillReady() {
                             quantity: 0,
                             quantity_units: 'kWh',
                             rate: 0,
-                            rate_units: 'dollars',
+                            //rate_units: 'dollars',
                             total: 0,
                         });
             
@@ -2555,7 +2556,24 @@ function reeBillReady() {
                     }
                 )
             }
-        },
+        },{
+            xtype: 'button',
+            id: 'aChargesAddGroupBtn',
+            text: 'Regenerate from Rate Structure',
+            enabled: true,
+            handler: function() {
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/reebill/refresh_charges',
+                    params: { utilbill_id: selected_utilbill.id },
+                    success: function(result, request) {
+                        var jsonData = Ext.util.JSON.decode(result.responseText);
+                        if (jsonData.success == true) {
+                            aChargesStore.reload();
+                        }
+                    },
+                });
+            }
+    },
     ]
 });
 
@@ -2713,7 +2731,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
@@ -2747,7 +2765,7 @@ function reeBillReady() {
             {name: 'quantity'},
             {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rate_units'},
+            //{name: 'rate_units'},
             {name: 'round_rule'},
             {name: 'total'},
         ],
@@ -2868,7 +2886,7 @@ function reeBillReady() {
             },{
                 header: 'Units',
                 sortable: true,
-                dataIndex: 'rate_units',
+                //dataIndex: 'rate_units',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
             },{
@@ -3014,7 +3032,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             {name: 'total', mapping: 'total'},
         ]
@@ -3050,7 +3068,7 @@ function reeBillReady() {
             {name: 'quantity'},
             {name: 'quantity_units'},
             {name: 'rate'},
-            {name: 'rate_units'},
+            //{name: 'rate_units'},
             {name: 'round_rule'},
             {name: 'total'},
         ],
@@ -3170,12 +3188,12 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
+            //},{
+                //header: 'Units',
+                //sortable: true,
+                //dataIndex: 'rate_units',
+                //editor: new Ext.form.TextField({allowBlank: true}),
+                //width: 50,
             },{
                 header: 'Round Rule',
                 sortable: true,
@@ -5635,7 +5653,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'actual_rate', mapping: 'actual_rate'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
+            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'actual_total', mapping: 'actual_total', type: 'float'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
@@ -5735,11 +5753,11 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'rate',
                 editable: false,
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
+            //},{
+                //header: 'Units',
+                //width: 75,
+                //sortable: true,
+                //dataIndex: 'rate_units',
             },{
                 header: 'Actual Total', 
                 width: 75, 
