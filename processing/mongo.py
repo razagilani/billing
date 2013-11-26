@@ -15,13 +15,14 @@ from copy import deepcopy
 import uuid as UUID
 from itertools import chain
 from collections import defaultdict
-from tsort import topological_sort
+import tsort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError, RSIError
+from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -305,6 +306,22 @@ def meter_read_period(utilbill_doc):
     return meter['prior_read_date'], meter['present_read_date']
 
 # TODO make this a method of a utility bill document class when one exists
+def refresh_charges(utilbill_doc, uprs, cprs):
+    '''Replaces charges in the utility bill document with newly-created ones
+    based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
+    for every RSI. The charges are computed according to the rate structures.
+    '''
+    utilbill_doc['chargegroups'] = {'All Charges': [{
+        'rsi_binding': rsi.rsi_binding,
+        'quantity': 0,
+        'quantity_units': 0,
+        'rate': 0,
+        #'rate_units': 0,
+        'total': 0,
+    } for rsi in RateStructure.combine(uprs, cprs).rates]}
+    compute_all_charges(utilbill_doc, uprs, cprs)
+
+# TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
     utility bill document so they're correct accoding to the formulas in the
@@ -325,11 +342,9 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             identifiers[register['register_binding']]['quantity'] = \
                     register['quantity']
 
-    # get dictionary mapping rsi_bindings to RateStructureItem objects from
-    # 'uprs', then replace any items in it with RateStructureItems from 'cprs'
-    # with the same rsi_bindings
-    rsis = uprs.rsis_dict()
-    rsis.update(cprs.rsis_dict())
+    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
+    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
+    rsis = RateStructure.combine(uprs, cprs).rsis_dict()
 
     # get dictionary mapping charge names to their indices in an alphabetical
     # list. this assigns a number to each charge.
@@ -387,12 +402,14 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # have dependencies. topological sort the dependency graph to find an
     # evaluation order that works for the charges that do have dependencies.
     try:
-        evaluation_order.extend(topological_sort(dependency_graph))
-    except GraphError as g:
+        evaluation_order.extend(tsort.topological_sort(dependency_graph))
+    except tsort.GraphError as g:
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
-        names_in_cycle = ', '.join(all_charges[i] for i in ge.args[1])
-        raise RSIError('Circular dependency: %' % names_in_cycle)
+        names_in_cycle = ', '.join(all_charges[i]['rsi_binding'] for i in
+                g.args[1])
+        raise RSIError('Circular dependency: %s' % names_in_cycle)
+
     assert len(evaluation_order) == len(all_charges)
 
     # compute each charge, using its corresponding RSI, in the above order.
@@ -521,7 +538,6 @@ class MongoReebill(object):
             'late_charge_rate': late_charge_rate,
             'late_charges': 0,
             "message" : None,
-            "issue_date" : None,
             "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
             "due_date" : None,
@@ -586,7 +602,6 @@ class MongoReebill(object):
         self.ree_charges = 0
         self.ree_savings = 0
         self.due_date = None
-        self.issue_date = None
         self.motd = None
 
         # this should always be set from the value in MySQL, which holds the
@@ -709,13 +724,10 @@ class MongoReebill(object):
 
                 
     def compute_charges(self, uprs, cprs):
-        """This function binds a rate structure against the actual and
-        hypothetical charges found in a bill. If and RSI specifies information
-        no in the bill, it is added to the bill. If the bill specifies
-        information in a charge that is not in the RSI, the charge is left
-        untouched."""
+        '''Recomputes hypothetical versions of all charges based on the
+        associated utility bill.
+        '''
         account, sequence = self.account, self.sequence
-
         # process rate structures for all services
         for service in self.services:
             utilbill_doc = self._get_utilbill_for_service(service)
@@ -724,7 +736,8 @@ class MongoReebill(object):
             # TODO temporary hack: duplicate the utility bill, set its register
             # quantities to the hypothetical values, recompute it, and then
             # copy all the charges back into the reebill
-            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(service))
+            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(
+                    service))
 
             # these three generators iterate through "actual registers" of the
             # real utility bill (describing conventional energy usage), "shadow
@@ -763,6 +776,11 @@ class MongoReebill(object):
 
 
 
+            """This function binds a rate structure against the actual and
+            hypothetical charges found in a bill. If and RSI specifies information
+            no in the bill, it is added to the bill. If the bill specifies
+            information in a charge that is not in the RSI, the charge is left
+            untouched."""
             ###
             ### All registers for all meters in a given service are made available
             ### to the rate structure for the given service.
@@ -908,21 +926,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    @property
-    def issue_date(self):
-        """ This is a mandatory property of a ReeBill. Consequently, there is
-        no information to be had by throwing a key exception on a missing
-        issue_date.  """
-
-        if 'issue_date' in self.reebill_dict:
-            return python_convert(self.reebill_dict['issue_date'])
-
-        return None
-
-    @issue_date.setter
-    def issue_date(self, value):
-        self.reebill_dict['issue_date'] = value
-
     @property
     def due_date(self):
         return python_convert(self.reebill_dict['due_date'])
@@ -1176,18 +1179,18 @@ class MongoReebill(object):
             raise ValueError('Multiple utilbills found for id "%s"' % id)
         return matching_utilbills[0]
 
-    def _get_utilbill_for_rs(self, utility, service, rate_structure_name):
+    def _get_utilbill_for_rs(self, utility, service, rate_class):
         '''Returns the utility bill dictionary with the given utility name and
         rate structure name.'''
         matching_utilbills = [u for u in self._utilbills if u['utility'] ==
                 utility and u['service'] == service and
-                u['rate_structure_binding'] == rate_structure_name]
+                u['rate_structure_binding'] == rate_class]
         if len(matching_utilbills) == 0:
             raise ValueError(('No utilbill found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_structure_name))
+                    'structure "%s"') % (utility, rate_class))
         if len(matching_utilbills) > 1:
             raise ValueError(('Multiple utilbills found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_structure_name))
+                    'structure "%s"') % (utility, rate_class))
         return matching_utilbills[0]
 
     def _set_utilbill_for_id(self, id, new_utilbill_doc):
@@ -1601,6 +1604,7 @@ class MongoReebill(object):
     def utility_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)['utility']
 
+    # TODO remove
     def rate_structure_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)\
                 ['rate_structure_binding']
@@ -1943,16 +1947,16 @@ class ReebillDAO(object):
             except NoResultFound:
                 # customer not found in MySQL
                 mongo_doc = None
-        elif isinstance(version, date):
-            version_dt = date_to_datetime(version)
-            docs = self.reebills_collection.find(query, sort=[('_id.version',
-                    pymongo.ASCENDING)])
-            earliest_issue_date = docs[0]['issue_date']
-            if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                mongo_doc = docs_before_date[len(docs_before_date)-1]
-            else:
-                mongo_doc = docs[docs.count()-1]
+        #elif isinstance(version, date):
+            #version_dt = date_to_datetime(version)
+            #docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    #pymongo.ASCENDING)])
+            #earliest_issue_date = docs[0]['issue_date']
+            #if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                #docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                #mongo_doc = docs_before_date[len(docs_before_date)-1]
+            #else:
+                #mongo_doc = docs[docs.count()-1]
         else:
             raise ValueError('Unknown version specifier "%s" (%s)' %
                     (version, type(version)))
@@ -2176,16 +2180,3 @@ class ReebillDAO(object):
         }, safe=True)
         check_error(result)
 
-    # TODO remove this method; this should be determined by looking at utility
-    # bills in MySQL
-    def get_first_issue_date_for_account(self, account):
-        '''Returns the issue date of the account's earliest reebill, or None if
-        no reebills exist for the customer.'''
-        query = {
-            '_id.account': account,
-            '_id.sequence': 1,
-        }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
-            return None
-        return MongoReebill(result).issue_date

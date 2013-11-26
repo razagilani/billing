@@ -129,6 +129,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, reebill.sequence)
             self.assertEqual(0, reebill.version)
             self.assertEqual(False, reebill.issued)
+            self.assertEqual(None, reebill.issue_date)
             self.assertEqual([utilbill], reebill.utilbills)
             reebill_doc = self.reebill_dao.load_reebill('88888', 1)
             self.assertEqual('88888', reebill_doc.account)
@@ -146,7 +147,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0.6, reebill_doc.discount_rate)
             self.assertEqual(0.2, reebill_doc.late_charge_rate)
             self.assertEqual(None, reebill_doc.motd)
-            self.assertEqual(None, reebill_doc.issue_date)
             self.assertEqual([utilbill_doc['_id']], [ObjectId(u['id']) for u in
                     reebill_doc.reebill_dict['utilbills']])
             self.assertEqual([utilbill_doc], reebill_doc._utilbills)
@@ -279,7 +279,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert utilbill.service == doc['service'] == 'gas'
             assert utilbill.utility == doc['utility'] == 'washgas'
             assert utilbill.total_charges == 100
-            assert utilbill.rate_class == doc['rate_structure_binding'] == 'DC Non Residential Non Heat'
+            assert utilbill.rate_class == doc['rate_class'] == 'DC Non Residential Non Heat'
 
             # invalid date ranges
             self.assertRaises(ValueError,
@@ -336,7 +336,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate_structure='something else')
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual('something else', utilbill.rate_class)
-            self.assertEqual('something else', doc['rate_structure_binding'])
+            self.assertEqual('something else', doc['rate_class'])
 
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
@@ -388,8 +388,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
             # re-loaded from mongo to reflect its new issue date
+            self.state_db.get_reebill(session, acc, 1, version=0).issue_date \
+                    == date(2012,1,1)
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
-            assert bill1.issue_date == date(2012,1,1)
             assert bill1.due_date == date(2012,1,31)
  
             # after bill1 is created, it must be computed to get it into a
@@ -788,19 +789,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2012,2,1), bills[0].period_end)
 
             # check that "metadata" of the document in Mongo match MySQL
-            document = self.reebill_dao.load_doc_for_utilbill(bills[0])
-            self.assertEqual(account, document['account'])
-            self.assertEqual('gas', document['service'])
-            self.assertEqual('washgas', document['utility'])
-            self.assertEqual(date(2012,1,1), document['start'])
-            self.assertEqual(date(2012,2,1), document['end'])
-            self.assertEqual(1, len(document['meters']))
+            doc1 = self.reebill_dao.load_doc_for_utilbill(bills[0])
+            self.assertEqual(account, doc1['account'])
+            self.assertEqual('gas', doc1['service'])
+            self.assertEqual('washgas', doc1['utility'])
+            self.assertEqual('DC Non Residential Non Heat', doc1['rate_class'])
+            self.assertEqual({
+                "postal_code" : u"20910",
+                "city" : u"Silver Spring",
+                "state" : u"MD",
+                "addressee" : u"Managing Member Monroe Towers",
+                "street" : u"3501 13TH ST NW LLC"
+            }, doc1['billing_address'])
+            self.assertEqual({
+                u"postal_code" : u"20010",
+                u"city" : u"Washington",
+                u"state" : u"DC",
+                u"addressee" : u"Monroe Towers",
+                u"street" : u"3501 13TH ST NW #WH"
+            }, doc1['service_address'])
+            self.assertEqual(date(2012,1,1), doc1['start'])
+            self.assertEqual(date(2012,2,1), doc1['end'])
+            self.assertEqual(1, len(doc1['meters']))
             self.assertEqual(date(2012,1,1),
-                    document['meters'][0]['prior_read_date'])
+                    doc1['meters'][0]['prior_read_date'])
             self.assertEqual(date(2012,2,1),
-                    document['meters'][0]['present_read_date'])
+                    doc1['meters'][0]['present_read_date'])
             self.assertEqual([0], [r['quantity'] for r in
-                    document['meters'][0]['registers']])
+                    doc1['meters'][0]['registers']])
 
             # second contiguous bill (explicitly specifying utility/rate class)
             file2 = StringIO("Let's pretend this is a PDF")
@@ -818,6 +834,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[1].state)
             self.assertEqual(date(2012,2,1), bills[1].period_start)
             self.assertEqual(date(2012,3,1), bills[1].period_end)
+            doc2 = self.reebill_dao.load_doc_for_utilbill(bills[1])
+            self.assertEquals(doc1['billing_address'],
+                    doc2['billing_address'])
+            self.assertEquals(doc1['service_address'],
+                    doc2['service_address'])
 
             # 3rd bill "Skyline estimated", without a file
             self.process.upload_utility_bill(session, account, service,
@@ -895,8 +916,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     '99999')
             assert template_doc['service'] == 'gas'
             assert template_doc['utility'] == 'washgas'
-            assert template_doc['rate_structure_binding'] == \
-                    'DC Non Residential Non Heat'
+            assert template_doc['rate_class'] == 'DC Non Residential Non Heat'
 
             self.process.upload_utility_bill(session, '99999', 'electric',
                     date(2013,1,1), date(2013,2,1), StringIO('a file'),
@@ -910,8 +930,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(bill)
             self.assertEqual('electric', doc['service'])
             self.assertEqual('Pepco', doc['utility'])
-            self.assertEqual('Residential R Winter',
-                    doc['rate_structure_binding'])
+            self.assertEqual('Residential R Winter', doc['rate_class'])
 
 
     def test_delete_utility_bill(self):
@@ -1379,7 +1398,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create reebill based on first utility bill
             self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start).first())
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
 
             # Make sure the reebill period matches the utility bill
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
@@ -1399,6 +1419,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .order_by(UtilBill.period_start).all()
             self.assertEquals([utilbills[0]], reebills[0].utilbills)
             self.assertEquals([utilbills[1]], reebills[1].utilbills)
+
+            # addresses should be preserved from one reebill document to the
+            # next
+            reebill_doc_1 = self.reebill_dao.load_reebill(account, 1)
+            reebill_doc_2 = self.reebill_dao.load_reebill(account, 2)
+            self.assertEquals(reebill_doc_1.billing_address,
+                    reebill_doc_2.billing_address)
+            self.assertEquals(reebill_doc_1.service_address,
+                    reebill_doc_2.service_address)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
@@ -1511,21 +1540,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
-            self.process.upload_utility_bill(session, acc_a, 'gas',
+            utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_b, 'gas',
+            utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
-            self.process.upload_utility_bill(session, acc_c, 'gas',
+            utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_a).one())
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_b).one())
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .filter(UtilBill.customer==customer_c).one())
+            self.process.create_first_reebill(session, utilbill_a)
+            self.process.create_first_reebill(session, utilbill_b)
+            self.process.create_first_reebill(session, utilbill_c)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating
@@ -1546,7 +1572,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='SYSTEM_CHARGE',
                     description='System Charge',
                     quantity='1',
-                    rate_units='dollars',
+                    #rate_units='dollars',
                     processingnote='',
                     rate='11.2',
                     uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
@@ -1557,7 +1583,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='DISTRIBUTION_CHARGE',
                     description='Distribution charge for all therms',
                     quantity='750.10197727',
-                    rate_units='dollars',
+                    #rate_units='dollars',
                     processingnote='',
                     rate='0.2935',
                     quantity_units='therms',
@@ -1568,7 +1594,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='PGC',
                     description='Purchased Gas Charge',
                     quantity='750.10197727',
-                    rate_units='dollars',
+                    #rate_units='dollars',
                     processingnote='',
                     rate='0.7653',
                     quantity_units='therms',
@@ -1579,15 +1605,30 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs_a.save(); uprs_b.save(); uprs_c.save()
 
             # create utility bill and reebill #2 for A
-            self.process.upload_utility_bill(session, acc_a, 'gas',
-                     date(2013,2,1), date(2013,3,1),
+            utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
+                    'gas', date(2013,2,1), date(2013,3,1),
                      StringIO('February 2013 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
             self.process.create_next_reebill(session, acc_a)
 
-            # the UPRS of A's reebill #2 should match B and C, i.e. it should
-            # contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE, because
-            # together the other two have greater weight than A's reebill #1
+            # initially there will be no RSIs in A's 2nd utility bill, because
+            # there are no "processed" utility bills yet.
+            uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
+                    session.query(UtilBill).filter_by(customer=customer_a,
+                    period_start=date(2013,2,1)).one())
+            self.assertEqual([], uprs_a_2.rates)
+
+            # when the other bills have been marked as "procesed", they should
+            # affect the new one.
+            utilbill_a.processed = True
+            utilbill_b.processed = True
+            utilbill_c.processed = True
+            self.process.regenerate_uprs(session, utilbill_a_2.id)
+
+            # the UPRS of A's reebill #2 should now match B and C, i.e. it
+            # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
+            # because together the other two have greater weight than A's
+            # reebill #1
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
@@ -1608,7 +1649,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 rsi_binding='RIGHT_OF_WAY',
                 description='DC Rights-of-Way Fee',
                 quantity='750.10197727',
-                rate_units='dollars',
+                #rate_units='dollars',
                 processingnote='',
                 rate='0.03059',
                 quantity_units='therms',
@@ -1641,6 +1682,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     #._get_handle_for_service('gas')\
                     #['hypothetical_chargegroups']['All Charges']]
 
+    def test_rs_prediction_processed(self):
+        '''Tests that rate structure prediction includes all and only utility
+        bills that are "processed". '''
 
     def test_issue(self):
         '''Tests issuing of reebills.'''
@@ -1658,12 +1702,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_next_reebill(session, acc)
             one = self.state_db.get_reebill(session, acc, 1)
             one_doc = self.reebill_dao.load_reebill(acc, 1)
-            two = self.reebill_dao.load_reebill(acc, 2)
+            two = self.state_db.get_reebill(session, acc, 2)
+            two_doc = self.reebill_dao.load_reebill(acc, 2)
             utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
-            self.assertEquals(None, one_doc.issue_date)
+            self.assertEquals(None, one.issue_date)
             self.assertEquals(None, one_doc.due_date)
 
             # two should not be issuable until one_doc is issued
@@ -1677,29 +1722,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
-            self.assertEquals(datetime.utcnow().date(), one_doc.issue_date)
-            self.assertEquals(one_doc.issue_date + timedelta(30), one_doc.due_date)
+            self.assertEquals(one.issue_date + timedelta(30), one_doc.due_date)
             self.assertIsInstance(one_doc.bill_recipients, list)
             self.assertEquals(len(one_doc.bill_recipients), 0)
             self.assertIsInstance(one_doc.last_recipients, list)
             self.assertEquals(len(one_doc.last_recipients), 0)
 
-            #two = self.process.roll_bill(session, one_doc)
-            two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
-            self.reebill_dao.save_reebill(two)
+            two_doc.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
+            self.reebill_dao.save_reebill(two_doc)
             
             # issue two
             self.process.issue(session, acc, 2)
 
             # re-load from mongo to see updated issue date and due date
-            two = self.reebill_dao.load_reebill(acc, 2)
+            two_doc = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
-            self.assertEquals(two.issue_date + timedelta(30), two.due_date)
-            self.assertIsInstance(two.bill_recipients, list)
-            self.assertEquals(len(two.bill_recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two.bill_recipients,
-                    [unicode]*len(two.bill_recipients))))
+            self.assertEquals(two.issue_date + timedelta(30), two_doc.due_date)
+            self.assertIsInstance(two_doc.bill_recipients, list)
+            self.assertEquals(len(two_doc.bill_recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two_doc.bill_recipients,
+                    [unicode]*len(two_doc.bill_recipients))))
 
     def test_delete_reebill(self):
         account = '99999'
@@ -2089,7 +2132,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "quantity" : 1,
                         "quantity_units" : "",
                         "rate" : 11.2,
-                        "rate_units" : "dollars",
+                        #"rate_units" : "dollars",
                         "total" : 11.2,
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
@@ -2133,7 +2176,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # match the template.
             #self.assertEquals('water', doc['service'])
             #self.assertEquals('pepco', doc['utility'])
-            #self.assertEquals('pepco', doc['rate_structure_binding'])
+            #self.assertEquals('pepco', doc['rate_class'])
 
             # modify the MySQL utility bill
             utilbill.period_start = date(2014,1,1)
@@ -2151,8 +2194,62 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals('electricity', doc['service'])
             self.assertEquals('BGE', doc['utility'])
             self.assertEquals('General Service - Schedule C',
-                    doc['rate_structure_binding'])
+                    doc['rate_class'])
 
+
+    def test_compute_reebill(self):
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
+                    'february.pdf')
+
+            # create reebill and utility bill
+            first_utilbill = session.query(UtilBill).filter_by(
+                    customer=self.state_db.get_customer(session, account))\
+                    .order_by(UtilBill.period_start).first()
+            self.process.create_first_reebill(session, first_utilbill)
+
+            # bind, compute, issue
+            doc1 = self.reebill_dao.load_reebill(account, 1)
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id(account), doc1, use_olap=True)
+            self.process.compute_reebill(session, doc1)
+            self.reebill_dao.save_reebill(doc1)
+            # set balance_due in the fist document to a non-0 value so that it
+            # can be checked against next bill's "prior balance" below.
+            # TOOD remove this when it can be made to have a non-0 balance_due
+            doc1.balance_due = 1234.56
+            self.reebill_dao.save_reebill(doc1)
+            self.process.issue(session, account, 1, issue_date=date(2013,2,15))
+            assert session.query(ReeBill).filter(ReeBill.sequence==1).one()\
+                .issue_date == date(2013,2,15)
+
+            doc1 = self.reebill_dao.load_reebill(account, 1)
+            self.assertEquals(0, doc1.prior_balance)
+            self.assertEquals(0, doc1.payment_received)
+            self.assertEquals(0, doc1.balance_forward)
+            # TODO insert real balance_due value
+            self.assertEquals(1234.56, doc1.balance_due)
+            # TODO check everything else...
+
+            # add a payment so payment_received is not 0
+            payment_amount = 100
+            self.state_db.create_payment(session, account, date(2013,2,17),
+                    'a payment for the first reebill', payment_amount)
+
+            # 2nd reebill
+            self.process.create_next_reebill(session, account)
+            doc2 = self.reebill_dao.load_reebill(account, 2)
+            self.process.compute_reebill(session, doc2)
+            self.assertEquals(doc1.balance_due, doc2.prior_balance)
+            self.assertEquals(payment_amount, doc2.payment_received)
+            self.assertEquals(doc1.balance_due - payment_amount,
+                    doc2.balance_forward)
+            # TODO check everything else...
 
 
 if __name__ == '__main__':

@@ -381,9 +381,11 @@ class ReebillRenderer:
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
+        issue_date = self.state_db.get_reebill(self.state_db.session(), reebill.account,
+                reebill.sequence, version=reebill.version).issue_date
         accountNumber = [
             [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
-            [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(reebill.issue_date.strftime('%m-%d-%Y') if reebill.issue_date is not None else 'None', styles['BillField'])]
+            [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(issue_date.strftime('%m-%d-%Y') if issue_date is not None else 'None', styles['BillField'])]
         ]
 
         t = Table(accountNumber, [135,85])
@@ -813,7 +815,7 @@ class ReebillRenderer:
                         format_for_display(charge['quantity'], places=3) if 'quantity' in charge else Decimal("1"),
                         charge.get('quantity_units', ""),
                         format_for_display(charge['rate'], places=5) if 'rate' in charge else "",
-                        charge.get('rate_units', ""), 
+                        #charge.get('rate_units', ""), 
                         format_for_display(charge['total'], places=2) if 'total' in charge else "",
                     ])
             # spacer
