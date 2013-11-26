@@ -695,7 +695,7 @@ function reeBillReady() {
     }
 
     var deleteButton = new Ext.Button({
-        text: 'Delete selected reebill',
+        text: 'Delete',
         iconCls: 'icon-delete',
         disabled: true,
         handler: function() {
@@ -1036,7 +1036,7 @@ function reeBillReady() {
         items: [
             {
                 xtype: 'panel',
-                width: 200,
+                width: 100,
                 items: [
                     // TODO:21046353
                     new Ext.form.ComboBox({
@@ -1050,20 +1050,24 @@ function reeBillReady() {
                         }),
                         valueField: 'service',
                         displayField: 'service',
-                        width: 200,
+                        width: 100,
                     }),
                 ],
             },
-            { xtype: 'tbseparator' },
-            {
-                xtype: 'panel',
-                items: [
-                    billOperationButton,
-                ],
-            },
-
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Create Next', handler: rollOperation},
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Bind RE&E Offset', handler:
+                bindREEOperation},
+            {xtype: 'tbseparator'},
+            {xtype: 'button', text: 'Compute', handler:
+                computeBillOperation},
+            {xtype: 'tbseparator'},
             deleteButton,
-            versionButton
+            {xtype: 'tbseparator'},
+            versionButton,
+            {xtype: 'tbseparator'},
+            {text: 'Render PDF', handler: renderOperation},
         ]
     });
 
