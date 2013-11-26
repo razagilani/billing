@@ -500,6 +500,13 @@ function reeBillReady() {
                                 //  utilbillGridStore.reload({callback: function(records, options, success){
                                 //      utilbillGrid.refresh();
                                 //  }});
+                                
+                                // The Utility Bills Grid become deselected after deletion
+                                // Make sure tabs also become disabled
+                                ubMeasuredUsagesPanel.setDisabled(true);
+                                ubRegisterGrid.setEditable(false);
+                                rateStructurePanel.setDisabled(true);
+                                chargeItemsPanel.setDisabled(true);
                             }
                         });
                 }
