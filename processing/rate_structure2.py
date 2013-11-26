@@ -49,7 +49,7 @@ class RateStructureDAO(object):
         self.logger = logger
 
     def _get_probable_rsis(self, session, utility, service,
-            rate_structure_name, period, distance_func=manhattan_distance,
+            rate_class, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
             verbose=False):
@@ -63,7 +63,7 @@ class RateStructureDAO(object):
         # queries)
         all_uprss = [(uprs, start, end) for (uprs, start, end) in
                 self._load_uprss_for_prediction(session, utility,
-                service, rate_structure_name) if not ignore(uprs)]
+                service, rate_class) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
         bindings = set()
@@ -108,7 +108,7 @@ class RateStructureDAO(object):
         result = []
         if verbose:
             self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
-                    rate_structure_name, period[0], period[1]))
+                    rate_class, period[0], period[1]))
             self.logger.info('%35s %s %s' % ('binding:', 'weight:',
                 'normalized weight %:'))
         for binding, weight in scores.iteritems():
@@ -133,7 +133,7 @@ class RateStructureDAO(object):
                     quantity=quantity, uuid1=str(uuid.uuid1())))
         return result
 
-    def get_probable_uprs(self, session, utility, service, rate_structure_name,
+    def get_probable_uprs(self, session, utility, service, rate_class,
             start, end, ignore=lambda x: False):
         '''Returns a guess of the rate structure for a new utility bill of the
         given utility name, service, and dates.
@@ -144,7 +144,7 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.'''
         return RateStructure(type='UPRS', rates=self._get_probable_rsis(
-                session, utility, service, rate_structure_name, (start, end),
+                session, utility, service, rate_class, (start, end),
                 ignore=ignore))
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
@@ -192,7 +192,7 @@ class RateStructureDAO(object):
         # "n"? look at 'write_concern' argument
 
     def _load_uprss_for_prediction(self, session, utility_name, service,
-            rate_structure_name, verbose=False):
+            rate_class, verbose=False):
         '''Returns a list of (UPRS document, start date, end date) tuples with
         the given utility and rate structure name.
         '''
@@ -203,8 +203,9 @@ class RateStructureDAO(object):
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
-                .filter(UtilBill.rate_class==rate_structure_name)\
-                .filter(UtilBill.state <= UtilBill.SkylineEstimated)
+                .filter(UtilBill.rate_class==rate_class)\
+                .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
+                .filter(UtilBill.processed==True)
         result = []
         for utilbill in utilbills:
             if utilbill.uprs_document_id is None:
@@ -252,7 +253,7 @@ class RateStructureItem(EmbeddedDocument):
     quantity = StringField(required=True)
     quantity_units = StringField()
     rate = StringField(required=True)
-    rate_units = StringField()
+    #rate_units = StringField()
 
     # currently not used
     round_rule = StringField()
@@ -341,14 +342,14 @@ class RateStructureItem(EmbeddedDocument):
             'quantity': self.quantity,
             'quantity_units': self.quantity_units,
             'rate': self.rate,
-            'rate_units': self.rate_units,
+            #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
             'uuid': self.uuid,
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-            rate=None, rate_units=None, round_rule=None, description=None,
+            rate=None, round_rule=None, description=None,
             uuid=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
@@ -358,8 +359,6 @@ class RateStructureItem(EmbeddedDocument):
             self.quantity_units = quantity_units
         if rate is not None:
             self.rate = rate
-        if rate_units is not None:
-            self.rate_units = rate_units
         if roundrule is not None:
             self.roundrule = roundrule
         if description is not None:
@@ -399,6 +398,16 @@ class RateStructure(Document):
                 raise ValueError('Duplicate rsi_binding "%s"' % binding)
             result[binding] = rsi
         return result
+
+    @classmethod
+    def combine(cls, uprs, cprs):
+        '''Returns a RateStructure object not corresponding to any Mongo
+        document, containing RSIs from the two RateStructures 'uprs' and
+        'cprs'. Do not save this object in the database!
+        '''
+        combined_dict = uprs.rsis_dict()
+        combined_dict.update(cprs.rsis_dict())
+        return RateStructure(registers=[], rates=combined_dict.values())
 
 if __name__ == '__main__':
     import mongoengine

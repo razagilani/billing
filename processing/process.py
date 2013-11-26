@@ -128,7 +128,7 @@ class Process(object):
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
-            rate_structure=None):
+            rate_class=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -176,9 +176,9 @@ class Process(object):
             utilbill.utility = utility
             doc['utility'] = utility
 
-        if rate_structure is not None:
-            utilbill.rate_class = rate_structure
-            doc['rate_structure_binding'] = rate_structure
+        if rate_class is not None:
+            utilbill.rate_class = rate_class
+            doc['rate_class'] = rate_class
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
@@ -295,6 +295,8 @@ class Process(object):
         utility bills will be added to cover the gap between this bill's period
         and the previous newest or oldest one respectively. The total of all
         charges on the utility bill may be given.
+
+        Returns the newly created UtilBill object.
         
         Currently 'utility' and 'rate_class' are ignored in favor of the
         predecessor's (or template's) values; see
@@ -342,7 +344,7 @@ class Process(object):
             if utility is None:
                 utility = template['utility']
             if rate_class is None:
-                rate_class = template['rate_structure_binding']
+                rate_class = template['rate_class']
 
         if bill_file is not None:
             # if there is a file, get the Python file object and name
@@ -394,6 +396,8 @@ class Process(object):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, utility, rate_class, original_last_end,
                     begin_date)
+
+        return new_utilbill
 
     def _find_replaceable_utility_bill(self, session, customer, service, start,
             end, state):
@@ -474,7 +478,7 @@ class Process(object):
                 # new _id will be created below
                 'service': utilbill.service,
                 'utility': utilbill.utility,
-                'rate_structure_binding': utilbill.rate_class,
+                'rate_class': utilbill.rate_class,
             })
             cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
         else:
@@ -612,6 +616,20 @@ class Process(object):
         existing_cprs.save()
 
 
+    def refresh_charges(self, session, utilbill_id):
+        '''Replaces charges in the utility bill document with newly-created
+        ones based on its rate structures. A charge is created for every Rate
+        Structure Item in both the UPRS and the CPRS. The charges are computed
+        according to the rate structures.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        document = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+
+        mongo.refresh_charges(document, uprs, cprs)
+        self.reebill_dao.save_utilbill(document)
+
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
@@ -628,7 +646,7 @@ class Process(object):
             'end': utilbill.period_end,
             'service': utilbill.service,
             'utility': utilbill.utility,
-            'rate_structure_binding': utilbill.rate_class,
+            'rate_class': utilbill.rate_class,
         })
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
@@ -660,9 +678,12 @@ class Process(object):
         idempotent.
         '''
         if present_reebill.sequence == 1:
-            prior_reebill = None
+            predecessor_doc = None
         else:
-            prior_reebill = self.reebill_dao.load_reebill(
+            predecessor = self.state_db.get_reebill(session,
+                    present_reebill.account, present_reebill.sequence - 1,
+                    version=0)
+            predecessor_doc = self.reebill_dao.load_reebill(
                     present_reebill.account, present_reebill.sequence - 1,
                     version=0)
         acc = present_reebill.account
@@ -720,15 +741,15 @@ class Process(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-        if prior_reebill is not None and present_reebill.version == 0 \
-                and self.state_db.is_issued(session, prior_reebill.account,
-                prior_reebill.sequence, version=0, nonexistent=False):
+        if predecessor_doc is not None and present_reebill.version == 0 \
+                and self.state_db.is_issued(session, predecessor_doc.account,
+                predecessor_doc.sequence, version=0, nonexistent=False):
             present_reebill.total_adjustment = self.get_total_adjustment(
                     session, present_reebill.account)
         else:
             present_reebill.total_adjustment = 0
 
-        if prior_reebill is None:
+        if predecessor_doc is None:
             # this is the first reebill
             assert present_reebill.sequence == 1
 
@@ -737,8 +758,9 @@ class Process(object):
             # if any version of this bill has been issued, get payments up
             # until the issue date; otherwise get payments up until the
             # present.
-            present_v0_issue_date = self.reebill_dao.load_reebill(acc,
-                    present_reebill.sequence, version=0).issue_date
+            present_v0_issue_date = self.state_db.get_reebill(session,
+                    present_reebill.account, present_reebill.sequence,
+                    version=0).issue_date
             if present_v0_issue_date is None:
                 present_reebill.payment_received = self.state_db.\
                         get_total_payment_since(session, acc,
@@ -755,7 +777,7 @@ class Process(object):
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
         else:
-            # calculations that depend on 'prior_reebill' go here.
+            # calculations that depend on 'predecessor_doc' go here.
             assert present_reebill.sequence > 1
 
             # get payment_received: all payments between issue date of
@@ -763,16 +785,18 @@ class Process(object):
             # (if current reebill is unissued, its version 0 has None as its
             # issue_date, meaning the payment period lasts up until the present)
             if self.state_db.is_issued(session, acc,
-                    prior_reebill.sequence, version=0, nonexistent=False):
+                    predecessor_doc.sequence, version=0, nonexistent=False):
                 # if predecessor's version 0 is issued, gather all payments from
                 # its issue date until version 0 issue date of current bill, or
                 # today if this bill has never been issued
-                if self.state_db.is_issued(session, acc, present_reebill.sequence,
-                        version=0):
-                    prior_v0_issue_date = self.reebill_dao.load_reebill(acc,
-                            prior_reebill.sequence, version=0).issue_date
-                    present_v0_issue_date = self.reebill_dao.load_reebill(acc,
-                            present_reebill.sequence, version=0).issue_date
+                if self.state_db.is_issued(session, acc,
+                        present_reebill.sequence, version=0):
+                    prior_v0_issue_date = self.state_db.get_reebill(session,
+                            acc, predecessor_doc.sequence,
+                            version=0).issue_date
+                    present_v0_issue_date = self.state_db.get_reebill(session,
+                            acc, present_reebill.sequence,
+                            version=0).issue_date
                     present_reebill.payment_received = self.state_db.\
                             get_total_payment_since(session, acc,
                             prior_v0_issue_date,
@@ -780,7 +804,7 @@ class Process(object):
                 else:
                     present_reebill.payment_received = self.state_db.\
                             get_total_payment_since(session, acc,
-                            prior_reebill.issue_date)
+                            predecessor.issue_date)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
@@ -788,10 +812,10 @@ class Process(object):
                 # the account's first unissued bill)
                 present_reebill.payment_received = 0
 
-                present_reebill.prior_balance = prior_reebill.balance_due
-                present_reebill.balance_forward = prior_reebill.balance_due - \
-                        present_reebill.payment_received + \
-                        present_reebill.total_adjustment
+            present_reebill.prior_balance = predecessor_doc.balance_due
+            present_reebill.balance_forward = predecessor_doc.balance_due - \
+                    present_reebill.payment_received + \
+                    present_reebill.total_adjustment
 
         # include manually applied adjustment
         present_reebill.balance_forward += present_reebill.manual_adjustment
@@ -1061,8 +1085,11 @@ class Process(object):
             return None
 
         # late charge is 0 if version 0 of the previous bill is not overdue
-        predecessor0 = self.reebill_dao.load_reebill(acc, seq - 1, version=0)
-        if day <= predecessor0.due_date:
+        predecessor0 = self.state_db.get_reebill(session, acc, seq - 1,
+                version=0)
+        predecessor0_doc = self.reebill_dao.load_reebill(acc, seq - 1,
+                version=0)
+        if day <= predecessor0_doc.due_date:
             return 0
 
         # the balance on which a late charge is based is not necessarily the
@@ -1206,9 +1233,10 @@ class Process(object):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
 
-        # set issue date and due date in mongo
+        # set issue date in MySQL and due date in mongo
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill.issue_date = issue_date
         reebill_document = self.reebill_dao.load_reebill(account, sequence)
-        reebill_document.issue_date = issue_date
         reebill_document.due_date = issue_date + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
@@ -1223,7 +1251,6 @@ class Process(object):
         # save in mongo, creating a new frozen utility bill document, and put
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
-        reebill = self.state_db.get_reebill(session, account, sequence)
         assert len(reebill._utilbill_reebills) == 1
         frozen_utilbill_id = self.reebill_dao.save_reebill(reebill_document,
                 freeze_utilbills=True)
@@ -1248,7 +1275,7 @@ class Process(object):
         reebill._utilbill_reebills[0].cprs_document_id = str(frozen_cprs_id)
 
         # mark as issued in mysql
-        self.state_db.issue(session, account, sequence)
+        self.state_db.issue(session, account, sequence, issue_date=issue_date)
 
 
     def reebill_report_altitude(self, session):

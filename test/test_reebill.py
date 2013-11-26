@@ -74,7 +74,6 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEquals(0, reebill.late_charges)
         self.assertEquals(1, len(reebill._utilbills))
         # TODO test utility bill document contents
-        self.assertEquals(None, reebill.issue_date)
         self.assertEquals(0, reebill.payment_received)
         self.assertEquals(None, reebill.due_date)
         self.assertEquals(0, reebill.total_adjustment)
