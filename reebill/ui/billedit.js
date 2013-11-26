@@ -488,14 +488,20 @@ function reeBillReady() {
                 text: 'Delete',
                 disabled: false,
                 handler: function() {
-                    //utilbillGrid.stopEditing();
                     var selections = utilbillGrid.getSelectionModel().getSelections();
-                    for (var i = 0; i < selections.length; i++) {
-                        utilbillGridStore.remove(selections[i]);
-                    }
-                  //  utilbillGridStore.reload({callback: function(records, options, success){
-                  //      utilbillGrid.refresh();
-                  //  }});
+                    Ext.Msg.confirm('Confirm deletion',
+                        'Are you sure you want to delete the selected Utility Bill(s)?',
+                        function(answer) {
+                            if (answer == 'yes') {
+                                //utilbillGrid.stopEditing();
+                                for (var i = 0; i < selections.length; i++) {
+                                    utilbillGridStore.remove(selections[i]);
+                                }
+                                //  utilbillGridStore.reload({callback: function(records, options, success){
+                                //      utilbillGrid.refresh();
+                                //  }});
+                            }
+                        });
                 }
             },
         ]
