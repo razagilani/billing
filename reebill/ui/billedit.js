@@ -468,6 +468,7 @@ function reeBillReady() {
                 xtype: 'button',
                 id: 'utilbillComputeButton',
                 text: 'Compute',
+                disabled: true,
                 handler: function() {
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/compute_utility_bill',
@@ -486,7 +487,7 @@ function reeBillReady() {
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
-                disabled: false,
+                disabled: true,
                 handler: function() {
                     var selections = utilbillGrid.getSelectionModel().getSelections();
                     Ext.Msg.confirm('Confirm deletion',
@@ -622,6 +623,9 @@ function reeBillReady() {
         else{
             utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(true);
         }
+        nothingselected=(sm.getSelections().length==0);
+        Ext.getCmp('utilbillComputeButton').setDisabled(nothingselected);
+        
     });
   
 
