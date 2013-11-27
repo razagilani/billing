@@ -547,7 +547,11 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
                     refreshUBVersionMenus();
-
+                    
+                    // Disable Ratestructure:Regenerate-from-Predecessor-button if there is none
+                    var nopredecessor=(record.store.data.keys[record.store.data.keys.length-1] == record.data.id)
+                    Ext.getCmp('regenerateCPRSButton').setDisabled(nopredecessor);
+                    
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
                     //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
