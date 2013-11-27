@@ -4780,6 +4780,7 @@ function reeBillReady() {
                     allowBlank: false,
                     format: Date.patterns['ISO8601Long'],
                }),
+               width: 150,
             },{
                 header: 'User',
                 sortable: true,
