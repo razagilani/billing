@@ -890,6 +890,15 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             self.process.compute_utility_bill(session, utilbill_id)
             return self.dumps({'success': True})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def has_utilbill_predecessor(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            predecessor=self.process.has_utilbill_predecessor(session, utilbill_id)
+            return self.dumps({'success': True, 'has_predecessor':predecessor})
 
     @cherrypy.expose
     @random_wait
