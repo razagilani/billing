@@ -549,10 +549,6 @@ function reeBillReady() {
                     selected_utilbill = record.data;
                     refreshUBVersionMenus();
                     
-                    // Disable Ratestructure:Regenerate-from-Predecessor-button if there is none
-                    var nopredecessor=(record.store.data.keys[record.store.data.keys.length-1] == record.data.id)
-                    Ext.getCmp('regenerateCPRSButton').setDisabled(nopredecessor);
-                    
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
                     //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
@@ -2829,6 +2825,19 @@ function reeBillReady() {
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
+        
+        // Disable Regenerate-from-Predecessor-Button if there is no predecessor
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/has_utilbill_predecessor',
+            params: { utilbill_id: selected_utilbill.id},
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    Ext.getCmp('regenerateCPRSButton').setDisabled(!jsonData.has_predecessor);
+                }
+            },
+        });
+        
     });
 
     CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {

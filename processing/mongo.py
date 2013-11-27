@@ -1815,7 +1815,6 @@ class ReebillDAO(object):
                     format_query(query)))
         return docs[0]
 
-
     def _load_utilbill_by_id(self, _id):
         docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
         if docs.count() == 0:
