@@ -2602,6 +2602,8 @@ function reeBillReady() {
     var aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: aChargesToolbar,
         colModel: aChargesColModel,
+        autoScroll: true,
+        layout: 'fit',  
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: aChargesStore,
         enableColumnMove: false,
@@ -4866,8 +4868,9 @@ function reeBillReady() {
         animCollapse: false,
         stripeRows: true,
         viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
+            getRowClass: function(record, index) {
+                return "text-selectable long-text";
+            },
         },
         // this is actually set in loadReeBillUIForAccount()
         title: 'Journal Entries for All Accounts',
