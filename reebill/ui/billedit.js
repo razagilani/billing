@@ -267,7 +267,7 @@ function reeBillReady() {
         proxy: utilbillStoreProxy,
         autoSave: true,
         writer: utilbillWriter,
-        baseParams: { start:0, limit: 120},
+        baseParams: { start:0, limit: 25},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
