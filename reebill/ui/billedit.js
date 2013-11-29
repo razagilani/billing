@@ -3928,6 +3928,8 @@ function reeBillReady() {
         root: 'rows',
         totalProperty: 'results',
         remoteSort: true,
+        remoteFilter: true,
+        pageSize: 30,
         paramNames: {start: 'start', limit: 'limit'},
         sortInfo: {
             field: defaultAccountSortField,
@@ -4022,6 +4024,38 @@ function reeBillReady() {
             },
         ]
     });
+    
+    var filterAccountsCombo = new Ext.form.ComboBox({
+        id:'filterAccountsCombo',
+        queryMode:'local',
+        mode:'local',
+        store:  new Ext.data.ArrayStore({
+            id: 0,
+            fields: ['abbr','name'],
+            data: [ ['', 'No filter'],
+                    ['reebillcustomers', 'All ReeBill Customers'],
+                    ['xbillcustomers', 'All XBill Customers'],
+                    ['norecentutilbills','Customers without recent utility bills'],
+                    ['norecentreebills','Customers without recent reebills']
+                  ]
+        }),
+        displayField:'Accounts',
+        autoSelect:true,
+        allowBlank: false,
+        editable: false,
+        value:'',
+        valueField: 'abbr',
+        displayField: 'name',
+        triggerAction: 'all',
+        typeAhead: false,
+        width: 300,
+    });
+    
+    filterAccountsCombo.on('select', function(combo, record, index){
+        // Set the filter as a baseParam, so filter is persistant through page switches
+        accountStore.baseParams.filtername=record.id;
+        accountStore.load({params:{filtername:record.id, start:0, limit:30}});
+    });
 
     // this grid tracks the state of the currently selected account
     var accountGrid = new Ext.grid.EditorGridPanel({
@@ -4060,6 +4094,7 @@ function reeBillReady() {
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No statuses to display",
+            items: ['-',filterAccountsCombo]
         }),
         clicksToEdit: 2,
     });

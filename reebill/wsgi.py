@@ -1178,9 +1178,24 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def retrieve_account_status(self, start, limit, **kwargs):
+    def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
+        #Various filter functions used below to filter the resulting rows
+        def filter_reebillcustomers(row):
+            return int(row['account'])<20000
+        def filter_xbillcustomers(row):
+            return int(row['account'])>=20000
+        def filter_norecentutilbills(row):
+            if(row['dayssince']):
+                return int(row['dayssince'])>25
+            else:
+                return True
+        def filter_norecentreebills(row, today):
+            if(row['lastissuedate']):
+                return (today-row['lastissuedate']).days > 25
+            else:
+                return True
         # this function is used below to format the "Utility Service Address"
         # grid column
         def format_service_address(utilbill_doc):
@@ -1250,6 +1265,18 @@ class BillToolBridge:
                     'lastevent': lastevent,
                     'provisionable': False,
                 })
+            
+            #Apply filters
+            filtername = kwargs.get('filtername', '')
+            if filtername=="reebillcustomers":
+                rows=filter(filter_reebillcustomers, rows)
+            elif filtername=="xbillcustomers":
+                rows=filter(filter_xbillcustomers, rows)
+            elif filtername=="norecentutilbills":
+                rows=filter(filter_norecentutilbills, rows)
+            elif filtername=="norecentreebills":
+                today = date.today()
+                rows = [ row for row in rows if filter_norecentreebills(row, today) ]
             rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
             ## also get customers from Nexus who don't exist in billing yet
