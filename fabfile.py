@@ -36,7 +36,19 @@ common.CommonFabTask.update_deployment_configs({
         "os_user":"reebill-dev", 
         "os_group":"reebill-dev",
         "config":"reebill-dev-template.cfg",
-        "dir":"lib/python2.6/site-packages",
+        "config_files": {
+            "reebill-dev-template.cfg",
+        },
+        "default_deployment_dir":"/var/local/reebill-dev/billing",
+        "deployment_dirs": {
+            # package name:destination path
+            # package names are specified in tasks wrapper decorators
+            "app": "/var/local/reebill-dev/billing",
+            "www": "/var/local/reebill-dev/billing/www",
+            "skyliner": "/var/local/reebill-dev/billing/skyliner",
+            "doc": "/home/reebill-dev/doc",
+            "mydoc": "/tmp",
+        },
     },
     "stage": {
         "app_name":"reebill-stage", 
@@ -79,10 +91,9 @@ common.CommonFabTask.set_deployment_config_key("dev")
 
 # various examples of using Tasks and overriding stuff in common
 
-
 # use a task class from common, but pass in arguments that we prefer.  Here, we change pkg_name
-@fabtask(task_class=common.Package, pkg_name='custom_name', tar_dirs=['.'], alias='custom_pkg_name')
-def package_project(task_instance):
+@fabtask(task_class=common.Package, pkg_name='mydoc', tar_dirs=['wiki'], alias='pkg_doc')
+def package_doc(task_instance):
     pass
 
 
