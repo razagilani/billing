@@ -787,6 +787,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[0].state)
             self.assertEqual(date(2012,1,1), bills[0].period_start)
             self.assertEqual(date(2012,2,1), bills[0].period_end)
+            self.assertFalse(bills[0].processed)
 
             # check that "metadata" of the document in Mongo match MySQL
             doc1 = self.reebill_dao.load_doc_for_utilbill(bills[0])
