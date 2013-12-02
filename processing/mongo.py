@@ -319,7 +319,6 @@ def refresh_charges(utilbill_doc, uprs, cprs):
         #'rate_units': 0,
         'total': 0,
     } for rsi in RateStructure.combine(uprs, cprs).rates]}
-    compute_all_charges(utilbill_doc, uprs, cprs)
 
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
@@ -330,7 +329,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     '''
     # catch any type errors in the rate structure documents up front to avoid
     # confusing error messages later
-    uprs.validate();  cprs.validate()
+    uprs.validate(); cprs.validate()
 
     # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
     # (where NAME can be a register or the RSI_BINDING of some other charge).
