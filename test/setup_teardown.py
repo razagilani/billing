@@ -38,6 +38,9 @@ class TestCaseWithSetup(unittest.TestCase):
         '''Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil.'''
+        # show long diffs for failed dict equality assertions
+        self.maxDiff = None
+
         # clear SQLAlchemy mappers so StateDB can be instantiated again
         #sqlalchemy.orm.clear_mappers()
 

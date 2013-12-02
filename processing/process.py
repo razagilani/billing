@@ -650,7 +650,7 @@ class Process(object):
         })
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
         mongo.compute_all_charges(document, uprs, cprs)
 

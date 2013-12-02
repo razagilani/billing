@@ -2185,6 +2185,31 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill.utility = 'BGE'
             utilbill.rate_class = 'General Service - Schedule C'
 
+            # add some RSIs to the UPRS and CPRS, and charges to match
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
+            uprs.rates = [
+                RateStructureItem(rsi_binding='A', description='UPRS only',
+                        quantity='2', rate='3', quantity_units='kWh'),
+                RateStructureItem(rsi_binding='B', description='overridden',
+                        quantity='4', rate='5', quantity_units='kWh'),
+            ]
+            cprs.rates = [
+                RateStructureItem(rsi_binding='B', description=(
+                        'CPRS overrides UPRS'), quantity='6',  rate='7',
+                        quantity_units='therms'),
+                RateStructureItem(rsi_binding='C', description=('this one '
+                        'CPRS only'), quantity='8', rate='9',
+                        quantity_units='BTU')
+            ]
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc['chargegroups'] = {'All Charges': [{'rsi_binding': rsi_binding,
+                    'quantity': 0, 'rate': 0, 'total': 0}
+                    for rsi_binding in ('ABC')]}
+            uprs.save()
+            cprs.save()
+            self.reebill_dao.save_utilbill(doc)
+
             # compute_utility_bill should update the document to match
             self.process.compute_utility_bill(session, utilbill.id)
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -2195,6 +2220,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals('BGE', doc['utility'])
             self.assertEquals('General Service - Schedule C',
                     doc['rate_class'])
+
+            # check charges
+            # NOTE if the commented-out lines are added below the test will
+            # fail, because the charges are missing those keys.
+            self.assertEqual({'All Charges': [
+                {
+                    'rsi_binding': 'A',
+                    'quantity': 2,
+                    #'quantity_units': 'kWh',
+                    'rate': 3,
+                    'total': 6,
+                    #'description': 'UPRS only',
+                }, {
+                    'rsi_binding': 'B',
+                    'quantity': 6,
+                    #'quantity_units': 'therms',
+                    'rate': 7,
+                    'total': 42,
+                    #'description': 'CPRS overrides UPRS',
+                }, {
+                    'rsi_binding': 'C',
+                    'quantity': 8,
+                    #'quantity_units': 'BTU',
+                    'rate': 9,
+                    'total': 72,
+                    #'description': 'CPRS only',
+                },
+            ]}, doc['chargegroups']);
 
 
     def test_compute_reebill(self):
