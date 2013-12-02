@@ -35,11 +35,9 @@ common.CommonFabTask.update_deployment_configs({
         "app_name":"reebill-dev", 
         "os_user":"reebill-dev", 
         "os_group":"reebill-dev",
-        "config":"reebill-dev-template.cfg",
-        "config_files": {
-            "reebill-dev-template.cfg",
-        },
         "default_deployment_dir":"/var/local/reebill-dev/billing",
+        # set up mappings between names and remote files so that a local file can be 
+        # associated and deployed to the value of the name below
         "deployment_dirs": {
             # package name:destination path
             # package names are specified in tasks wrapper decorators
@@ -48,6 +46,10 @@ common.CommonFabTask.update_deployment_configs({
             "skyliner": "/var/local/reebill-dev/billing/skyliner",
             "doc": "/home/reebill-dev/doc",
             "mydoc": "/tmp",
+        },
+        "config_files": {
+            "wsgi":"/var/local/reebill-dev/billing/reebill.cfg",
+            "other":"/var/local/reebill-dev/billing/other.cfg",
         },
     },
     "stage": {
@@ -88,13 +90,13 @@ common.CommonFabTask.update_deployment_configs({
 })
 common.CommonFabTask.set_deployment_config_key("dev")
 
+# TODO mandate a conf file nameing scheme so that they can be deployed all in a consistent manner (below probably works)
+@fabtask(task_class=common.InstallConfig, config_name='wsgi', config_file='conf/reebill-dev-template.cfg', alias='installconfig')
+def install_config(task_instance):
+    pass
+
 
 # various examples of using Tasks and overriding stuff in common
-
-# use a task class from common, but pass in arguments that we prefer.  Here, we change pkg_name
-@fabtask(task_class=common.Package, pkg_name='mydoc', tar_dirs=['wiki'], alias='pkg_doc')
-def package_doc(task_instance):
-    pass
 
 
 # subclass stuff from common
