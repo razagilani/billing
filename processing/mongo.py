@@ -328,6 +328,10 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     RSIs in the given rate structures. RSIs in 'uprs' that have the same
     'rsi_binding' as any RSI in 'cprs' are ignored.
     '''
+    # catch any type errors in the rate structure documents up front to avoid
+    # confusing error messages later
+    uprs.validate();  cprs.validate()
+
     # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
     # (where NAME can be a register or the RSI_BINDING of some other charge).
     # these are not valid python identifiers, so they can't be parsed as
