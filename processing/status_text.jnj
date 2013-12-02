@@ -1,0 +1,24 @@
+For the customers that we are billing, here are their last processed bills:
+
+{% for record in last_processed %}{{record.account}} {{record.name}} {{record.period_start}} {{record.period_end}}
+{% endfor %}
+
+For the customer bills we have obtained or received, here is what has to be processed:
+
+{% for record in unprocessed %}{{record.account}} {{record.name}} {{record.period_start}} {{record.period_end}}
+{% endfor %}
+
+Missing bills are:
+
+{% for record in missing %}{{record.account}} {{record.name}} {{record.period_start}} {{record.period_end}}
+{% endfor %}
+
+New Customers that haven't been billed:
+
+{% for record in unbilled %}{{record.account}} {{record.name}} {{record.period_start}} {{record.period_end}}
+{% endfor %}
+
+Days since their last Skyline bill:
+
+{% for record in dayssince %}{{record.account}} {{record.name}} {{record.dayssince}}
+{% endfor %}
