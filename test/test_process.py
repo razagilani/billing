@@ -333,7 +333,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # change rate class
             self.process.update_utilbill_metadata(session, utilbill.id,
-                    rate_structure='something else')
+                    rate_class='something else')
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual('something else', utilbill.rate_class)
             self.assertEqual('something else', doc['rate_class'])
