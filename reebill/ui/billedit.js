@@ -6032,6 +6032,9 @@ function reeBillReady() {
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
+        // If a new account is selected, no reebill sequence is selected.
+        // => Disable reebill charges tab
+        reebillChargesPanel.setDisabled(true);
         Ext.getCmp('service_for_charges').getStore().removeAll();
         Ext.getCmp('service_for_charges').clearValue();
         Ext.getCmp('service_for_charges').setDisabled(true);
