@@ -4,6 +4,7 @@
 var DEFAULT_RESOLUTION = 100;
 var DEFAULT_DIFFERENCE_THRESHOLD = 10;
 var ERROR_MESSAGE_BOX_WIDTH = 630;
+var DEFAULT_ACCOUNT_FILTER = "No filter";
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
@@ -4033,21 +4034,20 @@ function reeBillReady() {
         ]
     });
     
+    var filterAccountsStore = new Ext.data.ArrayStore({
+        id: 0,
+        fields: ['abbr','name'],
+        data: [ ['', 'No filter'],
+                ['reebillcustomers', 'All ReeBill Customers'],
+                ['xbillcustomers', 'All XBill Customers'],
+        ]
+    });
+    
     var filterAccountsCombo = new Ext.form.ComboBox({
         id:'filterAccountsCombo',
         queryMode:'local',
         mode:'local',
-        store:  new Ext.data.ArrayStore({
-            id: 0,
-            fields: ['abbr','name'],
-            data: [ ['', 'No filter'],
-                    ['reebillcustomers', 'All ReeBill Customers'],
-                    ['xbillcustomers', 'All XBill Customers'],
-                    ['norecentutilbills','Customers without recent utility bills'],
-                    ['norecentreebills','Customers without recent reebills']
-                  ]
-        }),
-        displayField:'Accounts',
+        store:  filterAccountsStore,
         autoSelect:true,
         allowBlank: false,
         editable: false,
@@ -4102,7 +4102,7 @@ function reeBillReady() {
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No statuses to display",
-            items: ['-',filterAccountsCombo]
+            items: ['-','Filter: ',filterAccountsCombo]
         }),
         clicksToEdit: 2,
     });
@@ -4697,7 +4697,79 @@ function reeBillReady() {
             }
         },
     });
+
+    var filterPreferenceCombo = new Ext.form.ComboBox({
+        id:'filterPreferenceCombo',
+        queryMode:'local',
+        mode:'local',
+        store:  filterAccountsStore,
+        autoSelect:true,
+        allowBlank: false,
+        editable: false,
+        value:'',
+        valueField: 'abbr',
+        displayField: 'name',
+        triggerAction: 'all',
+        typeAhead: false,
+        width: 300,
+    });
     
+    var setFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setFilterPreference',
+    });
+    setFilterPreferenceConn.autoAbort = true;
+    setFilterPreferenceConn.disableCaching = true;
+    var filterPreferenceFormPanel = new Ext.FormPanel({
+        labelWidth: 240, // label settings here cascade unless overridden
+        frame: true,
+        title: 'Account Filter Preferences',
+        bodyStyle: 'padding:5px 5px 0',
+        //width: 610,
+        defaults: {width: 435},
+            layout: 'fit', 
+            defaultType: 'textfield',
+                items: [
+                filterPreferenceCombo,
+                ],
+                buttons: [
+                new Ext.Button({
+                    text: 'Save',
+                    handler: function() {
+                        setFilterPreferenceConn.request({
+                            params: { 'filtername': filterPreferenceCombo.getValue()},
+                        });
+                    }
+                }),
+                ],
+    });
+    
+    // get initial value of this field from the server
+    var getFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getFilterPreference',
+    });
+    getFilterPreferenceConn.autoAbort = true;
+    getFilterPreferenceConn.disableCaching = true;
+    // TODO: 22360193 populating a form from Ajax creates a race condition.  
+    // What if the network doesn't return and user enters a value nefore the callback is fired?
+    var filterPreference = null;
+    getFilterPreferenceConn.request({
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    filtername = jsonData['filtername'];
+                    filterPreferenceCombo.setValue(filtername);
+                    filterAccountsCombo.setValue(filtername);
+                } else {
+                    // handle success:false here if needed
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+            }
+        },
+    });    
+
     //
     // Instantiate the Preference panel
     //
@@ -4710,7 +4782,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, thresholdFormPanel],
+        items: [preferencesFormPanel, thresholdFormPanel, filterPreferenceFormPanel],
     });
 
     ///////////////////////////////////////
