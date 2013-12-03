@@ -2153,6 +2153,14 @@ function reeBillReady() {
 
     measuredUsageUBVersionMenu = new UBVersionMenu([ubRegisterStore]);
     
+    measuredUsageUBVersionMenu.on('select', function(cb, record, index){
+        if(record.data.issue_date || record.data.sequence || record.data.version){
+            ubRegisterGrid.setEditable(false);
+        }else{
+            ubRegisterGrid.setEditable(true);
+        }
+    });
+
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
