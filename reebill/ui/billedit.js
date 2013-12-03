@@ -267,7 +267,7 @@ function reeBillReady() {
         proxy: utilbillStoreProxy,
         autoSave: true,
         writer: utilbillWriter,
-        baseParams: { start:0, limit: 120},
+        baseParams: { start:0, limit: 25},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
@@ -468,6 +468,7 @@ function reeBillReady() {
                 xtype: 'button',
                 id: 'utilbillComputeButton',
                 text: 'Compute',
+                disabled: true,
                 handler: function() {
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/compute_utility_bill',
@@ -486,16 +487,29 @@ function reeBillReady() {
                 id: 'utilbillRemoveButton',
                 iconCls: 'icon-delete',
                 text: 'Delete',
-                disabled: false,
+                disabled: true,
                 handler: function() {
-                    //utilbillGrid.stopEditing();
                     var selections = utilbillGrid.getSelectionModel().getSelections();
-                    for (var i = 0; i < selections.length; i++) {
-                        utilbillGridStore.remove(selections[i]);
-                    }
-                  //  utilbillGridStore.reload({callback: function(records, options, success){
-                  //      utilbillGrid.refresh();
-                  //  }});
+                    Ext.Msg.confirm('Confirm deletion',
+                        'Are you sure you want to delete the selected Utility Bill(s)?',
+                        function(answer) {
+                            if (answer == 'yes') {
+                                //utilbillGrid.stopEditing();
+                                for (var i = 0; i < selections.length; i++) {
+                                    utilbillGridStore.remove(selections[i]);
+                                }
+                                //  utilbillGridStore.reload({callback: function(records, options, success){
+                                //      utilbillGrid.refresh();
+                                //  }});
+                                
+                                // The Utility Bills Grid become deselected after deletion
+                                // Make sure tabs also become disabled
+                                ubMeasuredUsagesPanel.setDisabled(true);
+                                ubRegisterGrid.setEditable(false);
+                                rateStructurePanel.setDisabled(true);
+                                chargeItemsPanel.setDisabled(true);
+                            }
+                        });
                 }
             },
         ]
@@ -534,7 +548,7 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
                     refreshUBVersionMenus();
-
+                    
                     // a row was selected in the UI, update subordinate ReeBill Data
                     //if (record.data.sequence != null) {
                     //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
@@ -542,8 +556,7 @@ function reeBillReady() {
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
                     var formatted_end_date_string = record.data.period_end.format('Y-m-d');
-
-
+                    
                     // image rendering resolution
                     // TODO Ext.getCmp vs doc.getElement
                     var menu = document.getElementById('billresolutionmenu');
@@ -595,8 +608,20 @@ function reeBillReady() {
 
     utilbillGrid.getSelectionModel().on('selectionchange', function(sm){
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
-        var enable = sm.getSelections().every(function(r) {return r.data.editable});
-        utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(!enable);
+        
+        // Check if data is editable
+        var editable = sm.getSelections().every(function(r) {return r.data.editable});
+        // Check if there are Reebills associated with this Utility Bill
+        var has_reebills = sm.getSelections().every(function(r) {return (r.data.reebills.length > 0)});
+        if (editable && !has_reebills){
+            utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
+        }
+        else{
+            utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(true);
+        }
+        nothingselected=(sm.getSelections().length==0);
+        Ext.getCmp('utilbillComputeButton').setDisabled(nothingselected);
+        
     });
   
 
@@ -2128,6 +2153,14 @@ function reeBillReady() {
 
     measuredUsageUBVersionMenu = new UBVersionMenu([ubRegisterStore]);
     
+    measuredUsageUBVersionMenu.on('select', function(cb, record, index){
+        if(record.data.issue_date || record.data.sequence || record.data.version){
+            ubRegisterGrid.setEditable(false);
+        }else{
+            ubRegisterGrid.setEditable(true);
+        }
+    });
+
     //
     // Instantiate the Utility Bill Meters and Registers panel
     //
@@ -2581,6 +2614,8 @@ function reeBillReady() {
     var aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: aChargesToolbar,
         colModel: aChargesColModel,
+        autoScroll: true,
+        layout: 'fit',  
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: aChargesStore,
         enableColumnMove: false,
@@ -2798,6 +2833,19 @@ function reeBillReady() {
         if (ubRegisterGrid.getSelectionModel().hasSelection()) {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
+        
+        // Disable Regenerate-from-Predecessor-Button if there is no predecessor
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/has_utilbill_predecessor',
+            params: { utilbill_id: selected_utilbill.id},
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    Ext.getCmp('regenerateCPRSButton').setDisabled(!jsonData.has_predecessor);
+                }
+            },
+        });
+        
     });
 
     CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
@@ -3888,6 +3936,8 @@ function reeBillReady() {
         root: 'rows',
         totalProperty: 'results',
         remoteSort: true,
+        remoteFilter: true,
+        pageSize: 30,
         paramNames: {start: 'start', limit: 'limit'},
         sortInfo: {
             field: defaultAccountSortField,
@@ -3982,6 +4032,38 @@ function reeBillReady() {
             },
         ]
     });
+    
+    var filterAccountsCombo = new Ext.form.ComboBox({
+        id:'filterAccountsCombo',
+        queryMode:'local',
+        mode:'local',
+        store:  new Ext.data.ArrayStore({
+            id: 0,
+            fields: ['abbr','name'],
+            data: [ ['', 'No filter'],
+                    ['reebillcustomers', 'All ReeBill Customers'],
+                    ['xbillcustomers', 'All XBill Customers'],
+                    ['norecentutilbills','Customers without recent utility bills'],
+                    ['norecentreebills','Customers without recent reebills']
+                  ]
+        }),
+        displayField:'Accounts',
+        autoSelect:true,
+        allowBlank: false,
+        editable: false,
+        value:'',
+        valueField: 'abbr',
+        displayField: 'name',
+        triggerAction: 'all',
+        typeAhead: false,
+        width: 300,
+    });
+    
+    filterAccountsCombo.on('select', function(combo, record, index){
+        // Set the filter as a baseParam, so filter is persistant through page switches
+        accountStore.baseParams.filtername=record.id;
+        accountStore.load({params:{filtername:record.id, start:0, limit:30}});
+    });
 
     // this grid tracks the state of the currently selected account
     var accountGrid = new Ext.grid.EditorGridPanel({
@@ -4020,6 +4102,7 @@ function reeBillReady() {
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No statuses to display",
+            items: ['-',filterAccountsCombo]
         }),
         clicksToEdit: 2,
     });
@@ -4740,6 +4823,7 @@ function reeBillReady() {
                     allowBlank: false,
                     format: Date.patterns['ISO8601Long'],
                }),
+               width: 150,
             },{
                 header: 'User',
                 sortable: true,
@@ -4845,8 +4929,9 @@ function reeBillReady() {
         animCollapse: false,
         stripeRows: true,
         viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
+            getRowClass: function(record, index) {
+                return "text-selectable long-text";
+            },
         },
         // this is actually set in loadReeBillUIForAccount()
         title: 'Journal Entries for All Accounts',
@@ -5947,6 +6032,9 @@ function reeBillReady() {
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
+        // If a new account is selected, no reebill sequence is selected.
+        // => Disable reebill charges tab
+        reebillChargesPanel.setDisabled(true);
         Ext.getCmp('service_for_charges').getStore().removeAll();
         Ext.getCmp('service_for_charges').clearValue();
         Ext.getCmp('service_for_charges').setDisabled(true);

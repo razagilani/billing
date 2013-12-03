@@ -601,7 +601,6 @@ class Process(object):
         existing_uprs.rates = new_uprs.rates
         existing_uprs.save()
 
-
     def regenerate_cprs(self, session, utilbill_id):
         '''Resets the CPRS this utility bill to match that of its predecessor.
         '''
@@ -615,6 +614,14 @@ class Process(object):
         existing_cprs.rates = predecessor_cprs.rates
         existing_cprs.save()
 
+    def has_utilbill_predecessor(self, session, utilbill_id):
+        try:
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start)
+            return True
+        except NoSuchBillException:
+            return False
 
     def refresh_charges(self, session, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
