@@ -1186,16 +1186,6 @@ class BillToolBridge:
             return int(row['account'])<20000
         def filter_xbillcustomers(row):
             return int(row['account'])>=20000
-        def filter_norecentutilbills(row):
-            if(row['dayssince']):
-                return int(row['dayssince'])>25
-            else:
-                return True
-        def filter_norecentreebills(row, today):
-            if(row['lastissuedate']):
-                return (today-row['lastissuedate']).days > 25
-            else:
-                return True
         # this function is used below to format the "Utility Service Address"
         # grid column
         def format_service_address(utilbill_doc):
@@ -1267,16 +1257,13 @@ class BillToolBridge:
                 })
             
             #Apply filters
-            filtername = kwargs.get('filtername', '')
+            filtername = kwargs.get('filtername', None)
+            if filtername is None:
+                filtername = cherrypy.session['user'].preferences.get('filtername','')
             if filtername=="reebillcustomers":
                 rows=filter(filter_reebillcustomers, rows)
             elif filtername=="xbillcustomers":
                 rows=filter(filter_xbillcustomers, rows)
-            elif filtername=="norecentutilbills":
-                rows=filter(filter_norecentutilbills, rows)
-            elif filtername=="norecentreebills":
-                today = date.today()
-                rows = [ row for row in rows if filter_norecentreebills(row, today) ]
             rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
             ## also get customers from Nexus who don't exist in billing yet
@@ -2583,6 +2570,25 @@ class BillToolBridge:
         if not threshold or threshold <= 0:
             return self.dumps({'success':False, 'errors':"Threshold of %s is not valid." % str(threshold)})
         cherrypy.session['user'].preferences['difference_threshold'] = threshold
+        self.user_dao.save_user(cherrypy.session['user'])
+        return self.dumps({'success':True})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def getFilterPreference(self, **kwargs):
+        filtername = cherrypy.session['user'].preferences.get('filtername', '')
+        return self.dumps({'success':True, 'filtername': filtername})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def setFilterPreference(self, filtername, **kwargs):
+        if filtername is None:
+            return self.dumps({'success':False, 'errors':"Filter '%s' is not valid." % str(filtername)})
+        cherrypy.session['user'].preferences['filtername'] = filtername
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
