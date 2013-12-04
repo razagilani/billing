@@ -921,9 +921,38 @@ function reeBillReady() {
             Ext.Msg.alert('Error', "reebillstore error: type "+type+", action "+action+", response "+response);
         }
     });
+    
+    function formatNumber(value, record){
+        var decimal = value.toString().indexOf(".");
+        var sep = value.toString().indexOf("00000");
+        if(sep == -1){
+            sep = value.toString().indexOf("99999");
+        }
+        if(decimal != -1){
+            if(sep != -1){
+                // Value is periodic
+                return value.toFixed(sep-decimal-1);
+            }
+            else if((value.toString().length-decimal-1)>5){
+                // Decimals are nonperiodic but still outrageously long
+                // (usually RE&E)
+                // Set them to the length of the hypothetical value
+                // or actual value
+                var actual = formatNumber(record.data.actual_total,
+                                            record);
+                var hypo = formatNumber(record.data.hypothetical_total,
+                                        record);
+                var maxValue=Math.max(actual,hypo).toString();
+                var maxDecimal=maxValue.length-maxValue.indexOf(".")-1;
+                return value.toFixed(maxDecimal);
+            }
+        }
+        return value
+    }
 
     function reeBillGridRenderer(value, metaData, record, rowIndex, colIndex,
             store) {
+        // Apply color
         if (record.data.issued) {
             // issued bill
             metaData.css = 'reebill-grid-issued';
@@ -933,6 +962,10 @@ function reeBillReady() {
         } else {
             // unissued correction
             metaData.css = 'reebill-grid-unissued-correction';
+        }
+        // Round numbers up to digit before 00000 or 99999
+        if(typeof value == 'number'){
+            value=formatNumber(value, record);
         }
         return value;
     }
