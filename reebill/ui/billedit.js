@@ -5902,51 +5902,35 @@ function reeBillReady() {
                 id:'chargegroup',
                 header: 'Charge Group',
                 width: 160,
-                sortable: true,
                 dataIndex: 'chargegroup',
                 hidden: true,
             },{
                 header: 'UUID',
-                width: 75,
-                sortable: true,
                 dataIndex: 'uuid',
                 hidden: true,
             },{
                 header: 'RSI Binding',
-                sortable: true,
                 dataIndex: 'rsi_binding',
             },{
                 header: 'Description',
-                width: 75,
-                sortable: true,
                 dataIndex: 'description',
             },{
                 header: 'Actual Quantity',
-                width: 75,
-                sortable: true,
                 dataIndex: 'actual_quantity',
                 editable: false,
             },{
                 header: 'Hypo Quantity',
-                width: 75,
-                sortable: true,
                 dataIndex: 'quantity',
                 editable: false,
             },{
                 header: 'Units',
-                width: 75,
-                sortable: true,
                 dataIndex: 'quantity_units',
             },{
                 header: 'Actual Rate',
-                width: 75,
-                sortable: true,
                 dataIndex: 'actual_rate',
                 editable: false,
             },{
                 header: 'Hypo Rate',
-                width: 75,
-                sortable: true,
                 dataIndex: 'rate',
                 editable: false,
             //},{
@@ -5956,8 +5940,6 @@ function reeBillReady() {
                 //dataIndex: 'rate_units',
             },{
                 header: 'Actual Total', 
-                width: 75, 
-                sortable: true, 
                 summaryType: 'sum',
                 align: 'right',
                 renderer: function(v, params, record)
@@ -5967,8 +5949,6 @@ function reeBillReady() {
                 editable: false,
             },{
                 header: 'Hypo Total', 
-                width: 75, 
-                sortable: true, 
                 summaryType: 'sum',
                 align: 'right',
                 renderer: function(v, params, record)
@@ -5977,7 +5957,11 @@ function reeBillReady() {
                 },
                 editable: false,
             },
-        ]
+        ],
+        defaults: {
+            width: 35, 
+            sortable: true,  
+        }
     });
     
     var hChargesGrid = new Ext.grid.GridPanel({
@@ -5987,6 +5971,7 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit:true,
+            scrollOffset: 35,
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: hChargesSummary,
