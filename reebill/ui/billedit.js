@@ -4509,70 +4509,76 @@ function reeBillReady() {
                 id: 'newAccountSaveButton',
                 text: 'Save',
                 handler: function(b, e) {
-                    b.setDisabled(true);
-                    // TODO 22645885 show progress during post
-                    newAccountDataConn.request({
-                        params: { 
-                          'name': newNameField.getValue(),
-                          'account': newAccountField.getValue(),
-                          'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
-                          'discount_rate': newDiscountRate.getValue(),
-                          'late_charge_rate': newLateChargeRate.getValue(),
-                          'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
-                          'ba_street': Ext.getCmp('new_ba_street').getValue(),
-                          'ba_city': Ext.getCmp('new_ba_city').getValue(),
-                          'ba_state': Ext.getCmp('new_ba_state').getValue(),
-                          'ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
-                          'sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
-                          'sa_street': Ext.getCmp('new_sa_street').getValue(),
-                          'sa_city': Ext.getCmp('new_sa_city').getValue(),
-                          'sa_state': Ext.getCmp('new_sa_state').getValue(),
-                          'sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
-                        },
-                        success: function(result, request) {
-                            var jsonData = null;
-                            try {
-                                jsonData = Ext.util.JSON.decode(result.responseText);
-                                var nextAccount = jsonData['nextAccount'];
-                                if (jsonData.success == true) {
-                                    Ext.Msg.alert('Success', "New account created");
-                                    accountGrid.getSelectionModel().clearSelections();
-                                    if (moreAccountsCheckbox.getValue()) {
-                                        newNameField.reset();
-                                        // don't reset any other fields
-                                    } else {
-                                        // update next account number shown in field
-                                        accountsPanel.getLayout().setActiveItem('accountGrid');
-                                        accountStore.setDefaultSort('account','DESC');
-                                        pageSize = accountGrid.getBottomToolbar().pageSize;
-                                        accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                            accountGrid.getSelectionModel().selectFirstRow();
-                                        }});
-                                        //Reset account info
-                                        newAccountTemplateCombo.reset();
-                                        //Addresses all have 'xtype' == 'textfield'
-                                        var sets = newAccountFormPanel.findByType('fieldset')
-                                        for (var i = 0;i < sets.length;i++) {
-                                            var fields = sets[i].findByType('textfield');
-                                            for (var j = 0;j < fields.length;j++) {
-                                                fields[j].reset();
+                    var form=Ext.getCmp('newAccountFormPanel').getForm();
+                    if(form.isValid()){
+                        b.setDisabled(true);
+                        // TODO 22645885 show progress during post
+                        newAccountDataConn.request({
+                                params: { 
+                                'name': newNameField.getValue(),
+                                'account': newAccountField.getValue(),
+                                'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
+                                'discount_rate': newDiscountRate.getValue(),
+                                'late_charge_rate': newLateChargeRate.getValue(),
+                                'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
+                                'ba_street': Ext.getCmp('new_ba_street').getValue(),
+                                'ba_city': Ext.getCmp('new_ba_city').getValue(),
+                                'ba_state': Ext.getCmp('new_ba_state').getValue(),
+                                'ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
+                                'sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
+                                'sa_street': Ext.getCmp('new_sa_street').getValue(),
+                                'sa_city': Ext.getCmp('new_sa_city').getValue(),
+                                'sa_state': Ext.getCmp('new_sa_state').getValue(),
+                                'sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
+                                },
+                                success: function(result, request) {
+                                    var jsonData = null;
+                                    try {
+                                        jsonData = Ext.util.JSON.decode(result.responseText);
+                                        var nextAccount = jsonData['nextAccount'];
+                                        if (jsonData.success == true) {
+                                            Ext.Msg.alert('Success', "New account created");
+                                            accountGrid.getSelectionModel().clearSelections();
+                                            if (moreAccountsCheckbox.getValue()) {
+                                                newNameField.reset();
+                                                // don't reset any other fields
+                                            } else {
+                                                // update next account number shown in field
+                                                accountsPanel.getLayout().setActiveItem('accountGrid');
+                                                accountStore.setDefaultSort('account','DESC');
+                                                pageSize = accountGrid.getBottomToolbar().pageSize;
+                                                accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                                    accountGrid.getSelectionModel().selectFirstRow();
+                                                }});
+                                                //Reset account info
+                                                newAccountTemplateCombo.reset();
+                                                //Addresses all have 'xtype' == 'textfield'
+                                                var sets = newAccountFormPanel.findByType('fieldset')
+                                                for (var i = 0;i < sets.length;i++) {
+                                                    var fields = sets[i].findByType('textfield');
+                                                    for (var j = 0;j < fields.length;j++) {
+                                                        fields[j].reset();
+                                                    }
+                                                }
                                             }
+                                            newAccountField.setValue(nextAccount);
+                                            newAccountTemplateStore.reload();
                                         }
+                                    } catch (err) {
+                                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                                     }
-                                    newAccountField.setValue(nextAccount);
-                                    newAccountTemplateStore.reload();
+                                    
+                                    b.setDisabled(false);
+                                    // TODO 22645885 confirm save and clear form
+                                },
+                                failure: function () {
+                                    b.setDisabled(false);
                                 }
-                            } catch (err) {
-                                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                            }
-                            
-                            b.setDisabled(false);
-                            // TODO 22645885 confirm save and clear form
-                        },
-                        failure: function () {
-                            b.setDisabled(false);
-                        }
-                    });
+                            });
+                    }
+                    else{
+                        Ext.MessageBox.alert("Error", "There are errors in this Form");
+                    }
                 }
             }),
         ],
