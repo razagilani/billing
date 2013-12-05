@@ -935,9 +935,9 @@ function reeBillReady() {
             }
             else if((value.toString().length-decimal-1)>5){
                 // Decimals are nonperiodic but still outrageously long
-                // (usually RE&E)
-                // Set them to the length of the hypothetical value
-                // or actual value
+                // (usually this affects RE&E column)
+                // Fix them to the length of the decimals of the
+                //  hypothetical value or actual value
                 var actual = formatNumber(record.data.actual_total,
                                             record);
                 var hypo = formatNumber(record.data.hypothetical_total,
@@ -1116,10 +1116,10 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', text: 'Create Next', handler: rollOperation},
             {xtype: 'tbseparator'},
-            {xtype: 'button', text: 'Bind RE&E Offset', handler:
+            {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
             {xtype: 'tbseparator'},
-            {xtype: 'button', text: 'Compute', handler:
+            {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
                 computeBillOperation},
             {xtype: 'tbseparator'},
             deleteButton,
@@ -6273,6 +6273,9 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(record.data.issued == true);
+            Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
+            Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
+            
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
@@ -6290,6 +6293,8 @@ function reeBillReady() {
         if (sequence == null) {
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
+            Ext.getCmp('rbBindREEButton').setDisabled(true);
+            Ext.getCmp('rbComputeButton').setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
             reebillChargesPanel.setDisabled(true);
             Ext.getCmp('service_for_charges').getStore().removeAll();
