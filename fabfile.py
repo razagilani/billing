@@ -12,24 +12,40 @@ import os
 import pprint
 pp = pprint.PrettyPrinter(indent=2)
 
+#
+# Add ssh keys and role to host mappings for the Fabric runtime that are specific to this app
+# Otherwise, depend on defaults found in deploy/fab_common.py
+#
+fabapi.env.key_filename.append(
+    os.path.expanduser('~/Dropbox/IT/ec2keys/skyline-internal-stage.pem'),
+)
 
-# these 'roles' are specified on the fab command line using '-R [rolename]'
-common.CommonFabTask.update_fabenv_roles({
+#
+# Define 'roles' to be specified on the fab command line using '-R [rolename]'
+# Otherwise, depend on defaults found in deploy/fab_common.py
+#
+fabapi.env.roledefs.update({
+    'skyline-internal-stage': ['ec2-user@skyline-internal-stage'],
     'skyline': ['ec2-user@skyline-internal-prod.skylineinnovations.net'],
     'foo': ['bar', 'baz']
 })
 
+#
+# Add configuration information about the hosts and deployment configurations specific to this app
+#
 
-# keyed to hosts in roledefs, these are the host OS level
-# configurations that need to be treated
-#common.host_configs.update({
-#    "tyrell": {"httpd":"apache2"},
-#    "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
-#    "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
-#})
+# TODO Test this and pick the proxied host name or skyline-internal-prod - which one works?
+common.CommonFabTask.update_host_os_configs({
+    "tyrell": {"httpd":"apache2"},
+    "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
+    "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
+    # this is an ssh proxy expanded hostname from ~/.ssh/config
+    "10.0.1.218": {"httpd":"httpd"},
+})
 
-# configurations that are global to an instance of the app
-# TODO: project should be from proj_configs because it is the name of the project, not the path to the project on the remote host
+#
+# Configurations that are specific to this app
+#
 common.CommonFabTask.update_deployment_configs({
     "dev": {
         "app_name":"reebill-dev", 
@@ -52,6 +68,7 @@ common.CommonFabTask.update_deployment_configs({
             "other":"/var/local/reebill-dev/billing/other.cfg",
         },
     },
+    # TODO update these
     "stage": {
         "app_name":"reebill-stage", 
         "os_user":"reebill-stage", 
@@ -95,9 +112,7 @@ common.CommonFabTask.set_deployment_config_key("dev")
 def install_config(task_instance):
     pass
 
-
 # various examples of using Tasks and overriding stuff in common
-
 
 # subclass stuff from common
 
