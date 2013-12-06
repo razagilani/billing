@@ -499,7 +499,7 @@ class BillToolBridge:
                 'rows': items[start:start+limit],
                 'results': len(items) # total number of items
             })
-
+    
     @cherrypy.expose
     @random_wait
     @authenticate
@@ -881,6 +881,19 @@ class BillToolBridge:
             self.process.compute_reebill(session, mongo_reebill)
             self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
+    
+        
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def mark_utilbill_processed(self, utilbill, processed, **kwargs):
+        '''Takes a utilbill id and a processed-flag and applies they flag to the bill '''
+        utilbill, processed = int(utilbill), bool(int(processed))
+        with DBSession(self.state_db) as session:
+            self.process.update_utilbill_metadata(session, utilbill, processed=processed)
+            return self.dumps({'success': True})
+
 
     @cherrypy.expose
     @random_wait

@@ -128,7 +128,7 @@ class Process(object):
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
-            rate_class=None):
+            rate_class=None, processed=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -179,6 +179,9 @@ class Process(object):
         if rate_class is not None:
             utilbill.rate_class = rate_class
             doc['rate_class'] = rate_class
+            
+        if processed is not None:
+            utilbill.processed=processed
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
