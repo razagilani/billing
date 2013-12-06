@@ -152,3 +152,12 @@ pre.code{
     font-style: italic;
     color: red;
 }
+
+/* styles for utilbill grid rows */
+.utilbill-grid-processed {
+    color: black;
+}
+.utilbill-grid-unprocessed {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: blue;
+}

@@ -356,6 +356,19 @@ function reeBillReady() {
         //        +", action "+action+", response "+response);
         //}
     });
+    
+    function utilBillGridRenderer(value, metaData, record, rowIndex, colIndex,
+                                 store) {
+        // Apply color
+        if (record.data.processed) {
+            // processed bill
+            metaData.css = 'utilbill-grid-processed';
+        } else {
+            // unprocessed bill
+            metaData.css = 'utilbill-grid-unprocessed';
+        }
+        return value;
+    }
 
     var utilbillColModel = new Ext.grid.ColumnModel({
         columns:[
@@ -364,6 +377,7 @@ function reeBillReady() {
                 header: 'Name',
                 dataIndex: 'name',
                 hidden: true,
+                renderer: utilBillGridRenderer,
             },
             {
                 id: 'service',
@@ -372,37 +386,55 @@ function reeBillReady() {
                 editable: true,
                 editor: new Ext.form.TextField({}),
                 width: 50,
+                renderer: utilBillGridRenderer,
             },
-            new Ext.grid.DateColumn({
+            {
                 header: 'Start Date',
                 dataIndex: 'period_start',
-                dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 70
-            }),
-            new Ext.grid.DateColumn({
+                width: 85,
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value=utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    return Ext.util.Format.date(value, 'Y-m-d');
+                }
+            },
+            {
                 header: 'End Date',
                 dataIndex: 'period_end',
-                dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 70
-            }), new Ext.grid.NumberColumn({
+                width: 85,
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value=utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    return Ext.util.Format.date(value, 'Y-m-d');
+                },
+            },
+            {
                 id: 'total_charges',
                 header: 'Total',
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
                 width: 70,
-            }), new Ext.grid.NumberColumn({
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value=utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    return Ext.util.Format.number(value, '0,0.00');
+                },
+            },
+            {
                 id: 'computed_total',
                 header: 'Calculated',
                 dataIndex: 'computed_total',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
                 width: 90,
-            }),{
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value=utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    return Ext.util.Format.number(value, '0,0.00');
+                },
+            },
+            {
                 id: 'sequence',
                 header: 'Reebill Sequence/Version',
                 dataIndex: 'reebills',
@@ -413,6 +445,7 @@ function reeBillReady() {
                     'record.data.reebills' as sequences followed by "-" and a
                     comma-separated list of versions of that sequence, e.g.
                     "1-0,1,2 2-0". */
+                    var value = utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
                     var result = '';
                     var reebills = record.data.reebills;
                     for (var i = 0; i < reebills.length; i++) {
@@ -430,10 +463,23 @@ function reeBillReady() {
                 }
             },
             {
+                id: 'processed',
+                header: 'Processed',
+                dataIndex: 'processed',
+                width: 80,
+                tooltip: '<b>Processed:</b> This Bill will be include in Rate Structure calculations.<br /><b>Unprocessed:</b> This Bill will not be include in Rate Structure calculations.<br />',
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value = utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    var str = value ? 'Processed' : 'Unprocessed'
+                    return str;                    
+                },
+            },
+            {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
                 width: 60,
+                renderer: utilBillGridRenderer,
             },
             {
                 id: 'utility',
@@ -442,6 +488,7 @@ function reeBillReady() {
                 editable: true,
                 editor: new Ext.form.TextField({}),
                 width: 70,
+                renderer: utilBillGridRenderer,
             },
             {
                 id: 'rate_class',
@@ -449,6 +496,7 @@ function reeBillReady() {
                 dataIndex: 'rate_class',
                 editable: true,
                 editor: new Ext.form.TextField({}),
+                renderer: utilBillGridRenderer,
             },
         ],
     });
@@ -513,6 +561,27 @@ function reeBillReady() {
                         });
                 }
             },
+            {
+                xtype: 'button',
+                id: 'utilbillToggleProcessed',
+                text: 'Mark as Processed',
+                disabled: true,
+                handler: function() {
+                    var selection = utilbillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/mark_utilbill_processed',
+                        params: { utilbill: selection.data.id, processed: +(!selection.data.processed) },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                utilbillGridStore.reload();
+                                // Toggle Button text
+                                !selection.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
+                            }
+                        },
+                    });
+                }
+            },
         ]
         }),
         bbar: new Ext.PagingToolbar({
@@ -567,7 +636,10 @@ function reeBillReady() {
                     } else {
                         resolution = DEFAULT_RESOLUTION;
                     }
-
+                    // Toggle 'Mark as Processed' Button between processed an unprocessed
+                    // Then Enable the button
+                    record.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
+                    Ext.getCmp('utilbillToggleProcessed').setDisabled(false);
                     // ajax call to generate image, get the name of it, and display it in a
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
@@ -623,6 +695,7 @@ function reeBillReady() {
         }
         nothingselected=(sm.getSelections().length==0);
         Ext.getCmp('utilbillComputeButton').setDisabled(nothingselected);
+        Ext.getCmp('utilbillToggleProcessed').setDisabled(nothingselected);
         
     });
   
