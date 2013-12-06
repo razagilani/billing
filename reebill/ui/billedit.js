@@ -216,13 +216,16 @@ function reeBillReady() {
         title: 'Upload Utility Bill',
         url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
+        region: 'north',
+        maxSize: 250,
         bodyStyle: 'padding: 10px 10px 0 10px;',
         defaults: {
             anchor: '95%',
             //allowBlank: false,
             msgTarget: 'side'
         },
-
+        collapsible: true,
+        floatable: false,
         items: [
             upload_account,
             upload_service,
@@ -243,8 +246,6 @@ function reeBillReady() {
 
         buttons: [upload_reset_button, upload_submit_button],
     });
-
-
 
     var initialutilbill =  {
         rows: [
@@ -463,7 +464,6 @@ function reeBillReady() {
 
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
-        flex: 1,
         tbar: new Ext.Toolbar({
             items: [{
                 xtype: 'button',
@@ -529,7 +529,8 @@ function reeBillReady() {
         enableColumnMove: false,
         autoExpandColumn: 'rate_class',
         frame: true,
-        collapsible: true,
+        region: 'center',
+        collapsible: false,
         animCollapse: false,
         stripeRows: true,
         title: 'Utility Bills',
@@ -653,11 +654,7 @@ function reeBillReady() {
         id: 'utilityBillTab',
         title: 'Utility Bills',
         disabled: utilityBillPanelDisabled,
-        layout: 'vbox',
-        layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-        },
+        layout: 'border',
         // utility bill image on one side, upload form & list of bills on the
         // other side (using 2 panels)
         items: [
