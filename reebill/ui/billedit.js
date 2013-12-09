@@ -133,6 +133,8 @@ function reeBillReady() {
     // box to display bill images
     var utilBillImageBox = new Ext.Panel({
         collapsible: true,
+        floatable: false,
+        titleCollapse: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_UTILBILL_SELECTED_MESSAGE,
@@ -144,6 +146,8 @@ function reeBillReady() {
     var reeBillImageBox = new Ext.Panel({
         collapsible: true,
         collapsed: true,
+        floatable: false,
+        titleCollapse: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'reebillimagebox', children: [{tag: 'div', html: NO_REEBILL_SELECTED_MESSAGE,
