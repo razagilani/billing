@@ -339,6 +339,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('something else', doc['rate_class'])
             
             # change processed state
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEqual(False, utilbill.processed)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     processed=True)
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
