@@ -230,6 +230,7 @@ function reeBillReady() {
         },
         collapsible: true,
         floatable: false,
+        titleCollapse: true,
         items: [
             upload_account,
             upload_service,
