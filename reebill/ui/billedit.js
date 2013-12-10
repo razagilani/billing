@@ -1201,7 +1201,8 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             versionButton,
             {xtype: 'tbseparator'},
-            {text: 'Render PDF', handler: renderOperation},
+            {xtype: 'button', id: 'rbRenderPDFButton', text: 'Render PDF', handler:
+                renderOperation, disabled: true},
         ]
     });
 
@@ -6341,7 +6342,7 @@ function reeBillReady() {
             deleteButton.setDisabled(record.data.issued == true);
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
-            
+            Ext.getCmp('rbRenderPDFButton').setDisabled(false);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
@@ -6361,6 +6362,7 @@ function reeBillReady() {
             deleteButton.setDisabled(true);
             Ext.getCmp('rbBindREEButton').setDisabled(true);
             Ext.getCmp('rbComputeButton').setDisabled(true);
+            Ext.getCmp('rbRenderPDFButton').setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
             reebillChargesPanel.setDisabled(true);
             Ext.getCmp('service_for_charges').getStore().removeAll();
