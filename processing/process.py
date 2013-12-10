@@ -130,7 +130,7 @@ class Process(object):
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
-            rate_class=None):
+            rate_class=None, processed=None):
         '''Update various fields in MySQL and Mongo for the utility bill whose
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -181,6 +181,9 @@ class Process(object):
         if rate_class is not None:
             utilbill.rate_class = rate_class
             doc['rate_class'] = rate_class
+            
+        if processed is not None:
+            utilbill.processed=processed
 
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
@@ -603,7 +606,6 @@ class Process(object):
         existing_uprs.rates = new_uprs.rates
         existing_uprs.save()
 
-
     def regenerate_cprs(self, session, utilbill_id):
         '''Resets the CPRS this utility bill to match that of its predecessor.
         '''
@@ -617,6 +619,14 @@ class Process(object):
         existing_cprs.rates = predecessor_cprs.rates
         existing_cprs.save()
 
+    def has_utilbill_predecessor(self, session, utilbill_id):
+        try:
+            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start)
+            return True
+        except NoSuchBillException:
+            return False
 
     def refresh_charges(self, session, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created

@@ -337,7 +337,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertEqual('something else', utilbill.rate_class)
             self.assertEqual('something else', doc['rate_class'])
-
+            
+            # change processed state
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEqual(False, utilbill.processed)
+            self.process.update_utilbill_metadata(session, utilbill.id,
+                    processed=True)
+            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEqual(True, utilbill.processed)
+            
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
             self.process.create_first_reebill(session, utilbill)

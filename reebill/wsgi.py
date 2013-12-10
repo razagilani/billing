@@ -499,7 +499,7 @@ class BillToolBridge:
                 'rows': items[start:start+limit],
                 'results': len(items) # total number of items
             })
-
+    
     @cherrypy.expose
     @random_wait
     @authenticate
@@ -881,6 +881,19 @@ class BillToolBridge:
             self.process.compute_reebill(session, mongo_reebill)
             self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
+    
+        
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def mark_utilbill_processed(self, utilbill, processed, **kwargs):
+        '''Takes a utilbill id and a processed-flag and applies they flag to the bill '''
+        utilbill, processed = int(utilbill), bool(int(processed))
+        with DBSession(self.state_db) as session:
+            self.process.update_utilbill_metadata(session, utilbill, processed=processed)
+            return self.dumps({'success': True})
+
 
     @cherrypy.expose
     @random_wait
@@ -890,6 +903,15 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             self.process.compute_utility_bill(session, utilbill_id)
             return self.dumps({'success': True})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def has_utilbill_predecessor(self, utilbill_id, **args):
+        with DBSession(self.state_db) as session:
+            predecessor=self.process.has_utilbill_predecessor(session, utilbill_id)
+            return self.dumps({'success': True, 'has_predecessor':predecessor})
 
     @cherrypy.expose
     @random_wait
@@ -1169,9 +1191,14 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def retrieve_account_status(self, start, limit, **kwargs):
+    def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
+        #Various filter functions used below to filter the resulting rows
+        def filter_reebillcustomers(row):
+            return int(row['account'])<20000
+        def filter_xbillcustomers(row):
+            return int(row['account'])>=20000
         # this function is used below to format the "Utility Service Address"
         # grid column
         def format_service_address(utilbill_doc):
@@ -1241,6 +1268,15 @@ class BillToolBridge:
                     'lastevent': lastevent,
                     'provisionable': False,
                 })
+            
+            #Apply filters
+            filtername = kwargs.get('filtername', None)
+            if filtername is None:
+                filtername = cherrypy.session['user'].preferences.get('filtername','')
+            if filtername=="reebillcustomers":
+                rows=filter(filter_reebillcustomers, rows)
+            elif filtername=="xbillcustomers":
+                rows=filter(filter_xbillcustomers, rows)
             rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
             ## also get customers from Nexus who don't exist in billing yet
@@ -1515,8 +1551,36 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account, start_date=start_date,
+            exporter.export_account_charges(session, buf, account, start_date=start_date,
                             end_date=end_date)
+
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+            return buf.getvalue()
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate
+    @json_exception
+    def excel_energy_export(self, account=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges, total
+        energy and rate structure for all utility bills for the given account,
+        or every account (1 per sheet) if 'account' is not given,
+        '''
+        with DBSession(self.state_db) as session:
+            if account is not None:
+                spreadsheet_name = account + '.xls'
+            else:
+                spreadsheet_name = 'xbill_accounts.xls'
+
+            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_energy_usage(session, buf, account)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
@@ -2519,6 +2583,25 @@ class BillToolBridge:
         if not threshold or threshold <= 0:
             return self.dumps({'success':False, 'errors':"Threshold of %s is not valid." % str(threshold)})
         cherrypy.session['user'].preferences['difference_threshold'] = threshold
+        self.user_dao.save_user(cherrypy.session['user'])
+        return self.dumps({'success':True})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def getFilterPreference(self, **kwargs):
+        filtername = cherrypy.session['user'].preferences.get('filtername', '')
+        return self.dumps({'success':True, 'filtername': filtername})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def setFilterPreference(self, filtername, **kwargs):
+        if filtername is None:
+            return self.dumps({'success':False, 'errors':"Filter '%s' is not valid." % str(filtername)})
+        cherrypy.session['user'].preferences['filtername'] = filtername
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
