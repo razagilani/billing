@@ -35,7 +35,9 @@ from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map, subdict
-from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException, NotUniqueException
+from billing.processing.exceptions import IssuedBillError, NotIssuable, \
+    NotAttachable, BillStateError, NoSuchBillException, NotUniqueException, \
+    RSIError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -638,6 +640,14 @@ class Process(object):
         cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
 
         mongo.refresh_charges(document, uprs, cprs)
+
+        # recompute after regenerating the charges, but if recomputation
+        # fails, make sure the new set of charges gets saved anyway.
+        try:
+            mongo.compute_all_charges(document, uprs, cprs)
+        except RSIError as e:
+            self.reebill_dao.save_utilbill(document)
+            raise
         self.reebill_dao.save_utilbill(document)
 
     def compute_utility_bill(self, session, utilbill_id):

@@ -52,16 +52,7 @@ class FormulaSyntaxError(FormulaError):
     '''
     pass
 
-class RecursionError(RSIError):
-    pass
-
-class NoPropertyError(RSIError):
-    pass
-
 class NoSuchRSIError(RSIError):
-    pass
-
-class BadExpressionError(RSIError):
     pass
 
 class MongoError(Exception):
