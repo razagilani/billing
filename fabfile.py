@@ -39,8 +39,6 @@ common.CommonFabTask.update_host_os_configs({
     "tyrell": {"httpd":"apache2"},
     "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
     "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
-    # this is an ssh proxy expanded hostname from ~/.ssh/config
-    "10.0.1.218": {"httpd":"httpd"},
 })
 
 #
@@ -105,7 +103,7 @@ common.CommonFabTask.update_deployment_configs({
         "dir":"",
     }
 })
-common.CommonFabTask.set_deployment_config_key("dev")
+common.CommonFabTask.set_default_deployment_config_key("dev")
 
 # TODO mandate a conf file nameing scheme so that they can be deployed all in a consistent manner (below probably works)
 @fabtask(task_class=common.InstallConfig, config_name='wsgi', config_file='conf/reebill-dev-template.cfg', alias='installconfig')
