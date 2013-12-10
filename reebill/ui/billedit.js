@@ -472,10 +472,10 @@ function reeBillReady() {
                 header: 'Processed',
                 dataIndex: 'processed',
                 width: 80,
-                tooltip: '<b>Processed:</b> This Bill will be include in Rate Structure calculations.<br /><b>Unprocessed:</b> This Bill will not be include in Rate Structure calculations.<br />',
+                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
                 renderer: function(value, metaData, record, rowIndex, colIndex, store){
                     var value = utilBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
-                    var str = value ? 'Processed' : 'Unprocessed'
+                    var str = value ? 'Yes' : 'No'
                     return str;                    
                 },
             },
