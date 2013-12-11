@@ -115,7 +115,7 @@ def unflatten_chargegroups_list(flat_charges):
 # TODO make this a method of a utility bill document class when one exists
 def get_all_actual_registers_json(utilbill_doc):
     '''Given a utility bill document, returns a list of dictionaries describing
-    non-shadow registers of all meters. (The "actual" in the name has nothing
+    registers of all meters. (The "actual" in the name has nothing
     to do with "actual charges".)'''
     result = []
     for meter in utilbill_doc['meters']:
@@ -156,21 +156,10 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
         "description" : "Insert description",
         "quantity" : 0,
         "quantity_units" : "therms",
-        "shadow" : False,
         "identifier" : identifier,
         "type" : "total",
         "register_binding": "Insert register binding here"
     }
-    new_shadow_register = {
-        "description" : "Insert description",
-        "quantity" : 0,
-        "quantity_units" : "therms",
-        "shadow" : True,
-        "identifier" : identifier,
-        "type" : "total",
-        "register_binding": "Insert register binding here"
-    }
-
     for reg in meter['registers']:
         if reg['identifier'] == identifier:
             raise ValueError('Register %s for meter %s already exists.' %
@@ -499,12 +488,21 @@ class MongoReebill(object):
             # corresponding utility bill document.
             'id': utilbill_doc['_id'],
 
-            # hypothetical versions of all the registers in all the meters of
-            # the utility bill--though the only thing that should ever be
-            # different from the real versions is the value of the "quantity"
-            # key in each register
-            'shadow_registers': list(chain.from_iterable(m['registers'] for m in
-                    utilbill_doc['meters'])),
+            # subdocuments corresponding to the the registers in the meters
+            # of the utility bill: for now, all registers get included,
+            # but in the future this could change.
+            'shadow_registers': [{
+                # 'register_binding' matches up this subdocument with a
+                # utility bill register
+                'register_binding': r['register_binding'],
+                # hypothetical quantity of the corresponding utility bill
+                # register
+                'quantity': 0,
+                # OLAP measure name that will be used for determining the
+                # hypothetical quantity above
+                'measure': 'Energy Sold'
+            } for r in chain.from_iterable(m['registers']
+                    for m in utilbill_doc['meters'])],
 
             # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
@@ -655,10 +653,10 @@ class MongoReebill(object):
             for service in self.services:
                 for meter in self.meters_for_service(service):
                     self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-                for actual_register in self.actual_registers(service):
-                    self.set_actual_register_quantity(actual_register['identifier'], 0)
-                for shadow_register in self.shadow_registers(service):
-                    self.set_shadow_register_quantity(shadow_register['identifier'], 0)
+                    for shadow_register in \
+                            self._get_handle_for_service(self, service)\
+                                ['shadow_registers']:
+                        shadow_register['quantity'] = 0
 
             # if these keys exist in the document, remove them
             for bad_key in 'statistics', 'actual_total', 'hypothetical_total':
@@ -1343,6 +1341,7 @@ class MongoReebill(object):
         assert len(self._utilbills) == 1
         return meter_read_period(self._utilbills[0])
 
+    # TODO make this go away; don't use reebill object to get utility bill data
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
         in the first utility bill found whose service is 'service_name'. (There
@@ -1368,6 +1367,7 @@ class MongoReebill(object):
             service in self.services])
 
     # TODO: consider calling this meter readings
+    # TODO make this go away; don't use reebill object to get utility bill data
     def meters_for_service(self, service_name):
         '''Returns a list of copies of meter dictionaries for the utilbill
         whose service is 'service_name'. There's not supposed to be more than
@@ -1377,7 +1377,8 @@ class MongoReebill(object):
                 self._get_utilbill_for_service(service_name)['meters'])
 
         # gather shadow register dictionaries
-        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
+        utilbill_handle = self._get_handle_for_service(service_name)
+        shadow_registers = copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
         # put shadow: False in all the non-shadow registers, and merge the
         # shadow registers in with shadow: True to replicate the old reebill
@@ -1394,67 +1395,67 @@ class MongoReebill(object):
                         break
         return meters
 
-    def _update_shadow_registers(self):
-        '''Refreshes list of "shadow_register" dictionaries in this reebill
-        document to match the utility bill documents. This should be called
-        whenever _utilbills changes or a register is modified.'''
-        # NOTE the fields typically found in a "shadow register" dictionary
-        # are: "identifier", "quantity", "quantity_units", 'description", and
-        # "register_binding" (a subset of the fields typically found in a
-        # register in a utility bill document). the only really necessary
-        # fields among these are are "identifier" and "quanity", because their
-        # only purpose is represent the quantity a register would have had in a
-        # hypothetical situation (and quantity should not be updated because it
-        # is the only field in which a shadow register should differ from its
-        # corresponding actual register.) however, for consistency, all these
-        # fields will continue to be updated--except "quantity", which should
-        # not be updated to match)
-        for u in self._utilbills:
-            handle = self._get_handle_for_service(u['service'])
-            for m in u['meters']:
-                for r in m['registers']:
-                    try:
-                        # shadow register dictionary already exists; update its
-                        # fields other than "identifier" and "quantity" (though
-                        # this is superfluous)
-                        shadow_register = next(s for s in
-                                handle['shadow_registers'] if s['identifier']
-                                == r['identifier'])
-                        shadow_register.update({
-                            'quantity_units': r['quantity_units'],
-                            'description': r['description'],
-                            'register_binding': r['register_binding'],
-                            'type': r['type'],
-                        })
-                    except StopIteration:
-                        # shadow register dictionary does not exist; create it
-                        handle['shadow_registers'].append({
-                            'identifier': r['identifier'],
-                            'quantity': 0,
-                            'quantity_units': r['quantity_units'],
-                            'description': r['description'],
-                            'register_binding': r['register_binding'],
-                            'type': r['type'],
-                        })
-
-        # cull any unnecessary shadow registers
-        for handle in self.reebill_dict['utilbills']:
-            shadow_registers = handle['shadow_registers']
-            for shadow_register in shadow_registers:
-
-                # NOTE this loop is an example of prioritizing clarity over
-                # efficiency: since there is no "goto", a lot of if statements
-                # are required to break out of these loops after a match is
-                # found, but who cares about a few extra iterations?
-                has_a_match = False
-                for u in self._utilbills:
-                    for m in u['meters']:
-                        if any(r['identifier'] == shadow_register['identifier']
-                                for r in m['registers']):
-                            has_a_match = True
-
-                if not has_a_match:
-                    shadow_registers.remove(shadow_register)
+    #def _update_shadow_registers(self):
+    #    '''Refreshes list of "shadow_register" dictionaries in this reebill
+    #    document to match the utility bill documents. This should be called
+    #    whenever _utilbills changes or a register is modified.'''
+    #    # NOTE the fields typically found in a "shadow register" dictionary
+    #    # are: "identifier", "quantity", "quantity_units", 'description", and
+    #    # "register_binding" (a subset of the fields typically found in a
+    #    # register in a utility bill document). the only really necessary
+    #    # fields among these are are "identifier" and "quanity", because their
+    #    # only purpose is represent the quantity a register would have had in a
+    #    # hypothetical situation (and quantity should not be updated because it
+    #    # is the only field in which a shadow register should differ from its
+    #    # corresponding actual register.) however, for consistency, all these
+    #    # fields will continue to be updated--except "quantity", which should
+    #    # not be updated to match)
+    #    for u in self._utilbills:
+    #        handle = self._get_handle_for_service(u['service'])
+    #        for m in u['meters']:
+    #            for r in m['registers']:
+    #                try:
+    #                    # shadow register dictionary already exists; update its
+    #                    # fields other than "identifier" and "quantity" (though
+    #                    # this is superfluous)
+    #                    shadow_register = next(s for s in
+    #                            handle['shadow_registers'] if s['identifier']
+    #                            == r['identifier'])
+    #                    shadow_register.update({
+    #                        'quantity_units': r['quantity_units'],
+    #                        'description': r['description'],
+    #                        'register_binding': r['register_binding'],
+    #                        'type': r['type'],
+    #                    })
+    #                except StopIteration:
+    #                    # shadow register dictionary does not exist; create it
+    #                    handle['shadow_registers'].append({
+    #                        'identifier': r['identifier'],
+    #                        'quantity': 0,
+    #                        'quantity_units': r['quantity_units'],
+    #                        'description': r['description'],
+    #                        'register_binding': r['register_binding'],
+    #                        'type': r['type'],
+    #                    })
+    #
+    #    # cull any unnecessary shadow registers
+    #    for handle in self.reebill_dict['utilbills']:
+    #        shadow_registers = handle['shadow_registers']
+    #        for shadow_register in shadow_registers:
+    #
+    #            # NOTE this loop is an example of prioritizing clarity over
+    #            # efficiency: since there is no "goto", a lot of if statements
+    #            # are required to break out of these loops after a match is
+    #            # found, but who cares about a few extra iterations?
+    #            has_a_match = False
+    #            for u in self._utilbills:
+    #                for m in u['meters']:
+    #                    if any(r['identifier'] == shadow_register['identifier']
+    #                            for r in m['registers']):
+    #                        has_a_match = True
+    #
+    #            if not has_a_match:
+    #                shadow_registers.remove(shadow_register)
 
     def set_meter_dates_from_utilbills(self):
         '''Set the meter read dates to the start and end dates of the
@@ -1542,6 +1543,7 @@ class MongoReebill(object):
             raise Exception("More than one actual register named %s"
                     % identifier)
 
+    # TODO make this go away; don't use reebill object to get utility bill data
     def actual_registers(self, service):
         '''Returns a list of all nonempty non-shadow register dictionaries of
         all meters for the given service. (The "actual" in the name has nothing
@@ -1554,55 +1556,67 @@ class MongoReebill(object):
                 result.extend(meter['registers'])
         return result
 
-    def set_actual_register_quantity(self, identifier, quantity):
-        '''Sets the value 'quantity' in the first register subdictionary whose
-        identifier is 'identifier' to 'quantity'. Raises an exception if no
-        register with that identified is found.'''
-        for u in self._utilbills:
-            for m in u['meters']:
-                for r in m['registers']:
-                    if r['identifier'] == identifier:
-                        r['quantity'] = quantity
-                        return
+    #def set_actual_register_quantity(self, identifier, quantity):
+    #    '''Sets the value 'quantity' in the first register subdictionary whose
+    #    identifier is 'identifier' to 'quantity'. Raises an exception if no
+    #    register with that identified is found.'''
+    #    for u in self._utilbills:
+    #        for m in u['meters']:
+    #            for r in m['registers']:
+    #                if r['identifier'] == identifier:
+    #                    r['quantity'] = quantity
+    #                    return
 
-    def all_shadow_registers(self):
-        return list(chain.from_iterable([self.shadow_registers(s) for s in
-                self.services]))
+    #def all_shadow_registers(self):
+    #    return list(chain.from_iterable([self.shadow_registers(s) for s in
+    #            self.services]))
 
-    def shadow_registers(self, service):
-        '''Returns list of copies of shadow register dictionaries for the
-        utility bill with the given service.'''
-        utilbill_handle = self._get_handle_for_service(service)
-        #print repr(utilbill_handle.get('shadow_registers'))
-        return copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
-    def set_shadow_register_quantity(self, identifier, quantity):
-        '''Sets the value for the key "quantity" in the first shadow register
-        found whose identifier is 'identifier' to 'quantity' (assumed to be in
-        BTU). Raises an exception if no register with that identifier is
-        found.'''
-        # find the register and set its quanitity
-        for utilbill_handle in self.reebill_dict['utilbills']:
-            for register in utilbill_handle['shadow_registers']:
-                if register['identifier'] == identifier:
-                    # convert units
-                    if register['quantity_units'].lower() == 'kwh':
-                        # TODO physical constants must be global
-                        quantity /= 3412.14
-                    elif register['quantity_units'].lower() == 'therms':
-                        # TODO physical constants must be global
-                        quantity /= 100000.0
-                    elif register['quantity_units'].lower() == 'ccf':
-                        # TODO 28247371: this is an unfair conversion
-                        # TODO physical constants must be global
-                        quantity /= 100000.0
-                    else:
-                        raise ValueError('unknown energy unit %s' %
-                                register['quantity_units'])
-                    # set the quantity
-                    register['quantity'] = quantity
-                    return
-        raise ValueError('No register found with identifier "%s"' % quantity)
+    #def set_shadow_register_quantity(self, identifier, quantity):
+    #    '''Sets the value for the key "quantity" in the first shadow register
+    #    found whose identifier is 'identifier' to 'quantity' (assumed to be in
+    #    BTU). Raises an exception if no register with that identifier is
+    #    found.'''
+    #    # find the register and set its quanitity
+    #    for utilbill_handle in self.reebill_dict['utilbills']:
+    #        for register in utilbill_handle['shadow_registers']:
+    #            if register['identifier'] == identifier:
+    #                # convert units
+    #                if register['quantity_units'].lower() == 'kwh':
+    #                    # TODO physical constants must be global
+    #                    quantity /= 3412.14
+    #                elif register['quantity_units'].lower() == 'therms':
+    #                    # TODO physical constants must be global
+    #                    quantity /= 100000.0
+    #                elif register['quantity_units'].lower() == 'ccf':
+    #                    # TODO 28247371: this is an unfair conversion
+    #                    # TODO physical constants must be global
+    #                    quantity /= 100000.0
+    #                else:
+    #                    raise ValueError('unknown energy unit %s' %
+    #                            register['quantity_units'])
+    #                # set the quantity
+    #                register['quantity'] = quantity
+    #                return
+    #    raise ValueError('No register found with identifier "%s"' % quantity)
+
+    def set_hypothetical_register_quantity(self, register_binding,
+                    new_quantity):
+        '''Sets the "quantity" field of the given register subdocument to the
+        given value. Units are not specified because they are assumed to be
+        the same as the corresponding utility bill register.
+        '''
+        assert isinstance(new_quantity, float)
+
+        # NOTE this may choose the wrong utility bill register if there are
+        # multiple utility bills
+        assert len(self.reebill_dict['utilbills']) == 1
+
+        all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
+                in self.reebill_dict['utilbills'])
+        register_subdoc = next(r for r in all_hypo_registers
+                if r['register_binding'] == register_binding)
+        register_subdoc['quantity'] = new_quantity
 
     def utility_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)['utility']
@@ -1618,45 +1632,85 @@ class MongoReebill(object):
         hypothetical utility bill.'''
         return self.reebill_dict['ree_value']
 
-    def total_renewable_energy(self, ccf_conversion_factor=None):
-        '''Returns all renewable energy distributed among shadow registers of
-        this reebill, in therms.'''
-        # TODO switch to BTU
-        if type(ccf_conversion_factor) not in (type(None), float):
-            raise ValueError("ccf conversion factor must be a float")
-        # TODO: CCF is not an energy unit, and registers actually hold CCF
-        # instead of therms. we need to start keeping track of CCF-to-therms
-        # conversion factors.
-        # https://www.pivotaltracker.com/story/show/22171391
-        total_therms = 0
-        for register in self.all_shadow_registers():
-            quantity = register['quantity']
-            unit = register['quantity_units'].lower()
-            if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / 100000.0
-            elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity / .0341214163
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    print ("Register in reebill %s-%s-%s contains gas measured "
-                        "in ccf: energy value is wrong; time to implement "
-                        "https://www.pivotaltracker.com/story/show/28825375")\
-                        % (self.account, self.sequence, self.version)
-                    # assume conversion factor is 1
-                    total_therms += quantity
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % \
-                        register['quantity_units'])
-        return total_therms
+    #def total_renewable_energy(self, ccf_conversion_factor=None):
+    #    '''Returns all renewable energy distributed among shadow registers of
+    #    this reebill, in therms.'''
+    #    # TODO switch to BTU
+    #    if type(ccf_conversion_factor) not in (type(None), float):
+    #        raise ValueError("ccf conversion factor must be a float")
+    #    # TODO: CCF is not an energy unit, and registers actually hold CCF
+    #    # instead of therms. we need to start keeping track of CCF-to-therms
+    #    # conversion factors.
+    #    # https://www.pivotaltracker.com/story/show/22171391
+    #    total_therms = 0
+    #    for register in self.reebill_dict['shadow_registers']:
+    #        quantity = register['quantity']
+    #        unit = register['quantity_units'].lower()
+    #        if unit == 'therms':
+    #            total_therms += quantity
+    #        elif unit == 'btu':
+    #            # TODO physical constants must be global
+    #            total_therms += quantity / 100000.0
+    #        elif unit == 'kwh':
+    #            # TODO physical constants must be global
+    #            total_therms += quantity / .0341214163
+    #        elif unit == 'ccf':
+    #            if ccf_conversion_factor is not None:
+    #                total_therms += quantity * ccf_conversion_factor
+    #            else:
+    #                # TODO: 28825375 - need the conversion factor for this
+    #                print ("Register in reebill %s-%s-%s contains gas measured "
+    #                    "in ccf: energy value is wrong; time to implement "
+    #                    "https://www.pivotaltracker.com/story/show/28825375")\
+    #                    % (self.account, self.sequence, self.version)
+    #                # assume conversion factor is 1
+    #                total_therms += quantity
+    #        else:
+    #            raise ValueError('Unknown energy unit: "%s"' % \
+    #                    register['quantity_units'])
+    #    return total_therms
 
-    #
+    def total_renewable_energy(self, ccf_conversion_factor=None):
+        assert ccf_conversion_factor is None or isinstance(
+                ccf_conversion_factor, float)
+        total_therms = 0
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            for register_subdoc in utilbill_handle['shadow_registers']:
+                quantity = register_subdoc['quantity']
+
+                # look up corresponding utility bill register to get unit
+                utilbill = self._get_utilbill_for_handle(utilbill_handle)
+                utilbill_register = next(chain.from_iterable(
+                        chain.from_iterable(r for r in meter['registers']
+                        if r['register_binding'] == \
+                        register_subdoc[ 'register_binding'])
+                        for m in utilbill['meters']))
+                unit = utilbill_register['quantity_units'].lower()
+
+                # convert quantity to therms according to unit, and add it to
+                # the total
+                if unit == 'therms':
+                    total_therms += quantity
+                elif unit == 'btu':
+                    # TODO physical constants must be global
+                    total_therms += quantity / 100000.0
+                elif unit == 'kwh':
+                    # TODO physical constants must be global
+                    total_therms += quantity / .0341214163
+                elif unit == 'ccf':
+                    if ccf_conversion_factor is not None:
+                        total_therms += quantity * ccf_conversion_factor
+                    else:
+                        # TODO: 28825375 - need the conversion factor for this
+                        print ("Register in reebill %s-%s-%s contains gas measured "
+                               "in ccf: energy value is wrong; time to implement "
+                               "https://www.pivotaltracker.com/story/show/28825375") \
+                              % (self.account, self.sequence, self.version)
+                        # assume conversion factor is 1
+                        total_therms += quantity
+                else:
+                    raise ValueError('Unknown energy unit: "%s"' % unit)
+        #
     # Helper functions
     #
 

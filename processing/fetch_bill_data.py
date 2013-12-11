@@ -77,9 +77,10 @@ def get_billable_energy_timeseries(splinter, install, start, end,
 
 # TODO 35345191 rename this function
 def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=False):
-    '''Update quantities of shadow registers in reebill with Skyline-generated
+    '''Update hypothetical register quantities in reebill  with Skyline-generated
     energy. The OLAP database is the default source of energy-sold values; use
-    use_olap=False to get them directly from OLTP.'''
+    use_olap=False to get them directly from OLTP.
+    '''
     install_obj = splinter.get_install_obj_for(olap_id)
     start, end = reebill.renewable_energy_period()
 
@@ -112,9 +113,10 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=False):
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
         timestamp_column=0, energy_column=1, energy_unit='btu',
         timestamp_format=dateutils.ISO_8601_DATETIME):
-    '''Update quantities of shadow registers in reebill with interval-meter
-    energy values from csv_file. If meter_identifier is given, energy will only
-    go in shadow registers of meters with that identifier'''
+    '''Update hypothetical quantities of registers in reebill with
+    interval-meter energy values from csv_file. If meter_identifier is given,
+    energy will only go in shadow registers of meters with that identifier.
+    '''
     energy_function = get_interval_meter_data_source(csv_file,
             timestamp_column=timestamp_column, energy_column=energy_column,
             timestamp_format=timestamp_format, energy_unit=energy_unit)
@@ -294,15 +296,20 @@ def aggregate_tou(day_type, hour_range, energy_function, start, end, verbose=Fal
 
 def usage_data_to_virtual_register(reebill, energy_function,
         meter_identifier=None, verbose=False):
-    '''Gets energy quantities from 'energy_function' and puts them in the total
-    fields of the appropriate shadow registers in the MongoReebill object
-    reebill. 'energy_function' should be a function mapping a date and an hour
+    '''Gets energy quantities from 'energy_function' and puts them in the
+    "quantity" fields of the register subdocuments in the 'MongoReebill' object
+    'reebill'.
+
+    'energy_function' should be a function mapping a date and an hour
     range (pair of integers in [0,23]) to a float representing energy used
-    during that time. (Energy is measured in therms, even if it's gas.) If
-    meter_identifier is given, accumulate energy only into the shadow registers
-    of meters with that identifier.'''
+    during that time. (Energy is measured in therms, even if it's gas.)
+
+    If meter_identifier is given, accumulate energy only into the shadow
+    registers of meters with that identifier.
+    '''
     if meter_identifier is None:
-        # TODO support multiple services
+        # NOTE multiple services not supported
+        assert len(reebill.services) == 1
         service = reebill.services[0]
         registers = reebill.shadow_registers(service)
         prior_read_date, present_read_date = reebill.meter_read_dates_for_service(
@@ -383,7 +390,79 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 total_energy += float(energy_today)
 
         # update the reebill: put the total skyline energy in the shadow register
-        reebill.set_shadow_register_quantity(register['identifier'],
-                total_energy)
+        reebill.set_hypothetical(register['identifier'], total_energy)
 
+
+def usage_data_to_virtual_register(reebill, energy_function,
+                meter_identifier=None, verbose=False):
+    '''Gets energy quantities from 'energy_function' and puts them in the
+    "quantity" fields of the register subdocuments in the 'MongoReebill' object
+    'reebill'.
+
+    'energy_function' should be a function mapping a date and an hour
+    range (pair of integers in [0,23]) to a float representing energy used
+    during that time. (Energy is measured in therms, even if it's gas.)
+
+    If meter_identifier is given, accumulate energy only into the shadow
+    registers of meters with that identifier.
+    '''
+    # TODO move this helper function somewhere else, e.g. utility bill
+    # document class
+    def get_renewable_energy_for_register(register, start, end):
+        total_energy = 0.0
+
+        for day in dateutils.date_generator(start, end):
+            # the hour ranges during which we want to accumulate energy in this
+            # shadow register is the entire day for normal registers, or
+            # periods given by 'active_periods_weekday/weekend/holiday' for
+            # time-of-use registers
+            # TODO make this a method of MongoReebill
+            hour_ranges = None
+            if 'active_periods_weekday' in register:
+                # a tou register should have all 3 active_periods_... keys
+                assert 'active_periods_weekend' in register
+                assert 'active_periods_holiday' in register
+                hour_ranges = map(tuple,
+                    register['active_periods_' + holidays.get_day_type(day)])
+            elif register.get('type') == 'total':
+                # For non-TOU registers, only insert renewable energy if the
+                # register dictionary has the key "type" and its value is
+                # "total". Every non-TOU utility bill should have exactly one
+                # such register (and every TOU bill should have at most one).
+                # If they don't, renewable energy will be double-counted and
+                # the bill will be wrong. # For explanation see
+                # https://www.pivotaltracker.com/story/show/46469597
+                hour_ranges = [(0,23)]
+            else:
+                if 'type' in register:
+                    print 'register %s skipped because its "type" is "%s"' % (register['identifier'], register['type'])
+                else:
+                    print 'register %s skipped because its "type" key is missing' % (register['identifier'],)
+                continue
+
+            energy_today = None
+            for hourrange in hour_ranges:
+                # 5 digits after the decimal points is an arbitrary decision
+                # TODO decide what our precision actually is: see
+                # https://www.pivotaltracker.com/story/show/24088787
+                energy_today = energy_function(day, hourrange)
+                if verbose:
+                    print 'register %s accumulating energy %s %s for %s %s' % (
+                        register['identifier'], energy_today,
+                        register['quantity_units'],
+                        day, hourrange)
+                total_energy += float(energy_today)
+        return total_energy
+
+    for utilbill_doc in reebill._utilbills:
+        for meter in utilbill_doc['meters']:
+            if meter_identifier is not None and meter_identifier \
+                    != meter['identifier']:
+                continue
+            for register in meter['registers']:
+                hypothetical_quantity = get_renewable_energy_for_register(
+                        register, meter['prior_read_date'],
+                        meter['present_read_date'])
+                reebill.set_hypothetical_register_quantity(
+                        register['register_binding'], hypothetical_quantity)
 
