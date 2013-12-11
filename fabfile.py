@@ -16,19 +16,21 @@ pp = pprint.PrettyPrinter(indent=2)
 # Add ssh keys and role to host mappings for the Fabric runtime that are specific to this app
 # Otherwise, depend on defaults found in deploy/fab_common.py
 #
-fabapi.env.key_filename.append(
-    os.path.expanduser('~/Dropbox/IT/ec2keys/skyline-internal-stage.pem'),
-)
+#fabapi.env.key_filename.append(
+    # for example, but is in fab_common.py
+    #'skyline-internal-prod': ['ec2-user@skyline-internal-prod'],
+#)
 
 #
-# Define 'roles' to be specified on the fab command line using '-R [rolename]'
+# Define 'roles' specific to this app which are
+# specified on the fab command line using '-R [rolename]'
 # Otherwise, depend on defaults found in deploy/fab_common.py
+# which may also be specified on the command line
 #
-fabapi.env.roledefs.update({
-    'skyline-internal-stage': ['ec2-user@skyline-internal-stage'],
-    'skyline': ['ec2-user@skyline-internal-prod.skylineinnovations.net'],
-    'foo': ['bar', 'baz']
-})
+#fabapi.env.roledefs.update({
+    # for example, but is in fab_common.py
+    #'skyline-internal-stage': ['ec2-user@skyline-internal-stage'],
+#})
 
 #
 # Add configuration information about the hosts and deployment configurations specific to this app
@@ -36,9 +38,9 @@ fabapi.env.roledefs.update({
 
 # TODO Test this and pick the proxied host name or skyline-internal-prod - which one works?
 common.CommonFabTask.update_host_os_configs({
-    "tyrell": {"httpd":"apache2"},
-    "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
-    "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
+    # for example, but this is in fab_common.py
+    # this is an ssh proxy expansion of skyline-internal-stage from ~/.ssh/config
+    #"10.0.1.218": {"httpd":"httpd"},
 })
 
 #
@@ -47,6 +49,7 @@ common.CommonFabTask.update_host_os_configs({
 common.CommonFabTask.update_deployment_configs({
     "dev": {
         "app_name":"reebill-dev", 
+        # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-dev", 
         "os_group":"reebill-dev",
         "default_deployment_dir":"/var/local/reebill-dev/billing",
@@ -62,53 +65,16 @@ common.CommonFabTask.update_deployment_configs({
             "mydoc": "/tmp",
         },
         "config_files": {
-            "wsgi":"/var/local/reebill-dev/billing/reebill.cfg",
-            "other":"/var/local/reebill-dev/billing/other.cfg",
+            "conf/reebill-dev-template.cfg":"/var/local/reebill-dev/billing/reebill.cfg",
         },
     },
-    # TODO update these
-    "stage": {
-        "app_name":"reebill-stage", 
-        "os_user":"reebill-stage", 
-        "os_group":"reebill-stage",
-        "config":"reebill-stage-template.cfg",
-        "dir":"lib/python2.6/site-packages",
-    },
-    "stage27": {
-        "app_name":"reebill-stage", 
-        "os_user":"reebill-stage", 
-        "os_group":"reebill-stage",
-        "config":"reebill-stage-template.cfg",
-        "dir":"lib/python2.7/site-packages",
-    },
-    "prod": {
-        "app_name":"reebill-prod", 
-        "os_user":"reebill-prod", 
-        "os_group":"reebill-prod", 
-        "config":"reebill-prod-template.cfg",
-        "dir":"lib/python2.6/site-packages",
-    },
-    "prod27": {
-        "app_name":"reebill-prod", 
-        "os_user":"reebill-prod", 
-        "os_group":"reebill-prod", 
-        "config":"reebill-prod-template.cfg",
-        "dir":"lib/python2.7/site-packages",
-    },
-    "dedicated": {
-        "app_name":"reebill", 
-        "os_user":"reebill", 
-        "os_group":"reebill", 
-        "config":"reebill-dedicated-template.cfg",
-        "dir":"",
-    }
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
 # TODO mandate a conf file nameing scheme so that they can be deployed all in a consistent manner (below probably works)
-@fabtask(task_class=common.InstallConfig, config_name='wsgi', config_file='conf/reebill-dev-template.cfg', alias='installconfig')
-def install_config(task_instance):
-    pass
+#@fabtask(task_class=common.InstallConfig, config_name='wsgi', config_file='conf/reebill-dev-template.cfg', alias='installwsgiconfig')
+#def install_config(task_instance):
+#    pass
 
 # various examples of using Tasks and overriding stuff in common
 
