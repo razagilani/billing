@@ -140,10 +140,10 @@ class FetchTest(unittest.TestCase):
         self.assertRaises(IndexError, get_energy_for_hour, date(2012,3,28), [21,21])
 
         # total energy during hours 19 and 20 converted from kWh to BTU
-        total_kwh_19 = Decimal(2217792.913 + 2217844.078 + 2217892.813 + 2217939.658)
-        total_kwh_20 = Decimal(2217986.773 + 2218036.048 + 2218082.218 + 2218128.388)
-        total_btu_19 = total_kwh_19 / Decimal(3412.14163)
-        total_btu_20 = total_kwh_20 / Decimal(3412.14163)
+        total_kwh_19 = 2217792.913 + 2217844.078 + 2217892.813 + 2217939.658
+        total_kwh_20 = 2217986.773 + 2218036.048 + 2218082.218 + 2218128.388
+        total_btu_19 = total_kwh_19 / 3412.14163
+        total_btu_20 = total_kwh_20 / 3412.14163
 
         # these are not quite the same due to floating-point errors
         # (assertAlmostEqual checks 7 decimal places by default)
@@ -267,7 +267,9 @@ class FetchTest(unittest.TestCase):
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'
         total_btu = 0
-        for hour in cross_range(*reebill.meter_read_period('gas')):
+        #for hour in cross_range(*reebill.meter_read_period('gas')):
+        for hour in cross_range(*mongo.meter_read_period(
+                reebill._utilbills[0])):
             day = date(hour.year, hour.month, hour.day)
             total_btu += monguru.get_data_for_hour(install, day,
                     hour.hour).energy_sold
@@ -275,7 +277,7 @@ class FetchTest(unittest.TestCase):
         # compare 'total_btu' to reebill's total REE (converted from therms to
         # BTU). use assertAlmostEqual to account for float vs. Decimal precision
         # difference.
-        self.assertAlmostEqual(Decimal(total_btu),
+        self.assertAlmostEqual(total_btu,
                 reebill.total_renewable_energy() * 100000)
 
 
