@@ -193,11 +193,10 @@ class UtilBillTest(utils.TestCase):
             'registers': [{
                 'identifier': 'Insert register ID here',
                 'register_binding': 'Insert register binding here',
-                'quantity': Decimal('0'),
+                'quantity': 0,
                 'quantity_units': 'therms',
                 'type': 'total',
                 'description': 'Insert description',
-                'shadow': False,
             }],
         }], utilbill_doc['meters'])
 
@@ -214,11 +213,10 @@ class UtilBillTest(utils.TestCase):
             'registers': [{
                 'identifier': 'Insert register ID here',
                 'register_binding': 'Insert register binding here',
-                'quantity': Decimal('0'),
+                'quantity': 0,
                 'quantity_units': 'therms',
                 'type': 'total',
                 'description': 'Insert description',
-                'shadow': False,
             }],
         }], utilbill_doc['meters'])
 
@@ -235,11 +233,10 @@ class UtilBillTest(utils.TestCase):
             'registers': [{
                 'identifier': 'REGISTER',
                 'register_binding': 'Insert register binding here',
-                'quantity': Decimal('0'),
+                'quantity': 0,
                 'quantity_units': 'therms',
                 'type': 'total',
                 'description': 'Insert description',
-                'shadow': False,
             }],
         }], utilbill_doc['meters'])
 
@@ -254,11 +251,10 @@ class UtilBillTest(utils.TestCase):
                 'registers': [{
                     'identifier': 'REGISTER',
                     'register_binding': 'Insert register binding here',
-                    'quantity': Decimal('0'),
+                    'quantity': 0,
                     'quantity_units': 'therms',
                     'type': 'total',
                     'description': 'Insert description',
-                    'shadow': False,
                 }],
             },
             {
@@ -268,11 +264,10 @@ class UtilBillTest(utils.TestCase):
                 'registers': [{
                     'identifier': 'Insert register ID here',
                     'register_binding': 'Insert register binding here',
-                    'quantity': Decimal('0'),
+                    'quantity': 0,
                     'quantity_units': 'therms',
                     'type': 'total',
                     'description': 'Insert description',
-                    'shadow': False,
                 }],
             },
         ], utilbill_doc['meters'])
@@ -292,19 +287,17 @@ class UtilBillTest(utils.TestCase):
                 {
                     'identifier': 'REGISTER',
                     'register_binding': 'Insert register binding here',
-                    'quantity': Decimal('0'),
+                    'quantity': 0,
                     'quantity_units': 'therms',
                     'type': 'total',
                     'description': 'Insert description',
-                    'shadow': False,
                 },{
                     'identifier': 'Insert register ID here',
                     'register_binding': 'Insert register binding here',
-                    'quantity': Decimal('0'),
+                    'quantity': 0,
                     'quantity_units': 'therms',
                     'type': 'total',
                     'description': 'Insert description',
-                    'shadow': False,
                 },
             ],
         }], utilbill_doc['meters'])
