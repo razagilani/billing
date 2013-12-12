@@ -45,11 +45,12 @@ class UtilBillTest(utils.TestCase):
         # rate structure document containing some common RSI types
         uprs = RateStructure(
             id=ObjectId(),
+            type='UPRS',
             registers=[Register(
                 register_binding='REG_TOTAL',
                 # this object is not actually a "register", so
                 # quantity/units here don't matter at all
-                quantity=-1,
+                quantity='-1',
                 quantity_units='who cares',
             )],
             rates=[
@@ -108,6 +109,7 @@ class UtilBillTest(utils.TestCase):
         # TODO test overriding CPRS in UPRS
         cprs = RateStructure(
             id=ObjectId(),
+            type='CPRS',
             registers=[],
             rates=[],
         )
