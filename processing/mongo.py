@@ -1615,14 +1615,43 @@ class MongoReebill(object):
     def set_hypothetical_register_quantity(self, register_binding,
                     new_quantity):
         '''Sets the "quantity" field of the given register subdocument to the
-        given value. Units are not specified because they are assumed to be
-        the same as the corresponding utility bill register.
+        given value, assumed to be in BTU. When stored, this quantity is
+        converetd to the same unit as the corresponding utility bill register.
         '''
         assert isinstance(new_quantity, float)
 
         # NOTE this may choose the wrong utility bill register if there are
         # multiple utility bills
         assert len(self.reebill_dict['utilbills']) == 1
+
+        # look up corresponding utility bill register to get unit
+        utilbill = self._utilbills[0]
+        utilbill_register = next(chain.from_iterable((r for r in m['registers']
+                if r['register_binding'] == register_binding)
+                for m in utilbill['meters']))
+        unit = utilbill_register['quantity_units'].lower()
+
+        # convert quantity to therms according to unit, and add it to
+        # the total
+        if unit == 'therms':
+            new_quantity /= 1e5
+        elif unit == 'btu':
+            # TODO physical constants must be global
+            pass
+        elif unit == 'kwh':
+            # TODO physical constants must be global
+            new_quantity /= 1e5
+            new_quantity /= .0341214163
+        elif unit == 'ccf':
+            # deal with non-energy unit "CCF" by converting to therms with
+            # conversion factor 1
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                   "in ccf: energy value is wrong; time to implement "
+                   "https://www.pivotaltracker.com/story/show/28825375") \
+                  % (self.account, self.sequence, self.version)
+        else:
+            raise ValueError('Unknown energy unit: "%s"' % unit)
 
         all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
                 in self.reebill_dict['utilbills'])
