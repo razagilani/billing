@@ -196,6 +196,7 @@ def _new_meter(utilbill_doc, identifier=None):
     utilbill_doc['meters'].append(new_meter)
     return new_meter
 
+# TODO make this a method of a utility bill document class when one exists
 def delete_register(utilbill_doc, meter_identifier, identifier):
     for meter in utilbill_doc['meters']:
         if meter['identifier'] == meter_identifier:
@@ -288,11 +289,22 @@ def actual_chargegroups_flattened(utilbill_doc):
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+# TODO rename to get_meter_read_period
+# TODO make this a method of a utility bill document class when one exists
 def meter_read_period(utilbill_doc):
-    '''Returns the period dates of the first (i.e. only) meter in this bill.'''
+    '''Returns the period dates of the first (i.e. only) meter in this bill.
+    '''
     assert len(utilbill_doc['meters']) >= 1
     meter = utilbill_doc['meters'][0]
     return meter['prior_read_date'], meter['present_read_date']
+
+# TODO make this a method of a utility bill document class when one exists
+def set_meter_read_period(utilbill_doc, start, end):
+    '''Sets the period dates of the first (i.e. only) meter in this bill.
+    '''
+    assert len(utilbill_doc['meters']) >= 1
+    meter = utilbill_doc['meters'][0]
+    meter['prior_read_date'], meter['present_read_date'] = start, end
 
 # TODO make this a method of a utility bill document class when one exists
 def refresh_charges(utilbill_doc, uprs, cprs):
@@ -1681,7 +1693,7 @@ class MongoReebill(object):
                 # look up corresponding utility bill register to get unit
                 utilbill = self._get_utilbill_for_handle(utilbill_handle)
                 utilbill_register = next(chain.from_iterable(
-                        chain.from_iterable(r for r in meter['registers']
+                        (r for r in m['registers']
                         if r['register_binding'] == \
                         register_subdoc[ 'register_binding'])
                         for m in utilbill['meters']))
@@ -1710,7 +1722,9 @@ class MongoReebill(object):
                         total_therms += quantity
                 else:
                     raise ValueError('Unknown energy unit: "%s"' % unit)
-        #
+
+        return total_therms
+
     # Helper functions
     #
 

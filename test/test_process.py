@@ -717,7 +717,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             hypothetical_chargegroups = reebill1.hypothetical_chargegroups_for_service('gas')
             assert hypothetical_chargegroups.keys() == ['All Charges']
             hypothetical_charges = hypothetical_chargegroups['All Charges']
-            shadow_registers = reebill1.shadow_registers('gas')
+            shadow_registers = reebill1.reebill_dict['utilbills'][0]\
+                     ['shadow_registers']
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
             hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
 
@@ -1118,9 +1119,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # update the meter like the user normally would
             # "This is required for process.new_version =>
             # fetch_bill_data.fetch_oltp_data" (???)
-            meter = reebill.meters_for_service('gas')[0]
-            reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
-                    date(2012,1,1))
+            #meter = reebill.meters_for_service('gas')[0]
+            #reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
+            #        date(2012,1,1))
+            mongo.set_meter_read_period(reebill._utilbills[0], date(2012,1,1),
+                    date(2012,2,1))
+            self.process.compute_reebill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
 
             # issue reebill
@@ -1194,8 +1198,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, self.state_db.max_version(session, acc, 1))
 
             # the editable utility bill with the new meter read period should be used
+            #self.assertEqual((date(2012,1,15), date(2012,3,15)),
+            #        new_reebill_doc.meter_read_dates_for_service('gas'))
             self.assertEqual((date(2012,1,15), date(2012,3,15)),
-                    new_reebill_doc.meter_read_dates_for_service('gas'))
+                mongo.meter_read_period(new_reebill_doc._utilbills[0]))
 
             for utilbill in new_reebill.utilbills:
                 # utility bill document, UPRS document, CPRS document, and combined
