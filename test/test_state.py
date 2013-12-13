@@ -668,12 +668,32 @@ class StateTest(utils.TestCase):
                     self.state_db.get_last_real_utilbill, session, '99999',
                     date(2000,1,31), service='gas')
 
-            # hypothetical utility bills always ignored
+            # filter by utility and rate class
+            self.assertEqual(gas_bill_1,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='washgas'))
+            self.assertEqual(gas_bill_1,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), rate_class='DC Non Residential Non Heat'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='pepco', rate_class='whatever'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), rate_class='whatever'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='pepco', rate_class='whatever'))
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,1,31), utility='washgas', rate_class='whatever')
+
+            # hypothetical utility bills are always ignored
             gas_bill_1.state = UtilBill.Hypothetical
             electric_bill.state = UtilBill.Hypothetical
             self.assertRaises(NoSuchBillException,
-                    self.state_db.get_last_real_utilbill, session, '99999',
-                    date(2000,3,1))
+                self.state_db.get_last_real_utilbill, session, '99999',
+                date(2000,3,1))
 
 
 if __name__ == '__main__':
