@@ -1224,11 +1224,11 @@ class MongoReebill(object):
         u = self._get_utilbill_for_service(service_name)
         return u['start'], u['end']
 
-    def set_utilbill_period_for_service(self, service, period):
-        '''Changes the period dates of the first utility bill associated with
-        this reebill whose service is 'service'.'''
-        u = self._get_utilbill_for_service(service)
-        u['start'], u['end'] = period
+    #def set_utilbill_period_for_service(self, service, period):
+    #    '''Changes the period dates of the first utility bill associated with
+    #    this reebill whose service is 'service'.'''
+    #    u = self._get_utilbill_for_service(service)
+    #    u['start'], u['end'] = period
 
     def renewable_energy_period(self):
         '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
@@ -1256,12 +1256,12 @@ class MongoReebill(object):
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
 
-    @property
-    def utilbill_periods(self):
-        '''Return a dictionary whose keys are service and values are the
-        utilbill period.'''
-        return dict([(service, self.utilbill_period_for_service(service)) for
-            service in self.services])
+    #@property
+    #def utilbill_periods(self):
+    #    '''Return a dictionary whose keys are service and values are the
+    #    utilbill period.'''
+    #    return dict([(service, self.utilbill_period_for_service(service)) for
+    #        service in self.services])
 
     # TODO: consider calling this meter readings
     # TODO make this go away; don't use reebill object to get utility bill data
@@ -1354,104 +1354,105 @@ class MongoReebill(object):
     #            if not has_a_match:
     #                shadow_registers.remove(shadow_register)
 
-    def set_meter_dates_from_utilbills(self):
-        '''Set the meter read dates to the start and end dates of the
-        associated utilbill.'''
-        for service in self.services:
-            for meter in self.meters_for_service(service):
-                start, end = self.utilbill_period_for_service(service)
-                self.set_meter_read_date(service, meter['identifier'], end, start)
+    #def set_meter_dates_from_utilbills(self):
+    #    '''Set the meter read dates to the start and end dates of the
+    #    associated utilbill.'''
+    #    for service in self.services:
+    #        for meter in self.meters_for_service(service):
+    #            start, end = self.utilbill_period_for_service(service)
+    #            self.set_meter_read_date(service, meter['identifier'], end, start)
 
-    def set_meter_read_date(self, service, identifier, present_read_date,
-            prior_read_date):
-        ''' Set the read date for a specified meter.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                identifier)
-        meter['present_read_date'] = present_read_date
-        meter['prior_read_date'] = prior_read_date
+    #def set_meter_read_date(self, service, identifier, present_read_date,
+    #        prior_read_date):
+    #    ''' Set the read date for a specified meter.'''
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            identifier)
+    #    meter['present_read_date'] = present_read_date
+    #    meter['prior_read_date'] = prior_read_date
 
-    def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
-        ''' Set the total for a specified meter register.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        for register in meter['registers']:
-            if register['identifier'] == register_identifier:
-                register['quantity'] = quantity
+    #def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
+    #    ''' Set the total for a specified meter register.'''
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            meter_identifier)
+    #    for register in meter['registers']:
+    #        if register['identifier'] == register_identifier:
+    #            register['quantity'] = quantity
 
-    def set_meter_identifier(self, service, old_identifier, new_identifier):
-        if old_identifier == new_identifier:
-            return
-        utilbill = self._get_utilbill_for_service(service)
-        # complain if any existing meter has the same identifier
-        for meter in utilbill['meters']:
-            if meter['identifier'] == new_identifier:
-                raise ValueError("Duplicate Identifier")
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['identifier'] = new_identifier
+    #def set_meter_identifier(self, service, old_identifier, new_identifier):
+    #    if old_identifier == new_identifier:
+    #        return
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    # complain if any existing meter has the same identifier
+    #    for meter in utilbill['meters']:
+    #        if meter['identifier'] == new_identifier:
+    #            raise ValueError("Duplicate Identifier")
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            meter_identifier)
+    #    meter['identifier'] = new_identifier
 
-    def set_register_identifier(self, service, old_identifier, new_identifier):
-        if old_identifier == new_identifier:
-            return
-        utilbill = self._get_utilbill_for_service(service)
+    #def set_register_identifier(self, service, old_identifier, new_identifier):
+    #    if old_identifier == new_identifier:
+    #        return
+    #    utilbill = self._get_utilbill_for_service(service)
+    #
+    #    # complain if any register in any existing meter has the same
+    #    # identifier
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == new_identifier:
+    #                raise ValueError("Duplicate Identifier")
+    #
+    #    # actual register in utilbill
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == old_identifier:
+    #                register['identifier'] = new_identifier
+    #
+    #    # hypothetical register in reebill
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == old_identifier:
+    #                register['identifier'] = new_identifier
 
-        # complain if any register in any existing meter has the same
-        # identifier
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == new_identifier:
-                    raise ValueError("Duplicate Identifier")
+    #def meter_for_register(self, service, identifier):
+    #    meters = self.meters_for_service(service)
+    #    for meter in meters:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == identifier:
+    #                return meter
 
-        # actual register in utilbill
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == old_identifier:
-                    register['identifier'] = new_identifier
+    #@property
+    #def meters(self):
+    #    '''Returns a dictionary mapping service names to lists of meters.'''
+    #    return dict([(service, self.meters_for_service(service)) for service
+    #            in self.services])
 
-        # hypothetical register in reebill
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == old_identifier:
-                    register['identifier'] = new_identifier
+    #def actual_register(self, service, identifier):
+    #    actual_register = [register for register in
+    #            self.actual_registers(service)
+    #            if register['identifier'] == identifier]
+    #    if len(actual_register) == 0:
+    #        return None
+    #    elif len(actual_register) ==1:
+    #        return actual_register[0]
+    #    else:
+    #        raise Exception("More than one actual register named %s"
+    #                % identifier)
 
-    def meter_for_register(self, service, identifier):
-        meters = self.meters_for_service(service)
-        for meter in meters:
-            for register in meter['registers']:
-                if register['identifier'] == identifier:
-                    return meter
-    @property
-    def meters(self):
-        '''Returns a dictionary mapping service names to lists of meters.'''
-        return dict([(service, self.meters_for_service(service)) for service
-                in self.services])
-
-    def actual_register(self, service, identifier):
-        actual_register = [register for register in
-                self.actual_registers(service)
-                if register['identifier'] == identifier]
-        if len(actual_register) == 0:
-            return None
-        elif len(actual_register) ==1:
-            return actual_register[0]
-        else:
-            raise Exception("More than one actual register named %s"
-                    % identifier)
-
-    # TODO make this go away; don't use reebill object to get utility bill data
-    def actual_registers(self, service):
-        '''Returns a list of all nonempty non-shadow register dictionaries of
-        all meters for the given service. (The "actual" in the name has nothing
-        to do with "actual charges".)
-        Registers have rate structure bindings that are used to make the actual
-        registers available to rate structure items.'''
-        result = []
-        for utilbill in self._utilbills:
-            for meter in utilbill['meters']:
-                result.extend(meter['registers'])
-        return result
+    ## TODO make this go away; don't use reebill object to get utility bill data
+    #def actual_registers(self, service):
+    #    '''Returns a list of all nonempty non-shadow register dictionaries of
+    #    all meters for the given service. (The "actual" in the name has nothing
+    #    to do with "actual charges".)
+    #    Registers have rate structure bindings that are used to make the actual
+    #    registers available to rate structure items.'''
+    #    result = []
+    #    for utilbill in self._utilbills:
+    #        for meter in utilbill['meters']:
+    #            result.extend(meter['registers'])
+    #    return result
 
     #def set_actual_register_quantity(self, identifier, quantity):
     #    '''Sets the value 'quantity' in the first register subdictionary whose
@@ -1547,16 +1548,16 @@ class MongoReebill(object):
     def utility_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)['utility']
 
-    # TODO remove
-    def rate_structure_name_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)\
-                ['rate_structure_binding']
+    ## TODO remove
+    #def rate_structure_name_for_service(self, service_name):
+    #    return self._get_utilbill_for_service(service_name)\
+    #            ['rate_structure_binding']
 
-    @property
-    def savings(self):
-        '''Value of renewable energy generated, or total savings from
-        hypothetical utility bill.'''
-        return self.reebill_dict['ree_value']
+    #@property
+    #def savings(self):
+    #    '''Value of renewable energy generated, or total savings from
+    #    hypothetical utility bill.'''
+    #    return self.reebill_dict['ree_value']
 
     #def total_renewable_energy(self, ccf_conversion_factor=None):
     #    '''Returns all renewable energy distributed among shadow registers of
@@ -1653,6 +1654,7 @@ class MongoReebill(object):
         utilbill_handle = self._get_handle_for_service(service)
         utilbill_handle['hypothetical_chargegroups'] = \
                 unflatten_chargegroups_list(flat_charges)
+
 
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''

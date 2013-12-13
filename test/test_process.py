@@ -1,36 +1,23 @@
 import sys
 import os
 import unittest
-import operator
+from itertools import chain
 from StringIO import StringIO
-import ConfigParser
-import logging
-import pymongo
 from bson import ObjectId
-import sqlalchemy
 from sqlalchemy.sql import desc
-import re
-from skyliner.splinter import Splinter
-from skyliner.skymap.monguru import Monguru
 from skyliner.sky_handlers import cross_range
 from datetime import date, datetime, timedelta
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
-from billing.processing import rate_structure2
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
-from billing.processing.billupload import BillUpload
-from billing.util.dictutils import deep_map
-import MySQLdb
-from billing.util.mongo_utils import python_convert
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
-from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NotUniqueException, NoRateStructureError
+from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
 from billing.test import utils
 
@@ -648,8 +635,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             actual_chargegroups = reebill1.actual_chargegroups_for_service('gas')
             assert actual_chargegroups.keys() == ['All Charges']
             actual_charges = actual_chargegroups['All Charges']
-            actual_registers = reebill1.actual_registers('gas')
-            total_regster = [r for r in actual_registers if r['register_binding'] == 'REG_TOTAL'][0]
+            total_regster = [r for r in chain.from_iterable(m['registers']
+                    for m in reebill1._utilbills[0]['meters'])
+                if r['register_binding'] == 'REG_TOTAL'][0]
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in actual_charges if c['rsi_binding'] ==
