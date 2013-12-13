@@ -242,17 +242,20 @@ class RateStructureItem(EmbeddedDocument):
     the same bill).
     '''
     # unique name that matches this RSI with a charge on a bill
-    rsi_binding = StringField(required=True)
+    # NOTE: "default" should not be necessary for a required field,
+    # but adding it prevents ValidationErrors when legacy (pre-MongoEngine
+    # schema) documents are loaded and then saved (see bug 62492152)
+    rsi_binding = StringField(required=True, default='')
 
     # descriptive human-readable name (rarely used)
-    description = StringField()
+    description = StringField(required=True, default='')
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
     # 'rate' is somewhat arbitrary
-    quantity = StringField(required=True)
+    quantity = StringField(required=True, default='')
     quantity_units = StringField()
-    rate = StringField(required=True)
+    rate = StringField(required=True, default='')
     #rate_units = StringField()
 
     # currently not used
