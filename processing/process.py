@@ -625,7 +625,7 @@ class Process(object):
             utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
             predecessor = self.state_db.get_last_real_utilbill(session,
                     utilbill.customer.account, utilbill.period_start,
-                    service=utilbill.service)
+                    utility=utilbill.utility, service=utilbill.service)
             return True
         except NoSuchBillException:
             return False
