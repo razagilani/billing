@@ -4,15 +4,10 @@ import datetime
 from datetime import date, time, datetime
 import pymongo
 import bson # part of pymongo package
-import functools
-from urlparse import urlparse
-import httplib
-import string
-import base64
+from operator import itemgetter
 import itertools as it
 import copy
 from copy import deepcopy
-import uuid as UUID
 from itertools import chain
 from collections import defaultdict
 import tsort
@@ -319,7 +314,8 @@ def refresh_charges(utilbill_doc, uprs, cprs):
         'rate': 0,
         #'rate_units': 0,
         'total': 0,
-    } for rsi in RateStructure.combine(uprs, cprs).rates]}
+    } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
+            key=itemgetter('rsi_binding'))]}
 
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
