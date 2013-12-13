@@ -70,7 +70,7 @@ class RateStructureDAO(object):
         for uprs, _, _ in all_uprss:
             for rsi in uprs.rates:
                 bindings.add(rsi.rsi_binding)
-        
+
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI for the
         # occurrence of each RSI binding closest to the target period
@@ -93,7 +93,7 @@ class RateStructureDAO(object):
                     pass
                 else:
                     # binding present in UPRS: add 1 * weight to score
-                    scores[binding] += weight 
+                    scores[binding] += weight
                     # if this distance is closer than the closest occurence
                     # seen so far, put the RSI object in closest_occurrence
                     if distance < closest_occurrence[binding][0]:
@@ -376,20 +376,13 @@ class RateStructure(Document):
         'allow_inheritance': True
     }
 
+    # this is either 'UPRS' or 'CPRS'
     type = StringField(required=True)
+
     registers = ListField(field=EmbeddedDocumentField(Register), default=[])
 
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
             default=[])
-
-    def rsis_dict(self):
-        result = {}
-        for rsi in self.rates:
-            binding = rsi['rsi_binding']
-            if binding in result:
-                raise ValueError('Duplicate rsi_binding "%s"' % binding)
-            result[binding] = rsi
-        return result
 
     @classmethod
     def combine(cls, uprs, cprs):
@@ -401,13 +394,24 @@ class RateStructure(Document):
         combined_dict.update(cprs.rsis_dict())
         return RateStructure(registers=[], rates=combined_dict.values())
 
+    def rsis_dict(self): result = {}
+        for rsi in self.rates:
+            binding = rsi['rsi_binding']
+            if binding in result:
+                raise ValueError('Duplicate rsi_binding "%s"' % binding)
+            result[binding] = rsi
+        return result
+
     def _check_rsi_uniqueness(self):
         all_rsis = set(rsi.rsi_binding for rsi in self.rates)
         if len(all_rsis) < len(self.rates):
-            raise ValueError("duplicate rsi_bindings")
+            raise ValueError("Duplicate rsi_bindings")
 
     def validate(self, clean=True):
+        '''Document.validate() is overridden to make sure a RateStructure
+        without unique rsi_bindings can't be saved.'''
         self._check_rsi_uniqueness()
+        # TODO also check that 'type' is "UPRS" or "CPRS"
         return super(RateStructure, self).validate(clean=clean)
 
     def add_rsi(self):
