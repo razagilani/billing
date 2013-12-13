@@ -394,7 +394,8 @@ class RateStructure(Document):
         combined_dict.update(cprs.rsis_dict())
         return RateStructure(registers=[], rates=combined_dict.values())
 
-    def rsis_dict(self): result = {}
+    def rsis_dict(self):
+        result = {}
         for rsi in self.rates:
             binding = rsi['rsi_binding']
             if binding in result:
