@@ -640,7 +640,7 @@ class StateDB(object):
         cursor = session.query(ReeBill).filter_by(customer=customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version))
         if issued_only:
-            cursor.filter_by(issued=True)
+            cursor = cursor.filter_by(issued=True)
         if cursor.count() == 0:
             return None
         return cursor.first()
