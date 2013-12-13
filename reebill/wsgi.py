@@ -1634,7 +1634,7 @@ class BillToolBridge:
         given by its MySQL id (and reebill_sequence and reebill_version if
         non-None). 'xaction' is one of the Ext-JS operation names "create",
         "read", "update", "destroy". If 'xaction' is not "read", 'rows' should
-        contain data to create/update/delete as a JSON string.
+        contain data to create
         '''
         with DBSession(self.state_db) as session:
             rate_structure = self.process.get_rs_doc(session, utilbill_id,
@@ -1663,47 +1663,20 @@ class BillToolBridge:
 
                 # process list of edits
                 for row in rows:
-                    # identify the RSI descriptor of the posted data
-                    rsi_uuid = row['uuid']
-                    # identify the rsi, and update it with posted data
-                    matches = [rsi_match for rsi_match in it.ifilter(lambda x:
-                            x.uuid==rsi_uuid, rates)]
-                    # there should only be one match
-                    if len(matches) == 0: raise Exception("Did not match an RSI UUID which should not be possible")
-                    if len(matches) > 1:
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
-
+                    rsi = rate_structure.get_rsi(row['rsi_binding'])
                     for key, value in row.iteritems():
                         assert hasattr(rsi, key)
                         setattr(rsi, key, value)
 
             if xaction == "create":
-                new_rsi = rs.RateStructureItem(
-                    rsi_binding='Insert binding here',
-                    description='Insert description here',
-                    quantity='Insert quantity here',
-                    quantity_units='',
-                    rate='Insert rate here',
-                    round_rule='',
-                    uuid=str(UUID.uuid1()),
-                )
-                rates.append(new_rsi)
+                new_rsi = rate_structure.add_rsi()
                 rows = [new_rsi.to_dict()]
 
             if xaction == "destroy":
-                uuids = rows
-                if type(uuids) is unicode: uuids = [uuids]
+                if type(rows) is unicode: rows = [rows]
                 # process list of removals
-                for rsi_uuid in uuids:
-                    # identify the rsi
-                    matches = [result for result in it.ifilter(lambda x:
-                        x['uuid']==rsi_uuid, rates)]
-                    if (len(matches) == 0):
-                        raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
+                for row in rows:
+                    rsi = rate_structure.get_rsi(row)
                     rates.remove(rsi)
                 rows = []
 

@@ -2869,7 +2869,6 @@ function reeBillReady() {
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'uuid', mapping: 'uuid'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -2901,9 +2900,8 @@ function reeBillReady() {
         writer: CPRSRSIWriter,
         data: initialCPRSRSI,
         root: 'rows',
-        idProperty: 'uuid',
+        idProperty: 'rsi_binding',
         fields: [
-            {name: 'uuid'},
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
@@ -3002,14 +3000,6 @@ function reeBillReady() {
     {
         columns: [
             {
-                header: 'UUID',
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                editor: new Ext.form.TextField({allowBlank: false}),
-                hidden: true,
-                width: 50,
-            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3183,7 +3173,6 @@ function reeBillReady() {
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'uuid', mapping: 'uuid'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -3217,9 +3206,8 @@ function reeBillReady() {
         //baseParams: { account:selected_account, sequence: selected_sequence},
         data: initialUPRSRSI,
         root: 'rows',
-        idProperty: 'uuid',
+        idProperty: 'rsi_binding',
         fields: [
-            {name: 'uuid'},
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
@@ -3306,14 +3294,6 @@ function reeBillReady() {
     {
         columns: [
             {
-                header: 'UUID',
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                editor: new Ext.form.TextField({allowBlank: false}),
-                hidden: true,
-                width: 50,
-            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',

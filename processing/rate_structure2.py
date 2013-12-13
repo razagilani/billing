@@ -4,13 +4,13 @@ from itertools import chain
 from datetime import datetime, date
 from collections import defaultdict
 import sys
-import uuid
 from math import sqrt, log, exp
 from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError
+from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+    NotUniqueException
 from billing.processing.state import UtilBill
 
 # minimum normlized score for an RSI to get included in a probable UPRS
@@ -130,7 +130,7 @@ class RateStructureDAO(object):
                     if self.logger:
                         self.logger.error('malformed RSI: %s' % rsi_dict)
                 result.append(RateStructureItem(rsi_binding=binding, rate=rate,
-                    quantity=quantity, uuid1=str(uuid.uuid1())))
+                    quantity=quantity))
         return result
 
     def get_probable_uprs(self, session, utility, service, rate_class,
@@ -258,9 +258,6 @@ class RateStructureItem(EmbeddedDocument):
     # currently not used
     round_rule = StringField()
 
-    # a way of identifying a particular RSI when edited in the browser
-    uuid = StringField()
-
     def _parse_formulas(self):
         '''Parses the 'quantity' and 'rate' formulas as Python code using the
         'ast' module, and returns the tuple (quantity formula AST, rate formula
@@ -345,12 +342,10 @@ class RateStructureItem(EmbeddedDocument):
             #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
-            'uuid': self.uuid,
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-            rate=None, round_rule=None, description=None,
-            uuid=None):
+            rate=None, round_rule=None, description=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
         if quantity is not None:
@@ -359,12 +354,10 @@ class RateStructureItem(EmbeddedDocument):
             self.quantity_units = quantity_units
         if rate is not None:
             self.rate = rate
-        if roundrule is not None:
-            self.roundrule = roundrule
+        if round_rule is not None:
+            self.roundrule = round_rule
         if description is not None:
             self.description = description
-        if uuid is not None:
-            self.uuid = uuid
 
 class Register(EmbeddedDocument):
     # this is the only field that has any meaning, since a "register" in a rate
@@ -375,7 +368,6 @@ class Register(EmbeddedDocument):
     quantity = StringField()
     quantity_units = StringField()
     description = StringField()
-    uuid = StringField()
 
 class RateStructure(Document):
     meta = {
@@ -408,6 +400,46 @@ class RateStructure(Document):
         combined_dict = uprs.rsis_dict()
         combined_dict.update(cprs.rsis_dict())
         return RateStructure(registers=[], rates=combined_dict.values())
+
+    def _check_rsi_uniqueness(self):
+        all_rsis = set(rsi.rsi_binding for rsi in self.rates)
+        if len(all_rsis) < len(self.rates):
+            raise ValueError("duplicate rsi_bindings")
+
+    def validate(self, clean=True):
+        self._check_rsi_uniqueness()
+        return super(RateStructure, self).validate(clean=clean)
+
+    def add_rsi(self):
+        '''Adds a new rate structure item with a unique 'rsi_binding',
+        and returns the new RateStructureItem object.
+        '''
+        # generate a number to go in a unique "rsi_binding" string
+        all_rsi_bindings = set(rsi.rsi_binding for rsi in self.rates)
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+
+        # create and add the new 'RateStructureItem'
+        new_rsi = RateStructureItem(
+            rsi_binding='New RSI #%s' % n,
+            description='Insert description here',
+            quantity='Insert quantity here',
+            quantity_units='',
+            rate='Insert rate here',
+            round_rule='',
+        )
+        self.rates.append(new_rsi)
+
+        return new_rsi
+
+    def get_rsi(self, rsi_binding):
+        '''Returns the first RSI in this RateStructure having the
+        given 'rsi_binding'.
+        '''
+        self.validate()
+        return next(rsi for rsi in self.rates if rsi.rsi_binding ==
+                 rsi_binding)
 
 if __name__ == '__main__':
     import mongoengine
