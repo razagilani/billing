@@ -330,7 +330,7 @@ class RateStructureItem(EmbeddedDocument):
                 return eval(formula, {}, register_quantities)
             except Exception as e:
                 raise FormulaError(('Error when computing %s for RSI "%s": '
-                        '%s') % (name, self.rsi_binding, self.description, e))
+                        '%s') % (name, self.rsi_binding, e))
         return compute('quantity'), compute('rate')
 
     def to_dict(self):
