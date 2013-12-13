@@ -692,8 +692,8 @@ class StateTest(utils.TestCase):
             gas_bill_1.state = UtilBill.Hypothetical
             electric_bill.state = UtilBill.Hypothetical
             self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, session, '99999',
-                date(2000,3,1))
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,3,1))
 
 
 if __name__ == '__main__':

@@ -613,7 +613,7 @@ class Process(object):
         existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 utilbill)
         predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.account, utilbill.period_start,
+                utilbill.customer.account, utilbill.period_start,
                 service=utilbill .service)
         predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 predecessor)
