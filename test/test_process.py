@@ -1944,7 +1944,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, reebill2)
 
-                # check that total renewable enrgy quantity has not been
+                # check that total renewable energy quantity has not been
                 # changed by computing the bill for the first time (this
                 # happened in bug #60548728)
                 ree = reebill2.total_renewable_energy()
@@ -1961,10 +1961,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # this function checks that current values match the orignals
                 def check():
-                    # re-load reebill document from database because
-                    # compute_utility_bill loads it, updates it, and saves it
-                    # without affecting the document already loaded into memory
-                    reebill2 = self.reebill_dao.load_reebill(acc, 2)
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
                             reebill2.total_renewable_energy())
