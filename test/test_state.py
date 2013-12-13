@@ -620,6 +620,25 @@ class StateTest(utils.TestCase):
             self.assertIsNone(utilbills[0].reebill)
             self.assertEqual(utilbills[0], target_utilbill)
 
+    def test_get_last_reebill(self):
+        with DBSession(self.state_db) as session:
+            customer = session.query(Customer).one()
+
+            self.assertEqual(None, self.state_db.get_last_reebill(session,
+                    '99999'))
+
+            utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                    period_end=date(2000,2,1))
+            reebill = ReeBill(customer, 1, 0, utilbills=[utilbill])
+            session.add(utilbill)
+            session.add(reebill)
+
+            self.assertEqual(reebill, self.state_db.get_last_reebill(session,
+                    '99999'))
+            self.assertEqual(None, self.state_db.get_last_reebill(session,
+                    '99999', issued_only=True))
+
     def test_get_last_real_utilbill(self):
         with DBSession(self.state_db) as session:
             customer = session.query(Customer).one()
