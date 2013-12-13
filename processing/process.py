@@ -384,7 +384,7 @@ class Process(object):
         session.add(new_utilbill)
         if state < UtilBill.Hypothetical:
             doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
-                    new_utilbill)
+                new_utilbill)
             new_utilbill.document_id = str(doc['_id'])
             new_utilbill.uprs_document_id = str(uprs.id)
             new_utilbill.cprs_document_id = str(cprs.id)
@@ -613,7 +613,8 @@ class Process(object):
         existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 utilbill)
         predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.customer.account, utilbill.period_start)
+                utilbill.account, utilbill.period_start,
+                service=utilbill .service)
         predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
                 predecessor)
         existing_cprs.rates = predecessor_cprs.rates
@@ -623,7 +624,8 @@ class Process(object):
         try:
             utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
             predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.customer.account, utilbill.period_start)
+                    utilbill.customer.account, utilbill.period_start,
+                    service=utilbill.service)
             return True
         except NoSuchBillException:
             return False
