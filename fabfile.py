@@ -65,7 +65,7 @@ common.CommonFabTask.update_deployment_configs({
             "mydoc": "/tmp",
         },
         "config_files": {
-            "conf/reebill-dev-template.cfg":"/var/local/reebill-dev/billing/reebill.cfg",
+            "conf/reebill-dev-template.cfg":"/var/local/reebill-dev/billing/reebill/reebill.cfg",
         },
     },
 })
