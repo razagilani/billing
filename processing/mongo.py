@@ -597,127 +597,11 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
-    # TODO 36805917 clear() can go away when ReeBills can be constructed
-    def clear(self):
-        '''Code for clearing out fields of newly-rolled rebill and its utility
-        bill documents (moved from __init__, called by Process.roll_bill). TODO
-        remove this.'''
-        # set start date of each utility bill in this reebill to the end date
-        # of the previous utility bill for that service
-        #for service in self.services:
-        #    prev_start, prev_end = self.utilbill_period_for_service(service)
-        #    self.set_utilbill_period_for_service(service, (prev_end, None))
-
-        # process rebill
-        self.total_adjustment = 0
-        self.manual_adjustment = 0
-        #self.hypothetical_total = 0
-        self.ree_value = 0
-        self.ree_charges = 0
-        self.ree_savings = 0
-        self.due_date = None
-        self.motd = None
-
-        # this should always be set from the value in MySQL, which holds the
-        # "current" discount rate for each customer
-        self.discount_rate = 0
-
-        self.prior_balance = 0
-        self.total_due = 0
-        self.balance_due = 0
-        self.payment_received = 0
-        self.balance_forward = 0
-        # some customers are supposed to lack late_charges key, some are
-        # supposed to have late_charges: None, and others have
-        # self.late_charges: 0
-        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
-            self.late_charges = 0
-
-        for service in self.services:
-            # get utilbill numbers and zero them out
-            self.set_actual_total_for_service(service, 0)
-            self.set_hypothetical_total_for_service(service, 0)
-            self.set_ree_value_for_service(service, 0)
-            self.set_ree_savings_for_service(service, 0)
-            self.set_ree_charges_for_service(service, 0)
-
-            # set new UUID's & clear out the last bound charges
-            actual_chargegroups = self.actual_chargegroups_for_service(service)
-            for (group, charges) in actual_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-            for (group, charges) in hypothetical_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-       
-            # reset measured usage
-            for service in self.services:
-                for meter in self.meters_for_service(service):
-                    self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-                    for shadow_register in \
-                            self._get_handle_for_service(self, service)\
-                                ['shadow_registers']:
-                        shadow_register['quantity'] = 0
-
-            # if these keys exist in the document, remove them
-            for bad_key in 'statistics', 'actual_total', 'hypothetical_total':
-                if bad_key in self.reebill_dict:
-                    del self.reebill_dict[bad_key]
-
-
-    def convert_to_new_account(self, account):
-        # TODO: the existence of this function is a symptom of ugly design.
-        # figure out how to make it go away if possible.
-        # https://www.pivotaltracker.com/story/show/37798427
-        '''Sets the account of this reebill and all its utility bills to
-        'account', and creates new _ids in all utility bills and the reebill's
-        references to them. And converts frozen utility bills into editable
-        ones by removing the "sequence" and "version" keys, if present. Used
-        for converting an existing reebill and its utility bills into a
-        template for a new account.'''
-        self.account = account
-        for handle in self.reebill_dict['utilbills']:
-            u = self._get_utilbill_for_handle(handle)
-            u['account'] = account
-            if 'sequence' in u:
-                del u['sequence']
-            if 'version' in u:
-                del u['version']
-            u['_id'] = handle['id'] = bson.ObjectId()
-
-    # TODO: is this method obsolete?
-    def new_utilbill_ids(self):
-        '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removes "sequence" and "version" keys if
-        present (to convert frozen utility bill into editable one). Used when
-        rolling to create copies of the utility bills. does not need to be
-        called when creating a new account because 'convert_to_new_account'
-        also does this.'''
-        for utilbill_handle in self.reebill_dict['utilbills']:
-            utilbill_doc = self._get_utilbill_for_handle(utilbill_handle)
-            new_id = bson.objectid.ObjectId()
-            utilbill_handle['id'] = utilbill_doc['_id'] = new_id
-            if 'sequence' in utilbill_doc:
-                del utilbill_doc['sequence']
-            if 'version' in utilbill_doc:
-                del utilbill_doc['version']
-
     def update_utilbill_subdocs(self):
         '''Refreshes the "utilbills" sub-documents of the reebill document to
         match the utility bill documents in _utilbills. (These represent the
-        "hypothetical" version of each utility bill.)'''
+        "hypothetical" version of each utility bill.)
+        '''
         # TODO maybe this should be done in compute_bill or a method called by
         # it; see https://www.pivotaltracker.com/story/show/51581067
         self.reebill_dict['utilbills'] = \
@@ -1239,26 +1123,26 @@ class MongoReebill(object):
     #def set_actual_total_for_service(self, service_name, new_total):
         #self._get_utilbill_for_service(service_name)['total'] = new_total
 
-    def ree_value_for_service(self, service_name):
-        '''Returns the total of 'ree_value' (renewable energy value offsetting
-        hypothetical charges) for the utilbill whose service is 'service_name'.
-        There's not supposed to be more than one utilbill per service.'''
-        return self._get_handle_for_service(service_name)['ree_value']
-
-    def set_ree_value_for_service(self, service_name, new_ree_value):
-        self._get_handle_for_service(service_name)['ree_value'] = new_ree_value
-
-    def ree_savings_for_service(self, service_name):
-        return self._get_handle_for_service(service_name)['ree_savings']
-
-    def set_ree_savings_for_service(self, service_name, new_ree_savings):
-        self._get_handle_for_service(service_name)['ree_savings'] = new_ree_savings
-
-    def ree_charges_for_service(self, service_name):
-        return self._get_handle_for_service(service_name)['ree_charges']
-
-    def set_ree_charges_for_service(self, service_name, new_ree_charges):
-        self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
+    #def ree_value_for_service(self, service_name):
+    #    '''Returns the total of 'ree_value' (renewable energy value offsetting
+    #    hypothetical charges) for the utilbill whose service is 'service_name'.
+    #    There's not supposed to be more than one utilbill per service.'''
+    #    return self._get_handle_for_service(service_name)['ree_value']
+    #
+    #def set_ree_value_for_service(self, service_name, new_ree_value):
+    #    self._get_handle_for_service(service_name)['ree_value'] = new_ree_value
+    #
+    #def ree_savings_for_service(self, service_name):
+    #    return self._get_handle_for_service(service_name)['ree_savings']
+    #
+    #def set_ree_savings_for_service(self, service_name, new_ree_savings):
+    #    self._get_handle_for_service(service_name)['ree_savings'] = new_ree_savings
+    #
+    #def ree_charges_for_service(self, service_name):
+    #    return self._get_handle_for_service(service_name)['ree_charges']
+    #
+    #def set_ree_charges_for_service(self, service_name, new_ree_charges):
+    #    self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
 
     def hypothetical_chargegroups_for_service(self, service_name):
         '''Returns the list of hypothetical chargegroups for the utilbill whose
