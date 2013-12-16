@@ -1,6 +1,5 @@
 #!/usr/bin/python
 from StringIO import StringIO
-from decimal import Decimal
 import csv
 import random
 import unittest
@@ -200,7 +199,7 @@ class FetchTest(unittest.TestCase):
         # (also set unit to 'therms' instead of 'Ccf' because ccf isn't
         # really an energy unit)
         for r in meter1['registers'] + meter2['registers']:
-            r['quantity'] = Decimal(-1234567890)
+            r['quantity'] = -1234567890
             r['quantity_units'] = 'therms'
         # accumulate energy into shadow registers
         csv_file = StringIO()
@@ -213,9 +212,9 @@ class FetchTest(unittest.TestCase):
         # check that shadow register changed value and other registers didn't
         for r in meter1['registers'] + meter2['registers']:
             if r in shadow_registers:
-                self.assertNotEquals(Decimal(-1234567890), r['quantity'])
+                self.assertNotEquals(-1234567890, r['quantity'])
             else:
-                self.assertEquals(Decimal(-1234567890), r['quantity'])
+                self.assertEquals(-1234567890, r['quantity'])
         
         # make sure that an exception is raised when there's no meter
         # corresponding to a particular identifier or when the meter with the
@@ -275,8 +274,7 @@ class FetchTest(unittest.TestCase):
                     hour.hour).energy_sold
         
         # compare 'total_btu' to reebill's total REE (converted from therms to
-        # BTU). use assertAlmostEqual to account for float vs. Decimal precision
-        # difference.
+        # BTU).
         self.assertAlmostEqual(total_btu,
                 reebill.total_renewable_energy() * 100000)
 
