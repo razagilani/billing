@@ -996,34 +996,92 @@ function reeBillReady() {
             Ext.Msg.alert('Error', "reebillstore error: type "+type+", action "+action+", response "+response);
         }
     });
-    
-    function formatNumber(value, record){
-        var decimal = value.toString().indexOf(".");
-        var sep = value.toString().indexOf("00000");
-        if(sep == -1){
-            sep = value.toString().indexOf("99999");
-        }
-        if(decimal != -1){
-            if(sep != -1){
-                // Value is periodic
-                return value.toFixed(sep-decimal-1);
+
+    var NumberFormatter={
+        MAX_LENGTH : 5,
+        getSeperator: function(val){
+            var sep = val.toString().indexOf("00000");
+            if(sep == -1){
+                sep = val.toString().indexOf("99999");
             }
-            else if((value.toString().length-decimal-1)>5){
-                // Decimals are nonperiodic but still outrageously long
-                // (usually this affects RE&E column)
-                // Fix them to the length of the decimals of the
-                //  hypothetical value or actual value
-                var actual = formatNumber(record.data.actual_total,
-                                            record);
-                var hypo = formatNumber(record.data.hypothetical_total,
-                                        record);
-                var maxValue=Math.max(actual,hypo).toString();
-                var maxDecimal=maxValue.length-maxValue.indexOf(".")-1;
-                return value.toFixed(maxDecimal);
+            return sep
+        },
+        getDecimalPoint: function(val){
+            return val.toString().indexOf(".")
+        },
+        getDecimals: function(val){
+            var s = this.getSeperator(val);
+            var p = this.getDecimalPoint(val);
+            // Number of Decimal Places = Location of Repeat - Location
+            //                            of Decimal point -1 (for the
+            //                            actual decimal point)
+            var rtrn = s != -1 ? s-p-1 : val.toString().length-p-1;
+            return rtrn;
+        },
+        getMaxInRange: function(max, n){
+            var rtn = -1;
+            for(var i=1; i<arguments.length; i++){
+                if(arguments[i] <= max){
+                    rtn = Math.max(arguments[i], rtn)
+                }
             }
+            return rtn
+        },
+        formatNumber: function(value, record){
+            var seperator = this.getSeperator(value);
+            var decimalPoint = this.getDecimalPoint(value);
+            if(decimalPoint != -1){
+                if(seperator != -1){
+                    // Value is periodic
+                    return value.toFixed(seperator-decimalPoint-1);
+                }
+                else if((value.toString().length-decimalPoint-1)>this.MAX_LENGTH){
+                    // Decimals are nonperiodic but still outrageously long
+                    // Fix them to the length of the decimals of the
+                    // other values in the record if possible
+
+                    // Check if one of the other values in the record is nonperiodic
+                    // and cut everything to the longest nonperiodic one
+
+                    var actual_decimals=this.getDecimals(record.data.actual_total);
+                    var hypo_decimals=this.getDecimals(record.data.hypothetical_total);
+                    var ree_charges_decimals=this.getDecimals(record.data.ree_charges);
+                    var ree_value_decimals=this.getDecimals(record.data.ree_value);
+                    var ree_quantity_decimals=this.getDecimals(record.data.ree_quantity);
+                    
+                    // Get the maximum precision (decimal places) upto a certain maximum (MAX_LENGTH)
+                    
+                    var rtn=this.getMaxInRange(this.MAX_LENGTH,
+                                            hypo_decimals,
+                                            actual_decimals,
+                                            ree_quantity_decimals,
+                                            ree_value_decimals,
+                                            ree_charges_decimals);
+                    //console.log("getMaxInRange", rtn,
+                    //            (hypo_decimals),
+                    //            (actual_decimals),
+                    //            (ree_quantity_decimals),
+                    //            (ree_value_decimals),
+                    //            (ree_charges_decimals));
+                    
+                    if( rtn != -1){
+                        return value.toFixed(rtn);
+                    }
+                    else{
+                        // None of the other values are nonperiodic
+                        // Lets only show an arbitrary number of decimal places
+                        return value.toFixed(this.MAX_LENGTH);
+                    }
+                }
+                else{
+                    // Value is nonperiodic and not outrageously long
+                    return value
+                }
+            }
+            return value
         }
-        return value
     }
+
 
     function reeBillGridRenderer(value, metaData, record, rowIndex, colIndex,
             store) {
@@ -1040,7 +1098,7 @@ function reeBillReady() {
         }
         // Round numbers up to digit before 00000 or 99999
         if(typeof value == 'number'){
-            value=formatNumber(value, record);
+            value=NumberFormatter.formatNumber(value, record);
         }
         return value;
     }
