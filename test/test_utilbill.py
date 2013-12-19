@@ -9,6 +9,7 @@ from billing.test import example_data
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, Register, RateStructureItem
 from billing.processing import mongo
+import example_data
 
 class UtilBillTest(utils.TestCase):
 
@@ -308,3 +309,11 @@ class UtilBillTest(utils.TestCase):
         self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
                 'METER', 'Insert register ID here', register_id='REGISTER')
 
+    def test_get_service_address(self):
+        utilbill_doc = example_data.example_utilbill
+        address = mongo.get_service_address(utilbill_doc)
+        self.assertEqual(address['postal_code'],'20010')
+        self.assertEqual(address['city'],'Washington')
+        self.assertEqual(address['state'],'DC')
+        self.assertEqual(address['addressee'],'Monroe Towers')
+        self.assertEqual(address['street'],'3501 13TH ST NW #WH')
