@@ -181,7 +181,7 @@ class Process(object):
         if rate_class is not None:
             utilbill.rate_class = rate_class
             doc['rate_class'] = rate_class
-            
+
         if processed is not None:
             utilbill.processed=processed
 
@@ -403,6 +403,15 @@ class Process(object):
                     begin_date)
 
         return new_utilbill
+
+    def get_service_address(self,session,account):
+        '''Finds the last state.Utilbill, loads the mongo document for it,
+        and extracts the service address from it '''
+        utilbill=self.state_db.get_last_real_utilbill(session, account,
+                                                      datetime.now())
+        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(utilbill)
+        address=mongo.get_service_address(utilbill_doc)
+        return address
 
     def _find_replaceable_utility_bill(self, session, customer, service, start,
             end, state):

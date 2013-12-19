@@ -281,6 +281,10 @@ def actual_chargegroups_flattened(utilbill_doc):
             utilbill_doc['chargegroups']))
 
 # TODO make this a method of a utility bill document class when one exists
+def get_service_address(utilbill_doc):
+    return utilbill_doc['service_address']
+
+# TODO make this a method of a utility bill document class when one exists
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 

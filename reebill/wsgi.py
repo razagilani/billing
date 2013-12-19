@@ -1201,15 +1201,13 @@ class BillToolBridge:
             return int(row['account'])>=20000
         # this function is used below to format the "Utility Service Address"
         # grid column
-        def format_service_address(utilbill_doc):
+        def format_service_address(service_address, account):
             try:
-                return '%(street)s, %(city)s, %(state)s' % utilbill_doc['service_address']
+                return '%(street)s, %(city)s, %(state)s' % service_address
             except KeyError as e:
                 self.logger.error(('Utility bill service address for %s '
-                        'from %s to %s lacks key "%s": %s') % (
-                                utilbill_doc['account'], utilbill_doc['start'],
-                                utilbill_doc['end'], e.message,
-                                utilbill_doc['service_address']))
+                        'lacks key "%s": %s') % (
+                                account, e.message, service_address))
                 return '?'
 
         # call getrows to actually query the database; return the result in
@@ -1241,18 +1239,15 @@ class BillToolBridge:
             rows = []
             for status in statuses:
                 last_reebill = self.state_db.get_last_reebill(session,
-                        status.account, issued_only=True)
-                if last_reebill is None:
-                    utility_service_addresses = ''
-                else:
-                    # get service address from utility bill document, convert
-                    # JSON to string using the function above
-                    last_reebill_doc = self.reebill_dao.load_reebill(
-                            last_reebill.customer.account,
-                            last_reebill.sequence, last_reebill.version)
-                    utility_service_addresses = format_service_address(
-                            last_reebill_doc._utilbills[0])
+                         status.account, issued_only=True)
                 lastevent = self.journal_dao.last_event_summary(status.account)
+                try:
+                    service_address = self.process.get_service_address(session,
+                                                                status.account)
+                    service_address=format_service_address(service_address,
+                                                        status.account)
+                except NoSuchBillException:
+                    service_address = ''
                 rows.append({
                     'account': status.account,
                     'codename': name_dicts[status.account]['codename'] if
@@ -1261,7 +1256,7 @@ class BillToolBridge:
                            'casualname' in name_dicts[status.account] else '',
                     'primusname': name_dicts[status.account]['primus'] if
                            'primus' in name_dicts[status.account] else '',
-                    'utilityserviceaddress': utility_service_addresses,
+                    'utilityserviceaddress': service_address,
                     'dayssince': status.dayssince,
                     'lastissuedate': last_reebill.issue_date if last_reebill \
                             else '',
