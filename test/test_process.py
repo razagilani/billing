@@ -1059,6 +1059,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,2,1), date(2013,3,1)))
             self.assertFalse(os.access(the_path, os.F_OK))
 
+    def test_get_service_address(self):
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO("A PDF"), 'january.pdf')
+            address=self.process.get_service_address(session, account)
+            self.assertEqual(address['postal_code'],'20010')
+            self.assertEqual(address['city'],'Washington')
+            self.assertEqual(address['state'],'DC')
+            self.assertEqual(address['addressee'],'Monroe Towers')
+            self.assertEqual(address['street'],'3501 13TH ST NW #WH')
+
     def test_new_version(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
