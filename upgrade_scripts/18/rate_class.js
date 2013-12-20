@@ -2,4 +2,4 @@
 ;
 use skyline-dev;
 
-db.utilbills.update({}, {$rename {'rate_structure_binding': 'rate_class'}, {multi: true});
+db.utilbills.update({}, {$rename: {'rate_structure_binding': 'rate_class'}}, {multi: true});
