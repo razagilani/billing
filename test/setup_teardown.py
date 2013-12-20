@@ -16,7 +16,7 @@ from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset
-from billing.processing import rate_structure
+from billing.processing import rate_structure2
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -38,6 +38,9 @@ class TestCaseWithSetup(unittest.TestCase):
         '''Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil.'''
+        # show long diffs for failed dict equality assertions
+        self.maxDiff = None
+
         # clear SQLAlchemy mappers so StateDB can be instantiated again
         #sqlalchemy.orm.clear_mappers()
 
@@ -100,6 +103,12 @@ port = 27017
         logger = logging.getLogger('test')
         logger.addHandler(logging.NullHandler())
 
+
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='utilbills')
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='ratestructure')
+
         # insert template utilbill document for the customer in Mongo
         db = pymongo.Connection('localhost')['test']
         utilbill = example_data.get_utilbill_dict('99999',
@@ -108,20 +117,11 @@ port = 27017
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
 
-        # insert URS documet for the customer's rate class in Mongo (note that
-        # UPRS and CPRS can be newly-created but URS must already exist)
-        db.ratestructure.save(example_data.get_urs_dict(
-                rate_structure_name='DC Non Residential Non Heat',
-                utility_name='washgas'))
-
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])
 
-        self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
-                27017, 'test', self.reebill_dao, logger=logger)
-
-        mongoengine.connect('test', host='localhost', port=27017,
-                alias='utilbills')
+        self.rate_structure_dao = rate_structure2.RateStructureDAO(
+                logger=logger)
 
         self.nexus_util = MockNexusUtil([
             {

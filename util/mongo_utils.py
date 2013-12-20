@@ -1,7 +1,6 @@
 from sys import maxint
 import datetime
 from datetime import date, time, datetime
-from decimal import Decimal
 from bson.objectid import ObjectId
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
@@ -12,8 +11,6 @@ def python_convert(x):
     needed to preserve document order and provide dot-access notation.'''
 
     if type(x) in [type(None), str, float, int, bool]:
-        return x
-    if type(x) is Decimal:
         return x
     if type(x) is unicode:
     # do not convert unicode strings to ascii when retrieving documents from
@@ -49,8 +46,6 @@ def bson_convert(x):
         if x >= -maxint-1 and x <= maxint:
             return int(x)
         raise ValueError("long %s is too big or to small to become an int" % x)
-    if type(x) is Decimal:
-        return float(x)
     if type(x) is time:
         return str(x)
     if type(x) is date:
