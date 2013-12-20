@@ -320,8 +320,175 @@ class Exporter(object):
         dataset = tablib.Dataset(*ds_rows, headers=ds_headers, title=account)
         return dataset
 
+    def export_reebill_details(self, session, output_file, begin_date=None,
+                               end_date=None):
+        '''
+        Writes an Excel spreadsheet to output_file. This Spreadsheet is
+        intended to give a general overview ove reebill. It contains details
+        of all issued reebills and related payments for all accounts and
+        calculates cumulative savings and RE&E energy
+        '''
 
-def main():
+        # Some formatting methods
+        def format_addr(addr):
+            addr_str = "%s %s %s %s %s" % (
+                addr['addressee'] if 'addressee' in addr and addr[
+                    'addressee'] is not None else "",
+                addr['street'] if 'street' in addr and addr[
+                    'street'] is not None else "",
+                addr['city'] if 'city' in addr and addr[
+                    'city'] is not None else "",
+                addr['state'] if 'state' in addr and addr[
+                    'state'] is not None else "",
+                addr['postal_code'] if 'postal_code' in addr and addr[
+                    'postal_code'] is not None else "",
+            )
+            return addr_str
+
+        report_rows = self.get_export_reebill_details_data(session, begin_date,
+                                                           end_date)
+
+        ds_headers = ['Account', 'Sequence', 'Version',
+                    'Billing Addressee', 'Service Addressee',
+                    'Issue Date', 'Period Begin', 'Period End',
+                    'Hypothesized Charges', 'Actual Utility Charges',
+                    'RE&E Value',
+                    'Prior Balance',
+                    'Payment Applied',
+                    'Payment Date',
+                    'Payment Amount',
+                    'Adjustment',
+                    'Balance Forward',
+                    'RE&E Charges',
+                    'Late Charges',
+                    'Balance Due',
+                    '', # spacer
+                    'Savings',
+                    'Cumulative Savings',
+                    'RE&E Energy',
+                    'Average Rate per Unit RE&E',
+        ]
+        ds_rows = []
+        for row in report_rows:
+            ds_row = [row.get('account', None),
+                          row.get('sequence', None),
+                          row.get('version', None),
+                          format_addr(row.get('billing_address', {})),
+                          format_addr(row.get('service_address', {})),
+                          row.get('issue_date', None),
+                          row.get('period_begin', None),
+                          row.get('period_end', None),
+                          row.get('hypothetical_charges', None),
+                          row.get('actual_charges', None),
+                          row.get('ree_value', None),
+                          row.get('prior_balance', None),
+                          row.get('payment_applied', None),
+                          row.get('payment_date', None),
+                          row.get('payment_amount', None),
+                          row.get('total_adjustment', None),
+                          row.get('balance_forward', None),
+                          row.get('ree_charges', None),
+                          row.get('late_charges', None),
+                          row.get('balance_due', None),
+                          '', # spacer
+                          row.get('savings', None),
+                          row.get('cumulative_savings', None),
+                          row.get('total_ree', None),
+                          row.get('average_rate_unit_ree', None)]
+            ds_rows.append(ds_row)
+
+        workbook = tablib.Databook()
+        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
+                                 title='All REE Charges')
+        workbook.add_sheet(dataset)
+        output_file.write(workbook.xls)
+
+    def get_export_reebill_details_data(self, session, begin_date, end_date):
+        ''' Extracts details data from issued reebills
+        and related payments for all accounts and
+        calculates cumulative savings and RE&E energy '''
+
+        accounts = self.state_db.listAccounts(session)
+        rows = []
+        for account in accounts:
+            payments = self.state_db.payments(session, account)
+            cumulative_savings = 0
+            for reebill_doc in self.reebill_dao.load_reebills_for(account, 0):
+                reebill = self.state_db.get_reebill(session,account,reebill_doc.sequence,
+                                               reebill_doc.version)
+                # Skip over unissued reebills
+                if not reebill.issued==1:
+                    continue
+                # if the user has chosen a begin and/or end date *and* this
+                # reebill falls outside of its bounds, skip to the next one
+                have_period_dates = begin_date or end_date
+                reebill_begins_in_this_period = begin_date and reebill_doc.period_begin >= begin_date
+                reebill_ends_in_this_period = end_date and reebill_doc.period_end <= end_date
+                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
+                if have_period_dates and not reebill_in_this_period: continue
+
+                # iterate the payments and find the ones that apply.
+                if (reebill_doc.period_begin is not None and reebill_doc.period_end is not None):
+                    applicable_payments = filter(lambda x: x.date_applied >
+                            reebill_doc.period_begin and x.date_applied <
+                            reebill_doc.period_end, payments)
+                    # pop the ones that get applied from the payment list
+                    # (there is a bug due to the reebill periods overlapping,
+                    # where a payment may be applicable more than ones)
+                    for applicable_payment in applicable_payments:
+                        payments.remove(applicable_payment)
+
+                savings = reebill_doc.ree_value - reebill_doc.ree_charges
+                cumulative_savings += savings
+
+                row = {'account': account, 'sequence': reebill_doc.sequence,
+                       'version': reebill_doc.version,
+                       'billing_address': reebill_doc.billing_address,
+                       'service_address': reebill_doc.service_address,
+                       'issue_date': reebill.issue_date.isoformat(),
+                       'period_begin': reebill_doc.period_begin.isoformat(),
+                       'period_end': reebill_doc.period_end.isoformat(),
+                       'actual_charges': reebill_doc.actual_total,
+                       'hypothetical_charges': reebill_doc.hypothetical_total,
+                       'ree_value': reebill_doc.ree_value,
+                       'prior_balance': reebill_doc.prior_balance,
+                       'balance_forward': reebill_doc.balance_forward,
+                       'balance_due': reebill_doc.balance_due,
+                       'savings': savings,
+                       'cumulative_savings': cumulative_savings,
+                       'total_adjustment': reebill_doc.total_adjustment,
+                       'payment_applied': reebill_doc.payment_received,
+                       'ree_charges': reebill_doc.ree_charges}
+                try:
+                    total_ree = reebill_doc.total_renewable_energy()
+                    row['total_ree'] = total_ree
+                    if total_ree != 0:
+                        row['average_rate_unit_ree'] = (reebill_doc.hypothetical_total -
+                                reebill_doc.actual_total)/total_ree
+                except StopIteration:
+                    # A bill didnt have registers, ignore this column
+                    row['total_ree'] = 'Error! No Registers found!'
+                try:
+                    row['late_charges'] = reebill_doc.late_charges
+                except KeyError:
+                    row['late_charges'] = None
+
+                # normally, only one payment.  Multiple payments their own new rows...
+                if applicable_payments:
+                    row['payment_date'] = applicable_payments[0].date_applied.isoformat()
+                    row['payment_amount'] = applicable_payments[0].credit
+                    applicable_payments.pop(0)
+                rows.append(row)
+                for applicable_payment in applicable_payments:
+                    # ok, there was more than one applicable payment
+                    row = {'account': account, 'sequence': reebill_doc.sequence,
+                           'version':  reebill_doc.version,
+                           'payment_date': applicable_payment.date_applied.isoformat(),
+                           'payment_amount': applicable_payment.credit}
+                    rows.append(row)
+        return rows
+
+def main(export_func, filename):
     '''Run this file with the command line to test.
     Arguments:  Export type 'energy' or 'charges' (optional, uses 'energy' )
                 Account number (optional, uses all accounts or standard range)
@@ -339,27 +506,20 @@ def main():
         'user': 'dev'
     }
     state_db = state.StateDB(**statedb_config)
-
-    exporter = Exporter(
-        state_db,
-        mongo.ReebillDAO(state_db,
+    reebill_dao = mongo.ReebillDAO(state_db,
                          pymongo.Connection(billdb_config['host'],
                                             int(billdb_config['port']))[
                              billdb_config['database']])
+    exporter = Exporter(
+        state_db,
+        reebill_dao
     )
-
-    export_func = 'energy'
-    if len(sys.argv) > 2:
-        export_func = sys.argv[2]
-    elif len(sys.argv) > 1:
-        account = sys.argv[1]
-    else:
-        account = None
-
     session = state_db.session()
-    with open('spreadsheet.xls', 'wb') as output_file:
+    with open(filename, 'wb') as output_file:
         if export_func == 'energy':
             exporter.export_energy_usage(session, output_file, account=account)
+        elif export_func == 'reebill_details':
+            exporter.export_reebill_details(session, output_file)
         else:
             exporter.export_account_charges(session, output_file,
                                             account=account)
@@ -367,4 +527,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    filename = 'spreadsheet.xls'
+    export_func = 'reebill_details'
+    if len(sys.argv) > 1:
+        export_func = sys.argv[1]
+    elif len(sys.argv) > 2:
+        account = sys.argv[2]
+    else:
+        account = None
+    main(export_func, filename)

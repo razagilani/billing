@@ -1608,10 +1608,10 @@ class MongoReebill(object):
                 # look up corresponding utility bill register to get unit
                 utilbill = self._get_utilbill_for_handle(utilbill_handle)
                 utilbill_register = next(chain.from_iterable(
-                        (r for r in m['registers']
-                        if r['register_binding'] == \
-                        register_subdoc[ 'register_binding'])
-                        for m in utilbill['meters']))
+                        (r for r in m.get('registers', [])
+                        if r.get('register_binding', None) == \
+                        register_subdoc.get('register_binding', ''))
+                        for m in utilbill.get('meters', [])))
                 unit = utilbill_register['quantity_units'].lower()
 
                 # convert quantity to therms according to unit, and add it to

@@ -1358,99 +1358,30 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges, total
+        energy and rate structure for all utility bills for the given account,
+        or every account (1 per sheet) if 'account' is not given,
+        '''
         #prep date strings from client
         make_date = lambda x: datetime.strptime(x, ISO_8601_DATE).date() if x else None
         begin_date = make_date(begin_date)
         end_date = make_date(end_date)
         #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session, begin_date,
-                                                           end_date)
-
             buf = StringIO()
+            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            import xlwt
-            from xlwt import easyxf
-            workbook = xlwt.Workbook(encoding='utf-8')
-            sheet = workbook.add_sheet('All REE Charges')
-            row_index = 0
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_reebill_details(session, buf)
 
-            headings = ['Account','Sequence', 'Version',
-                'Billing Addressee', 'Service Addressee',
-                'Issue Date', 'Period Begin', 'Period End',
-                'Hypothesized Charges', 'Actual Utility Charges',
-                'RE&E Value',
-                'Prior Balance',
-                'Payment Applied',
-                'Payment Date',
-                'Payment Amount',
-                'Adjustment',
-                'Balance Forward',
-                'RE&E Charges',
-                'Late Charges',
-                'Balance Due',
-                '', # spacer
-                'Savings',
-                'Cumulative Savings',
-                'RE&E Energy',
-                'Average Rate per Unit RE&E',
-                ]
-            for i, heading in enumerate(headings):
-                sheet.write(row_index, i, heading)
-            row_index += 1
-
-            for row in rows:
-                ba = row['billing_address']
-                bill_addr_str = "%s %s %s %s %s" % (
-                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
-                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
-                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
-                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
-                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
-                )
-                sa = row['service_address']
-                service_addr_str = "%s %s %s %s %s" % (
-                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
-                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
-                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
-                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
-                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
-                )
-
-                actual_row = [row['account'], row['sequence'], row['version'],
-                        bill_addr_str, service_addr_str,
-                        row['issue_date'], row['period_begin'], row['period_end'],
-                        row['hypothetical_charges'], row['actual_charges'],
-                        row['ree_value'],
-                        row['prior_balance'],
-                        row['payment_applied'],
-                        row['payment_date'],
-                        row['payment_amount'],
-                        row['total_adjustment'],
-                        row['balance_forward'],
-                        row['ree_charges'],
-                        row['late_charges'],
-                        row['balance_due'],
-                        '', # spacer
-                        row['savings'],
-                        row['cumulative_savings'],
-                        row['total_ree'],
-                        row['average_rate_unit_ree'] ]
-                for i, cell_text in enumerate(actual_row):
-                    if isinstance(cell_text, date):
-                        sheet.write(row_index, i, cell_text, easyxf(num_format_str='YYYY-MM-DD'))
-                    else:
-                        sheet.write(row_index, i, cell_text)
-                row_index += 1
-
-                cherrypy.response.headers['Content-Type'] = 'application/excel'
-                cherrypy.response.headers['Content-Disposition'] = \
-                        'attachment; filename=%s.xls' % \
-                        datetime.now().strftime("%Y%m%d")
-
-            workbook.save(buf)
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = \
+                'attachment; filename=%s.xls' % \
+                datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
