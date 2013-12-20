@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   sodipodi:docname="SummaryBackground.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       id="perspective10" />
+    <inkscape:perspective
+       id="perspective2390"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="386.54574"
+     inkscape:cy="348.22492"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1920"
+     inkscape:window-height="1140"
+     inkscape:window-x="-4"
+     inkscape:window-y="-4" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <image
+       y="-116.28065"
+       x="-94.999992"
+       id="image2392"
+       height="1143"
+       width="1750"
+       sodipodi:absref="C:\workspace-skyline\billing\design\pastedpic_04122010_135912.png"
+       xlink:href="C:\workspace-skyline\billing\design\pastedpic_04122010_135912.png"
+       sodipodi:insensitive="true" />
+    <path
+       style="fill:#e1e1e1;fill-opacity:1;fill-rule:evenodd;stroke:#e1e1e1;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M -484.37237,791.8107 L -484.37237,734.04111 C -484.37237,722.85484 -483.5848,723.96407 -494.70503,723.96407 L -590.12165,723.96407 C -602.37519,723.96407 -601.46447,723.28878 -601.46447,735.60275 C -601.46447,735.60275 -601.46447,821.6508 -601.46447,821.6508 C -601.46447,832.79743 -602.59915,831.46172 -590.82197,831.46172 C -590.82197,831.46172 -182.72949,831.46172 -182.72949,831.46172 C -171.5654,831.46172 -172.14286,832.09889 -172.14286,821.20956 C -172.14286,821.20956 -172.14286,640.74705 -172.14286,640.74705 C -172.14286,630.85582 -171.52211,631.50504 -183.03242,631.50504 L -741.96116,631.50504 C -751.61295,631.50504 -750.83041,630.84253 -750.83041,640.87306 L -750.83041,697.86418 C -750.83041,709.26039 -751.62839,708.24235 -741.00357,708.24235 L -300.95955,708.24235 C -289.73645,708.24235 -289.98862,707.87572 -289.98862,718.36404 L -289.72076,791.52622 C -289.72076,802.03324 -289.36679,801.6479 -299.05818,801.6479 L -475.0796,801.6479 C -484.83777,801.6479 -484.37237,802.22858 -484.37237,791.8107 z"
+       id="path3173"
+       sodipodi:nodetypes="ccccccccccccccccccccc"
+       inkscape:export-xdpi="186.3"
+       inkscape:export-ydpi="186.3" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="path" />
+</svg>
