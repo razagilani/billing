@@ -1349,7 +1349,12 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
-            for reebill in self.reebill_dao.load_reebills_for(account, 0):
+            try:
+                reebills=self.reebill_dao.load_reebills_for(account, 0)
+            except NoSuchBillException:
+                # A Bill exists in Mysql, but is missing in Mongo
+                pass
+            for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
@@ -1382,50 +1387,53 @@ class Process(object):
                 row['issue_date'] = reebill.issue_date
                 row['period_begin'] = reebill.period_begin
                 row['period_end'] = reebill.period_end
-                row['actual_charges'] = reebill.actual_total.quantize(
+                row['actual_charges'] = Decimal(reebill.actual_total).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
+                row['hypothetical_charges'] = Decimal(reebill.hypothetical_total).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = reebill.total_renewable_energy()\
+                try:
+                    total_ree = Decimal(reebill.total_renewable_energy())\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
-                row['total_ree'] = total_ree
-                if total_ree != Decimal(0):
-                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
+                    row['total_ree'] = total_ree
+                    if total_ree != Decimal(0):
+                        row['average_rate_unit_ree'] = Decimal((reebill.hypothetical_total -
                             reebill.actual_total)/total_ree)\
                             .quantize(Decimal(".00"),
                             rounding=ROUND_HALF_EVEN)
+                except:
+                    row['total_ree'] = 'Error! No Registers found!'
                 else:
                     row['average_rate_unit_ree'] = 0
-                row['ree_value'] = reebill.ree_value.quantize(
+                row['ree_value'] = Decimal(reebill.ree_value).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['prior_balance'] = reebill.prior_balance.quantize(
+                row['prior_balance'] = Decimal(reebill.prior_balance).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['balance_forward'] = reebill.balance_forward.quantize(
+                row['balance_forward'] = Decimal(reebill.balance_forward).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 try:
-                    row['total_adjustment'] = reebill.total_adjustment.quantize(
+                    row['total_adjustment'] = Decimal(reebill.total_adjustment).quantize(
                             Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 except:
                     row['total_adjustment'] = None
-                row['payment_applied'] = reebill.payment_received.quantize(
+                row['payment_applied'] = Decimal(reebill.payment_received).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
-                row['ree_charges'] = reebill.ree_charges.quantize(
+                row['ree_charges'] = Decimal(reebill.ree_charges).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 try:
-                    row['late_charges'] = reebill.late_charges.quantize(
+                    row['late_charges'] = Decimal(reebill.late_charges).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 except KeyError:
                     row['late_charges'] = None
 
-                row['balance_due'] = reebill.balance_due.quantize(
+                row['balance_due'] = Decimal(reebill.balance_due).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 savings = reebill.ree_value - reebill.ree_charges
                 cumulative_savings += savings
-                row['savings'] = savings.quantize(
+                row['savings'] = Decimal(savings).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['cumulative_savings'] = cumulative_savings.quantize(
+                row['cumulative_savings'] = Decimal(cumulative_savings).quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 # normally, only one payment.  Multiple payments their own new rows...
