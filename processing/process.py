@@ -1317,12 +1317,7 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
-            try:
-                reebills=self.reebill_dao.load_reebills_for(account, 0)
-            except NoSuchBillException:
-                # A Bill exists in Mysql, but is missing in Mongo
-                pass
-            for reebill in reebills:
+            for reebill in self.reebill_dao.load_reebills_for(account, 0):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
@@ -1500,4 +1495,3 @@ class Process(object):
         last_reebill_end = self.reebill_dao.load_reebill(account,
                 last_sequence).period_end
         return [last_sequence + (query_month - Month(last_reebill_end))]
-
