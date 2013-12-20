@@ -1,13 +1,10 @@
 #!/usr/bin/python
 from StringIO import StringIO
-from datetime import date
-from decimal import Decimal
-import MySQLdb
 import csv
 import random
-import sqlalchemy
-import sys
 import unittest
+import sqlalchemy
+import pymongo
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
@@ -142,10 +139,10 @@ class FetchTest(unittest.TestCase):
         self.assertRaises(IndexError, get_energy_for_hour, date(2012,3,28), [21,21])
 
         # total energy during hours 19 and 20 converted from kWh to BTU
-        total_kwh_19 = Decimal(2217792.913 + 2217844.078 + 2217892.813 + 2217939.658)
-        total_kwh_20 = Decimal(2217986.773 + 2218036.048 + 2218082.218 + 2218128.388)
-        total_btu_19 = total_kwh_19 / Decimal(3412.14163)
-        total_btu_20 = total_kwh_20 / Decimal(3412.14163)
+        total_kwh_19 = 2217792.913 + 2217844.078 + 2217892.813 + 2217939.658
+        total_kwh_20 = 2217986.773 + 2218036.048 + 2218082.218 + 2218128.388
+        total_btu_19 = total_kwh_19 / 3412.14163
+        total_btu_20 = total_kwh_20 / 3412.14163
 
         # these are not quite the same due to floating-point errors
         # (assertAlmostEqual checks 7 decimal places by default)
@@ -202,7 +199,7 @@ class FetchTest(unittest.TestCase):
         # (also set unit to 'therms' instead of 'Ccf' because ccf isn't
         # really an energy unit)
         for r in meter1['registers'] + meter2['registers']:
-            r['quantity'] = Decimal(-1234567890)
+            r['quantity'] = -1234567890
             r['quantity_units'] = 'therms'
         # accumulate energy into shadow registers
         csv_file = StringIO()
@@ -215,9 +212,9 @@ class FetchTest(unittest.TestCase):
         # check that shadow register changed value and other registers didn't
         for r in meter1['registers'] + meter2['registers']:
             if r in shadow_registers:
-                self.assertNotEquals(Decimal(-1234567890), r['quantity'])
+                self.assertNotEquals(-1234567890, r['quantity'])
             else:
-                self.assertEquals(Decimal(-1234567890), r['quantity'])
+                self.assertEquals(-1234567890, r['quantity'])
         
         # make sure that an exception is raised when there's no meter
         # corresponding to a particular identifier or when the meter with the
@@ -269,15 +266,16 @@ class FetchTest(unittest.TestCase):
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'
         total_btu = 0
-        for hour in cross_range(*reebill.meter_read_period('gas')):
+        #for hour in cross_range(*reebill.meter_read_period('gas')):
+        for hour in cross_range(*mongo.meter_read_period(
+                reebill._utilbills[0])):
             day = date(hour.year, hour.month, hour.day)
             total_btu += monguru.get_data_for_hour(install, day,
                     hour.hour).energy_sold
         
         # compare 'total_btu' to reebill's total REE (converted from therms to
-        # BTU). use assertAlmostEqual to account for float vs. Decimal precision
-        # difference.
-        self.assertAlmostEqual(Decimal(total_btu),
+        # BTU).
+        self.assertAlmostEqual(total_btu,
                 reebill.total_renewable_energy() * 100000)
 
 

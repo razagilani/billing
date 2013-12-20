@@ -54,7 +54,7 @@ class UtilBill(Document):
     chargegroups = DictField(required=True,
             field=ListField(field=EmbeddedDocumentField(Charge)))
     total = FloatField(required=True)
-    rate_structure_binding = StringField(required=True)
+    rate_class = StringField(required=True)
     service_address = DictField(required=True, field=StringField())
     billing_address = DictField(required=True, field=StringField())
     meters = ListField(field=EmbeddedDocumentField(Meter), required=True)

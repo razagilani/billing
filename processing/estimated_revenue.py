@@ -1,6 +1,5 @@
 import sys
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 from calendar import Calendar
 from collections import defaultdict
 import tablib
@@ -10,7 +9,6 @@ from skyliner import sky_handlers
 from billing.processing.process import Process
 from billing.util.dateutils import estimate_month, month_offset, months_of_past_year, date_generator, date_to_datetime
 from billing.util.nexus_util import NexusUtil
-from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.processing.state import StateDB
 from billing.util.dictutils import deep_map
@@ -336,7 +334,7 @@ class EstimatedRevenue(object):
         # sequences until a cached rate or a reebill with non-0 energy is found
         while last_sequence > 0 and (account, last_sequence) not in \
                 self.rate_cache and last_reebill.total_renewable_energy(
-                ccf_conversion_factor=Decimal("1.0")) == 0:
+                ccf_conversion_factor=1) == 0:
             last_sequence -= 1
             if last_sequence == 0:
                 break
@@ -362,7 +360,7 @@ class EstimatedRevenue(object):
                 # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
                 ree_charges = float(last_reebill.ree_charges)
                 total_renewable_energy = float(last_reebill.total_renewable_energy(
-                        ccf_conversion_factor=Decimal("1.0")))
+                        ccf_conversion_factor=1))
                 rate = ree_charges / total_renewable_energy
 
         # store rate in cache for this sequence and all others that lack a

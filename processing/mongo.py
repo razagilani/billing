@@ -2,25 +2,22 @@
 import sys
 import datetime
 from datetime import date, time, datetime
-from decimal import Decimal, ROUND_DOWN, ROUND_UP, ROUND_HALF_EVEN
 import pymongo
 import bson # part of pymongo package
-import functools
-from urlparse import urlparse
-import httplib
-import string
-import base64
+from operator import itemgetter
 import itertools as it
 import copy
 from copy import deepcopy
-import uuid as UUID
 from itertools import chain
+from collections import defaultdict
+import tsort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError, RSIError
+from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -60,12 +57,6 @@ def reebill_address_to_utilbill_address(address):
     }
 
 # type-conversion functions
-
-def float_to_decimal(x):
-    '''Converts float into Decimal. Used in getter methods.'''
-    # str() tells Decimal to automatically figure out how many digts of
-    # precision we want
-    return Decimal(str(x)) if type(x) is float else x
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     # TODO combine this into python_convert(), and include the ancestor_key
@@ -119,7 +110,7 @@ def unflatten_chargegroups_list(flat_charges):
 # TODO make this a method of a utility bill document class when one exists
 def get_all_actual_registers_json(utilbill_doc):
     '''Given a utility bill document, returns a list of dictionaries describing
-    non-shadow registers of all meters. (The "actual" in the name has nothing
+    registers of all meters. (The "actual" in the name has nothing
     to do with "actual charges".)'''
     result = []
     for meter in utilbill_doc['meters']:
@@ -158,23 +149,12 @@ def new_register(utilbill_doc, meter_identifier=None, identifier = None):
         identifier = 'Insert register ID here'
     new_actual_register = {
         "description" : "Insert description",
-        "quantity" : Decimal(0),
+        "quantity" : 0,
         "quantity_units" : "therms",
-        "shadow" : False,
         "identifier" : identifier,
         "type" : "total",
         "register_binding": "Insert register binding here"
     }
-    new_shadow_register = {
-        "description" : "Insert description",
-        "quantity" : Decimal(0),
-        "quantity_units" : "therms",
-        "shadow" : True,
-        "identifier" : identifier,
-        "type" : "total",
-        "register_binding": "Insert register binding here"
-    }
-
     for reg in meter['registers']:
         if reg['identifier'] == identifier:
             raise ValueError('Register %s for meter %s already exists.' %
@@ -211,6 +191,7 @@ def _new_meter(utilbill_doc, identifier=None):
     utilbill_doc['meters'].append(new_meter)
     return new_meter
 
+# TODO make this a method of a utility bill document class when one exists
 def delete_register(utilbill_doc, meter_identifier, identifier):
     for meter in utilbill_doc['meters']:
         if meter['identifier'] == meter_identifier:
@@ -279,7 +260,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     if description is not None:
         register['description'] = description
     if quantity is not None:
-        register['quantity'] = Decimal(str(quantity))
+        register['quantity'] = str(quantity)
     if description is not None:
         register['description'] = description
     if quantity_units is not None:
@@ -300,47 +281,162 @@ def actual_chargegroups_flattened(utilbill_doc):
             utilbill_doc['chargegroups']))
 
 # TODO make this a method of a utility bill document class when one exists
+def get_service_address(utilbill_doc):
+    return utilbill_doc['service_address']
+
+# TODO make this a method of a utility bill document class when one exists
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+# TODO rename to get_meter_read_period
+# TODO make this a method of a utility bill document class when one exists
 def meter_read_period(utilbill_doc):
-    '''Returns the period dates of the first (i.e. only) meter in this bill.'''
+    '''Returns the period dates of the first (i.e. only) meter in this bill.
+    '''
     assert len(utilbill_doc['meters']) >= 1
     meter = utilbill_doc['meters'][0]
     return meter['prior_read_date'], meter['present_read_date']
 
 # TODO make this a method of a utility bill document class when one exists
-# TODO maybe rename something like "compute_utility_bill_charges"
-def compute_utility_bill(utilbill_doc, the_rate_structure):
-    '''Updates charges in the given utility bill document to match the given
-    rate structure document.
+def set_meter_read_period(utilbill_doc, start, end):
+    '''Sets the period dates of the first (i.e. only) meter in this bill.
     '''
-    # make copies of 'rate_structure' and 'chargegroups' subdocument to
-    # insulate them from code in rate_structure.py
-    rate_structure = copy.deepcopy(the_rate_structure)
+    assert len(utilbill_doc['meters']) >= 1
+    meter = utilbill_doc['meters'][0]
+    meter['prior_read_date'], meter['present_read_date'] = start, end
 
-    # registers can't be copied because changes to it need to be preserved, for
-    # some reason
-    registers = chain.from_iterable(m['registers'] for m in
-            utilbill_doc['meters'])
+# TODO make this a method of a utility bill document class when one exists
+def refresh_charges(utilbill_doc, uprs, cprs):
+    '''Replaces charges in the utility bill document with newly-created ones
+    based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
+    for every RSI. The charges are computed according to the rate structures.
+    '''
+    utilbill_doc['chargegroups'] = {'All Charges': [{
+        'rsi_binding': rsi.rsi_binding,
+        'quantity': 0,
+        'quantity_units': 0,
+        'rate': 0,
+        #'rate_units': 0,
+        'total': 0,
+    } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
+            key=itemgetter('rsi_binding'))]}
 
-    # make a copy of the "chargegroups" subdocument to insulate it from
-    # rate_structure.py
-    actual_chargegroups = deepcopy(utilbill_doc['chargegroups'])
+# TODO make this a method of a utility bill document class when one exists
+def compute_all_charges(utilbill_doc, uprs, cprs):
+    '''Updates "quantity", "rate", and "total" fields in all charges in this
+    utility bill document so they're correct accoding to the formulas in the
+    RSIs in the given rate structures. RSIs in 'uprs' that have the same
+    'rsi_binding' as any RSI in 'cprs' are ignored.
+    '''
+    # catch any type errors in the rate structure documents up front to avoid
+    # confusing error messages later
+    uprs.validate();
+    cprs.validate()
 
-    # this does something to the list of register dictionaries and/or rate
-    # structure document but i'm not sure how it affects charges
-    rate_structure.bind_register_readings(registers)
+    # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
+    # (where NAME can be a register or the RSI_BINDING of some other charge).
+    # these are not valid python identifiers, so they can't be parsed as
+    # individual names. this dictionary maps names to "quantity"/"rate"/"total"
+    # to float values; RateStructureItem.compute_charge uses it to get values
+    # for the identifiers in the RSI formulas. it is initially filled only with
+    # register names, and the inner dictionary corresponding to each register
+    # name contains only "quantity".
+    identifiers = defaultdict(lambda:{})
+    for meter in utilbill_doc['meters']:
+        for register in meter['registers']:
+            identifiers[register['register_binding']]['quantity'] = \
+                    register['quantity']
 
-    # i don't know what this does either
-    for charges in actual_chargegroups.values():
-        rate_structure.bind_charges(charges)
+    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
+    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
+    rsis = RateStructure.combine(uprs, cprs).rsis_dict()
 
-    # by now, 'charges' should be a version of the utility bill "chargegroups"
-    # subdocument with correct charges; the original subdocument can be
-    # replaced with it
-    utilbill_doc['chargegroups'] = actual_chargegroups
+    # get dictionary mapping charge names to their indices in an alphabetical
+    # list. this assigns a number to each charge.
+    # TODO rename to charge_names_to_numbers
+    all_charges = list(sorted(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()),
+            key=lambda charge: charge['rsi_binding']))
+    charge_numbers = {charge['rsi_binding']: index for index, charge in
+            enumerate(all_charges)}
 
+    # the dependencies of some charges' RSI formulas on other charges form a
+    # DAG, which will be represented as a list of pairs of charge numbers in
+    # 'charge_numbers'. this list will be used to determine the order
+    # in which charges get evaluated. to build the list, find all identifiers
+    # in each RSI formula that is not a register name; every such identifier
+    # must be the name of a charge, and its presence means the charge whose RSI
+    # formula contains that identifier depends on the charge whose name is the
+    # identifier.
+    dependency_graph = []
+    # this list initially contains all charge numbers, and by the end of the
+    # loop will contain only the numbers of charges that had no relationship to
+    # another chanrge
+    independent_charge_numbers = set(charge_numbers.itervalues())
+    for charges in utilbill_doc['chargegroups'].itervalues():
+        for charge in charges:
+            rsi = rsis[charge['rsi_binding']]
+            this_charge_num = charge_numbers[charge['rsi_binding']]
+
+            # for every node in the AST of the RSI's "quantity" and "rate"
+            # formulas, if the 'ast' module identifiers that node as an
+            # identifier, and its name does not occur in 'identifiers' above
+            # (which contains only register names), add the tuple (this
+            # charge's number, that charge's number) to 'dependency_graph'.
+            rsi_identifiers = rsi.get_identifiers()
+            for identifier in rsi.get_identifiers():
+                if identifier in identifiers:
+                    continue
+                try:
+                    other_charge_num = charge_numbers[identifier]
+                except KeyError:
+                    # TODO might want to validate identifiers before computing
+                    # for clarity
+                    raise FormulaError(('Unknown variable in formula of RSI '
+                            '"%s": %s') % (rsi.rsi_binding, identifier))
+                # a pair (x,y) means x precedes y, i.e. y depends on x
+                dependency_graph.append((other_charge_num, this_charge_num))
+                independent_charge_numbers.discard(other_charge_num)
+                independent_charge_numbers.discard(this_charge_num)
+
+    # charges that don't depend on other charges can be evaluated before ones
+    # that do.
+    evaluation_order = list(independent_charge_numbers)
+
+    # 'evaluation_order' now contains only the indices of charges that don't
+    # have dependencies. topological sort the dependency graph to find an
+    # evaluation order that works for the charges that do have dependencies.
+    try:
+        evaluation_order.extend(tsort.topological_sort(dependency_graph))
+    except tsort.GraphError as g:
+        # if the graph contains a cycle, provide a more comprehensible error
+        # message with the charge numbers converted back to names
+        names_in_cycle = ', '.join(all_charges[i]['rsi_binding'] for i in
+                g.args[1])
+        raise RSIError('Circular dependency: %s' % names_in_cycle)
+
+    assert len(evaluation_order) == len(all_charges)
+
+    # compute each charge, using its corresponding RSI, in the above order.
+    # every time a charge is computed, store the resulting "quantity", "rate",
+    # and "total" in 'identifiers' so it can be used in evaluating subsequent
+    # charges that depend on it.
+    for charge_number in evaluation_order:
+        charge = all_charges[charge_number]
+        rsi = rsis[charge['rsi_binding']]
+        quantity, rate = rsi.compute_charge(identifiers)
+        charge['quantity'] = quantity
+        charge['rate'] = rate
+        charge['total'] = quantity * rate
+        identifiers[charge['rsi_binding']]['quantity'] = charge['quantity']
+        identifiers[charge['rsi_binding']]['rate'] = charge['rate']
+        identifiers[charge['rsi_binding']]['total'] = charge['total']
+
+def total_of_all_charges(utilbill_doc):
+    '''Returns sum of "total" fields of all charges in the utility bill.
+    '''
+    return sum(charge.get('total', 0) for charge in
+            chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -405,12 +501,21 @@ class MongoReebill(object):
             # corresponding utility bill document.
             'id': utilbill_doc['_id'],
 
-            # hypothetical versions of all the registers in all the meters of
-            # the utility bill--though the only thing that should ever be
-            # different from the real versions is the value of the "quantity"
-            # key in each register
-            'shadow_registers': list(chain.from_iterable(m['registers'] for m in
-                    utilbill_doc['meters'])),
+            # subdocuments corresponding to the the registers in the meters
+            # of the utility bill: for now, all registers get included,
+            # but in the future this could change.
+            'shadow_registers': [{
+                # 'register_binding' matches up this subdocument with a
+                # utility bill register
+                'register_binding': r['register_binding'],
+                # hypothetical quantity of the corresponding utility bill
+                # register
+                'quantity': 0,
+                # OLAP measure name that will be used for determining the
+                # hypothetical quantity above
+                'measure': 'Energy Sold'
+            } for r in chain.from_iterable(m['registers']
+                    for m in utilbill_doc['meters'])],
 
             # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
@@ -447,45 +552,15 @@ class MongoReebill(object):
             'late_charge_rate': late_charge_rate,
             'late_charges': 0,
             "message" : None,
-            "issue_date" : None,
             "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
-            "actual_total" : 0,
             "due_date" : None,
             "total_adjustment" : 0,
             "manual_adjustment" : 0,
             "ree_savings" : 0,
-            #"statistics" : {
-                #"renewable_utilization" : 0,
-                #"renewable_produced" : None,
-                #"total_conventional_consumed" : 0,
-                #"total_co2_offset" : 0,
-                #"conventional_consumed" : 0,
-                #"total_renewable_produced" : None,
-                #"total_savings" : 0,
-                #"consumption_trend" : [
-                    #{ "quantity" : 0, "month" : "Dec" },
-                    #{ "quantity" : 0, "month" : "Jan" },
-                    #{ "quantity" : 0, "month" : "Feb" },
-                    #{ "quantity" : 0, "month" : "Mar" },
-                    #{ "quantity" : 0, "month" : "Apr" },
-                    #{ "quantity" : 0, "month" : "May" },
-                    #{ "quantity" : 0, "month" : "Jun" },
-                    #{ "quantity" : 0, "month" : "Jul" },
-                    #{ "quantity" : 0, "month" : "Aug" },
-                    #{ "quantity" : 0, "month" : "Sep" },
-                    #{ "quantity" : 0, "month" : "Oct" },
-                    #{ "quantity" : 0, "month" : "Nov" }
-                #],
-                #"conventional_utilization" : 0,
-                #"total_trees" : 0,
-                #"co2_offset" : 0,
-                #"total_renewable_consumed" : 0,
-                #"renewable_consumed" : 0,
-            #},
             "balance_due" : 0,
             "prior_balance" : 0,
-            "hypothetical_total" : 0,
+            #"hypothetical_total" : 0,
             "balance_forward" : 0,
             # NOTE these address fields are containers for utility bill
             # addresses. these addresses will eventually move into utility bill
@@ -522,241 +597,205 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
-    # TODO 36805917 clear() can go away when ReeBills can be constructed
-    def clear(self):
-        '''Code for clearing out fields of newly-rolled rebill and its utility
-        bill documents (moved from __init__, called by Process.roll_bill). TODO
-        remove this.'''
-        # set start date of each utility bill in this reebill to the end date
-        # of the previous utility bill for that service
-        #for service in self.services:
-        #    prev_start, prev_end = self.utilbill_period_for_service(service)
-        #    self.set_utilbill_period_for_service(service, (prev_end, None))
-
-        # process rebill
-        self.total_adjustment = Decimal("0.00")
-        self.manual_adjustment = Decimal("0.00")
-        self.hypothetical_total = Decimal("0.00")
-        self.actual_total = Decimal("0.00")
-        self.ree_value = Decimal("0.00")
-        self.ree_charges = Decimal("0.00")
-        self.ree_savings = Decimal("0.00")
-        self.due_date = None
-        self.issue_date = None
-        self.motd = None
-
-        # this should always be set from the value in MySQL, which holds the
-        # "current" discount rate for each customer
-        self.discount_rate = Decimal("0.00")
-
-        self.prior_balance = Decimal("0.00")
-        self.total_due = Decimal("0.00")
-        self.balance_due = Decimal("0.00")
-        self.payment_received = Decimal("0.00")
-        self.balance_forward = Decimal("0.00")
-        # some customers are supposed to lack late_charges key, some are
-        # supposed to have late_charges: None, and others have
-        # self.late_charges: 0
-        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
-            self.late_charges = Decimal("0.00")
-
-        for service in self.services:
-            # get utilbill numbers and zero them out
-            self.set_actual_total_for_service(service, Decimal("0.00")) 
-            self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
-            self.set_ree_value_for_service(service, Decimal("0.00")) 
-            self.set_ree_savings_for_service(service, Decimal("0.00")) 
-            self.set_ree_charges_for_service(service, Decimal("0.00")) 
-
-            # set new UUID's & clear out the last bound charges
-            actual_chargegroups = self.actual_chargegroups_for_service(service)
-            for (group, charges) in actual_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-            for (group, charges) in hypothetical_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-       
-            # reset measured usage
-            for service in self.services:
-                for meter in self.meters_for_service(service):
-                    self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-                for actual_register in self.actual_registers(service):
-                    self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
-                for shadow_register in self.shadow_registers(service):
-                    self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
-
-            # if "statistics" section exists in the bill, remove it
-            if 'statistics' in self.reebill_dict:
-                del self.reebill_dict['statistics']
-
-
-    def convert_to_new_account(self, account):
-        # TODO: the existence of this function is a symptom of ugly design.
-        # figure out how to make it go away if possible.
-        # https://www.pivotaltracker.com/story/show/37798427
-        '''Sets the account of this reebill and all its utility bills to
-        'account', and creates new _ids in all utility bills and the reebill's
-        references to them. And converts frozen utility bills into editable
-        ones by removing the "sequence" and "version" keys, if present. Used
-        for converting an existing reebill and its utility bills into a
-        template for a new account.'''
-        self.account = account
-        for handle in self.reebill_dict['utilbills']:
-            u = self._get_utilbill_for_handle(handle)
-            u['account'] = account
-            if 'sequence' in u:
-                del u['sequence']
-            if 'version' in u:
-                del u['version']
-            u['_id'] = handle['id'] = bson.ObjectId()
-
-    # TODO: is this method obsolete?
-    def new_utilbill_ids(self):
-        '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removes "sequence" and "version" keys if
-        present (to convert frozen utility bill into editable one). Used when
-        rolling to create copies of the utility bills. does not need to be
-        called when creating a new account because 'convert_to_new_account'
-        also does this.'''
-        for utilbill_handle in self.reebill_dict['utilbills']:
-            utilbill_doc = self._get_utilbill_for_handle(utilbill_handle)
-            new_id = bson.objectid.ObjectId()
-            utilbill_handle['id'] = utilbill_doc['_id'] = new_id
-            if 'sequence' in utilbill_doc:
-                del utilbill_doc['sequence']
-            if 'version' in utilbill_doc:
-                del utilbill_doc['version']
-
     def update_utilbill_subdocs(self):
         '''Refreshes the "utilbills" sub-documents of the reebill document to
         match the utility bill documents in _utilbills. (These represent the
-        "hypothetical" version of each utility bill.)'''
+        "hypothetical" version of each utility bill.)
+        '''
         # TODO maybe this should be done in compute_bill or a method called by
         # it; see https://www.pivotaltracker.com/story/show/51581067
         self.reebill_dict['utilbills'] = \
                 [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
-                
-    def compute_charges(self, the_rate_structure):
-        """This function binds a rate structure against the actual and
-        hypothetical charges found in a bill. If and RSI specifies information
-        no in the bill, it is added to the bill. If the bill specifies
-        information in a charge that is not in the RSI, the charge is left
-        untouched."""
-        account, sequence = self.account, self.sequence
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
 
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
+
+                
+    def compute_charges(self, uprs, cprs):
+        '''Recomputes hypothetical versions of all charges based on the
+        associated utility bill.
+        '''
+        account, sequence = self.account, self.sequence
         # process rate structures for all services
         for service in self.services:
-            compute_utility_bill(self._get_utilbill_for_service(service),
-                    the_rate_structure)
-            ##
-            ## All registers for all meters in a given service are made available
-            ## to the rate structure for the given service.
-            ## Registers that are not to be used by the rate structure should
-            ## simply not have an rsi_binding.
-            ##
+            utilbill_doc = self._get_utilbill_for_service(service)
+            compute_all_charges(utilbill_doc, uprs, cprs)
 
-            ## actual
+            # TODO temporary hack: duplicate the utility bill, set its register
+            # quantities to the hypothetical values, recompute it, and then
+            # copy all the charges back into the reebill
+            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(
+                    service))
 
-            ## copy rate structure because it gets destroyed during use
+            # these three generators iterate through "actual registers" of the
+            # real utility bill (describing conventional energy usage), "shadow
+            # registers" of the reebill (describing renewable energy usage
+            # offsetting conventional energy), and "hypothetical registers" in
+            # the copy of the utility bill (which will be set to the sum of the
+            # other two).
+            actual_registers = chain.from_iterable(m['registers']
+                    for m in utilbill_doc['meters'])
+            shadow_registers = chain.from_iterable(u['shadow_registers']
+                    for u in self.reebill_dict['utilbills'])
+            hypothetical_registers = chain.from_iterable(m['registers'] for m
+                    in hypothetical_utilbill['meters'])
+
+            # set the quantity of each "hypothetical register" to the sum of
+            # the corresponding "actual" and "shadow" registers.
+            for h_register in hypothetical_registers:
+                a_register = next(r for r in actual_registers
+                        if r['register_binding'] == 
+                        h_register['register_binding'])
+                s_register = next(r for r in shadow_registers
+                        if r['register_binding'] == 
+                        h_register['register_binding'])
+                h_register['quantity'] = a_register['quantity'] + \
+                        h_register['quantity']
+
+            # compute the charges of the hypothetical utility bill
+            compute_all_charges(hypothetical_utilbill, uprs, cprs)
+
+            # copy the charges from there into the reebill
+            self.set_hypothetical_chargegroups_for_service(service,
+                    hypothetical_utilbill['chargegroups'])
+
+
+
+
+
+
+            """This function binds a rate structure against the actual and
+            hypothetical charges found in a bill. If and RSI specifies information
+            no in the bill, it is added to the bill. If the bill specifies
+            information in a charge that is not in the RSI, the charge is left
+            untouched."""
+            ###
+            ### All registers for all meters in a given service are made available
+            ### to the rate structure for the given service.
+            ### Registers that are not to be used by the rate structure should
+            ### simply not have an rsi_binding.
+            ###
+
+            ### actual
+
+            ### copy rate structure because it gets destroyed during use
+            ##rate_structure = copy.deepcopy(the_rate_structure)
+
+            ### get non-shadow registers in the reebill
+            ##actual_register_readings = self.actual_registers(service)
+
+            ###print "loaded rate structure"
+            ###pp(rate_structure)
+
+            ###print "loaded actual register readings"
+            ###pp(actual_register_readings)
+
+            ### copy the quantity of each non-shadow register in the reebill to
+            ### the corresponding register dictionary in the rate structure
+            ### ("apply the registers from the reebill to the probable rate structure")
+            ##rate_structure.bind_register_readings(actual_register_readings) 
+            ###print "rate structure with bound registers"
+            ###pp(rate_structure)
+
+            ### get all utility charges from the reebill's utility bill (in the
+            ### form of a group name -> [list of charges] dictionary). for each
+            ### charge, find the corresponding rate structure item (the one that
+            ### matches its "rsi_binding") and copy the values of "description",
+            ### "quantity", "quantity_units", "rate", and "rate_units" in that
+            ### RSI to the charge
+            ### ("process actual charges with non-shadow meter register totals")
+            ### ("iterate over the charge groups, binding the reebill charges to
+            ### its associated RSI")
+            ##actual_chargegroups = self.actual_chargegroups_for_service(service)
+            ##for charges in actual_chargegroups.values():
+                ##rate_structure.bind_charges(charges)
+
+            ### (original comment "don't have to set this because we modified the
+            ### actual_chargegroups" is false--we modified the rate structure
+            ### items, but left the charges in the bill unchanged. as far as i
+            ### can tell this line of code has no effect)
+            ##self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            ## hypothetical charges
+
+            ## re-copy rate structure because it gets destroyed during use
             #rate_structure = copy.deepcopy(the_rate_structure)
 
-            ## get non-shadow registers in the reebill
+            ## get shadow and non-shadow registers in the reebill
             #actual_register_readings = self.actual_registers(service)
+            #shadow_register_readings = self.shadow_registers(service)
 
-            ##print "loaded rate structure"
-            ##pp(rate_structure)
+            ## "add the shadow register totals to the actual register, and re-process"
 
-            ##print "loaded actual register readings"
-            ##pp(actual_register_readings)
+            ## TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
+            ## a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
+            ## renewable energy - then the rate is calculated incorrectly.  This is because
+            ## a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
+            ## one way for actual charge computation and another way for hypothetical charge
+            ## computation.
 
-            ## copy the quantity of each non-shadow register in the reebill to
+            ## for each shadow register dictionary: add its quantity to the
+            ## quantity of the corresponding non-shadow register
+            #registers_to_bind = copy.deepcopy(shadow_register_readings)
+            #for shadow_reading in registers_to_bind:
+                #for actual_reading in actual_register_readings:
+                    #if actual_reading['identifier'] == shadow_reading['identifier']:
+                        #shadow_reading['quantity'] += actual_reading['quantity']
+                ## TODO: throw exception when registers mismatch
+
+            ## copy the quantity of each register dictionary in the reebill to
             ## the corresponding register dictionary in the rate structure
-            ## ("apply the registers from the reebill to the probable rate structure")
-            #rate_structure.bind_register_readings(actual_register_readings)
+            ## ("apply the combined registers from the reebill to the probable
+            ## rate structure")
+            #rate_structure.bind_register_readings(registers_to_bind)
 
-            ##print "rate structure with bound registers"
-            ##pp(rate_structure)
-
-            ## get all utility charges from the reebill's utility bill (in the
-            ## form of a group name -> [list of charges] dictionary). for each
-            ## charge, find the corresponding rate structure item (the one that
-            ## matches its "rsi_binding") and copy the values of "description",
-            ## "quantity", "quantity_units", "rate", and "rate_units" in that
-            ## RSI to the charge
-            ## ("process actual charges with non-shadow meter register totals")
-            ## ("iterate over the charge groups, binding the reebill charges to
-            ## its associated RSI")
-            #actual_chargegroups = self.actual_chargegroups_for_service(service)
-            #for charges in actual_chargegroups.values():
+            ## for each hypothetical charge in the reebill, copy the values of
+            ## "description", "quantity", "quantity_units", "rate", and
+            ## "rate_units" from the corresponding rate structure item to the
+            ## charge
+            ## ("process hypothetical charges with shadow and non-shadow meter register totals")
+            ## ("iterate over the charge groups, binding the reebill charges to its associated RSI")
+            #hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+            #for chargegroup, charges in hypothetical_chargegroups.items():
                 #rate_structure.bind_charges(charges)
 
-            ## (original comment "don't have to set this because we modified the
-            ## actual_chargegroups" is false--we modified the rate structure
-            ## items, but left the charges in the bill unchanged. as far as i
-            ## can tell this line of code has no effect)
-            #self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+            ## don't have to set this because we modified the hypothetical_chargegroups
+            ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
-            # hypothetical charges
+    def update_summary_values(self):
+        '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
+        the reebill document. This should be done whenever the bill is
+        computed. Eventually code in Process.compute_reebill should move into
+        here and this method should be renamed to something more general.
+        '''
+        for subdoc in self.reebill_dict['utilbills']:
+            actual_total = total_of_all_charges(
+                    self._get_utilbill_for_handle(subdoc))
+            hypothetical_total = sum(charge['total'] for charge in
+                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
 
-            # re-copy rate structure because it gets destroyed during use
-            rate_structure = copy.deepcopy(the_rate_structure)
-
-            # get shadow and non-shadow registers in the reebill
-            actual_register_readings = self.actual_registers(service)
-            shadow_register_readings = self.shadow_registers(service)
-
-            # "add the shadow register totals to the actual register, and re-process"
-
-            # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
-            # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
-            # renewable energy - then the rate is calculated incorrectly.  This is because
-            # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
-            # one way for actual charge computation and another way for hypothetical charge
-            # computation.
-
-            # for each shadow register dictionary: add its quantity to the
-            # quantity of the corresponding non-shadow register
-            registers_to_bind = copy.deepcopy(shadow_register_readings)
-            for shadow_reading in registers_to_bind:
-                for actual_reading in actual_register_readings:
-                    if actual_reading['identifier'] == shadow_reading['identifier']:
-                        shadow_reading['quantity'] += actual_reading['quantity']
-                # TODO: throw exception when registers mismatch
-
-            # copy the quantity of each register dictionary in the reebill to
-            # the corresponding register dictionary in the rate structure
-            # ("apply the combined registers from the reebill to the probable
-            # rate structure")
-            rate_structure.bind_register_readings(registers_to_bind)
-
-            # for each hypothetical charge in the reebill, copy the values of
-            # "description", "quantity", "quantity_units", "rate", and
-            # "rate_units" from the corresponding rate structure item to the
-            # charge
-            # ("process hypothetical charges with shadow and non-shadow meter register totals")
-            # ("iterate over the charge groups, binding the reebill charges to its associated RSI")
-            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-            for chargegroup, charges in hypothetical_chargegroups.items():
-                rate_structure.bind_charges(charges)
-
-            # don't have to set this because we modified the hypothetical_chargegroups
-            #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-
+            subdoc['ree_value'] = hypothetical_total - actual_total
+            subdoc['ree_charges'] = (hypothetical_total -
+                    actual_total) * (1 - self.discount_rate)
+            subdoc['ree_savings'] = (hypothetical_total -
+                    actual_total) * self.discount_rate
+        
+        self.ree_value = sum(subdoc['ree_value'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_charges = sum(subdoc['ree_charges'] for subdoc in
+                self.reebill_dict['utilbills'])
+        self.ree_savings = sum(subdoc['ree_savings'] for subdoc in
+                self.reebill_dict['utilbills'])
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -786,21 +825,6 @@ class MongoReebill(object):
         self.reebill_dict['_id']['version'] = int(value)
     
     @property
-    def issue_date(self):
-        """ This is a mandatory property of a ReeBill. Consequently, there is
-        no information to be had by throwing a key exception on a missing
-        issue_date.  """
-
-        if 'issue_date' in self.reebill_dict:
-            return python_convert(self.reebill_dict['issue_date'])
-
-        return None
-
-    @issue_date.setter
-    def issue_date(self, value):
-        self.reebill_dict['issue_date'] = value
-
-    @property
     def due_date(self):
         return python_convert(self.reebill_dict['due_date'])
     @due_date.setter
@@ -817,7 +841,6 @@ class MongoReebill(object):
     
     @property
     def discount_rate(self):
-        '''Discount rate is a Decimal.'''
         return self.reebill_dict['discount_rate']
     @discount_rate.setter
     def discount_rate(self, value):
@@ -839,8 +862,8 @@ class MongoReebill(object):
     @property
     def balance_due(self):
         '''Overall balance of the customer's account at the time this bill was
-        issued, including unpaid charges from previous bills. Returns a
-        Decimal.'''
+        issued, including unpaid charges from previous bills.
+        '''
         return self.reebill_dict['balance_due']
     @balance_due.setter
     def balance_due(self, value):
@@ -848,7 +871,6 @@ class MongoReebill(object):
 
     @property
     def late_charge_rate(self):
-        '''Late charges rate is a Decimal.'''
         # currently, there is a population of reebills that do not have a late_charge_rate
         # because late_charge_rate was not yet implemented.
         # and since we may want to know this, let the key exception be raised.
@@ -867,7 +889,6 @@ class MongoReebill(object):
 
     @late_charges.setter
     def late_charges(self, value):
-        if type(value) is not Decimal: raise ValueError("Requires Decimal")
         self.reebill_dict['late_charges'] = value
 
     @property
@@ -919,10 +940,10 @@ class MongoReebill(object):
 
     @property
     def manual_adjustment(self):
-        return Decimal(self.reebill_dict['manual_adjustment'])
+        return self.reebill_dict['manual_adjustment']
     @manual_adjustment.setter
     def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = Decimal(value)
+        self.reebill_dict['manual_adjustment'] = value
 
     @property
     def ree_charges(self):
@@ -957,17 +978,19 @@ class MongoReebill(object):
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
     def actual_total(self):
-        return self.reebill_dict['actual_total']
-    @actual_total.setter
-    def actual_total(self, value):
-        self.reebill_dict['actual_total'] = value
+        '''Returns total of all charges of all utility bills belonging to this
+        reebill.
+        '''
+        return sum(total_of_all_charges(u) for u in self._utilbills)
 
     @property
     def hypothetical_total(self):
-        return self.reebill_dict['hypothetical_total']
-    @hypothetical_total.setter
-    def hypothetical_total(self, value):
-        self.reebill_dict['hypothetical_total'] = value
+        '''Returns total of all charges of all "hypothetical utility bill"
+        subdocuments belongong to this reebill.
+        '''
+        return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
+                subdoc['hypothetical_chargegroups'].itervalues()))
+                for subdoc in self.reebill_dict['utilbills'])
 
     @property
     def ree_value(self):
@@ -1054,18 +1077,18 @@ class MongoReebill(object):
             raise ValueError('Multiple utilbills found for id "%s"' % id)
         return matching_utilbills[0]
 
-    def _get_utilbill_for_rs(self, utility, service, rate_structure_name):
+    def _get_utilbill_for_rs(self, utility, service, rate_class):
         '''Returns the utility bill dictionary with the given utility name and
         rate structure name.'''
         matching_utilbills = [u for u in self._utilbills if u['utility'] ==
                 utility and u['service'] == service and
-                u['rate_structure_binding'] == rate_structure_name]
+                u['rate_structure_binding'] == rate_class]
         if len(matching_utilbills) == 0:
             raise ValueError(('No utilbill found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_structure_name))
+                    'structure "%s"') % (utility, rate_class))
         if len(matching_utilbills) > 1:
             raise ValueError(('Multiple utilbills found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_structure_name))
+                    'structure "%s"') % (utility, rate_class))
         return matching_utilbills[0]
 
     def _set_utilbill_for_id(self, id, new_utilbill_doc):
@@ -1083,43 +1106,43 @@ class MongoReebill(object):
         # replace that one with 'new_utilbill_doc'
         self._utilbills[matching_indices[0]] = new_utilbill_doc
 
-    def hypothetical_total_for_service(self, service_name):
-        '''Returns the total of hypothetical charges for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_handle_for_service(service_name)['hypothetical_total']
+    #def hypothetical_total_for_service(self, service_name):
+        #'''Returns the total of hypothetical charges for the utilbill whose
+        #service is 'service_name'. There's not supposed to be more than one
+        #utilbill per service, so an exception is raised if that happens (or if
+        #there's no utilbill for that service).'''
+        #return self._get_handle_for_service(service_name)['hypothetical_total']
 
-    def set_hypothetical_total_for_service(self, service_name, new_total):
-        self._get_handle_for_service(service_name)['hypothetical_total'] \
-                = new_total
+    #def set_hypothetical_total_for_service(self, service_name, new_total):
+        #self._get_handle_for_service(service_name)['hypothetical_total'] \
+                #= new_total
 
-    def actual_total_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['total']
+    #def actual_total_for_service(self, service_name):
+        #return self._get_utilbill_for_service(service_name)['total']
 
-    def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['total'] = new_total
+    #def set_actual_total_for_service(self, service_name, new_total):
+        #self._get_utilbill_for_service(service_name)['total'] = new_total
 
-    def ree_value_for_service(self, service_name):
-        '''Returns the total of 'ree_value' (renewable energy value offsetting
-        hypothetical charges) for the utilbill whose service is 'service_name'.
-        There's not supposed to be more than one utilbill per service.'''
-        return self._get_handle_for_service(service_name)['ree_value']
-
-    def set_ree_value_for_service(self, service_name, new_ree_value):
-        self._get_handle_for_service(service_name)['ree_value'] = new_ree_value
-
-    def ree_savings_for_service(self, service_name):
-        return self._get_handle_for_service(service_name)['ree_savings']
-
-    def set_ree_savings_for_service(self, service_name, new_ree_savings):
-        self._get_handle_for_service(service_name)['ree_savings'] = new_ree_savings
-
-    def ree_charges_for_service(self, service_name):
-        return self._get_handle_for_service(service_name)['ree_charges']
-
-    def set_ree_charges_for_service(self, service_name, new_ree_charges):
-        self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
+    #def ree_value_for_service(self, service_name):
+    #    '''Returns the total of 'ree_value' (renewable energy value offsetting
+    #    hypothetical charges) for the utilbill whose service is 'service_name'.
+    #    There's not supposed to be more than one utilbill per service.'''
+    #    return self._get_handle_for_service(service_name)['ree_value']
+    #
+    #def set_ree_value_for_service(self, service_name, new_ree_value):
+    #    self._get_handle_for_service(service_name)['ree_value'] = new_ree_value
+    #
+    #def ree_savings_for_service(self, service_name):
+    #    return self._get_handle_for_service(service_name)['ree_savings']
+    #
+    #def set_ree_savings_for_service(self, service_name, new_ree_savings):
+    #    self._get_handle_for_service(service_name)['ree_savings'] = new_ree_savings
+    #
+    #def ree_charges_for_service(self, service_name):
+    #    return self._get_handle_for_service(service_name)['ree_charges']
+    #
+    #def set_ree_charges_for_service(self, service_name, new_ree_charges):
+    #    self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
 
     def hypothetical_chargegroups_for_service(self, service_name):
         '''Returns the list of hypothetical chargegroups for the utilbill whose
@@ -1201,11 +1224,11 @@ class MongoReebill(object):
         u = self._get_utilbill_for_service(service_name)
         return u['start'], u['end']
 
-    def set_utilbill_period_for_service(self, service, period):
-        '''Changes the period dates of the first utility bill associated with
-        this reebill whose service is 'service'.'''
-        u = self._get_utilbill_for_service(service)
-        u['start'], u['end'] = period
+    #def set_utilbill_period_for_service(self, service, period):
+    #    '''Changes the period dates of the first utility bill associated with
+    #    this reebill whose service is 'service'.'''
+    #    u = self._get_utilbill_for_service(service)
+    #    u['start'], u['end'] = period
 
     def renewable_energy_period(self):
         '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
@@ -1215,6 +1238,7 @@ class MongoReebill(object):
         assert len(self._utilbills) == 1
         return meter_read_period(self._utilbills[0])
 
+    # TODO make this go away; don't use reebill object to get utility bill data
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
         in the first utility bill found whose service is 'service_name'. (There
@@ -1232,14 +1256,15 @@ class MongoReebill(object):
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
 
-    @property
-    def utilbill_periods(self):
-        '''Return a dictionary whose keys are service and values are the
-        utilbill period.'''
-        return dict([(service, self.utilbill_period_for_service(service)) for
-            service in self.services])
+    #@property
+    #def utilbill_periods(self):
+    #    '''Return a dictionary whose keys are service and values are the
+    #    utilbill period.'''
+    #    return dict([(service, self.utilbill_period_for_service(service)) for
+    #        service in self.services])
 
     # TODO: consider calling this meter readings
+    # TODO make this go away; don't use reebill object to get utility bill data
     def meters_for_service(self, service_name):
         '''Returns a list of copies of meter dictionaries for the utilbill
         whose service is 'service_name'. There's not supposed to be more than
@@ -1249,7 +1274,8 @@ class MongoReebill(object):
                 self._get_utilbill_for_service(service_name)['meters'])
 
         # gather shadow register dictionaries
-        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
+        utilbill_handle = self._get_handle_for_service(service_name)
+        shadow_registers = copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
         # put shadow: False in all the non-shadow registers, and merge the
         # shadow registers in with shadow: True to replicate the old reebill
@@ -1266,268 +1292,354 @@ class MongoReebill(object):
                         break
         return meters
 
-    def _update_shadow_registers(self):
-        '''Refreshes list of "shadow_register" dictionaries in this reebill
-        document to match the utility bill documents. This should be called
-        whenever _utilbills changes or a register is modified.'''
-        # NOTE the fields typically found in a "shadow register" dictionary
-        # are: "identifier", "quantity", "quantity_units", 'description", and
-        # "register_binding" (a subset of the fields typically found in a
-        # register in a utility bill document). the only really necessary
-        # fields among these are are "identifier" and "quanity", because their
-        # only purpose is represent the quantity a register would have had in a
-        # hypothetical situation (and quantity should not be updated because it
-        # is the only field in which a shadow register should differ from its
-        # corresponding actual register.) however, for consistency, all these
-        # fields will continue to be updated--except "quantity", which should
-        # not be updated to match)
-        for u in self._utilbills:
-            handle = self._get_handle_for_service(u['service'])
-            for m in u['meters']:
-                for r in m['registers']:
-                    try:
-                        # shadow register dictionary already exists; update its
-                        # fields other than "identifier" and "quantity" (though
-                        # this is superfluous)
-                        shadow_register = next(s for s in
-                                handle['shadow_registers'] if s['identifier']
-                                == r['identifier'])
-                        shadow_register.update({
-                            'quantity_units': r['quantity_units'],
-                            'description': r['description'],
-                            'register_binding': r['register_binding'],
-                            'type': r['type'],
-                        })
-                    except StopIteration:
-                        # shadow register dictionary does not exist; create it
-                        handle['shadow_registers'].append({
-                            'identifier': r['identifier'],
-                            'quantity': Decimal(0),
-                            'quantity_units': r['quantity_units'],
-                            'description': r['description'],
-                            'register_binding': r['register_binding'],
-                            'type': r['type'],
-                        })
+    #def _update_shadow_registers(self):
+    #    '''Refreshes list of "shadow_register" dictionaries in this reebill
+    #    document to match the utility bill documents. This should be called
+    #    whenever _utilbills changes or a register is modified.'''
+    #    # NOTE the fields typically found in a "shadow register" dictionary
+    #    # are: "identifier", "quantity", "quantity_units", 'description", and
+    #    # "register_binding" (a subset of the fields typically found in a
+    #    # register in a utility bill document). the only really necessary
+    #    # fields among these are are "identifier" and "quanity", because their
+    #    # only purpose is represent the quantity a register would have had in a
+    #    # hypothetical situation (and quantity should not be updated because it
+    #    # is the only field in which a shadow register should differ from its
+    #    # corresponding actual register.) however, for consistency, all these
+    #    # fields will continue to be updated--except "quantity", which should
+    #    # not be updated to match)
+    #    for u in self._utilbills:
+    #        handle = self._get_handle_for_service(u['service'])
+    #        for m in u['meters']:
+    #            for r in m['registers']:
+    #                try:
+    #                    # shadow register dictionary already exists; update its
+    #                    # fields other than "identifier" and "quantity" (though
+    #                    # this is superfluous)
+    #                    shadow_register = next(s for s in
+    #                            handle['shadow_registers'] if s['identifier']
+    #                            == r['identifier'])
+    #                    shadow_register.update({
+    #                        'quantity_units': r['quantity_units'],
+    #                        'description': r['description'],
+    #                        'register_binding': r['register_binding'],
+    #                        'type': r['type'],
+    #                    })
+    #                except StopIteration:
+    #                    # shadow register dictionary does not exist; create it
+    #                    handle['shadow_registers'].append({
+    #                        'identifier': r['identifier'],
+    #                        'quantity': 0,
+    #                        'quantity_units': r['quantity_units'],
+    #                        'description': r['description'],
+    #                        'register_binding': r['register_binding'],
+    #                        'type': r['type'],
+    #                    })
+    #
+    #    # cull any unnecessary shadow registers
+    #    for handle in self.reebill_dict['utilbills']:
+    #        shadow_registers = handle['shadow_registers']
+    #        for shadow_register in shadow_registers:
+    #
+    #            # NOTE this loop is an example of prioritizing clarity over
+    #            # efficiency: since there is no "goto", a lot of if statements
+    #            # are required to break out of these loops after a match is
+    #            # found, but who cares about a few extra iterations?
+    #            has_a_match = False
+    #            for u in self._utilbills:
+    #                for m in u['meters']:
+    #                    if any(r['identifier'] == shadow_register['identifier']
+    #                            for r in m['registers']):
+    #                        has_a_match = True
+    #
+    #            if not has_a_match:
+    #                shadow_registers.remove(shadow_register)
 
-        # cull any unnecessary shadow registers
-        for handle in self.reebill_dict['utilbills']:
-            shadow_registers = handle['shadow_registers']
-            for shadow_register in shadow_registers:
+    #def set_meter_dates_from_utilbills(self):
+    #    '''Set the meter read dates to the start and end dates of the
+    #    associated utilbill.'''
+    #    for service in self.services:
+    #        for meter in self.meters_for_service(service):
+    #            start, end = self.utilbill_period_for_service(service)
+    #            self.set_meter_read_date(service, meter['identifier'], end, start)
 
-                # NOTE this loop is an example of prioritizing clarity over
-                # efficiency: since there is no "goto", a lot of if statements
-                # are required to break out of these loops after a match is
-                # found, but who cares about a few extra iterations?
-                has_a_match = False
-                for u in self._utilbills:
-                    for m in u['meters']:
-                        if any(r['identifier'] == shadow_register['identifier']
-                                for r in m['registers']):
-                            has_a_match = True
+    #def set_meter_read_date(self, service, identifier, present_read_date,
+    #        prior_read_date):
+    #    ''' Set the read date for a specified meter.'''
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            identifier)
+    #    meter['present_read_date'] = present_read_date
+    #    meter['prior_read_date'] = prior_read_date
 
-                if not has_a_match:
-                    shadow_registers.remove(shadow_register)
+    #def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
+    #    ''' Set the total for a specified meter register.'''
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            meter_identifier)
+    #    for register in meter['registers']:
+    #        if register['identifier'] == register_identifier:
+    #            register['quantity'] = quantity
 
-    def set_meter_dates_from_utilbills(self):
-        '''Set the meter read dates to the start and end dates of the
-        associated utilbill.'''
-        for service in self.services:
-            for meter in self.meters_for_service(service):
-                start, end = self.utilbill_period_for_service(service)
-                self.set_meter_read_date(service, meter['identifier'], end, start)
+    #def set_meter_identifier(self, service, old_identifier, new_identifier):
+    #    if old_identifier == new_identifier:
+    #        return
+    #    utilbill = self._get_utilbill_for_service(service)
+    #    # complain if any existing meter has the same identifier
+    #    for meter in utilbill['meters']:
+    #        if meter['identifier'] == new_identifier:
+    #            raise ValueError("Duplicate Identifier")
+    #    meter = next(m for m in utilbill['meters'] if m['identifier'] ==
+    #            meter_identifier)
+    #    meter['identifier'] = new_identifier
 
-    def set_meter_read_date(self, service, identifier, present_read_date,
-            prior_read_date):
-        ''' Set the read date for a specified meter.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                identifier)
-        meter['present_read_date'] = present_read_date
-        meter['prior_read_date'] = prior_read_date
+    #def set_register_identifier(self, service, old_identifier, new_identifier):
+    #    if old_identifier == new_identifier:
+    #        return
+    #    utilbill = self._get_utilbill_for_service(service)
+    #
+    #    # complain if any register in any existing meter has the same
+    #    # identifier
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == new_identifier:
+    #                raise ValueError("Duplicate Identifier")
+    #
+    #    # actual register in utilbill
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == old_identifier:
+    #                register['identifier'] = new_identifier
+    #
+    #    # hypothetical register in reebill
+    #    for meter in utilbill['meters']:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == old_identifier:
+    #                register['identifier'] = new_identifier
 
-    def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
-        ''' Set the total for a specified meter register.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        for register in meter['registers']:
-            if register['identifier'] == register_identifier:
-                register['quantity'] = quantity
+    #def meter_for_register(self, service, identifier):
+    #    meters = self.meters_for_service(service)
+    #    for meter in meters:
+    #        for register in meter['registers']:
+    #            if register['identifier'] == identifier:
+    #                return meter
 
-    def set_meter_identifier(self, service, old_identifier, new_identifier):
-        if old_identifier == new_identifier:
-            return
-        utilbill = self._get_utilbill_for_service(service)
-        # complain if any existing meter has the same identifier
-        for meter in utilbill['meters']:
-            if meter['identifier'] == new_identifier:
-                raise ValueError("Duplicate Identifier")
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['identifier'] = new_identifier
+    #@property
+    #def meters(self):
+    #    '''Returns a dictionary mapping service names to lists of meters.'''
+    #    return dict([(service, self.meters_for_service(service)) for service
+    #            in self.services])
 
-    def set_register_identifier(self, service, old_identifier, new_identifier):
-        if old_identifier == new_identifier:
-            return
-        utilbill = self._get_utilbill_for_service(service)
+    #def actual_register(self, service, identifier):
+    #    actual_register = [register for register in
+    #            self.actual_registers(service)
+    #            if register['identifier'] == identifier]
+    #    if len(actual_register) == 0:
+    #        return None
+    #    elif len(actual_register) ==1:
+    #        return actual_register[0]
+    #    else:
+    #        raise Exception("More than one actual register named %s"
+    #                % identifier)
 
-        # complain if any register in any existing meter has the same
-        # identifier
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == new_identifier:
-                    raise ValueError("Duplicate Identifier")
+    ## TODO make this go away; don't use reebill object to get utility bill data
+    #def actual_registers(self, service):
+    #    '''Returns a list of all nonempty non-shadow register dictionaries of
+    #    all meters for the given service. (The "actual" in the name has nothing
+    #    to do with "actual charges".)
+    #    Registers have rate structure bindings that are used to make the actual
+    #    registers available to rate structure items.'''
+    #    result = []
+    #    for utilbill in self._utilbills:
+    #        for meter in utilbill['meters']:
+    #            result.extend(meter['registers'])
+    #    return result
 
-        # actual register in utilbill
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == old_identifier:
-                    register['identifier'] = new_identifier
+    #def set_actual_register_quantity(self, identifier, quantity):
+    #    '''Sets the value 'quantity' in the first register subdictionary whose
+    #    identifier is 'identifier' to 'quantity'. Raises an exception if no
+    #    register with that identified is found.'''
+    #    for u in self._utilbills:
+    #        for m in u['meters']:
+    #            for r in m['registers']:
+    #                if r['identifier'] == identifier:
+    #                    r['quantity'] = quantity
+    #                    return
 
-        # hypothetical register in reebill
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == old_identifier:
-                    register['identifier'] = new_identifier
+    #def all_shadow_registers(self):
+    #    return list(chain.from_iterable([self.shadow_registers(s) for s in
+    #            self.services]))
 
-    def meter_for_register(self, service, identifier):
-        meters = self.meters_for_service(service)
-        for meter in meters:
-            for register in meter['registers']:
-                if register['identifier'] == identifier:
-                    return meter
-    @property
-    def meters(self):
-        '''Returns a dictionary mapping service names to lists of meters.'''
-        return dict([(service, self.meters_for_service(service)) for service
-                in self.services])
 
-    def actual_register(self, service, identifier):
-        actual_register = [register for register in
-                self.actual_registers(service)
-                if register['identifier'] == identifier]
-        if len(actual_register) == 0:
-            return None
-        elif len(actual_register) ==1:
-            return actual_register[0]
+    #def set_shadow_register_quantity(self, identifier, quantity):
+    #    '''Sets the value for the key "quantity" in the first shadow register
+    #    found whose identifier is 'identifier' to 'quantity' (assumed to be in
+    #    BTU). Raises an exception if no register with that identifier is
+    #    found.'''
+    #    # find the register and set its quanitity
+    #    for utilbill_handle in self.reebill_dict['utilbills']:
+    #        for register in utilbill_handle['shadow_registers']:
+    #            if register['identifier'] == identifier:
+    #                # convert units
+    #                if register['quantity_units'].lower() == 'kwh':
+    #                    # TODO physical constants must be global
+    #                    quantity /= 3412.14
+    #                elif register['quantity_units'].lower() == 'therms':
+    #                    # TODO physical constants must be global
+    #                    quantity /= 100000.0
+    #                elif register['quantity_units'].lower() == 'ccf':
+    #                    # TODO 28247371: this is an unfair conversion
+    #                    # TODO physical constants must be global
+    #                    quantity /= 100000.0
+    #                else:
+    #                    raise ValueError('unknown energy unit %s' %
+    #                            register['quantity_units'])
+    #                # set the quantity
+    #                register['quantity'] = quantity
+    #                return
+    #    raise ValueError('No register found with identifier "%s"' % quantity)
+
+    def set_hypothetical_register_quantity(self, register_binding,
+                    new_quantity):
+        '''Sets the "quantity" field of the given register subdocument to the
+        given value, assumed to be in BTU. When stored, this quantity is
+        converetd to the same unit as the corresponding utility bill register.
+        '''
+        assert isinstance(new_quantity, float)
+
+        # NOTE this may choose the wrong utility bill register if there are
+        # multiple utility bills
+        assert len(self.reebill_dict['utilbills']) == 1
+
+        # look up corresponding utility bill register to get unit
+        utilbill = self._utilbills[0]
+        utilbill_register = next(chain.from_iterable((r for r in m['registers']
+                if r['register_binding'] == register_binding)
+                for m in utilbill['meters']))
+        unit = utilbill_register['quantity_units'].lower()
+
+        # convert quantity to therms according to unit, and add it to
+        # the total
+        if unit == 'therms':
+            new_quantity /= 1e5
+        elif unit == 'btu':
+            # TODO physical constants must be global
+            pass
+        elif unit == 'kwh':
+            # TODO physical constants must be global
+            new_quantity /= 1e5
+            new_quantity /= .0341214163
+        elif unit == 'ccf':
+            # deal with non-energy unit "CCF" by converting to therms with
+            # conversion factor 1
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                   "in ccf: energy value is wrong; time to implement "
+                   "https://www.pivotaltracker.com/story/show/28825375") \
+                  % (self.account, self.sequence, self.version)
         else:
-            raise Exception("More than one actual register named %s"
-                    % identifier)
+            raise ValueError('Unknown energy unit: "%s"' % unit)
 
-    def actual_registers(self, service):
-        '''Returns a list of all nonempty non-shadow register dictionaries of
-        all meters for the given service. (The "actual" in the name has nothing
-        to do with "actual charges".)
-        Registers have rate structure bindings that are used to make the actual
-        registers available to rate structure items.'''
-        result = []
-        for utilbill in self._utilbills:
-            for meter in utilbill['meters']:
-                result.extend(meter['registers'])
-        return result
-
-    def set_actual_register_quantity(self, identifier, quantity):
-        '''Sets the value 'quantity' in the first register subdictionary whose
-        identifier is 'identifier' to 'quantity'. Raises an exception if no
-        register with that identified is found.'''
-        for u in self._utilbills:
-            for m in u['meters']:
-                for r in m['registers']:
-                    if r['identifier'] == identifier:
-                        r['quantity'] = quantity
-                        return
-
-    def all_shadow_registers(self):
-        return list(chain.from_iterable([self.shadow_registers(s) for s in
-                self.services]))
-
-    def shadow_registers(self, service):
-        '''Returns list of copies of shadow register dictionaries for the
-        utility bill with the given service.'''
-        utilbill_handle = self._get_handle_for_service(service)
-        #print repr(utilbill_handle.get('shadow_registers'))
-        return copy.deepcopy(utilbill_handle.get('shadow_registers'))
-
-    def set_shadow_register_quantity(self, identifier, quantity):
-        '''Sets the value for the key "quantity" in the first shadow register
-        found whose identifier is 'identifier' to 'quantity' (assumed to be in
-        BTU). Raises an exception if no register with that identifier is
-        found.'''
-        # find the register and set its quanitity
-        for utilbill_handle in self.reebill_dict['utilbills']:
-            for register in utilbill_handle['shadow_registers']:
-                if register['identifier'] == identifier:
-                    # convert units
-                    if register['quantity_units'].lower() == 'kwh':
-                        # TODO physical constants must be global
-                        quantity /= Decimal('3412.14')
-                    elif register['quantity_units'].lower() == 'therms':
-                        # TODO physical constants must be global
-                        quantity /= Decimal('100000.0')
-                    elif register['quantity_units'].lower() == 'ccf':
-                        # TODO 28247371: this is an unfair conversion
-                        # TODO physical constants must be global
-                        quantity /= Decimal('100000.0')
-                    else:
-                        raise ValueError('unknown energy unit %s' %
-                                register['quantity_units'])
-                    # set the quantity
-                    register['quantity'] = quantity
-                    return
-        raise ValueError('No register found with identifier "%s"' % quantity)
+        all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
+                in self.reebill_dict['utilbills'])
+        register_subdoc = next(r for r in all_hypo_registers
+                if r['register_binding'] == register_binding)
+        register_subdoc['quantity'] = new_quantity
 
     def utility_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)['utility']
 
-    def rate_structure_name_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)\
-                ['rate_structure_binding']
+    ## TODO remove
+    #def rate_structure_name_for_service(self, service_name):
+    #    return self._get_utilbill_for_service(service_name)\
+    #            ['rate_structure_binding']
 
-    @property
-    def savings(self):
-        '''Value of renewable energy generated, or total savings from
-        hypothetical utility bill.'''
-        return self.reebill_dict['ree_value']
+    #@property
+    #def savings(self):
+    #    '''Value of renewable energy generated, or total savings from
+    #    hypothetical utility bill.'''
+    #    return self.reebill_dict['ree_value']
+
+    #def total_renewable_energy(self, ccf_conversion_factor=None):
+    #    '''Returns all renewable energy distributed among shadow registers of
+    #    this reebill, in therms.'''
+    #    # TODO switch to BTU
+    #    if type(ccf_conversion_factor) not in (type(None), float):
+    #        raise ValueError("ccf conversion factor must be a float")
+    #    # TODO: CCF is not an energy unit, and registers actually hold CCF
+    #    # instead of therms. we need to start keeping track of CCF-to-therms
+    #    # conversion factors.
+    #    # https://www.pivotaltracker.com/story/show/22171391
+    #    total_therms = 0
+    #    for register in self.reebill_dict['shadow_registers']:
+    #        quantity = register['quantity']
+    #        unit = register['quantity_units'].lower()
+    #        if unit == 'therms':
+    #            total_therms += quantity
+    #        elif unit == 'btu':
+    #            # TODO physical constants must be global
+    #            total_therms += quantity / 100000.0
+    #        elif unit == 'kwh':
+    #            # TODO physical constants must be global
+    #            total_therms += quantity / .0341214163
+    #        elif unit == 'ccf':
+    #            if ccf_conversion_factor is not None:
+    #                total_therms += quantity * ccf_conversion_factor
+    #            else:
+    #                # TODO: 28825375 - need the conversion factor for this
+    #                print ("Register in reebill %s-%s-%s contains gas measured "
+    #                    "in ccf: energy value is wrong; time to implement "
+    #                    "https://www.pivotaltracker.com/story/show/28825375")\
+    #                    % (self.account, self.sequence, self.version)
+    #                # assume conversion factor is 1
+    #                total_therms += quantity
+    #        else:
+    #            raise ValueError('Unknown energy unit: "%s"' % \
+    #                    register['quantity_units'])
+    #    return total_therms
 
     def total_renewable_energy(self, ccf_conversion_factor=None):
-        '''Returns all renewable energy distributed among shadow registers of
-        this reebill, in therms.'''
-        # TODO switch to BTU
-        if type(ccf_conversion_factor) not in (type(None), Decimal):
-            raise ValueError("ccf conversion factor must be a Decimal")
-        # TODO: CCF is not an energy unit, and registers actually hold CCF
-        # instead of therms. we need to start keeping track of CCF-to-therms
-        # conversion factors.
-        # https://www.pivotaltracker.com/story/show/22171391
-        total_therms = Decimal(0)
-        for register in self.all_shadow_registers():
-            quantity = register['quantity']
-            unit = register['quantity_units'].lower()
-            if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / Decimal("100000.0")
-            elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity / Decimal(".0341214163")
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    print ("Register in reebill %s-%s-%s contains gas measured "
-                        "in ccf: energy value is wrong; time to implement "
-                        "https://www.pivotaltracker.com/story/show/28825375")\
-                        % (self.account, self.sequence, self.version)
-                    # assume conversion factor is 1
+        assert ccf_conversion_factor is None or isinstance(
+                ccf_conversion_factor, float)
+        total_therms = 0
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            for register_subdoc in utilbill_handle['shadow_registers']:
+                quantity = register_subdoc['quantity']
+
+                # look up corresponding utility bill register to get unit
+                utilbill = self._get_utilbill_for_handle(utilbill_handle)
+                utilbill_register = next(chain.from_iterable(
+                        (r for r in m.get('registers', [])
+                        if r.get('register_binding', None) == \
+                        register_subdoc.get('register_binding', ''))
+                        for m in utilbill.get('meters', [])))
+                unit = utilbill_register['quantity_units'].lower()
+
+                # convert quantity to therms according to unit, and add it to
+                # the total
+                if unit == 'therms':
                     total_therms += quantity
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % \
-                        register['quantity_units'])
+                elif unit == 'btu':
+                    # TODO physical constants must be global
+                    total_therms += quantity / 100000.0
+                elif unit == 'kwh':
+                    # TODO physical constants must be global
+                    total_therms += quantity / .0341214163
+                elif unit == 'ccf':
+                    if ccf_conversion_factor is not None:
+                        total_therms += quantity * ccf_conversion_factor
+                    else:
+                        # TODO: 28825375 - need the conversion factor for this
+                        print ("Register in reebill %s-%s-%s contains gas measured "
+                               "in ccf: energy value is wrong; time to implement "
+                               "https://www.pivotaltracker.com/story/show/28825375") \
+                              % (self.account, self.sequence, self.version)
+                        # assume conversion factor is 1
+                        total_therms += quantity
+                else:
+                    raise ValueError('Unknown energy unit: "%s"' % unit)
+
         return total_therms
 
-    #
     # Helper functions
     #
 
@@ -1542,6 +1654,7 @@ class MongoReebill(object):
         utilbill_handle = self._get_handle_for_service(service)
         utilbill_handle['hypothetical_chargegroups'] = \
                 unflatten_chargegroups_list(flat_charges)
+
 
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
@@ -1689,7 +1802,6 @@ class ReebillDAO(object):
                     format_query(query)))
         return docs[0]
 
-
     def _load_utilbill_by_id(self, _id):
         docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
         if docs.count() == 0:
@@ -1697,7 +1809,6 @@ class ReebillDAO(object):
                     % _id)
         assert docs.count() == 1
         result = docs[0]
-        result = deep_map(float_to_decimal, result)
         result = convert_datetimes(result)
         return result
 
@@ -1756,7 +1867,6 @@ class ReebillDAO(object):
         utilbill_doc = docs[0]
 
         # convert types
-        utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
         utilbill_doc = convert_datetimes(utilbill_doc)
 
         return utilbill_doc
@@ -1779,7 +1889,6 @@ class ReebillDAO(object):
 
 
             # convert types
-            utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
 
             result.append(utilbill_doc)
@@ -1824,16 +1933,16 @@ class ReebillDAO(object):
             except NoResultFound:
                 # customer not found in MySQL
                 mongo_doc = None
-        elif isinstance(version, date):
-            version_dt = date_to_datetime(version)
-            docs = self.reebills_collection.find(query, sort=[('_id.version',
-                    pymongo.ASCENDING)])
-            earliest_issue_date = docs[0]['issue_date']
-            if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                mongo_doc = docs_before_date[len(docs_before_date)-1]
-            else:
-                mongo_doc = docs[docs.count()-1]
+        #elif isinstance(version, date):
+            #version_dt = date_to_datetime(version)
+            #docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    #pymongo.ASCENDING)])
+            #earliest_issue_date = docs[0]['issue_date']
+            #if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                #docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                #mongo_doc = docs_before_date[len(docs_before_date)-1]
+            #else:
+                #mongo_doc = docs[docs.count()-1]
         else:
             raise ValueError('Unknown version specifier "%s" (%s)' %
                     (version, type(version)))
@@ -1843,7 +1952,6 @@ class ReebillDAO(object):
                     % (self.reebills_collection, format_query(query)))
 
         # convert types in reebill document
-        mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
         # load utility bills
@@ -1902,7 +2010,6 @@ class ReebillDAO(object):
             docs = self.reebills_collection.find(query).sort('sequence')
             for mongo_doc in self.reebills_collection.find(query):
                 mongo_doc = convert_datetimes(mongo_doc)
-                mongo_doc = deep_map(float_to_decimal, mongo_doc)
                 utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
@@ -2059,16 +2166,3 @@ class ReebillDAO(object):
         }, safe=True)
         check_error(result)
 
-    # TODO remove this method; this should be determined by looking at utility
-    # bills in MySQL
-    def get_first_issue_date_for_account(self, account):
-        '''Returns the issue date of the account's earliest reebill, or None if
-        no reebills exist for the customer.'''
-        query = {
-            '_id.account': account,
-            '_id.sequence': 1,
-        }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
-            return None
-        return MongoReebill(result).issue_date
