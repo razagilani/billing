@@ -346,8 +346,8 @@ class Exporter(object):
             )
             return addr_str
 
-        report_rows = self.get_export_reebill_details_data(session, begin_date,
-                                                           end_date)
+        report_rows = self._get_export_reebill_details_data(session,
+            begin_date, end_date)
 
         ds_headers = ['Account', 'Sequence', 'Version',
                     'Billing Addressee', 'Service Addressee',
@@ -404,9 +404,9 @@ class Exporter(object):
         workbook.add_sheet(dataset)
         output_file.write(workbook.xls)
 
-    def get_export_reebill_details_data(self, session, begin_date, end_date):
-        ''' Extracts details data from issued reebills
-        and related payments for all accounts and
+    def _get_export_reebill_details_data(self, session, begin_date, end_date):
+        ''' Helper method for export_reebill_details_xls: extracts details
+        data from issued  reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy '''
 
         accounts = self.state_db.listAccounts(session)
