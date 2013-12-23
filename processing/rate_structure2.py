@@ -362,6 +362,37 @@ class RateStructureItem(EmbeddedDocument):
         if description is not None:
             self.description = description
 
+    def __repr__(self):
+        return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
+            self.rate)
+
+    def __eq__(self, other):
+        return (
+                self.rsi_binding,
+                self.description,
+                self.quantity,
+                self.quantity_units,
+                self.rate,
+                self.round_rule
+           ) == (
+                other.rsi_binding,
+                other.description,
+                other.quantity,
+                other.quantity_units,
+                other.rate,
+                other.round_rule
+            )
+
+    def __hash__(self):
+        return sum([
+            hash(self.rsi_binding),
+            hash(self.description),
+            hash(self.quantity),
+            hash(self.quantity_units),
+            hash(self.rate),
+            hash(self.round_rule),
+        ])
+
 # class Register(EmbeddedDocument):
 #     # this is the only field that has any meaning, since a "register" in a rate
 #     # structure document really just means a name
