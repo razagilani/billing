@@ -23,7 +23,7 @@ def compare_rsis(rsi1, rsi2):
     return deep_map(str_to_unicode, subdict(rsi1, keys)) == \
             deep_map(str_to_unicode, subdict(rsi2, keys))
 
-class RateStructureTest(TestCaseWithSetup):
+class RateStructureDAOTest(TestCaseWithSetup):
 
     # TODO convert this to a real "unit test" (testing RateStructureDAO in
     # isolation) or move it into test_process.py
