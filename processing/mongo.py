@@ -314,23 +314,24 @@ def refresh_charges(utilbill_doc, uprs, cprs):
     utilbill_doc['chargegroups'] = {'All Charges': [{
         'rsi_binding': rsi.rsi_binding,
         'quantity': 0,
-        'quantity_units': 0,
+        'quantity_units': rsi.quantity_units,
         'rate': 0,
         #'rate_units': 0,
         'total': 0,
+        'description': rsi.description,
     } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
             key=itemgetter('rsi_binding'))]}
 
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
-    utility bill document so they're correct accoding to the formulas in the
+    utility bill document so they're correct according to the formulas in the
     RSIs in the given rate structures. RSIs in 'uprs' that have the same
     'rsi_binding' as any RSI in 'cprs' are ignored.
     '''
     # catch any type errors in the rate structure documents up front to avoid
     # confusing error messages later
-    uprs.validate();
+    uprs.validate()
     cprs.validate()
 
     # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"

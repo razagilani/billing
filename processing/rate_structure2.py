@@ -305,9 +305,9 @@ class RateStructureItem(EmbeddedDocument):
     def compute_charge(self, register_quantities):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
-        register names to quantities), and returns (quantity result, rate
-        result). Raises FormulaSyntaxError if either of the formulas could not
-        be parsed.
+        register names to dictionaries containing keys "quantity" and "rate"),
+        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
+        if either of the formulas could not be parsed.
         '''
         # check syntax
         self._parse_formulas()
@@ -362,15 +362,46 @@ class RateStructureItem(EmbeddedDocument):
         if description is not None:
             self.description = description
 
-class Register(EmbeddedDocument):
-    # this is the only field that has any meaning, since a "register" in a rate
-    # structure document really just means a name
-    register_binding = StringField(required=True)
+    def __repr__(self):
+        return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
+            self.rate)
 
-    # these are random junk fields that were inserted in the DB in Rich's code
-    quantity = StringField()
-    quantity_units = StringField()
-    description = StringField()
+    def __eq__(self, other):
+        return (
+                self.rsi_binding,
+                self.description,
+                self.quantity,
+                self.quantity_units,
+                self.rate,
+                self.round_rule
+           ) == (
+                other.rsi_binding,
+                other.description,
+                other.quantity,
+                other.quantity_units,
+                other.rate,
+                other.round_rule
+            )
+
+    def __hash__(self):
+        return sum([
+            hash(self.rsi_binding),
+            hash(self.description),
+            hash(self.quantity),
+            hash(self.quantity_units),
+            hash(self.rate),
+            hash(self.round_rule),
+        ])
+
+# class Register(EmbeddedDocument):
+#     # this is the only field that has any meaning, since a "register" in a rate
+#     # structure document really just means a name
+#     register_binding = StringField(required=True)
+#
+#     # these are random junk fields that were inserted in the DB in Rich's code
+#     quantity = StringField()
+#     quantity_units = StringField()
+#     description = StringField()
 
 class RateStructure(Document):
     meta = {
@@ -381,8 +412,6 @@ class RateStructure(Document):
 
     # this is either 'UPRS' or 'CPRS'
     type = StringField(required=True)
-
-    registers = ListField(field=EmbeddedDocumentField(Register), default=[])
 
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
             default=[])

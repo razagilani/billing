@@ -2315,6 +2315,76 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     doc2.balance_forward)
             # TODO check everything else...
 
+    def test_refresh_charges(self):
+        # TODO: most of this test duplicates test_utilbill.test_refresh_charges,
+        # but it is needed because there was a bug where the UPRS was loaded
+        # twice instead of the UPRS and CPRS, causing CPRS RSIs to be ignored,
+        # and also because this includes computing the charges whereas mongo
+        # .refresh_charges does not. figure out a way to test just those
+        # aspects (maybe by mocking the 'mongo' module, or the utility bill
+        # document class when there finally is one)
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                'january.pdf')
+
+            utilbill = session.query(UtilBill).one()
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
+            uprs.rates = [
+                RateStructureItem(
+                    rsi_binding='NEW_1',
+                    description='a charge for this will be added',
+                    quantity='1',
+                    quantity_units='dollars',
+                    rate='2',
+                ),
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='ignored because overridden by CPRS',
+                    quantity='3',
+                    quantity_units='kWh',
+                    rate='4',
+                )
+            ]
+            cprs.rates = [
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='a charge for this will be added too',
+                    quantity='5',
+                    quantity_units='therms',
+                    rate='6',
+                )
+            ]
+            uprs.save()
+            cprs.save()
+
+            self.process.refresh_charges(session, utilbill.id)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            self.assertEqual({
+                'All Charges': [
+                    {
+                        'rsi_binding': 'NEW_1',
+                        'description': 'a charge for this will be added',
+                        'quantity': 1,
+                        'quantity_units': 'dollars',
+                        'rate': 2,
+                        'total': 2,
+                    },
+                    {
+                        'rsi_binding': 'NEW_2',
+                        'description': 'a charge for this will be added too',
+                        'quantity': 5,
+                        'quantity_units': 'therms',
+                        'rate': 6,
+                        'total': 30,
+                    },
+                ]},
+                utilbill_doc['chargegroups']
+            )
+
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)

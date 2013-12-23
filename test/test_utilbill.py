@@ -7,7 +7,7 @@ from decimal import Decimal
 from unittest import TestCase
 from billing.test import example_data
 from billing.test import utils
-from billing.processing.rate_structure2 import RateStructure, Register, RateStructureItem
+from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 import example_data
 
@@ -47,13 +47,13 @@ class UtilBillTest(utils.TestCase):
         uprs = RateStructure(
             id=ObjectId(),
             type='UPRS',
-            registers=[Register(
-                register_binding='REG_TOTAL',
-                # this object is not actually a "register", so
-                # quantity/units here don't matter at all
-                quantity='-1',
-                quantity_units='who cares',
-            )],
+            # registers=[Register(
+            #     register_binding='REG_TOTAL',
+            #     # this object is not actually a "register", so
+            #     # quantity/units here don't matter at all
+            #     quantity='-1',
+            #     quantity_units='who cares',
+            # )],
             rates=[
                 RateStructureItem(
                   rsi_binding='CONSTANT',
@@ -310,10 +310,85 @@ class UtilBillTest(utils.TestCase):
                 'METER', 'Insert register ID here', register_id='REGISTER')
 
     def test_get_service_address(self):
-        utilbill_doc = example_data.example_utilbill
+        utilbill_doc = example_data._example_utilbill
         address = mongo.get_service_address(utilbill_doc)
         self.assertEqual(address['postal_code'],'20010')
         self.assertEqual(address['city'],'Washington')
         self.assertEqual(address['state'],'DC')
         self.assertEqual(address['addressee'],'Monroe Towers')
         self.assertEqual(address['street'],'3501 13TH ST NW #WH')
+
+    def test_refresh_charges(self):
+        utilbill_doc = example_data.get_utilbill_dict('99999', start=date(
+                2000,1,1), end=date(2000,2,1))
+        utilbill_doc['chargegroups'] = {
+            'All Charges': [
+                {
+                    'rsi_binding': 'OLD',
+                    'description': 'this will get removed',
+                    'quantity': 2,
+                    'quantity_units': 'therms',
+                    'rate': 3,
+                    'total': 6,
+                },
+            ],
+        }
+
+        uprs = RateStructure(
+            id=ObjectId(),
+            type='UPRS',
+            rates=[
+                RateStructureItem(
+                    rsi_binding='NEW_1',
+                    description='a charge for this will be added',
+                    quantity='1',
+                    quantity_units='dollars',
+                    rate='2',
+                ),
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='ignored because overridden by CPRS',
+                    quantity='3',
+                    quantity_units='kWh',
+                    rate='4',
+                )
+            ]
+        )
+        cprs = RateStructure(
+            id=ObjectId(),
+            type='CPRS',
+            rates=[
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='a charge for this will be added too',
+                    quantity='5',
+                    quantity_units='therms',
+                    rate='6',
+                )
+            ]
+        )
+
+        mongo.refresh_charges(utilbill_doc, uprs, cprs)
+
+        self.maxDiff = None
+        self.assertEqual({
+            'All Charges': [
+                {
+                    'rsi_binding': 'NEW_1',
+                    'description': 'a charge for this will be added',
+                    'quantity': 0,
+                    'quantity_units': 'dollars',
+                    'rate': 0,
+                    'total': 0,
+                },
+                {
+                    'rsi_binding': 'NEW_2',
+                    'description': 'a charge for this will be added too',
+                    'quantity': 0,
+                    'quantity_units': 'therms',
+                    'rate': 0,
+                    'total': 0,
+                },
+            ]},
+            utilbill_doc['chargegroups']
+        )
