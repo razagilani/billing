@@ -64,9 +64,9 @@ common.CommonFabTask.update_deployment_configs({
             "doc": "/home/reebill-dev/doc",
             "mydoc": "/tmp",
         },
-        "config_files": {
-            "conf/reebill-dev-template.cfg":"/var/local/reebill-dev/billing/reebill/reebill.cfg",
-        },
+        "config_files": [
+            ("conf/reebill-dev-template.cfg", "/var/local/reebill-dev/billing/reebill/reebill.cfg"),
+        ],
     },
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
