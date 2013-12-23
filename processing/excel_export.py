@@ -337,8 +337,8 @@ class Exporter(object):
         output_file.write(workbook.xls)
 
     def get_export_reebill_details_dataset(self, session, begin_date, end_date):
-        ''' Extracts details data from issued reebills
-        and related payments for all accounts and
+        ''' Helper method for export_reebill_details_xls: extracts details
+        data from issued  reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy '''
 
         # Method to format the Service address/Billin address in a Reebill
@@ -357,9 +357,9 @@ class Exporter(object):
             )
             return addr_str
 
-        # Create the dataset rows
         accounts = self.state_db.listAccounts(session)
         ds_rows = []
+
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
