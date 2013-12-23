@@ -90,12 +90,18 @@ port = 27017
         # to delete from it)
         mysql_connection.commit()
 
-        # insert one customer
+        # insert three customers
         self.state_db = StateDB(**statedb_config)
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34,
                 '000000000000000000000001')
+        session.add(customer)
+        customer = Customer('Test Customer2', '99998', .32, .31,
+                '000000000000000000000002')
+        session.add(customer)
+        customer = Customer('Test Customer3', '99997', .21, .22,
+                '000000000000000000000003')
         session.add(customer)
         session.commit()
 
@@ -109,12 +115,22 @@ port = 27017
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='ratestructure')
 
-        # insert template utilbill document for the customer in Mongo
+        # insert template utilbill document for the customers in Mongo
         db = pymongo.Connection('localhost')['test']
         utilbill = example_data.get_utilbill_dict('99999',
                 start=date(1900,01,01), end=date(1900,02,01),
                 utility='washgas', service='gas')
         utilbill['_id'] = ObjectId('000000000000000000000001')
+        db.utilbills.save(utilbill)
+        utilbill = example_data.get_utilbill_dict('99998',
+                start=date(1900,01,01), end=date(1900,02,01),
+                utility='washgas', service='gas')
+        utilbill['_id'] = ObjectId('000000000000000000000002')
+        db.utilbills.save(utilbill)
+        utilbill = example_data.get_utilbill_dict('99997',
+                start=date(1900,01,01), end=date(1900,02,01),
+                utility='washgas', service='gas')
+        utilbill['_id'] = ObjectId('000000000000000000000003')
         db.utilbills.save(utilbill)
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
@@ -129,6 +145,18 @@ port = 27017
                 'olap': 'example-1',
                 'casualname': 'Example',
                 'primus': '1785 Massachusetts Ave.',
+            },
+            {
+                'billing': '99998',
+                'olap': 'example-2',
+                'casualname': 'Example2',
+                'primus': '1600 Pennsylvania Ave.',
+            },
+            {
+                'billing': '99997',
+                'olap': 'example-3',
+                'casualname': 'Example3',
+                'primus': '101 Independence Ave',
             },
         ])
         self.process = Process(self.state_db, self.reebill_dao,
