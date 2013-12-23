@@ -330,7 +330,18 @@ class Exporter(object):
         calculates cumulative savings and RE&E energy
         '''
 
-        # Some formatting methods
+        dataset = self.get_export_reebill_details_dataset(session, begin_date,
+                                                          end_date)
+        workbook = tablib.Databook()
+        workbook.add_sheet(dataset)
+        output_file.write(workbook.xls)
+
+    def get_export_reebill_details_dataset(self, session, begin_date, end_date):
+        ''' Extracts details data from issued reebills
+        and related payments for all accounts and
+        calculates cumulative savings and RE&E energy '''
+
+        # Method to format the Service address/Billin address in a Reebill
         def format_addr(addr):
             addr_str = "%s %s %s %s %s" % (
                 addr['addressee'] if 'addressee' in addr and addr[
@@ -346,71 +357,9 @@ class Exporter(object):
             )
             return addr_str
 
-        report_rows = self.get_export_reebill_details_data(session, begin_date,
-                                                           end_date)
-
-        ds_headers = ['Account', 'Sequence', 'Version',
-                    'Billing Addressee', 'Service Addressee',
-                    'Issue Date', 'Period Begin', 'Period End',
-                    'Hypothesized Charges', 'Actual Utility Charges',
-                    'RE&E Value',
-                    'Prior Balance',
-                    'Payment Applied',
-                    'Payment Date',
-                    'Payment Amount',
-                    'Adjustment',
-                    'Balance Forward',
-                    'RE&E Charges',
-                    'Late Charges',
-                    'Balance Due',
-                    '', # spacer
-                    'Savings',
-                    'Cumulative Savings',
-                    'RE&E Energy',
-                    'Average Rate per Unit RE&E',
-        ]
-        ds_rows = []
-        for row in report_rows:
-            ds_row = [row.get('account', None),
-                          row.get('sequence', None),
-                          row.get('version', None),
-                          format_addr(row.get('billing_address', {})),
-                          format_addr(row.get('service_address', {})),
-                          row.get('issue_date', None),
-                          row.get('period_begin', None),
-                          row.get('period_end', None),
-                          row.get('hypothetical_charges', None),
-                          row.get('actual_charges', None),
-                          row.get('ree_value', None),
-                          row.get('prior_balance', None),
-                          row.get('payment_applied', None),
-                          row.get('payment_date', None),
-                          row.get('payment_amount', None),
-                          row.get('total_adjustment', None),
-                          row.get('balance_forward', None),
-                          row.get('ree_charges', None),
-                          row.get('late_charges', None),
-                          row.get('balance_due', None),
-                          '', # spacer
-                          row.get('savings', None),
-                          row.get('cumulative_savings', None),
-                          row.get('total_ree', None),
-                          row.get('average_rate_unit_ree', None)]
-            ds_rows.append(ds_row)
-
-        workbook = tablib.Databook()
-        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
-                                 title='All REE Charges')
-        workbook.add_sheet(dataset)
-        output_file.write(workbook.xls)
-
-    def get_export_reebill_details_data(self, session, begin_date, end_date):
-        ''' Extracts details data from issued reebills
-        and related payments for all accounts and
-        calculates cumulative savings and RE&E energy '''
-
+        # Create the dataset rows
         accounts = self.state_db.listAccounts(session)
-        rows = []
+        ds_rows = []
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
@@ -447,52 +396,95 @@ class Exporter(object):
                 savings = reebill_doc.ree_value - reebill_doc.ree_charges
                 cumulative_savings += savings
 
-                row = {'account': account, 'sequence': reebill_doc.sequence,
-                       'version': reebill_doc.version,
-                       'billing_address': reebill_doc.billing_address,
-                       'service_address': reebill_doc.service_address,
-                       'issue_date': reebill.issue_date.isoformat(),
-                       'period_begin': reebill_doc.period_begin.isoformat(),
-                       'period_end': reebill_doc.period_end.isoformat(),
-                       'actual_charges': reebill_doc.actual_total,
-                       'hypothetical_charges': reebill_doc.hypothetical_total,
-                       'ree_value': reebill_doc.ree_value,
-                       'prior_balance': reebill_doc.prior_balance,
-                       'balance_forward': reebill_doc.balance_forward,
-                       'balance_due': reebill_doc.balance_due,
-                       'savings': savings,
-                       'cumulative_savings': cumulative_savings,
-                       'total_adjustment': reebill_doc.total_adjustment,
-                       'payment_applied': reebill_doc.payment_received,
-                       'ree_charges': reebill_doc.ree_charges}
+                # The first payment applied to a bill is listed in the same row
+                # All additional payments are seperate rows
+                payment_date = None
+                payment_amount = None
+                if applicable_payments:
+                    payment_date = applicable_payments[0].date_applied.isoformat()
+                    payment_amount = applicable_payments[0].credit
+                    applicable_payments.pop(0)
+
+                average_rate_unit_ree=None
                 try:
                     total_ree = reebill_doc.total_renewable_energy()
-                    row['total_ree'] = total_ree
                     if total_ree != 0:
-                        row['average_rate_unit_ree'] = (reebill_doc.hypothetical_total -
+                        average_rate_unit_ree = (reebill_doc.hypothetical_total -
                                 reebill_doc.actual_total)/total_ree
                 except StopIteration:
                     # A bill didnt have registers, ignore this column
-                    row['total_ree'] = 'Error! No Registers found!'
+                    total_ree = 'Error! No Registers found!'
                 try:
-                    row['late_charges'] = reebill_doc.late_charges
+                    late_charges = reebill_doc.late_charges
                 except KeyError:
-                    row['late_charges'] = None
+                    late_charges = None
 
-                # normally, only one payment.  Multiple payments their own new rows...
-                if applicable_payments:
-                    row['payment_date'] = applicable_payments[0].date_applied.isoformat()
-                    row['payment_amount'] = applicable_payments[0].credit
-                    applicable_payments.pop(0)
-                rows.append(row)
+                row = [account,
+                       reebill_doc.sequence,
+                       reebill_doc.version,
+                       format_addr(reebill_doc.billing_address),
+                       format_addr(reebill_doc.service_address),
+                       reebill.issue_date.isoformat(),
+                       reebill_doc.period_begin.isoformat(),
+                       reebill_doc.period_end.isoformat(),
+                       reebill_doc.hypothetical_total,
+                       reebill_doc.actual_total,
+                       reebill_doc.ree_value,
+                       reebill_doc.prior_balance,
+                       reebill_doc.payment_received,
+                       payment_date,
+                       payment_amount,
+                       reebill_doc.total_adjustment,
+                       reebill_doc.balance_forward,
+                       reebill_doc.ree_charges,
+                       late_charges,
+                       reebill_doc.balance_due,
+                       '', #spacer
+                       savings,
+                       cumulative_savings,
+                       total_ree,
+                       average_rate_unit_ree
+                       ]
+                ds_rows.append(row)
+
+                # For each additional payment include a row containing
+                # only account, reebill and payment data
                 for applicable_payment in applicable_payments:
                     # ok, there was more than one applicable payment
-                    row = {'account': account, 'sequence': reebill_doc.sequence,
-                           'version':  reebill_doc.version,
-                           'payment_date': applicable_payment.date_applied.isoformat(),
-                           'payment_amount': applicable_payment.credit}
-                    rows.append(row)
-        return rows
+                    row = [ account, reebill_doc.sequence, reebill_doc.version,
+                            None, None, None, None, None,
+                            None, None, None, None, None,
+                           applicable_payment.date_applied.isoformat(),
+                           applicable_payment.credit,
+                            None, None, None, None, None,
+                            None, None, None, None, None]
+                    ds_rows.append(row)
+
+        # We got all rows! Assemble the dataset
+        ds_headers = ['Account', 'Sequence', 'Version',
+                    'Billing Addressee', 'Service Addressee',
+                    'Issue Date', 'Period Begin', 'Period End',
+                    'Hypothesized Charges', 'Actual Utility Charges',
+                    'RE&E Value',
+                    'Prior Balance',
+                    'Payment Applied',
+                    'Payment Date',
+                    'Payment Amount',
+                    'Adjustment',
+                    'Balance Forward',
+                    'RE&E Charges',
+                    'Late Charges',
+                    'Balance Due',
+                    '', # spacer
+                    'Savings',
+                    'Cumulative Savings',
+                    'RE&E Energy',
+                    'Average Rate per Unit RE&E',
+        ]
+        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
+                                 title='All REE Charges')
+        return dataset
+
 
 def main(export_func, filename):
     '''Run this file with the command line to test.
