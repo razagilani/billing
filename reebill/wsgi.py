@@ -1382,6 +1382,7 @@ class BillToolBridge:
                 'attachment; filename=%s.xls' % \
                 datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
+
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
