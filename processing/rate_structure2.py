@@ -305,9 +305,9 @@ class RateStructureItem(EmbeddedDocument):
     def compute_charge(self, register_quantities):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
-        register names to quantities), and returns (quantity result, rate
-        result). Raises FormulaSyntaxError if either of the formulas could not
-        be parsed.
+        register names to dictionaries containing keys "quantity" and "rate"),
+        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
+        if either of the formulas could not be parsed.
         '''
         # check syntax
         self._parse_formulas()

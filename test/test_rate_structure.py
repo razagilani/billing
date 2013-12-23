@@ -7,11 +7,10 @@ import MySQLdb
 import sqlalchemy
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.state import StateDB, Customer, UtilBill
-from billing.processing import mongo
-from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.exceptions import FormulaError, FormulaSyntaxError
 
 def compare_rsis(rsi1, rsi2):
     '''Compares two Rate Structure Item dictionaries, ignoring differences
@@ -80,7 +79,42 @@ class RateStructureDAOTest(TestCaseWithSetup):
                 assert len(urs_matches) == 1
                 self.assertTrue(compare_rsis(urs_matches[0], rsi))
 
+class RSITest(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_compute_charge_basic(self):
+        rsi = RateStructureItem(
+            rsi_binding='A',
+            quantity='R1.rate + 2',
+            quantity_units='therms',
+            # division included to make sure "future" (i.e. float) division
+            # is being used, so 3/4 = .75, not 0
+            rate='3 / 4 - R2.quantity',
+        )
+        quantity, rate = rsi.compute_charge({
+            'R1': { 'quantity': 2, 'rate': 1, },
+            'R2': { 'quantity': 0.5, 'rate': 10, }
+        })
+        self.assertEqual(3, quantity)
+        self.assertEqual(0.25, rate)
+
+    def test_compute_charge_errors(self):
+        bad_rsi = RateStructureItem(
+            rsi_binding='A',
+            quantity='1 + &',
+            quantity_units='therms',
+            rate='0',
+        )
+        # invalid syntax: FormulaSyntaxError
+        self.assertRaises(FormulaSyntaxError, bad_rsi.compute_charge, {})
+
+        # unknown identifier: generic FormulaError
+        bad_rsi.quantity = '1 + x.quantity'
+        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+
 class RateStructureTest(unittest.TestCase):
+
 
     def setUp(self):
         self.a = RateStructureItem(
