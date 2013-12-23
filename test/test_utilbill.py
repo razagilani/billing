@@ -317,3 +317,78 @@ class UtilBillTest(utils.TestCase):
         self.assertEqual(address['state'],'DC')
         self.assertEqual(address['addressee'],'Monroe Towers')
         self.assertEqual(address['street'],'3501 13TH ST NW #WH')
+
+    def test_refresh_charges(self):
+        utilbill_doc = example_data.get_utilbill_dict('99999', start=date(
+                2000,1,1), end=date(2000,2,1))
+        utilbill_doc['chargegroups'] = {
+            'All Charges': [
+                {
+                    'rsi_binding': 'OLD',
+                    'description': 'this will get removed',
+                    'quantity': 2,
+                    'quantity_units': 'therms',
+                    'rate': 3,
+                    'total': 6,
+                },
+            ],
+        }
+
+        uprs = RateStructure(
+            id=ObjectId(),
+            type='UPRS',
+            rates=[
+                RateStructureItem(
+                    rsi_binding='NEW_1',
+                    description='a charge for this will be added',
+                    quantity='1',
+                    quantity_units='dollars',
+                    rate='2',
+                ),
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='ignored because overridden by CPRS',
+                    quantity='3',
+                    quantity_units='kWh',
+                    rate='4',
+                )
+            ]
+        )
+        cprs = RateStructure(
+            id=ObjectId(),
+            type='CPRS',
+            rates=[
+                RateStructureItem(
+                    rsi_binding='NEW_2',
+                    description='a charge for this will be added too',
+                    quantity='5',
+                    quantity_units='therms',
+                    rate='6',
+                )
+            ]
+        )
+
+        mongo.refresh_charges(utilbill_doc, uprs, cprs)
+
+        self.maxDiff = None
+        self.assertEqual({
+            'All Charges': [
+                {
+                    'rsi_binding': 'NEW_1',
+                    'description': 'a charge for this will be added',
+                    'quantity': 0,
+                    'quantity_units': 'dollars',
+                    'rate': 0,
+                    'total': 0,
+                },
+                {
+                    'rsi_binding': 'NEW_2',
+                    'description': 'a charge for this will be added too',
+                    'quantity': 0,
+                    'quantity_units': 'therms',
+                    'rate': 0,
+                    'total': 0,
+                },
+            ]},
+            utilbill_doc['chargegroups']
+        )
