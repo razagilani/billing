@@ -362,15 +362,15 @@ class RateStructureItem(EmbeddedDocument):
         if description is not None:
             self.description = description
 
-class Register(EmbeddedDocument):
-    # this is the only field that has any meaning, since a "register" in a rate
-    # structure document really just means a name
-    register_binding = StringField(required=True)
-
-    # these are random junk fields that were inserted in the DB in Rich's code
-    quantity = StringField()
-    quantity_units = StringField()
-    description = StringField()
+# class Register(EmbeddedDocument):
+#     # this is the only field that has any meaning, since a "register" in a rate
+#     # structure document really just means a name
+#     register_binding = StringField(required=True)
+#
+#     # these are random junk fields that were inserted in the DB in Rich's code
+#     quantity = StringField()
+#     quantity_units = StringField()
+#     description = StringField()
 
 class RateStructure(Document):
     meta = {
@@ -381,8 +381,6 @@ class RateStructure(Document):
 
     # this is either 'UPRS' or 'CPRS'
     type = StringField(required=True)
-
-    registers = ListField(field=EmbeddedDocumentField(Register), default=[])
 
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
             default=[])

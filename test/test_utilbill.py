@@ -7,7 +7,7 @@ from decimal import Decimal
 from unittest import TestCase
 from billing.test import example_data
 from billing.test import utils
-from billing.processing.rate_structure2 import RateStructure, Register, RateStructureItem
+from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 import example_data
 
@@ -47,13 +47,13 @@ class UtilBillTest(utils.TestCase):
         uprs = RateStructure(
             id=ObjectId(),
             type='UPRS',
-            registers=[Register(
-                register_binding='REG_TOTAL',
-                # this object is not actually a "register", so
-                # quantity/units here don't matter at all
-                quantity='-1',
-                quantity_units='who cares',
-            )],
+            # registers=[Register(
+            #     register_binding='REG_TOTAL',
+            #     # this object is not actually a "register", so
+            #     # quantity/units here don't matter at all
+            #     quantity='-1',
+            #     quantity_units='who cares',
+            # )],
             rates=[
                 RateStructureItem(
                   rsi_binding='CONSTANT',
