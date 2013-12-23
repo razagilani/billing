@@ -1,4 +1,8 @@
-'''Provides example data to be used in tests.'''
+'''Provides example data to be used in tests.
+
+Do not access the raw dictionaries directly; instead, call the methods
+get_utilbill_dict, get_reebill, etc.
+'''
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
@@ -14,7 +18,7 @@ true, false = True, False
 null = None
 
 # editable utility bill (does not contain sequence, version of reebill)
-example_utilbill = {
+_example_utilbill = {
     # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
     # should be different for each instance
 
@@ -161,7 +165,7 @@ example_utilbill = {
     }
 }
 
-example_reebill = {
+_example_reebill = {
 	u"_id" : {
 		u"account" : u"10003",
 		u"version" : 0,
@@ -356,7 +360,7 @@ example_reebill = {
 }
 
 
-example_uprs = RateStructure(
+_example_uprs = RateStructure(
     type='UPRS',
     rates=[
         RateStructureItem(
@@ -442,7 +446,7 @@ example_uprs = RateStructure(
     ],
 )
 
-#example_cprs = {
+#_example_cprs = {
     ## NOTE: u"_id" must be inserted at runtime in get_utilbill_dict() because it
     ## should be different for each instance
 
@@ -512,7 +516,7 @@ example_uprs = RateStructure(
 	#]
 #}
 
-example_cprs = RateStructure(type='CPRS',
+_example_cprs = RateStructure(type='CPRS',
     rates=[
 		RateStructureItem(
             rsi_binding='SYSTEM_CHARGE',
@@ -584,7 +588,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
     '''Returns an example reebill with the given account, sequence, and dates.
     It comes with one utility bill having the same dates.'''
-    reebill_dict = deepcopy(example_reebill)
+    reebill_dict = deepcopy(_example_reebill)
     reebill_dict['_id'].update({
         'account': account,
         'sequence': sequence,
@@ -612,7 +616,7 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):
     '''Returns an example utility bill dictionary.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
-    utilbill_dict = deepcopy(example_utilbill)
+    utilbill_dict = deepcopy(_example_utilbill)
     utilbill_dict.update({
         '_id': ObjectId(),
         'account': account,
@@ -627,11 +631,11 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
     return utilbill_dict
 
 def get_uprs():
-    result = deepcopy(example_uprs)
+    result = deepcopy(_example_uprs)
     result.id = ObjectId()
     return result
 
 def get_cprs():
-    result = deepcopy(example_cprs)
+    result = deepcopy(_example_cprs)
     result.id = ObjectId()
     return result
