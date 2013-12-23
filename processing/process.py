@@ -648,7 +648,7 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        cprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
         mongo.refresh_charges(document, uprs, cprs)
 
