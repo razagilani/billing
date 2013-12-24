@@ -1,512 +1,74 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
 from datetime import date
+from billing.test import example_data
+import unittest
 
-mock_chargegroup1=[{
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 1,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 11.2,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-                u"description" : u"Distribution charge for all therms",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.2935,
-                u"quantity_units" : u"therms",
-                u"total" : 164.92,
-                u"uuid" : u"c9709ec0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PGC",
-                u"description" : u"Purchased Gas Charge",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.7653,
-                u"quantity_units" : u"therms",
-                u"total" : 430.02,
-                u"uuid" : u"c9717458-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PUC",
-                u"quantity_units" : u"kWh",
-                u"quantity" : 1,
-                u"description" : u"Peak Usage Charge",
-                u"rate_units" : u"dollars",
-                u"rate" : 23.14,
-                u"total" : 23.14,
-                u"uuid" : u"c97254b8-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"RIGHT_OF_WAY",
-                u"description" : u"DC Rights-of-Way Fee",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.03059,
-                u"quantity_units" : u"therms",
-                u"total" : 17.19,
-                u"uuid" : u"c973271c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 7.87,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 3.37,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 42.08,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 43.7,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },{
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 3,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 33.6,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-                u"description" : u"Distribution charge for all therms",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 1,
-                u"quantity_units" : u"therms",
-                u"total" : 561.9,
-                u"uuid" : u"c9709ec0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PGC",
-                u"description" : u"Purchased Gas Charge",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 2,
-                u"quantity_units" : u"therms",
-                u"total" : 2121.0,
-                u"uuid" : u"c9717458-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PUC",
-                u"quantity_units" : u"kWh",
-                u"quantity" : 1,
-                u"description" : u"Peak Usage Charge",
-                u"rate_units" : u"dollars",
-                u"rate" : 23.14,
-                u"total" : 122.1,
-                u"uuid" : u"c97254b8-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"RIGHT_OF_WAY",
-                u"description" : u"DC Rights-of-Way Fee",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.03059,
-                u"quantity_units" : u"therms",
-                u"total" : 12.1,
-                u"uuid" : u"c973271c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 2.2,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 1.12,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 14.43,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 43.4,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    }]
-mock_chargegroup2=[{
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 1,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 15.6,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 89.2,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 1.1,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 79.0,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 89.0,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },{
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 1,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 16.7,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 90.5,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 1.1,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 68.9,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 81.0,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },{
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 1,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 14.5,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 85.62,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 1.3,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 56.43,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 32.90,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },]
+class MockStatePayment():
+    def __init__(self,credit,thedate):
+        self.customer=2
+        self.credit=credit
+        self.date_received=thedate
+        self.date_applied=thedate
+        self.description="Some Payment"
 
+class MockStateReebill():
+    def __init__(self,account, sequence, version):
+        self.customer=2
+        self.sequence=sequence
+        self.issued=1
+        self.issue_date=date(2011,12,15)
+        self.version=version
 
-mock_utilbills=[{
-    u"service" : u"gas",
-    u"start" : date(2011,8,12),
-    u"end" : date(2011,9,14),
-    u"meters" : [
-        {
-            u"registers" : [
-                {
-                    u"quantity_units" : u"therms",
-                    u"quantity" : 561.9,
-                    u"register_binding" : u"REG_TOTAL",
-                    u"identifier" : u"M60324",
-                    u"type" : u"total",
-                    u"description" : u"Therms"
-                },
-            ],
-            u"identifier" : u"M60324"
-        }
-    ],
-    u"chargegroups" : mock_chargegroup1[0],
-    u"rate_structure_binding" : u"DC Non Residential Non Heat",
-},{
-    u"service" : u"gas",
-    u"start" : date(2011,10,12),
-    u"end" : date(2011,11,14),
-    u"meters" : [
-        {
-            u"registers" : [
-                {
-                    u"quantity_units" : u"therms",
-                    u"quantity" : 2132.2,
-                    u"register_binding" : u"REG_TOTAL",
-                    u"identifier" : u"M60324",
-                    u"type" : u"total",
-                    u"description" : u"Therms"
-                },
-            ],
-            u"identifier" : u"M60324"
-        }
-    ],
-    u"chargegroups" : mock_chargegroup1[1],
-    u"rate_structure_binding" : u"DC Non Residential Non Heat",
-},{
-    u"service" : u"electric",
-    u"start" : date(2011,12,12),
-    u"end" : date(2012,1,14),
-    u"meters" : [
-        {
-            u"registers" : [
-                {
-                    u"quantity_units" : u"kwh",
-                    u"quantity" : 321,
-                    u"register_binding" : u"REG_TOTAL",
-                    u"identifier" : u"M60324",
-                    u"type" : u"total",
-                    u"description" : u"Therms"
-                },
-            ],
-            u"identifier" : u"M60324"
-        }
-    ],
-    u"chargegroups" : mock_chargegroup2[0],
-    u"rate_structure_binding" : u"DC Residential Electric",
-},{
-    u"service" : u"electric",
-    u"start" : date(2012,2,12),
-    u"end" : date(2012,3,14),
-    u"meters" : [
-        {
-            u"registers" : [
-                {
-                    u"quantity_units" : u"kwh",
-                    u"quantity" : 562.1,
-                    u"register_binding" : u"REG_TOTAL",
-                    u"identifier" : u"M60324",
-                    u"type" : u"total",
-                    u"description" : u"Therms"
-                },
-            ],
-            u"identifier" : u"M60324"
-        }
-    ],
-    u"chargegroups" : mock_chargegroup2[1],
-    u"rate_structure_binding" : u"DC Residential Electric",
-},{
-    u"service" : u"electric",
-    u"start" : date(2012,4,12),
-    u"end" : date(2012,5,14),
-    u"meters" : [
-        {
-            u"registers" : [
-                {
-                    u"quantity_units" : u"kwh",
-                    u"quantity" : 7878.9,
-                    u"register_binding" : u"REG_TOTAL",
-                    u"identifier" : u"M60324",
-                    u"type" : u"total",
-                    u"description" : u"Therms"
-                },
-            ],
-            u"identifier" : u"M60324"
-        }
-    ],
-    u"chargegroups" : mock_chargegroup2[2],
-    u"rate_structure_binding" : u"DC Residential Electric",
-}]
+class MockDao():
+    def load_reebills_for(self, account, version):
+        return [example_data.get_reebill(account,x,version=(x-1)) for x in (1,2,3)]
+    def load_utilbills(self,account):
+        return [
+            example_data.get_utilbill_dict(account,start=date(2011,11,12), end=date(2011,12,14)),
+            example_data.get_utilbill_dict(account,start=date(2011,12,14), end=date(2012,1,13)),
+            example_data.get_utilbill_dict(account,start=date(2012,1,13), end=date(2012,2,14)),
+            example_data.get_utilbill_dict(account,start=date(2012,2,14), end=date(2012,3,12)),
+            ]
 
 class MockStateDB():
-    def __init__(self):
-        pass
+    def payments(self, session, account):
+        return [MockStatePayment(x['credit'], x['thedate']) for x in ({'credit':400.13,
+                                                                       'thedate':date(2011,12,11)},
+                                                                      {'credit':13.17,
+                                                                       'thedate':date(2011,12,12)})]
     def listAccounts(self, session):
-        return ['20001','20002']
-class MockDAO():
-    def __init__(self):
-        pass
-    def load_utilbills(self,account):
-        if account=='20001':
-            return [mock_utilbills[0],mock_utilbills[1]]
-        else:
-            return [mock_utilbills[2],mock_utilbills[3],mock_utilbills[4]]
+        return ['10003','10004']
+    def get_reebill(self, session, account, sequence, version):
+        return MockStateReebill(None,1,0)
 
-def main():
-    exporter = Exporter(MockStateDB(),MockDAO())
-    with open('xbill_energy.xls', 'wb') as output_file:
-        exporter.export_energy_usage(None, output_file)
+class ExporterTest(unittest.TestCase):
 
-if __name__ == '__main__':
-    main()
+    def setUp(self):
+        self.dao=MockDao()
+        self.statedb=MockStateDB()
+        self.exporter = Exporter(self.statedb, self.dao)
+
+    def test_get_reebill_details_dataset(self):
+
+        dataset=self.exporter.get_export_reebill_details_dataset(None, None, None)
+        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542),
+            ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None),
+            ('10003', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542),
+            ('10003', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542),
+            ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542),
+            ('10004', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None),
+            ('10004', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542),
+            ('10004', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542)]
+        for indx,row in enumerate(dataset):
+            self.assertEqual(row, correct_data[indx])
+
+    def test_get_energy_usage_sheet(self):
+
+        dataset = self.exporter.get_energy_usage_sheet(None,'10003')
+        correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
+            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-12-14', '2012-01-13', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
+            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2012-01-13', '2012-02-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
+            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2012-02-14', '2012-03-12', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2)]
+        for indx,row in enumerate(dataset):
+            self.assertEqual(row, correct_data[indx])
