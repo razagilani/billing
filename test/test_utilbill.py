@@ -310,7 +310,7 @@ class UtilBillTest(utils.TestCase):
                 'METER', 'Insert register ID here', register_id='REGISTER')
 
     def test_get_service_address(self):
-        utilbill_doc = example_data._example_utilbill
+        utilbill_doc = example_data.get_utilbill_dict('10003')
         address = mongo.get_service_address(utilbill_doc)
         self.assertEqual(address['postal_code'],'20010')
         self.assertEqual(address['city'],'Washington')
