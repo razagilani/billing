@@ -128,11 +128,6 @@ class Exporter(object):
             # pad row with blank cells to match dataset width
             row.extend([''] * (dataset.width - len(row)))
 
-            # this becomes true if there was any error reading data for this
-            # row
-            error = False
-            # TODO put error in cell
-
             # get all charges from this bill in "flattened" format, sorted by
             # name, with (actual) or (hypothetical) appended
             services = reebill.services
@@ -147,7 +142,7 @@ class Exporter(object):
             for charge in hypothetical_charges:
                 charge['description'] += ' (hypothetical)'
                 # extra charges: actual and hypothetical totals, difference between
-            # them, Skyline's late fee from the reebill
+                # them, Skyline's late fee from the reebill
             actual_total = sum(ac.get('total', 0) for ac in actual_charges)
             hypothetical_total = float(
                 sum(hc.get('total', 0) for hc in hypothetical_charges))
@@ -182,7 +177,6 @@ class Exporter(object):
                                                                  key_error,
                                                                  pformat(
                                                                      charge))
-                    error = True
                 except IndexError as index_error:
                     print >> sys.stderr, ('%s-%s ERROR %s: no hypothetical '
                                           'charge matching actual charge "%s"') % (
@@ -190,7 +184,6 @@ class Exporter(object):
                         sequence, index_error,
                         charge['chargegroup'] +
                         ': ' + charge['description'])
-                    error = True
                 else:
                     # if this charge's name already exists in
                     # charge_names_columns, either put the total of that charge
@@ -221,10 +214,6 @@ class Exporter(object):
                                                header=name)
                         row.append(str(total))
             dataset.append(row)
-            #else:
-            #if self.verbose:
-            #print 'skipping %s-%s as it falls outside of [%s,%s]' % (account, sequence, start_date, end_date)
-
         return dataset
 
     def export_energy_usage(self, statedb_session, output_file, account=None):
@@ -256,7 +245,7 @@ class Exporter(object):
         charge for all utility bills belonging to 'account'.
         '''
         # Initital datasheet headers
-        ds_headers = ['Account', 'Rate Structure', 'Total Energy', 'Units',
+        ds_headers = ['Account', 'Rate Class', 'Total Energy', 'Units',
                       'Period Start', 'Period End']
         # Initial datasheet rows
         ds_rows = []
@@ -270,7 +259,7 @@ class Exporter(object):
                     quantity = register.get('quantity', '')
                 # Create a row
             row = [account,
-                   m_ub.get("rate_structure_binding", ''),
+                   m_ub.get("rate_class", ''),
                    quantity, units,
                    m_ub.get("start", '').strftime(dateutils.ISO_8601_DATE),
                    m_ub.get("end", '').strftime(dateutils.ISO_8601_DATE)]
@@ -486,7 +475,7 @@ class Exporter(object):
         return dataset
 
 
-def main(export_func, filename):
+def main(export_func, filename, account=None):
     '''Run this file with the command line to test.
     Arguments:  Export type 'energy' or 'charges' (optional, uses 'energy' )
                 Account number (optional, uses all accounts or standard range)
@@ -526,11 +515,10 @@ def main(export_func, filename):
 
 if __name__ == '__main__':
     filename = 'spreadsheet.xls'
-    export_func = 'reebill_details'
+    export_func = ''
+    account = None
     if len(sys.argv) > 1:
         export_func = sys.argv[1]
     elif len(sys.argv) > 2:
         account = sys.argv[2]
-    else:
-        account = None
-    main(export_func, filename)
+    main(export_func, filename, account)
