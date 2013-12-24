@@ -526,7 +526,7 @@ def main(export_func, filename):
 
 if __name__ == '__main__':
     filename = 'spreadsheet.xls'
-    export_func = 'reebill_details'
+    export_func = ''
     if len(sys.argv) > 1:
         export_func = sys.argv[1]
     elif len(sys.argv) > 2:
