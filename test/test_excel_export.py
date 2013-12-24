@@ -13,47 +13,58 @@ from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 import random
 import pprint
+import unittest
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ExporterTest(TestCaseWithSetup):
+class MockStatePayment():
+    def __init__(self,credit,thedate):
+        self.customer=2
+        self.credit=credit
+        self.date_received=thedate
+        self.date_applied=thedate
+        self.description="Some Payment"
+
+class MockStateReebill():
+    def __init__(self,account, sequence, version):
+        self.customer=2
+        self.sequence=sequence
+        self.issued=1
+        self.issue_date=date(2011,12,15)
+        self.version=version
+
+class MockDao():
+    def load_reebills_for(self, account, version):
+        return [example_data.get_reebill(account,x,version=(x-1)) for x in (1,2,3)]
+
+class MockStateDB():
+    def payments(self, session, account):
+        return [MockStatePayment(x['credit'], x['thedate']) for x in ({'credit':400.13,
+                                                                       'thedate':date(2011,12,11)},
+                                                                      {'credit':13.17,
+                                                                       'thedate':date(2011,12,12)})]
+    def listAccounts(self, session):
+        return ['10003','10004']
+    def get_reebill(self, session, account, sequence, version):
+        return MockStateReebill(None,1,0)
+
+class ExporterTest(unittest.TestCase):
 
     def test_reebill_details_dataset(self):
-        accounts = ['99999', '99998', '99997']
+        dao=MockDao()
+        statedb=MockStateDB()
+        exporter = Exporter(statedb, dao)
+        dataset=exporter.get_export_reebill_details_dataset(None, None, None)
 
-        # create mock skyliner objects
-        monguru = self.splinter.get_monguru()
+        correct_data=[['10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542],
+           ['10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None],
+           ['10003', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542],
+           ['10003', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542],
+           ['10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542],
+           ['10004', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None],
+           ['10004', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542],
+           ['10004', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542]]
 
-        with DBSession(self.state_db) as session:
-            for account in accounts:
-                # create 2 utility bills and 2 reebills
-                self.process.upload_utility_bill(session, account, 'gas',
-                         date(2013,1,1), date(2013,2,1),
-                         StringIO('January 2013'), 'January.pdf', total=300,
-                         state=UtilBill.Complete)
-                customer = self.state_db.get_customer(session, account)
-                utilbill1 = session.query(UtilBill).filter_by(customer = customer).one()
+        for indx,row in enumerate(dataset):
+            self.assertEqual(row, dataset[indx])
 
-                self.process.create_first_reebill(session, utilbill1)
-                reebill1 = self.reebill_dao.load_reebill(account, 1)
-                install = self.splinter.get_install_obj_for(account)
-                fbd.fetch_oltp_data(self.splinter, install.name, reebill1)
-                self.process.compute_reebill(session,reebill1)
-                self.process.issue(session, account, 1)
-
-                self.process.upload_utility_bill(session, account, 'gas',
-                         date(2013,2,1), date(2013,3,1),
-                         StringIO('February 2013'), 'February.pdf', total=500,
-                         state=UtilBill.Complete)
-                self.process.create_next_reebill(session,account)
-                reebill2 = self.reebill_dao.load_reebill(account, 2)
-                fbd.fetch_oltp_data(self.splinter, install.name, reebill2.reebill_dict )
-                self.process.compute_reebill(session,reebill2)
-                self.process.issue(session, account, 2)
-
-
-
-        exporter = Exporter(self.state_db, self.reebill_dao)
-        dataset=exporter.get_export_reebill_details_dataset(session, None, None)
-        pp(dataset.__dict__)
-
-
+    def test_
