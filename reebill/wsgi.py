@@ -2160,6 +2160,11 @@ class BillToolBridge:
                     validate_id_components(row.get('meter_id',''),
                             row.get('register_id',''))
 
+                    # all arguments should be strings, except "quantity",
+                    # which should be a number
+                    if 'quantity' in row:
+                        assert isinstance(row['quantity'], (float, int))
+
                     # modify the register using every field in 'row' except "id"
                     # (getting back values necessary to tell the client which row
                     # should be selected)
