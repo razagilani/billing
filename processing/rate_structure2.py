@@ -309,6 +309,17 @@ class RateStructureItem(EmbeddedDocument):
         and returns ( quantity  result, rate result). Raises FormulaSyntaxError
         if either of the formulas could not be parsed.
         '''
+        # from pprint import PrettyPrinter
+        # PrettyPrinter().pprint(register_quantities)
+
+        # validate argument types to avoid more confusing errors below
+        assert all(
+            isinstance(k, basestring) and isinstance(v, dict)
+            and all(
+                isinstance(k2, basestring) and isinstance(v2, (float, int))
+            for k2, v2 in v.iteritems())
+        for k, v in register_quantities.iteritems())
+
         # check syntax
         self._parse_formulas()
 
@@ -326,6 +337,7 @@ class RateStructureItem(EmbeddedDocument):
 
         def compute(name):
             formula = getattr(self, name)
+            assert isinstance(formula, basestring)
             try:
                 return eval(formula, {}, register_quantities)
             except Exception as e:

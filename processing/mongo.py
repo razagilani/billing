@@ -260,7 +260,8 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     if description is not None:
         register['description'] = description
     if quantity is not None:
-        register['quantity'] = str(quantity)
+        assert isinstance(quantity, (float, int))
+        register['quantity'] = quantity
     if description is not None:
         register['description'] = description
     if quantity_units is not None:
