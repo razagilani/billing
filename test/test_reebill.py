@@ -49,8 +49,10 @@ class ReebillTest(TestCaseWithSetup):
             check()
 
             # change utilbill period
-            b.set_utilbill_period_for_service(b.services[0], (date(2100,1,1),
-                    date(2100,2,1)))
+            b._get_utilbill_for_service(b.services[0])['start'] = date(2100,
+                    1,1)
+            b._get_utilbill_for_service(b.services[0])['end'] = date(2100,
+                2,1)
             check()
             self.reebill_dao.save_reebill(b)
             check()
@@ -74,9 +76,7 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEquals(0, reebill.late_charges)
         self.assertEquals(1, len(reebill._utilbills))
         # TODO test utility bill document contents
-        self.assertEquals(None, reebill.issue_date)
         self.assertEquals(0, reebill.payment_received)
-        self.assertEquals(0, reebill.actual_total)
         self.assertEquals(None, reebill.due_date)
         self.assertEquals(0, reebill.total_adjustment)
         self.assertEquals(0, reebill.ree_savings)
@@ -84,10 +84,7 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEquals(0, reebill.balance_due)
         self.assertEquals(0, reebill.prior_balance)
         self.assertEquals(0, reebill.balance_forward)
-        self.assertEquals(0, reebill.hypothetical_total)
 
-        # note that address schema as returned by MongoReebill is very
-        # different from the utility bill schema that it came from
         self.assertEquals({
             "city" : u"Silver Spring",
             "state" : u"MD",

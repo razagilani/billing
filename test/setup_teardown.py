@@ -38,6 +38,9 @@ class TestCaseWithSetup(unittest.TestCase):
         '''Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil.'''
+        # show long diffs for failed dict equality assertions
+        self.maxDiff = None
+
         # clear SQLAlchemy mappers so StateDB can be instantiated again
         #sqlalchemy.orm.clear_mappers()
 
@@ -114,16 +117,11 @@ port = 27017
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
 
-        ## insert URS document for the customer's rate class in Mongo (note that
-        ## UPRS and CPRS can be newly-created but URS must already exist)
-        #example_data.get_urs(utility_name='washgas',
-                #rate_structure_name='DC Non Residential Non Heat').save()
-
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])
 
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
-                self.reebill_dao, logger=logger)
+                logger=logger)
 
         self.nexus_util = MockNexusUtil([
             {

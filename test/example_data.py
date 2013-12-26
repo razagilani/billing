@@ -1,12 +1,16 @@
-'''Provides example data to be used in tests.'''
+'''Provides example data to be used in tests.
+
+Do not access the raw dictionaries directly; instead, call the methods
+get_utilbill_dict, get_reebill, etc.
+'''
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
-from billing.processing.mongo import MongoReebill, float_to_decimal
 from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
-from billing.processing.rate_structure2 import RateStructure, RateStructureItem, Register
+from billing.processing.rate_structure2 import RateStructure, RateStructureItem
+from billing.processing.mongo import MongoReebill
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -14,7 +18,7 @@ true, false = True, False
 null = None
 
 # editable utility bill (does not contain sequence, version of reebill)
-example_utilbill = {
+_example_utilbill = {
     # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
     # should be different for each instance
 
@@ -30,7 +34,6 @@ example_utilbill = {
                 u"rsi_binding" : u"SYSTEM_CHARGE",
                 u"description" : u"System Charge",
                 u"quantity" : 1,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 11.2,
                 u"quantity_units" : u"",
@@ -41,7 +44,6 @@ example_utilbill = {
                 u"rsi_binding" : u"DISTRIBUTION_CHARGE",
                 u"description" : u"Distribution charge for all therms",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.2935,
                 u"quantity_units" : u"therms",
@@ -52,7 +54,6 @@ example_utilbill = {
                 u"rsi_binding" : u"PGC",
                 u"description" : u"Purchased Gas Charge",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.7653,
                 u"quantity_units" : u"therms",
@@ -64,7 +65,6 @@ example_utilbill = {
                 u"quantity_units" : u"kWh",
                 u"quantity" : 1,
                 u"description" : u"Peak Usage Charge",
-                u"rate_units" : u"dollars",
                 u"rate" : 23.14,
                 u"total" : 23.14,
                 u"uuid" : u"c97254b8-2c16-11e1-8c7f-002421e88ffb"
@@ -73,7 +73,6 @@ example_utilbill = {
                 u"rsi_binding" : u"RIGHT_OF_WAY",
                 u"description" : u"DC Rights-of-Way Fee",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.03059,
                 u"quantity_units" : u"therms",
@@ -84,7 +83,6 @@ example_utilbill = {
                 u"rsi_binding" : u"SETF",
                 u"description" : u"Sustainable Energy Trust Fund",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.01399,
                 u"quantity_units" : u"therms",
@@ -95,7 +93,6 @@ example_utilbill = {
                 u"rsi_binding" : u"EATF",
                 u"description" : u"DC Energy Assistance Trust Fund",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.006,
                 u"quantity_units" : u"therms",
@@ -106,7 +103,6 @@ example_utilbill = {
                 u"rsi_binding" : u"SALES_TAX",
                 u"description" : u"Sales tax",
                 u"quantity" : 701.41,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.06,
                 u"quantity_units" : u"dollars",
@@ -117,7 +113,6 @@ example_utilbill = {
                 u"rsi_binding" : u"DELIVERY_TAX",
                 u"description" : u"Delivery tax",
                 u"quantity" : 561.9,
-                u"rate_units" : u"dollars",
                 u"processingnote" : u"",
                 u"rate" : 0.07777,
                 u"quantity_units" : u"therms",
@@ -151,7 +146,7 @@ example_utilbill = {
         }
     ],
     u"total" : 743.49,
-    u"rate_structure_binding" : u"DC Non Residential Non Heat",
+    u"rate_class" : u"DC Non Residential Non Heat",
     u"billing_address" : {
         u"postal_code" : u"20910",
         u"city" : u"Silver Spring",
@@ -161,7 +156,7 @@ example_utilbill = {
     }
 }
 
-example_reebill = {
+_example_reebill = {
 	u"_id" : {
 		u"account" : u"10003",
 		u"version" : 0,
@@ -199,7 +194,6 @@ example_reebill = {
                         u"rsi_binding" : u"SYSTEM_CHARGE",
                         u"description" : u"System Charge",
                         u"quantity" : 1,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 11.2,
                         u"quantity_units" : u"",
@@ -210,7 +204,6 @@ example_reebill = {
                         u"rsi_binding" : u"DISTRIBUTION_CHARGE",
                         u"description" : u"Distribution charge for all therms",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.2935,
                         u"quantity_units" : u"therms",
@@ -221,7 +214,6 @@ example_reebill = {
                         u"rsi_binding" : u"PGC",
                         u"description" : u"Purchased Gas Charge",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.7653,
                         u"quantity_units" : u"therms",
@@ -233,7 +225,6 @@ example_reebill = {
                         u"quantity_units" : u"kWh",
                         u"quantity" : 1,
                         u"description" : u"Peak Usage Charge",
-                        u"rate_units" : u"dollars",
                         u"rate" : 23.14,
                         u"total" : 23.14,
                         u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb"
@@ -242,7 +233,6 @@ example_reebill = {
                         u"rsi_binding" : u"RIGHT_OF_WAY",
                         u"description" : u"DC Rights-of-Way Fee",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.03059,
                         u"quantity_units" : u"therms",
@@ -253,7 +243,6 @@ example_reebill = {
                         u"rsi_binding" : u"SETF",
                         u"description" : u"Sustainable Energy Trust Fund",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.01399,
                         u"quantity_units" : u"therms",
@@ -264,7 +253,6 @@ example_reebill = {
                         u"rsi_binding" : u"EATF",
                         u"description" : u"DC Energy Assistance Trust Fund",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.006,
                         u"quantity_units" : u"therms",
@@ -275,7 +263,6 @@ example_reebill = {
                         u"rsi_binding" : u"SALES_TAX",
                         u"description" : u"Sales tax",
                         u"quantity" : 924.84,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.06,
                         u"quantity_units" : u"dollars",
@@ -286,7 +273,6 @@ example_reebill = {
                         u"rsi_binding" : u"DELIVERY_TAX",
                         u"description" : u"Delivery tax",
                         u"quantity" : 750.10197727,
-                        u"rate_units" : u"dollars",
                         u"processingnote" : u"",
                         u"rate" : 0.07777,
                         u"quantity_units" : u"therms",
@@ -355,25 +341,8 @@ example_reebill = {
 	}
 }
 
-#example_urs = URS(
-    #id=URSID(
-        #type='URS',
-        #utility_name='washgas',
-        #rate_structure_name="DC Non Residential Non Heat",
-    #),
-    #type='URS',
-    #registers=[Register(
-        #register_binding='REG_TOTAL',
-        #description='Total therms register',
-        #uuid='b11e375c-01a9-11e1-af85-002421e88ffb',
-        #quantity='0', quantity_units='therms', rate='26.3',
-        #rate_units='therms'
-    #)],
-    #rates=[],
-#)
 
-
-example_uprs = RateStructure(
+_example_uprs = RateStructure(
     type='UPRS',
     rates=[
         RateStructureItem(
@@ -382,7 +351,6 @@ example_uprs = RateStructure(
             quantity='1',
             quantity_units='',
             rate='45.6',
-            rate_units='dollars',
             round_rule='',
             uuid="b11e2500-01a9-11e1-af85-002422358023",
         ),
@@ -392,7 +360,6 @@ example_uprs = RateStructure(
             quantity='REG_TOTAL.quantity',
             quantity_units='',
             rate='0.1',
-            rate_units='dollars',
             round_rule='',
             uuid="b11e3216-01a9-11e1-af85-560964835ffb",
         ),
@@ -402,7 +369,6 @@ example_uprs = RateStructure(
             quantity='750.10197727',
             quantity_units='therms',
             rate='0.2935',
-            rate_units='dollars',
             round_rule='',
             uuid="c9733ed2-2c16-11e1-8c7f-002421e88ffb",
         ),
@@ -412,7 +378,6 @@ example_uprs = RateStructure(
             quantity='750.10197727',
             quantity_units='therms',
             rate='0.7653',
-            rate_units='dollars',
             round_rule='',
             uuid="c97340da-2c16-11e1-8c7f-002421e88ffb",
         ),
@@ -422,7 +387,6 @@ example_uprs = RateStructure(
             quantity='1',
             quantity_units='therms',
             rate='23.14',
-            rate_units='dollars',
             round_rule='',
             uuid="c97342e2-2c16-11e1-8c7f-002421e88ffb",
         ),
@@ -432,7 +396,6 @@ example_uprs = RateStructure(
             quantity='750.10197727',
             quantity_units='therms',
             rate='0.03059',
-            rate_units='dollars',
             round_rule='',
             uuid="c97344f4-2c16-11e1-8c7f-002421e88ffb",
         ),
@@ -442,7 +405,6 @@ example_uprs = RateStructure(
             quantity='750.10197727',
             quantity_units='therms',
             rate='0.03059',
-            rate_units='dollars',
             round_rule='',
             uuid="c97346f2-2c16-11e1-8c7f-002421e88ffb",
         ),
@@ -452,89 +414,17 @@ example_uprs = RateStructure(
             quantity='750.10197727',
             quantity_units='therms',
             rate='0.006',
-            rate_units='dollars',
             round_rule='',
             uuid="c9734af8-2c16-11e1-8c7f-002421e88ffb",
         ),
     ],
 )
 
-#example_cprs = {
-    ## NOTE: u"_id" must be inserted at runtime in get_utilbill_dict() because it
-    ## should be different for each instance
-
-	#u"rates" : [
-		#{
-			#u"rsi_binding" : u"SYSTEM_CHARGE",
-			#u"uuid" : u"af91ba26-01a9-11e1-af85-002421e88ffb",
-			#u"rate_units" : u"dollars",
-			#u"rate" : u"11.2",
-			#u"total" : 11.2,
-			#u"quantity" : u"1"
-		#},
-		#{
-			#u"rate" : u"0.03059",
-			#u"rsi_binding" : u"RIGHT_OF_WAY",
-			#u"uuid" : u"af91bfda-01a9-11e1-af85-002421e88ffb",
-			#u"roundrule" : u"ROUND_HALF_EVEN",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"rate" : u"0.01399",
-			#u"rsi_binding" : u"SETF",
-			#u"uuid" : u"af91c17e-01a9-11e1-af85-002421e88ffb",
-			#u"roundrule" : u"ROUND_UP",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"rate" : u"0.006",
-			#u"rsi_binding" : u"EATF",
-			#u"uuid" : u"af91c318-01a9-11e1-af85-002421e88ffb",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"rsi_binding" : u"DELIVERY_TAX",
-			#u"uuid" : u"af91c4bc-01a9-11e1-af85-002421e88ffb",
-			#u"rate_units" : u"dollars",
-			#u"rate" : u"0.07777",
-			#u"quantity_units" : u"therms",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"rate" : u"0.06",
-			#u"rsi_binding" : u"SALES_TAX",
-			#u"uuid" : u"af91c674-01a9-11e1-af85-002421e88ffb",
-			#u"quantity" : u"SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + PGC.total + RIGHT_OF_WAY.total + PUC.total + SETF.total + EATF.total + DELIVERY_TAX.total"
-		#},
-		#{
-			#u"uuid" : u"a77bf062-2108-11e1-98b3-002421e88ffb",
-			#u"rate" : u"23.14",
-			#u"rsi_binding" : u"PUC",
-			#u"description" : u"Peak Usage Charge",
-			#u"quantity" : u"1"
-		#},
-		#{
-			#u"rate" : u".2935",
-			#u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-			#u"uuid" : u"8ced8464-4dc1-11e1-ab51-002421e88ffb",
-			#u"roundrule" : u"ROUND_UP",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#},
-		#{
-			#u"rate" : u".7653",
-			#u"rsi_binding" : u"PGC",
-			#u"uuid" : u"c6b809f8-4dc1-11e1-bba8-002421e88ffb",
-			#u"quantity" : u"REG_TOTAL.quantity"
-		#}
-	#]
-#}
-
-example_cprs = RateStructure(type='CPRS',
+_example_cprs = RateStructure(type='CPRS',
     rates=[
 		RateStructureItem(
             rsi_binding='SYSTEM_CHARGE',
 			uuid='af91ba26-01a9-11e1-af85-002421e88ffb',
-			rate_units='dollars',
 			rate='11.2',
 			quantity='1'
         ),
@@ -561,7 +451,6 @@ example_cprs = RateStructure(type='CPRS',
         RateStructureItem(
 			rsi_binding='DELIVERY_TAX',
 			uuid='af91c4bc-01a9-11e1-af85-002421e88ffb',
-			rate_units='dollars',
 			rate='0.07777',
 			quantity_units='therms',
 			quantity='REG_TOTAL.quantity'
@@ -599,9 +488,9 @@ example_cprs = RateStructure(type='CPRS',
 
 def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
-    '''Returns an example reebill with the given account, sequence, and dates. It comes
-    with one utility bill having the same dates.'''
-    reebill_dict = deepcopy(example_reebill)
+    '''Returns an example reebill with the given account, sequence, and dates.
+    It comes with one utility bill having the same dates.'''
+    reebill_dict = deepcopy(_example_reebill)
     reebill_dict['_id'].update({
         'account': account,
         'sequence': sequence,
@@ -623,14 +512,13 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'end': end
     })
 
-    return MongoReebill(deep_map(float_to_decimal, reebill_dict),
-            [deepcopy(deep_map(float_to_decimal, u))])
+    return MongoReebill(reebill_dict, [deepcopy(u)])
 
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):
     '''Returns an example utility bill dictionary.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
-    utilbill_dict = deepcopy(example_utilbill)
+    utilbill_dict = deepcopy(_example_utilbill)
     utilbill_dict.update({
         '_id': ObjectId(),
         'account': account,
@@ -644,30 +532,12 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         meter['present_read_date'] = end
     return utilbill_dict
 
-#def get_urs(rate_structure_name='DC Non Residential Non Heat',
-        #utility_name='washgas'):
-    #result = deepcopy(example_urs)
-    #result.id = URSID(rate_structure_name=rate_structure_name,
-            #utility_name=utility_name, type='URS')
-    #return result
-
-#def get_uprs_dict():
-    #'''Returns an example customer periodic rate structure document.'''
-    #uprs_dict = deepcopy(example_uprs)
-    #uprs_dict['_id'] = ObjectId()
-    #return uprs_dict
-
 def get_uprs():
-    result = deepcopy(example_uprs)
+    result = deepcopy(_example_uprs)
     result.id = ObjectId()
     return result
 
-#def get_cprs_dict():
-    #cprs_dict = deepcopy(example_cprs)
-    #cprs_dict['_id'] = ObjectId()
-    #return cprs_dict
-
 def get_cprs():
-    result = deepcopy(example_cprs)
+    result = deepcopy(_example_cprs)
     result.id = ObjectId()
     return result

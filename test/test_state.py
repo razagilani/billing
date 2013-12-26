@@ -10,6 +10,7 @@ from billing.processing.state import Customer, UtilBill, ReeBill
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.exceptions import NoSuchBillException
 from billing.test import utils, example_data
 
 billdb_config = {
@@ -618,6 +619,101 @@ class StateTest(utils.TestCase):
             self.assertIsNotNone(utilbills[0])
             self.assertIsNone(utilbills[0].reebill)
             self.assertEqual(utilbills[0], target_utilbill)
+
+    def test_get_last_reebill(self):
+        with DBSession(self.state_db) as session:
+            customer = session.query(Customer).one()
+
+            self.assertEqual(None, self.state_db.get_last_reebill(session,
+                    '99999'))
+
+            utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                    period_end=date(2000,2,1))
+            reebill = ReeBill(customer, 1, 0, utilbills=[utilbill])
+            session.add(utilbill)
+            session.add(reebill)
+
+            self.assertEqual(reebill, self.state_db.get_last_reebill(session,
+                    '99999'))
+            self.assertEqual(None, self.state_db.get_last_reebill(session,
+                    '99999', issued_only=True))
+
+    def test_get_last_real_utilbill(self):
+        with DBSession(self.state_db) as session:
+            customer = session.query(Customer).one()
+
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2001,1,1))
+
+            # one bill
+            gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                    period_end=date(2000,2,1))
+            session.add(gas_bill_1)
+
+            self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
+                    session, '99999', date(2000,3,1)))
+            self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
+                    session, '99999', date(2000,2,1)))
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,1,31))
+
+            # two bills
+            electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
+                    'whatever', period_start=date(2000,1,2),
+                    period_end=date(2000,2,2))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000, 3, 1)))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000, 2, 2)))
+            self.assertEqual(gas_bill_1,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000, 2, 1)))
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,1,31))
+
+            # electric bill is ignored if service "gas" is specified
+            self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
+                    session, '99999', date(2000,2,2), service='gas'))
+            self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
+                    session, '99999', date(2000,2,1), service='gas'))
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,1,31), service='gas')
+
+            # filter by utility and rate class
+            self.assertEqual(gas_bill_1,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='washgas'))
+            self.assertEqual(gas_bill_1,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), rate_class='DC Non Residential Non Heat'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='pepco', rate_class='whatever'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), rate_class='whatever'))
+            self.assertEqual(electric_bill,
+                    self.state_db.get_last_real_utilbill(session, '99999',
+                    date(2000,3,1), utility='pepco', rate_class='whatever'))
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,1,31), utility='washgas', rate_class='whatever')
+
+            # hypothetical utility bills are always ignored
+            gas_bill_1.state = UtilBill.Hypothetical
+            electric_bill.state = UtilBill.Hypothetical
+            self.assertRaises(NoSuchBillException,
+                    self.state_db.get_last_real_utilbill, session, '99999',
+                    date(2000,3,1))
+
 
 if __name__ == '__main__':
     unittest.main()
