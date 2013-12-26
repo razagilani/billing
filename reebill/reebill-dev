@@ -1,0 +1,43 @@
+PassEnv SKYLINE_DIR
+PassEnv VIRTUAL_ENVS_DIR
+PassEnv APACHE_LOG_DIR
+PassEnv REEBILL_USER
+PassEnv REEBILL_GROUP
+WSGIPythonHome ${VIRTUAL_ENVS_DIR}/base
+
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    ServerName reebill-dev
+
+    DocumentRoot ${SKYLINE_DIR}/billing/reebill/ui/
+    <Directory ${SKYLINE_DIR}/billing/reebill/ui/>
+        DirectoryIndex /reebill 
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride None
+        Order allow,deny
+        allow from all
+    </Directory>
+
+    # directory where utility bill images are saved
+    Alias /utilitybillimages /tmp/billimages
+    <Directory /tmp/billimages-dev>
+        #Order deny,allow
+        #Allow from all
+        Options Indexes FollowSymLinks MultiViews
+        #AllowOverride None
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/reebill-error.log
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel debug
+
+    CustomLog ${APACHE_LOG_DIR}/reebill-access.log combined
+
+    WSGIScriptAlias /reebill ${SKYLINE_DIR}/billing/reebill/wsgi.py
+    WSGIDaemonProcess reebill user=${REEBILL_USER} group=${REEBILL_GROUP} python-path=${VIRTUAL_ENVS_DIR}/billing/lib/python2.7/site-packages
+    WSGIProcessGroup reebill
+    WSGIApplicationGroup %{GLOBAL}
+
+</VirtualHost>
