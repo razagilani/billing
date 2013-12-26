@@ -13,10 +13,8 @@ fabulous==0.1.5
 grapefruit==0.1a3
 greenlet==0.4.0
 mongoengine==0.8.4
-mongokit==0.9.0
 numpy==1.6.2
 ordereddict==1.1
-pandas==0.12.0
 paramiko==1.12.0
 py-bcrypt==0.4
 pyPdf==1.13
