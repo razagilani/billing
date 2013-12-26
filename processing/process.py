@@ -653,10 +653,15 @@ class Process(object):
         mongo.refresh_charges(document, uprs, cprs)
 
         # recompute after regenerating the charges, but if recomputation
-        # fails, make sure the new set of charges gets saved anyway.
+        # fails, make sure the new set of charges gets saved anyway. this is
+        # one of the rare situations in which catching Exception might be
+        # justified--i can't think of a better way to do it, because the
+        # document should get saved no matter what kind of error happens. at
+        # least the Exception gets re-raised immediately and does not get
+        # interpreted as a specific error.
         try:
             mongo.compute_all_charges(document, uprs, cprs)
-        except RSIError as e:
+        except Exception as e:
             self.reebill_dao.save_utilbill(document)
             raise
         self.reebill_dao.save_utilbill(document)

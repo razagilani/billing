@@ -2384,6 +2384,44 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 utilbill_doc['chargegroups']
             )
 
+        # TODO move the stuff below into a unit test (in test_utilbill.py)
+        # when there's any kind of exception in computing the bill, the new
+        # set of charges should still get saved, and the exception should be
+        # re-raised
+        bad_rsi = RateStructureItem(
+            rsi_binding='BAD',
+            description="quantity formula can't be computed",
+            quantity='WTF',
+            quantity_units='whatever',
+            rate='1',
+        )
+        uprs.rates = [bad_rsi]
+        uprs.save()
+        cprs.rates = []
+        cprs.save()
+        from billing.processing.exceptions import RSIError
+        with self.assertRaises(RSIError) as e:
+            self.process.refresh_charges(session, utilbill.id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        self.assertEqual({
+            'All Charges': [
+                {
+                    'rsi_binding': 'BAD',
+                    'description': "quantity formula can't be computed",
+                    'quantity_units': 'whatever',
+                    # quantity, rate, total are all 0 when not computable
+                    'quantity': 0,
+                    'rate': 0,
+                    'total': 0,
+                },
+            ],
+        }, utilbill_doc['chargegroups'])
+
+        # TODO test that document is still saved after any kind of Exception--
+        # i'm not sure how to do this because the code should be (and is)
+        # written so that there are no known ways to trigger unexpected
+        # exceptions. in a real unit test, mongo.compute_charges could be
+        # replaced with a mock that did this.
 
 
 if __name__ == '__main__':
