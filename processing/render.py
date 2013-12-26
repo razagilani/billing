@@ -715,6 +715,7 @@ class ReebillRenderer:
         ]
 
         # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
+        # TODO do not use the 'meters_for_service' method
         mongo_measured_usage = dict((service,reebill.meters_for_service(service)) for service in reebill.services)
 
         # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
