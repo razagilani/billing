@@ -283,7 +283,7 @@ class RateStructureItem(EmbeddedDocument):
         '''
         # This is a horrible way to find out if an ast node is a builtin
         # function, but it seems to work, and I can't come up with a better
-        # way. (Note that the type 'builtin_function_or_method' is not a
+        # way. (Note that the type 'builtin_function_or_method' is not  a
         # variable in global scope, like 'int' or 'str', so you can't refer to
         # it directly.)
         def _is_built_in_function(node):
