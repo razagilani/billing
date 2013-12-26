@@ -260,7 +260,8 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     if description is not None:
         register['description'] = description
     if quantity is not None:
-        register['quantity'] = str(quantity)
+        assert isinstance(quantity, (float, int))
+        register['quantity'] = quantity
     if description is not None:
         register['description'] = description
     if quantity_units is not None:
@@ -1264,34 +1265,51 @@ class MongoReebill(object):
     #    return dict([(service, self.utilbill_period_for_service(service)) for
     #        service in self.services])
 
-    # TODO: consider calling this meter readings
-    # TODO make this go away; don't use reebill object to get utility bill data
+    # TODO make this go away when render.py is replaced
     def meters_for_service(self, service_name):
-        '''Returns a list of copies of meter dictionaries for the utilbill
-        whose service is 'service_name'. There's not supposed to be more than
-        one utilbill per service, so an exception is raised if that happens (or
-        if there's no utilbill for that service).'''
+        '''Replicates part of an old version of the reebill/utility bill
+        document schema for use by render.py which is tightly coupled to it.
+        Do not add any new calls to this method!
+        '''
+        assert len(self._utilbills) == 1
         meters = copy.deepcopy(
                 self._get_utilbill_for_service(service_name)['meters'])
-
-        # gather shadow register dictionaries
         utilbill_handle = self._get_handle_for_service(service_name)
-        shadow_registers = copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
-        # put shadow: False in all the non-shadow registers, and merge the
-        # shadow registers in with shadow: True to replicate the old reebill
-        # data structure
+        result = []
         for m in meters:
+            meter_dict = {
+                'prior_read_date': m['prior_read_date'],
+                'present_read_date': m['present_read_date'],
+                'identifier': m['identifier'],
+                'registers': [],
+            }
             for register in m['registers']:
-                if 'shadow' in register:
-                    continue
-                register['shadow'] = False
-                for sr in shadow_registers:
-                    if sr['identifier'] == register['identifier']:
-                        sr['shadow'] = True
-                        m['registers'].append(sr)
+                assert 'shadow' not in m['registers']
+                meter_dict['registers'].append({
+                    'shadow': False,
+                    'register_binding': register['register_binding'],
+                    'quantity_units': register['quantity_units'],
+                    'type': register['type'],
+                    'description': register['description'],
+                    'quantity': register['quantity'],
+                    'identifier': register['identifier'],
+                })
+                for sr in utilbill_handle['shadow_registers']:
+                    if sr['register_binding'] == register['register_binding']:
+                        meter_dict['registers'].append({
+                            'shadow': True,
+                            'register_binding': register['register_binding'],
+                            'quantity_units': register['quantity_units'],
+                            'type': register['type'],
+                            'description': register['description'],
+                            'identifier': register['identifier'],
+                            'quantity': sr['quantity'],
+                        })
                         break
-        return meters
+            result.append(meter_dict)
+        return result
+
 
     #def _update_shadow_registers(self):
     #    '''Refreshes list of "shadow_register" dictionaries in this reebill
