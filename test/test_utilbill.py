@@ -310,7 +310,8 @@ class UtilBillTest(utils.TestCase):
                 'METER', 'Insert register ID here', register_id='REGISTER')
 
         # update "quantity" of register
-        mongo.update_register(utilbill_doc, 'METER', 'REGISTER', 123.45)
+        mongo.update_register(utilbill_doc, 'METER', 'REGISTER',
+                quantity=123.45)
         self.assertEqual([{
             'prior_read_date': date(2000,1,1),
             'present_read_date': date(2000,2,1),
