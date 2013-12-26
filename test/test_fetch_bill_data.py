@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from itertools import chain
 from StringIO import StringIO
 import csv
 import random
@@ -178,8 +179,8 @@ class FetchTest(unittest.TestCase):
         assert reebill.period_begin == date(2011,6,6)
         assert reebill.period_end == date(2011,7,6)
         # get all meters for all services in the reebill
-        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in
-                reebill.services], [])
+        meters = list(
+                chain.from_iterable(u['meters'] for u in reebill._utilbills))
 
         # there should be 2 meters with the identifiers shown
         assert len(meters) == 2
