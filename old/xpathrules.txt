@@ -1,0 +1,93 @@
+Reconcile prior bill.  Reconcile previous balance, payments, adjustments with balance forward.  Will the late fee be accounted for in the adjustments?
+
+	((/utilitybill/summary/priorbalance - sum(/utilitybill/summary/previouspayment/amount)) + sum(/utilitybill/summary/adjustment/amount)) - /utilitybill/summary/balanceforward
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: ((/utilitybill/summary/priorbalance - sum(/utilitybill/summary/previouspayment/amount)) + sum(/utilitybill/summary/adjustment/amount)) - /utilitybill/summary/balanceforward
+
+	xs:double 0
+
+
+
+Reconcile current bill summary.  Reconcile balance forward and current charge summary with total due.
+
+	/utilitybill/summary/balanceforward + /utilitybill/summary/currentcharges - /utilitybill/summary/totaldue
+
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: /utilitybill/summary/balanceforward + /utilitybill/summary/currentcharges - /utilitybill/summary/totaldue
+
+	xs:double 0
+
+
+
+Reconcile supplier/distributer charges with summarized current charges
+
+	(/utilitybill/currentcharges/distributer/priorbalance - /utilitybill/currentcharges/distributer/payment + /utilitybill/currentcharges/distributer/currentcharges)
+
+	+
+
+	(/utilitybill/currentcharges/supplier/priorbalance - /utilitybill/currentcharges/supplier/payment + /utilitybill/currentcharges/supplier/currentcharges)
+
+	-
+
+	/utilitybill/summary/currentcharges
+
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: 	(/utilitybill/currentcharges/distributer/priorbalance - /utilitybill/currentcharges/distributer/payment + /utilitybill/currentcharges/distributer/currentcharges) + (/utilitybill/currentcharges/supplier/priorbalance - /utilitybill/currentcharges/supplier/payment + /utilitybill/currentcharges/supplier/currentcharges) - /utilitybill/summary/currentcharges
+
+	xs:double 0
+
+
+
+Reconcile bill details with service and distribution subtotals
+
+	sum(/utilitybill/details/distribution/charges/charge/total) - sum(/utilitybill/details/distribution/total)
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: sum(/utilitybill/details/distribution/charges/charge/total) - sum(/utilitybill/details/distribution/total)
+	xs:double 0
+
+
+	sum(/utilitybill/details/service/charges/charge/total) - sum(/utilitybill/details/service/total)
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: sum(/utilitybill/details/service/charges/charge/total) - sum(/utilitybill/details/service/total)
+	xs:double 0
+
+	sum(/utilitybill/details/tax/charges/charge/total) - sum (/utilitybill/details/tax/total)
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: 	sum(/utilitybill/details/tax/charges/charge/total) - sum (/utilitybill/details/tax/total)
+	xs:double 0
+
+
+
+Reconcile bill details with bill summary current charges
+
+	sum(/utilitybill/details/distribution/total) + sum(/utilitybill/details/service/total) + sum(/utilitybill/details/tax/total) - sum(/utilitybill/summary/currentcharges)
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: sum(/utilitybill/details/distribution/total) + sum(/utilitybill/details/service/total) + sum(/utilitybill/details/tax/total) - sum(/utilitybill/summary/currentcharges)
+	xs:double 0
+
+
+
+Reconcile balance forward and current charges with total due (total account balance)
+
+	/utilitybill/summary/balanceforward + /utilitybill/summary/currentcharges - /utilitybill/summary/totaldue
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: /utilitybill/summary/balanceforward + /utilitybill/summary/currentcharges - /utilitybill/summary/totaldue
+	xs:double 0
+
+
+reconcile register subtotals and totals
+
+	sum(/utilitybill/usagehistory/usage/total) - sum(/utilitybill/usagehistory/usage/register/total)
+
+	\SkylineInnovations\bills\Dominion-101-20090528.xml
+		XPath: sum(/utilitybill/usagehistory/usage/total) - sum(/utilitybill/usagehistory/usage/register/total)
+	xs:integer 0
+
