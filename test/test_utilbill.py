@@ -309,6 +309,32 @@ class UtilBillTest(utils.TestCase):
         self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
                 'METER', 'Insert register ID here', register_id='REGISTER')
 
+        # update "quantity" of register
+        mongo.update_register(utilbill_doc, 'METER', 'REGISTER', 123.45)
+        self.assertEqual([{
+            'prior_read_date': date(2000,1,1),
+            'present_read_date': date(2000,2,1),
+            'identifier': 'METER',
+            'registers': [
+                {
+                    'identifier': 'REGISTER',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': 123.45,
+                    'quantity_units': 'therms',
+                    'type': 'total',
+                    'description': 'Insert description',
+                },{
+                    'identifier': 'Insert register ID here',
+                    'register_binding': 'Insert register binding here',
+                    'quantity': 0,
+                    'quantity_units': 'therms',
+                    'type': 'total',
+                    'description': 'Insert description',
+                },
+            ],
+        }], utilbill_doc['meters'])
+
+
     def test_get_service_address(self):
         utilbill_doc = example_data._example_utilbill
         address = mongo.get_service_address(utilbill_doc)
