@@ -13,6 +13,7 @@ from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.mongo import MongoReebill, NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
+from billing.util.dictutils import subdict
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -116,11 +117,11 @@ class ReebillTest(TestCaseWithSetup):
         # check that there are the same group names and rsi_bindings only,
         # by creating two dictionaries mapping group names to sets of
         # rsi_bindings and comparing them
-        utilbill_charge_info = {group_name: set(c['rsi_binding'] for c in
-                charges) for group_name, charges
+        utilbill_charge_info = {group_name: [subdict(c, ['rsi_binding',
+                'description']) for c in charges] for group_name, charges
                 in utilbill['chargegroups'].iteritems()}
-        reebill_charge_info = {group_name: set(c['rsi_binding'] for c in
-                charges) for group_name, charges
+        reebill_charge_info = {group_name: [subdict(c, ['rsi_binding',
+                'description']) for c in charges] for group_name, charges
                 in utilbill_handle['hypothetical_chargegroups'].iteritems()}
         self.assertEqual(utilbill_charge_info, reebill_charge_info)
 
