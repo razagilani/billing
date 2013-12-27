@@ -100,7 +100,31 @@ class ReebillTest(TestCaseWithSetup):
             "postal_code" : u"20010"
         }, reebill.service_address)
 
-        # NOTE "statistics" is not tested because it will go away
+    def test_compute_charges(self):
+        reebill = example_data.get_reebill('99999', 1, start=date(2000,1,1),
+                end=date(2000,2,1))
+        uprs = example_data.get_uprs()
+        cprs = example_data.get_cprs()
+        utilbill = reebill._utilbills[0]
+        utilbill_handle = reebill.reebill_dict['utilbills'][0]
+
+        # clear all charges in order to check that the right ones were inserted
+        utilbill_handle['chargegroups'] = {}
+
+        reebill.compute_charges(uprs, cprs)
+
+        # check that there are the same group names and rsi_bindings only,
+        # by creating two dictionaries mapping group names to sets of
+        # rsi_bindings and comparing them
+        utilbill_charge_info = {group_name: set(c['rsi_binding'] for c in
+                charges) for group_name, charges
+                in utilbill['chargegroups'].iteritems()}
+        reebill_charge_info = {group_name: set(c['rsi_binding'] for c in
+                charges) for group_name, charges
+                in utilbill_handle['chargegroups'].iteritems()}
+        self.assertEqual(utilbill_charge_info, reebill_charge_info)
+
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
