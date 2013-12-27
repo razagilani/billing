@@ -735,7 +735,7 @@ class Process(object):
 
         # replace "utilbills" sub-documents of reebill document with new ones
         # generated directly from the reebill's '_utilbills'. these will
-        # contain hypothetical charges that matche the actual charges until
+        # contain hypothetical charges that match the actual charges until
         # updated.
         # TODO this causes bug 60548728; for solution, see
         # https://www.pivotaltracker.com/story/show/60611838

@@ -606,6 +606,7 @@ class MongoReebill(object):
         '''
         # TODO maybe this should be done in compute_bill or a method called by
         # it; see https://www.pivotaltracker.com/story/show/51581067
+        # also might want to merge this with compute_charges below.
         self.reebill_dict['utilbills'] = \
                 [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
