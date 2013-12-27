@@ -490,7 +490,7 @@ class MongoReebill(object):
     '''
 
     @classmethod
-    def get_utilbill_subdoc(cls, utilbill_doc):
+    def _get_utilbill_subdoc(cls, utilbill_doc):
         '''Returns a a dictionary that is the subdocument of a reebill document
         representing the "hypothetical" version of the given utility bill
         document.'''
@@ -554,7 +554,7 @@ class MongoReebill(object):
             'late_charge_rate': late_charge_rate,
             'late_charges': 0,
             "message" : None,
-            "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
+            "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
             "due_date" : None,
             "total_adjustment" : 0,
@@ -607,7 +607,7 @@ class MongoReebill(object):
         # TODO maybe this should be done in compute_bill or a method called by
         # it; see https://www.pivotaltracker.com/story/show/51581067
         self.reebill_dict['utilbills'] = \
-                [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
+                [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
         for subdoc in self.reebill_dict['utilbills']:
