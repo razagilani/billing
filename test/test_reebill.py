@@ -109,7 +109,7 @@ class ReebillTest(TestCaseWithSetup):
         utilbill_handle = reebill.reebill_dict['utilbills'][0]
 
         # clear all charges in order to check that the right ones were inserted
-        utilbill_handle['chargegroups'] = {}
+        utilbill_handle['hypothetical_chargegroups'] = {}
 
         reebill.compute_charges(uprs, cprs)
 
@@ -121,9 +121,8 @@ class ReebillTest(TestCaseWithSetup):
                 in utilbill['chargegroups'].iteritems()}
         reebill_charge_info = {group_name: set(c['rsi_binding'] for c in
                 charges) for group_name, charges
-                in utilbill_handle['chargegroups'].iteritems()}
+                in utilbill_handle['hypothetical_chargegroups'].iteritems()}
         self.assertEqual(utilbill_charge_info, reebill_charge_info)
-
 
 
 if __name__ == '__main__':
