@@ -2423,6 +2423,33 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # exceptions. in a real unit test, mongo.compute_charges could be
         # replaced with a mock that did this.
 
+    def test_regression_63029856(self):
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000'),
+                    'january.pdf')
+            utilbill = session.query(UtilBill).one()
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            uprs.rates = [RateStructureItem(
+                rsi_binding='A_CHARGE',
+                description='',
+                quantity='2',
+                quantity_units='therms',
+                rate='3',
+            )]
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            utilbill_doc['chargegroups']['All Charges'] = [{
+                'rsi_binding': 'A_CHARGE',
+                'description': '',
+                'quantity_units': 'therms',
+                'quantity': 0,
+                'rate': 0,
+                'total': 0,
+            }]
+            self.process.compute_utility_bill(session, utilbill.id)
+
+            utilbill_doc['chargegroups']['All Charges'][0]['description'] = 'new'
+            self.process.compute_utility_bill(session, utilbill.id)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
