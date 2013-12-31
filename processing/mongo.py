@@ -277,9 +277,17 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
 
 
 # TODO make this a method of a utility bill document class when one exists
-def actual_chargegroups_flattened(utilbill_doc):
-    return flatten_chargegroups_dict(copy.deepcopy(
+def get_charges_json(utilbill_doc):
+    '''Returns list of dictionaries describing charges for use in web browser.
+    '''
+    result = flatten_chargegroups_dict(copy.deepcopy(
             utilbill_doc['chargegroups']))
+
+    # add "id" field for use by Ext-JS
+    for charge_dict in result:
+        charge_dict['id'] = charge_dict['rsi_binding']
+
+    return result
 
 # TODO make this a method of a utility bill document class when one exists
 def get_service_address(utilbill_doc):
