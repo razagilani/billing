@@ -41,6 +41,11 @@ class RSIError(Exception):
     '''
     pass
 
+class NoRSIError(RSIError):
+    '''Trying to compute a charge that no corresponding Rate Structure Item.
+    '''
+    pass
+
 class FormulaError(RSIError):
     '''Error in the "quantity"/"rate" formula of a Rate Structure Item.
     '''
