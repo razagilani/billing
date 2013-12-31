@@ -132,7 +132,7 @@ class Exporter(object):
             # name, with (actual) or (hypothetical) appended
             services = reebill.services
             actual_charges = sorted(chain.from_iterable(
-                mongo.actual_chargegroups_flattened(m_ub)
+                mongo.get_charges_json(m_ub)
                 for m_ub in mongo_utilbills), key=itemgetter('description'))
             hypothetical_charges = sorted(chain.from_iterable(
                 reebill.hypothetical_chargegroups_flattened(service)
@@ -264,7 +264,7 @@ class Exporter(object):
                    m_ub.get("start", '').strftime(dateutils.ISO_8601_DATE),
                    m_ub.get("end", '').strftime(dateutils.ISO_8601_DATE)]
             # Find all actual chagres connected to this utility bill
-            actual_charges = sorted(mongo.actual_chargegroups_flattened(m_ub),
+            actual_charges = sorted(mongo.get_charges_json(m_ub),
                                     key=itemgetter('description'))
             # write each actual charge in a separate column,
             # creating new columns when necessary
