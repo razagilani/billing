@@ -1952,6 +1952,12 @@ class BillToolBridge:
     @json_exception
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
+        def get_charge_by_id(charges_json, the_id):
+            charge_matches = [c for c in flattened_charges
+                    if c['id'] == the_id]
+            assert len(charge_matches) == 1
+            return charge_matches[0]
+
         with DBSession(self.state_db) as session:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
@@ -1971,17 +1977,9 @@ class BillToolBridge:
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
                 for row in rows:
-                    # find the charge with the given "id" (same as its
-                    # rsi_binding)
-                    charge_matches = [c for c in flattened_charges
-                            if c['id'] == row['id']]
-                    pp.pprint(flattened_charges)
-                    pp.pprint(charge_matches)
-                    assert len(charge_matches) == 1
-                    the_charge = charge_matches[0]
-
                     # replace all key-value pairs in the charge dictionary
                     # with those from 'row'
+                    the_charge = get_charge_by_id(flattened_charges, row['id'])
                     the_charge.clear()
                     the_charge.update(row)
 
@@ -1991,32 +1989,25 @@ class BillToolBridge:
                 return self.dumps({'success':True})
 
             if xaction == "create":
-                rows = json.loads(kwargs["rows"])
-                # single create comes in not in a list
-                if type(rows) is dict: rows = [rows]
-                for row in rows:
-                    row["uuid"] = str(UUID.uuid1())
-                    flattened_charges.append(copy.copy(row))
+                row = json.loads(kwargs["rows"])
+                # key rsi_binding must exist
+                if 'rsi_binding' not in row:
+                    row['rsi_binding'] = ''
+                # TODO make the server completely responsible for determining
+                # field values of newly-created charges, the same way it's
+                # done for RSIs (if charges still exist independent of RSIs;
+                # otherwise all this code will be gone anyway)
+                flattened_charges.append(row)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-                return self.dumps({'success':True, 'rows':rows})
+                return self.dumps({'success':True, 'rows': row})
 
             if xaction == "destroy":
-                uuids = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                # TODO: understand why this is a unicode coming up from browser
-                if type(uuids) is unicode: uuids = [uuids]
-                for ci_uuid in uuids:
-                    # identify the rsi
-                    matches = [result for result in it.ifilter(lambda x: x['uuid']==ci_uuid, flattened_charges)]
-                    if (len(matches) == 0):
-                        raise Exception("Did not match a charge item UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one charge item UUID which should not be possible")
-                    ci = matches[0]
-                    flattened_charges.remove(ci)
+                the_id = json.loads(kwargs["rows"])
+                the_charge = get_charge_by_id(flattened_charges, the_id)
+                flattened_charges.remove(the_charge)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)

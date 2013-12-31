@@ -2601,13 +2601,13 @@ function reeBillReady() {
                         // and the UI goes out of sync.  Try this by change the chargegroup below
                         // to some other string.
                         chargegroup: selection.data.chargegroup,
-                        description: 'enter description',
+                        rsi_binding: 'RSI binding required',
+                        id: 'RSI binding required',
+                        description: 'description required',
                         quantity: 0,
                         quantity_units: 'kWh',
                         rate: 0,
-                        //rate_units: 'dollars',
                         total: 0,
-                        //autototal: 0
                     };
                     var c = new ChargeItemType(defaultData);
         
