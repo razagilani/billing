@@ -345,6 +345,52 @@ class UtilBillTest(utils.TestCase):
         }], utilbill_doc['meters'])
 
 
+    def test_compute_charge_without_rsi(self):
+        '''Check that compute_charges raises a KeyError when attempting to
+        compute charges for a bill containing a charge without a
+        corresponding RSI.
+        '''
+        utilbill_doc = {
+            'account': '12345', 'service': 'gas', 'utility': 'washgas',
+            'start': date(2000,1,1), 'end': date(2000,2,1),
+            'rate_class': "won't be loaded from the db anyway",
+            'chargegroups': {'All Charges': [
+                # a charge with no corrseponding RSI
+                {'rsi_binding': 'NO_RSI', 'quantity': 0},
+            ]},
+            'meters': [{
+                'present_read_date': date(2000,2,1),
+                'prior_read_date': date(2000,1,1),
+                'identifier': 'ABCDEF',
+                'registers': [{
+                    'identifier': 'GHIJKL',
+                    'register_binding': 'REG_TOTAL',
+                    'quantity': 150,
+                    'quantity_units': 'therms',
+                }]
+            }],
+            'billing_address': {}, # addresses are irrelevant
+            'service_address': {},
+        }
+
+        # rate structures are empty
+        uprs = RateStructure(
+            id=ObjectId(),
+            type='UPRS',
+            rates=[]
+        )
+        cprs = RateStructure(
+            id=ObjectId(),
+            type='CPRS',
+            registers=[],
+            rates=[]
+        )
+
+        # compute_all_charges should raise a KeyError if not all charges have
+        # an RSI
+        self.assertRaises(KeyError, mongo.compute_all_charges, utilbill_doc,
+                uprs, cprs)
+
     def test_get_service_address(self):
         utilbill_doc = example_data.get_utilbill_dict('10003')
         address = mongo.get_service_address(utilbill_doc)
