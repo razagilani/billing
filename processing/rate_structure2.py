@@ -439,6 +439,9 @@ class RateStructure(Document):
         return RateStructure(registers=[], rates=combined_dict.values())
 
     def rsis_dict(self):
+        '''Returns a dictionary mapping RSI binding strings to
+        RateStrutureItem objects for every RSI in this RateStructure.
+        '''
         result = {}
         for rsi in self.rates:
             binding = rsi['rsi_binding']
