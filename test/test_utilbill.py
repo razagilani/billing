@@ -9,6 +9,7 @@ from billing.test import example_data
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
+from billing.processing.exceptions import NoRSIError
 import example_data
 
 class UtilBillTest(utils.TestCase):
@@ -346,7 +347,7 @@ class UtilBillTest(utils.TestCase):
 
 
     def test_compute_charge_without_rsi(self):
-        '''Check that compute_charges raises a KeyError when attempting to
+        '''Check that compute_charges raises a NoRSIError when attempting to
         compute charges for a bill containing a charge without a
         corresponding RSI.
         '''
@@ -387,7 +388,7 @@ class UtilBillTest(utils.TestCase):
 
         # compute_all_charges should raise a KeyError if not all charges have
         # an RSI
-        self.assertRaises(KeyError, mongo.compute_all_charges, utilbill_doc,
+        self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
                 uprs, cprs)
 
     def test_get_service_address(self):

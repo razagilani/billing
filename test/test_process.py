@@ -17,7 +17,7 @@ from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError
+from billing.processing.exceptions import BillStateError, NoRSIError
 from billing.processing import fetch_bill_data as fbd
 from billing.test import utils
 
@@ -2147,7 +2147,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "total" : 11.2,
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
-            with self.assertRaises(KeyError) as context:
+            with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, reebill_correction_doc)
             self.reebill_dao.save_reebill(reebill_correction_doc)
 

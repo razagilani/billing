@@ -16,7 +16,9 @@ from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError, FormulaError, RSIError
+from billing.processing.exceptions import NoSuchBillException, \
+    NotUniqueException, IssuedBillError, MongoError, FormulaError, RSIError, \
+    NoRSIError
 from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -336,8 +338,8 @@ def refresh_charges(utilbill_doc, uprs, cprs):
             key=itemgetter('rsi_binding'))]}
 
 def _validate_charges(utilbill_doc, rate_structure):
-    '''Raises a KeyError if any charge in 'utilbill_doc doesn't correspond to a
-    RateStructureItem in 'rate_structure'.
+    '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
+    a RateStructureItem in 'rate_structure'.
     '''
     rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
     charges = list(sorted(chain.from_iterable(
@@ -345,7 +347,7 @@ def _validate_charges(utilbill_doc, rate_structure):
             key=lambda charge: charge['rsi_binding']))
     for charge in charges:
         if charge['rsi_binding'] not in rsi_bindings:
-            raise KeyError('No rate structure item for "%s"' %
+            raise NoRSIError('No rate structure item for "%s"' %
                            charge['rsi_binding'])
 
 # TODO make this a method of a utility bill document class when one exists
