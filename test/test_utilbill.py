@@ -107,12 +107,19 @@ class UtilBillTest(utils.TestCase):
             ]
         )
 
-        # TODO test overriding CPRS in UPRS
         cprs = RateStructure(
             id=ObjectId(),
             type='CPRS',
             registers=[],
-            rates=[],
+            rates=[
+                # this RSI should override the "CONSTANT" RSI in 'uprs'
+                RateStructureItem(
+                    rsi_binding='CONSTANT',
+                    quantity='100',
+                    quantity_units='dollars',
+                    rate='0.4',
+                ),
+            ],
         )
 
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
@@ -127,7 +134,7 @@ class UtilBillTest(utils.TestCase):
         # register quantity of 150 therms. there should not be a charge for
         # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
         # structure.
-        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(31,
                 the_charge_named('LINEAR_PLUS_CONSTANT'))
@@ -136,13 +143,13 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(126,
+        self.assertDecimalAlmostEqual(156,
                 mongo.total_of_all_charges(utilbill_doc))
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
-        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(51,
                 the_charge_named('LINEAR_PLUS_CONSTANT'))
@@ -151,13 +158,13 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(201,
+        self.assertDecimalAlmostEqual(231,
                 mongo.total_of_all_charges(utilbill_doc))
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
         mongo.compute_all_charges(utilbill_doc, uprs, cprs)
-        self.assertDecimalAlmostEqual(10, the_charge_named('CONSTANT'))
+        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(1,
                 the_charge_named('LINEAR_PLUS_CONSTANT'))
@@ -166,7 +173,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(11,
+        self.assertDecimalAlmostEqual(41,
                 mongo.total_of_all_charges(utilbill_doc))
 
     def test_register_editing(self):
