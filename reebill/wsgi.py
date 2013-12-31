@@ -1970,35 +1970,18 @@ class BillToolBridge:
                 rows = json.loads(kwargs["rows"])
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
-                pp.pprint(rows)
                 for row in rows:
-                    # # identify the charge item UUID of the posted data
-                    # ci_uuid = row['uuid']
-                    # # identify the charge item, and update it with posted data
-                    # matches = [ci_match for ci_match in it.ifilter(lambda x:
-                    #         x['uuid']==ci_uuid, flattened_charges)]
-                    # # there should only be one match
-                    # if (len(matches) == 0):
-                    #     raise Exception("Did not match charge item UUID which should not be possible")
-                    # if (len(matches) > 1):
-                    #     raise Exception("Matched more than one charge item UUID which should not be possible")
-                    # ci = matches[0]
-                    #
-                    #
-                    # # now that blank values are removed, ensure that required fields were sent from client
-                    # # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-                    #
-                    # # now take the legitimate values from the posted data and update the RSI
-                    # # clear it so that the old emptied attributes are removed
-                    # ci.clear()
-                    # ci.update(row)
-
+                    # find the charge with the given "id" (same as its
+                    # rsi_binding)
                     charge_matches = [c for c in flattened_charges
                             if c['id'] == row['id']]
                     pp.pprint(flattened_charges)
                     pp.pprint(charge_matches)
                     assert len(charge_matches) == 1
                     the_charge = charge_matches[0]
+
+                    # replace all key-value pairs in the charge dictionary
+                    # with those from 'row'
                     the_charge.clear()
                     the_charge.update(row)
 
