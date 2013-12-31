@@ -363,59 +363,57 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     # get RSIs from a fake RateStructure in which anything in 'uprs' with the
     # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    rsis = RateStructure.combine(uprs, cprs).rsis_dict()
+    # TODO eliminate at least one of these 3
+    rate_structure = RateStructure.combine(uprs, cprs)
+    rsis = rate_structure.rates
+    rsis_dict = rate_structure.rsis_dict()
 
-    # get dictionary mapping charge names to their indices in an alphabetical
-    # list. this assigns a number to each charge.
-    # TODO rename to charge_names_to_numbers
-    all_charges = list(sorted(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()),
-            key=lambda charge: charge['rsi_binding']))
-    charge_numbers = {charge['rsi_binding']: index for index, charge in
-            enumerate(all_charges)}
+    # get dictionary mapping rsi_bindings names to the indices of the
+    # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number
+    # to each.
+    # TODO rename to rsi_names_to_numbers
+    rsi_numbers = {rsi_binding: index for index, rsi_binding in
+            enumerate(rsis_dict.iterkeys())}
 
-    # the dependencies of some charges' RSI formulas on other charges form a
-    # DAG, which will be represented as a list of pairs of charge numbers in
-    # 'charge_numbers'. this list will be used to determine the order
-    # in which charges get evaluated. to build the list, find all identifiers
+    # the dependencies of some RSIs' formulas on other RSIs form a
+    # DAG, which will be represented as a list of pairs of RSI numbers in
+    # 'rsi_numbers'. this list will be used to determine the order
+    # in which charges get computed. to build the list, find all identifiers
     # in each RSI formula that is not a register name; every such identifier
-    # must be the name of a charge, and its presence means the charge whose RSI
-    # formula contains that identifier depends on the charge whose name is the
-    # identifier.
+    # must be the name of an RSI, and its presence means the RSI whose
+    # formula contains that identifier depends on the RSI whose rsi_binding is
+    # the identifier.
     dependency_graph = []
-    # this list initially contains all charge numbers, and by the end of the
-    # loop will contain only the numbers of charges that had no relationship to
-    # another chanrge
-    independent_charge_numbers = set(charge_numbers.itervalues())
-    for charges in utilbill_doc['chargegroups'].itervalues():
-        for charge in charges:
-            rsi = rsis[charge['rsi_binding']]
-            this_charge_num = charge_numbers[charge['rsi_binding']]
+    # the list 'independent_rsi_numbers' initially contains all RSI
+    # numbers, and by the end of the loop will contain only the numbers of
+    # RSIs that have no relationship to another one
+    independent_rsi_numbers = set(rsi_numbers.itervalues())
+    for rsi in rsis:
+        this_rsi_num = rsi_numbers[rsi.rsi_binding]
 
-            # for every node in the AST of the RSI's "quantity" and "rate"
-            # formulas, if the 'ast' module identifiers that node as an
-            # identifier, and its name does not occur in 'identifiers' above
-            # (which contains only register names), add the tuple (this
-            # charge's number, that charge's number) to 'dependency_graph'.
-            rsi_identifiers = rsi.get_identifiers()
-            for identifier in rsi.get_identifiers():
-                if identifier in identifiers:
-                    continue
-                try:
-                    other_charge_num = charge_numbers[identifier]
-                except KeyError:
-                    # TODO might want to validate identifiers before computing
-                    # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI '
-                            '"%s": %s') % (rsi.rsi_binding, identifier))
-                # a pair (x,y) means x precedes y, i.e. y depends on x
-                dependency_graph.append((other_charge_num, this_charge_num))
-                independent_charge_numbers.discard(other_charge_num)
-                independent_charge_numbers.discard(this_charge_num)
+        # for every node in the AST of the RSI's "quantity" and "rate"
+        # formulas, if the 'ast' module labels that node as an
+        # identifier, and its name does not occur in 'identifiers' above
+        # (which contains only register names), add the tuple (this
+        # charge's number, that charge's number) to 'dependency_graph'.
+        for identifier in rsi.get_identifiers():
+            if identifier in identifiers:
+                continue
+            try:
+                other_rsi_num = rsi_numbers[identifier]
+            except KeyError:
+                # TODO might want to validate identifiers before computing
+                # for clarity
+                raise FormulaError(('Unknown variable in formula of RSI '
+                        '"%s": %s') % (rsi.rsi_binding, identifier))
+            # a pair (x,y) means x precedes y, i.e. y depends on x
+            dependency_graph.append((other_rsi_num, this_rsi_num))
+            independent_rsi_numbers.discard(other_rsi_num)
+            independent_rsi_numbers.discard(this_rsi_num)
 
     # charges that don't depend on other charges can be evaluated before ones
     # that do.
-    evaluation_order = list(independent_charge_numbers)
+    evaluation_order = list(independent_rsi_numbers)
 
     # 'evaluation_order' now contains only the indices of charges that don't
     # have dependencies. topological sort the dependency graph to find an
@@ -425,26 +423,47 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     except tsort.GraphError as g:
         # if the graph contains a cycle, provide a more comprehensible error
         # message with the charge numbers converted back to names
-        names_in_cycle = ', '.join(all_charges[i]['rsi_binding'] for i in
+        names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
                 g.args[1])
         raise RSIError('Circular dependency: %s' % names_in_cycle)
 
-    assert len(evaluation_order) == len(all_charges)
+    assert len(evaluation_order) == len(rsis)
 
-    # compute each charge, using its corresponding RSI, in the above order.
-    # every time a charge is computed, store the resulting "quantity", "rate",
-    # and "total" in 'identifiers' so it can be used in evaluating subsequent
-    # charges that depend on it.
-    for charge_number in evaluation_order:
-        charge = all_charges[charge_number]
-        rsi = rsis[charge['rsi_binding']]
+    all_charges = list(sorted(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()),
+            key=lambda charge: charge['rsi_binding']))
+
+    assert len(evaluation_order) == len(rsis)
+
+    # compute each charge, using its corresponding RSI, in the order described
+    # by 'evaluation_order'. every time a charge is computed, store the
+    # resulting "quantity", "rate", and "total" in 'identifiers' so it can be
+    # used in evaluating subsequent charges that depend on it.
+    for rsi_number in evaluation_order:
+        # compute the RSI regardless of whether there is really a charge
+        # corresponding to it
+        rsi = rsis[rsi_number]
         quantity, rate = rsi.compute_charge(identifiers)
-        charge['quantity'] = quantity
-        charge['rate'] = rate
-        charge['total'] = quantity * rate
-        identifiers[charge['rsi_binding']]['quantity'] = charge['quantity']
-        identifiers[charge['rsi_binding']]['rate'] = charge['rate']
-        identifiers[charge['rsi_binding']]['total'] = charge['total']
+        total = quantity * rate
+
+        # if there is a charge update its "quantity", "rate', and "total"
+        # fields
+        try:
+            charge = next(c for c in all_charges
+                    if c['rsi_binding'] == rsi.rsi_binding)
+        except StopIteration:
+            # this RSI has no charge corresponding to it
+            pass
+        else:
+            charge['quantity'] = quantity
+            charge['rate'] = rate
+            charge['total'] = total
+
+        # update 'identifiers' so the results of this computation can be used
+        # as identifier values in other RSIs
+        identifiers[rsi.rsi_binding]['quantity'] = quantity
+        identifiers[rsi.rsi_binding]['rate'] = rate
+        identifiers[rsi.rsi_binding]['total'] = total
 
 def total_of_all_charges(utilbill_doc):
     '''Returns sum of "total" fields of all charges in the utility bill.
