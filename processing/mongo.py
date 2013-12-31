@@ -295,6 +295,10 @@ def get_service_address(utilbill_doc):
 
 # TODO make this a method of a utility bill document class when one exists
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
+    # remove "id" field that came from the client
+    for c in flat_charges:
+        if 'id' in c:
+            del c['id']
     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
 # TODO rename to get_meter_read_period
