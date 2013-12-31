@@ -361,6 +361,9 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             key=lambda charge: charge['rsi_binding']))
     charge_numbers = {charge['rsi_binding']: index for index, charge in
             enumerate(all_charges)}
+    print '1 *********************************'
+    pp(all_charges)
+    pp(charge_numbers)
 
     # the dependencies of some charges' RSI formulas on other charges form a
     # DAG, which will be represented as a list of pairs of charge numbers in
@@ -373,8 +376,10 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     dependency_graph = []
     # this list initially contains all charge numbers, and by the end of the
     # loop will contain only the numbers of charges that had no relationship to
-    # another chanrge
+    # another charge
     independent_charge_numbers = set(charge_numbers.itervalues())
+    print '2 ******************************'
+    pp(independent_charge_numbers)
     for charges in utilbill_doc['chargegroups'].itervalues():
         for charge in charges:
             rsi = rsis[charge['rsi_binding']]
@@ -400,10 +405,15 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
                 dependency_graph.append((other_charge_num, this_charge_num))
                 independent_charge_numbers.discard(other_charge_num)
                 independent_charge_numbers.discard(this_charge_num)
+    print '3 ******************************'
+    pp(dependency_graph)
+    pp(independent_charge_numbers)
 
     # charges that don't depend on other charges can be evaluated before ones
     # that do.
     evaluation_order = list(independent_charge_numbers)
+    print '4 ******************************'
+    print(evaluation_order)
 
     # 'evaluation_order' now contains only the indices of charges that don't
     # have dependencies. topological sort the dependency graph to find an
