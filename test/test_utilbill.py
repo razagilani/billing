@@ -27,6 +27,7 @@ class UtilBillTest(utils.TestCase):
                 {'rsi_binding': 'BLOCK_1', 'quantity': 0},
                 {'rsi_binding': 'BLOCK_2', 'quantity': 0},
                 {'rsi_binding': 'BLOCK_3', 'quantity': 0},
+                {'rsi_binding': 'REFERENCES_CPRS', 'quantity': 0},
             ]},
             'meters': [{
                 'present_read_date': date(2000,2,1),
@@ -85,6 +86,13 @@ class UtilBillTest(utils.TestCase):
                   rate='0.1',
                 ),
                 RateStructureItem(
+                    rsi_binding='REFERENCES_CPRS',
+                    # TODO also try "total" here
+                    quantity='USED_IN_UPRS.quantity + USED_IN_UPRS.rate',
+                    quantity_units='therms',
+                    rate='1',
+                ),
+                RateStructureItem(
                   rsi_binding='NO_CHARGE_FOR_THIS_RSI',
                   quantity='1',
                   quantity_units='therms',
@@ -105,6 +113,15 @@ class UtilBillTest(utils.TestCase):
                     quantity_units='dollars',
                     rate='0.4',
                 ),
+                # this RSI has no charge associated with it, but is used to
+                # provide identifiers in the formula of the "REFERENCES_CPRS"
+                # RSI in 'uprs'
+                RateStructureItem(
+                    rsi_binding='USED_IN_UPRS',
+                    quantity='2',
+                    quantity_units='therms',
+                    rate='3',
+                )
             ],
         )
 
@@ -117,19 +134,16 @@ class UtilBillTest(utils.TestCase):
                     if c['rsi_binding'] == rsi_binding)
 
         # check "total" for each of the charges in the utility bill at the
-        # register quantity of 150 therms. there should not be a charge for
-        # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
-        # structure.
-        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
-        self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
+        # register quantity of 150 therms. there should not be a charge for # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate # structure. self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT')) self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(31,
                 the_charge_named('LINEAR_PLUS_CONSTANT'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(156,
+        self.assertDecimalAlmostEqual(161,
                 mongo.total_of_all_charges(utilbill_doc))
 
         # try a different quantity: 250 therms
@@ -142,9 +156,10 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(231,
+        self.assertDecimalAlmostEqual(236,
                 mongo.total_of_all_charges(utilbill_doc))
 
         # and another quantity: 0
@@ -157,9 +172,10 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(41,
+        self.assertDecimalAlmostEqual(46,
                 mongo.total_of_all_charges(utilbill_doc))
 
     def test_register_editing(self):
