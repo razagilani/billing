@@ -335,6 +335,19 @@ def refresh_charges(utilbill_doc, uprs, cprs):
     } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
             key=itemgetter('rsi_binding'))]}
 
+def _validate_charges(utilbill_doc, rate_structure):
+    '''Raises a KeyError if any charge in 'utilbill_doc doesn't correspond to a
+    RateStructureItem in 'rate_structure'.
+    '''
+    rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
+    charges = list(sorted(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()),
+            key=lambda charge: charge['rsi_binding']))
+    for charge in charges:
+        if charge['rsi_binding'] not in rsi_bindings:
+            raise KeyError('No rate structure item for "%s"' %
+                           charge['rsi_binding'])
+
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs, cprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
@@ -346,6 +359,16 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # confusing error messages later
     uprs.validate()
     cprs.validate()
+
+    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
+    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
+    # TODO eliminate at least one of these 3
+    rate_structure = RateStructure.combine(uprs, cprs)
+    rsis = rate_structure.rates
+    rsis_dict = rate_structure.rsis_dict()
+
+    # complain if any charge has an rsi_binding that does not match an RSI
+    _validate_charges(utilbill_doc, rate_structure)
 
     # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
     # (where NAME can be a register or the RSI_BINDING of some other charge).
@@ -360,13 +383,6 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         for register in meter['registers']:
             identifiers[register['register_binding']]['quantity'] = \
                     register['quantity']
-
-    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
-    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    # TODO eliminate at least one of these 3
-    rate_structure = RateStructure.combine(uprs, cprs)
-    rsis = rate_structure.rates
-    rsis_dict = rate_structure.rsis_dict()
 
     # get dictionary mapping rsi_bindings names to the indices of the
     # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number

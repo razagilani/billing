@@ -382,7 +382,6 @@ class UtilBillTest(utils.TestCase):
         cprs = RateStructure(
             id=ObjectId(),
             type='CPRS',
-            registers=[],
             rates=[]
         )
 
