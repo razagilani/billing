@@ -2325,7 +2325,7 @@ function reeBillReady() {
     var aChargesReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        idProperty: 'uuid',
+        idProperty: 'id',
         root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
@@ -2333,7 +2333,7 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'uuid', mapping: 'uuid'},
+            {name: 'id', mapping: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -2369,7 +2369,7 @@ function reeBillReady() {
         autoSave: true,
         reader: aChargesReader,
         //root: 'rows',
-        //idProperty: 'uuid',
+        idProperty: 'id',
         writer: aChargesWriter,
         data: initialActualCharges,
         sortInfo:{field: 'chargegroup', direction: 'ASC'},
@@ -2457,10 +2457,10 @@ function reeBillReady() {
                 dataIndex: 'chargegroup',
                 hidden: true,
             },{
-                header: 'UUID',
+                header: 'id',
                 width: 75,
                 sortable: true,
-                dataIndex: 'uuid',
+                dataIndex: 'id',
                 editable: true,
                 hidden: true,
             },{

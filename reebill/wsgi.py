@@ -1956,7 +1956,7 @@ class BillToolBridge:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-            flattened_charges = mongo.actual_chargegroups_flattened(utilbill_doc)
+            flattened_charges = mongo.get_charges_json(utilbill_doc)
 
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': flattened_charges})
@@ -1970,26 +1970,37 @@ class BillToolBridge:
                 rows = json.loads(kwargs["rows"])
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
+                pp.pprint(rows)
                 for row in rows:
-                    # identify the charge item UUID of the posted data
-                    ci_uuid = row['uuid']
-                    # identify the charge item, and update it with posted data
-                    matches = [ci_match for ci_match in it.ifilter(lambda x:
-                            x['uuid']==ci_uuid, flattened_charges)]
-                    # there should only be one match
-                    if (len(matches) == 0):
-                        raise Exception("Did not match charge item UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one charge item UUID which should not be possible")
-                    ci = matches[0]
+                    # # identify the charge item UUID of the posted data
+                    # ci_uuid = row['uuid']
+                    # # identify the charge item, and update it with posted data
+                    # matches = [ci_match for ci_match in it.ifilter(lambda x:
+                    #         x['uuid']==ci_uuid, flattened_charges)]
+                    # # there should only be one match
+                    # if (len(matches) == 0):
+                    #     raise Exception("Did not match charge item UUID which should not be possible")
+                    # if (len(matches) > 1):
+                    #     raise Exception("Matched more than one charge item UUID which should not be possible")
+                    # ci = matches[0]
+                    #
+                    #
+                    # # now that blank values are removed, ensure that required fields were sent from client
+                    # # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+                    #
+                    # # now take the legitimate values from the posted data and update the RSI
+                    # # clear it so that the old emptied attributes are removed
+                    # ci.clear()
+                    # ci.update(row)
 
-                    # now that blank values are removed, ensure that required fields were sent from client 
-                    # if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-
-                    # now take the legitimate values from the posted data and update the RSI
-                    # clear it so that the old emptied attributes are removed
-                    ci.clear()
-                    ci.update(row)
+                    charge_matches = [c for c in flattened_charges
+                            if c['id'] == row['id']]
+                    pp.pprint(flattened_charges)
+                    pp.pprint(charge_matches)
+                    assert len(charge_matches) == 1
+                    the_charge = charge_matches[0]
+                    the_charge.clear()
+                    the_charge.update(row)
 
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
@@ -2049,7 +2060,7 @@ class BillToolBridge:
             return self.dumps({'success':True, 'rows':[]})
 
         utilbill_doc = reebill._get_utilbill_for_service(service)
-        flattened_charges_a = mongo.actual_chargegroups_flattened(utilbill_doc)
+        flattened_charges_a = mongo.get_charges_json(utilbill_doc)
         charge_dict_a = {c['rsi_binding']:c for c in flattened_charges_a}
         flattened_charges_h = reebill.hypothetical_chargegroups_flattened(service)
         for charge_dict_h in flattened_charges_h:
