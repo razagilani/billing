@@ -328,7 +328,46 @@ class Exporter(object):
     def get_export_reebill_details_dataset(self, session, begin_date, end_date):
         ''' Helper method for export_reebill_details_xls: extracts details
         data from issued  reebills and related payments for all accounts and
-        calculates cumulative savings and RE&E energy '''
+        calculates cumulative savings and RE&E energy.
+
+        Columns containing data about reebills:
+
+        Account - Needed because this is how customer information is looked up in Nexus
+        Sequence - Because account and sequence are used to identify ReeBills
+        Version - Because the amount of ReeBilling churn should be visible
+        Billing Addressee - Needed to for account management/maintenance reasons
+        Service Addressee - Needed to for account management/maintenance reasons
+        Issue Date - Needed to determine how far along or not the bill processing cycle is
+        Period Begin - Needed for a variety of reasons to determine when utility bills need to be downloaded.
+        Period End - Needed for a variety of reasons to determine when utility bills need to be downloaded.
+        Hypothesized Charges (total) - Needed to sanity check ReeBills and
+        find  billing errors
+        Actual Utility Charges (total)- Needed to sanity check ReeBills and
+        find  billing errors
+        RE&E Value - Needed for various dashboard/reporting purposes/requests
+        Prior Balance - Accounting (All accounting needs related to QuickBooks)
+        Payment Applied (in a particular reebill) - Accounting
+        Adjustment - Accounting
+        Balance Forward - Accounting
+        RE&E Charges - Accounting
+        Late Charges - Accounting
+        Balance Due - Accounting
+        Savings - Customer reporting/sales
+        Cumulative Savings - Customer reporting/sales
+        RE&E Energy - Needed to sanity check OLAP
+        Average Rate per Unit RE&E during the billing period (Total RE/Energy
+        Sold)- Needed to sanity check sales proposals
+
+        Columns containing data about payments:
+            Payment Date
+            Payment Amount
+
+        Since payment columns are not associated with reebills, ether the
+        reebill columns or the payment columns of each row will be filled in,
+        but not both. The relative ordering of reebill rows and payment
+        rows is indeterminate (though it could be done by reebill Issue
+        Date and Payment Date).
+        '''
 
         # Method to format the Service address/Billin address in a Reebill
         def format_addr(addr):
