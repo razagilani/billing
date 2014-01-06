@@ -28,8 +28,11 @@ class StateTest(utils.TestCase):
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         c = mysql_connection.cursor()
         c.execute("delete from payment")
-        c.execute("delete from utilbill")
         c.execute("delete from reebill")
+        # clearing out utilbill_reebill should not be necessary because it
+        # should cascade deletion from reebill
+        c.execute("delete from utilbill_reebill")
+        c.execute("delete from utilbill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
