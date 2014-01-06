@@ -23,10 +23,8 @@ billdb_config = {
 }
 
 class StateTest(utils.TestCase):
-    def setUp(self):
-        # clear out database
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
+    def _clear_tables(self, db_connection):
+        c = db_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from reebill")
         # clearing out utilbill_reebill should not be necessary because it
@@ -34,7 +32,12 @@ class StateTest(utils.TestCase):
         c.execute("delete from utilbill_reebill")
         c.execute("delete from utilbill")
         c.execute("delete from customer")
-        mysql_connection.commit()
+        db_connection.commit()
+
+    def setUp(self):
+        # clear out database
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        self._clear_tables(mysql_connection)
 
         # insert one customer (not relying on StateDB)
         c = mysql_connection.cursor()
@@ -57,12 +60,7 @@ class StateTest(utils.TestCase):
         '''This gets run even if a test fails.'''
         # clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from reebill")
-        c.execute("delete from customer")
-        mysql_connection.commit()
+        self._clear_tables(mysql_connection)
 
     @unittest.skip("TODO re-enable. creation of another StateDB instance breaks the test even though it's a different DB and clear_mappers is run in setUp")
     def test_guess_next_reebill_end_date(self):
