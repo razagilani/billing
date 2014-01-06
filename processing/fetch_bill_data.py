@@ -120,8 +120,7 @@ def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
     energy_function = get_interval_meter_data_source(csv_file,
             timestamp_column=timestamp_column, energy_column=energy_column,
             timestamp_format=timestamp_format, energy_unit=energy_unit)
-    usage_data_to_virtual_register(reebill, energy_function,
-            meter_identifier=meter_identifier)
+    usage_data_to_virtual_register(reebill, energy_function)
 
 def get_interval_meter_data_source(csv_file, timestamp_column=0,
         energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
@@ -249,27 +248,6 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
     return get_energy_for_hour_range
 
 
-#def get_shadow_register_data(reebill, meter_identifier=None):
-    ## TODO duplicate of mongo.shadow_registers? move this to mongo.py to
-    ## replace that function
-    #'''Returns a list of shadow registers in all meters of the given
-    #MongoReebill, or if meter_identifier is given, only meters with that
-    #identifier. The returned dictionaries are the same as register subdocuments
-    #in mongo plus read dates of their containing meters.'''
-    #result = []
-    #service_meters_dict = reebill.meters # poorly-named attribute
-    #for service, meters in service_meters_dict.iteritems():
-        #for meter in meters:
-            #if meter_identifier == None or meter['identifier'] == meter_identifier:
-                #for register in meter['registers']:
-                    #if register['shadow'] == True:
-                        #result.append(dict_merge(register.copy(), {
-                            #'prior_read_date': meter['prior_read_date'],
-                            #'present_read_date': meter['present_read_date']
-                        #}))
-    #return result
-
-
 def aggregate_total(energy_function, start, end, verbose=False):
     '''Returns all energy given by 'energy_function' in the date range [start,
     end), in BTU. 'energy_function' should be a function mapping a date and an
@@ -295,7 +273,7 @@ def aggregate_tou(day_type, hour_range, energy_function, start, end, verbose=Fal
     return result
 
 def usage_data_to_virtual_register(reebill, energy_function,
-        meter_identifier=None, verbose=False):
+        verbose=False):
     '''Gets energy quantities from 'energy_function' and puts them in the
     "quantity" fields of the register subdocuments in the 'MongoReebill' object
     'reebill'.
@@ -307,41 +285,12 @@ def usage_data_to_virtual_register(reebill, energy_function,
     If meter_identifier is given, accumulate energy only into the shadow
     registers of meters with that identifier.
     '''
-    if meter_identifier is None:
-        # NOTE multiple services not supported
-        assert len(reebill.services) == 1
-        service = reebill.services[0]
-        registers = reebill.shadow_registers(service)
-        prior_read_date, present_read_date = reebill.meter_read_dates_for_service(
-                service)
-    else:
-        # ree should go into a particular shadow register
-        all_shadow_registers = reduce(operator.add,
-                [reebill.shadow_registers(s) for s in reebill.services], [])
-        registers = [r for r in all_shadow_registers if r['identifier'] ==
-                meter_identifier]
-        if registers == []:
-            raise Exception(('Meter "%s" doesn\'t exist or contains no shadow'
-                ' registers') % meter_identifier)
-        # find utilbill containing the meter containing the register and get
-        # the meter read dates from there
-        # TODO 34685823: rethink how this works--should we really be offsetting
-        # a particular meter? (bad code below should be temporary)
-        stop = False
-        for u in reebill._utilbills:
-            for m in u['meters']:
-                for r in m['registers']:
-                    if r['identifier'] == meter_identifier:
-                        service = u['service']
-                        prior_read_date = m['prior_read_date']
-                        present_read_date = m['present_read_date']
-                        stop = True
-                        break
-                if stop:
-                    break
-            if stop:
-                break
-
+    # NOTE multiple services not supported
+    assert len(reebill.services) == 1
+    service = reebill.services[0]
+    registers = reebill.shadow_registers(service)
+    prior_read_date, present_read_date = reebill.meter_read_dates_for_service(
+            service)
     # accumulate energy into the shadow registers for the specified date range
     for register in registers:
         # TODO 28304031 : register wants a float
@@ -394,7 +343,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
 
 
 def usage_data_to_virtual_register(reebill, energy_function,
-                meter_identifier=None, verbose=False):
+                verbose=False):
     '''Gets energy quantities from 'energy_function' and puts them in the
     "quantity" fields of the register subdocuments in the 'MongoReebill' object
     'reebill'.
@@ -402,9 +351,6 @@ def usage_data_to_virtual_register(reebill, energy_function,
     'energy_function' should be a function mapping a date and an hour
     range (pair of integers in [0,23]) to a float representing energy used
     during that time. (Energy is measured in therms, even if it's gas.)
-
-    If meter_identifier is given, accumulate energy only into the shadow
-    registers of meters with that identifier.
     '''
     # TODO move this helper function somewhere else, e.g. utility bill
     # document class
@@ -456,9 +402,6 @@ def usage_data_to_virtual_register(reebill, energy_function,
 
     for utilbill_doc in reebill._utilbills:
         for meter in utilbill_doc['meters']:
-            if meter_identifier is not None and meter_identifier \
-                    != meter['identifier']:
-                continue
             for register in meter['registers']:
                 hypothetical_quantity = get_renewable_energy_for_register(
                         register, meter['prior_read_date'],
