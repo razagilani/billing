@@ -9,6 +9,7 @@ import pymongo
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
+from billing.util.dictutils import subdict
 from billing.processing import state
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter
@@ -175,6 +176,7 @@ class FetchTest(unittest.TestCase):
         # exactly 1 shadowed meter.) putting energy into the shadow registers
         # of that specific meter is the same as putting it into all shadowed
         # meters.
+        # TODO: do not depend on real data in a test!
         reebill = self.reebill_dao.load_reebill('10004', 15)
         assert reebill.period_begin == date(2011,6,6)
         assert reebill.period_end == date(2011,7,6)
@@ -189,12 +191,15 @@ class FetchTest(unittest.TestCase):
         meter1 = [m for m in meters if m['identifier'] == '028702956'][0]
         meter2 = [m for m in meters if m['identifier'] == '027870434'][0]
 
-        # only the second contains shadow registers
-        shadow_registers = reduce(lambda x,y:x+y, [reebill.shadow_registers(s)
-                for s in reebill.services], [])
-        assert len(shadow_registers) == 1
-        assert [r for r in shadow_registers if r['identifier'] == '028702956'] == []
-        assert [r for r in shadow_registers if r['identifier'] == '027870434'] != []
+        # out of 2 registers "REG_TOTAL" and "REG_TOTAL_SECONDARY", only 1 is
+        # used for renewable energy billing
+        # TODO don't depend on structure of Mongo document
+        shadow_registers = [subdict(d, ['measure', 'register_binding']) for d
+                in reebill.reebill_dict[ 'utilbills'][0]['shadow_registers']]
+        self.assertEqual([{
+            'measure': 'Energy Sold',
+            'register_binding': 'REG_TOTAL_SECONDARY',
+        }], shadow_registers)
 
         # set value of all registers in both meters to an arbitrary value
         # (also set unit to 'therms' instead of 'Ccf' because ccf isn't
@@ -221,8 +226,8 @@ class FetchTest(unittest.TestCase):
         # corresponding to a particular identifier or when the meter with the
         # given identifier contains no shadow registers
         csv_file.seek(0)
-        self.assertRaises(Exception, fbd.fetch_interval_meter_data, reebill,
-                csv_file, 'fake meter id')
+        with self.assertRaises(Exception) as e:
+            fbd.fetch_interval_meter_data(reebill, csv_file, 'fake meter id')
         csv_file.seek(0)
         self.assertRaises(Exception, fbd.fetch_interval_meter_data, reebill,
                 csv_file, '028702956')
