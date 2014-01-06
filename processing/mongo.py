@@ -298,6 +298,7 @@ def get_service_address(utilbill_doc):
 # TODO make this a method of a utility bill document class when one exists
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     # remove "id" field that came from the client
+    flat_charges = copy.deepcopy(flat_charges)
     for c in flat_charges:
         if 'id' in c:
             del c['id']
