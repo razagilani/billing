@@ -55,7 +55,7 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        sqlalchemy.orm.clear_mappers()
+        #sqlalchemy.orm.clear_mappers()
         self.state_db = state.StateDB(**{
             'user': 'dev',
             'password': 'dev',
