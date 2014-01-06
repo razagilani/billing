@@ -1997,6 +1997,10 @@ class BillToolBridge:
                 # field values of newly-created charges, the same way it's
                 # done for RSIs (if charges still exist independent of RSIs;
                 # otherwise all this code will be gone anyway)
+                if row['rsi_binding'] in (c['rsi_binding'] for c in
+                        flattened_charges):
+                    raise ValueError('Duplicate RSI binding "%s"' %
+                             row['rsi_binding'])
                 flattened_charges.append(row)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
