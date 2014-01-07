@@ -1999,8 +1999,9 @@ class BillToolBridge:
                 # otherwise all this code will be gone anyway)
                 if row['rsi_binding'] in (c['rsi_binding'] for c in
                         flattened_charges):
-                    raise ValueError('Duplicate RSI binding "%s"' %
-                             row['rsi_binding'])
+                    raise ValueError('Duplicate RSI binding "%s" (create '
+                         'charges one at a time)' %
+                         row['rsi_binding'])
                 flattened_charges.append(row)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
