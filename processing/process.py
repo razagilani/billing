@@ -280,9 +280,11 @@ class Process(object):
             # https://www.pivotaltracker.com/story/show/59594888
             try:
                 the_dict['ree_quantity'] = doc.total_renewable_energy()
-            except ValueError as e:
+            except (ValueError, StopIteration) as e:
+                self.logger.error("Error when getting renewable energy "
+                        "quantity for reebill %s-%s-%s:\n%s" % (
+                        account, sequence, max_version, traceback.format_exc()))
                 the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-
 
             result.append(the_dict)
 

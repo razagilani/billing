@@ -1015,7 +1015,11 @@ function reeBillReady() {
             value=Ext.util.Format.usMoney(value);
         }
         else if(colIndex == 7){
-            value=value.toFixed(5);
+            if (typeof(value) == 'number') {
+                value=value.toFixed(5);
+            } else {
+                // it's a string with an error message--see bug #63401638
+            }
         }
         return value;
     }
