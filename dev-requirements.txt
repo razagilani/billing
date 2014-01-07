@@ -1,0 +1,8 @@
+coverage
+fabric
+ipdb
+minimock
+mock
+nose
+nose-progressive
+pudb
