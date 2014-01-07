@@ -1655,10 +1655,11 @@ function reeBillReady() {
                             Ext.Msg.alert('Failure', 'Ajax communication failed');
                             break;
                         case Ext.form.Action.SERVER_INVALID:
-                            Ext.Msg.alert('Failure', action.result.errors.reason + ' ' + action.result.errors.details);
+                            //Ext.Msg.alert('Failure', action.result.errors.reason + ' ' + action.result.errors.details);
                             break;
                         default:
-                            Ext.Msg.alert('Failure1', action.result.errors.reason + ' ' + action.result.errors.details);
+                            //Ext.Msg.alert('Failure1', action.result.errors.reason + ' ' + action.result.errors.details);
+                            break;
                     }
                 },
                 success: function(form, action) {
