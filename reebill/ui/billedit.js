@@ -89,6 +89,7 @@ function reeBillReady() {
                             string = string.replace(/</g,'&lt;');
                             string = string.replace(/>/g,'&gt;');
 
+                            console.log(string)
                             oldMinWidth = Ext.MessageBox.minWidth;
                             Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
                             Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
@@ -1649,8 +1650,8 @@ function reeBillReady() {
                 params:{
                     // see baseParams
                 }, 
-                waitMsg:'Saving...',
-                failure: function(form, action) {
+                //waitMsg:'Saving...',
+                /*failure: function(form, action) {
                     switch (action.failureType) {
                         case Ext.form.Action.CLIENT_INVALID:
                             Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
@@ -1665,7 +1666,7 @@ function reeBillReady() {
                             //Ext.Msg.alert('Failure1', action.result.errors.reason + ' ' + action.result.errors.details);
                             break;
                     }
-                },
+                },*/
                 success: function(form, action) {
                     // If an argument is not passed into a function, it has type 'undefined'
                     if (typeof callback !== 'undefined') {
