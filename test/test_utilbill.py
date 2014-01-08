@@ -424,25 +424,20 @@ class UtilBillTest(utils.TestCase):
                 {
                     "rate" : "1",
                     "rsi_binding" : "SYSTEM_CHARGE",
-                    "uuid" : "af4ec1f8-01a9-11e1-af85-002421e88ffb",
                     "quantity" : "1"
                 },
                 {
                     "rate" : "1",
                     "rsi_binding" : "ENERGY_FIRST_BLOCK",
-                    "uuid" : "af4ec428-01a9-11e1-af85-002421e88ffb",
                     "quantity" : "1"
                 },
                 {
                     "rate" : "1",
                     "rsi_binding" : "ENERGY_SECOND_BLOCK",
-                    "uuid" : "af4ec5e0-01a9-11e1-af85-002421e88ffb",
-                    "roundrule" : "ROUND_UP",
                     "quantity" : "1"
                 },
                 {
                     "rsi_binding" : "ENERGY_REMAINDER_BLOCK",
-                    "uuid" : "af4ec7ac-01a9-11e1-af85-002421e88ffb",
                     "rate_units" : "dollars",
                     "rate" : "1",
                     "quantity_units" : "therms",
@@ -451,34 +446,27 @@ class UtilBillTest(utils.TestCase):
                 {
                     "rate" : "1",
                     "rsi_binding" : "SALES_TAX",
-                    "uuid" : "af4ec96e-01a9-11e1-af85-002421e88ffb",
-                    "quantity" : "SYSTEM_CHARGE.total",
-                    "roundrule" : "ROUND_DOWN"
+                    "quantity" : "SYSTEM_CHARGE.total"
                 },
                 {
                     "rate" : "1",
                     "rsi_binding" : "MD_GROSS_RECEIPTS_SURCHARGE",
-                    "uuid" : "af4ecb30-01a9-11e1-af85-002421e88ffb",
                     "quantity" : "1"
                 },
                 {
                     "rate" : ".061316872",
                     "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
-                    "uuid" : "af4eccde-01a9-11e1-af85-002421e88ffb",
                     "quantity" : "REG_TOTAL.quantity"
                 },
                 {
                     "rate" : "1",
                     "rsi_binding" : "SUPPLY_COMMODITY",
-                    "uuid" : "af4ece82-01a9-11e1-af85-002421e88ffb",
                     "quantity" : "REG_TOTAL.quantity"
                 },
                 {
                     "rate" : "1",
                     "rsi_binding" : "MD_SUPPLY_SALES_TAX",
-                    "uuid" : "af4ed210-01a9-11e1-af85-002421e88ffb",
-                    "quantity" : "SUPPLY_COMMODITY.total ",
-                    "roundrule" : "ROUND_UP"
+                    "quantity" : "SUPPLY_COMMODITY.total "
                 }
             ],
             "type" : "CPRS"
