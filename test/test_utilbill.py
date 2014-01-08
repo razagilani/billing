@@ -417,9 +417,10 @@ class UtilBillTest(utils.TestCase):
         }
 
         uprs = RateStructure(type='UPRS', rates=[])
-        # _id of this document is: ObjectId("52b455467eb49a52d23d105c")
+        # based on document with _id 52b455467eb49a52d23d105c
         cprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
+            "type" : "CPRS",
             "rates" : [
                 {
                     "rate" : "1",
@@ -456,7 +457,7 @@ class UtilBillTest(utils.TestCase):
                 {
                     "rate" : ".061316872",
                     "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
-                    "quantity" : "REG_TOTAL.quantity"
+                    "quantity" : "1"
                 },
                 {
                     "rate" : "1",
@@ -468,8 +469,7 @@ class UtilBillTest(utils.TestCase):
                     "rsi_binding" : "MD_SUPPLY_SALES_TAX",
                     "quantity" : "SUPPLY_COMMODITY.total "
                 }
-            ],
-            "type" : "CPRS"
+            ]
         }''')
 
         # this should not raise an exception
