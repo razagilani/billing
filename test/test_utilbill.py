@@ -2,6 +2,7 @@
 document, when there finally is one.
 '''
 from datetime import date
+import dateutil
 from bson import ObjectId
 from decimal import Decimal
 from unittest import TestCase
@@ -344,6 +345,220 @@ class UtilBillTest(utils.TestCase):
                 },
             ],
         }], utilbill_doc['meters'])
+
+    def test_regression_63401058(self):
+        '''Regression test for bug 63401058, in which calculating the charges
+        of a bill failed because RSI formulas were evaluated in the wrong order.
+        '''
+        utilbill_doc = {
+            "_id" : ObjectId("52b455467eb49a52d23d105d"),
+            "account" : "10056",
+            "billing_address" : {
+                "city" : "Columbia",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "street" : "8975 Guilford Rd Ste 100",
+                "postal_code" : "21046"
+            },
+            "chargegroups" : {
+                "Generation/Supply" : [
+                    {
+                        "rsi_binding" : "SUPPLY_COMMODITY",
+                        "uuid" : "a1107f8e-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 396.8,
+                        "rate_units" : "dollars",
+                        "rate" : 0.747,
+                        "quantity_units" : "therms",
+                        "total" : 296.41,
+                        "description" : "Commodity"
+                    },
+                    {
+                        "rsi_binding" : "MD_SUPPLY_SALES_TAX",
+                        "uuid" : "a11083ee-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 296.41,
+                        "rate_units" : "percent",
+                        "processingnote" : "",
+                        "rate" : 0.06,
+                        "quantity_units" : "dollars",
+                        "total" : 17.79,
+                        "description" : "MD Sales tax commodity"
+                    }
+                ],
+                "Distribution" : [
+                    {
+                        "rsi_binding" : "ENERGY_FIRST_BLOCK",
+                        "uuid" : "a1108614-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 300,
+                        "rate_units" : "dollars",
+                        "rate" : 0.3145,
+                        "quantity_units" : "therms",
+                        "total" : 94.35,
+                        "description" : "The first 300 therms"
+                    },
+                    {
+                        "rsi_binding" : "ENERGY_SECOND_BLOCK",
+                        "uuid" : "a110881c-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 96.8,
+                        "rate_units" : "dollars",
+                        "rate" : 0.212,
+                        "quantity_units" : "therms",
+                        "total" : 20.53,
+                        "description" : "The next 6700 therms"
+                    },
+                    {
+                        "rsi_binding" : "ENERGY_REMAINDER_BLOCK",
+                        "uuid" : "a1108a24-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 0,
+                        "rate_units" : "dollars",
+                        "rate" : 0.1573,
+                        "quantity_units" : "therms",
+                        "total" : 0,
+                        "description" : "Over 7,000 therms"
+                    },
+                    {
+                        "rsi_binding" : "SYSTEM_CHARGE",
+                        "uuid" : "a1108c36-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 1,
+                        "rate_units" : "",
+                        "rate" : 47.1,
+                        "quantity_units" : "",
+                        "total" : 47.1,
+                        "description" : "System Charge"
+                    },
+                    {
+                        "rsi_binding" : "MD_STATE_SALES_TAX",
+                        "uuid" : "a1108e20-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 161.98,
+                        "rate_units" : "percent",
+                        "rate" : 0.06,
+                        "quantity_units" : "dollars",
+                        "total" : 9.71,
+                        "description" : "Per therm tax"
+                    },
+                    {
+                        "rsi_binding" : "MD_GROSS_RECEIPTS_SURCHARGE",
+                        "uuid" : "a110903c-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 1,
+                        "rate_units" : "dollars",
+                        "rate" : 0.04,
+                        "quantity_units" : "",
+                        "total" : 0.04,
+                        "description" : "MD Gross Receipts Surcharge"
+                    },
+                    {
+                        "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
+                        "uuid" : "a11092a8-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 396.8,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.061316872,
+                        "quantity_units" : "therms",
+                        "total" : 24.33,
+                        "description" : "Prince Georges County energy tax"
+                    }
+                ]
+            },
+            "end" : dateutil.parser.parse("2013-12-16T00:00:00Z"), "meters" : [
+                {
+                    "present_read_date" : dateutil.parser.parse("2013-12-16T00:00:00Z"),
+                    "registers" : [
+                        {
+                            "description" : "Therms",
+                            "quantity" : 0,
+                            "quantity_units" : "therms",
+                            "identifier" : "T37110",
+                            "type" : "total",
+                            "register_binding" : "REG_TOTAL"
+                        }
+                    ],
+                    "prior_read_date" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
+                    "identifier" : "T37110"
+                }
+            ],
+            "rate_class" : "GROUP METER APT HEAT/COOL",
+            "service" : "gas",
+            "service_address" : {
+                "city" : "District Heights",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "postal_code" : "20747",
+                "street" : "3747 Donnell Dr"
+            },
+            "start" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
+            "total" : 510.26,
+            "utility" : "washgas"
+        }
+
+        uprs = RateStructure(type='UPRS', rates=[])
+        # _id of this document is: ObjectId("52b455467eb49a52d23d105c")
+        cprs =  RateStructure.from_json('''{
+            "_cls" : "RateStructure",
+            "rates" : [
+                {
+                    "rate" : "47.10",
+                    "rsi_binding" : "SYSTEM_CHARGE",
+                    "uuid" : "af4ec1f8-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : "0.3145",
+                    "rsi_binding" : "ENERGY_FIRST_BLOCK",
+                    "uuid" : "af4ec428-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "(300) if (REG_TOTAL.quantity > 300) else (REG_TOTAL.quantity)"
+                },
+                {
+                    "rate" : ".212",
+                    "rsi_binding" : "ENERGY_SECOND_BLOCK",
+                    "uuid" : "af4ec5e0-01a9-11e1-af85-002421e88ffb",
+                    "roundrule" : "ROUND_UP",
+                    "quantity" : "(6700) if (REG_TOTAL.quantity > 7000) else ( (0) if (REG_TOTAL.quantity <300) else (REG_TOTAL.quantity-300  ) )"
+                },
+                {
+                    "rsi_binding" : "ENERGY_REMAINDER_BLOCK",
+                    "uuid" : "af4ec7ac-01a9-11e1-af85-002421e88ffb",
+                    "rate_units" : "dollars",
+                    "rate" : "0.1573",
+                    "quantity_units" : "therms",
+                    "quantity" : "(REG_TOTAL.quantity - 7000) if (REG_TOTAL.quantity > 7000 ) else (0)"
+                },
+                {
+                    "rate" : "0.06",
+                    "rsi_binding" : "MD_STATE_SALES_TAX",
+                    "uuid" : "af4ec96e-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "SYSTEM_CHARGE.total + ENERGY_FIRST_BLOCK.total + ENERGY_SECOND_BLOCK.total + ENERGY_REMAINDER_BLOCK.total",
+                    "roundrule" : "ROUND_DOWN"
+                },
+                {
+                    "rate" : "0.04",
+                    "rsi_binding" : "MD_GROSS_RECEIPTS_SURCHARGE",
+                    "uuid" : "af4ecb30-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : ".061316872",
+                    "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
+                    "uuid" : "af4eccde-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "REG_TOTAL.quantity"
+                },
+                {
+                    "rate" : "0.747",
+                    "rsi_binding" : "SUPPLY_COMMODITY",
+                    "uuid" : "af4ece82-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "REG_TOTAL.quantity"
+                },
+                {
+                    "rate" : "0.06",
+                    "rsi_binding" : "MD_SUPPLY_SALES_TAX",
+                    "uuid" : "af4ed210-01a9-11e1-af85-002421e88ffb",
+                    "quantity" : "SUPPLY_COMMODITY.total ",
+                    "roundrule" : "ROUND_UP"
+                }
+            ],
+            "type" : "CPRS"
+        }''')
+
+        # this should not raise an exception
+        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
 
 
     def test_compute_charge_without_rsi(self):
