@@ -985,15 +985,9 @@ function reeBillReady() {
     reeBillStore.on('exception', function(dataProxy, type, action, options, response,
                 arg) {
         if (type == 'remote' && action == 'destroy') {
-            if (response.success !== true) {
-                Ext.Msg.alert('Error', response.raw.errors.reason + " " +
-                        response.raw.errors.details);
-            } else {
+            if (response.success == true) {
                 loadReeBillUIForSequence(selected_account, selected_sequence);
             }
-        } else {
-            // catch-all for other errors
-            Ext.Msg.alert('Error', "reebillstore error: type "+type+", action "+action+", response "+response);
         }
     });
 
@@ -2101,9 +2095,11 @@ function reeBillReady() {
                                 Ext.Msg.alert('Failure', 'Ajax communication failed');
                                 break;
                             case Ext.form.Action.SERVER_INVALID:
-                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                //Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                break;
                             default:
-                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                //Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                break;
                             }
                         },
                         success: function(form, action) {
@@ -3766,8 +3762,6 @@ function reeBillReady() {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true)
                                                     Ext.Msg.alert('Success', "mail successfully sent");
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
                                             },
                                         });
                                     }
@@ -5349,7 +5343,6 @@ function reeBillReady() {
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
         // TODO  28823361 better error message when server hangs up on us
-        Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
 
     var revenueColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
