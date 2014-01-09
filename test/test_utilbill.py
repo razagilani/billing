@@ -348,8 +348,12 @@ class UtilBillTest(utils.TestCase):
 
     def test_regression_63401058(self):
         '''Regression test for bug 63401058, in which calculating the charges
-        of a bill failed because RSI formulas were evaluated in the wrong order.
+        of a bill failed because RSI formulas were evaluated in the wrong
+        order. This was due to iterating over a dictionary using rsi_bindings,
+        where the order was dependendent on the hashes of those strings in
+        the dictionary.
         '''
+        # simplified version of the actual utility bill
         utilbill_doc = {
             "_id" : ObjectId("52b455467eb49a52d23d105d"),
             "account" : "10056",
@@ -416,8 +420,10 @@ class UtilBillTest(utils.TestCase):
             "utility" : "washgas"
         }
 
+        # UPRS was empty
         uprs = RateStructure(type='UPRS', rates=[])
-        # based on document with _id 52b455467eb49a52d23d105c
+
+        # simplified version of document with _id 52b455467eb49a52d23d105c
         cprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
             "type" : "CPRS",
