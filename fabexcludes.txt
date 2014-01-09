@@ -17,6 +17,5 @@ ext-3.3.1/release-notes.html
 ext-3.3.1/src
 ext-3.3.1/test
 ext-3.3.1/welcome
-ext-3.3.1/examples
 skyliner/logs/*
 skyliner/cache/*
