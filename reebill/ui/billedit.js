@@ -2842,15 +2842,14 @@ function reeBillReady() {
     };
 
     var CPRSRSIReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'uuid',
+        idProperty: 'id',
         //root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
+            {name: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -2882,8 +2881,9 @@ function reeBillReady() {
         writer: CPRSRSIWriter,
         data: initialCPRSRSI,
         root: 'rows',
-        idProperty: 'rsi_binding',
+        idProperty: 'id',
         fields: [
+            {name: 'id'},
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
@@ -3146,15 +3146,14 @@ function reeBillReady() {
     };
 
     var UPRSRSIReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
+        idProperty: 'id',
         //root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
+            {name: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -3188,8 +3187,9 @@ function reeBillReady() {
         //baseParams: { account:selected_account, sequence: selected_sequence},
         data: initialUPRSRSI,
         root: 'rows',
-        idProperty: 'rsi_binding',
+        idProperty: 'id',
         fields: [
+            {name: 'id'},
             {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
