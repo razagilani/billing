@@ -1,6 +1,5 @@
 /* Add keys to rate structure documents to enable MoneoEngine. */
 ;
-use skyline-dev;
 
 // add "_cls" key to UPRS/CPRS documents (class RateStructure)
 db.ratestructure.update({type: {$ne: 'URS'}}, {$set: {_cls: 'RateStructure'}}, {multi: true});
