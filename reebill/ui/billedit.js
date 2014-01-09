@@ -355,7 +355,6 @@ function reeBillReady() {
         // 54000111, removed the issue specific error logging
         //if (type == 'remote' && action == 'destroy' && response.success !=
         //        true) {
-        Ext.Msg.alert('Error', response.raw.errors.reason + " " + response.raw.errors.details);
         //} else {
             // catch-all for other errors
         //    Ext.Msg.alert('Error', "utilbillGridStore error: type "+type
