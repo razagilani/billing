@@ -1888,11 +1888,15 @@ class BillToolBridge:
         # process late_charge_rate
         # strip out anything unrelated to a decimal number
         late_charge_rate = re.sub('[^0-9\.-]+', '', late_charge_rate)
-        if late_charge_rate:
-            late_charge_rate = late_charge_rate
-            if late_charge_rate < 0 or late_charge_rate >1:
-                return self.dumps({'success': False, 'errors': {'reason':'Late Charge Rate', 'details':'must be between 0 and 1', 'late_charge_rate':'Invalid late charge rate'}})
-            reebill.late_charge_rate = late_charge_rate
+        assert isinstance(late_charge_rate, basestring)
+        late_charge_rate = float(late_charge_rate)
+        if late_charge_rate < 0 or late_charge_rate >1:
+            # TODO: form field validation belons in the client
+            return self.dumps({'success': False,
+                'errors': {'reason': 'Late Charge Rate',
+                'details': 'must be between 0 and 1',
+                'late_charge_rate': 'Invalid late charge rate'}})
+        reebill.late_charge_rate = late_charge_rate
         
         ba = {}
         sa = {}
