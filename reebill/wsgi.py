@@ -1018,6 +1018,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def issue_and_mail(self, account, sequence, apply_corrections, **kwargs):
+        raise Exception
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
