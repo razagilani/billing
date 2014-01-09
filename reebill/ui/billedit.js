@@ -5752,14 +5752,11 @@ function reeBillReady() {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
                                                     issuableGrid.getSelectionModel().clearSelections();
                                                 }
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
                                                 utilbillGridStore.reload({callback: refreshUBVersionMenus});
                                             },
                                             failure: function() {
-                                                Ext.Msg.alert('Failure', "Connection Failure");
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
                                             }
@@ -5768,13 +5765,11 @@ function reeBillReady() {
                                 });
                     }
                     else {
-                        Ext.Msg.alert('Error', o.errors.reason + "\n" + o.errors.details);
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
                 },
                 failure: function () {
-                    Ext.Msg.alert('Failure', "Connection Failure");
                     issuableStore.reload();
                     issuableGrid.setDisabled(false);
                 }
