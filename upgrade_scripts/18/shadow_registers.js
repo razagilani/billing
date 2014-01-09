@@ -1,7 +1,6 @@
 // This update should change all reebill documents so they have only 3 keys:
 // register_binding (unchanged), quantity (unchanged), and measure (always
 // "Energy Sold").
-use skyline-dev;
 
 var required_keys = ['register_binding', 'quantity'];
 
