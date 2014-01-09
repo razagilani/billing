@@ -3772,19 +3772,11 @@ function reeBillReady() {
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
                                             },
-                                            failure: function() {
-                                                Ext.Msg.alert('Failure', "mail response fail");
-                                            }
                                         });
                                     }
                                 });
-                        } else {
-                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
                         }
                     },
-                    failure: function () {
-                        Ext.Msg.alert('Failure', "mail response fail");
-                    }
                 });
             }
         });
