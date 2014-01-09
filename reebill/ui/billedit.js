@@ -1589,8 +1589,6 @@ function reeBillReady() {
                     Ext.Msg.alert("Fatal: Could not decode JSON data");
                 }
                 if (response_obj.success !== true) {
-                    Ext.Msg.alert('Error', response_obj.errors.reason + " " +
-                            response_obj.errors.details);
                     // handle failure if needed
                     Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
                 } else {
