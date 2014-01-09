@@ -2,6 +2,7 @@
 document, when there finally is one.
 '''
 from datetime import date
+import dateutil
 from bson import ObjectId
 from decimal import Decimal
 from unittest import TestCase
@@ -344,6 +345,141 @@ class UtilBillTest(utils.TestCase):
                 },
             ],
         }], utilbill_doc['meters'])
+
+    def test_regression_63401058(self):
+        '''Regression test for bug 63401058, in which calculating the charges
+        of a bill failed because RSI formulas were evaluated in the wrong
+        order. This was due to iterating over a dictionary using rsi_bindings,
+        where the order was dependendent on the hashes of those strings in
+        the dictionary.
+        '''
+        # simplified version of the actual utility bill
+        utilbill_doc = {
+            "_id" : ObjectId("52b455467eb49a52d23d105d"),
+            "account" : "10056",
+            "billing_address" : {
+                "city" : "Columbia",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "street" : "8975 Guilford Rd Ste 100",
+                "postal_code" : "21046"
+            },
+            "chargegroups" : {
+                "Generation/Supply" : [
+                    {
+                        "rsi_binding" : "SUPPLY_COMMODITY",
+                        "uuid" : "a1107f8e-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 396.8,
+                        "rate_units" : "dollars",
+                        "rate" : 0.747,
+                        "quantity_units" : "therms",
+                        "total" : 296.41,
+                        "description" : "Commodity"
+                    },
+                    {
+                        "rsi_binding" : "MD_SUPPLY_SALES_TAX",
+                        "uuid" : "a11083ee-3044-11e3-8b17-1231390e8112",
+                        "quantity" : 296.41,
+                        "rate_units" : "percent",
+                        "processingnote" : "",
+                        "rate" : 0.06,
+                        "quantity_units" : "dollars",
+                        "total" : 17.79,
+                        "description" : "MD Sales tax commodity"
+                    }
+                ],
+            },
+            "end" : dateutil.parser.parse("2013-12-16T00:00:00Z"), "meters" : [
+                {
+                    "present_read_date" : dateutil.parser.parse("2013-12-16T00:00:00Z"),
+                    "registers" : [
+                        {
+                            "description" : "Therms",
+                            "quantity" : 0,
+                            "quantity_units" : "therms",
+                            "identifier" : "T37110",
+                            "type" : "total",
+                            "register_binding" : "REG_TOTAL"
+                        }
+                    ],
+                    "prior_read_date" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
+                    "identifier" : "T37110"
+                }
+            ],
+            "rate_class" : "GROUP METER APT HEAT/COOL",
+            "service" : "gas",
+            "service_address" : {
+                "city" : "District Heights",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "postal_code" : "20747",
+                "street" : "3747 Donnell Dr"
+            },
+            "start" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
+            "total" : 510.26,
+            "utility" : "washgas"
+        }
+
+        # UPRS was empty
+        uprs = RateStructure(type='UPRS', rates=[])
+
+        # simplified version of document with _id 52b455467eb49a52d23d105c
+        cprs =  RateStructure.from_json('''{
+            "_cls" : "RateStructure",
+            "type" : "CPRS",
+            "rates" : [
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "SYSTEM_CHARGE",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "ENERGY_FIRST_BLOCK",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "ENERGY_SECOND_BLOCK",
+                    "quantity" : "1"
+                },
+                {
+                    "rsi_binding" : "ENERGY_REMAINDER_BLOCK",
+                    "rate_units" : "dollars",
+                    "rate" : "1",
+                    "quantity_units" : "therms",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "SALES_TAX",
+                    "quantity" : "SYSTEM_CHARGE.total"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "MD_GROSS_RECEIPTS_SURCHARGE",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : ".061316872",
+                    "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
+                    "quantity" : "1"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "SUPPLY_COMMODITY",
+                    "quantity" : "REG_TOTAL.quantity"
+                },
+                {
+                    "rate" : "1",
+                    "rsi_binding" : "MD_SUPPLY_SALES_TAX",
+                    "quantity" : "SUPPLY_COMMODITY.total "
+                }
+            ]
+        }''')
+
+        # this should not raise an exception
+        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
 
 
     def test_compute_charge_without_rsi(self):

@@ -390,9 +390,7 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
     # get dictionary mapping rsi_bindings names to the indices of the
     # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number
     # to each.
-    # TODO rename to rsi_names_to_numbers
-    rsi_numbers = {rsi_binding: index for index, rsi_binding in
-            enumerate(rsis_dict.iterkeys())}
+    rsi_numbers = {rsi.rsi_binding: index for index, rsi in enumerate(rsis)}
 
     # the dependencies of some RSIs' formulas on other RSIs form a
     # DAG, which will be represented as a list of pairs of RSI numbers in
