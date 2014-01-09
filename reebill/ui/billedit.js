@@ -2681,7 +2681,7 @@ function reeBillReady() {
             }
         },{
             xtype: 'button',
-            id: 'aChargesAddGroupBtn',
+            id: 'aChargesRegenerateBtn',
             text: 'Regenerate from Rate Structure',
             enabled: true,
             handler: function() {
@@ -2696,7 +2696,7 @@ function reeBillReady() {
                     },
                 });
             }
-    },
+        },
     ]
 });
 
