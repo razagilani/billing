@@ -350,6 +350,7 @@ class RateStructureItem(EmbeddedDocument):
         the browser.
         '''
         return {
+            'id': self.rsi_binding,
             'rsi_binding': self.rsi_binding,
             'quantity': self.quantity,
             'quantity_units': self.quantity_units,

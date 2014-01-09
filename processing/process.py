@@ -216,7 +216,7 @@ class Process(object):
 
         # NOTE i can't figure out how to make SQLAlchemy do this query properly,
         # so i gave up and used raw SQL. this is unnecessarily complicated, and
-        # bad for security. i could like to make it work like the commented-out
+        # bad for security. i would like to make it work like the commented-out
         # code below, but the ReeBill object returned is not the one whose
         # version matches the version returned by the query.
         #for reebill, max_version in session.query(ReeBill,

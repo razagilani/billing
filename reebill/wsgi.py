@@ -62,7 +62,7 @@ sys.stdout = sys.stderr
 pprint.pprint(os.environ)
 pprint.pprint(sys.path)
 pprint.pprint(sys.prefix)
-pp = pprint.PrettyPrinter(indent=4)
+pp = pprint.PrettyPrinter(indent=4).pprint
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
 class Debugger:
@@ -1588,9 +1588,17 @@ class BillToolBridge:
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
 
+
                 # process list of edits
                 for row in rows:
-                    rsi = rate_structure.get_rsi(row['rsi_binding'])
+                    # extract "id" field from the JSON because all remaining
+                    # key-value pairs are fields to update in the RSI
+                    id = row.pop('id')
+
+                    # "id" field contains the old rsi_binding, which is used
+                    # to look up the RSI; "rsi_binding" field contains the
+                    # new one that will replace it (if there is one)
+                    rsi = rate_structure.get_rsi(id)
                     for key, value in row.iteritems():
                         assert hasattr(rsi, key)
                         setattr(rsi, key, value)
