@@ -5,6 +5,7 @@ from itertools import chain
 from operator import itemgetter
 import pymongo
 import tablib
+import traceback
 
 from billing.processing import mongo
 from billing.processing import state
@@ -131,12 +132,17 @@ class Exporter(object):
             # get all charges from this bill in "flattened" format, sorted by
             # name, with (actual) or (hypothetical) appended
             services = reebill.services
-            actual_charges = sorted(chain.from_iterable(
-                mongo.get_charges_json(m_ub)
-                for m_ub in mongo_utilbills), key=itemgetter('description'))
-            hypothetical_charges = sorted(chain.from_iterable(
-                reebill.hypothetical_chargegroups_flattened(service)
-                for service in services), key=itemgetter('description'))
+            try:
+                actual_charges = sorted(chain.from_iterable(
+                    mongo.get_charges_json(m_ub)
+                    for m_ub in mongo_utilbills), key=itemgetter('description'))
+                hypothetical_charges = sorted(chain.from_iterable(
+                    reebill.hypothetical_chargegroups_flattened(service)
+                    for service in services), key=itemgetter('description'))
+            except KeyError as e:
+                print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
+                        sequence, e.message, traceback.format_exc()))
+                continue
             for charge in actual_charges:
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
