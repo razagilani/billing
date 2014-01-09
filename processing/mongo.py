@@ -365,10 +365,8 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     # get RSIs from a fake RateStructure in which anything in 'uprs' with the
     # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    # TODO eliminate at least one of these 3
     rate_structure = RateStructure.combine(uprs, cprs)
     rsis = rate_structure.rates
-    rsis_dict = rate_structure.rsis_dict()
 
     # complain if any charge has an rsi_binding that does not match an RSI
     _validate_charges(utilbill_doc, rate_structure)
