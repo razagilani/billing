@@ -88,6 +88,7 @@ then
     if [ "$CPBILLS" = "true" ]
     then
         echo -e "\nDirect copying bill data from backup"
+        rm -rf /db-stage
         cp -r /tmp/${now}reebill-prod/db-prod /db-stage
     else
         echo -e "\nSyncing bill pdfs..."
