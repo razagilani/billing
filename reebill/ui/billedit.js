@@ -2661,8 +2661,10 @@ function reeBillReady() {
                             return;
                         var ChargeItemType = aChargesGrid.getStore().recordType;
                         var c = new ChargeItemType({
+                            id: 'RSI binding required',
+                            rsi_binding: 'RSI binding required',
                             chargegroup: groupName,
-                            description: 'enter description',
+                            description: 'Description required',
                             quantity: 0,
                             quantity_units: 'kWh',
                             rate: 0,
@@ -2864,7 +2866,17 @@ function reeBillReady() {
     var CPRSRSIWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: true ,
+        fields: [
+            {name: 'id'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'round_rule', mapping:'round_rule'},
+            {name: 'total', mapping: 'total'},
+        ]
     });
     
     var CPRSRSIStoreProxyConn = new Ext.data.Connection({
