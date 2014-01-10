@@ -1567,12 +1567,12 @@ class BillToolBridge:
             rate_structure = self.process.get_rs_doc(session, utilbill_id,
                     rsi_type, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-            rates = rate_structure["rates"]
+            rates = rate_structure.rates
 
             if xaction == "read":
                 #return self.dumps({'success': True, 'rows':rates})
                 return json.dumps({'success': True, 'rows':[rsi.to_dict()
-                        for rsi in rate_structure.rates]})
+                        for rsi in rates]})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1602,6 +1602,11 @@ class BillToolBridge:
                     for key, value in row.iteritems():
                         assert hasattr(rsi, key)
                         setattr(rsi, key, value)
+
+                    # re-add "id" field which was removed above (using new
+                    # rsi_binding)
+                    # TODO this is ugly; find a better way
+                    row['id'] = rsi.rsi_binding
 
             if xaction == "create":
                 new_rsi = rate_structure.add_rsi()
