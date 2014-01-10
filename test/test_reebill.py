@@ -4,6 +4,7 @@ import sqlalchemy
 import copy
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
+from bson import ObjectId
 from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
@@ -11,6 +12,8 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
+from billing.processing.rate_structure2 import RateStructure, \
+        RateStructureItem
 from billing.processing.mongo import MongoReebill, NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
 from billing.util.dictutils import subdict
@@ -102,29 +105,97 @@ class ReebillTest(TestCaseWithSetup):
         }, reebill.service_address)
 
     def test_compute_charges(self):
-        reebill = example_data.get_reebill('99999', 1, start=date(2000,1,1),
-                end=date(2000,2,1))
-        uprs = example_data.get_uprs()
-        cprs = example_data.get_cprs()
-        utilbill = reebill._utilbills[0]
-        utilbill_handle = reebill.reebill_dict['utilbills'][0]
+        uprs = RateStructure(type='UPRS', rates=[
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='REG_TOTAL.quantity',
+                rate='2',
+            )
+        ])
+        cprs = RateStructure(type='CPRS', rates=[])
+        utilbill_doc = {
+            '_id': ObjectId(),
+            'account': '12345', 'service': 'gas', 'utility': 'washgas',
+            'start': date(2000,1,1), 'end': date(2000,2,1),
+            'rate_class': "won't be loaded from the db anyway",
+            'chargegroups': {'All Charges': [
+                {'rsi_binding': 'A', 'quantity': 0},
+            ]},
+            'meters': [{
+                'present_read_date': date(2000,2,1),
+                'prior_read_date': date(2000,1,1),
+                'identifier': 'ABCDEF',
+                'registers': [{
+                    'identifier': 'GHIJKL',
+                    'register_binding': 'REG_TOTAL',
+                    'quantity': 100,
+                    'quantity_units': 'therms',
+                }]
+            }],
+            "billing_address" : {
+                "city" : "Columbia",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "street" : "8975 Guilford Rd Ste 100",
+                "postal_code" : "21046"
+            },
+            'service_address': {
+                "city" : "Columbia",
+                "state" : "MD",
+                "addressee" : "Equity Mgmt",
+                "street" : "8975 Guilford Rd Ste 100",
+                "postal_code" : "21046"
+            },
+        }
+        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        self.assertEqual({'All Charges': [
+            {
+                'rsi_binding': 'A',
+                'quantity': 100,
+                'rate': 2,
+                'total': 200,
+            }
+        ]}, utilbill_doc['chargegroups'])
 
-        # clear all charges in order to check that the right ones were inserted
-        utilbill_handle['hypothetical_chargegroups'] = {}
+        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('99999', 1,
+                0, 0.5, 0.1, [utilbill_doc])
+        utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
+        assert all(register['quantity'] == 0 for register in
+                utilbill_subdoc['shadow_registers'])
 
-        reebill.compute_charges(uprs, cprs)
+        reebill_doc.compute_charges(uprs, cprs)
 
-        # check that there are the same group names and rsi_bindings only,
+        # check that there are the same group names and rsi_bindings and only,
         # by creating two dictionaries mapping group names to sets of
         # rsi_bindings and comparing them
         utilbill_charge_info = {group_name: [subdict(c, ['rsi_binding',
                 'description']) for c in charges] for group_name, charges
-                in utilbill['chargegroups'].iteritems()}
+                in utilbill_doc['chargegroups'].iteritems()}
         reebill_charge_info = {group_name: [subdict(c, ['rsi_binding',
                 'description']) for c in charges] for group_name, charges
-                in utilbill_handle['hypothetical_chargegroups'].iteritems()}
+                in utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
         self.assertEqual(utilbill_charge_info, reebill_charge_info)
 
+        # check reebill charges. since there is no renewable energy,
+        # hypothetical charges should be identical to actual charges:
+        self.assertEqual({'All Charges': [
+            {
+                'rsi_binding': 'A',
+                'quantity': 100,
+                'rate': 2,
+                'total': 200,
+            }
+        ]}, utilbill_subdoc['hypothetical_chargegroups'])
+
+        utilbill_charge_info = {group_name: [subdict(c, ['rsi_binding',
+            'description', 'quantity', 'rate', 'total']) for c in charges]
+            for  group_name,  charges in
+            utilbill_doc['chargegroups'].iteritems()}
+        reebill_charge_info = {group_name: [subdict(c, ['rsi_binding',
+            'description', 'quantity', 'rate', 'total']) for c in charges]
+            for group_name, charges in
+            utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
+        self.assertEqual(utilbill_charge_info, reebill_charge_info)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
