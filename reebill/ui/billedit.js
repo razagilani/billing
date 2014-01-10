@@ -355,7 +355,6 @@ function reeBillReady() {
         // 54000111, removed the issue specific error logging
         //if (type == 'remote' && action == 'destroy' && response.success !=
         //        true) {
-        Ext.Msg.alert('Error', response.raw.errors.reason + " " + response.raw.errors.details);
         //} else {
             // catch-all for other errors
         //    Ext.Msg.alert('Error', "utilbillGridStore error: type "+type
@@ -986,15 +985,9 @@ function reeBillReady() {
     reeBillStore.on('exception', function(dataProxy, type, action, options, response,
                 arg) {
         if (type == 'remote' && action == 'destroy') {
-            if (response.success !== true) {
-                Ext.Msg.alert('Error', response.raw.errors.reason + " " +
-                        response.raw.errors.details);
-            } else {
+            if (response.success == true) {
                 loadReeBillUIForSequence(selected_account, selected_sequence);
             }
-        } else {
-            // catch-all for other errors
-            Ext.Msg.alert('Error', "reebillstore error: type "+type+", action "+action+", response "+response);
         }
     });
 
@@ -1589,8 +1582,6 @@ function reeBillReady() {
                     Ext.Msg.alert("Fatal: Could not decode JSON data");
                 }
                 if (response_obj.success !== true) {
-                    Ext.Msg.alert('Error', response_obj.errors.reason + " " +
-                            response_obj.errors.details);
                     // handle failure if needed
                     Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
                 } else {
@@ -2104,9 +2095,11 @@ function reeBillReady() {
                                 Ext.Msg.alert('Failure', 'Ajax communication failed');
                                 break;
                             case Ext.form.Action.SERVER_INVALID:
-                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                //Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                break;
                             default:
-                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                //Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                break;
                             }
                         },
                         success: function(form, action) {
@@ -3781,22 +3774,12 @@ function reeBillReady() {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true)
                                                     Ext.Msg.alert('Success', "mail successfully sent");
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
                                             },
-                                            failure: function() {
-                                                Ext.Msg.alert('Failure', "mail response fail");
-                                            }
                                         });
                                     }
                                 });
-                        } else {
-                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
                         }
                     },
-                    failure: function () {
-                        Ext.Msg.alert('Failure', "mail response fail");
-                    }
                 });
             }
         });
@@ -5372,7 +5355,6 @@ function reeBillReady() {
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
         // TODO  28823361 better error message when server hangs up on us
-        Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
 
     var revenueColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
@@ -5562,7 +5544,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="wettowel/Brooke.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Team Mo\' Money</font></td></tr></table>',
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="halloffame/Brooke.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Team Mo\' Money</font></td></tr></table>',
     });
 
     // end of tab widgets
@@ -5772,14 +5754,11 @@ function reeBillReady() {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
                                                     issuableGrid.getSelectionModel().clearSelections();
                                                 }
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
                                                 utilbillGridStore.reload({callback: refreshUBVersionMenus});
                                             },
                                             failure: function() {
-                                                Ext.Msg.alert('Failure', "Connection Failure");
                                                 issuableStore.reload();
                                                 issuableGrid.setDisabled(false);
                                             }
@@ -5788,13 +5767,11 @@ function reeBillReady() {
                                 });
                     }
                     else {
-                        Ext.Msg.alert('Error', o.errors.reason + "\n" + o.errors.details);
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
                 },
                 failure: function () {
-                    Ext.Msg.alert('Failure', "Connection Failure");
                     issuableStore.reload();
                     issuableGrid.setDisabled(false);
                 }
