@@ -261,6 +261,18 @@ class RateStructureItem(EmbeddedDocument):
     # currently not used
     round_rule = StringField()
 
+    def validate(self, clean=True):
+        # a hack to deal with pre-MongoEngine malformed documents: some of
+        # these have numbers in their quantity/rate fields, which should be
+        # strings, so convert them before validating.
+        assert isinstance(self.quantity, (float, int, basestring))
+        assert isinstance(self.rate, (float, int, basestring))
+        if isinstance(self.quantity, (float, int)):
+            self.quantity = str(self.quantity)
+        if isinstance(self.rate, (float, int)):
+            self.rate = str(self.rate)
+        return super(RateStructureItem, self).validate(clean=clean)
+
     def _parse_formulas(self):
         '''Parses the 'quantity' and 'rate' formulas as Python code using the
         'ast' module, and returns the tuple (quantity formula AST, rate formula
@@ -461,6 +473,7 @@ class RateStructure(Document):
         without unique rsi_bindings can't be saved.'''
         self._check_rsi_uniqueness()
         # TODO also check that 'type' is "UPRS" or "CPRS"
+
         return super(RateStructure, self).validate(clean=clean)
 
     def add_rsi(self):
