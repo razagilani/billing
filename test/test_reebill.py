@@ -105,6 +105,14 @@ class ReebillTest(TestCaseWithSetup):
         }, reebill.service_address)
 
     def test_compute_charges(self):
+        uprs = RateStructure(type='UPRS', rates=[
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='REG_TOTAL.quantity',
+                rate='2',
+            )
+        ])
+        cprs = RateStructure(type='CPRS', rates=[])
         utilbill_doc = {
             '_id': ObjectId(),
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
@@ -139,19 +147,21 @@ class ReebillTest(TestCaseWithSetup):
                 "postal_code" : "21046"
             },
         }
+        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        self.assertEqual({'All Charges': [
+            {
+                'rsi_binding': 'A',
+                'quantity': 100,
+                'rate': 2,
+                'total': 200,
+            }
+        ]}, utilbill_doc['chargegroups'])
+
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('99999', 1,
                 0, 0.5, 0.1, [utilbill_doc])
         utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
         assert all(register['quantity'] == 0 for register in
                 utilbill_subdoc['shadow_registers'])
-        uprs = RateStructure(type='UPRS', rates=[
-            RateStructureItem(
-                rsi_binding='A',
-                quantity='REG_TOTAL.quantity',
-                rate='2',
-            )
-        ])
-        cprs = RateStructure(type='CPRS', rates=[])
 
         reebill_doc.compute_charges(uprs, cprs)
 
