@@ -709,7 +709,7 @@ class MongoReebill(object):
                         if r['register_binding'] == 
                         h_register['register_binding'])
                 h_register['quantity'] = a_register['quantity'] + \
-                        h_register['quantity']
+                        s_register['quantity']
 
             # compute the charges of the hypothetical utility bill
             compute_all_charges(hypothetical_utilbill, uprs, cprs)
