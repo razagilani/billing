@@ -1089,7 +1089,7 @@ class BillToolBridge:
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
             merge_fields["street"] = most_recent_bill.service_address.get("street","")
-            merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
+            merge_fields["balance_due"] = round(most_recent_bill.balance_due, 2)
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
             print recipient_list, merge_fields,os.path.join(self.config.get("billdb", "billpath"),account), bill_file_names
@@ -1567,12 +1567,12 @@ class BillToolBridge:
             rate_structure = self.process.get_rs_doc(session, utilbill_id,
                     rsi_type, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-            rates = rate_structure["rates"]
+            rates = rate_structure.rates
 
             if xaction == "read":
                 #return self.dumps({'success': True, 'rows':rates})
                 return json.dumps({'success': True, 'rows':[rsi.to_dict()
-                        for rsi in rate_structure.rates]})
+                        for rsi in rates]})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1602,6 +1602,11 @@ class BillToolBridge:
                     for key, value in row.iteritems():
                         assert hasattr(rsi, key)
                         setattr(rsi, key, value)
+
+                    # re-add "id" field which was removed above (using new
+                    # rsi_binding)
+                    # TODO this is ugly; find a better way
+                    row['id'] = rsi.rsi_binding
 
             if xaction == "create":
                 new_rsi = rate_structure.add_rsi()
@@ -1883,7 +1888,8 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # TODO: 27042211 numerical types
-        reebill.discount_rate = discount_rate
+        assert isinstance(discount_rate, basestring)
+        reebill.discount_rate = float(discount_rate)
 
         # process late_charge_rate
         # strip out anything unrelated to a decimal number
