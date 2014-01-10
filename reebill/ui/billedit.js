@@ -2332,8 +2332,8 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'id', mapping: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'id', mapping: 'id', allowBlank: false},
+            {name: 'rsi_binding', mapping: 'rsi_binding', allowBlank: false},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
@@ -2462,12 +2462,14 @@ function reeBillReady() {
                 dataIndex: 'id',
                 editable: true,
                 hidden: true,
+                allowBlank: false,
             },{
                 header: 'RSI Binding',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rsi_binding',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: true}),
+                allowBlank: false,
             },{
                 header: 'Description',
                 width: 75,
