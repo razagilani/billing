@@ -1883,7 +1883,8 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # TODO: 27042211 numerical types
-        reebill.discount_rate = discount_rate
+        assert isinstance(discount_rate, basestring)
+        reebill.discount_rate = float(discount_rate)
 
         # process late_charge_rate
         # strip out anything unrelated to a decimal number
