@@ -173,7 +173,7 @@ class ReebillTest(TestCaseWithSetup):
                 'rsi_binding': 'A',
                 'quantity': 100,
                 'rate': 2,
-                'total': 100,
+                'total': 200,
             }
         ]}, utilbill_subdoc['hypothetical_chargegroups'])
 
