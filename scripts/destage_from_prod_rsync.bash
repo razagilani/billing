@@ -88,8 +88,7 @@ then
     if [ "$CPBILLS" = "true" ]
     then
         echo -e "\nDirect copying bill data from backup"
-        rm -rf /db-stage
-        cp -r /tmp/${now}reebill-prod/db-prod /db-stage
+        rsync -ahzO /tmp/${now}reebill-prod/db-prod/ /db-stage/
     else
         echo -e "\nSyncing bill pdfs..."
         rsync -ahz --progress -e "ssh" $PRODHOST:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
