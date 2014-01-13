@@ -480,9 +480,13 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
         identifiers[rsi.rsi_binding]['rate'] = rate
         identifiers[rsi.rsi_binding]['total'] = total
 
+# TODO make this a method of a utility bill document class when one exists
 def total_of_all_charges(utilbill_doc):
     '''Returns sum of "total" fields of all charges in the utility bill.
     '''
+    # TODO: use method on SQLAlchemy UtilBill object to return this (or None
+    # for a hypothetical utility bill). It can't be done here because 'state'
+    # is not stored in the Mongo document.
     return sum(charge.get('total', 0) for charge in
             chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
 
