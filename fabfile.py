@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import deploy.fab_common as common
+from fabric.api import task as fabtask
 
 #
 # Configurations that are specific to this app
@@ -50,3 +51,14 @@ common.CommonFabTask.update_deployment_configs({
     },
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
+
+class CreateReeBillRevision(common.CommonFabTask):
+
+    manifest_file = "reebill/ui/billedit.js"
+
+    def run(self, *args, **kwargs):
+        return super(CreateReeBillRevision, self).run(*args, **kwargs) 
+
+@fabtask(task_class=CreateReeBillRevision, alias='createreebillrevision')
+def create_reebill_revision(task_instance, *args, **kwargs):
+    task_instance.execute()
