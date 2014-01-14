@@ -13,7 +13,7 @@ Usage: $0 -n -s PRODHOST TOENV MYSQLPASSWORD
 
 NODOWNLOAD=false
 SKIPBILLS=false
-while getopts "ns" opt; do
+while getopts "nsp" opt; do
     case $opt in
         n)
             echo -e "\nUsing already downloaded data, if it exists\n"
@@ -22,6 +22,11 @@ while getopts "ns" opt; do
         s)
             echo -e "\nSkipping bill download, bill pdfs will not be updated\n"
             SKIPBILLS=true
+            ;;
+        p)
+            echo -e "\nDestaging from production to staging environments\n"
+            NODOWNLOAD=true
+            CPBILLS=true
             ;;
         \?)
             echo -e "\ninvalid option ($OPTARG), ignoring\n"
@@ -80,6 +85,12 @@ mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod
 
 if [ "$SKIPBILLS" = "false" ]
 then
-    echo -e "\nSyncing bill pdfs..."
-    rsync -ahz --progress -e "ssh" $PRODHOST:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
+    if [ "$CPBILLS" = "true" ]
+    then
+        echo -e "\nDirect copying bill data from backup"
+        rsync -ahzO /tmp/${now}reebill-prod/db-prod/ /db-stage/
+    else
+        echo -e "\nSyncing bill pdfs..."
+        rsync -ahz --progress -e "ssh" $PRODHOST:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
+    fi
 fi
