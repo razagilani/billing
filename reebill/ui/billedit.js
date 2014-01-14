@@ -6566,8 +6566,8 @@ function loadDashboard()
 {
     // pass configuration information to containing webpage
     // 'UNSPECIFIED' is expanded to a version string by deployment script
-    var SKYLINE_VERSIONINFO="UNSPECIFIED"
-    var SKYLINE_DEPLOYCONFIG="UNSPECIFIED"
+    var SKYLINE_VERSIONINFO="Tue Jan 14 14:53:13 EST 2014 03c725bad940+ (stable) tip randrews"
+    var SKYLINE_DEPLOYCONFIG=""
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
