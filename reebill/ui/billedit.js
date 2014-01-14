@@ -6113,7 +6113,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
+            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYCONFIG" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
           },
         ]
       }
@@ -6567,14 +6567,14 @@ function loadDashboard()
     // pass configuration information to containing webpage
     // 'UNSPECIFIED' is expanded to a version string by deployment script
     var SKYLINE_VERSIONINFO="UNSPECIFIED"
-    var SKYLINE_DEPLOYENV="UNSPECIFIED"
+    var SKYLINE_DEPLOYCONFIG="UNSPECIFIED"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
-    deployEnv = Ext.get('SKYLINE_DEPLOYENV');
-    deployEnv.update(SKYLINE_DEPLOYENV);
+    deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
+    deployEnv.update(SKYLINE_DEPLOYCONFIG);
 
     title = Ext.get('pagetitle');
-    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
+    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
