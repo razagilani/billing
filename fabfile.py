@@ -52,13 +52,11 @@ common.CommonFabTask.update_deployment_configs({
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
-class CreateReeBillRevision(common.CommonFabTask):
+class CreateReeBillRevision(common.CreateRevision):
 
     manifest_file = "reebill/ui/billedit.js"
 
-    def run(self, *args, **kwargs):
-        return super(CreateReeBillRevision, self).run(*args, **kwargs) 
 
-@fabtask(task_class=CreateReeBillRevision, alias='createreebillrevision')
+@fabtask(task_class=CreateReeBillRevision, alias='create_reebill_revision')
 def create_reebill_revision(task_instance, *args, **kwargs):
-    task_instance.execute()
+    pass
