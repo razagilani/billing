@@ -133,12 +133,14 @@ class RSITest(unittest.TestCase):
 
         # quantity formula can't be empty
         bad_rsi.quantity = ''
-        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+        with self.assertRaises(FormulaError, bad_rsi.compute_charge, {}) as e:
+            self.assertEqual("A quantity formula can't be empty", str(e))
 
         # rate formula can't be empty
         bad_rsi.quantity = '1'
         bad_rsi.rate = ''
-        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+        with self.assertRaises(FormulaError, bad_rsi.compute_charge, {}) as e:
+            self.assertEqual("A rate formula can't be empty", str(e))
 
 class RateStructureTest(unittest.TestCase):
 
