@@ -245,21 +245,31 @@ class RateStructureItem(EmbeddedDocument):
     # NOTE: "default" should not be necessary for a required field,
     # but adding it prevents ValidationErrors when legacy (pre-MongoEngine
     # schema) documents are loaded and then saved (see bug 62492152)
-    rsi_binding = StringField(required=True, default='')
+    rsi_binding = StringField(required=True, min_length=1, default='0')
 
-    # descriptive human-readable name (rarely used)
-    description = StringField(required=True, default='')
+    # descriptive human-readable name (rarely usedrquantity or rate formulas are empty strings: replace with 0
+    description = StringField(required=True, min_length=1, default='0')
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
     # 'rate' is somewhat arbitrary
-    quantity = StringField(required=True, default='')
+    quantity = StringField(required=True, default='0')
     quantity_units = StringField()
-    rate = StringField(required=True, default='')
+    rate = StringField(required=True, default='0')
     #rate_units = StringField()
 
     # currently not used
     round_rule = StringField()
+
+    def __init__(self, *args, **kwargs):
+        super(RateStructureItem, self).__init__(*args, **kwargs)
+
+        # for handling old malformed documents in the database where
+        # quantity or rate formulas are empty strings: replace with 0
+        if self.quantity == '':
+            self.quantity = '0'
+        if self.rate == '':
+            self.rate = '0'
 
     def validate(self, clean=True):
         # a hack to deal with pre-MongoEngine malformed documents: some of
@@ -279,6 +289,10 @@ class RateStructureItem(EmbeddedDocument):
         AST). Raises FormulaSyntaxError if either one couldn't be parsed.
         '''
         def parse_formula(name):
+            formula = getattr(self, name)
+            if formula == '':
+                raise FormulaSyntaxError("%s %s formula can't be empty" % (
+                        self.rsi_binding, name))
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
@@ -490,9 +504,9 @@ class RateStructure(Document):
         new_rsi = RateStructureItem(
             rsi_binding='New RSI #%s' % n,
             description='Insert description here',
-            quantity='Insert quantity here',
+            quantity='0',
             quantity_units='',
-            rate='Insert rate here',
+            rate='0',
             round_rule='',
         )
         self.rates.append(new_rsi)
