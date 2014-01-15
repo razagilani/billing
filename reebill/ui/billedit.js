@@ -431,7 +431,7 @@ function reeBillReady() {
                 id: 'computed_total',
                 header: 'Calculated',
                 dataIndex: 'computed_total',
-                editable: true,
+                editable: false,
                 editor: new Ext.form.NumberField({allowBlank: false}),
                 width: 90,
                 renderer: function(value, metaData, record, rowIndex, colIndex, store){
