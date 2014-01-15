@@ -83,6 +83,24 @@ class RSITest(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_load_malformed_document(self):
+        '''Test creating RateStructureItem object from malformed Mongo
+        document.
+        '''
+        # the main malformation we have seen so far is old documents where
+        # the "quantity" or "rate" formula was missing or an empty string.
+        # these are now required to have a value, and the default should be 0.
+        a = RateStructureItem._from_son({
+            'quantity': 0,
+            'rate': '',
+        })
+        self.assertEqual(0, a.rate)
+        b = ratestructureitem._from_son({
+            'quantity': '',
+            'rate': 0,
+        })
+        self.assertEqual(0, b.quantity)
+
     def test_compute_charge_basic(self):
         rsi = RateStructureItem(
             rsi_binding='A',
@@ -111,6 +129,15 @@ class RSITest(unittest.TestCase):
 
         # unknown identifier: generic FormulaError
         bad_rsi.quantity = '1 + x.quantity'
+        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+
+        # quantity formula can't be empty
+        bad_rsi.quantity = ''
+        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+
+        # rate formula can't be empty
+        bad_rsi.quantity = '1'
+        bad_rsi.rate = ''
         self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
 
 class RateStructureTest(unittest.TestCase):
@@ -159,17 +186,17 @@ class RateStructureTest(unittest.TestCase):
         new_rsi_1 = RateStructureItem(
             rsi_binding='New RSI #1',
             description='Insert description here',
-            quantity='Insert quantity here',
+            quantity='0',
             quantity_units='',
-            rate='Insert rate here',
+            rate='0',
             round_rule='',
         )
         new_rsi_2 = RateStructureItem(
             rsi_binding='New RSI #2',
             description='Insert description here',
-            quantity='Insert quantity here',
+            quantity='0',
             quantity_units='',
-            rate='Insert rate here',
+            rate='0',
             round_rule='',
         )
         self.uprs.add_rsi()
