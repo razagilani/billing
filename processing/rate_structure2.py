@@ -245,10 +245,10 @@ class RateStructureItem(EmbeddedDocument):
     # NOTE: "default" should not be necessary for a required field,
     # but adding it prevents ValidationErrors when legacy (pre-MongoEngine
     # schema) documents are loaded and then saved (see bug 62492152)
-    rsi_binding = StringField(required=True, min_length=1, default='0')
+    rsi_binding = StringField(required=True, min_length=1, default='')
 
-    # descriptive human-readable name (rarely usedrquantity or rate formulas are empty strings: replace with 0
-    description = StringField(required=True, min_length=1, default='0')
+    # descriptive human-readable name
+    description = StringField(required=True, default='')
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
