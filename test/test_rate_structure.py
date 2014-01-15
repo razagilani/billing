@@ -91,15 +91,15 @@ class RSITest(unittest.TestCase):
         # the "quantity" or "rate" formula was missing or an empty string.
         # these are now required to have a value, and the default should be 0.
         a = RateStructureItem._from_son({
-            'quantity': 0,
+            'quantity': '1',
             'rate': '',
         })
-        self.assertEqual(0, a.rate)
-        b = ratestructureitem._from_son({
+        self.assertEqual('0', a.rate)
+        b = RateStructureItem._from_son({
             'quantity': '',
-            'rate': 0,
+            'rate': '1',
         })
-        self.assertEqual(0, b.quantity)
+        self.assertEqual('0', b.quantity)
 
     def test_compute_charge_basic(self):
         rsi = RateStructureItem(
@@ -133,14 +133,18 @@ class RSITest(unittest.TestCase):
 
         # quantity formula can't be empty
         bad_rsi.quantity = ''
-        with self.assertRaises(FormulaError, bad_rsi.compute_charge, {}) as e:
-            self.assertEqual("A quantity formula can't be empty", str(e))
+        with self.assertRaises(FormulaSyntaxError) as context:
+            bad_rsi.compute_charge({})
+        self.assertEqual("A quantity formula can't be empty",
+                context.exception.message)
 
         # rate formula can't be empty
         bad_rsi.quantity = '1'
         bad_rsi.rate = ''
-        with self.assertRaises(FormulaError, bad_rsi.compute_charge, {}) as e:
-            self.assertEqual("A rate formula can't be empty", str(e))
+        with self.assertRaises(FormulaSyntaxError) as e:
+                bad_rsi.compute_charge({})
+        self.assertEqual("A quantity formula can't be empty",
+                context.exception.message)
 
 class RateStructureTest(unittest.TestCase):
 
