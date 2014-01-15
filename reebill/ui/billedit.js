@@ -3007,6 +3007,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'quantity',
                 editor: new Ext.form.TextField({allowBlank: true}),
+                allowBlank: false,
             },{
                 header: 'Units',
                 sortable: true,
@@ -3019,6 +3020,7 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
+                allowBlank: false,
             },{
                 header: 'Units',
                 sortable: true,
@@ -3301,6 +3303,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'quantity',
                 editor: new Ext.form.TextField({allowBlank: true}),
+                allowBlank: false,
                 // no "width": expand to take up all available space
             },{
                 header: 'Units',
@@ -3314,12 +3317,7 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 50,
-            //},{
-                //header: 'Units',
-                //sortable: true,
-                //dataIndex: 'rate_units',
-                //editor: new Ext.form.TextField({allowBlank: true}),
-                //width: 50,
+                allowBlank: false,
             },{
                 header: 'Round Rule',
                 sortable: true,
