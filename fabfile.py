@@ -4,6 +4,10 @@ import deploy.fab_common as common
 from fabric.api import task as fabtask
 
 #
+# fab create_reebill_revision common.deploy_interactive -R skyline_internal_prod
+#
+
+#
 # Configurations that are specific to this app
 #
 common.CommonFabTask.update_deployment_configs({
