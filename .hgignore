@@ -6,6 +6,7 @@ reebill/reconciliation.log
 reebill/reconciliation_report.json
 reebill/ui/ext-3.3.1
 reebill/ui/ext-3.2.1
+revision.txt
 dev-restore.sh
 .directory
 .idea
