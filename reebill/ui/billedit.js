@@ -587,6 +587,15 @@ function reeBillReady() {
                     });
                 }
             },
+            {
+                xtype: 'button',
+                id: 'utilbillDlaButton',
+                text: 'Layout',
+                disabled: true,
+                handler: function() {
+                    window.location.href = "http://"+location.host+"/dla/index.html"
+                }
+            },
         ]
         }),
         bbar: new Ext.PagingToolbar({
@@ -700,6 +709,7 @@ function reeBillReady() {
         }
         nothingselected=(sm.getSelections().length==0);
         Ext.getCmp('utilbillComputeButton').setDisabled(nothingselected);
+        Ext.getCmp('utilbillDlaButton').setDisabled(nothingselected);
         Ext.getCmp('utilbillToggleProcessed').setDisabled(nothingselected);
         
     });
