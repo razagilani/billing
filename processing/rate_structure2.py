@@ -7,7 +7,8 @@ import sys
 from math import sqrt, log, exp
 from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
+from mongoengine import StringField, ListField, EmbeddedDocumentField
+from mongoengine import DateTimeField, BooleanField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NotUniqueException
@@ -249,6 +250,8 @@ class RateStructureItem(EmbeddedDocument):
 
     # descriptive human-readable name
     description = StringField(required=True, default='')
+
+    shared = BooleanField(required=True, default=True)
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
