@@ -74,6 +74,7 @@ common.CommonFabTask.update_deployment_configs({
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
 # TODO: 64357046 don't set the manifest file this way, pass it into the @fabtask
+# TODO: 64357530 this runs before promptconfig, so there is no way to determine the deploy env targeted
 class CreateReeBillRevision(common.CreateRevision):
 
     manifest_file = "reebill/ui/revision.txt"

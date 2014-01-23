@@ -6581,14 +6581,16 @@ function loadDashboard()
             var date = jsonData['date'];
             var user = jsonData['user'];
             var version = jsonData['version'];
-            var deploy_env = jsonData['deploy_env'];
+            // TODO 64357530: need to have this data properly created by fabfile
+            //var deploy_env = jsonData['deploy_env'];
 
-            title = Ext.get('pagetitle');
-            title.update("Skyline ReeBill - " + deploy_env)  
+            // update with deployment env from revision.txt
+            //title = Ext.get('pagetitle');
+            //title.update("Skyline ReeBill - " + deploy_env)  
 
             versionInfo = Ext.get('SKYLINE_VERSIONINFO');
             versionInfo.update(date + " " + user + " " + version);
-            Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
+            //Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
         },
     });
 
