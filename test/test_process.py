@@ -1700,6 +1700,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
         bills that are "processed". '''
+        # TODO
+        pass
 
     def test_issue(self):
         '''Tests issuing of reebills.'''
@@ -1758,6 +1760,65 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(len(two_doc.bill_recipients), 2)
             self.assertEquals(True, all(map(isinstance, two_doc.bill_recipients,
                     [unicode]*len(two_doc.bill_recipients))))
+
+    def test_issue_2_at_once(self):
+        '''Tests issuing one bill immediately after another, without
+        recomputing it. In bug 64403990, a bill could be issued with a wrong
+        "prior balance" because it was not recomputed before issuing to
+        reflect a change to its predecessor.
+        '''
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # first reebill is needed so the others get computed correctly
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2000,1,1), date(2000,2,1), StringIO('january 2000'),
+                    'january.pdf')
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
+            self.process.issue(session, acc, 1, date(2000,2,15))
+
+            # two utilbills and reebills
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2000,2,1), date(2000,3,1), StringIO('february 2000'),
+                    'february.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2000,3,1), date(2000,4,1), StringIO('february 2000'),
+                    'february.pdf')
+            two = self.process.create_next_reebill(session, acc)
+            three = self.process.create_next_reebill(session, acc)
+
+            # add a payment, shown on bill #2
+            self.state_db.create_payment(session, acc, date(2000,2,16),
+                    'a payment', 100)
+            two_doc = self.reebill_dao.load_reebill(acc, 2)
+            self.process.compute_reebill(session, two_doc)
+            self.reebill_dao.save_reebill(two_doc)
+            self.assertEqual(100, two_doc.payment_received)
+            self.assertEqual(-100, two_doc.balance_due)
+
+            # the payment does not appear on #3, since #3 has not be
+            # recomputed
+            three_doc = self.reebill_dao.load_reebill(acc, 3)
+            self.assertEqual(0, three_doc.payment_received)
+            self.assertEqual(0, three_doc.prior_balance)
+            self.assertEqual(0, three_doc.balance_forward)
+            self.assertEqual(0, three_doc.balance_due)
+
+            # issue #2 and #3
+            self.process.issue(session, acc, 2, date(2000,5,15))
+            self.process.issue(session, acc, 3, date(2000,5,15))
+
+            # #2 is still correct, and #3 should be too because it was
+            # automatically recomputed before issuing
+            two_doc = self.reebill_dao.load_reebill(acc, 2)
+            three_doc = self.reebill_dao.load_reebill(acc, 3)
+            self.assertEqual(100, two_doc.payment_received)
+            self.assertEqual(-100, two_doc.balance_due)
+            self.assertEqual(-100, three_doc.prior_balance)
+            self.assertEqual(0, three_doc.payment_received)
+            self.assertEqual(-100, three_doc.balance_forward)
+            self.assertEqual(-100, three_doc.balance_due)
+
 
     def test_delete_reebill(self):
         account = '99999'
