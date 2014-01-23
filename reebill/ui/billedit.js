@@ -6111,7 +6111,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYCONFIG" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
+            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;"></div><div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;"></div></div>',
           },
         ]
       }
@@ -6581,17 +6581,14 @@ function loadDashboard()
             var date = jsonData['date'];
             var user = jsonData['user'];
             var version = jsonData['version'];
-            //var deploy_env = jsonData['deploy_env'];
-            Ext.DomHelper.overwrite('LOGIN_INFO',
-                "You're logged in as <b>" + revision + "</b>; " + logoutLink)
+            var deploy_env = jsonData['deploy_env'];
 
             title = Ext.get('pagetitle');
-            //title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
+            title.update("Skyline ReeBill - " + deploy_env)  
 
             versionInfo = Ext.get('SKYLINE_VERSIONINFO');
             versionInfo.update(date + " " + user + " " + version);
-            //deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
-            //deployEnv.update(SKYLINE_DEPLOYCONFIG);
+            Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
         },
     });
 
