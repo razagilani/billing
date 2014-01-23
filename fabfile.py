@@ -73,9 +73,10 @@ common.CommonFabTask.update_deployment_configs({
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
+# TODO: 64357046 don't set the manifest file this way, pass it into the @fabtask
 class CreateReeBillRevision(common.CreateRevision):
 
-    manifest_file = "reebill/ui/billedit.js"
+    manifest_file = "reebill/ui/revision.txt"
 
 
 @fabtask(task_class=CreateReeBillRevision, alias='create_reebill_revision')
