@@ -1833,7 +1833,6 @@ function reeBillReady() {
     // with the returned records from the server.
     // For more explanaition see 63585822
     ubRegisterStore.on('write', function(store, action, result, res, rs) {
-        console.log('ubRegisterStore write');
         ubRegisterGrid.getSelectionModel().clearSelections();
         ubRegisterStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
@@ -2842,19 +2841,19 @@ function reeBillReady() {
     // the CPRS
 
     var initialCPRSRSI = {
-        rows: [
-        ]
+        rows: [],
+        total: 0
     };
 
     var CPRSRSIReader = new Ext.data.JsonReader({
         idProperty: 'id',
-        //root: 'rows',
-
+        totalProperty: 'total',
+        
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'id'},
+            {name: 'id', mapping: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -2870,17 +2869,7 @@ function reeBillReady() {
         encode: true,
         // write all fields, not just those that changed
         writeAllFields: true ,
-        listful: true,
-        fields: [
-            {name: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
-        ]
+        listful: true
     });
     
     var CPRSRSIStoreProxyConn = new Ext.data.Connection({
@@ -2899,15 +2888,15 @@ function reeBillReady() {
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {name: 'id'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantity_units'},
-            {name: 'rate'},
-            //{name: 'rate_units'},
-            {name: 'round_rule'},
-            {name: 'total'},
+            {name: 'id', mapping: 'id'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+            {name: 'rate', mapping: 'rate'},
+            //{name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
+            //{name: 'total', mapping: 'total'}
         ],
     });
 
@@ -2918,6 +2907,7 @@ function reeBillReady() {
     CPRSRSIStore.on('beforeload', function (store, options) {
         CPRSRSIGrid.setDisabled(true);
         options.params.utilbill_id = selected_utilbill.id;
+        
         //Include the reebill's associated sequence and version if the utilbill is associated with one
         record = chargesUBVersionMenu.selected_record
         //If there is no sequence or version, don't include those parameters
@@ -3082,7 +3072,7 @@ function reeBillReady() {
                     CPRSRSIGrid.stopEditing();
 
                     // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = CPRSRSIGrid.getSelectionModel().getSelected();
+                    //var selection = CPRSRSIGrid.getSelectionModel().getSelected();
 
                     // make the new record
                     var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
@@ -3312,7 +3302,6 @@ function reeBillReady() {
     // with the returned records from the server.
     // For more explanaition see 63585822
     UPRSRSIStore.on('write', function(store, action, result, res, rs) {
-        console.log('UPRSRSIStore write');
         UPRSRSIGrid.getSelectionModel().clearSelections();
         UPRSRSIStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
