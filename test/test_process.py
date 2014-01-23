@@ -2332,33 +2332,56 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
                     'february.pdf')
 
-            # create reebill and utility bill
+            # create utility bill with a charge and a rate structure (so the
+            # reebill can have real charges in it)
             first_utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session, account))\
                     .order_by(UtilBill.period_start).first()
-            self.process.create_first_reebill(session, first_utilbill)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(first_utilbill)
+            utilbill_doc['chargegroups'] = {'All Charges': [
+                {
+                    'rsi_binding': 'THE_CHARGE',
+                    'quantity': 10,
+                    'quantity_units': 'therms',
+                    'rate': 1,
+                    'total': 10,
+                }
+            ]}
+            self.reebill_dao.save_utilbill(utilbill_doc)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                    first_utilbill)
+            uprs.rates = [RateStructureItem(
+                rsi_binding='THE_CHARGE',
+                quantity='REG_TOTAL.quantity',
+                rate='1',
+            )]
+            uprs.save()
 
-            # bind, compute, issue
+            # create reebill, bind, compute, issue
+            self.process.create_first_reebill(session, first_utilbill)
             doc1 = self.reebill_dao.load_reebill(account, 1)
+            doc1.discount_rate = 0.5
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), doc1, use_olap=True)
             self.process.compute_reebill(session, doc1)
             self.reebill_dao.save_reebill(doc1)
-            # set balance_due in the fist document to a non-0 value so that it
-            # can be checked against next bill's "prior balance" below.
-            # TOOD remove this when it can be made to have a non-0 balance_due
-            doc1.balance_due = 1234.56
-            self.reebill_dao.save_reebill(doc1)
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))
             assert session.query(ReeBill).filter(ReeBill.sequence==1).one()\
-                .issue_date == date(2013,2,15)
+                    .issue_date == date(2013,2,15)
 
+            # this is how much energy should have come from mock skyliner
+            expected_energy_quantity = 22.6477327028
+
+            # check accounting numbers
             doc1 = self.reebill_dao.load_reebill(account, 1)
+            expected_ree_charge = expected_energy_quantity * doc1.discount_rate
             self.assertEquals(0, doc1.prior_balance)
             self.assertEquals(0, doc1.payment_received)
             self.assertEquals(0, doc1.balance_forward)
-            # TODO insert real balance_due value
-            self.assertEquals(1234.56, doc1.balance_due)
+            self.assertAlmostEqual(expected_ree_charge,
+                    doc1.ree_charges)
+            self.assertAlmostEqual(expected_ree_charge,
+                    doc1.balance_due)
             # TODO check everything else...
 
             # add a payment so payment_received is not 0
