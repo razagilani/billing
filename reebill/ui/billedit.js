@@ -6111,7 +6111,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYCONFIG" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
+            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;"></div><div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;"></div></div>',
           },
         ]
       }
@@ -6562,17 +6562,37 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
 
 function loadDashboard()
 {
-    // pass configuration information to containing webpage
-    // 'UNSPECIFIED' is expanded to a version string by deployment script
-    var SKYLINE_VERSIONINFO="Tue Jan 14 14:53:13 EST 2014 03c725bad940+ (stable) tip randrews"
-    var SKYLINE_DEPLOYCONFIG=""
-    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
-    versionInfo.update(SKYLINE_VERSIONINFO);
-    deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
-    deployEnv.update(SKYLINE_DEPLOYCONFIG);
 
     title = Ext.get('pagetitle');
-    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
+    // temporary title until revision information received
+    title.update("Skyline ReeBill")
+
+    var revisionDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/revision.txt',
+    });
+    revisionDataConn.autoAbort = true;
+    revisionDataConn.disableCaching = true;
+
+    revisionDataConn.request({
+        success: function(result, request) {
+            // check success status
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            // handle failure
+            var date = jsonData['date'];
+            var user = jsonData['user'];
+            var version = jsonData['version'];
+            // TODO 64357530: need to have this data properly created by fabfile
+            //var deploy_env = jsonData['deploy_env'];
+
+            // update with deployment env from revision.txt
+            //title = Ext.get('pagetitle');
+            //title.update("Skyline ReeBill - " + deploy_env)  
+
+            versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+            versionInfo.update(date + " " + user + " " + version);
+            //Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
+        },
+    });
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
