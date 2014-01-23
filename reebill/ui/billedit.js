@@ -6562,17 +6562,38 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
 
 function loadDashboard()
 {
-    // pass configuration information to containing webpage
-    // 'UNSPECIFIED' is expanded to a version string by deployment script
-    var SKYLINE_VERSIONINFO="Tue Jan 14 14:53:13 EST 2014 03c725bad940+ (stable) tip randrews"
-    var SKYLINE_DEPLOYCONFIG=""
-    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
-    versionInfo.update(SKYLINE_VERSIONINFO);
-    deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
-    deployEnv.update(SKYLINE_DEPLOYCONFIG);
 
     title = Ext.get('pagetitle');
-    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
+    // temporary title until revision information received
+    title.update("Skyline ReeBill")
+
+    var revisionDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/revision.txt',
+    });
+    revisionDataConn.autoAbort = true;
+    revisionDataConn.disableCaching = true;
+
+    revisionDataConn.request({
+        success: function(result, request) {
+            // check success status
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            // handle failure
+            var date = jsonData['date'];
+            var user = jsonData['user'];
+            var version = jsonData['version'];
+            //var deploy_env = jsonData['deploy_env'];
+            Ext.DomHelper.overwrite('LOGIN_INFO',
+                "You're logged in as <b>" + revision + "</b>; " + logoutLink)
+
+            title = Ext.get('pagetitle');
+            //title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
+
+            versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+            versionInfo.update(date + " " + user + " " + version);
+            //deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
+            //deployEnv.update(SKYLINE_DEPLOYCONFIG);
+        },
+    });
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
