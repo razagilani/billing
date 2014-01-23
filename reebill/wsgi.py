@@ -1610,7 +1610,6 @@ class BillToolBridge:
 
             if xaction == "create":
                 new_rsi = rate_structure.add_rsi()
-                rows = [new_rsi.to_dict()]
 
             if xaction == "destroy":
                 if type(rows) is unicode: rows = [rows]
@@ -1618,11 +1617,10 @@ class BillToolBridge:
                 for row in rows:
                     rsi = rate_structure.get_rsi(row)
                     rates.remove(rsi)
-                rows = []
 
             rate_structure.save()
-
-            return self.dumps({'success':True, 'rows':rows})
+            rows = [rsi.to_dict() for rsi in rate_structure.rates]
+            return json.dumps({'success': True, 'rows':rows, 'total':len(rows) })
 
     @cherrypy.expose
     @random_wait

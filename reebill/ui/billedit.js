@@ -1824,8 +1824,16 @@ function reeBillReady() {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
     });
-
+    
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 63585822
     ubRegisterStore.on('write', function(store, action, result, res, rs) {
+        console.log('ubRegisterStore write');
         ubRegisterGrid.getSelectionModel().clearSelections();
         ubRegisterStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
@@ -2862,6 +2870,7 @@ function reeBillReady() {
         encode: true,
         // write all fields, not just those that changed
         writeAllFields: true ,
+        listful: true,
         fields: [
             {name: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
@@ -2967,6 +2976,21 @@ function reeBillReady() {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
     });
+    
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 63585822
+    CPRSRSIStore.on('write', function(store, action, result, res, rs) {
+        CPRSRSIGrid.getSelectionModel().clearSelections();
+        CPRSRSIStore.loadData(res.raw, false);
+        if (res.raw.current_selected_id !== undefined) {
+            CPRSRSIGrid.getSelectionModel().selectRow(CPRSRSIStore.indexOfId(res.raw.current_selected_id))
+        }
+    });
 
     // fired when the datastore has completed loading
     CPRSRSIStore.on('load', function (store, records, options) {
@@ -3068,9 +3092,10 @@ function reeBillReady() {
                     var r = new CPRSRSIType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = CPRSRSIStore.indexOf(selection);
-                    CPRSRSIStore.insert(insertionPoint + 1, r);
-                    CPRSRSIGrid.startEditing(insertionPoint +1,1);
+                    //var insertionPoint = CPRSRSIStore.indexOf(selection);
+                    //CPRSRSIStore.insert(insertionPoint + 1, r);
+                    //CPRSRSIGrid.startEditing(insertionPoint +1,1);
+                    CPRSRSIStore.add([r]);
                     
                     // An inserted record must be saved 
                     //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
@@ -3094,7 +3119,6 @@ function reeBillReady() {
                     {
                         CPRSRSIStore.remove(r);
                     }
-                    CPRSRSIStore.save(); 
                     //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
                 }
             },{
@@ -3150,19 +3174,20 @@ function reeBillReady() {
     
     // the UPRS
     var initialUPRSRSI = {
-        rows: [
-        ]
+        rows: [],
+        total: 0
     };
 
     var UPRSRSIReader = new Ext.data.JsonReader({
-        idProperty: 'id',
-        //root: 'rows',
-
+        //idProperty: 'id',
+        root: 'rows',
+        totalProperty: 'total',
+        
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'id'},
+            {name: 'id', mapping: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -3170,14 +3195,15 @@ function reeBillReady() {
             {name: 'rate', mapping: 'rate'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
+            //{name: 'total', mapping: 'total'},
         ]
     });
 
     var UPRSRSIWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: true,
+        listful: true
     });
 
     var UPRSRSIStoreProxyConn = new Ext.data.Connection({
@@ -3198,15 +3224,15 @@ function reeBillReady() {
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {name: 'id'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantity_units'},
-            {name: 'rate'},
-            //{name: 'rate_units'},
-            {name: 'round_rule'},
-            {name: 'total'},
+            {name: 'id', mapping: 'id'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+            {name: 'rate', mapping: 'rate'},
+            //{name: 'rate_units', mapping: 'rate_units'},
+            {name: 'round_rule', mapping:'round_rule'},
+            //{name: 'total', mapping: 'total'}
         ],
     });
 
@@ -3278,6 +3304,22 @@ function reeBillReady() {
         //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
     });
 
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 63585822
+    UPRSRSIStore.on('write', function(store, action, result, res, rs) {
+        console.log('UPRSRSIStore write');
+        UPRSRSIGrid.getSelectionModel().clearSelections();
+        UPRSRSIStore.loadData(res.raw, false);
+        if (res.raw.current_selected_id !== undefined) {
+            UPRSRSIGrid.getSelectionModel().selectRow(UPRSRSIStore.indexOfId(res.raw.current_selected_id))
+        }
+    });
+    
     UPRSRSIStore.on('beforesave', function() {
     });
 
@@ -3342,17 +3384,20 @@ function reeBillReady() {
                     UPRSRSIGrid.stopEditing();
 
                     // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = UPRSRSIGrid.getSelectionModel().getSelected();
+                    //var selection = UPRSRSIGrid.getSelectionModel().getSelected();
 
                     // make the new record
                     var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
-                    var defaultData = { };
+                    var defaultData = 
+                        {
+                        };
                     var r = new UPRSRSIType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = UPRSRSIStore.indexOf(selection);
-                    UPRSRSIStore.insert(insertionPoint + 1, r);
-                    UPRSRSIGrid.startEditing(insertionPoint +1,1);
+//                     var insertionPoint = UPRSRSIStore.indexOf(selection);
+//                     UPRSRSIStore.insert(insertionPoint + 1, r);
+//                     UPRSRSIGrid.startEditing(insertionPoint +1,1);
+                    UPRSRSIStore.add([r]);
                     
                     // An inserted record must be saved 
                     //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
@@ -3379,7 +3424,7 @@ function reeBillReady() {
                     {
                         UPRSRSIStore.remove(r);
                     }
-                    UPRSRSIStore.save(); 
+                    //UPRSRSIStore.save(); 
                     //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
                 }
             },{
