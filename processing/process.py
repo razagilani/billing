@@ -1272,10 +1272,15 @@ class Process(object):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
 
-        # set issue date in MySQL and due date in mongo
+
         reebill = self.state_db.get_reebill(session, account, sequence)
-        reebill.issue_date = issue_date
         reebill_document = self.reebill_dao.load_reebill(account, sequence)
+
+        # compute the bill to make sure it's up to date before issuing
+        self.compute_reebill(session, reebill_document)
+
+        # set issue date in MySQL and due date in mongo
+        reebill.issue_date = issue_date
         reebill_document.due_date = issue_date + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
