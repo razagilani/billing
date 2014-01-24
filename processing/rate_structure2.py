@@ -66,11 +66,13 @@ class RateStructureDAO(object):
                 self._load_uprss_for_prediction(session, utility,
                 service, rate_class) if not ignore(uprs)]
 
-        # find every RSI binding that ever existed for this rate structure
+        # find the RSI binding of every "shared" RSI that ever existed for
+        # this rate structure
         bindings = set()
         for uprs, _, _ in all_uprss:
             for rsi in uprs.rates:
-                bindings.add(rsi.rsi_binding)
+                if rsi.shared:
+                    bindings.add(rsi.rsi_binding)
 
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI for the
