@@ -2418,14 +2418,35 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_compute_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, account, 'gas',
+            # 2 utility bills
+            u = self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
+            doc = self.reebill_dao.load_doc_for_utilbill(u)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
+            doc['chargegroups'] = {'All Charges': [
+                {
+                    'rsi_binding': 'THE_CHARGE',
+                    'quantity': 100,
+                    'quantity_units': 'therms',
+                    'rate': 1,
+                    'total': 100,
+                }
+            ]}
+            self.process.update_utilbill_metadata(session, u.id,
+                processed=True)
+            self.reebill_dao.save_utilbill(doc)
+            uprs.rates = [RateStructureItem(
+                rsi_binding='THE_CHARGE',
+                quantity='REG_TOTAL.quantity',
+                rate='1',
+            )]
+            uprs.save()
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
                     'february.pdf')
 
-            # create reebill and utility bill
+            # create first reebill
             first_utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session, account))\
                     .order_by(UtilBill.period_start).first()
@@ -2435,12 +2456,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc1 = self.reebill_dao.load_reebill(account, 1)
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), doc1, use_olap=True)
+            # TODO control how much energy is reported by mock_skyliner so it
+            # is not necessary to replace the energy quantity with a known
+            # number like this
+            doc1.reebill_dict['utilbills'][0]['shadow_registers'][0] \
+                    ['quantity'] = 100
             self.process.compute_reebill(session, doc1)
             self.reebill_dao.save_reebill(doc1)
             # set balance_due in the fist document to a non-0 value so that it
             # can be checked against next bill's "prior balance" below.
             # TOOD remove this when it can be made to have a non-0 balance_due
-            doc1.balance_due = 1234.56
             self.reebill_dao.save_reebill(doc1)
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))
             assert session.query(ReeBill).filter(ReeBill.sequence==1).one()\
@@ -2450,12 +2475,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(0, doc1.prior_balance)
             self.assertEquals(0, doc1.payment_received)
             self.assertEquals(0, doc1.balance_forward)
-            # TODO insert real balance_due value
-            self.assertEquals(1234.56, doc1.balance_due)
+            self.assertEquals(88, doc1.balance_due)
             # TODO check everything else...
 
             # add a payment so payment_received is not 0
-            payment_amount = 100
+            payment_amount = 50
             self.state_db.create_payment(session, account, date(2013,2,17),
                     'a payment for the first reebill', payment_amount)
 
