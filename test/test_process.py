@@ -1251,35 +1251,67 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             base_date = date(2012,1,1)
             dates = [base_date + timedelta(days=30*x) for x in xrange(5)]
             for n in xrange(4):
-                self.process.upload_utility_bill(session, acc, 'gas',
+                u = self.process.upload_utility_bill(session, acc, 'gas',
                         dates[n], dates[n+1], StringIO('a utility bill'),
-                        'filename.pdf')
-            
+                        'file.pdf')
+                doc = self.reebill_dao.load_doc_for_utilbill(u)
+                uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
+                doc['chargegroups'] = {'All Charges': [
+                    {
+                        'rsi_binding': 'THE_CHARGE',
+                        'quantity': 100,
+                        'quantity_units': 'therms',
+                        'rate': 1,
+                        'total': 100,
+                    }
+                ]}
+                self.reebill_dao.save_utilbill(doc)
+                uprs.rates = [RateStructureItem(
+                    rsi_binding='THE_CHARGE',
+                    quantity='REG_TOTAL.quantity',
+                    rate='1',
+                )]
+                uprs.save()
+
+            # first reebill: saved 100 therms, $50
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
             one = self.reebill_dao.load_reebill(acc, 1)
-            one.ree_charges = 100
+            one.discount_rate = 0.5
+            one.reebill_dict['utilbills'][0]['shadow_registers'][0][
+                    'quantity'] = 100
+            self.process.compute_reebill(session, one)
             self.reebill_dao.save_reebill(one)
             self.process.issue(session, acc, 1)
             one = self.reebill_dao.load_reebill(acc, one.sequence)
+            assert one.ree_charges == 50
 
+            # 2nd reebill: saved 200 therms, $100
             self.process.create_next_reebill(session, acc)
             two = self.reebill_dao.load_reebill(acc, 2)
-            two.ree_charges = 100
+            two.discount_rate = 0.5
+            two.reebill_dict['utilbills'][0]['shadow_registers'][0][
+                    'quantity'] = 200
+            self.process.compute_reebill(session, two)
             self.reebill_dao.save_reebill(two)
             self.process.issue(session, acc, two.sequence)
             two = self.reebill_dao.load_reebill(acc, two.sequence)
+            assert two.ree_charges == 100
 
+            # 3rd reebill: saved 300 therms, $150
             self.process.create_next_reebill(session, acc)
             three = self.reebill_dao.load_reebill(acc, 3)
-            three.ree_charges = 100
+            three.discount_rate = 0.5
+            three.reebill_dict['utilbills'][0]['shadow_registers'][0][
+                    'quantity'] = 300
             self.reebill_dao.save_reebill(three)
             self.process.issue(session, acc, three.sequence)
             three = self.reebill_dao.load_reebill(acc, three.sequence)
+            assert three.ree_charges == 150
 
+            # 4th reebill
             self.process.create_next_reebill(session, acc)
             four = self.reebill_dao.load_reebill(acc, 4)
-            four.ree_charges = 100
             self.reebill_dao.save_reebill(four)
 
             # no unissued corrections yet
@@ -1298,15 +1330,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.new_version(session, acc, 3)
             one_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
             three_1 = self.reebill_dao.load_reebill(acc, 3, version=1)
-            one_1.ree_charges = 120
-            three_1.ree_charges = 95
+            one_1.discount_rate = .75
+            three_1.discount_rate = .25
+            # re-update the register readings to undo the arbitary values
+            # inserted by new_version above (this should really be done by
+            # controlling the amount of energy reported by mock_skyliner
+            one_1.reebill_dict['utilbills'][0]['shadow_registers'][0][
+                    'quantity'] = 100
+            three_1.reebill_dict['utilbills'][0]['shadow_registers'][0][
+                    'quantity'] = 300
+            self.process.compute_reebill(session, one_1)
+            self.process.compute_reebill(session, three_1)
+            assert one_1.ree_charges == 25
+            assert three_1.ree_charges == 225
             self.reebill_dao.save_reebill(one_1)
             self.reebill_dao.save_reebill(three_1)
 
-            # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
-            self.assertEqual([(1, 1, 20), (3, 1, -5)],
+            # there should be 2 adjustments: -50 for the first bill, and +75
+            # for the 3rd
+            self.assertEqual([(1, 1, -25), (3, 1, 75)],
                     self.process.get_unissued_corrections(session, acc))
-            self.assertEqual(15, self.process.get_total_adjustment(session, acc))
+            self.assertEqual(50, self.process.get_total_adjustment(session,
+                    acc))
 
             # try to apply corrections to an issued bill
             self.assertRaises(ValueError, self.process.issue_corrections,
