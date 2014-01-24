@@ -2975,10 +2975,19 @@ function reeBillReady() {
     // with the returned records from the server.
     // For more explanaition see 63585822
     CPRSRSIStore.on('write', function(store, action, result, res, rs) {
+        var selected_record_id = CPRSRSIStore.indexOf(CPRSRSIGrid.getSelectionModel().getSelected());
         CPRSRSIGrid.getSelectionModel().clearSelections();
         CPRSRSIStore.loadData(res.raw, false);
-        if (res.raw.current_selected_id !== undefined) {
-            CPRSRSIGrid.getSelectionModel().selectRow(CPRSRSIStore.indexOfId(res.raw.current_selected_id))
+        if (selected_record_id < CPRSRSIStore.getCount()) {
+            CPRSRSIGrid.getSelectionModel().selectRow(selected_record_id)
+        }
+        // Scroll based on action
+        if (action == 'create'){
+            var lastrow = CPRSRSIStore.getCount() -1;
+            CPRSRSIGrid.getView().focusRow(lastrow);
+            CPRSRSIGrid.startEditing(lastrow, 0);
+        }else if(action == 'update'){
+            CPRSRSIGrid.getView().focusRow(selected_record_id);
         }
     });
 
@@ -3076,19 +3085,9 @@ function reeBillReady() {
 
                     // make the new record
                     var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
+                    var defaultData = {};
                     var r = new CPRSRSIType(defaultData);
-        
-                    // select newly inserted record
-                    //var insertionPoint = CPRSRSIStore.indexOf(selection);
-                    //CPRSRSIStore.insert(insertionPoint + 1, r);
-                    //CPRSRSIGrid.startEditing(insertionPoint +1,1);
                     CPRSRSIStore.add([r]);
-                    
-                    // An inserted record must be saved 
-                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -3302,10 +3301,19 @@ function reeBillReady() {
     // with the returned records from the server.
     // For more explanaition see 63585822
     UPRSRSIStore.on('write', function(store, action, result, res, rs) {
+        var selected_record_id = UPRSRSIStore.indexOf(UPRSRSIGrid.getSelectionModel().getSelected());
         UPRSRSIGrid.getSelectionModel().clearSelections();
         UPRSRSIStore.loadData(res.raw, false);
-        if (res.raw.current_selected_id !== undefined) {
-            UPRSRSIGrid.getSelectionModel().selectRow(UPRSRSIStore.indexOfId(res.raw.current_selected_id))
+        if (selected_record_id < UPRSRSIStore.getCount()) {
+            UPRSRSIGrid.getSelectionModel().selectRow(selected_record_id)
+        }
+        // Scroll based on action
+        if (action == 'create'){
+            var lastrow = UPRSRSIStore.getCount() -1;
+            UPRSRSIGrid.getView().focusRow(lastrow);
+            UPRSRSIGrid.startEditing(lastrow, 0);
+        }else if(action == 'update'){
+            UPRSRSIGrid.getView().focusRow(selected_record_id);
         }
     });
     
@@ -3371,25 +3379,10 @@ function reeBillReady() {
                 handler: function()
                 {
                     UPRSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    //var selection = UPRSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
                     var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                        {
-                        };
+                    var defaultData = {};
                     var r = new UPRSRSIType(defaultData);
-        
-                    // select newly inserted record
-//                     var insertionPoint = UPRSRSIStore.indexOf(selection);
-//                     UPRSRSIStore.insert(insertionPoint + 1, r);
-//                     UPRSRSIGrid.startEditing(insertionPoint +1,1);
                     UPRSRSIStore.add([r]);
-                    
-                    // An inserted record must be saved 
-                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -3413,8 +3406,6 @@ function reeBillReady() {
                     {
                         UPRSRSIStore.remove(r);
                     }
-                    //UPRSRSIStore.save(); 
-                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
