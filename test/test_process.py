@@ -1130,8 +1130,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
             self.assertEquals(None,
                     utilbill._utilbill_reebills[0].uprs_document_id)
-            self.assertEquals(None,
-                    utilbill._utilbill_reebills[0].cprs_document_id)
             reebill = self.reebill_dao.load_reebill(acc, 1)
             self.assertEqual(1, len(reebill._utilbills))
             self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
