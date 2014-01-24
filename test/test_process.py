@@ -410,7 +410,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,4,1))
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
-            # assert bill1.issue_date == date(2012,1,1)
             assert bill1.due_date == date(2012,5,1)
             assert bill1.balance_due == 50
 
@@ -427,10 +426,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.compute_reebill(session, bill2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charges == 100
-            # TODO: balance_due is 167 instead of 150 because of a late charge;
-            # is that OK?
-            # NOTE changed the dates
-            #assert bill2.balance_due == 100 + 50
             self.reebill_dao.save_reebill(bill2)
 
             # bill2's late charge should be 0 before bill1's due date; on/after
@@ -461,7 +456,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
             bill3 = example_data.get_reebill(acc, 3)
-            bill3.balance_due = 300 # TODO remove?
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
@@ -504,10 +498,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # note that the issue date on which the late charge in bill2 is
             # based is the issue date of version 0--it doesn't matter when the
             # corrections were issued.
-            # self.assertEqual(50 * bill2.late_charge_rate,
-            #         self.process.get_late_charge(session, bill2,
-            #         date(2013,1,1)))
-            # TODO min predecessor balance due is 5.something, not $50
             late_charge = self.process.get_late_charge(session, bill2,
                     date(2013,4,18))
             self.assertEqual(late_charge_source_amount * bill2.late_charge_rate,
