@@ -468,7 +468,8 @@ class RateStructure(Document):
         '''
         combined_dict = uprs.rsis_dict()
         combined_dict.update(cprs.rsis_dict())
-        return RateStructure(registers=[], rates=combined_dict.values())
+        return RateStructure(type='UPRS', registers=[],
+            rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to

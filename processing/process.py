@@ -477,7 +477,7 @@ class Process(object):
             predecessor = self.state_db.get_last_real_utilbill(session,
                     utilbill.customer.account, utilbill.period_start,
                     service=utilbill.service, utility=utilbill.utility,
-                    rate_class=utilbill.rate_class)
+                    rate_class=utilbill.rate_class, processed=True)
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
             # existing ones are Hypothetical), use template for the utility
@@ -497,6 +497,8 @@ class Process(object):
                 'rate_class': utilbill.rate_class,
             })
             cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
+            predecessor_uprs = RateStructure(type='UPRS', rates=[])
+            predecessor_uprs.validate()
         else:
             # the preceding utility bill does exist, so duplicate its CPRS to
             # produce the CPRS for this bill
@@ -507,6 +509,10 @@ class Process(object):
             # 0.8.4 described here:
             # https://www.pivotaltracker.com/story/show/57593308
             cprs._created = True
+
+            predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                    predecessor)
+            predecessor_uprs.validate()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -534,6 +540,13 @@ class Process(object):
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
         uprs.id = ObjectId()
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        for rsi in predecessor_uprs.rates:
+            if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                    uprs.rates)):
+                uprs.rates.append(rsi)
+
         # NOTE this is a temporary workaround for a bug in MongoEngine
         # 0.8.4 described here:
         # https://www.pivotaltracker.com/story/show/57593308
@@ -607,6 +620,8 @@ class Process(object):
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
+        # TODO remove duplicate code between this method and Process
+        # ._generate_docs_for_new_utility_bill
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
@@ -614,6 +629,24 @@ class Process(object):
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: uprs.id == existing_uprs.id)
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        try:
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start,
+                service=utilbill.service, utility=utilbill.utility,
+                rate_class=utilbill.rate_class, processed=True)
+        except NoSuchBillException:
+            # if there's no predecessor, there are no RSIs to add
+            pass
+        else:
+            predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                    predecessor)
+            for rsi in predecessor_uprs.rates:
+                if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                        new_uprs.rates)):
+                    new_uprs.rates.append(rsi)
+
         existing_uprs.rates = new_uprs.rates
         existing_uprs.save()
 

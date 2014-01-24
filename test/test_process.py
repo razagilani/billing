@@ -1632,8 +1632,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_roll_rs_prediction(self):
         '''Basic test of rate structure prediction when rolling bills.'''
-        # TODO convert to utility bills only
-
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
@@ -1712,10 +1710,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='SYSTEM_CHARGE',
                     description='System Charge',
                     quantity='1',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='11.2',
                     uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                    shared=True,
+                ),
+                RateStructureItem(
+                    rsi_binding='NOT_SHARED',
+                    description='System Charge',
+                    quantity='2',
+                    processingnote='',
+                    rate='3',
+                    uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                    shared=False,
                 )
             ]
             uprs_b.rates = uprs_c.rates = [
@@ -1727,7 +1734,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate='0.2935',
                     quantity_units='therms',
                     total='220.16',
-                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb'
+                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb',
+                    shared=True,
                 ),
                 RateStructureItem(
                     rsi_binding='PGC',
@@ -1737,7 +1745,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate='0.7653',
                     quantity_units='therms',
                     total='574.05',
-                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb'
+                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb',
+                    shared=True,
                 ),
             ]
             uprs_a.save(); uprs_b.save(); uprs_c.save()
@@ -1750,26 +1759,29 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
+            cprs_a_2 = self.rate_structure_dao.load_cprs_for_utilbill(
+                session.query(UtilBill).filter_by(customer=customer_a,
+                    period_start=date(2013,2,1)).one())
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
             self.assertEqual([], uprs_a_2.rates)
 
-            # when the other bills have been marked as "procesed", they should
+            # when the other bills have been marked as "processed", they should
             # affect the new one.
             utilbill_a.processed = True
             utilbill_b.processed = True
             utilbill_c.processed = True
             self.process.regenerate_uprs(session, utilbill_a_2.id)
-
-            # the UPRS of A's reebill #2 should now match B and C, i.e. it
+            # the UPRS of A's 2nd bill should now match B and C, i.e. it
             # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
             # because together the other two have greater weight than A's
-            # reebill #1
+            # reebill #1. it should also contain the NOT_SHARED RSI because
+            # un-shared RSIs always get copied from each bill to its successor.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
-            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
+            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
@@ -1779,7 +1791,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 rsi_binding='RIGHT_OF_WAY',
                 description='DC Rights-of-Way Fee',
                 quantity='750.10197727',
-                #rate_units='dollars',
                 processingnote='',
                 rate='0.03059',
                 quantity_units='therms',

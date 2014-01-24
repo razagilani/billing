@@ -1002,10 +1002,11 @@ class StateDB(object):
                 session.delete(hb)
 
     def get_last_real_utilbill(self, session, account, end, service=None,
-            utility=None, rate_class=None):
+            utility=None, rate_class=None, processed=None):
         '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
-        utility, and rate class.'''
+        utility, rate class, and 'processed' status.
+        '''
         customer = self.get_customer(session, account)
         cursor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
@@ -1017,6 +1018,9 @@ class StateDB(object):
             cursor = cursor.filter(UtilBill.utility == utility)
         if rate_class is not None:
             cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if processed is not None:
+            assert isinstance(processed, bool)
+            cursor = cursor.filter(UtilBill.processed == processed)
         result = cursor.order_by(desc(UtilBill.period_end)).first()
         if result is None:
             raise NoSuchBillException
