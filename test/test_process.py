@@ -979,7 +979,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('Pepco', doc['utility'])
             self.assertEqual('Residential R Winter', doc['rate_class'])
 
-
     def test_delete_utility_bill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
@@ -1633,7 +1632,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_roll_rs_prediction(self):
         '''Basic test of rate structure prediction when rolling bills.'''
-        # TODO this test doesn't even need reebills; just create utility bills
+        # TODO convert to utility bills only
 
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
@@ -1659,15 +1658,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_utilbill(template_a)
             self.reebill_dao.save_utilbill(template_b)
             self.reebill_dao.save_utilbill(template_c)
-            reebill_a_0 = example_data.get_reebill(acc_a, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            reebill_b_0 = example_data.get_reebill(acc_b, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            reebill_c_0 = example_data.get_reebill(acc_c, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
-            self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
-            self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
             # new customers also need to be in nexus for 'fetch_oltp_data' to
             # work (using mock Skyliner)
             self.nexus_util._customers.extend([
@@ -1702,9 +1692,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_first_reebill(session, utilbill_a)
-            self.process.create_first_reebill(session, utilbill_b)
-            self.process.create_first_reebill(session, utilbill_c)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating
@@ -1736,7 +1723,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='DISTRIBUTION_CHARGE',
                     description='Distribution charge for all therms',
                     quantity='750.10197727',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='0.2935',
                     quantity_units='therms',
@@ -1747,7 +1733,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='PGC',
                     description='Purchased Gas Charge',
                     quantity='750.10197727',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='0.7653',
                     quantity_units='therms',
@@ -1762,7 +1747,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'gas', date(2013,2,1), date(2013,3,1),
                      StringIO('February 2013 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
-            self.process.create_next_reebill(session, acc_a)
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
@@ -1788,13 +1772,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
-            # make sure A's reebill #2 is computable after rolling (even though
-            # RSIs have changed, meaning some of the original charges may not
-            # have corresponding RSIs and had to be removed)
-            reebill_a_1 = self.reebill_dao.load_reebill(acc_a, 1)
-            reebill_a_2 = self.reebill_dao.load_reebill(acc_a, 2)
-            self.process.compute_reebill(session, reebill_a_2) 
-
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
             # a new bill is rolled, the UPRS it gets depends on whether it's
             # closer to B/C-1 or to A-2.
@@ -1818,22 +1795,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                      date(2013,2,5), date(2013,3,5),
                      StringIO('February 2013 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_next_reebill(session, acc_b)
-            uprs_b_2 = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_b,
-                    period_start=date(2013,2,5)).one())
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
-            # https://www.pivotaltracker.com/story/show/47134189
-            ## B-2 and its utility bill should not contain any charges that
-            ## don't correspond to the rate structure.
-            #actual_charge_names = [c['rsi_binding'] for c in reebill_b_2\
-                    #._get_utilbill_for_service('gas')['chargegroups']
-                    #['All Charges']]
-            #hyp_charge_names = [c['rsi_binding'] for c in reebill_b_2\
-                    #._get_handle_for_service('gas')\
-                    #['hypothetical_chargegroups']['All Charges']]
+
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
