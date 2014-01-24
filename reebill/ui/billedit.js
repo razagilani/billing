@@ -314,6 +314,18 @@ function reeBillReady() {
             }
             upload_service.setValue(last_record.data.service);
         }
+        
+        // Activate the delete button if for the selected row
+        // if the reebill for the selected row has been deleted
+        var record = utilbillGrid.getSelectionModel().getSelected();
+        if(record){
+            if(record.data.editable && record.data.reebills.length == 0){
+                utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
+            }
+            else{
+                utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(true);
+            }            
+        }
     });
 
     // grid's data store callback for when data is edited
@@ -747,7 +759,6 @@ function reeBillReady() {
 
         // demand that the store configure and load itself
         utilbillGridStore.reload();
-
     });
 
           
