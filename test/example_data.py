@@ -347,141 +347,64 @@ _example_uprs = RateStructure(
     rates=[
         RateStructureItem(
             rsi_binding='SYSTEM_CHARGE',
-            description='System Charge',
-            quantity='1',
-            quantity_units='',
-            rate='45.6',
-            round_rule='',
-            uuid="b11e2500-01a9-11e1-af85-002422358023",
+            uuid='af91ba26-01a9-11e1-af85-002421e88ffb',
+            rate='11.2',
+            quantity='1'
         ),
         RateStructureItem(
             rsi_binding='DELIVERY_TAX',
-            description='Delivery Tax',
-            quantity='REG_TOTAL.quantity',
-            quantity_units='',
-            rate='0.1',
-            round_rule='',
-            uuid="b11e3216-01a9-11e1-af85-560964835ffb",
+            uuid='af91c4bc-01a9-11e1-af85-002421e88ffb',
+            rate='0.07777',
+            quantity_units='therms',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            rate='.2935',
             rsi_binding='DISTRIBUTION_CHARGE',
-            description='Distribution charge for all therms',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.2935',
-            round_rule='',
-            uuid="c9733ed2-2c16-11e1-8c7f-002421e88ffb",
+            uuid='8ced8464-4dc1-11e1-ab51-002421e88ffb',
+            roundrule='ROUND_UP',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-            rsi_binding='pgc',
-            description='purchased gas charge',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.7653',
-            round_rule='',
-            uuid="c97340da-2c16-11e1-8c7f-002421e88ffb",
+            rate='.7653',
+            rsi_binding='PGC',
+            uuid='c6b809f8-4dc1-11e1-bba8-002421e88ffb',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            uuid='a77bf062-2108-11e1-98b3-002421e88ffb',
+            rate='23.14',
             rsi_binding='PUC',
             description='Peak Usage Charge',
-            quantity='1',
-            quantity_units='therms',
-            rate='23.14',
-            round_rule='',
-            uuid="c97342e2-2c16-11e1-8c7f-002421e88ffb",
+            quantity='1'
         ),
         RateStructureItem(
+            rate='0.03059',
             rsi_binding='RIGHT_OF_WAY',
-            description='DC Rights-of-Way Fee',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.03059',
-            round_rule='',
-            uuid="c97344f4-2c16-11e1-8c7f-002421e88ffb",
+            uuid='af91bfda-01a9-11e1-af85-002421e88ffb',
+            roundrule='ROUND_HALF_EVEN',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            rate='0.01399',
             rsi_binding='SETF',
-            description='Sustainable Energy Trust Fund',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.03059',
-            round_rule='',
-            uuid="c97346f2-2c16-11e1-8c7f-002421e88ffb",
+            uuid='af91c17e-01a9-11e1-af85-002421e88ffb',
+            roundrule='ROUND_UP',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-            rsi_binding='EATF',
-            description='Energy Assistance Trust Fund',
-            quantity='750.10197727',
-            quantity_units='therms',
             rate='0.006',
-            round_rule='',
-            uuid="c9734af8-2c16-11e1-8c7f-002421e88ffb",
-        ),
-    ],
-)
-
-_example_cprs = RateStructure(type='CPRS',
-    rates=[
-		RateStructureItem(
-            rsi_binding='SYSTEM_CHARGE',
-			uuid='af91ba26-01a9-11e1-af85-002421e88ffb',
-			rate='11.2',
-			quantity='1'
+            rsi_binding='EATF',
+            uuid='af91c318-01a9-11e1-af85-002421e88ffb',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-			rate='0.03059',
-			rsi_binding='RIGHT_OF_WAY',
-			uuid='af91bfda-01a9-11e1-af85-002421e88ffb',
-			roundrule='ROUND_HALF_EVEN',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.01399',
-			rsi_binding='SETF',
-			uuid='af91c17e-01a9-11e1-af85-002421e88ffb',
-			roundrule='ROUND_UP',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.006',
-			rsi_binding='EATF',
-			uuid='af91c318-01a9-11e1-af85-002421e88ffb',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rsi_binding='DELIVERY_TAX',
-			uuid='af91c4bc-01a9-11e1-af85-002421e88ffb',
-			rate='0.07777',
-			quantity_units='therms',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.06',
-			rsi_binding='SALES_TAX',
-			uuid='af91c674-01a9-11e1-af85-002421e88ffb',
-			quantity=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
-                    'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
-                    'SETF.total + EATF.total + DELIVERY_TAX.total')
-        ),
-        RateStructureItem(
-			uuid='a77bf062-2108-11e1-98b3-002421e88ffb',
-			rate='23.14',
-			rsi_binding='PUC',
-			description='Peak Usage Charge',
-			quantity='1'
-		),
-        RateStructureItem(
-			rate='.2935',
-			rsi_binding='DISTRIBUTION_CHARGE',
-			uuid='8ced8464-4dc1-11e1-ab51-002421e88ffb',
-			roundrule='ROUND_UP',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='.7653',
-			rsi_binding='PGC',
-			uuid='c6b809f8-4dc1-11e1-bba8-002421e88ffb',
-			quantity='REG_TOTAL.quantity'
+            rate='0.06',
+            rsi_binding='SALES_TAX',
+            uuid='af91c674-01a9-11e1-af85-002421e88ffb',
+            quantity=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
+                      'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
+                      'SETF.total + EATF.total + DELIVERY_TAX.total')
         ),
     ],
 )
@@ -537,7 +460,3 @@ def get_uprs():
     result.id = ObjectId()
     return result
 
-def get_cprs():
-    result = deepcopy(_example_cprs)
-    result.id = ObjectId()
-    return result
