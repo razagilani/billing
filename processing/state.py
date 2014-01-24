@@ -49,7 +49,7 @@ class Customer(Base):
 
     def get_discount_rate(self):
         return self.discountrate
-    def set_discountrate(self):
+    def set_discountrate(self, value):
         self.discountrate = value
     def get_late_charge_rate(self):
         return self.latechargerate
