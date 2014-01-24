@@ -1389,20 +1389,55 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_late_charge_correction(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # 2 utility bills
-            self.process.upload_utility_bill(session, acc, 'gas',
+            # set customer late charge rate
+            customer = self.state_db.get_customer(session, acc)
+            customer.set_discountrate(.5)
+            customer.set_late_charge_rate(.34)
+
+            # first utility bill (ensure that an RSI and a charge exist,
+            # and mark as "processed" so next utility bill will have them too
+            u1 = self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                      'january.pdf')
+            u1_doc = self.reebill_dao.load_doc_for_utilbill(u1)
+            u1_doc['chargegroups'] = {'All Charges': [
+                {
+                    'rsi_binding': 'THE_CHARGE',
+                    'quantity': 100,
+                    'quantity_units': 'therms',
+                    'rate': 1,
+                    'total': 100,
+                }
+            ]}
+            self.reebill_dao.save_utilbill(u1_doc)
+            u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
+            u1_uprs.rates = [RateStructureItem(
+                rsi_binding='THE_CHARGE',
+                quantity='REG_TOTAL.quantity',
+                rate='1',
+            )]
+            u1_uprs.save()
+            self.process.update_utilbill_metadata(session, u1.id,
+                    processed=True)
+
+            # 2nd utility bill
             self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
                      'february.pdf')
 
             # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
             # (so it's 10 days late)
+            # TODO don't use current date in a test!
             self.process.create_first_reebill(session, session.query(UtilBill)
                     .order_by(UtilBill.period_start).first())
             one = self.reebill_dao.load_reebill(acc, 1)
-            one.balance_due = 100
+            # TODO control amount of renewable energy given by mock_skyliner
+            # so there's no need to replace that value with a known one here
+            one.reebill_dict['utilbills'][0]['shadow_registers'][0] \
+                    ['quantity'] = 100
+            self.process.compute_reebill(session, one)
+            assert one.ree_charges == 50
+            assert one.balance_due == 50
             self.reebill_dao.save_reebill(one)
             self.process.issue(session, acc, 1,
                     issue_date=datetime.utcnow().date() - timedelta(40))
@@ -1418,31 +1453,40 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
                     two)
 
-            # if given a late_charge_rate > 0, 2nd reebill should have a late charge
+            # if given a late_charge_rate > 0, 2nd reebill should have a late
+            # charge
             two.late_charge_rate = .5
             self.process.compute_reebill(session, two)
-            self.assertEqual(50, two.late_charges)
+            self.assertEqual(25, two.late_charges)
 
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two)
             self.process.issue(session, acc, two.sequence)
 
-            # add a payment of $80 30 days ago (10 days after 1st reebill was
-            # issued). the late fee above is now wrong; it should be 50% of $20
-            # instead of 50% of the entire $100.
+            # add a payment of $30 30 days ago (10 days after 1st reebill was
+            # issued). the late fee above is now wrong; it should be 50% of
+            # the unpaid $20 instead of 50% of the entire $50.
             self.state_db.create_payment(session, acc, datetime.utcnow().date()
-                    - timedelta(30), 'backdated payment', 80)
+                    - timedelta(30), 'backdated payment', 30)
 
             # now a new version of the 2nd reebill should have a different late
             # charge: $10 instead of $50.
             self.process.new_version(session, acc, 2)
             two_1 = self.reebill_dao.load_reebill(acc, 2)
+            self.process.compute_reebill(session, two_1)
             self.assertEqual(10, two_1.late_charges)
 
             # that difference should show up as an error
             corrections = self.process.get_unissued_corrections(session, acc)
             assert len(corrections) == 1
-            self.assertEquals((2, 1, -40), corrections[0])
+            # self.assertEquals((2, 1, 25 - 15), corrections[0])
+            # for some reason there's a tiny floating-point error in the
+            # correction amount so it must be compared with assertAlmostEqual
+            # (which doesn't work on tuples)
+            sequence, version, amount = corrections[0]
+            self.assertEqual(2, sequence)
+            self.assertEqual(1, version)
+            self.assertAlmostEqual(-15, amount)
 
     # TODO rename
     def test_roll(self):
