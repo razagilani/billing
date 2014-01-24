@@ -1834,6 +1834,7 @@ function reeBillReady() {
     // For more explanaition see 63585822
     ubRegisterStore.on('write', function(store, action, result, res, rs) {
         ubRegisterGrid.getSelectionModel().clearSelections();
+        console.log(store,action,result,res,rs);
         ubRegisterStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
             ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(res.raw.current_selected_id))
@@ -1843,6 +1844,15 @@ function reeBillReady() {
     ubRegisterStore.on('remove', function(store, record, index) {
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
         intervalMeterFormPanel.setDisabled(true);
+    });
+    
+    ubRegisterStore.on('exception', function(store, type, action, options, response, arg){
+        if (arg.arg == 'rows' && arg.message == 'root-undefined-response'){
+            // The server returned an error message
+            // Chances are the User did something unexpected
+            // Let's trust the server and reload the store
+            ubRegisterStore.reload()
+        }
     });
     
     ubRegisterColModel = new Ext.grid.ColumnModel({
