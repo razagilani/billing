@@ -4735,7 +4735,7 @@ function reeBillReady() {
       minValue: 0,
       allowDecimals: true,
       decimalPrecision: 2,
-      incrementValue: 1,
+      incrementValue: 0.01,
       accelerate: true
     });
 
