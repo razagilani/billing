@@ -190,6 +190,7 @@ class RateStructureItem(EmbeddedDocument):
             #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
+            'shared': self.shared
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
