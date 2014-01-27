@@ -97,7 +97,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(False, utilbill.processed) # what does 'processed' mean anyway?
             self.assertIsNotNone(utilbill.document_id)
             self.assertIsNotNone(utilbill.uprs_document_id)
-            self.assertIsNotNone(utilbill.cprs_document_id)
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.assertNotEqual(template_account_template_utilbill['_id'],
                     utilbill_doc['_id'])
@@ -193,22 +192,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     utilbill.id, 'UPRS')
             self.assertRaises(ValueError, self.process.get_rs_doc, session,
                     utilbill.id, 'CPRS')
-            #self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    #utilbill.id, 'urs')
-            #self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    #utilbill.id, 'URS')
 
             # documents loaded via get_utilbill_doc and get_rs_doc should be
             # the same as when loaded directly using reebill_dao
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
             self.assertEqual(utilbill_doc,
                     self.reebill_dao.load_doc_for_utilbill(utilbill))
             self.assertEqual(uprs_doc,
                     self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
-            self.assertEqual(cprs_doc,
-                    self.rate_structure_dao.load_cprs_for_utilbill(utilbill))
 
             # issue a reebill based on this utility bill, then modify the
             # editable utility bill so it's different from the frozen ones
@@ -216,43 +208,36 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, '99999', 1)
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
             utilbill_doc['service'] = 'electricity'
             new_rsi = RateStructureItem(rsi_binding='NEW', rate='36.25',
                     quantity='1')
             uprs_doc.rates = [new_rsi]
-            cprs_doc.rates = [new_rsi]
             self.reebill_dao.save_utilbill(utilbill_doc)
             uprs_doc.save()
-            cprs_doc.save()
 
             # load frozen documents associated with the issued reebill
             frozen_utilbill_doc = self.process.get_utilbill_doc(session,
                     utilbill.id, reebill_sequence=1, reebill_version=0)
+            # TODO: this UPRS document can't be loaded because it looks like
+            # { "_id" : ObjectId("52e2ee4d74ea771e2deb1bfe") }
+            # lacking "_cls" key. related story:
+            # https://www.pivotaltracker.com/story/show/57593308
             frozen_uprs_doc = self.process.get_rs_doc(session, utilbill.id,
                     'uprs', reebill_sequence=1, reebill_version=0)
-            frozen_cprs_doc = self.process.get_rs_doc(session, utilbill.id,
-                    'cprs', reebill_sequence=1, reebill_version=0)
             self.assertNotEqual(frozen_utilbill_doc, utilbill_doc)
             self.assertNotEqual(frozen_uprs_doc, uprs_doc)
-            self.assertNotEqual(frozen_cprs_doc, cprs_doc)
             self.assertEquals('gas', frozen_utilbill_doc['service'])
             self.assertNotIn(new_rsi, frozen_uprs_doc.rates)
-            self.assertNotIn(new_rsi, frozen_cprs_doc.rates)
 
             # editable documents should be unchanged
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            cprs_doc = self.process.get_rs_doc(session, utilbill.id, 'cprs')
             self.assertEqual(utilbill_doc,
                     self.reebill_dao.load_doc_for_utilbill(utilbill))
             self.assertEqual(uprs_doc,
                     self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
-            self.assertEqual(cprs_doc,
-                    self.rate_structure_dao.load_cprs_for_utilbill(utilbill))
             self.assertEquals('electricity', utilbill_doc['service'])
             self.assertIn(new_rsi, uprs_doc.rates)
-            self.assertIn(new_rsi, cprs_doc.rates)
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
@@ -669,15 +654,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
             self.reebill_dao.save_utilbill(utilbill_doc)
 
-            # also add some charges to the CPRS to test overriding of UPRS by CPRS
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
-            cprs.rates = example_data.get_cprs().rates
-            cprs.save()
-
             # compute charges in the bill using the rate structure created from the
             # above documents
             reebill1 = self.reebill_dao.load_reebill(account, 1)
-            reebill1.compute_charges(uprs, cprs)
+            reebill1.compute_charges(uprs)
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
@@ -979,7 +959,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('Pepco', doc['utility'])
             self.assertEqual('Residential R Winter', doc['rate_class'])
 
-
     def test_delete_utility_bill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
@@ -1001,19 +980,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.period_end == end).one()
             self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
             # with no reebills, deletion should succeed: row removed from
             # MySQL, document removed from Mongo (only template should be
-            # left), UPRS and CPRS documents removed from Mongo, file moved to
+            # left), UPRS document removed from Mongo, file moved to
             # trash directory
             new_path = self.process.delete_utility_bill(session, utilbill)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
             self.assertRaises(RateStructure.DoesNotExist,
                     self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
-            self.assertRaises(RateStructure.DoesNotExist,
-                    self.rate_structure_dao.load_cprs_for_utilbill, utilbill)
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
                     account, start, end)
@@ -1146,7 +1122,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertNotIn('sequence', editable_utilbill_doc)
             self.assertNotIn('version', editable_utilbill_doc)
             self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
             # reebill should be associated with the utility bill via
             # utilbill_reebill, and there is no frozen document id in the
@@ -1155,8 +1130,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
             self.assertEquals(None,
                     utilbill._utilbill_reebills[0].uprs_document_id)
-            self.assertEquals(None,
-                    utilbill._utilbill_reebills[0].cprs_document_id)
             reebill = self.reebill_dao.load_reebill(acc, 1)
             self.assertEqual(1, len(reebill._utilbills))
             self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
@@ -1205,18 +1178,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     reebill_doc.reebill_dict['utilbills'][0]['id'])
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill,
                     reebill=reebill)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill,
-                    reebill=reebill)
             self.assertNotEqual(ObjectId(utilbill.uprs_document_id),
                     uprs.id)
-            self.assertNotEqual(ObjectId(utilbill.cprs_document_id),
-                    cprs.id)
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].uprs_document_id),
                     uprs.id)
-            self.assertEqual(
-                    ObjectId(utilbill._utilbill_reebills[0].cprs_document_id),
-                    cprs.id)
 
             # modify editable utility bill document so its meter read dates are
             # different from both its period and the frozen document's meter read
@@ -1253,24 +1219,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 mongo.meter_read_period(new_reebill_doc._utilbills[0]))
 
             for utilbill in new_reebill.utilbills:
-                # utility bill document, UPRS document, CPRS document, and combined
+                # utility bill document, UPRS document, and
                 # rate structure object should be the same as the "current" ones
                 # belonging to the utility bill itself...
                 current_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill)
                 current_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=new_reebill)
-                current_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                        utilbill, reebill=new_reebill)
                 reebill_utilbill = self.reebill_dao.load_doc_for_utilbill(
                         utilbill, reebill=new_reebill)
                 reebill_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=new_reebill)
-                reebill_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                        utilbill, reebill=new_reebill)
                 self.assertEquals(current_uprs, reebill_uprs)
-                self.assertEquals(current_cprs, reebill_cprs)
-                #self.assertEquals(current_combined_rs, reebill_combined_rs)
 
                 # ...and should not match the frozen ones that were in the previous
                 # version (at least _ids should be different)
@@ -1280,11 +1240,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         utilbill, reebill=original_reebill)
                 frozen_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                         utilbill, reebill=original_reebill)
-                frozen_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                        utilbill, reebill=original_reebill)
                 self.assertNotEqual(frozen_utilbill, reebill_utilbill)
                 self.assertNotEqual(frozen_uprs, reebill_uprs)
-                self.assertNotEqual(frozen_cprs, reebill_cprs)
 
             # if the total REE is 'correct_energy_amount_therms' (within
             # floating-point error), the correct meter read period was used.
@@ -1633,8 +1590,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_roll_rs_prediction(self):
         '''Basic test of rate structure prediction when rolling bills.'''
-        # TODO this test doesn't even need reebills; just create utility bills
-
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
@@ -1659,15 +1614,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_utilbill(template_a)
             self.reebill_dao.save_utilbill(template_b)
             self.reebill_dao.save_utilbill(template_c)
-            reebill_a_0 = example_data.get_reebill(acc_a, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            reebill_b_0 = example_data.get_reebill(acc_b, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            reebill_c_0 = example_data.get_reebill(acc_c, 0,
-                    start=date(2012,12,1), end=date(2013,1,1))
-            self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
-            self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
-            self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
             # new customers also need to be in nexus for 'fetch_oltp_data' to
             # work (using mock Skyliner)
             self.nexus_util._customers.extend([
@@ -1702,9 +1648,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_first_reebill(session, utilbill_a)
-            self.process.create_first_reebill(session, utilbill_b)
-            self.process.create_first_reebill(session, utilbill_c)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating
@@ -1725,10 +1668,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='SYSTEM_CHARGE',
                     description='System Charge',
                     quantity='1',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='11.2',
                     uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                    shared=True,
+                ),
+                RateStructureItem(
+                    rsi_binding='NOT_SHARED',
+                    description='System Charge',
+                    quantity='2',
+                    processingnote='',
+                    rate='3',
+                    uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                    shared=False,
                 )
             ]
             uprs_b.rates = uprs_c.rates = [
@@ -1736,23 +1688,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rsi_binding='DISTRIBUTION_CHARGE',
                     description='Distribution charge for all therms',
                     quantity='750.10197727',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='0.2935',
                     quantity_units='therms',
                     total='220.16',
-                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb'
+                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb',
+                    shared=True,
                 ),
                 RateStructureItem(
                     rsi_binding='PGC',
                     description='Purchased Gas Charge',
                     quantity='750.10197727',
-                    #rate_units='dollars',
                     processingnote='',
                     rate='0.7653',
                     quantity_units='therms',
                     total='574.05',
-                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb'
+                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb',
+                    shared=True,
                 ),
             ]
             uprs_a.save(); uprs_b.save(); uprs_c.save()
@@ -1762,7 +1714,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'gas', date(2013,2,1), date(2013,3,1),
                      StringIO('February 2013 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
-            self.process.create_next_reebill(session, acc_a)
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
@@ -1771,29 +1722,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     period_start=date(2013,2,1)).one())
             self.assertEqual([], uprs_a_2.rates)
 
-            # when the other bills have been marked as "procesed", they should
+            # when the other bills have been marked as "processed", they should
             # affect the new one.
             utilbill_a.processed = True
             utilbill_b.processed = True
             utilbill_c.processed = True
             self.process.regenerate_uprs(session, utilbill_a_2.id)
-
-            # the UPRS of A's reebill #2 should now match B and C, i.e. it
+            # the UPRS of A's 2nd bill should now match B and C, i.e. it
             # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
             # because together the other two have greater weight than A's
-            # reebill #1
+            # reebill #1. it should also contain the NOT_SHARED RSI because
+            # un-shared RSIs always get copied from each bill to its successor.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
                     period_start=date(2013,2,1)).one())
-            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
+            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
-
-            # make sure A's reebill #2 is computable after rolling (even though
-            # RSIs have changed, meaning some of the original charges may not
-            # have corresponding RSIs and had to be removed)
-            reebill_a_1 = self.reebill_dao.load_reebill(acc_a, 1)
-            reebill_a_2 = self.reebill_dao.load_reebill(acc_a, 2)
-            self.process.compute_reebill(session, reebill_a_2) 
 
             # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
             # a new bill is rolled, the UPRS it gets depends on whether it's
@@ -1802,7 +1746,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 rsi_binding='RIGHT_OF_WAY',
                 description='DC Rights-of-Way Fee',
                 quantity='750.10197727',
-                #rate_units='dollars',
                 processingnote='',
                 rate='0.03059',
                 quantity_units='therms',
@@ -1818,22 +1761,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                      date(2013,2,5), date(2013,3,5),
                      StringIO('February 2013 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
-            self.process.create_next_reebill(session, acc_b)
-            uprs_b_2 = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_b,
-                    period_start=date(2013,2,5)).one())
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
-            # https://www.pivotaltracker.com/story/show/47134189
-            ## B-2 and its utility bill should not contain any charges that
-            ## don't correspond to the rate structure.
-            #actual_charge_names = [c['rsi_binding'] for c in reebill_b_2\
-                    #._get_utilbill_for_service('gas')['chargegroups']
-                    #['All Charges']]
-            #hyp_charge_names = [c['rsi_binding'] for c in reebill_b_2\
-                    #._get_handle_for_service('gas')\
-                    #['hypothetical_chargegroups']['All Charges']]
+
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -2395,29 +2326,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill.utility = 'BGE'
             utilbill.rate_class = 'General Service - Schedule C'
 
-            # add some RSIs to the UPRS and CPRS, and charges to match
+            # add some RSIs to the UPRS, and charges to match
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
             uprs.rates = [
                 RateStructureItem(rsi_binding='A', description='UPRS only',
                         quantity='2', rate='3', quantity_units='kWh'),
-                RateStructureItem(rsi_binding='B', description='overridden',
-                        quantity='4', rate='5', quantity_units='kWh'),
-            ]
-            cprs.rates = [
                 RateStructureItem(rsi_binding='B', description=(
-                        'CPRS overrides UPRS'), quantity='6',  rate='7',
-                        quantity_units='therms'),
-                RateStructureItem(rsi_binding='C', description=('this one '
-                        'CPRS only'), quantity='8', rate='9',
-                        quantity_units='BTU')
+                    'not shared'), quantity='6',  rate='7',
+                    quantity_units='therms', shared=False),
             ]
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             doc['chargegroups'] = {'All Charges': [{'rsi_binding': rsi_binding,
                     'quantity': 0, 'rate': 0, 'total': 0}
-                    for rsi_binding in ('ABC')]}
+                    for rsi_binding in ('AB')]}
             uprs.save()
-            cprs.save()
             self.reebill_dao.save_utilbill(doc)
 
             # compute_utility_bill should update the document to match
@@ -2449,13 +2371,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'rate': 7,
                     'total': 42,
                     #'description': 'CPRS overrides UPRS',
-                }, {
-                    'rsi_binding': 'C',
-                    'quantity': 8,
-                    #'quantity_units': 'BTU',
-                    'rate': 9,
-                    'total': 72,
-                    #'description': 'CPRS only',
                 },
             ]}, doc['chargegroups']);
 
@@ -2553,7 +2468,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             utilbill = session.query(UtilBill).one()
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
             uprs.rates = [
                 RateStructureItem(
                     rsi_binding='NEW_1',
@@ -2564,23 +2478,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 ),
                 RateStructureItem(
                     rsi_binding='NEW_2',
-                    description='ignored because overridden by CPRS',
-                    quantity='3',
-                    quantity_units='kWh',
-                    rate='4',
-                )
-            ]
-            cprs.rates = [
-                RateStructureItem(
-                    rsi_binding='NEW_2',
                     description='a charge for this will be added too',
                     quantity='5',
                     quantity_units='therms',
                     rate='6',
+                    shared=False,
                 )
             ]
             uprs.save()
-            cprs.save()
 
             self.process.refresh_charges(session, utilbill.id)
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -2619,8 +2524,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         )
         uprs.rates = [bad_rsi]
         uprs.save()
-        cprs.rates = []
-        cprs.save()
         from billing.processing.exceptions import RSIError
         with self.assertRaises(RSIError) as e:
             self.process.refresh_charges(session, utilbill.id)

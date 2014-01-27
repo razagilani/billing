@@ -926,20 +926,9 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def regenerate_uprs(self, utilbill_id, **args):
+    def regenerate_rs(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.regenerate_uprs(session, utilbill_id)
-            # NOTE utility bill is not automatically computed after rate
-            # structure is changed. nor are charges updated to match.
-            return self.dumps({'success': True})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def regenerate_cprs(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            self.process.regenerate_cprs(session, utilbill_id)
             # NOTE utility bill is not automatically computed after rate
             # structure is changed. nor are charges updated to match.
             return self.dumps({'success': True})
@@ -1537,27 +1526,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def uprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
+    def rsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
         '''AJAX request handler for "Shared Rate Structure Items" grid.
         '''
         return self.rsi_crud(utilbill_id, 'uprs', xaction, reebill_sequence,
                 reebill_version, kwargs.get('rows'))
 
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def cprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
-            reebill_version=None, **kwargs):
-        '''AJAX request handler for "Individual Rate Structure Items" grid.
-        '''
-        return self.rsi_crud(utilbill_id, 'cprs', xaction, reebill_sequence,
-                reebill_version, kwargs.get('rows'))
-
     def rsi_crud(self, utilbill_id, rsi_type, xaction, reebill_sequence,
             reebill_version, rows):
-        '''Performs all CRUD operations on the UPRS or CPRS of the utility bill
+        '''Performs all CRUD operations on the UPRS of the utility bill
         given by its MySQL id (and reebill_sequence and reebill_version if
         non-None). 'xaction' is one of the Ext-JS operation names "create",
         "read", "update", "destroy". If 'xaction' is not "read", 'rows' should
@@ -1595,6 +1573,11 @@ class BillToolBridge:
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
 
+                    # Fix boolean values that are interpreted as strings
+                    if row['shared'] == "false":
+                        row['shared'] = False
+                    else:
+                        row['shared'] = True
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
                     # new one that will replace it (if there is one)

@@ -29,7 +29,7 @@ class UtilBillTest(utils.TestCase):
                 {'rsi_binding': 'BLOCK_1', 'quantity': 0},
                 {'rsi_binding': 'BLOCK_2', 'quantity': 0},
                 {'rsi_binding': 'BLOCK_3', 'quantity': 0},
-                {'rsi_binding': 'REFERENCES_CPRS', 'quantity': 0},
+                {'rsi_binding': 'REFERENCES_ANOTHER', 'quantity': 0},
             ]},
             'meters': [{
                 'present_read_date': date(2000,2,1),
@@ -52,10 +52,10 @@ class UtilBillTest(utils.TestCase):
             type='UPRS',
             rates=[
                 RateStructureItem(
-                  rsi_binding='CONSTANT',
-                  quantity='50',
-                  quantity_units='dollars',
-                  rate='0.2',
+                    rsi_binding='CONSTANT',
+                    quantity='100',
+                    quantity_units='dollars',
+                    rate='0.4',
                 ),
                 RateStructureItem(
                   rsi_binding='LINEAR',
@@ -88,9 +88,10 @@ class UtilBillTest(utils.TestCase):
                   rate='0.1',
                 ),
                 RateStructureItem(
-                    rsi_binding='REFERENCES_CPRS',
+                    rsi_binding='REFERENCES_ANOTHER',
                     # TODO also try "total" here
-                    quantity='USED_IN_UPRS.quantity + USED_IN_UPRS.rate',
+                    quantity='REFERENCED_BY_ANOTHER.quantity + '
+                             'REFERENCED_BY_ANOTHER.rate',
                     quantity_units='therms',
                     rate='1',
                 ),
@@ -100,34 +101,19 @@ class UtilBillTest(utils.TestCase):
                   quantity_units='therms',
                   rate='1',
                 ),
-            ]
-        )
-
-        cprs = RateStructure(
-            id=ObjectId(),
-            type='CPRS',
-            registers=[],
-            rates=[
-                # this RSI should override the "CONSTANT" RSI in 'uprs'
-                RateStructureItem(
-                    rsi_binding='CONSTANT',
-                    quantity='100',
-                    quantity_units='dollars',
-                    rate='0.4',
-                ),
                 # this RSI has no charge associated with it, but is used to
-                # provide identifiers in the formula of the "REFERENCES_CPRS"
+                # provide identifiers in the formula of the "REFERENCES_ANOTHER"
                 # RSI in 'uprs'
                 RateStructureItem(
-                    rsi_binding='USED_IN_UPRS',
+                    rsi_binding='REFERENCED_BY_ANOTHER',
                     quantity='2',
                     quantity_units='therms',
                     rate='3',
                 )
-            ],
+            ]
         )
 
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
 
         # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
@@ -142,7 +128,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(161,
@@ -150,7 +136,7 @@ class UtilBillTest(utils.TestCase):
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(51,
@@ -158,7 +144,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(236,
@@ -166,7 +152,7 @@ class UtilBillTest(utils.TestCase):
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(1,
@@ -174,7 +160,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(46,
@@ -420,13 +406,11 @@ class UtilBillTest(utils.TestCase):
             "utility" : "washgas"
         }
 
-        # UPRS was empty
-        uprs = RateStructure(type='UPRS', rates=[])
-
         # simplified version of document with _id 52b455467eb49a52d23d105c
-        cprs =  RateStructure.from_json('''{
+        # (originally this was a CPRS with an empty UPRS)
+        uprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
-            "type" : "CPRS",
+            "type" : "UPRS",
             "rates" : [
                 {
                     "rate" : "1",
@@ -479,7 +463,7 @@ class UtilBillTest(utils.TestCase):
         }''')
 
         # this should not raise an exception
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
 
 
     def test_compute_charge_without_rsi(self):
@@ -525,7 +509,7 @@ class UtilBillTest(utils.TestCase):
         # compute_all_charges should raise a KeyError if not all charges have
         # an RSI
         self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
-                uprs, cprs)
+                uprs)
 
     def test_get_service_address(self):
         utilbill_doc = example_data.get_utilbill_dict('10003')
@@ -565,28 +549,16 @@ class UtilBillTest(utils.TestCase):
                 ),
                 RateStructureItem(
                     rsi_binding='NEW_2',
-                    description='ignored because overridden by CPRS',
-                    quantity='3',
-                    quantity_units='kWh',
-                    rate='4',
-                )
-            ]
-        )
-        cprs = RateStructure(
-            id=ObjectId(),
-            type='CPRS',
-            rates=[
-                RateStructureItem(
-                    rsi_binding='NEW_2',
                     description='a charge for this will be added too',
                     quantity='5',
                     quantity_units='therms',
                     rate='6',
+                    shared=False,
                 )
             ]
         )
 
-        mongo.refresh_charges(utilbill_doc, uprs, cprs)
+        mongo.refresh_charges(utilbill_doc, uprs)
 
         self.maxDiff = None
         self.assertEqual({
