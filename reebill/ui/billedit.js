@@ -46,6 +46,62 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 /* Constructor for menus that show versions of utility bills in
  * utility-bill-editing tabs */
 
+///////////////////////////////////////////////////
+//
+//         CUSTOM COMPONENTS
+//  TODO: Move this into a seperate file with the new design
+
+Ext.ns('Ext.ux.grid');
+
+/**
+ * A Column definition class which renders enum data fields.
+ * @class Ext.ux.grid.CheckboxColumn
+ * @extends Ext.grid.Column
+ * @author Tran Cong Ly - tcl_java@yahoo.com - http://5cent.net
+ * Create the column:
+ *   
+ v ar cm = new Ext.grid.ColumnModel([                                    *
+ new Ext.ux.grid.CheckboxColumn({
+     header: 'Header #1',
+     dataIndex: 'field_name_1'
+     },
+     {
+         xtype: 'checkboxcolumn',
+         header: 'Header #2',
+         dataIndex: 'field_name_2',
+         on: 1,
+         off: 0
+         },
+         {
+             xtype: 'checkboxcolumn',
+             header: 'Header #3',
+             dataIndex: 'field_name_3',
+             on: 'abc',
+             off: 'def'
+             }])
+             
+             */
+Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
+    on: true,
+    off: false,
+    constructor: function (cfg) {
+        Ext.ux.grid.CheckboxColumn.superclass.constructor.call(this, cfg);
+        this.editor = new Ext.form.Field();
+        var cellEditor = this.getCellEditor(),
+                                        on = this.on,
+                                        off = this.off;
+                                        cellEditor.on('startedit', function (el, v) {
+                                            cellEditor.setValue(String(v) == String(on) ? off : on);
+                                            cellEditor.hide();
+                                        });
+                                        this.renderer = function (value, metaData, record, rowIndex, colIndex, store) {
+                                            metaData.css += ' x-grid3-check-col-td';
+                                            return '<div class="x-grid3-check-col' + (String(value) == String(on) ? '-on' : '') + '"></div>';
+                                        }
+    }
+});
+Ext.grid.Column.types['checkboxcolumn'] = Ext.ux.grid.CheckboxColumn;  
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -2982,6 +3038,7 @@ function reeBillReady() {
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         UPRSRSIGrid.setDisabled(false);
+        console.log(store, records, options);
     });
 
     // grid's data store callback for when data is edited
@@ -3033,6 +3090,13 @@ function reeBillReady() {
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
+            },{
+                xtype: 'checkboxcolumn',
+                header: 'Shared',
+                dataIndex: 'shared',
+                on: 1,
+                off: 0,
+                width: 60
             },{
                 header: 'Quantity',
                 id: 'quantity',
@@ -3136,7 +3200,8 @@ function reeBillReady() {
         store: UPRSRSIStore,
         enableColumnMove: true,
         stripeRows: true,
-        clicksToEdit: 2
+        clicksToEdit: 2,
+        flex:1
     });
 
     UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3164,28 +3229,7 @@ function reeBillReady() {
         },
         items: [
             rsUBVersionMenu,
-            {
-                xtype:'panel',
-                flex: 1,
-                border: false,
-                layout:'border',
-                items: [
-                    {
-                        xtype: 'panel',
-                        region: 'north',
-                        border: false,
-                        split: true,
-                        //layout: 'fit',
-                        layoutConfig : {
-                            pack : 'start',
-                            align : 'stretch',
-                        },
-                        items: [UPRSRSIGrid],
-                        minHeight: 0,
-                        //height: 300,
-                    },
-                ],
-            },
+            UPRSRSIGrid,
         ],
     });
 
