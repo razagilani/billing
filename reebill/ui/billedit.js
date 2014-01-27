@@ -49,7 +49,8 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 ///////////////////////////////////////////////////
 //
 //         CUSTOM COMPONENTS
-//  TODO: Move this into a seperate file with the new design
+//  TODO: Move this into a seperate file
+//  once we migrate to ExtJS4 and use events properly
 
 Ext.ns('Ext.ux.grid');
 
@@ -2915,12 +2916,12 @@ function reeBillReady() {
     // Rate Structure Tab
 
 
-    var initialUPRSRSI = {
+    var initialRSI = {
         rows: [],
         total: 0
     };
 
-    var UPRSRSIReader = new Ext.data.JsonReader({
+    var RSIReader = new Ext.data.JsonReader({
         //idProperty: 'id',
         root: 'rows',
         totalProperty: 'total',
@@ -2942,28 +2943,28 @@ function reeBillReady() {
         ]
     });
 
-    var UPRSRSIWriter = new Ext.data.JsonWriter({
+    var RSIWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
         writeAllFields: true,
         listful: true
     });
 
-    var UPRSRSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/uprsrsi',
+    var RSIStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/rsi',
         disableCaching: true,
     });
-    UPRSRSIStoreProxyConn.autoAbort = true;
+    RSIStoreProxyConn.autoAbort = true;
 
-    var UPRSRSIStoreProxy = new Ext.data.HttpProxy(UPRSRSIStoreProxyConn);
+    var RSIStoreProxy = new Ext.data.HttpProxy(RSIStoreProxyConn);
 
-    var UPRSRSIStore = new Ext.data.JsonStore({
-        proxy: UPRSRSIStoreProxy,
+    var RSIStore = new Ext.data.JsonStore({
+        proxy: RSIStoreProxy,
         autoSave: true,
-        reader: UPRSRSIReader,
-        writer: UPRSRSIWriter,
+        reader: RSIReader,
+        writer: RSIWriter,
         //baseParams: { account:selected_account, sequence: selected_sequence},
-        data: initialUPRSRSI,
+        data: initialRSI,
         root: 'rows',
         idProperty: 'id',
         fields: [
@@ -2980,12 +2981,11 @@ function reeBillReady() {
         ],
     });
 
-    UPRSRSIStore.on('save', function (store, batch, data) {
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+    RSIStore.on('save', function (store, batch, data) {
     });
 
-    UPRSRSIStore.on('beforeload', function (store, options) {
-        UPRSRSIGrid.setDisabled(true);
+    RSIStore.on('beforeload', function (store, options) {
+        RSIGrid.setDisabled(true);
         options.params.utilbill_id = selected_utilbill.id;
         
         //Include the reebill's associated sequence and version if the utilbill is associated with one
@@ -3010,7 +3010,7 @@ function reeBillReady() {
         }
     });
 
-    UPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+    RSIStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.utilbill_id = selected_utilbill.id;
         //Include the reebill's associated sequence and version if the utilbill is associated with one
         record = rsUBVersionMenu.selected_record
@@ -3035,18 +3035,17 @@ function reeBillReady() {
     });
 
     // fired when the datastore has completed loading
-    UPRSRSIStore.on('load', function (store, records, options) {
+    RSIStore.on('load', function (store, records, options) {
         // the grid is disabled by the panel that contains it  
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
-        UPRSRSIGrid.setDisabled(false);
+        RSIGrid.setDisabled(false);
         console.log(store, records, options);
     });
 
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    UPRSRSIStore.on('update', function(){
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+    RSIStore.on('update', function(){
     });
 
     // Because of a bug in ExtJS, a record id that has been changed on the server
@@ -3056,27 +3055,27 @@ function reeBillReady() {
     // and the following function will replace the store's records
     // with the returned records from the server.
     // For more explanaition see 63585822
-    UPRSRSIStore.on('write', function(store, action, result, res, rs) {
-        var selected_record_id = UPRSRSIStore.indexOf(UPRSRSIGrid.getSelectionModel().getSelected());
-        UPRSRSIGrid.getSelectionModel().clearSelections();
-        UPRSRSIStore.loadData(res.raw, false);
-        if (selected_record_id < UPRSRSIStore.getCount()) {
-            UPRSRSIGrid.getSelectionModel().selectRow(selected_record_id)
+    RSIStore.on('write', function(store, action, result, res, rs) {
+        var selected_record_id = RSIStore.indexOf(RSIGrid.getSelectionModel().getSelected());
+        RSIGrid.getSelectionModel().clearSelections();
+        RSIStore.loadData(res.raw, false);
+        if (selected_record_id < RSIStore.getCount()) {
+            RSIGrid.getSelectionModel().selectRow(selected_record_id)
         }
         // Scroll based on action
         if (action == 'create'){
-            var lastrow = UPRSRSIStore.getCount() -1;
-            UPRSRSIGrid.getView().focusRow(lastrow);
-            UPRSRSIGrid.startEditing(lastrow, 0);
+            var lastrow = RSIStore.getCount() -1;
+            RSIGrid.getView().focusRow(lastrow);
+            RSIGrid.startEditing(lastrow, 0);
         }else if(action == 'update'){
-            UPRSRSIGrid.getView().focusRow(selected_record_id);
+            RSIGrid.getView().focusRow(selected_record_id);
         }
     });
     
-    UPRSRSIStore.on('beforesave', function() {
+    RSIStore.on('beforesave', function() {
     });
 
-    var UPRSRSIColModel = new Ext.grid.ColumnModel(
+    var RSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
@@ -3130,44 +3129,44 @@ function reeBillReady() {
         ]
     });
 
-    var UPRSRSIToolbar = new Ext.Toolbar({
+    var RSIToolbar = new Ext.Toolbar({
         items: [
             {
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'UPRSRSIInsertBtn',
+                id: 'RSIInsertBtn',
                 iconCls: 'icon-add',
                 text: 'Insert',
                 disabled: false,
                 handler: function()
                 {
-                    UPRSRSIGrid.stopEditing();
-                    var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
+                    RSIGrid.stopEditing();
+                    var RSIType = RSIGrid.getStore().recordType;
                     var defaultData = {};
-                    var r = new UPRSRSIType(defaultData);
-                    UPRSRSIStore.add([r]);
+                    var r = new RSIType(defaultData);
+                    RSIStore.add([r]);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'UPRSRSIRemoveBtn',
+                id: 'RSIRemoveBtn',
                 iconCls: 'icon-delete',
                 text: 'Remove',
                 disabled: true,
                 handler: function()
                 {
-                    UPRSRSIGrid.stopEditing();
-                    UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    UPRSRSIStore.setBaseParam("account", selected_account);
-                    UPRSRSIStore.setBaseParam("sequence", selected_sequence);
+                    RSIGrid.stopEditing();
+                    RSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    RSIStore.setBaseParam("account", selected_account);
+                    RSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
-                    var s = UPRSRSIGrid.getSelectionModel().getSelections();
+                    var s = RSIGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
-                        UPRSRSIStore.remove(r);
+                        RSIStore.remove(r);
                     }
                 }
             },{
@@ -3175,17 +3174,17 @@ function reeBillReady() {
             },
             {
                 xtype: 'button',
-                id: 'regenerateUPRSButton',
+                id: 'regenerateRSButton',
                 text: 'Regenerate from Prediction',
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/regenerate_uprs',
+                        url: 'http://'+location.host+'/reebill/regenerate_rs',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
-                                UPRSRSIGrid.setDisabled(true);
-                                UPRSRSIStore.reload();
+                                RSIGrid.setDisabled(true);
+                                RSIStore.reload();
                             }
                         },
                     });
@@ -3194,23 +3193,23 @@ function reeBillReady() {
         ]
     });
 
-    var UPRSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: UPRSRSIToolbar,
-        colModel: UPRSRSIColModel,
+    var RSIGrid = new Ext.grid.EditorGridPanel({
+        tbar: RSIToolbar,
+        colModel: RSIColModel,
         autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: UPRSRSIStore,
+        store: RSIStore,
         enableColumnMove: true,
         stripeRows: true,
         clicksToEdit: 2,
         flex:1
     });
 
-    UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+    RSIGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        UPRSRSIGrid.getTopToolbar().findById('UPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+        RSIGrid.getTopToolbar().findById('RSIRemoveBtn').setDisabled(sm.getCount() <1);
     });
   
 
@@ -3218,7 +3217,7 @@ function reeBillReady() {
     // Instantiate the Rate Structure panel 
     //
 
-    rsUBVersionMenu = new UBVersionMenu([UPRSRSIStore]);
+    rsUBVersionMenu = new UBVersionMenu([RSIStore]);
 
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
@@ -3231,14 +3230,14 @@ function reeBillReady() {
         },
         items: [
             rsUBVersionMenu,
-            UPRSRSIGrid,
+            RSIGrid,
         ],
     });
 
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
     rateStructurePanel.on('activate', function (panel) {
-        UPRSRSIStore.reload();
+        RSIStore.reload();
 
     });
 
