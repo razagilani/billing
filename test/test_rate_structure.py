@@ -300,13 +300,7 @@ class RateStructureDAOTest(unittest.TestCase):
                 # TODO
                 raise NotImplementedError
 
-        import logging
-        import sys
-        logger = logging.getLogger('RateStructureDAOTest')
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(logging.StreamHandler(sys.stderr))
-        self.dao = RateStructureDAO(rate_structure_class=MockRateStructure,
-                logger=logger)
+        self.dao = RateStructureDAO(rate_structure_class=MockRateStructure)
 
 
     def test_load_uprs_for_utilbill(self):

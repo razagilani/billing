@@ -379,20 +379,19 @@ class RateStructureDAO(object):
 
                 # update score and total weight for this binding
                 try:
-                    rsi_dict = next(rsi for rsi in uprs.rates if
-                            rsi.rsi_binding == binding)
+                    rsi = uprs.get_rsi(binding)
                 except StopIteration:
                     # binding not present in UPRS: add 0 * weight to score
                     pass
                 else:
-                    if rsi_dict.shared:
+                    if rsi.shared:
                         # binding present in UPRS and shared: add 1 * weight
                         # to score
                         scores[binding] += weight
                         # if this distance is closer than the closest occurence
                         # seen so far, put the RSI object in closest_occurrence
                         if distance < closest_occurrence[binding][0]:
-                            closest_occurrence[binding] = (distance, rsi_dict)
+                            closest_occurrence[binding] = (distance, rsi)
                     else:
                         # binding present in UPRS but un-shared
                         continue
