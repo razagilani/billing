@@ -2,10 +2,11 @@
 from datetime import date
 from StringIO import StringIO
 import unittest
-import pymongo
-import MySQLdb
-import sqlalchemy
-from billing.processing.rate_structure2 import RateStructure, RateStructureItem
+from mock import Mock
+from bson import ObjectId
+from mongoengine import DoesNotExist
+from billing.processing.rate_structure2 import RateStructure, \
+    RateStructureItem, RateStructureDAO
 from billing.processing.state import StateDB, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.util.dictutils import deep_map, subdict
@@ -215,6 +216,78 @@ class RateStructureTest(unittest.TestCase):
     def test_validate(self):
         self.uprs.rates.append(self.a)
         self.assertRaises(ValueError, self.uprs.validate)
+
+class RateStructureDAOTest(unittest.TestCase):
+    def setUp(self):
+        self.rs_1 = RateStructure(id=ObjectId(), rates=[
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='1',
+                rate='1',
+                shared=True,
+            )
+        ])
+        self.rs_2 = RateStructure(id=ObjectId(), rates=[
+            RateStructureItem(
+                rsi_binding='B',
+                quantity='2',
+                rate='2',
+                shared=False, )
+        ])
+        self.utilbill_1 = Mock()
+        self.utilbill_1.uprs_document_id = str(self.rs_1.id)
+        self.utilbill_2 = Mock()
+        self.utilbill_2.uprs_document_id = str(self.rs_2.id)
+
+        class MockQuerySet(object):
+            def __init__(self, *documents):
+                self._documents = documents
+
+            def get(self, **kwargs):
+                document_subset = [d for d in self._documents
+                    if all(hasattr(d, k) and getattr(d, k) == v
+                        for k, v in kwargs.iteritems())]
+                # return MockQuerySet(*document_subset)
+
+                if len(document_subset) == 0:
+                    raise DoesNotExist
+                if len(document_subset) > 1:
+                    raise MockRateStructure.MultipleObjectsReturned
+                return document_subset[0]
+
+        class MockRateStructure(object):
+            objects = MockQuerySet(self.rs_1, self.rs_2)
+
+            # in MongoEngine, each class has its own MultipleObjectsReturned
+            # exception
+            class MultipleObjectsReturned(Exception):
+                pass
+
+            def save(self):
+                # TODO
+                raise NotImplementedError
+
+            def delete(self):
+                # TODO
+                raise NotImplementedError
+
+        self.dao = RateStructureDAO(rate_structure_class=MockRateStructure)
+
+
+    def test_load_uprs_for_utilbill(self):
+        self.assertEqual(self.rs_1,
+                self.dao.load_uprs_for_utilbill(self .utilbill_1))
+        self.assertEqual(self.rs_2,
+                self.dao.load_uprs_for_utilbill(self .utilbill_2))
+
+        unknown_utilbill = Mock()
+        unknown_utilbill.uprs_document_id = '3'*24
+        self.assertRaises(DoesNotExist, self.dao.load_uprs_for_utilbill,
+                unknown_utilbill)
+
+    def test_get_probable_uprs(self):
+        # TODO
+        pass
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
