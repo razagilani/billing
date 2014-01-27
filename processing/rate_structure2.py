@@ -7,7 +7,8 @@ import sys
 from math import sqrt, log, exp
 from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
+from mongoengine import StringField, ListField, EmbeddedDocumentField
+from mongoengine import DateTimeField, BooleanField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NotUniqueException
@@ -38,203 +39,6 @@ def exp_weight_with_min(a, b, minimum):
     always nonnegative.'''
     return lambda x: max(a**(x * b), minimum)
 
-
-class RateStructureDAO(object):
-    '''Loads and saves RateStructure objects. Also responsible for generating
-    predicted UPRSs based on existing ones.
-    '''
-    def __init__(self, logger=None):
-        # TODO instead of using None as logger, use a logger that does nothing,
-        # to avoid checking if it's None
-        self.logger = logger
-
-    def _get_probable_rsis(self, session, utility, service,
-            rate_class, period, distance_func=manhattan_distance,
-            weight_func=exp_weight_with_min(0.5, 7, 0.000001),
-            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
-            verbose=False):
-        '''Returns list of RateStructureItems: a guess of what RSIs will be in
-        a new bill for the given rate structure during the given period. The
-        list will be empty if no guess could be made. 'threshold' is the
-        minimum score (between 0 and 1) for an RSI to be included. 'ignore' is
-        an optional function to exclude UPRSs from the input data.
-        '''
-        # load all UPRSs and their utility bill period dates (to avoid repeated
-        # queries)
-        all_uprss = [(uprs, start, end) for (uprs, start, end) in
-                self._load_uprss_for_prediction(session, utility,
-                service, rate_class) if not ignore(uprs)]
-
-        # find every RSI binding that ever existed for this rate structure
-        bindings = set()
-        for uprs, _, _ in all_uprss:
-            for rsi in uprs.rates:
-                bindings.add(rsi.rsi_binding)
-
-        # for each UPRS period, update the presence/absence score, total
-        # presence/absence weight (for normalization), and full RSI for the
-        # occurrence of each RSI binding closest to the target period
-        scores = defaultdict(lambda: 0)
-        total_weight = defaultdict(lambda: 0)
-        closest_occurrence = defaultdict(lambda: (sys.maxint, None))
-        for binding in bindings:
-            for uprs, start, end in all_uprss:
-                # calculate weighted distance of this UPRS period from the
-                # target period
-                distance = distance_func((start, end), period)
-                weight = weight_func(distance)
-
-                # update score and total weight for this binding
-                try:
-                    rsi_dict = next(rsi for rsi in uprs.rates if
-                            rsi.rsi_binding == binding)
-                except StopIteration:
-                    # binding not present in UPRS: add 0 * weight to score
-                    pass
-                else:
-                    # binding present in UPRS: add 1 * weight to score
-                    scores[binding] += weight
-                    # if this distance is closer than the closest occurence
-                    # seen so far, put the RSI object in closest_occurrence
-                    if distance < closest_occurrence[binding][0]:
-                        closest_occurrence[binding] = (distance, rsi_dict)
-                # whether the binding was present or not, update total weight
-                total_weight[binding] += weight
-
-
-        # include in the result all RSI bindings whose normalized weight
-        # exceeds 'threshold', with the rate and quantity formulas it had in
-        # its closest occurrence.
-        result = []
-        if verbose:
-            self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
-                    rate_class, period[0], period[1]))
-            self.logger.info('%35s %s %s' % ('binding:', 'weight:',
-                'normalized weight %:'))
-        for binding, weight in scores.iteritems():
-            normalized_weight = weight / total_weight[binding] if \
-                    total_weight[binding] != 0 else 0
-            if self.logger:
-                self.logger.info('%35s %f %5d' % (binding, weight,
-                        100 * normalized_weight))
-
-            # note that total_weight[binding] will never be 0 because it must
-            # have occurred somewhere in order to occur in 'scores'
-            if normalized_weight >= threshold:
-                rsi_dict = closest_occurrence[binding][1]
-                rate, quantity = 0, 0
-                try:
-                    rate = rsi_dict.rate
-                    quantity = closest_occurrence[binding][1].quantity
-                except KeyError:
-                    if self.logger:
-                        self.logger.error('malformed RSI: %s' % rsi_dict)
-                result.append(RateStructureItem(rsi_binding=binding, rate=rate,
-                    quantity=quantity))
-        return result
-
-    def get_probable_uprs(self, session, utility, service, rate_class,
-            start, end, ignore=lambda x: False):
-        '''Returns a guess of the rate structure for a new utility bill of the
-        given utility name, service, and dates.
-        
-        'ignore' is a boolean-valued function that should return True when
-        given a UPRS document should be excluded from prediction.
-        
-        The returned document has no _id, so the caller can add one before
-        saving.'''
-        return RateStructure(type='UPRS', rates=self._get_probable_rsis(
-                session, utility, service, rate_class, (start, end),
-                ignore=ignore))
-
-    def load_uprs_for_utilbill(self, utilbill, reebill=None):
-        '''Loads and returns a UPRS document for the given state.Utilbill.
-
-        If 'reebill' is None, this is the "current" document, i.e. the one
-        whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is the UPRS document for the version of the
-        utility bill associated with the current reebill--either the same as
-        the "current" one if the reebill is unissued, or a frozen one (whose
-        _id is in the utilbill_reebill table) if the reebill is issued.'''
-        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
-                is None:
-            return self._load_rs_by_id(utilbill.uprs_document_id)
-        return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
-
-    def load_cprs_for_utilbill(self, utilbill, reebill=None):
-        '''Loads and returns a CPRS document for the given state.Utilbill.
-
-        If 'reebill' is None, this is the "current" document, i.e. the one
-        whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is the CPRS document for the version of the
-        utility bill associated with the current reebill--either the same as
-        the "current" one if the reebill is unissued, or a frozen one (whose
-        _id is in the utilbill_reebill table) if the reebill is issued.'''
-        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
-                is None:
-            return self._load_rs_by_id(utilbill.cprs_document_id)
-        return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
-
-    def _load_rs_by_id(self, _id):
-        '''Loads and returns a rate structure document by its _id (string).
-        '''
-        assert isinstance(_id, basestring)
-        doc = RateStructure.objects.get(id=ObjectId(_id))
-        return doc
-
-    def _delete_rs_by_id(self, _id):
-        '''Deletes the rate structure document with the given _id.
-        '''
-        result = RateStructure.objects.get(id=ObjectId(_id)).delete()
-        # TODO is there a way to specify safe mode or get the result "err" and
-        # "n"? look at 'write_concern' argument
-
-    def _load_uprss_for_prediction(self, session, utility_name, service,
-            rate_class, verbose=False):
-        '''Returns a list of (UPRS document, start date, end date) tuples with
-        the given utility and rate structure name.
-        '''
-        # skip Hypothetical utility bills--they have a UPRS document, but it's
-        # fake, so it should not count toward the probability of RSIs being
-        # included in other bills. (ignore utility bills that are
-        # 'SkylineEstimated' or 'Hypothetical')
-        utilbills = session.query(UtilBill)\
-                .filter(UtilBill.service==service)\
-                .filter(UtilBill.utility==utility_name)\
-                .filter(UtilBill.rate_class==rate_class)\
-                .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
-                .filter(UtilBill.processed==True)
-        result = []
-        for utilbill in utilbills:
-            if utilbill.uprs_document_id is None:
-                self.logger.warning(('ignoring utility bill for %(account)s '
-                    'from %(start)s to %(end)s: has state %(state)s but lacks '
-                    'uprs_document_id') % {'state': utilbill.state,
-                    'account': utilbill.customer.account, 'start':
-                    utilbill.period_start, 'end': utilbill.period_end})
-                continue
-                            
-            # load UPRS document for the current version of this utility bill
-            # (it never makes sense to use a frozen utility bill's URPS here
-            # because the only UPRSs that should count are "current" ones)
-            doc = self.load_uprs_for_utilbill(utilbill)
-            # only include RS docs that correspond to a current utility bill
-            # (not one belonging to a reebill that has been corrected); this
-            # will be subtly broken until old versions of utility bills are
-            # excluded from MySQL: see
-            # https://www.pivotaltracker.com/story/show/51683847
-            result.append((doc, utilbill.period_start, utilbill.period_end))
-        return result
-
-    def delete_rs_docs_for_utilbill(self, utilbill):
-        '''Removes the UPRS and CPRS documents for the given state.UtilBill.
-        '''
-        self._delete_rs_by_id(utilbill.uprs_document_id)
-        self._delete_rs_by_id(utilbill.cprs_document_id)
-
-
 class RateStructureItem(EmbeddedDocument):
     '''A Rate Structure Item describes how a particular charge is computed, and
     computes the charge according to a formula using various named values as
@@ -249,6 +53,8 @@ class RateStructureItem(EmbeddedDocument):
 
     # descriptive human-readable name
     description = StringField(required=True, default='')
+
+    shared = BooleanField(required=True, default=True)
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
@@ -292,13 +98,13 @@ class RateStructureItem(EmbeddedDocument):
             formula = getattr(self, name)
             if formula == '':
                 raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                        self.rsi_binding, name))
+                    self.rsi_binding, name))
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
                 raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                        '"%s":\n%s' % (name, self.rsi_binding,
-                        getattr(self, name)))
+                                         '"%s":\n%s' % (name, self.rsi_binding,
+                getattr(self, name)))
         return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
@@ -315,7 +121,7 @@ class RateStructureItem(EmbeddedDocument):
         def _is_built_in_function(node):
             try:
                 return eval('type(%s)' % node.id).__name__ \
-                        == 'builtin_function_or_method'
+                       == 'builtin_function_or_method'
             except NameError:
                 return False
 
@@ -324,7 +130,7 @@ class RateStructureItem(EmbeddedDocument):
         # determined by the function above)
         quantity_tree, rate_tree = self._parse_formulas()
         for node in chain.from_iterable((ast.walk(quantity_tree),
-                ast.walk(rate_tree))):
+        ast.walk(rate_tree))):
             if isinstance(node, ast.Name) and not _is_built_in_function(node):
                 yield node.id
 
@@ -343,8 +149,8 @@ class RateStructureItem(EmbeddedDocument):
             isinstance(k, basestring) and isinstance(v, dict)
             and all(
                 isinstance(k2, basestring) and isinstance(v2, (float, int))
-            for k2, v2 in v.iteritems())
-        for k, v in register_quantities.iteritems())
+                    for k2, v2 in v.iteritems())
+                for k, v in register_quantities.iteritems())
 
         # check syntax
         self._parse_formulas()
@@ -359,7 +165,7 @@ class RateStructureItem(EmbeddedDocument):
                 self.rate = rate
                 self.total = total
         register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
-                reg_name, data in register_quantities.iteritems()}
+            reg_name, data in register_quantities.iteritems()}
 
         def compute(name):
             formula = getattr(self, name)
@@ -368,7 +174,7 @@ class RateStructureItem(EmbeddedDocument):
                 return eval(formula, {}, register_quantities)
             except Exception as e:
                 raise FormulaError(('Error when computing %s for RSI "%s": '
-                        '%s') % (name, self.rsi_binding, e))
+                                    '%s') % (name, self.rsi_binding, e))
         return compute('quantity'), compute('rate')
 
     def to_dict(self):
@@ -384,10 +190,11 @@ class RateStructureItem(EmbeddedDocument):
             #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
+            'shared': self.shared
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-            rate=None, round_rule=None, description=None):
+                    rate=None, round_rule=None, description=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
         if quantity is not None:
@@ -403,24 +210,24 @@ class RateStructureItem(EmbeddedDocument):
 
     def __repr__(self):
         return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
-            self.rate)
+        self.rate)
 
     def __eq__(self, other):
         return (
-                self.rsi_binding,
-                self.description,
-                self.quantity,
-                self.quantity_units,
-                self.rate,
-                self.round_rule
-           ) == (
-                other.rsi_binding,
-                other.description,
-                other.quantity,
-                other.quantity_units,
-                other.rate,
-                other.round_rule
-            )
+                   self.rsi_binding,
+                   self.description,
+                   self.quantity,
+                   self.quantity_units,
+                   self.rate,
+                   self.round_rule
+               ) == (
+                   other.rsi_binding,
+                   other.description,
+                   other.quantity,
+                   other.quantity_units,
+                   other.rate,
+                   other.round_rule
+               )
 
     def __hash__(self):
         return sum([
@@ -432,15 +239,6 @@ class RateStructureItem(EmbeddedDocument):
             hash(self.round_rule),
         ])
 
-# class Register(EmbeddedDocument):
-#     # this is the only field that has any meaning, since a "register" in a rate
-#     # structure document really just means a name
-#     register_binding = StringField(required=True)
-#
-#     # these are random junk fields that were inserted in the DB in Rich's code
-#     quantity = StringField()
-#     quantity_units = StringField()
-#     description = StringField()
 
 class RateStructure(Document):
     meta = {
@@ -453,7 +251,7 @@ class RateStructure(Document):
     type = StringField(required=True)
 
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
-            default=[])
+        default=[])
 
     @classmethod
     def combine(cls, uprs, cprs):
@@ -463,7 +261,8 @@ class RateStructure(Document):
         '''
         combined_dict = uprs.rsis_dict()
         combined_dict.update(cprs.rsis_dict())
-        return RateStructure(registers=[], rates=combined_dict.values())
+        return RateStructure(type='UPRS', registers=[],
+            rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to
@@ -519,7 +318,216 @@ class RateStructure(Document):
         '''
         self.validate()
         return next(rsi for rsi in self.rates if rsi.rsi_binding ==
-                 rsi_binding)
+                                                 rsi_binding)
+
+class RateStructureDAO(object):
+    '''Loads and saves RateStructure objects. Also responsible for generating
+    predicted UPRSs based on existing ones.
+    '''
+    def __init__(self, rate_structure_class=RateStructure, logger=None):
+        ''''rate_structure_class': class to use for loading/saving RateStructure
+        objects, the RateStructure class itself by default. For testing, this
+        may be replaced with a mock object.
+
+        'logger': optional Logger object to record messages about rate
+        structure prediction.
+        '''
+        # TODO instead of using None as logger, use a logger that does nothing,
+        # to avoid checking if it's None
+        self._rate_structure_class = rate_structure_class
+        self.logger = logger
+
+    def _get_probable_rsis(self, utilbill_loader, utility, service,
+            rate_class, period, distance_func=manhattan_distance,
+            weight_func=exp_weight_with_min(0.5, 7, 0.000001),
+            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
+            verbose=False):
+        '''Returns list of RateStructureItems: a guess of what RSIs will be in
+        a new bill for the given rate structure during the given period. The
+        list will be empty if no guess could be made.
+
+        'threshold' is the minimum score (between 0 and 1) for an RSI to be
+        included.
+
+        'ignore' is an optional function to exclude UPRSs from the input data.
+        '''
+        # load all UPRSs and their utility bill period dates (to avoid repeated
+        # queries)
+        all_uprss = [(uprs, start, end) for (uprs, start, end) in
+                self._load_uprss_for_prediction(utilbill_loader,
+                utility, service, rate_class) if not ignore(uprs)]
+
+        # find the RSI binding of every "shared" RSI that ever existed for
+        # this rate structure
+        bindings = set()
+        for uprs, _, _ in all_uprss:
+            for rsi in uprs.rates:
+                bindings.add(rsi.rsi_binding)
+
+        # for each UPRS period, update the presence/absence score, total
+        # presence/absence weight (for normalization), and full RSI for the
+        # occurrence of each RSI binding closest to the target period
+        scores = defaultdict(lambda: 0)
+        total_weight = defaultdict(lambda: 0)
+        closest_occurrence = defaultdict(lambda: (sys.maxint, None))
+        for binding in bindings:
+            for uprs, start, end in all_uprss:
+                # calculate weighted distance of this UPRS period from the
+                # target period
+                distance = distance_func((start, end), period)
+                weight = weight_func(distance)
+
+                # update score and total weight for this binding
+                try:
+                    rsi_dict = next(rsi for rsi in uprs.rates if
+                            rsi.rsi_binding == binding)
+                except StopIteration:
+                    # binding not present in UPRS: add 0 * weight to score
+                    pass
+                else:
+                    if rsi_dict.shared:
+                        # binding present in UPRS and shared: add 1 * weight
+                        # to score
+                        scores[binding] += weight
+                        # if this distance is closer than the closest occurence
+                        # seen so far, put the RSI object in closest_occurrence
+                        if distance < closest_occurrence[binding][0]:
+                            closest_occurrence[binding] = (distance, rsi_dict)
+                    else:
+                        # binding present in UPRS but un-shared
+                        continue
+                # whether the binding was present or not, update total weight
+                total_weight[binding] += weight
+
+
+        # include in the result all RSI bindings whose normalized weight
+        # exceeds 'threshold', with the rate and quantity formulas it had in
+        # its closest occurrence.
+        result = []
+        if verbose:
+            self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,
+                    rate_class, period[0], period[1]))
+            self.logger.info('%35s %s %s' % ('binding:', 'weight:',
+                'normalized weight %:'))
+        for binding, weight in scores.iteritems():
+            normalized_weight = weight / total_weight[binding] if \
+                    total_weight[binding] != 0 else 0
+            if self.logger:
+                self.logger.info('%35s %f %5d' % (binding, weight,
+                        100 * normalized_weight))
+
+            # note that total_weight[binding] will never be 0 because it must
+            # have occurred somewhere in order to occur in 'scores'
+            if normalized_weight >= threshold:
+                rsi_dict = closest_occurrence[binding][1]
+                rate, quantity = 0, 0
+                try:
+                    rate = rsi_dict.rate
+                    quantity = closest_occurrence[binding][1].quantity
+                except KeyError:
+                    if self.logger:
+                        self.logger.error('malformed RSI: %s' % rsi_dict)
+                result.append(RateStructureItem(rsi_binding=binding, rate=rate,
+                    quantity=quantity))
+        return result
+
+    def get_probable_uprs(self, utilbill_loader, utility, service, rate_class,
+            start, end, ignore=lambda x: False):
+        '''Returns a guess of the rate structure for a new utility bill of the
+        given utility name, service, and dates.
+        
+        'utilbill_loader': an object that has a 'load_utilbills' method
+        returning an iterable of state.UtilBills matching criteria given as
+        keyword arguments (see state.UtilBillLoader). For testing, this can be
+        replaced with a mock object.
+
+        'ignore' is a boolean-valued function that should return True when
+        given a UPRS document should be excluded from prediction.
+        
+        The returned document has no _id, so the caller can add one before
+        saving.'''
+        return RateStructure(type='UPRS', rates=self._get_probable_rsis(
+                utilbill_loader, utility, service, rate_class, (start, end),
+                ignore=ignore))
+
+    def load_uprs_for_utilbill(self, utilbill, reebill=None):
+        '''Loads and returns a UPRS document for the given state.Utilbill.
+
+        If 'reebill' is None, this is the "current" document, i.e. the one
+        whose _id is in the utilbill table.
+
+        If a ReeBill is given, this is the UPRS document for the version of the
+        utility bill associated with the current reebill--either the same as
+        the "current" one if the reebill is unissued, or a frozen one (whose
+        _id is in the utilbill_reebill table) if the reebill is issued.'''
+        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
+                is None:
+            return self._load_rs_by_id(utilbill.uprs_document_id)
+        return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
+
+    def _load_rs_by_id(self, _id):
+        '''Loads and returns a rate structure document by its _id (string).
+        '''
+        assert isinstance(_id, basestring)
+        doc = self._rate_structure_class.objects.get(id=ObjectId(_id))
+        return doc
+
+    def _delete_rs_by_id(self, _id):
+        '''Deletes the rate structure document with the given _id.
+        '''
+        result = self._rate_structure_class.objects.get(id=ObjectId(_id)).delete()
+        # TODO is there a way to specify safe mode or get the result "err" and
+        # "n"? look at 'write_concern' argument
+
+    def _load_uprss_for_prediction(self, utilbill_loader, utility_name,
+            service, rate_class, verbose=False):
+        '''Returns a list of (UPRS document, start date, end date) tuples with
+        the given utility and rate structure name.
+        '''
+        # skip Hypothetical utility bills--they have a UPRS document, but it's
+        # fake, so it should not count toward the probability of RSIs being
+        # included in other bills. (ignore utility bills that are
+        # 'SkylineEstimated' or 'Hypothetical')
+        # utilbills = session.query(UtilBill)\
+        #         .filter(UtilBill.service==service)\
+        #         .filter(UtilBill.utility==utility_name)\
+        #         .filter(UtilBill.rate_class==rate_class)\
+        #         .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
+        #         .filter(UtilBill.processed==True)
+        utilbills = utilbill_loader.load_real_utilbills(
+            service=service,
+            utility=utility_name,
+            rate_class=rate_class,
+            processed=True
+        )
+        result = []
+        for utilbill in utilbills:
+            if utilbill.uprs_document_id is None:
+                self.logger.warning(('ignoring utility bill for %(account)s '
+                    'from %(start)s to %(end)s: has state %(state)s but lacks '
+                    'uprs_document_id') % {'state': utilbill.state,
+                    'account': utilbill.customer.account, 'start':
+                    utilbill.period_start, 'end': utilbill.period_end})
+                continue
+                            
+            # load UPRS document for the current version of this utility bill
+            # (it never makes sense to use a frozen utility bill's URPS here
+            # because the only UPRSs that should count are "current" ones)
+            doc = self.load_uprs_for_utilbill(utilbill)
+            # only include RS docs that correspond to a current utility bill
+            # (not one belonging to a reebill that has been corrected); this
+            # will be subtly broken until old versions of utility bills are
+            # excluded from MySQL: see
+            # https://www.pivotaltracker.com/story/show/51683847
+            result.append((doc, utilbill.period_start, utilbill.period_end))
+        return result
+
+    def delete_rs_docs_for_utilbill(self, utilbill):
+        '''Removes the UPRS document for the given state.UtilBill.
+        '''
+        self._delete_rs_by_id(utilbill.uprs_document_id)
+
+
 
 if __name__ == '__main__':
     import mongoengine

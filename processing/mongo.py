@@ -322,9 +322,9 @@ def set_meter_read_period(utilbill_doc, start, end):
     meter['prior_read_date'], meter['present_read_date'] = start, end
 
 # TODO make this a method of a utility bill document class when one exists
-def refresh_charges(utilbill_doc, uprs, cprs):
+def refresh_charges(utilbill_doc, uprs):
     '''Replaces charges in the utility bill document with newly-created ones
-    based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
+    based on the Rate Structure Items in 'uprs'. A charge is created
     for every RSI. The charges are computed according to the rate structures.
     '''
     utilbill_doc['chargegroups'] = {'All Charges': [{
@@ -335,8 +335,7 @@ def refresh_charges(utilbill_doc, uprs, cprs):
         #'rate_units': 0,
         'total': 0,
         'description': rsi.description,
-    } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
-            key=itemgetter('rsi_binding'))]}
+    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))]}
 
 def _validate_charges(utilbill_doc, rate_structure):
     '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
@@ -352,20 +351,16 @@ def _validate_charges(utilbill_doc, rate_structure):
                            charge['rsi_binding'])
 
 # TODO make this a method of a utility bill document class when one exists
-def compute_all_charges(utilbill_doc, uprs, cprs):
+def compute_all_charges(utilbill_doc, uprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
     utility bill document so they're correct according to the formulas in the
-    RSIs in the given rate structures. RSIs in 'uprs' that have the same
-    'rsi_binding' as any RSI in 'cprs' are ignored.
+    RSIs in the given rate structures.
     '''
-    # catch any type errors in the rate structure documents up front to avoid
+    # catch any type errors in the rate structure document up front to avoid
     # confusing error messages later
     uprs.validate()
-    cprs.validate()
 
-    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
-    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    rate_structure = RateStructure.combine(uprs, cprs)
+    rate_structure = uprs
     rsis = rate_structure.rates
 
     # complain if any charge has an rsi_binding that does not match an RSI
@@ -674,7 +669,7 @@ class MongoReebill(object):
                     actual_total) * self.discount_rate
 
                 
-    def compute_charges(self, uprs, cprs):
+    def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill.
         '''
@@ -682,7 +677,7 @@ class MongoReebill(object):
         # process rate structures for all services
         for service in self.services:
             utilbill_doc = self._get_utilbill_for_service(service)
-            compute_all_charges(utilbill_doc, uprs, cprs)
+            compute_all_charges(utilbill_doc, uprs)
 
             # TODO temporary hack: duplicate the utility bill, set its register
             # quantities to the hypothetical values, recompute it, and then
@@ -716,7 +711,7 @@ class MongoReebill(object):
                         s_register['quantity']
 
             # compute the charges of the hypothetical utility bill
-            compute_all_charges(hypothetical_utilbill, uprs, cprs)
+            compute_all_charges(hypothetical_utilbill, uprs)
 
             # copy the charges from there into the reebill
             self.set_hypothetical_chargegroups_for_service(service,
@@ -1896,7 +1891,6 @@ class ReebillDAO(object):
         if utilbill.state == UtilBill.Hypothetical:
             assert utilbill.document_id == None
             assert utilbill.uprs_document_id == None
-            assert utilbill.cprs_document_id == None
             raise ValueError('No document for hypothetical utilty bill: %s'
                     % utilbill)
         # empty document_ids are legitimate because "hypothetical" utility

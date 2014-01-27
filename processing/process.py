@@ -27,7 +27,8 @@ from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
-from billing.processing.state import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
+    UtilBillLoader
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.util import nexus_util
@@ -99,7 +100,7 @@ class Process(object):
     def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
             reebill_version=None):
         '''Loads and returns a rate structure document of type 'rs_type'
-        ("uprs" or "cprs") for the utility bill given by 'utilbill_id' (MySQL
+        ("uprs" only) for the utility bill given by 'utilbill_id' (MySQL
         id). If the sequence and version of an issued reebill are given, the
         document returned will be the frozen version for the issued reebill.
         '''
@@ -108,11 +109,9 @@ class Process(object):
 
         if rs_type == 'uprs':
             load_method = self.rate_structure_dao.load_uprs_for_utilbill
-        elif rs_type == 'cprs':
-            load_method = self.rate_structure_dao.load_cprs_for_utilbill
         else:
-            raise ValueError(('Unknown "rs_type": expected "uprs" or "cprs", '
-                'got "%s"') % rs_type)
+            raise ValueError(('Unknown "rs_type": expected "uprs", '
+                    'got "%s"') % rs_type)
 
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
@@ -385,14 +384,12 @@ class Process(object):
         # which has no documents)
         session.add(new_utilbill)
         if state < UtilBill.Hypothetical:
-            doc, uprs, cprs = self._generate_docs_for_new_utility_bill(session,
+            doc, uprs = self._generate_docs_for_new_utility_bill(session,
                 new_utilbill)
             new_utilbill.document_id = str(doc['_id'])
             new_utilbill.uprs_document_id = str(uprs.id)
-            new_utilbill.cprs_document_id = str(cprs.id)
             self.reebill_dao.save_utilbill(doc)
             uprs.save()
-            cprs.save()
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -460,7 +457,7 @@ class Process(object):
 
 
     def _generate_docs_for_new_utility_bill(self, session, utilbill):
-        '''Returns utility bill doc, UPRS doc, CPRS doc for the given
+        '''Returns utility bill doc, UPRS doc for the given
         StateDB.UtilBill which is about to be added to the database, using the
         last utility bill with the same account, service, and rate class, or
         the account's template if no such bill exists. 'utilbill' must be at
@@ -470,18 +467,18 @@ class Process(object):
 
         # look for the last utility bill with the same account, service, and
         # rate class, (i.e. the last-ending before 'end'), ignoring
-        # Hypothetical ones. copy its mongo document and CPRS.
+        # Hypothetical ones. copy its mongo document.
         # TODO pass this predecessor in from upload_utility_bill?
         # see https://www.pivotaltracker.com/story/show/51749487
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     utilbill.customer.account, utilbill.period_start,
                     service=utilbill.service, utility=utilbill.utility,
-                    rate_class=utilbill.rate_class)
+                    rate_class=utilbill.rate_class, processed=True)
         except NoSuchBillException:
             # if this is the first bill ever for the account (or all the
             # existing ones are Hypothetical), use template for the utility
-            # bill document, and create new empty CPRS
+            # bill document
             doc = self.reebill_dao.load_utilbill_template(session,
                     utilbill.customer.account)
 
@@ -496,17 +493,18 @@ class Process(object):
                 'utility': utilbill.utility,
                 'rate_class': utilbill.rate_class,
             })
-            cprs = RateStructure(id=ObjectId(), type='CPRS', rates=[])
+            predecessor_uprs = RateStructure(type='UPRS', rates=[])
+            predecessor_uprs.validate()
         else:
-            # the preceding utility bill does exist, so duplicate its CPRS to
-            # produce the CPRS for this bill
+            # the preceding utility bill does exist, so get its UPRS
             doc = self.reebill_dao.load_doc_for_utilbill(predecessor)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(predecessor)
-            cprs.id = ObjectId()
             # NOTE this is a temporary workaround for a bug in MongoEngine
             # 0.8.4 described here:
             # https://www.pivotaltracker.com/story/show/57593308
-            cprs._created = True
+
+            predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                    predecessor)
+            predecessor_uprs.validate()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(utilbill.period_start),
@@ -529,20 +527,22 @@ class Process(object):
                 register['quantity'] = 0
 
         # generate predicted UPRS
-        uprs = self.rate_structure_dao.get_probable_uprs(session,
+        uprs = self.rate_structure_dao.get_probable_uprs(
+                UtilBillLoader(session),
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
         uprs.id = ObjectId()
-        # NOTE this is a temporary workaround for a bug in MongoEngine
-        # 0.8.4 described here:
-        # https://www.pivotaltracker.com/story/show/57593308
-        cprs._created = True
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        for rsi in predecessor_uprs.rates:
+            if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                    uprs.rates)):
+                uprs.rates.append(rsi)
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
-        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates +
-                cprs.rates}
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates}
         for group, charges in doc['chargegroups'].iteritems():
             i = 0
             while i < len(charges):
@@ -562,7 +562,7 @@ class Process(object):
         # we can't do this yet because we don't know what group it goes in.
         # see https://www.pivotaltracker.com/story/show/43797365
 
-        return doc, uprs, cprs
+        return doc, uprs
 
 
     def delete_utility_bill(self, session, utilbill):
@@ -591,7 +591,7 @@ class Process(object):
         self.state_db.trim_hypothetical_utilbills(session,
                 utilbill.customer.account, utilbill.service)
 
-        # delete utility bill, UPRS, and CPRS documents from Mongo (which should
+        # delete utility bill, UPRS documents from Mongo (which should
         # exist iff the utility bill is not "Hypothetical")
         if utilbill.state < UtilBill.Hypothetical:
             self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
@@ -600,36 +600,42 @@ class Process(object):
             assert utilbill.state == UtilBill.Hypothetical
             assert utilbill.document_id is None
             assert utilbill.uprs_document_id is None
-            assert utilbill.cprs_document_id is None
 
         return new_path
 
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
+        # TODO remove duplicate code between this method and Process
+        # ._generate_docs_for_new_utility_bill
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
-        new_uprs = self.rate_structure_dao.get_probable_uprs(session,
+        new_uprs = self.rate_structure_dao.get_probable_uprs(
+                UtilBillLoader(session),
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: uprs.id == existing_uprs.id)
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        try:
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                utilbill.customer.account, utilbill.period_start,
+                service=utilbill.service, utility=utilbill.utility,
+                rate_class=utilbill.rate_class, processed=True)
+        except NoSuchBillException:
+            # if there's no predecessor, there are no RSIs to add
+            pass
+        else:
+            predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                    predecessor)
+            for rsi in predecessor_uprs.rates:
+                if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                        new_uprs.rates)):
+                    new_uprs.rates.append(rsi)
+
         existing_uprs.rates = new_uprs.rates
         existing_uprs.save()
-
-    def regenerate_cprs(self, session, utilbill_id):
-        '''Resets the CPRS this utility bill to match that of its predecessor.
-        '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        existing_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                utilbill)
-        predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.customer.account, utilbill.period_start,
-                service=utilbill .service)
-        predecessor_cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                predecessor)
-        existing_cprs.rates = predecessor_cprs.rates
-        existing_cprs.save()
 
     def has_utilbill_predecessor(self, session, utilbill_id):
         try:
@@ -644,15 +650,14 @@ class Process(object):
     def refresh_charges(self, session, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
         ones based on its rate structures. A charge is created for every Rate
-        Structure Item in both the UPRS and the CPRS. The charges are computed
-        according to the rate structures.
+        Structure Item in the UPRS. The charges are computed according to the
+        rate structure.
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
-        mongo.refresh_charges(document, uprs, cprs)
+        mongo.refresh_charges(document, uprs)
 
         # recompute after regenerating the charges, but if recomputation
         # fails, make sure the new set of charges gets saved anyway. this is
@@ -662,7 +667,7 @@ class Process(object):
         # least the Exception gets re-raised immediately and does not get
         # interpreted as a specific error.
         try:
-            mongo.compute_all_charges(document, uprs, cprs)
+            mongo.compute_all_charges(document, uprs)
         except Exception as e:
             self.reebill_dao.save_utilbill(document)
             raise
@@ -688,9 +693,8 @@ class Process(object):
         })
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
 
-        mongo.compute_all_charges(document, uprs, cprs)
+        mongo.compute_all_charges(document, uprs)
 
         # also compute documents of any unissued reebills associated with this
         # utility bill
@@ -753,8 +757,7 @@ class Process(object):
                 .filter(ReeBill.version == reebill_doc.version).one()
         for utilbill in reebill_row.utilbills:
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            cprs = self.rate_structure_dao.load_cprs_for_utilbill(utilbill)
-            reebill_doc.compute_charges(uprs, cprs)
+            reebill_doc.compute_charges(uprs)
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
@@ -992,8 +995,8 @@ class Process(object):
 
         # increment max version in mysql: this adds a new reebill row with an
         # incremented version number, the same assocation to utility bills but
-        # null document_id, uprs_id, and cprs_id in the utilbill_reebill table,
-        # meaning its utility bills are the current ones.
+        # null document_id, uprs_id in the utilbill_reebill table, meaning
+        # its utility bills are the current ones.
         reebill = self.state_db.increment_version(session, account, sequence)
 
         # replace utility bill documents with the "current" ones, and update
@@ -1300,23 +1303,19 @@ class Process(object):
                 freeze_utilbills=True)
         reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
 
-        # also duplicate UPRS and CPRS, storing the new _ids in MySQL
+        # also duplicate UPRS, storing the new _ids in MySQL
         # ('save_reebill' can't do it because ReeBillDAO deals only with bill
         # documents)
-        frozen_uprs_id, frozen_cprs_id = ObjectId(), ObjectId()
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 reebill.utilbills[0])
-        cprs = self.rate_structure_dao.load_cprs_for_utilbill(
-                reebill.utilbills[0])
-        uprs.id, cprs.id = frozen_uprs_id, frozen_cprs_id
+        uprs.id = ObjectId()
         # NOTE this is a temporary workaround for a bug in MongoEngine
         # 0.8.4 described here:
         # https://www.pivotaltracker.com/story/show/57593308
-        uprs._created = True; cprs._created = True
+        uprs._created = True;
+
         uprs.save()
-        cprs.save()
-        reebill._utilbill_reebills[0].uprs_document_id = str(frozen_uprs_id)
-        reebill._utilbill_reebills[0].cprs_document_id = str(frozen_cprs_id)
+        reebill._utilbill_reebills[0].uprs_document_id = str(uprs.id)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence, issue_date=issue_date)

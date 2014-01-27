@@ -176,13 +176,6 @@ class ReeBill(Base):
         return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
                 if ubrb.utilbill == utilbill)
 
-    def cprs_id_for_utilbill(self, utilbill):
-        '''Returns the id (string) of the "frozen" CPRS document in Mongo
-        corresponding to the given utility bill which is attached to this
-        reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.cprs_document_id for ubrb in self._utilbill_reebills
-                if ubrb.utilbill == utilbill)
-
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -192,7 +185,6 @@ class UtilbillReebill(Base):
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
     uprs_document_id = Column(String)
-    cprs_document_id = Column(String)
 
     # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill.
     # there is no delete cascade in this 'relationship' because a UtilBill
@@ -212,10 +204,9 @@ class UtilbillReebill(Base):
 
     def __repr__(self):
         return (('UtilbillReebill(utilbill_id=%s, reebill_id=%s, '
-                'document_id=...%s, uprs_document_id=...%s, '
-                'cprs_document_id=...%s)')
-                % (self.utilbill_id, self.reebill_id, self.document_id[-4:],
-                    self.uprs_document_id[-4:], self.cprs_document_id[-4:]))
+                'document_id=...%s, uprs_document_id=...%s, ') % (
+                self.utilbill_id, self.reebill_id, self.document_id[-4:],
+                self.uprs_document_id[-4:]))
 
 
 class UtilBill(Base):
@@ -239,7 +230,6 @@ class UtilBill(Base):
 
     # _ids of Mongo documents
     document_id = Column(String)
-    cprs_document_id = Column(String)
     uprs_document_id = Column(String)
 
     customer = relationship("Customer", backref=backref('utilbills',
@@ -279,8 +269,7 @@ class UtilBill(Base):
 
     def __init__(self, customer, state, service, utility, rate_class,
             period_start=None, period_end=None, doc_id=None, uprs_id=None,
-            cprs_id=None, total_charges=0, date_received=None, processed=False,
-            reebill=None):
+            total_charges=0, date_received=None, processed=False, reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -297,7 +286,6 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
-        self.cprs_document_id = cprs_id
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
@@ -555,9 +543,9 @@ class StateDB(object):
         existing version for the given account and sequence.
         
         The utility bill(s) of the new version are the same as those of its
-        predecessor, but utility bill, UPRS, and CPRS document_ids are cleared
+        predecessor, but utility bill, UPRS, and document_ids are cleared
         from the utilbill_reebill table, meaning that the new reebill's
-        utilbill/UPRS/CPRS documents are the current ones.
+        utilbill/UPRS documents are the current ones.
         
         Returns the new state.ReeBill object.'''
         # highest existing version must be issued
@@ -572,7 +560,7 @@ class StateDB(object):
                 current_max_version_reebill.version + 1,
                 utilbills=current_max_version_reebill.utilbills)
         for ur in new_reebill._utilbill_reebills:
-            ur.document_id, ur.uprs_id, ur.cprs_id = None, None, None
+            ur.document_id, ur.uprs_id, = None, None
 
         session.add(new_reebill)
         return new_reebill
@@ -1002,10 +990,11 @@ class StateDB(object):
                 session.delete(hb)
 
     def get_last_real_utilbill(self, session, account, end, service=None,
-            utility=None, rate_class=None):
+            utility=None, rate_class=None, processed=None):
         '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
-        utility, and rate class.'''
+        utility, rate class, and 'processed' status.
+        '''
         customer = self.get_customer(session, account)
         cursor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
@@ -1017,6 +1006,9 @@ class StateDB(object):
             cursor = cursor.filter(UtilBill.utility == utility)
         if rate_class is not None:
             cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if processed is not None:
+            assert isinstance(processed, bool)
+            cursor = cursor.filter(UtilBill.processed == processed)
         result = cursor.order_by(desc(UtilBill.period_end)).first()
         if result is None:
             raise NoSuchBillException
@@ -1110,6 +1102,27 @@ class StateDB(object):
         result = lockmodeQuery.all()
 
         return result
+
+class UtilBillLoader(object):
+    '''Data access object for utility bills, used to hide database details
+    from other classes so they can be more easily tested.
+    '''
+    def __init__(self, session):
+        ''''session': SQLAlchemy session object to be used for database
+        queries.
+        '''
+        self._session = session
+
+    def load_real_utilbills(self, **kwargs):
+        '''Returns a cursor of UtilBill objects matching the criteria given
+        by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
+        state SkylineEstimated or lower) are included.
+        '''
+        cursor = self._session.query(UtilBill).filter(UtilBill.state <=
+                UtilBill.SkylineEstimated)
+        for key, value in kwargs.iteritems():
+            cursor = cursor.filter(getattr(UtilBill, key) == value)
+        return cursor
 
 if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
