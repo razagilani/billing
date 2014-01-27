@@ -243,9 +243,14 @@ class RateStructureDAOTest(unittest.TestCase):
         # present and should be excluded from a new predicted rate structure.
         # If unshared RSIs count as neutral, B shared occurs 1 out of 1 times,
         # so it should be included in a new predicted rate structure.
-        self.rs_1 = RateStructure(id=ObjectId(), rates=[self.rsi_a_shared,
-                self.rsi_b_unshared])
-        self.rs_2 = RateStructure(id=ObjectId(), rates=[self.rsi_b_unshared])
+        self.rs_1 = RateStructure(id=ObjectId(), rates=[
+            self.rsi_a_shared,
+            self.rsi_b_unshared
+        ])
+        self.rs_2 = RateStructure(id=ObjectId(), rates=[
+            self.rsi_a_shared,
+            self.rsi_b_unshared
+        ])
         self.rs_3 = RateStructure(id=ObjectId(), rates=[self.rsi_b_shared])
 
         self.utilbill_1 = Mock()
@@ -280,7 +285,7 @@ class RateStructureDAOTest(unittest.TestCase):
                 return document_subset[0]
 
         class MockRateStructure(object):
-            objects = MockQuerySet(self.rs_1, self.rs_2)
+            objects = MockQuerySet(self.rs_1, self.rs_2, self.rs_3)
 
             # in MongoEngine, each class has its own MultipleObjectsReturned
             # exception
@@ -295,7 +300,13 @@ class RateStructureDAOTest(unittest.TestCase):
                 # TODO
                 raise NotImplementedError
 
-        self.dao = RateStructureDAO(rate_structure_class=MockRateStructure)
+        import logging
+        import sys
+        logger = logging.getLogger('RateStructureDAOTest')
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(logging.StreamHandler(sys.stderr))
+        self.dao = RateStructureDAO(rate_structure_class=MockRateStructure,
+                logger=logger)
 
 
     def test_load_uprs_for_utilbill(self):
@@ -312,10 +323,10 @@ class RateStructureDAOTest(unittest.TestCase):
     def test_get_probable_uprs(self):
         utilbill_loader = Mock()
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
-            self.utilbill_2]
+            self.utilbill_2, self.utilbill_3]
 
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
-                'DC Non Residential Non Heat', date(2000,1,1), date(2001,2,1))
+                'DC Non Residential Non Heat', date(2000,1,1), date(2000,2,1))
 
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
         # should be included here
