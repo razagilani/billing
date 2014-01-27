@@ -39,14 +39,300 @@ def exp_weight_with_min(a, b, minimum):
     always nonnegative.'''
     return lambda x: max(a**(x * b), minimum)
 
+class RateStructureItem(EmbeddedDocument):
+    '''A Rate Structure Item describes how a particular charge is computed, and
+    computes the charge according to a formula using various named values as
+    inputs (include register readings from a utility meter and other charges in
+    the same bill).
+    '''
+    # unique name that matches this RSI with a charge on a bill
+    # NOTE: "default" should not be necessary for a required field,
+    # but adding it prevents ValidationErrors when legacy (pre-MongoEngine
+    # schema) documents are loaded and then saved (see bug 62492152)
+    rsi_binding = StringField(required=True, min_length=1, default='')
+
+    # descriptive human-readable name
+    description = StringField(required=True, default='')
+
+    shared = BooleanField(required=True, default=True)
+
+    # the 'quantity' and 'rate' formulas provide the formula for computing the
+    # charge when multiplied together; the separation into 'quantity' and
+    # 'rate' is somewhat arbitrary
+    quantity = StringField(required=True, default='0')
+    quantity_units = StringField()
+    rate = StringField(required=True, default='0')
+    #rate_units = StringField()
+
+    # currently not used
+    round_rule = StringField()
+
+    def __init__(self, *args, **kwargs):
+        super(RateStructureItem, self).__init__(*args, **kwargs)
+
+        # for handling old malformed documents in the database where
+        # quantity or rate formulas are empty strings: replace with 0
+        if self.quantity == '':
+            self.quantity = '0'
+        if self.rate == '':
+            self.rate = '0'
+
+    def validate(self, clean=True):
+        # a hack to deal with pre-MongoEngine malformed documents: some of
+        # these have numbers in their quantity/rate fields, which should be
+        # strings, so convert them before validating.
+        assert isinstance(self.quantity, (float, int, basestring))
+        assert isinstance(self.rate, (float, int, basestring))
+        if isinstance(self.quantity, (float, int)):
+            self.quantity = str(self.quantity)
+        if isinstance(self.rate, (float, int)):
+            self.rate = str(self.rate)
+        return super(RateStructureItem, self).validate(clean=clean)
+
+    def _parse_formulas(self):
+        '''Parses the 'quantity' and 'rate' formulas as Python code using the
+        'ast' module, and returns the tuple (quantity formula AST, rate formula
+        AST). Raises FormulaSyntaxError if either one couldn't be parsed.
+        '''
+        def parse_formula(name):
+            formula = getattr(self, name)
+            if formula == '':
+                raise FormulaSyntaxError("%s %s formula can't be empty" % (
+                    self.rsi_binding, name))
+            try:
+                return ast.parse(getattr(self, name))
+            except SyntaxError:
+                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
+                                         '"%s":\n%s' % (name, self.rsi_binding,
+                getattr(self, name)))
+        return parse_formula('quantity'), parse_formula('rate')
+
+    def get_identifiers(self):
+        '''Generates names of all identifiers occuring in this RSI's 'quantity'
+        and 'rate' formulas (excluding built-in functions). Raises
+        FormulaSyntaxError if the quantity or rate formula could not be parsed,
+        so this method also provides syntax checking.
+        '''
+        # This is a horrible way to find out if an ast node is a builtin
+        # function, but it seems to work, and I can't come up with a better
+        # way. (Note that the type 'builtin_function_or_method' is not  a
+        # variable in global scope, like 'int' or 'str', so you can't refer to
+        # it directly.)
+        def _is_built_in_function(node):
+            try:
+                return eval('type(%s)' % node.id).__name__ \
+                       == 'builtin_function_or_method'
+            except NameError:
+                return False
+
+        # parse the two formulas, and return nodes of the resulting parse tree
+        # whose type is ast.Name (and are not a built-in functions as
+        # determined by the function above)
+        quantity_tree, rate_tree = self._parse_formulas()
+        for node in chain.from_iterable((ast.walk(quantity_tree),
+        ast.walk(rate_tree))):
+            if isinstance(node, ast.Name) and not _is_built_in_function(node):
+                yield node.id
+
+    def compute_charge(self, register_quantities):
+        '''Evaluates this RSI's "quantity" and "rate" formulas, given the
+        readings of registers in 'register_quantities' (a dictionary mapping
+        register names to dictionaries containing keys "quantity" and "rate"),
+        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
+        if either of the formulas could not be parsed.
+        '''
+        # from pprint import PrettyPrinter
+        # PrettyPrinter().pprint(register_quantities)
+
+        # validate argument types to avoid more confusing errors below
+        assert all(
+            isinstance(k, basestring) and isinstance(v, dict)
+            and all(
+                isinstance(k2, basestring) and isinstance(v2, (float, int))
+                    for k2, v2 in v.iteritems())
+                for k, v in register_quantities.iteritems())
+
+        # check syntax
+        self._parse_formulas()
+
+        # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
+        # the only way to evaluate these as Python code is to turn each of the
+        # key/value pairs in 'register_quantities' into an object with a
+        # "quantity" attribute
+        class RSIFormulaIdentifier(object):
+            def __init__(self, quantity=None, rate=None, total=None):
+                self.quantity = quantity
+                self.rate = rate
+                self.total = total
+        register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
+            reg_name, data in register_quantities.iteritems()}
+
+        def compute(name):
+            formula = getattr(self, name)
+            assert isinstance(formula, basestring)
+            try:
+                return eval(formula, {}, register_quantities)
+            except Exception as e:
+                raise FormulaError(('Error when computing %s for RSI "%s": '
+                                    '%s') % (name, self.rsi_binding, e))
+        return compute('quantity'), compute('rate')
+
+    def to_dict(self):
+        '''String representation of this RateStructureItem to send as JSON to
+        the browser.
+        '''
+        return {
+            'id': self.rsi_binding,
+            'rsi_binding': self.rsi_binding,
+            'quantity': self.quantity,
+            'quantity_units': self.quantity_units,
+            'rate': self.rate,
+            #'rate_units': self.rate_units,
+            'round_rule': self.round_rule,
+            'description': self.description,
+        }
+
+    def update(self, rsi_binding=None, quantity=None, quantity_units=None,
+                    rate=None, round_rule=None, description=None):
+        if rsi_binding is not None:
+            self.rsi_binding = rsi_binding
+        if quantity is not None:
+            self.quantity = quantity
+        if quantity_units is not None:
+            self.quantity_units = quantity_units
+        if rate is not None:
+            self.rate = rate
+        if round_rule is not None:
+            self.roundrule = round_rule
+        if description is not None:
+            self.description = description
+
+    def __repr__(self):
+        return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
+        self.rate)
+
+    def __eq__(self, other):
+        return (
+                   self.rsi_binding,
+                   self.description,
+                   self.quantity,
+                   self.quantity_units,
+                   self.rate,
+                   self.round_rule
+               ) == (
+                   other.rsi_binding,
+                   other.description,
+                   other.quantity,
+                   other.quantity_units,
+                   other.rate,
+                   other.round_rule
+               )
+
+    def __hash__(self):
+        return sum([
+            hash(self.rsi_binding),
+            hash(self.description),
+            hash(self.quantity),
+            hash(self.quantity_units),
+            hash(self.rate),
+            hash(self.round_rule),
+        ])
+
+
+class RateStructure(Document):
+    meta = {
+        'db_alias': 'ratestructure',
+        'collection': 'ratestructure',
+        'allow_inheritance': True
+    }
+
+    # this is either 'UPRS' or 'CPRS'
+    type = StringField(required=True)
+
+    rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
+        default=[])
+
+    @classmethod
+    def combine(cls, uprs, cprs):
+        '''Returns a RateStructure object not corresponding to any Mongo
+        document, containing RSIs from the two RateStructures 'uprs' and
+        'cprs'. Do not save this object in the database!
+        '''
+        combined_dict = uprs.rsis_dict()
+        combined_dict.update(cprs.rsis_dict())
+        return RateStructure(type='UPRS', registers=[],
+            rates=combined_dict.values())
+
+    def rsis_dict(self):
+        '''Returns a dictionary mapping RSI binding strings to
+        RateStrutureItem objects for every RSI in this RateStructure.
+        '''
+        result = {}
+        for rsi in self.rates:
+            binding = rsi['rsi_binding']
+            if binding in result:
+                raise ValueError('Duplicate rsi_binding "%s"' % binding)
+            result[binding] = rsi
+        return result
+
+    def _check_rsi_uniqueness(self):
+        all_rsis = set(rsi.rsi_binding for rsi in self.rates)
+        if len(all_rsis) < len(self.rates):
+            raise ValueError("Duplicate rsi_bindings")
+
+    def validate(self, clean=True):
+        '''Document.validate() is overridden to make sure a RateStructure
+        without unique rsi_bindings can't be saved.'''
+        self._check_rsi_uniqueness()
+        # TODO also check that 'type' is "UPRS" or "CPRS"
+
+        return super(RateStructure, self).validate(clean=clean)
+
+    def add_rsi(self):
+        '''Adds a new rate structure item with a unique 'rsi_binding',
+        and returns the new RateStructureItem object.
+        '''
+        # generate a number to go in a unique "rsi_binding" string
+        all_rsi_bindings = set(rsi.rsi_binding for rsi in self.rates)
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+
+        # create and add the new 'RateStructureItem'
+        new_rsi = RateStructureItem(
+            rsi_binding='New RSI #%s' % n,
+            description='Insert description here',
+            quantity='0',
+            quantity_units='',
+            rate='0',
+            round_rule='',
+        )
+        self.rates.append(new_rsi)
+
+        return new_rsi
+
+    def get_rsi(self, rsi_binding):
+        '''Returns the first RSI in this RateStructure having the
+        given 'rsi_binding'.
+        '''
+        self.validate()
+        return next(rsi for rsi in self.rates if rsi.rsi_binding ==
+                                                 rsi_binding)
 
 class RateStructureDAO(object):
     '''Loads and saves RateStructure objects. Also responsible for generating
     predicted UPRSs based on existing ones.
     '''
-    def __init__(self, logger=None):
+    def __init__(self, rate_structure_class=RateStructure, logger=None):
+        '''rate_structure_class: class to use for loading/saving RateStructure
+        objects, the RateStructure class itself by default. For testing this
+        may be replaced with a mock object.
+        'logger': optional Logger object to record messages about rate
+        structure prediction.
+        '''
         # TODO instead of using None as logger, use a logger that does nothing,
         # to avoid checking if it's None
+        self._rate_structure_class = rate_structure_class
         self.logger = logger
 
     def _get_probable_rsis(self, session, utility, service,
@@ -169,13 +455,13 @@ class RateStructureDAO(object):
         '''Loads and returns a rate structure document by its _id (string).
         '''
         assert isinstance(_id, basestring)
-        doc = RateStructure.objects.get(id=ObjectId(_id))
+        doc = self._rate_structure_class.objects.get(id=ObjectId(_id))
         return doc
 
     def _delete_rs_by_id(self, _id):
         '''Deletes the rate structure document with the given _id.
         '''
-        result = RateStructure.objects.get(id=ObjectId(_id)).delete()
+        result = self._rate_structure_class.objects.get(id=ObjectId(_id)).delete()
         # TODO is there a way to specify safe mode or get the result "err" and
         # "n"? look at 'write_concern' argument
 
@@ -222,294 +508,6 @@ class RateStructureDAO(object):
         self._delete_rs_by_id(utilbill.uprs_document_id)
 
 
-class RateStructureItem(EmbeddedDocument):
-    '''A Rate Structure Item describes how a particular charge is computed, and
-    computes the charge according to a formula using various named values as
-    inputs (include register readings from a utility meter and other charges in
-    the same bill).
-    '''
-    # unique name that matches this RSI with a charge on a bill
-    # NOTE: "default" should not be necessary for a required field,
-    # but adding it prevents ValidationErrors when legacy (pre-MongoEngine
-    # schema) documents are loaded and then saved (see bug 62492152)
-    rsi_binding = StringField(required=True, min_length=1, default='')
-
-    # descriptive human-readable name
-    description = StringField(required=True, default='')
-
-    shared = BooleanField(required=True, default=True)
-
-    # the 'quantity' and 'rate' formulas provide the formula for computing the
-    # charge when multiplied together; the separation into 'quantity' and
-    # 'rate' is somewhat arbitrary
-    quantity = StringField(required=True, default='0')
-    quantity_units = StringField()
-    rate = StringField(required=True, default='0')
-    #rate_units = StringField()
-
-    # currently not used
-    round_rule = StringField()
-
-    def __init__(self, *args, **kwargs):
-        super(RateStructureItem, self).__init__(*args, **kwargs)
-
-        # for handling old malformed documents in the database where
-        # quantity or rate formulas are empty strings: replace with 0
-        if self.quantity == '':
-            self.quantity = '0'
-        if self.rate == '':
-            self.rate = '0'
-
-    def validate(self, clean=True):
-        # a hack to deal with pre-MongoEngine malformed documents: some of
-        # these have numbers in their quantity/rate fields, which should be
-        # strings, so convert them before validating.
-        assert isinstance(self.quantity, (float, int, basestring))
-        assert isinstance(self.rate, (float, int, basestring))
-        if isinstance(self.quantity, (float, int)):
-            self.quantity = str(self.quantity)
-        if isinstance(self.rate, (float, int)):
-            self.rate = str(self.rate)
-        return super(RateStructureItem, self).validate(clean=clean)
-
-    def _parse_formulas(self):
-        '''Parses the 'quantity' and 'rate' formulas as Python code using the
-        'ast' module, and returns the tuple (quantity formula AST, rate formula
-        AST). Raises FormulaSyntaxError if either one couldn't be parsed.
-        '''
-        def parse_formula(name):
-            formula = getattr(self, name)
-            if formula == '':
-                raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                        self.rsi_binding, name))
-            try:
-                return ast.parse(getattr(self, name))
-            except SyntaxError:
-                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                        '"%s":\n%s' % (name, self.rsi_binding,
-                        getattr(self, name)))
-        return parse_formula('quantity'), parse_formula('rate')
-
-    def get_identifiers(self):
-        '''Generates names of all identifiers occuring in this RSI's 'quantity'
-        and 'rate' formulas (excluding built-in functions). Raises
-        FormulaSyntaxError if the quantity or rate formula could not be parsed,
-        so this method also provides syntax checking.
-        '''
-        # This is a horrible way to find out if an ast node is a builtin
-        # function, but it seems to work, and I can't come up with a better
-        # way. (Note that the type 'builtin_function_or_method' is not  a
-        # variable in global scope, like 'int' or 'str', so you can't refer to
-        # it directly.)
-        def _is_built_in_function(node):
-            try:
-                return eval('type(%s)' % node.id).__name__ \
-                        == 'builtin_function_or_method'
-            except NameError:
-                return False
-
-        # parse the two formulas, and return nodes of the resulting parse tree
-        # whose type is ast.Name (and are not a built-in functions as
-        # determined by the function above)
-        quantity_tree, rate_tree = self._parse_formulas()
-        for node in chain.from_iterable((ast.walk(quantity_tree),
-                ast.walk(rate_tree))):
-            if isinstance(node, ast.Name) and not _is_built_in_function(node):
-                yield node.id
-
-    def compute_charge(self, register_quantities):
-        '''Evaluates this RSI's "quantity" and "rate" formulas, given the
-        readings of registers in 'register_quantities' (a dictionary mapping
-        register names to dictionaries containing keys "quantity" and "rate"),
-        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
-        if either of the formulas could not be parsed.
-        '''
-        # from pprint import PrettyPrinter
-        # PrettyPrinter().pprint(register_quantities)
-
-        # validate argument types to avoid more confusing errors below
-        assert all(
-            isinstance(k, basestring) and isinstance(v, dict)
-            and all(
-                isinstance(k2, basestring) and isinstance(v2, (float, int))
-            for k2, v2 in v.iteritems())
-        for k, v in register_quantities.iteritems())
-
-        # check syntax
-        self._parse_formulas()
-
-        # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
-        # the only way to evaluate these as Python code is to turn each of the
-        # key/value pairs in 'register_quantities' into an object with a
-        # "quantity" attribute
-        class RSIFormulaIdentifier(object):
-            def __init__(self, quantity=None, rate=None, total=None):
-                self.quantity = quantity
-                self.rate = rate
-                self.total = total
-        register_quantities = {reg_name: RSIFormulaIdentifier(**data) for
-                reg_name, data in register_quantities.iteritems()}
-
-        def compute(name):
-            formula = getattr(self, name)
-            assert isinstance(formula, basestring)
-            try:
-                return eval(formula, {}, register_quantities)
-            except Exception as e:
-                raise FormulaError(('Error when computing %s for RSI "%s": '
-                        '%s') % (name, self.rsi_binding, e))
-        return compute('quantity'), compute('rate')
-
-    def to_dict(self):
-        '''String representation of this RateStructureItem to send as JSON to
-        the browser.
-        '''
-        return {
-            'id': self.rsi_binding,
-            'rsi_binding': self.rsi_binding,
-            'quantity': self.quantity,
-            'quantity_units': self.quantity_units,
-            'rate': self.rate,
-            #'rate_units': self.rate_units,
-            'round_rule': self.round_rule,
-            'description': self.description,
-        }
-
-    def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-            rate=None, round_rule=None, description=None):
-        if rsi_binding is not None:
-            self.rsi_binding = rsi_binding
-        if quantity is not None:
-            self.quantity = quantity
-        if quantity_units is not None:
-            self.quantity_units = quantity_units
-        if rate is not None:
-            self.rate = rate
-        if round_rule is not None:
-            self.roundrule = round_rule
-        if description is not None:
-            self.description = description
-
-    def __repr__(self):
-        return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
-            self.rate)
-
-    def __eq__(self, other):
-        return (
-                self.rsi_binding,
-                self.description,
-                self.quantity,
-                self.quantity_units,
-                self.rate,
-                self.round_rule
-           ) == (
-                other.rsi_binding,
-                other.description,
-                other.quantity,
-                other.quantity_units,
-                other.rate,
-                other.round_rule
-            )
-
-    def __hash__(self):
-        return sum([
-            hash(self.rsi_binding),
-            hash(self.description),
-            hash(self.quantity),
-            hash(self.quantity_units),
-            hash(self.rate),
-            hash(self.round_rule),
-        ])
-
-# class Register(EmbeddedDocument):
-#     # this is the only field that has any meaning, since a "register" in a rate
-#     # structure document really just means a name
-#     register_binding = StringField(required=True)
-#
-#     # these are random junk fields that were inserted in the DB in Rich's code
-#     quantity = StringField()
-#     quantity_units = StringField()
-#     description = StringField()
-
-class RateStructure(Document):
-    meta = {
-        'db_alias': 'ratestructure',
-        'collection': 'ratestructure',
-        'allow_inheritance': True
-    }
-
-    # this is either 'UPRS' or 'CPRS'
-    type = StringField(required=True)
-
-    rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
-            default=[])
-
-    @classmethod
-    def combine(cls, uprs, cprs):
-        '''Returns a RateStructure object not corresponding to any Mongo
-        document, containing RSIs from the two RateStructures 'uprs' and
-        'cprs'. Do not save this object in the database!
-        '''
-        combined_dict = uprs.rsis_dict()
-        combined_dict.update(cprs.rsis_dict())
-        return RateStructure(type='UPRS', registers=[],
-            rates=combined_dict.values())
-
-    def rsis_dict(self):
-        '''Returns a dictionary mapping RSI binding strings to
-        RateStrutureItem objects for every RSI in this RateStructure.
-        '''
-        result = {}
-        for rsi in self.rates:
-            binding = rsi['rsi_binding']
-            if binding in result:
-                raise ValueError('Duplicate rsi_binding "%s"' % binding)
-            result[binding] = rsi
-        return result
-
-    def _check_rsi_uniqueness(self):
-        all_rsis = set(rsi.rsi_binding for rsi in self.rates)
-        if len(all_rsis) < len(self.rates):
-            raise ValueError("Duplicate rsi_bindings")
-
-    def validate(self, clean=True):
-        '''Document.validate() is overridden to make sure a RateStructure
-        without unique rsi_bindings can't be saved.'''
-        self._check_rsi_uniqueness()
-        # TODO also check that 'type' is "UPRS" or "CPRS"
-
-        return super(RateStructure, self).validate(clean=clean)
-
-    def add_rsi(self):
-        '''Adds a new rate structure item with a unique 'rsi_binding',
-        and returns the new RateStructureItem object.
-        '''
-        # generate a number to go in a unique "rsi_binding" string
-        all_rsi_bindings = set(rsi.rsi_binding for rsi in self.rates)
-        n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
-            n += 1
-
-        # create and add the new 'RateStructureItem'
-        new_rsi = RateStructureItem(
-            rsi_binding='New RSI #%s' % n,
-            description='Insert description here',
-            quantity='0',
-            quantity_units='',
-            rate='0',
-            round_rule='',
-        )
-        self.rates.append(new_rsi)
-
-        return new_rsi
-
-    def get_rsi(self, rsi_binding):
-        '''Returns the first RSI in this RateStructure having the
-        given 'rsi_binding'.
-        '''
-        self.validate()
-        return next(rsi for rsi in self.rates if rsi.rsi_binding ==
-                 rsi_binding)
 
 if __name__ == '__main__':
     import mongoengine
