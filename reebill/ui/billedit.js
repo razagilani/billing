@@ -2935,6 +2935,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
+            {name: 'shared', mapping: 'shared'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'},
@@ -2972,6 +2973,7 @@ function reeBillReady() {
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
+            {name: 'shared', mapping: 'shared'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'}
@@ -3094,8 +3096,8 @@ function reeBillReady() {
                 xtype: 'checkboxcolumn',
                 header: 'Shared',
                 dataIndex: 'shared',
-                on: 1,
-                off: 0,
+                on: true,
+                off: false,
                 width: 60
             },{
                 header: 'Quantity',

@@ -1573,6 +1573,11 @@ class BillToolBridge:
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
 
+                    # Fix boolean values that are interpreted as strings
+                    if row['shared'] == "false":
+                        row['shared'] = False
+                    else:
+                        row['shared'] = True
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
                     # new one that will replace it (if there is one)
