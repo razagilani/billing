@@ -112,7 +112,6 @@ class ReebillTest(TestCaseWithSetup):
                 rate='2',
             )
         ])
-        cprs = RateStructure(type='CPRS', rates=[])
         utilbill_doc = {
             '_id': ObjectId(),
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
@@ -147,7 +146,7 @@ class ReebillTest(TestCaseWithSetup):
                 "postal_code" : "21046"
             },
         }
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
         self.assertEqual({'All Charges': [
             {
                 'rsi_binding': 'A',
@@ -163,7 +162,7 @@ class ReebillTest(TestCaseWithSetup):
         assert all(register['quantity'] == 0 for register in
                 utilbill_subdoc['shadow_registers'])
 
-        reebill_doc.compute_charges(uprs, cprs)
+        reebill_doc.compute_charges(uprs)
 
         # check that there are the same group names and rsi_bindings and only,
         # by creating two dictionaries mapping group names to sets of
