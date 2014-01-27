@@ -1103,6 +1103,27 @@ class StateDB(object):
 
         return result
 
+class UtilBillLoader(object):
+    '''Data access object for utility bills, used to hide database details
+    from other classes so they can be more easily tested.
+    '''
+    def __init__(self, session):
+        ''''session': SQLAlchemy session object to be used for database
+        queries.
+        '''
+        self._session = session
+
+    def load_real_utilbills(self, **kwargs):
+        '''Returns a cursor of UtilBill objects matching the criteria given
+        by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
+        state SkylineEstimated or lower) are included.
+        '''
+        cursor = self._session.query(UtilBill).filter(UtilBill.state <=
+                UtilBill.SkylineEstimated)
+        for key, value in kwargs.iteritems():
+            cursor = cursor.filter(getattr(UtilBill, key) == value)
+        return cursor
+
 if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
     s = StateDB(host='localhost', database='skyline_dev', user='dev',
