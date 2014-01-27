@@ -362,8 +362,7 @@ class RateStructureDAO(object):
         bindings = set()
         for uprs, _, _ in all_uprss:
             for rsi in uprs.rates:
-                if rsi.shared:
-                    bindings.add(rsi.rsi_binding)
+                bindings.add(rsi.rsi_binding)
 
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI for the
@@ -386,12 +385,17 @@ class RateStructureDAO(object):
                     # binding not present in UPRS: add 0 * weight to score
                     pass
                 else:
-                    # binding present in UPRS: add 1 * weight to score
-                    scores[binding] += weight
-                    # if this distance is closer than the closest occurence
-                    # seen so far, put the RSI object in closest_occurrence
-                    if distance < closest_occurrence[binding][0]:
-                        closest_occurrence[binding] = (distance, rsi_dict)
+                    if rsi_dict.shared:
+                        # binding present in UPRS and shared: add 1 * weight
+                        # to score
+                        scores[binding] += weight
+                        # if this distance is closer than the closest occurence
+                        # seen so far, put the RSI object in closest_occurrence
+                        if distance < closest_occurrence[binding][0]:
+                            closest_occurrence[binding] = (distance, rsi_dict)
+                    else:
+                        # binding present in UPRS but un-shared
+                        continue
                 # whether the binding was present or not, update total weight
                 total_weight[binding] += weight
 
