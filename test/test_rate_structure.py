@@ -219,29 +219,49 @@ class RateStructureTest(unittest.TestCase):
 
 class RateStructureDAOTest(unittest.TestCase):
     def setUp(self):
-        self.rsi_1 = RateStructureItem(
+        self.rsi_a_shared = RateStructureItem(
             rsi_binding='A',
             quantity='1',
             rate='1',
             shared=True,
         )
-        self.rsi_2 = RateStructureItem(
+        self.rsi_b_shared = RateStructureItem(
+            rsi_binding='B',
+            quantity='2',
+            rate='2',
+            shared=True,
+        )
+        self.rsi_b_unshared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=False,
         )
-        self.rs_1 = RateStructure(id=ObjectId(), rates=[self.rsi_1,
-                self.rsi_2])
-        self.rs_2 = RateStructure(id=ObjectId(), rates=[self.rsi_2])
+
+        # 3 rate structures, one containing B shared and one containing B
+        # unshared. If unshared RSIs count as "absent", B is more absent than
+        # present and should be excluded from a new predicted rate structure.
+        # If unshared RSIs count as neutral, B shared occurs 1 out of 1 times,
+        # so it should be included in a new predicted rate structure.
+        self.rs_1 = RateStructure(id=ObjectId(), rates=[self.rsi_a_shared,
+                self.rsi_b_unshared])
+        self.rs_2 = RateStructure(id=ObjectId(), rates=[self.rsi_b_unshared])
+        self.rs_3 = RateStructure(id=ObjectId(), rates=[self.rsi_b_shared])
+
         self.utilbill_1 = Mock()
         self.utilbill_1.uprs_document_id = str(self.rs_1.id)
         self.utilbill_1.period_start = date(2000,1,1)
         self.utilbill_1.period_end = date(2000,2,1)
+
         self.utilbill_2 = Mock()
         self.utilbill_2.uprs_document_id = str(self.rs_2.id)
         self.utilbill_2.period_start = date(2000,1,1)
         self.utilbill_2.period_end = date(2000,2,1)
+
+        self.utilbill_3 = Mock()
+        self.utilbill_3.period_start = date(2000,1,1)
+        self.utilbill_3.period_end = date(2000,2,1)
+        self.utilbill_3.uprs_document_id = str(self.rs_3.id)
 
         class MockQuerySet(object):
             def __init__(self, *documents):
@@ -296,7 +316,10 @@ class RateStructureDAOTest(unittest.TestCase):
 
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
                 'DC Non Residential Non Heat', date(2000,1,1), date(2001,2,1))
-        self.assertEqual([self.rsi_1], uprs.rates)
+
+        # see explanation in setUp for why rsi_a_shared and rsi_b_shared
+        # should be included here
+        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], uprs.rates)
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
