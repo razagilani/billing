@@ -219,25 +219,29 @@ class RateStructureTest(unittest.TestCase):
 
 class RateStructureDAOTest(unittest.TestCase):
     def setUp(self):
-        self.rs_1 = RateStructure(id=ObjectId(), rates=[
-            RateStructureItem(
-                rsi_binding='A',
-                quantity='1',
-                rate='1',
-                shared=True,
-            )
-        ])
-        self.rs_2 = RateStructure(id=ObjectId(), rates=[
-            RateStructureItem(
-                rsi_binding='B',
-                quantity='2',
-                rate='2',
-                shared=False, )
-        ])
+        self.rsi_1 = RateStructureItem(
+            rsi_binding='A',
+            quantity='1',
+            rate='1',
+            shared=True,
+        )
+        self.rsi_2 = RateStructureItem(
+            rsi_binding='B',
+            quantity='2',
+            rate='2',
+            shared=False,
+        )
+        self.rs_1 = RateStructure(id=ObjectId(), rates=[self.rsi_1,
+                self.rsi_2])
+        self.rs_2 = RateStructure(id=ObjectId(), rates=[self.rsi_2])
         self.utilbill_1 = Mock()
         self.utilbill_1.uprs_document_id = str(self.rs_1.id)
+        self.utilbill_1.period_start = date(2000,1,1)
+        self.utilbill_1.period_end = date(2000,2,1)
         self.utilbill_2 = Mock()
         self.utilbill_2.uprs_document_id = str(self.rs_2.id)
+        self.utilbill_2.period_start = date(2000,1,1)
+        self.utilbill_2.period_end = date(2000,2,1)
 
         class MockQuerySet(object):
             def __init__(self, *documents):
@@ -286,8 +290,13 @@ class RateStructureDAOTest(unittest.TestCase):
                 unknown_utilbill)
 
     def test_get_probable_uprs(self):
-        # TODO
-        pass
+        utilbill_loader = Mock()
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+            self.utilbill_2]
+
+        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+                'DC Non Residential Non Heat', date(2000,1,1), date(2001,2,1))
+        self.assertEqual([self.rsi_1], uprs.rates)
 
 if __name__ == '__main__':
     unittest.main(failfast=True)

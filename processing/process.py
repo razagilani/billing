@@ -27,7 +27,8 @@ from billing.processing import mongo
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
-from billing.processing.state import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
+    UtilBillLoader
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.util import nexus_util
@@ -526,7 +527,8 @@ class Process(object):
                 register['quantity'] = 0
 
         # generate predicted UPRS
-        uprs = self.rate_structure_dao.get_probable_uprs(session,
+        uprs = self.rate_structure_dao.get_probable_uprs(
+                UtilBillLoader(session),
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: False)
@@ -609,7 +611,8 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
-        new_uprs = self.rate_structure_dao.get_probable_uprs(session,
+        new_uprs = self.rate_structure_dao.get_probable_uprs(
+                UtilBillLoader(session),
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 ignore=lambda uprs: uprs.id == existing_uprs.id)
