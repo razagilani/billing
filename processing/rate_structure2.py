@@ -7,7 +7,8 @@ import sys
 from math import sqrt, log, exp
 from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField, DateTimeField
+from mongoengine import StringField, ListField, EmbeddedDocumentField
+from mongoengine import DateTimeField, BooleanField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NotUniqueException
@@ -65,11 +66,13 @@ class RateStructureDAO(object):
                 self._load_uprss_for_prediction(session, utility,
                 service, rate_class) if not ignore(uprs)]
 
-        # find every RSI binding that ever existed for this rate structure
+        # find the RSI binding of every "shared" RSI that ever existed for
+        # this rate structure
         bindings = set()
         for uprs, _, _ in all_uprss:
             for rsi in uprs.rates:
-                bindings.add(rsi.rsi_binding)
+                if rsi.shared:
+                    bindings.add(rsi.rsi_binding)
 
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI for the
@@ -162,21 +165,6 @@ class RateStructureDAO(object):
             return self._load_rs_by_id(utilbill.uprs_document_id)
         return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
 
-    def load_cprs_for_utilbill(self, utilbill, reebill=None):
-        '''Loads and returns a CPRS document for the given state.Utilbill.
-
-        If 'reebill' is None, this is the "current" document, i.e. the one
-        whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is the CPRS document for the version of the
-        utility bill associated with the current reebill--either the same as
-        the "current" one if the reebill is unissued, or a frozen one (whose
-        _id is in the utilbill_reebill table) if the reebill is issued.'''
-        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
-                is None:
-            return self._load_rs_by_id(utilbill.cprs_document_id)
-        return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
-
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id (string).
         '''
@@ -229,10 +217,9 @@ class RateStructureDAO(object):
         return result
 
     def delete_rs_docs_for_utilbill(self, utilbill):
-        '''Removes the UPRS and CPRS documents for the given state.UtilBill.
+        '''Removes the UPRS document for the given state.UtilBill.
         '''
         self._delete_rs_by_id(utilbill.uprs_document_id)
-        self._delete_rs_by_id(utilbill.cprs_document_id)
 
 
 class RateStructureItem(EmbeddedDocument):
@@ -249,6 +236,8 @@ class RateStructureItem(EmbeddedDocument):
 
     # descriptive human-readable name
     description = StringField(required=True, default='')
+
+    shared = BooleanField(required=True, default=True)
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
@@ -463,7 +452,8 @@ class RateStructure(Document):
         '''
         combined_dict = uprs.rsis_dict()
         combined_dict.update(cprs.rsis_dict())
-        return RateStructure(registers=[], rates=combined_dict.values())
+        return RateStructure(type='UPRS', registers=[],
+            rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to

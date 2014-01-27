@@ -2862,330 +2862,6 @@ function reeBillReady() {
     // Rate Structure Tab
 
 
-    // the CPRS
-
-    var initialCPRSRSI = {
-        rows: [],
-        total: 0
-    };
-
-    var CPRSRSIReader = new Ext.data.JsonReader({
-        idProperty: 'id',
-        totalProperty: 'total',
-        
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'id', mapping: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            //{name: 'rate_units', mapping: 'rate_units'},
-            {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
-
-    var CPRSRSIWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true ,
-        listful: true
-    });
-    
-    var CPRSRSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/cprsrsi',
-    });
-    CPRSRSIStoreProxyConn.autoAbort = true;
-    
-    var CPRSRSIStoreProxy = new Ext.data.HttpProxy(CPRSRSIStoreProxyConn);
-
-    var CPRSRSIStore = new Ext.data.JsonStore({
-        proxy: CPRSRSIStoreProxy,
-        autoSave: true,
-        reader: CPRSRSIReader,
-        writer: CPRSRSIWriter,
-        data: initialCPRSRSI,
-        root: 'rows',
-        idProperty: 'id',
-        fields: [
-            {name: 'id', mapping: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            //{name: 'rate_units', mapping: 'rate_units'},
-            {name: 'round_rule', mapping:'round_rule'},
-            //{name: 'total', mapping: 'total'}
-        ],
-    });
-
-    CPRSRSIStore.on('save', function (store, batch, data) {
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-    });
-
-    CPRSRSIStore.on('beforeload', function (store, options) {
-        CPRSRSIGrid.setDisabled(true);
-        options.params.utilbill_id = selected_utilbill.id;
-        
-        //Include the reebill's associated sequence and version if the utilbill is associated with one
-        record = chargesUBVersionMenu.selected_record
-        //If there is no sequence or version, don't include those parameters
-        if (record.data.sequence == null) {
-            if (options.params.reebill_sequence != undefined) {
-                delete options.params.reebill_sequence
-            }
-            if (options.params.reebill_version != undefined) {
-                delete options.params.reebill_version
-            }
-        }
-        //Otherwise, get the correct sequence and version
-        else {
-            options.params.reebill_sequence = record.data.sequence
-            options.params.reebill_version = record.data.version
-        }
-
-        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
-            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
-        }
-        
-        // Disable Regenerate-from-Predecessor-Button if there is no predecessor
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/has_utilbill_predecessor',
-            params: { utilbill_id: selected_utilbill.id},
-            success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    Ext.getCmp('regenerateCPRSButton').setDisabled(!jsonData.has_predecessor);
-                }
-            },
-        });
-        
-    });
-
-    CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
-        options.params.utilbill_id = selected_utilbill.id;
-        //Include the reebill's associated sequence and version if the utilbill is associated with one
-        record = chargesUBVersionMenu.selected_record
-        //If there is no sequence or version, don't include those parameters
-        if (record.data.sequence == null) {
-            if (options.params.reebill_sequence != undefined) {
-                delete options.params.reebill_sequence
-            }
-            if (options.params.reebill_version != undefined) {
-                delete options.params.reebill_version
-            }
-        }
-        //Otherwise, get the correct sequence and version
-        else {
-            options.params.reebill_sequence = record.data.sequence
-            options.params.reebill_version = record.data.version
-        }
-
-        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
-            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
-        }
-    });
-    
-    // Because of a bug in ExtJS, a record id that has been changed on the server
-    // will not be updated in ExtJS.
-    // As a workaround, the Server has to return all records on write (instead
-    // of just the record that changed)
-    // and the following function will replace the store's records
-    // with the returned records from the server.
-    // For more explanaition see 63585822
-    CPRSRSIStore.on('write', function(store, action, result, res, rs) {
-        var selected_record_id = CPRSRSIStore.indexOf(CPRSRSIGrid.getSelectionModel().getSelected());
-        CPRSRSIGrid.getSelectionModel().clearSelections();
-        CPRSRSIStore.loadData(res.raw, false);
-        if (selected_record_id < CPRSRSIStore.getCount()) {
-            CPRSRSIGrid.getSelectionModel().selectRow(selected_record_id)
-        }
-        // Scroll based on action
-        if (action == 'create'){
-            var lastrow = CPRSRSIStore.getCount() -1;
-            CPRSRSIGrid.getView().focusRow(lastrow);
-            CPRSRSIGrid.startEditing(lastrow, 0);
-        }else if(action == 'update'){
-            CPRSRSIGrid.getView().focusRow(selected_record_id);
-        }
-    });
-
-    // fired when the datastore has completed loading
-    CPRSRSIStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
-        CPRSRSIGrid.setDisabled(false);
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
-    CPRSRSIStore.on('beforesave', function(store, data) {
-    });
-
-    var CPRSRSIColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'RSI Binding',
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editable: true,
-                editor: new Ext.form.TextField({allowBlank: false}),
-                width: 150,
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 100,
-            },{
-                header: 'Quantity',
-                id: 'quantity',
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                allowBlank: false,
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'quantity_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-            },{
-                header: 'Rate',
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-                allowBlank: false,
-            },{
-                header: 'Units',
-                sortable: true,
-                //dataIndex: 'rate_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-            },{
-                header: 'Round Rule',
-                sortable: true,
-                dataIndex: 'round_rule',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 100,
-            //},{
-                //header: 'Total', 
-                //sortable: true, 
-                //dataIndex: 'total', 
-                //summaryType: 'sum',
-                //align: 'right',
-                //editor: new Ext.form.TextField({allowBlank: true})
-            }
-        ]
-    });
-
-    var CPRSRSIToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'CPRSRSIInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
-                {
-                    CPRSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    //var selection = CPRSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
-                    var defaultData = {};
-                    var r = new CPRSRSIType(defaultData);
-                    CPRSRSIStore.add([r]);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'CPRSRSIRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    CPRSRSIGrid.stopEditing();
-
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = CPRSRSIGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        CPRSRSIStore.remove(r);
-                    }
-                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-                }
-            },{
-                xtype:'tbseparator'
-            },
-            {
-                xtype: 'button',
-                id: 'regenerateCPRSButton',
-                text: 'Regenerate from Predecessor',
-                handler: function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/regenerate_cprs',
-                        params: { utilbill_id: selected_utilbill.id },
-                        success: function(result, request) {
-                            var jsonData = Ext.util.JSON.decode(result.responseText);
-                            if (jsonData.success == true) {
-                                CPRSRSIGrid.setDisabled(true);
-                                CPRSRSIGrid.setDisabled(true);
-                                CPRSRSIStore.reload();
-                                CPRSRSIStore.reload();
-                            }
-                        },
-                    });
-                }
-            },
-        ]
-    });
-
-    var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: CPRSRSIToolbar,
-        colModel: CPRSRSIColModel,
-        autoExpandColumn: 'quantity',
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: CPRSRSIStore,
-        enableColumnMove: true,
-        frame: true,
-        stripeRows: true,
-        title: 'Individual Rate Structure Items',
-        clicksToEdit: 2
-    });
-
-    CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    
-    // the UPRS
     var initialUPRSRSI = {
         rows: [],
         total: 0
@@ -3446,9 +3122,7 @@ function reeBillReady() {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
                                 UPRSRSIGrid.setDisabled(true);
-                                CPRSRSIGrid.setDisabled(true);
                                 UPRSRSIStore.reload();
-                                CPRSRSIStore.reload();
                             }
                         },
                     });
@@ -3464,9 +3138,7 @@ function reeBillReady() {
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: UPRSRSIStore,
         enableColumnMove: true,
-        frame: true,
         stripeRows: true,
-        title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -3482,7 +3154,7 @@ function reeBillReady() {
     // Instantiate the Rate Structure panel 
     //
 
-    rsUBVersionMenu = new UBVersionMenu([CPRSRSIStore, UPRSRSIStore]);
+    rsUBVersionMenu = new UBVersionMenu([UPRSRSIStore]);
 
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
@@ -3506,18 +3178,14 @@ function reeBillReady() {
                         region: 'north',
                         border: false,
                         split: true,
-                        layout: 'fit',
+                        //layout: 'fit',
+                        layoutConfig : {
+                            pack : 'start',
+                            align : 'stretch',
+                        },
                         items: [UPRSRSIGrid],
                         minHeight: 0,
-                        height: 300,
-                    },
-                    {
-                        xtype: 'panel',
-                        region: 'center',
-                        border: false,
-                        split: true,
-                        layout: 'fit',
-                        items: [CPRSRSIGrid],
+                        //height: 300,
                     },
                 ],
             },
@@ -3527,13 +3195,6 @@ function reeBillReady() {
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
     rateStructurePanel.on('activate', function (panel) {
-
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        CPRSRSIStore.reload();
-
-        //URSRSIStore.reload();
-
         UPRSRSIStore.reload();
 
     });
