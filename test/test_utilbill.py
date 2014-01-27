@@ -49,7 +49,6 @@ class UtilBillTest(utils.TestCase):
         # rate structure document containing some common RSI types
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[
                 RateStructureItem(
                     rsi_binding='CONSTANT',
@@ -497,12 +496,10 @@ class UtilBillTest(utils.TestCase):
         # rate structures are empty
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[]
         )
         cprs = RateStructure(
             id=ObjectId(),
-            type='CPRS',
             rates=[]
         )
 
@@ -538,7 +535,6 @@ class UtilBillTest(utils.TestCase):
 
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[
                 RateStructureItem(
                     rsi_binding='NEW_1',

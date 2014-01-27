@@ -105,7 +105,7 @@ class ReebillTest(TestCaseWithSetup):
         }, reebill.service_address)
 
     def test_compute_charges(self):
-        uprs = RateStructure(type='UPRS', rates=[
+        uprs = RateStructure(rates=[
             RateStructureItem(
                 rsi_binding='A',
                 quantity='REG_TOTAL.quantity',

@@ -247,11 +247,8 @@ class RateStructure(Document):
         'allow_inheritance': True
     }
 
-    # this is either 'UPRS' or 'CPRS'
-    type = StringField(required=True)
-
     rates = ListField(field=EmbeddedDocumentField(RateStructureItem),
-        default=[])
+            default=[])
 
     @classmethod
     def combine(cls, uprs, cprs):
