@@ -493,7 +493,7 @@ class Process(object):
                 'utility': utilbill.utility,
                 'rate_class': utilbill.rate_class,
             })
-            predecessor_uprs = RateStructure(type='UPRS', rates=[])
+            predecessor_uprs = RateStructure(rates=[])
             predecessor_uprs.validate()
         else:
             # the preceding utility bill does exist, so get its UPRS

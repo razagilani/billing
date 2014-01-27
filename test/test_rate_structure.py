@@ -243,16 +243,15 @@ class RateStructureDAOTest(unittest.TestCase):
         # present and should be excluded from a new predicted rate structure.
         # If unshared RSIs count as neutral, B shared occurs 1 out of 1 times,
         # so it should be included in a new predicted rate structure.
-        self.rs_1 = RateStructure(id=ObjectId(), type='UPRS', rates=[
+        self.rs_1 = RateStructure(id=ObjectId(), rates=[
             self.rsi_a_shared,
             self.rsi_b_unshared
         ])
-        self.rs_2 = RateStructure(id=ObjectId(), type='UPRS', rates=[
+        self.rs_2 = RateStructure(id=ObjectId(), rates=[
             self.rsi_a_shared,
             self.rsi_b_unshared
         ])
-        self.rs_3 = RateStructure(id=ObjectId(), type='UPRS',
-                rates=[self.rsi_b_shared])
+        self.rs_3 = RateStructure(id=ObjectId(), rates=[self.rsi_b_shared])
 
         self.utilbill_1 = Mock()
         self.utilbill_1.uprs_document_id = str(self.rs_1.id)

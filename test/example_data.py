@@ -343,7 +343,6 @@ _example_reebill = {
 
 
 _example_uprs = RateStructure(
-    type='UPRS',
     rates=[
         RateStructureItem(
             rsi_binding='SYSTEM_CHARGE',
