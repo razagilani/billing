@@ -3082,6 +3082,13 @@ function reeBillReady() {
     {
         columns: [
             {
+                xtype: 'checkboxcolumn',
+                header: 'Shared',
+                dataIndex: 'shared',
+                on: true,
+                off: false,
+                width: 60
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3094,13 +3101,6 @@ function reeBillReady() {
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
-            },{
-                xtype: 'checkboxcolumn',
-                header: 'Shared',
-                dataIndex: 'shared',
-                on: true,
-                off: false,
-                width: 60
             },{
                 header: 'Quantity',
                 id: 'quantity',
