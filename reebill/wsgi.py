@@ -612,17 +612,6 @@ class BillToolBridge:
                     " to: %s") % inspect.stack()[1][3])
             raise Unauthenticated("No Session")
 
-    # TODO 30164355 DBSession should log rollbacks the way this did
-    #def rollback_session(self, session):
-    #    try:
-    #        if session is not None: session.rollback()
-    #    except:
-    #        try:
-    #            self.logger.error('Could not rollback session:\n%s' % traceback.format_exc())
-    #        except:
-    #            print >> sys.stderr, ('Logger not functioning\nCould not '
-    #                    'roll back session:\n%s') % traceback.format_exc()
-
     def handle_exception(self, e):
         if type(e) is cherrypy.HTTPRedirect:
             # don't treat cherrypy redirect as an error
@@ -820,13 +809,9 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            fbd.fetch_oltp_data(self.splinter,
-                    self.nexus_util.olap_id(account), reebill, use_olap=True,
-                    verbose=True)
-        self.reebill_dao.save_reebill(reebill)
+        self.process.bind_renewable_energy(account, sequence)
+
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
         return self.dumps({'success': True})
@@ -1099,11 +1084,10 @@ class BillToolBridge:
     @json_exception
     def listAccounts(self, **kwargs):
         with DBSession(self.state_db) as session:
-            accounts = []
-            # eventually, this data will have to support pagination
             accounts = self.state_db.listAccounts(session)
             rows = [{'account': account, 'name': full_name} for account,
-                    full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+                    full_name in zip(accounts,
+                    self.process.full_names_of_accounts(session, accounts))]
             return self.dumps({'success': True, 'rows':rows})
 
 

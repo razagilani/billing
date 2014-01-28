@@ -32,6 +32,7 @@ from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
     UtilBillLoader
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
+from billing.processing import fetch_bill_data
 from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
@@ -1403,41 +1404,6 @@ class Process(object):
 
         return rows, totalCount
 
-    def summary_ree_charges(self, session, accounts, all_names):
-        def total_ree_in_reebills(self, reebills):
-            total_energy = 0
-            for reebill in reebills:
-                total_energy += reebill.total_renewable_energy()
-            return total_energy
-
-        rows = []
-        for i, account in enumerate(accounts):
-            row = {}
-            reebills = self.reebill_dao.load_reebills_for(account)
-            ree_charges = sum([reebill.ree_charges for reebill in reebills])
-            actual_total = sum([reebill.actual_total for reebill in reebills])
-            hypothetical_total = sum([reebill.hypothetical_total for reebill in reebills])
-            total_energy = 0
-            average_ree_rate = 0
-            total_energy = total_ree_in_reebills(reebills)
-
-            if total_energy != 0:
-                average_ree_rate = (hypothetical_total - actual_total)/total_energy
-
-            row['account'] = account
-            row['olap_id'] = all_names[i][1].get('codename', '')
-            row['casual_name'] = all_names[i][1].get('casualname', '')
-            row['primus_name'] = all_names[i][1].get('primus', '')
-            row['ree_charges'] = ree_charges
-            row['actual_charges'] = actual_total
-            row['hypothetical_charges'] = hypothetical_total
-            row['total_energy'] = total_energy
-            # per therm
-            row['average_ree_rate'] = average_ree_rate
-            rows.append(row)
-
-        return rows
-
     def sequences_for_approximate_month(self, session, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or
@@ -1620,3 +1586,9 @@ class Process(object):
 
         return data, total_count
 
+    def bind_renewable_energy(self, session, account, sequence):
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill, use_olap=True,
+                verbose=True)
+        self.reebill_dao.save_reebill(reebill)
