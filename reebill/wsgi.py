@@ -1093,53 +1093,6 @@ class BillToolBridge:
 
             return self.dumps({'success': True})
 
-    def all_names_of_accounts(self, accounts):
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
-
-        return name_dicts
-
-    def full_names_of_accounts(self, accounts):
-        '''Given a list of account numbers (as strings), returns a list
-        containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus" (sorted by
-        account). Names that do not exist for a given account are skipped.'''
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        name_dicts = self.all_names_of_accounts(accounts)
-
-        result = []
-        with DBSession(self.state_db) as session:
-            for account, all_names in name_dicts:
-                res = account + ' - '
-                # Only include the names that exist in Nexus
-                names = [all_names[name] for name in
-                         ('codename', 'casualname', 'primus')
-                         if all_names.get(name)]
-                res += '/'.join(names)
-                if len(names) > 0:
-                    res += ' - '
-                #Append utility and rate_class from the last utilbill for the
-                #account if one exists as per
-                #https://www.pivotaltracker.com/story/show/58027082
-                try:
-                    last_utilbill = self.state_db.get_last_utilbill(
-                        session, account)
-                except NoSuchBillException:
-                    #No utilbill found, just don't append utility info
-                    pass
-                else:
-                    res += "%s: %s" %(last_utilbill.utility,
-                                      last_utilbill.rate_class)
-                result.append(res)
-        return result
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2303,54 +2256,13 @@ class BillToolBridge:
         wants to read data and "update" when a cell in the grid was edited.'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
-
-                # result is a list of dictionaries of the form {account: account
-                # number, name: full name, period_start: date, period_end: date,
-                # sequence: reebill sequence number (if present)}
-                utilbills, totalCount = self.state_db.list_utilbills(session,
-                        account, int(start), int(limit))
-                # NOTE does not support multiple reebills per utility bill
-                state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
-                        ub._utilbill_reebills] for ub in utilbills)
-
-                full_names = self.full_names_of_accounts([account])
-                full_name = full_names[0] if full_names else account
-
-                rows = [{
-                    # TODO: sending real database ids to the client a security
-                    # risk; these should be encrypted
-                    'id': ub.id,
-                    'account': ub.customer.account,
-                    'name': full_name,
-                    'utility': ub.utility,
-                    'rate_class': ub.rate_class,
-                    # capitalize service name
-                    'service': 'Unknown' if ub.service is None else
-                           ub.service[0].upper() + ub.service[1:],
-                    'period_start': ub.period_start,
-                    'period_end': ub.period_end,
-                    'total_charges': ub.total_charges,
-                    # NOTE a type-based conditional is a bad pattern; this will
-                    # have to go away
-                    'computed_total': mongo.total_of_all_charges(
-                            self.reebill_dao.load_doc_for_utilbill(ub)) if ub
-                            .state < UtilBill.Hypothetical else None,
-                    # NOTE the value of 'issue_date' in this JSON object is
-                    # used by the client to determine whether a frozen utility
-                    # bill version exists (when issue date == null, the reebill
-                    # is unissued, so there is no frozen version of the utility
-                    # bill corresponding to it).
-                    'reebills': ub.sequence_version_json(),
-                    'state': ub.state_name(),
-                    # utility bill rows are always editable (since editing them
-                    # should not affect utility bill data in issued reebills)
-                    'processed': ub.processed,
-                    'editable': True,
-                } for ub in utilbills]
-
+                account = kwargs['account']
+                start, limit = int(kwargs['start']), int(kwargs['limit'])
+                rows, total_count = self.process.get_all_utilbills_json(
+                        session, account, start, limit)
                 return self.dumps({'success': True, 'rows':rows,
-                        'results':totalCount})
+                        'results': total_count})
+
             elif xaction == 'update':
                 # ext sends a JSON object if there is one row, a list of
                 # objects if there are more than one. but in this case only one
