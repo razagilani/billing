@@ -2563,6 +2563,7 @@ function reeBillReady() {
                 header: 'Description',
                 width: 75,
                 sortable: true,
+                editable: false,
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
