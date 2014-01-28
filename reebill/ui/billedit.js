@@ -5520,6 +5520,9 @@ function reeBillReady() {
                                             }
                                         });
                                     }
+                                    else{
+                                        issuableGrid.setDisabled(false);
+                                    }
                                 });
                     }
                     else {
