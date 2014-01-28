@@ -566,6 +566,24 @@ class Process(object):
         return doc, uprs
 
 
+    def delete_utility_bill_by_id(self, session, utilbill_id):
+        '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
+        it's not attached to a reebill) and returns the deleted state
+        .UtilBill object and the path  where the file was moved (it never
+        really gets deleted). This path will be None if there was no file or
+        it could not be found. Raises a ValueError if the
+        utility bill cannot be deleted.
+        '''
+        # load utilbill to get its dates and service
+        utilbill = session.query(state.UtilBill) \
+                .filter(state.UtilBill.id == utilbill_id).one()
+        # delete it & get new path (will be None if there was never
+        # a utility bill file or the file could not be found)
+        _, deleted_path = self.delete_utility_bill(session,
+                utilbill)
+        return utilbill, deleted_path
+
+    # TODO merge with delete_utility_bill_by_id
     def delete_utility_bill(self, session, utilbill):
         '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
         it's not attached to a reebill) and returns the path where the file was
@@ -602,7 +620,13 @@ class Process(object):
             assert utilbill.document_id is None
             assert utilbill.uprs_document_id is None
 
-        return new_path
+
+        # delete any estimated utility bills that were created to
+        # cover gaps that no longer exist
+        self.state_db.trim_hypothetical_utilbills(session,
+            utilbill.customer.account, utilbill.service)
+
+        return utilbill, new_path
 
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
@@ -1595,3 +1619,4 @@ class Process(object):
         } for ub in utilbills]
 
         return data, total_count
+
