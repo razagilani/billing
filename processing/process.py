@@ -17,6 +17,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 import operator
 from bson import ObjectId
 import traceback
+from itertools import chain
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -32,6 +33,7 @@ from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
     UtilBillLoader
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
+from billing.processing import fetch_bill_data
 from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
@@ -566,6 +568,24 @@ class Process(object):
         return doc, uprs
 
 
+    def delete_utility_bill_by_id(self, session, utilbill_id):
+        '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
+        it's not attached to a reebill) and returns the deleted state
+        .UtilBill object and the path  where the file was moved (it never
+        really gets deleted). This path will be None if there was no file or
+        it could not be found. Raises a ValueError if the
+        utility bill cannot be deleted.
+        '''
+        # load utilbill to get its dates and service
+        utilbill = session.query(state.UtilBill) \
+                .filter(state.UtilBill.id == utilbill_id).one()
+        # delete it & get new path (will be None if there was never
+        # a utility bill file or the file could not be found)
+        _, deleted_path = self.delete_utility_bill(session,
+                utilbill)
+        return utilbill, deleted_path
+
+    # TODO merge with delete_utility_bill_by_id
     def delete_utility_bill(self, session, utilbill):
         '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
         it's not attached to a reebill) and returns the path where the file was
@@ -602,7 +622,13 @@ class Process(object):
             assert utilbill.document_id is None
             assert utilbill.uprs_document_id is None
 
-        return new_path
+
+        # delete any estimated utility bills that were created to
+        # cover gaps that no longer exist
+        self.state_db.trim_hypothetical_utilbills(session,
+            utilbill.customer.account, utilbill.service)
+
+        return utilbill, new_path
 
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
@@ -1419,41 +1445,6 @@ class Process(object):
 
         return rows, totalCount
 
-    def summary_ree_charges(self, session, accounts, all_names):
-        def total_ree_in_reebills(self, reebills):
-            total_energy = 0
-            for reebill in reebills:
-                total_energy += reebill.total_renewable_energy()
-            return total_energy
-
-        rows = []
-        for i, account in enumerate(accounts):
-            row = {}
-            reebills = self.reebill_dao.load_reebills_for(account)
-            ree_charges = sum([reebill.ree_charges for reebill in reebills])
-            actual_total = sum([reebill.actual_total for reebill in reebills])
-            hypothetical_total = sum([reebill.hypothetical_total for reebill in reebills])
-            total_energy = 0
-            average_ree_rate = 0
-            total_energy = total_ree_in_reebills(reebills)
-
-            if total_energy != 0:
-                average_ree_rate = (hypothetical_total - actual_total)/total_energy
-
-            row['account'] = account
-            row['olap_id'] = all_names[i][1].get('codename', '')
-            row['casual_name'] = all_names[i][1].get('casualname', '')
-            row['primus_name'] = all_names[i][1].get('primus', '')
-            row['ree_charges'] = ree_charges
-            row['actual_charges'] = actual_total
-            row['hypothetical_charges'] = hypothetical_total
-            row['total_energy'] = total_energy
-            # per therm
-            row['average_ree_rate'] = average_ree_rate
-            rows.append(row)
-
-        return rows
-
     def sequences_for_approximate_month(self, session, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or
@@ -1547,3 +1538,98 @@ class Process(object):
         last_reebill_end = self.reebill_dao.load_reebill(account,
                 last_sequence).period_end
         return [last_sequence + (query_month - Month(last_reebill_end))]
+
+
+    def all_names_of_accounts(self, accounts):
+        # get list of customer name dictionaries sorted by their billing account
+        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
+        name_dicts = sorted(all_accounts_all_names.iteritems())
+
+        return name_dicts
+
+    def full_names_of_accounts(self, session, accounts):
+        '''Given a list of account numbers (as strings), returns a list
+        containing the "full name" of each account, each of which is of the
+        form "accountnumber - codename - casualname - primus" (sorted by
+        account). Names that do not exist for a given account are skipped.'''
+        # get list of customer name dictionaries sorted by their billing account
+        name_dicts = self.all_names_of_accounts(accounts)
+
+        result = []
+        for account, all_names in name_dicts:
+            res = account + ' - '
+            # Only include the names that exist in Nexus
+            names = [all_names[name] for name in
+                ('codename', 'casualname', 'primus')
+                if all_names.get(name)]
+            res += '/'.join(names)
+            if len(names) > 0:
+                res += ' - '
+                #Append utility and rate_class from the last utilbill for the
+            #account if one exists as per
+            #https://www.pivotaltracker.com/story/show/58027082
+            try:
+                last_utilbill = self.state_db.get_last_utilbill(
+                    session, account)
+            except NoSuchBillException:
+                #No utilbill found, just don't append utility info
+                pass
+            else:
+                res += "%s: %s" %(last_utilbill.utility,
+                last_utilbill.rate_class)
+            result.append(res)
+        return result
+
+    def get_all_utilbills_json(self, session, account, start, limit):
+        # result is a list of dictionaries of the form {account: account
+        # number, name: full name, period_start: date, period_end: date,
+        # sequence: reebill sequence number (if present)}
+        utilbills, total_count = self.state_db.list_utilbills(session,
+                account, start, limit)
+        # NOTE does not support multiple reebills per utility bill
+        state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
+                ub._utilbill_reebills] for ub in utilbills)
+
+        full_names = self.full_names_of_accounts(session, [account])
+        full_name = full_names[0] if full_names else account
+
+        data = [{
+            # TODO: sending real database ids to the client is a security
+            # risk; these should be encrypted
+            'id': ub.id,
+            'account': ub.customer.account,
+            'name': full_name,
+            'utility': ub.utility,
+            'rate_class': ub.rate_class,
+            # capitalize service name
+            'service': 'Unknown' if ub.service is None else
+            ub.service[0].upper() + ub.service[1:],
+            'period_start': ub.period_start,
+            'period_end': ub.period_end,
+            'total_charges': ub.total_charges,
+            # NOTE a type-based conditional is a bad pattern; this will
+            # have to go away
+            'computed_total': mongo.total_of_all_charges(
+                self.reebill_dao.load_doc_for_utilbill(ub)) if ub
+                                                               .state < UtilBill.Hypothetical else None,
+            # NOTE the value of 'issue_date' in this JSON object is
+            # used by the client to determine whether a frozen utility
+            # bill version exists (when issue date == null, the reebill
+            # is unissued, so there is no frozen version of the utility
+            # bill corresponding to it).
+            'reebills': ub.sequence_version_json(),
+            'state': ub.state_name(),
+            # utility bill rows are always editable (since editing them
+            # should not affect utility bill data in issued reebills)
+            'processed': ub.processed,
+            'editable': True,
+        } for ub in utilbills]
+
+        return data, total_count
+
+    def bind_renewable_energy(self, session, account, sequence):
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill, use_olap=True,
+                verbose=True)
+        self.reebill_dao.save_reebill(reebill)

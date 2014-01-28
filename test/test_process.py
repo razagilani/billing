@@ -985,7 +985,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # MySQL, document removed from Mongo (only template should be
             # left), UPRS document removed from Mongo, file moved to
             # trash directory
-            new_path = self.process.delete_utility_bill(session, utilbill)
+            deleted_bill, new_path = self.process.delete_utility_bill(session,
+                    utilbill)
+            self.assertEqual(utilbill, deleted_bill)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
             self.assertRaises(RateStructure.DoesNotExist,
