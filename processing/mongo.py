@@ -2166,36 +2166,6 @@ class ReebillDAO(object):
                         utilbill_doc['account'], utilbill_doc['sequence'],
                         utilbill_doc['version']))
 
-        unique_fields = {}
-        if sequence_and_version is not None:
-            # this utility bill is being frozen: check for existing frozen
-            # utility bills with same sequence and version (ignoring un-frozen
-            # ones)
-            unique_fields['sequence'] = sequence_and_version[0]
-            unique_fields['version'] = sequence_and_version[1]
-        elif 'sequence' in utilbill_doc:
-            # NOTE re-saving a frozen utility bill document can only happen when
-            # the 'force' argument is used
-            assert force is True
-            # check for existing frozen utility bills with the same sequence
-            # and version (ignoring un-frozen ones)
-            unique_fields['sequence'] = utilbill_doc['sequence']
-            unique_fields['version'] = utilbill_doc['version']
-        else:
-            # not frozen: only check for existing utility bills that don't have
-            # sequence/version keys
-            unique_fields['sequence'] = {'$exists': False}
-            unique_fields['version'] = {'$exists': False}
-        # NOTE do not use load_utilbills(**unique_fields) here because it
-        # unpacks None values into nonexistent keys!
-        # see bug #39717171
-        for duplicate in self.utilbills_collection.find(unique_fields):
-            if duplicate['_id'] != utilbill_doc['_id']:
-                raise NotUniqueException(("Can't save utility bill with "
-                        "_id=%s: There's already a utility bill with "
-                        "id=%s matching %s") % (utilbill_doc['_id'],
-                        duplicate['_id'], format_query(unique_fields)))
-
         if sequence_and_version is not None:
             utilbill_doc.update({
                 'sequence': sequence_and_version[0],
