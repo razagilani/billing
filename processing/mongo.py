@@ -465,9 +465,12 @@ def compute_all_charges(utilbill_doc, uprs):
             # this RSI has no charge corresponding to it
             pass
         else:
-            charge['quantity'] = quantity
-            charge['rate'] = rate
-            charge['total'] = total
+            charge.update({
+                'quantity': quantity,
+                'rate': rate,
+                'total': total,
+                'description': rsi['description']
+            })
 
         # update 'identifiers' so the results of this computation can be used
         # as identifier values in other RSIs

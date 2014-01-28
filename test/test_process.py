@@ -2331,11 +2331,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # add some RSIs to the UPRS, and charges to match
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             uprs.rates = [
-                RateStructureItem(rsi_binding='A', description='UPRS only',
-                        quantity='2', rate='3', quantity_units='kWh'),
-                RateStructureItem(rsi_binding='B', description=(
-                    'not shared'), quantity='6',  rate='7',
-                    quantity_units='therms', shared=False),
+                RateStructureItem(
+                    rsi_binding='A',
+                    description='UPRS only',
+                    quantity='2',
+                    rate='3',
+                    quantity_units='kWh',
+                ),
+                RateStructureItem(
+                    rsi_binding='B',
+                    description='not shared',
+                    quantity='6',
+                    rate='7',
+                    quantity_units='therms',
+                    shared=False,
+                )
             ]
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             doc['chargegroups'] = {'All Charges': [{'rsi_binding': rsi_binding,
@@ -2365,14 +2375,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     #'quantity_units': 'kWh',
                     'rate': 3,
                     'total': 6,
-                    #'description': 'UPRS only',
+                    'description': 'UPRS only',
                 }, {
                     'rsi_binding': 'B',
                     'quantity': 6,
                     #'quantity_units': 'therms',
                     'rate': 7,
                     'total': 42,
-                    #'description': 'CPRS overrides UPRS',
+                    'description': 'not shared',
                 },
             ]}, doc['chargegroups']);
 
