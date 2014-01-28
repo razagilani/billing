@@ -27,34 +27,24 @@ from StringIO import StringIO
 from itertools import chain
 import pymongo
 import mongoengine
-from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
-#TODO don't rely on test code, if we are, it isn't test code
 from skyliner import mock_skyliner
-from billing.util import json_util as ju, dateutils, nexus_util as nu
+from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
-from billing.processing import mongo, billupload, excel_export
-from billing.util import monthmath
+from billing.processing import mongo, excel_export
+from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
 from billing.processing.state import UtilBill, Customer
 from billing.processing.billupload import BillUpload
-from billing.processing import journal, bill_mailer
+from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
-
-
-
-# collection names: all collections are now hard-coded. maybe this should go in
-# some kind of documentation when we have documentation...
-# rate structures: 'ratestructure'
-# reebills: 'reebill'
-# users: 'users'
 
 import pprint
 sys.stdout = sys.stderr
@@ -396,33 +386,25 @@ class BillToolBridge:
                 },
             )
 
-        # create one Process object to use for all related bill processing
-        # TODO it's theoretically bad to hard-code these, but all skyliner
-        # configuration is hard-coded right now anyway
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            self.process = process.Process(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter, logger=self.logger)
-        else:
-            self.process = process.Process(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, None, None)
-
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
-                dict(self.config.items('reebillrendering')), self.state_db,
-                self.reebill_dao, self.logger)
+            dict(self.config.items('reebillrendering')), self.state_db,
+            self.reebill_dao, self.logger)
 
-        # configure mailer
-        bill_mailer.config = dict(self.config.items("mailer"))
+        bill_mailer = Mailer(dict(self.config.items("mailer")))
+
+        # create one Process object to use for all related bill processing
+        self.process = process.Process(self.state_db, self.reebill_dao,
+                self.ratestructure_dao, self.billUpload, self.nexus_util,
+                bill_mailer, self.renderer, self.splinter, logger=self.logger)
+
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
-        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
 
-        # TODO: allow the log to be viewed in the UI
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
@@ -1045,36 +1027,13 @@ class BillToolBridge:
             sequences = [int(sequences)]
 
         with DBSession(self.state_db) as session:
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
-                    sequence in sequences]
-
-            # render all the bills
-            # TODO 25560415 this fails if reebill rendering is turned
-            # off--there should be a better error message
-            for reebill in all_bills:
-                self.renderer.render_max_version(session, reebill.account, reebill.sequence,
-                    self.config.get("billdb", "billpath")+ "%s" % reebill.account,
-                    "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)), True)
-
-            # "the last element" (???)
-            most_recent_bill = all_bills[-1]
-            bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for sequence in sequences]
-            bill_dates = ["%s" % (b.period_end) for b in all_bills]
-            bill_dates = ", ".join(bill_dates)
-            merge_fields = {}
-            merge_fields["street"] = most_recent_bill.service_address.get("street","")
-            merge_fields["balance_due"] = round(most_recent_bill.balance_due, 2)
-            merge_fields["bill_dates"] = bill_dates
-            merge_fields["last_bill"] = bill_file_names[-1]
-            print recipient_list, merge_fields,os.path.join(self.config.get("billdb", "billpath"),account), bill_file_names
-            bill_mailer.mail(recipient_list, merge_fields,
-                    os.path.join(self.config.get("billdb", "billpath"),
-                        account), bill_file_names);
+            self.process.mail_reebills(session, account, sequences,
+                    recipient_list)
 
             # journal mailing of every bill
-            for reebill in all_bills:
-                journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                        reebill.account, reebill.sequence, recipients)
+            for sequence in sequences:
+                journal.ReeBillMailedEvent.save_instance(
+                        cherrypy.session['user'], account, sequence, recipients)
 
             return self.dumps({'success': True})
 

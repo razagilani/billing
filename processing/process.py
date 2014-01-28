@@ -32,7 +32,7 @@ from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
     UtilBillLoader
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
-from billing.processing import fetch_bill_data
+from billing.processing import fetch_bill_data, bill_mailer
 from billing.util import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
@@ -64,13 +64,15 @@ class Process(object):
     config = None
 
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, splinter=None, logger=None):
+            nexus_util, bill_mailer, renderer, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
+        self.bill_mailer = bill_mailer
+        self.renderer = renderer
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
@@ -1592,3 +1594,36 @@ class Process(object):
                 self.nexus_util.olap_id(account), reebill, use_olap=True,
                 verbose=True)
         self.reebill_dao.save_reebill(reebill)
+
+
+    def mail_reebills(self, session, account, sequences, recipient_list):
+        all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                sequence in sequences]
+
+        # render all the bills
+        for reebill in all_bills:
+            the_path = self.billupload.get_reebill_file_path(account,
+                    reebill.sequence)
+            dirname, basename = os.path.split(the_path)
+            self.renderer.render_max_version(session, reebill.account,
+                    reebill.sequence,
+                    # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
+                    # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
+                    dirname, basename, True)
+
+        # "the last element" (???)
+        most_recent_bill = all_bills[-1]
+        bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
+                sequence in sequences]
+        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_bills])
+        merge_fields = {
+            'street': most_recent_bill.service_address.get('street',''),
+            'balance_due': round(most_recent_bill.balance_due, 2),
+            'bill_dates': bill_dates,
+            'last_bill': bill_file_names[-1],
+        }
+        bill_file_paths = [self.billupload.get_reebill_file_path(account,
+                s) for s in sequences]
+        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
+            bill_file_paths)
+
