@@ -1216,39 +1216,6 @@ class BillToolBridge:
                 rows=filter(filter_xbillcustomers, rows)
             rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
-            ## also get customers from Nexus who don't exist in billing yet
-            ## (do not sort these; just append them to the end)
-            ## TODO: we DO want to sort these, but we just want to them to come
-            ## after all the billing billing customers
-            #non_billing_customers = self.nexus_util.get_non_billing_customers()
-            #morerows = []
-            #for customer in non_billing_customers:
-                #morerows.append(dict([
-                    ## we have the olap_id too but we don't show it
-                    #('account', 'n/a'),
-                    #('codename', customer['codename']),
-                    #('casualname', customer['casualname']),
-                    #('primusname', customer['primus']),
-                    #('dayssince', 'n/a'),
-                    #('lastevent', 'n/a'),
-                    #('provisionable', True)
-                #]))
-
-            #if sortcol == 'account':
-                #morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
-            #elif sortcol == 'codename':
-                #morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
-            #elif sortcol == 'casualname':
-                #morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
-            #elif sortcol == 'primusname':
-                #morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
-            #elif sortcol == 'dayssince':
-                #morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
-            #elif sortcol == 'lastevent':
-                #morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
-
-            #rows.extend(morerows)
-
             # count includes both billing and non-billing customers (front end
             # needs this for pagination)
             count = len(rows)
