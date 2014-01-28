@@ -2274,27 +2274,12 @@ class BillToolBridge:
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
                 for utilbill_id in ids:
-                    # load utilbill to get its dates and service
-                    utilbill = session.query(state.UtilBill)\
-                            .filter(state.UtilBill.id == utilbill_id).one()
-                    start, end = utilbill.period_start, utilbill.period_end
-                    service = utilbill.service
-
-                    # delete it & get new path (will be None if there was never
-                    # a utility bill file or the file could not be found)
-                    deleted_path = self.process.delete_utility_bill(session,
-                            utilbill)
-
-                    # log it
+                    utilbill, deleted_path = self.process\
+                            .delete_utility_bill_by_id(session, utilbill_id)
                     journal.UtilBillDeletedEvent.save_instance(
-                            cherrypy.session['user'], account, start, end,
-                            service, deleted_path)
-
-                # delete any estimated utility bills that were created to
-                # cover gaps that no longer exist
-                self.state_db.trim_hypothetical_utilbills(session,
-                        utilbill.customer.account, utilbill.service)
-
+                            cherrypy.session['user'], account,
+                            utilbill.period_start, utilbill.period_end,
+                            utilbill.service, deleted_path)
                 return self.dumps({'success': True})
 
     @cherrypy.expose
