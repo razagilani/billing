@@ -603,6 +603,7 @@ function reeBillReady() {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
                                 aChargesStore.reload();
+                                utilbillGridStore.reload()
                             }
                         },
                     });
