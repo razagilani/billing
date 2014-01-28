@@ -25,6 +25,7 @@ import re
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
+from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
@@ -991,6 +992,46 @@ class Process(object):
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
 
+    def roll_bill(self, session, account, start_date,
+                               integrate_skyline_backend):
+        """ This method invokes the different processes involved
+            when a new reebill is rolled via wsgi interface.
+            First a first or next reebill is created. Then the reebill
+            is bound and computed.
+            start_date: The start date of the bill
+            integrate_skyline_backend: runtime config option that tdetermines
+                whether the skyline_backend is integrated and should fetch
+                oltp data
+            Returns the sequence of the last document, the sequence
+            of the nuw doc and the version of the new reebill document
+            so they can be user for journaling purposes
+        """
+        # 1st transaction: roll
+        last_seq = self.state_db.last_sequence(session, account)
+        if last_seq == 0:
+            utilbill = session.query(UtilBill).join(Customer)\
+                    .filter(UtilBill.customer_id == Customer.id)\
+                    .filter_by(account=account)\
+                    .filter(UtilBill.period_start >= start_date)\
+                    .order_by(UtilBill.period_start).first()
+            if utilbill is None:
+                raise ValueError("No utility bill found starting on/after %s" %
+                        start_date)
+            self.create_first_reebill(session, utilbill)
+        else:
+            self.create_next_reebill(session, account)
+        new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq + 1)
+        # 2nd transaction: bind and compute. if one of these fails, don't undo
+        # the changes to MySQL above, leaving a Mongo reebill document without
+        # a corresponding MySQL row; only undo the changes related to binding
+        # and computing (currently there are none).
+        if integrate_skyline_backend:
+            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
+                    new_reebill_doc, use_olap=True, verbose=True)
+        self.reebill_dao.save_reebill(new_reebill_doc)
+        self.compute_reebill(session, new_reebill_doc)
+        self.reebill_dao.save_reebill(new_reebill_doc)
+        return (last_seq, new_reebill_doc.sequence, new_reebill_doc.version)
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
