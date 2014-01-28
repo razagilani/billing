@@ -964,7 +964,7 @@ class Process(object):
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
 
-    def roll_bind_compute_bill(self, session, account, start_date,
+    def roll_bill(self, session, account, start_date,
                                integrate_skyline_backend):
         """ This method invokes the different processes involved
             when a new reebill is rolled via wsgi interface.
