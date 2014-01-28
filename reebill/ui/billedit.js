@@ -3179,7 +3179,7 @@ function reeBillReady() {
             {
                 xtype: 'button',
                 id: 'regenerateRSButton',
-                text: 'Regenerate from Prediction',
+                text: 'Regenerate',
                 handler: function() {
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/regenerate_rs',

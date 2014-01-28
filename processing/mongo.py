@@ -2166,17 +2166,7 @@ class ReebillDAO(object):
                         utilbill_doc['account'], utilbill_doc['sequence'],
                         utilbill_doc['version']))
 
-        # check for uniqueness of {account, service, utility, start, end} (and
-        # sequence + version if appropriate). Mongo won't enforce this for us.
-        unique_fields = {
-            'account': utilbill_doc['account'],
-            'service': utilbill_doc['service'],
-            'utility': utilbill_doc['utility'],
-            'start': date_to_datetime(utilbill_doc['start']) if
-                    utilbill_doc['start'] is not None else None,
-            'end': date_to_datetime(utilbill_doc['end']) if utilbill_doc['end']
-                    is not None else None,
-        }
+        unique_fields = {}
         if sequence_and_version is not None:
             # this utility bill is being frozen: check for existing frozen
             # utility bills with same sequence and version (ignoring un-frozen
@@ -2204,8 +2194,7 @@ class ReebillDAO(object):
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
                         "id=%s matching %s") % (utilbill_doc['_id'],
-                        duplicate['_id'],
-                        format_query(unique_fields)))
+                        duplicate['_id'], format_query(unique_fields)))
 
         if sequence_and_version is not None:
             utilbill_doc.update({
