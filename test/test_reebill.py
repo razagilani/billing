@@ -23,6 +23,8 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 
 class ReebillTest(TestCaseWithSetup):
     '''Tests for MongoReebill methods.'''
+    # TODO make this a real unit test (it should not inherit from
+    # TestCaseWithSetup and should not use the database)
     
     def test_utilbill_periods(self):
         acc = '99999'
