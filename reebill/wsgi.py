@@ -612,17 +612,6 @@ class BillToolBridge:
                     " to: %s") % inspect.stack()[1][3])
             raise Unauthenticated("No Session")
 
-    # TODO 30164355 DBSession should log rollbacks the way this did
-    #def rollback_session(self, session):
-    #    try:
-    #        if session is not None: session.rollback()
-    #    except:
-    #        try:
-    #            self.logger.error('Could not rollback session:\n%s' % traceback.format_exc())
-    #        except:
-    #            print >> sys.stderr, ('Logger not functioning\nCould not '
-    #                    'roll back session:\n%s') % traceback.format_exc()
-
     def handle_exception(self, e):
         if type(e) is cherrypy.HTTPRedirect:
             # don't treat cherrypy redirect as an error
@@ -793,13 +782,9 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            fbd.fetch_oltp_data(self.splinter,
-                    self.nexus_util.olap_id(account), reebill, use_olap=True,
-                    verbose=True)
-        self.reebill_dao.save_reebill(reebill)
+        self.process.bind_renewable_energy(account, sequence)
+
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
         return self.dumps({'success': True})
@@ -1066,64 +1051,16 @@ class BillToolBridge:
 
             return self.dumps({'success': True})
 
-    def all_names_of_accounts(self, accounts):
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
-
-        return name_dicts
-
-    def full_names_of_accounts(self, accounts):
-        '''Given a list of account numbers (as strings), returns a list
-        containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus" (sorted by
-        account). Names that do not exist for a given account are skipped.'''
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        name_dicts = self.all_names_of_accounts(accounts)
-
-        result = []
-        with DBSession(self.state_db) as session:
-            for account, all_names in name_dicts:
-                res = account + ' - '
-                # Only include the names that exist in Nexus
-                names = [all_names[name] for name in
-                         ('codename', 'casualname', 'primus')
-                         if all_names.get(name)]
-                res += '/'.join(names)
-                if len(names) > 0:
-                    res += ' - '
-                #Append utility and rate_class from the last utilbill for the
-                #account if one exists as per
-                #https://www.pivotaltracker.com/story/show/58027082
-                try:
-                    last_utilbill = self.state_db.get_last_utilbill(
-                        session, account)
-                except NoSuchBillException:
-                    #No utilbill found, just don't append utility info
-                    pass
-                else:
-                    res += "%s: %s" %(last_utilbill.utility,
-                                      last_utilbill.rate_class)
-                result.append(res)
-        return result
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
     def listAccounts(self, **kwargs):
         with DBSession(self.state_db) as session:
-            accounts = []
-            # eventually, this data will have to support pagination
             accounts = self.state_db.listAccounts(session)
             rows = [{'account': account, 'name': full_name} for account,
-                    full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+                    full_name in zip(accounts,
+                    self.process.full_names_of_accounts(session, accounts))]
             return self.dumps({'success': True, 'rows':rows})
 
 
@@ -1236,39 +1173,6 @@ class BillToolBridge:
                 rows=filter(filter_xbillcustomers, rows)
             rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
 
-            ## also get customers from Nexus who don't exist in billing yet
-            ## (do not sort these; just append them to the end)
-            ## TODO: we DO want to sort these, but we just want to them to come
-            ## after all the billing billing customers
-            #non_billing_customers = self.nexus_util.get_non_billing_customers()
-            #morerows = []
-            #for customer in non_billing_customers:
-                #morerows.append(dict([
-                    ## we have the olap_id too but we don't show it
-                    #('account', 'n/a'),
-                    #('codename', customer['codename']),
-                    #('casualname', customer['casualname']),
-                    #('primusname', customer['primus']),
-                    #('dayssince', 'n/a'),
-                    #('lastevent', 'n/a'),
-                    #('provisionable', True)
-                #]))
-
-            #if sortcol == 'account':
-                #morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
-            #elif sortcol == 'codename':
-                #morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
-            #elif sortcol == 'casualname':
-                #morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
-            #elif sortcol == 'primusname':
-                #morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
-            #elif sortcol == 'dayssince':
-                #morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
-            #elif sortcol == 'lastevent':
-                #morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
-
-            #rows.extend(morerows)
-
             # count includes both billing and non-billing customers (front end
             # needs this for pagination)
             count = len(rows)
@@ -1281,39 +1185,6 @@ class BillToolBridge:
             self.user_dao.save_user(cherrypy.session['user'])
 
             return self.dumps({'success': True, 'rows':rows, 'results':count})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def summary_ree_charges(self, start, limit, **args):
-        '''Handles AJAX request for "Summary and Export" grid in "Accounts"
-        tab.'''
-        return self.dumps({'success': True})
-        with DBSession(self.state_db) as session:
-            accounts, totalCount = self.state_db.list_accounts(session,
-                    int(start), int(limit))
-            account_names = self.all_names_of_accounts([account for account in
-                    accounts])
-            rows = self.process.summary_ree_charges(session, accounts, account_names)
-            for row in rows:
-                outstanding_balance = self.process.get_outstanding_balance(session,
-                        row['account'])
-                days_since_due_date = None
-                if outstanding_balance > 0:
-                    payments = self.state_db.payments(session, row['account'])
-                    if payments:
-                        last_payment_date = payments[-1].date_received
-                        reebills_since = self.reebill_dao.load_reebills_in_period(
-                                row['account'], 'any', last_payment_date, date.today())
-                        if reebills_since and reebills_since[0].due_date:
-                            days_since_due_date = (date.today() -
-                                    reebills_since[0].due_date).days
-
-                row.update({'outstandingbalance': '$%.2f' % outstanding_balance,
-                           'days_late': days_since_due_date})
-            return self.dumps({'success': True, 'rows':rows,
-                    'results':totalCount})
 
     @cherrypy.expose
     @random_wait
@@ -1912,12 +1783,6 @@ class BillToolBridge:
             'suspended_services': reebill.suspended_services
         })
 
-    #
-    ################
-
-    ################
-    # handle actual and hypothetical charges 
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2276,54 +2141,13 @@ class BillToolBridge:
         wants to read data and "update" when a cell in the grid was edited.'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
-
-                # result is a list of dictionaries of the form {account: account
-                # number, name: full name, period_start: date, period_end: date,
-                # sequence: reebill sequence number (if present)}
-                utilbills, totalCount = self.state_db.list_utilbills(session,
-                        account, int(start), int(limit))
-                # NOTE does not support multiple reebills per utility bill
-                state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
-                        ub._utilbill_reebills] for ub in utilbills)
-
-                full_names = self.full_names_of_accounts([account])
-                full_name = full_names[0] if full_names else account
-
-                rows = [{
-                    # TODO: sending real database ids to the client a security
-                    # risk; these should be encrypted
-                    'id': ub.id,
-                    'account': ub.customer.account,
-                    'name': full_name,
-                    'utility': ub.utility,
-                    'rate_class': ub.rate_class,
-                    # capitalize service name
-                    'service': 'Unknown' if ub.service is None else
-                           ub.service[0].upper() + ub.service[1:],
-                    'period_start': ub.period_start,
-                    'period_end': ub.period_end,
-                    'total_charges': ub.total_charges,
-                    # NOTE a type-based conditional is a bad pattern; this will
-                    # have to go away
-                    'computed_total': mongo.total_of_all_charges(
-                            self.reebill_dao.load_doc_for_utilbill(ub)) if ub
-                            .state < UtilBill.Hypothetical else None,
-                    # NOTE the value of 'issue_date' in this JSON object is
-                    # used by the client to determine whether a frozen utility
-                    # bill version exists (when issue date == null, the reebill
-                    # is unissued, so there is no frozen version of the utility
-                    # bill corresponding to it).
-                    'reebills': ub.sequence_version_json(),
-                    'state': ub.state_name(),
-                    # utility bill rows are always editable (since editing them
-                    # should not affect utility bill data in issued reebills)
-                    'processed': ub.processed,
-                    'editable': True,
-                } for ub in utilbills]
-
+                account = kwargs['account']
+                start, limit = int(kwargs['start']), int(kwargs['limit'])
+                rows, total_count = self.process.get_all_utilbills_json(
+                        session, account, start, limit)
                 return self.dumps({'success': True, 'rows':rows,
-                        'results':totalCount})
+                        'results': total_count})
+
             elif xaction == 'update':
                 # ext sends a JSON object if there is one row, a list of
                 # objects if there are more than one. but in this case only one
@@ -2368,27 +2192,12 @@ class BillToolBridge:
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
                 for utilbill_id in ids:
-                    # load utilbill to get its dates and service
-                    utilbill = session.query(state.UtilBill)\
-                            .filter(state.UtilBill.id == utilbill_id).one()
-                    start, end = utilbill.period_start, utilbill.period_end
-                    service = utilbill.service
-
-                    # delete it & get new path (will be None if there was never
-                    # a utility bill file or the file could not be found)
-                    deleted_path = self.process.delete_utility_bill(session,
-                            utilbill)
-
-                    # log it
+                    utilbill, deleted_path = self.process\
+                            .delete_utility_bill_by_id(session, utilbill_id)
                     journal.UtilBillDeletedEvent.save_instance(
-                            cherrypy.session['user'], account, start, end,
-                            service, deleted_path)
-
-                # delete any estimated utility bills that were created to
-                # cover gaps that no longer exist
-                self.state_db.trim_hypothetical_utilbills(session,
-                        utilbill.customer.account, utilbill.service)
-
+                            cherrypy.session['user'], account,
+                            utilbill.period_start, utilbill.period_end,
+                            utilbill.service, deleted_path)
                 return self.dumps({'success': True})
 
     @cherrypy.expose

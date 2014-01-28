@@ -302,14 +302,6 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         # but the original utility bill can still be saved
         self.reebill_dao.save_utilbill(utilbill)
 
-        # it should never be possible to save a utilbill with the same
-        # account, utility, service, start, end as another
-        other_utilbill = example_data.get_utilbill_dict('99999',
-                start=utilbill['start'], end=utilbill['end'],
-                service=utilbill['service'], utility=utilbill['utility'])
-        self.assertRaises(NotUniqueException, self.reebill_dao.save_utilbill,
-                other_utilbill)
-
     def test_delete_reebill(self):
         '''Tests deleting an unissued reebill document, which has no frozen
         utility bill documents associated with it.'''
