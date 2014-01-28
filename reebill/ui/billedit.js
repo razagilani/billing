@@ -1933,7 +1933,7 @@ function reeBillReady() {
                 id: 'service',
                 header: 'Service',
                 dataIndex: 'service',
-                editable: true,
+                editable: false,
                 sortable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
                 width: 70,
