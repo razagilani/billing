@@ -79,6 +79,20 @@ class ReeBill(Base):
     version = Column(Integer, nullable=False)
     issue_date = Column(Date)
 
+    # new fields from Mongo
+    ree_charge = Column(Float, nullable=False)
+    balance_due = Column(Float, nullable=False)
+    balance_forward = Column(Float, nullable=False)
+    discount_rate = Column(Float, nullable=False)
+    due_date = Column(Date, nullable=False)
+    late_charge_rate = Column(Float, nullable=False)
+    late_charge = Column(Float, nullable=False)
+    manual_adjustment = Column(Float, nullable=False)
+    payment_received = Column(Float, nullable=False)
+    prior_balance = Column(Float, nullable=False)
+    ree_value = Column(Float, nullable=False)
+    ree_savings = Column(Float, nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
@@ -236,21 +250,6 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-
-
-    # new fields from Mongo
-    ree_charge = Column(Float, nullable=False)
-    balance_due = Column(Float, nullable=False)
-    balance_forward = Column(Float, nullable=False)
-    discount_rate = Column(Float, nullable=False)
-    due_date = Column(Date, nullable=False)
-    late_charge_rate = Column(Float, nullable=False)
-    late_charge = Column(Float, nullable=False)
-    manual_adjustment = Column(Float, nullable=False)
-    payment_received = Column(Float, nullable=False)
-    prior_balance = Column(Float, nullable=False)
-    ree_value = Column(Float, nullable=False)
-    ree_savings = Column(Float, nullable=False)
 
     @classmethod
     def validate_utilbill_period(self, start, end):
