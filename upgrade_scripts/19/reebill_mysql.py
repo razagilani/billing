@@ -34,6 +34,7 @@ other_keys = [
     'discount_rate',
     'due_date',
     'late_charge_rate',
+    'total_adjustment',
     'manual_adjustment',
     'payment_received',
     'prior_balance',
