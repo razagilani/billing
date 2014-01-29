@@ -1334,21 +1334,16 @@ class BillToolBridge:
     def rsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
         '''AJAX request handler for "Shared Rate Structure Items" grid.
-        '''
-        return self.rsi_crud(utilbill_id, 'uprs', xaction, reebill_sequence,
-                reebill_version, kwargs.get('rows'))
-
-    def rsi_crud(self, utilbill_id, rsi_type, xaction, reebill_sequence,
-            reebill_version, rows):
-        '''Performs all CRUD operations on the UPRS of the utility bill
+        Performs all CRUD operations on the UPRS of the utility bill
         given by its MySQL id (and reebill_sequence and reebill_version if
         non-None). 'xaction' is one of the Ext-JS operation names "create",
         "read", "update", "destroy". If 'xaction' is not "read", 'rows' should
         contain data to create
         '''
+        rows = kwargs.get('rows')
         with DBSession(self.state_db) as session:
             rate_structure = self.process.get_rs_doc(session, utilbill_id,
-                    rsi_type, reebill_sequence=reebill_sequence,
+                    'uprs', reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
             rates = rate_structure.rates
 
