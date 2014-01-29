@@ -373,28 +373,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create first reebill
             self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
-            bill1 = self.reebill_dao.load_reebill(acc, 1)
-            bill1.reebill_dict['utilbills'][0]['shadow_registers'][0]\
+            bill1 = session.query(ReeBill).one()
+            bill1_doc = self.reebill_dao.load_reebill(acc, 1)
+            bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
-            self.process._compute_reebill_document(session, bill1)
-            self.reebill_dao.save_reebill(bill1)
-            self.assertEqual(0, self.process.get_late_charge(session, bill1,
+            self.process._compute_reebill_document(session, bill1_doc)
+            self.reebill_dao.save_reebill(bill1_doc)
+            self.assertEqual(0, self.process.get_late_charge(session, bill1_doc,
                     date(2011,12,31)))
-            self.assertEqual(0, self.process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1_doc,
                     date(2012,1,1)))
-            self.assertEqual(0, self.process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1_doc,
                     date(2012,1,2)))
-            self.assertEqual(0, self.process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1_doc,
                     date(2012,2,1)))
-            self.assertEqual(0, self.process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1_doc,
                     date(2012,2,2)))
 
             # issue first reebill, so a later bill can have a late charge
             # based on the customer's failure to pay bill1 by its due date,
             # i.e. 30 days after the issue date.
-            self.process.issue(session, bill1.account, bill1.sequence,
+            self.process.issue(session, bill1_doc.account, bill1_doc.sequence,
                     issue_date=date(2012,4,1))
-            bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
             assert bill1.due_date == date(2012,5,1)
             assert bill1.balance_due == 50
 
