@@ -809,11 +809,6 @@ class Process(object):
         reebill_doc.ree_charges = 0
         reebill_doc.ree_savings = 0
 
-        # reset hypothetical and actual totals so we can accumulate across all
-        # services
-        #reebill_doc.hypothetical_total = 0
-        #reebill_doc.actual_total = 0
-
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
         reebill_doc.update_summary_values()
 
