@@ -3071,7 +3071,7 @@ function reeBillReady() {
         if (action == 'create'){
             var lastrow = RSIStore.getCount() -1;
             RSIGrid.getView().focusRow(lastrow);
-            RSIGrid.startEditing(lastrow, 0);
+            RSIGrid.startEditing(lastrow, 1);
         }else if(action == 'update'){
             RSIGrid.getView().focusRow(selected_record_id);
         }
