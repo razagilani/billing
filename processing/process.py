@@ -733,7 +733,7 @@ class Process(object):
                     reebill.customer.account, reebill.sequence,
                     version=reebill.version)
             try:
-                self.compute_reebill(session, reebill_doc)
+                self._compute_reebill_document(session, reebill_doc)
             except Exception as e:
                 self.logger.error("Error when computing reebill %s: %s" % (
                     reebill, e))
@@ -742,11 +742,26 @@ class Process(object):
 
         self.reebill_dao.save_utilbill(document)
 
-    def compute_reebill(self, session, reebill_doc):
+    def compute_reebill(self, session, account, sequence, version='max'):
+        '''Loads, computes, and saves the reebill from MySQL and the reebill
+        document in Mongo.
+        '''
+        reebill = self.state_db.get_reebill(account, sequence, version)
+
+        # TODO update fields in reebill itself
+
+        # update fields in Mongo document
+        document = self.reebill_dao.load_reebill(account, sequence, version)
+        self._compute_reebill_document(session, document)
+        self.reebill_dao.save_reebill(document)
+
+    def _compute_reebill_document(self, session, reebill_doc):
         '''Updates everything about the given reebill document that can be
         continually updated. This should be called whenever anything about a
         reebill or its utility bills has been changed, and should be
         idempotent.
+
+        Does not save anything in the database.
         '''
         if reebill_doc.sequence == 1:
             predecessor_doc = None
@@ -793,11 +808,6 @@ class Process(object):
         reebill_doc.ree_value = 0
         reebill_doc.ree_charges = 0
         reebill_doc.ree_savings = 0
-
-        # reset hypothetical and actual totals so we can accumulate across all
-        # services
-        #reebill_doc.hypothetical_total = 0
-        #reebill_doc.actual_total = 0
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
         reebill_doc.update_summary_values()
@@ -1029,7 +1039,7 @@ class Process(object):
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_reebill_doc, use_olap=True, verbose=True)
         self.reebill_dao.save_reebill(new_reebill_doc)
-        self.compute_reebill(session, new_reebill_doc)
+        self._compute_reebill_document(session, new_reebill_doc)
         self.reebill_dao.save_reebill(new_reebill_doc)
         return (last_seq, new_reebill_doc.sequence, new_reebill_doc.version)
 
@@ -1071,7 +1081,7 @@ class Process(object):
         # replace utility bill documents with the "current" ones, and update
         # "hypothetical" utility bill data in the reebill document to match
         # (note that utility bill subdocuments in the reebill also get updated
-        # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
+        # in '_compute_reebill_document' below, but 'fetch_oltp_data' won't work unless
         # they are updated)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
                 for u in reebill.utilbills]
@@ -1085,7 +1095,7 @@ class Process(object):
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill_doc)
         try:
-            self.compute_reebill(session, reebill_doc)
+            self._compute_reebill_document(session, reebill_doc)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -1145,7 +1155,7 @@ class Process(object):
                 target_sequence, version=target_max_version)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_reebill(session, target_reebill)
+        self._compute_reebill_document(session, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
         # issue each correction
@@ -1349,7 +1359,7 @@ class Process(object):
         reebill_document = self.reebill_dao.load_reebill(account, sequence)
 
         # compute the bill to make sure it's up to date before issuing
-        self.compute_reebill(session, reebill_document)
+        self._compute_reebill_document(session, reebill_document)
 
         # set issue date in MySQL and due date in mongo
         reebill.issue_date = issue_date
@@ -1357,7 +1367,7 @@ class Process(object):
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
-        # TODO: should this be replaced with a call to compute_reebill() to
+        # TODO: should this be replaced with a call to _compute_reebill_document() to
         # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
         lc = self.get_late_charge(session, reebill_document)
