@@ -1155,10 +1155,6 @@ class BillToolBridge:
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE).date() if x else None
-        begin_date = make_date(begin_date)
-        end_date = make_date(end_date)
         #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
             buf = StringIO()
