@@ -87,6 +87,7 @@ class ReeBill(Base):
     due_date = Column(Date, nullable=False)
     late_charge_rate = Column(Float, nullable=False)
     late_charge = Column(Float, nullable=False)
+    total_adjustment = Column(Float, nullable=False)
     manual_adjustment = Column(Float, nullable=False)
     payment_received = Column(Float, nullable=False)
     prior_balance = Column(Float, nullable=False)
@@ -204,6 +205,16 @@ class ReeBill(Base):
         reebill. This will be None if this reebill is unissued.'''
         return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
                 if ubrb.utilbill == utilbill)
+
+    @property
+    def total(self):
+        '''The sum of all charges on this bill that do not come from other
+        bills, i.e. charges that are being charged to the customer's account on
+        this bill's issue date. (This includes the late charge, which depends
+        on another bill for its value but belongs to the bill on which it
+        appears.) This total is what should be used to calculate the adjustment
+        produced by the difference between two versions of a bill.'''
+        return self.ree_charge + self.late_charge
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
