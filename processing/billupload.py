@@ -209,9 +209,12 @@ class BillUpload(object):
 
         return new_path
 
-    def get_reebill_file_path(self, account, sequence, branch=0):
-        # TODO implement like the utilbill version
-        raise Exception("not implemented")
+    def get_reebill_file_path(self, account, sequence):
+        '''Return the path for the PDF file of the reebill given by account,
+        sequence.
+        '''
+        return os.path.join(self.reebill_directory, account,
+                '%s_%.4d.pdf' % (account, sequence))
 
     # TODO rename: ImagePath -> ImageName
     def getUtilBillImagePath(self, account, begin_date, end_date, resolution):
