@@ -1618,8 +1618,7 @@ class BillToolBridge:
         # if this is the case, return no periods.  
         # This is done so that the UI can configure itself with no data
         if reebill is None:
-            # TODO: 40161259 - must return success field
-            return self.dumps({})
+            return self.dumps({'success':True})
 
         ba = reebill.billing_address
         sa = reebill.service_address
@@ -1649,8 +1648,6 @@ class BillToolBridge:
             pass
 
         account_info['discount_rate'] = reebill.discount_rate
-
-        # TODO: 40161259 - must return success field
         return self.dumps(account_info)
 
 
