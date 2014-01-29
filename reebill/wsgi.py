@@ -1618,28 +1618,24 @@ class BillToolBridge:
         # if this is the case, return no periods.  
         # This is done so that the UI can configure itself with no data
         if reebill is None:
-            return self.dumps({'success':True})
+            return self.dumps({'success': True})
 
-        ba = reebill.billing_address
-        sa = reebill.service_address
+        def format_address(address):
+            # TODO: 64765002
+            # This function exists multiple times in here and in exporter
+            # code. Time to move it somewhere else!
+            return {
+            'addressee': address['addressee'] if 'addressee' in address else '',
+            'street': address['street'] if 'street' in address else '',
+            'city': address['city'] if 'city' in address else '',
+            'state': address['state'] if 'state' in address else '',
+            'postal_code': address['postal_code'] if 'postal_code' in address else '',
+        }
         
-        account_info = {'success': True}
-
-        account_info['billing_address'] = {
-            'addressee': ba['addressee'] if 'addressee' in ba else '',
-            'street': ba['street'] if 'street' in ba else '',
-            'city': ba['city'] if 'city' in ba else '',
-            'state': ba['state'] if 'state' in ba else '',
-            'postal_code': ba['postal_code'] if 'postal_code' in ba else '',
-        }
-
-        account_info['service_address'] = {
-            'addressee': sa['addressee'] if 'addressee' in sa else '',
-            'street': sa['street'] if 'street' in sa else '',
-            'city': sa['city'] if 'city' in sa else '',
-            'state': sa['state'] if 'state' in sa else '',
-            'postal_code': sa['postal_code'] if 'postal_code' in sa else '',
-        }
+        account_info = {'success': True,
+                        'billing_address': format_address(reebill.billing_address),
+                        'service_address': format_address(reebill.service_address),
+                        'discount_rate': reebill.discount_rate}
 
         try:
             account_info['late_charge_rate'] = reebill.late_charge_rate
@@ -1647,7 +1643,6 @@ class BillToolBridge:
             # ignore late charge rate when absent
             pass
 
-        account_info['discount_rate'] = reebill.discount_rate
         return self.dumps(account_info)
 
 
