@@ -670,7 +670,6 @@ class MongoReebill(object):
                     actual_total) * (1 - discount_rate)
             subdoc['ree_savings'] = (hypothetical_total -
                     actual_total) * discount_rate
-
                 
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
@@ -890,6 +889,8 @@ class MongoReebill(object):
     # def discount_rate(self, value):
     #     self.reebill_dict['discount_rate'] = value
 
+    # NOTE deprecated (this is not used for calculating adjustments anymore;
+    # see state.ReeBill.total)
     @property
     def total(self):
         '''The sum of all charges on this bill that do not come from other
