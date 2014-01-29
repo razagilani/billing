@@ -1216,49 +1216,52 @@ class BillToolBridge:
                 datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
 
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def all_ree_charges_csv_altitude(self, **args):
-        with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report_altitude(session)
-
-            import csv
-            import StringIO
-
-            buf = StringIO.StringIO()
-
-            writer = csv.writer(buf)
-
-            writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
-
-            for row in rows:
-                ba = row['billing_address']
-                bill_addr_str = "%s %s %s %s %s" % (
-                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
-                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
-                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
-                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
-                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
-                )
-                sa = row['service_address']
-                service_addr_str = "%s %s %s %s %s" % (
-                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
-                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
-                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
-                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
-                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
-                )
-
-                writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
-
-                cherrypy.response.headers['Content-Type'] = 'text/csv'
-                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
-
-
-            data = buf.getvalue()
-            return data
+    # It is believed that this code is not used anymore. If there are no
+    # complaints concerning this export after release 19,
+    # this code can be removed.
+    # @cherrypy.expose
+    # @random_wait
+    # @authenticate_ajax
+    # @json_exception
+    # def all_ree_charges_csv_altitude(self, **args):
+    #     with DBSession(self.state_db) as session:
+    #         rows, total_count = self.process.reebill_report_altitude(session)
+    #
+    #         import csv
+    #         import StringIO
+    #
+    #         buf = StringIO.StringIO()
+    #
+    #         writer = csv.writer(buf)
+    #
+    #         writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
+    #
+    #         for row in rows:
+    #             ba = row['billing_address']
+    #             bill_addr_str = "%s %s %s %s %s" % (
+    #                 ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+    #                 ba['street'] if 'street' in ba and ba['street'] is not None else "",
+    #                 ba['city'] if 'city' in ba and ba['city'] is not None else "",
+    #                 ba['state'] if 'state' in ba and ba['state'] is not None else "",
+    #                 ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
+    #             )
+    #             sa = row['service_address']
+    #             service_addr_str = "%s %s %s %s %s" % (
+    #                 sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+    #                 sa['street'] if 'street' in sa and sa['street'] is not None else "",
+    #                 sa['city'] if 'city' in sa and sa['city'] is not None else "",
+    #                 sa['state'] if 'state' in sa and sa['state'] is not None else "",
+    #                 sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
+    #             )
+    #
+    #             writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
+    #
+    #             cherrypy.response.headers['Content-Type'] = 'text/csv'
+    #             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+    #
+    #
+    #         data = buf.getvalue()
+    #         return data
 
     # It is believed that this code is not used anymore. If there are no
     # complaints concerning this export after release 19,
