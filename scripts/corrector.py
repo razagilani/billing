@@ -115,7 +115,7 @@ class BillCorrector(object):
                                 verbose=True)
                         predecessor = self.reebill_dao.load_reebill(account,
                                 sequence - 1, version=0)
-                        self.process.compute_reebill(session, predecessor, copy)
+                        self.process._compute_reebill_document(session, predecessor, copy)
 
                         # compare copy to original
                         if copy.total == original.total:

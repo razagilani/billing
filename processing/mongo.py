@@ -826,7 +826,7 @@ class MongoReebill(object):
     def update_summary_values(self):
         '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
         the reebill document. This should be done whenever the bill is
-        computed. Eventually code in Process.compute_reebill should move into
+        computed. Eventually code in Process._compute_reebill_document should move into
         here and this method should be renamed to something more general.
         '''
         for subdoc in self.reebill_dict['utilbills']:
