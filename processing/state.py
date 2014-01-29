@@ -170,6 +170,21 @@ class ReeBill(Base):
         self.version = version
         self.utilbills = utilbills
         self.issued = 0
+        self.discount_rate = self.customer.discountrate
+
+        self.ree_charge = 0
+        self.balance_due = 0
+        self.balance_forward = 0
+        self.discount_rate = 0
+        self.due_date = None
+        self.late_charge_rate = 0
+        self.late_charge = 0
+        self.total_adjustment = 0
+        self.manual_adjustment = 0
+        self.payment_received = 0
+        self.prior_balance = 0
+        self.ree_value = 0
+        self.ree_savings = 0
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (

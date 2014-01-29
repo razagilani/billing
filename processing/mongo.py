@@ -647,7 +647,7 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
-    def update_utilbill_subdocs(self):
+    def update_utilbill_subdocs(self, discount_rate):
         '''Refreshes the "utilbills" sub-documents of the reebill document to
         match the utility bill documents in _utilbills. (These represent the
         "hypothetical" version of each utility bill.)
@@ -667,9 +667,9 @@ class MongoReebill(object):
 
             subdoc['ree_value'] = hypothetical_total - actual_total
             subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - self.discount_rate)
+                    actual_total) * (1 - discount_rate)
             subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * self.discount_rate
+                    actual_total) * discount_rate
 
                 
     def compute_charges(self, uprs):
@@ -823,7 +823,7 @@ class MongoReebill(object):
             ## don't have to set this because we modified the hypothetical_chargegroups
             ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
-    def update_summary_values(self):
+    def update_summary_values(self, discount_rate):
         '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
         the reebill document. This should be done whenever the bill is
         computed. Eventually code in Process._compute_reebill_document should move into
@@ -837,17 +837,10 @@ class MongoReebill(object):
 
             subdoc['ree_value'] = hypothetical_total - actual_total
             subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - self.discount_rate)
+                    actual_total) * (1 - discount_rate)
             subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * self.discount_rate
+                    actual_total) * discount_rate
         
-        self.ree_value = sum(subdoc['ree_value'] for subdoc in
-                self.reebill_dict['utilbills'])
-        self.ree_charges = sum(subdoc['ree_charges'] for subdoc in
-                self.reebill_dict['utilbills'])
-        self.ree_savings = sum(subdoc['ree_savings'] for subdoc in
-                self.reebill_dict['utilbills'])
-
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -875,12 +868,12 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    @property
-    def due_date(self):
-        return python_convert(self.reebill_dict['due_date'])
-    @due_date.setter
-    def due_date(self, value):
-        self.reebill_dict['due_date'] = value
+    # @property
+    # def due_date(self):
+    #     return python_convert(self.reebill_dict['due_date'])
+    # @due_date.setter
+    # def due_date(self, value):
+    #     self.reebill_dict['due_date'] = value
 
     # Periods are read-only on the basis of which utilbills have been attached
     @property
@@ -890,12 +883,12 @@ class MongoReebill(object):
     def period_end(self):
         return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     
-    @property
-    def discount_rate(self):
-        return self.reebill_dict['discount_rate']
-    @discount_rate.setter
-    def discount_rate(self, value):
-        self.reebill_dict['discount_rate'] = value
+    # @property
+    # def discount_rate(self):
+    #     return self.reebill_dict['discount_rate']
+    # @discount_rate.setter
+    # def discount_rate(self, value):
+    #     self.reebill_dict['discount_rate'] = value
 
     @property
     def total(self):
@@ -910,37 +903,37 @@ class MongoReebill(object):
         return self.ree_charges + (self.late_charges if 'late_charges' in
                 self.reebill_dict else 0)
 
-    @property
-    def balance_due(self):
-        '''Overall balance of the customer's account at the time this bill was
-        issued, including unpaid charges from previous bills.
-        '''
-        return self.reebill_dict['balance_due']
-    @balance_due.setter
-    def balance_due(self, value):
-        self.reebill_dict['balance_due'] = value
+    # @property
+    # def balance_due(self):
+    #     '''Overall balance of the customer's account at the time this bill was
+    #     issued, including unpaid charges from previous bills.
+    #     '''
+    #     return self.reebill_dict['balance_due']
+    # @balance_due.setter
+    # def balance_due(self, value):
+    #     self.reebill_dict['balance_due'] = value
 
-    @property
-    def late_charge_rate(self):
-        # currently, there is a population of reebills that do not have a late_charge_rate
-        # because late_charge_rate was not yet implemented.
-        # and since we may want to know this, let the key exception be raised.
-        return self.reebill_dict['late_charge_rate']
-    @late_charge_rate.setter
-    def late_charge_rate(self, value):
-        self.reebill_dict['late_charge_rate'] = value
-
-    @property
-    def late_charges(self):
-        """ This is an optional property of a ReeBill.  There was a day where
-        ReeBills were not part of a late charge program.  Consequently, we
-        would want to present bills from the past without a late charge box in
-        the UI.  So, an exception if they don't exist.  """
-        return self.reebill_dict['late_charges']
-
-    @late_charges.setter
-    def late_charges(self, value):
-        self.reebill_dict['late_charges'] = value
+    # @property
+    # def late_charge_rate(self):
+    #     # currently, there is a population of reebills that do not have a late_charge_rate
+    #     # because late_charge_rate was not yet implemented.
+    #     # and since we may want to know this, let the key exception be raised.
+    #     return self.reebill_dict['late_charge_rate']
+    # @late_charge_rate.setter
+    # def late_charge_rate(self, value):
+    #     self.reebill_dict['late_charge_rate'] = value
+    #
+    # @property
+    # def late_charges(self):
+    #     """ This is an optional property of a ReeBill.  There was a day where
+    #     ReeBills were not part of a late charge program.  Consequently, we
+    #     would want to present bills from the past without a late charge box in
+    #     the UI.  So, an exception if they don't exist.  """
+    #     return self.reebill_dict['late_charges']
+    #
+    # @late_charges.setter
+    # def late_charges(self, value):
+    #     self.reebill_dict['late_charges'] = value
 
     @property
     def billing_address(self):
@@ -967,55 +960,55 @@ class MongoReebill(object):
             print >> sys.stderr, self.reebill_dict['service_address']
             return '?'
 
-    @property
-    def prior_balance(self):
-        return self.reebill_dict['prior_balance']
-    @prior_balance.setter
-    def prior_balance(self, value):
-        self.reebill_dict['prior_balance'] = value
-
-    @property
-    def payment_received(self):
-        return self.reebill_dict['payment_received']
-
-    @payment_received.setter
-    def payment_received(self, value):
-        self.reebill_dict['payment_received'] = value
-
-    @property
-    def total_adjustment(self):
-        return self.reebill_dict['total_adjustment']
-    @total_adjustment.setter
-    def total_adjustment(self, value):
-        self.reebill_dict['total_adjustment'] = value
-
-    @property
-    def manual_adjustment(self):
-        return self.reebill_dict['manual_adjustment']
-    @manual_adjustment.setter
-    def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = value
-
-    @property
-    def ree_charges(self):
-        return self.reebill_dict['ree_charges']
-    @ree_charges.setter
-    def ree_charges(self, value):
-        self.reebill_dict['ree_charges'] = value
-
-    @property
-    def ree_savings(self):
-        return self.reebill_dict['ree_savings']
-    @ree_savings.setter
-    def ree_savings(self, value):
-        self.reebill_dict['ree_savings'] = value
-
-    @property
-    def balance_forward(self):
-        return self.reebill_dict['balance_forward']
-    @balance_forward.setter
-    def balance_forward(self, value):
-        self.reebill_dict['balance_forward'] = value
+    # @property
+    # def prior_balance(self):
+    #     return self.reebill_dict['prior_balance']
+    # @prior_balance.setter
+    # def prior_balance(self, value):
+    #     self.reebill_dict['prior_balance'] = value
+    #
+    # @property
+    # def payment_received(self):
+    #     return self.reebill_dict['payment_received']
+    #
+    # @payment_received.setter
+    # def payment_received(self, value):
+    #     self.reebill_dict['payment_received'] = value
+    #
+    # @property
+    # def total_adjustment(self):
+    #     return self.reebill_dict['total_adjustment']
+    # @total_adjustment.setter
+    # def total_adjustment(self, value):
+    #     self.reebill_dict['total_adjustment'] = value
+    #
+    # @property
+    # def manual_adjustment(self):
+    #     return self.reebill_dict['manual_adjustment']
+    # @manual_adjustment.setter
+    # def manual_adjustment(self, value):
+    #     self.reebill_dict['manual_adjustment'] = value
+    #
+    # @property
+    # def ree_charges(self):
+    #     return self.reebill_dict['ree_charges']
+    # @ree_charges.setter
+    # def ree_charges(self, value):
+    #     self.reebill_dict['ree_charges'] = value
+    #
+    # @property
+    # def ree_savings(self):
+    #     return self.reebill_dict['ree_savings']
+    # @ree_savings.setter
+    # def ree_savings(self, value):
+    #     self.reebill_dict['ree_savings'] = value
+    #
+    # @property
+    # def balance_forward(self):
+    #     return self.reebill_dict['balance_forward']
+    # @balance_forward.setter
+    # def balance_forward(self, value):
+    #     self.reebill_dict['balance_forward'] = value
 
     @property
     def motd(self):
@@ -1026,29 +1019,29 @@ class MongoReebill(object):
     def motd(self, value):
         self.reebill_dict['message'] = value
 
-    # TODO this must die https://www.pivotaltracker.com/story/show/36492387
-    @property
-    def actual_total(self):
-        '''Returns total of all charges of all utility bills belonging to this
-        reebill.
-        '''
-        return sum(total_of_all_charges(u) for u in self._utilbills)
-
-    @property
-    def hypothetical_total(self):
-        '''Returns total of all charges of all "hypothetical utility bill"
-        subdocuments belongong to this reebill.
-        '''
-        return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
-                subdoc['hypothetical_chargegroups'].itervalues()))
-                for subdoc in self.reebill_dict['utilbills'])
-
-    @property
-    def ree_value(self):
-        return self.reebill_dict['ree_value']
-    @ree_value.setter
-    def ree_value(self, value):
-        self.reebill_dict['ree_value'] = value
+    # # TODO this must die https://www.pivotaltracker.com/story/show/36492387
+    # @property
+    # def actual_total(self):
+    #     '''Returns total of all charges of all utility bills belonging to this
+    #     reebill.
+    #     '''
+    #     return sum(total_of_all_charges(u) for u in self._utilbills)
+    #
+    # @property
+    # def hypothetical_total(self):
+    #     '''Returns total of all charges of all "hypothetical utility bill"
+    #     subdocuments belongong to this reebill.
+    #     '''
+    #     return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
+    #             subdoc['hypothetical_chargegroups'].itervalues()))
+    #             for subdoc in self.reebill_dict['utilbills'])
+    #
+    # @property
+    # def ree_value(self):
+    #     return self.reebill_dict['ree_value']
+    # @ree_value.setter
+    # def ree_value(self, value):
+    #     self.reebill_dict['ree_value'] = value
 
     @property
     def bill_recipients(self):
