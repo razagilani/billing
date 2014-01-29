@@ -110,6 +110,7 @@ class ReebillTest(TestCaseWithSetup):
         uprs = RateStructure(rates=[
             RateStructureItem(
                 rsi_binding='A',
+                description='a',
                 quantity='REG_TOTAL.quantity',
                 rate='2',
             )
@@ -152,6 +153,7 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEqual({'All Charges': [
             {
                 'rsi_binding': 'A',
+                'description': 'a',
                 'quantity': 100,
                 'rate': 2,
                 'total': 200,
@@ -182,6 +184,7 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEqual({'All Charges': [
             {
                 'rsi_binding': 'A',
+                'description': 'a',
                 'quantity': 100,
                 'rate': 2,
                 'total': 200,
