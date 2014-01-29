@@ -818,7 +818,7 @@ class BillToolBridge:
             # history (prior balance, payment received, balance forward)
             mongo_reebill = self.reebill_dao.load_reebill(account,
                     sequence, version='max')
-            self.process.compute_reebill(session, mongo_reebill)
+            self.process._compute_reebill_document(session, mongo_reebill)
             self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
     
@@ -919,7 +919,7 @@ class BillToolBridge:
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process.compute_reebill(session, reebill)
+            self.process._compute_reebill_document(session, reebill)
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
