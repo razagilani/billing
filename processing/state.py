@@ -171,14 +171,13 @@ class ReeBill(Base):
         self.version = version
         self.utilbills = utilbills
         self.issued = 0
-        self.discount_rate = self.customer.discountrate
+        self.discount_rate = customer.discountrate
+        self.late_charge_rate = customer.latechargerate
 
         self.ree_charge = 0
         self.balance_due = 0
         self.balance_forward = 0
-        self.discount_rate = 0
         self.due_date = None
-        self.late_charge_rate = 0
         self.late_charge = 0
         self.total_adjustment = 0
         self.manual_adjustment = 0
