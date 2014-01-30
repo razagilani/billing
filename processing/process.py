@@ -865,7 +865,7 @@ class Process(object):
 
             reebill.prior_balance = predecessor.balance_due
             reebill.balance_forward = predecessor.balance_due - \
-                                          predecessor.payment_received + \
+                                          reebill.payment_received + \
                                           reebill.total_adjustment
 
         # include manually applied adjustment

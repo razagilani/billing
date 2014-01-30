@@ -1859,7 +1859,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .order_by(UtilBill.period_start).first())
             self.process.issue(session, acc, 1, date(2000,2,15))
 
-            # two utilbills and reebills
+            # two more utility bills and reebills
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2000,2,1), date(2000,3,1), StringIO('february 2000'),
                     'february.pdf')
@@ -1874,6 +1874,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # add a payment, shown on bill #2
             self.state_db.create_payment(session, acc, date(2000,2,16),
                     'a payment', 100)
+            # TODO bill shows 0 because bill has no energy in it and
+            # payment_received is 0
             self.process.compute_reebill(session, acc, 2)
             self.assertEqual(100, two.payment_received)
             self.assertEqual(-100, two.balance_due)
@@ -1894,12 +1896,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # automatically recomputed before issuing
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             three_doc = self.reebill_dao.load_reebill(acc, 3)
-            self.assertEqual(100, two_doc.payment_received)
-            self.assertEqual(-100, two_doc.balance_due)
-            self.assertEqual(-100, three_doc.prior_balance)
-            self.assertEqual(0, three_doc.payment_received)
-            self.assertEqual(-100, three_doc.balance_forward)
-            self.assertEqual(-100, three_doc.balance_due)
+            self.assertEqual(100, two.payment_received)
+            self.assertEqual(-100, two.balance_due)
+            self.assertEqual(-100, three.prior_balance)
+            self.assertEqual(0, three.payment_received)
+            self.assertEqual(-100, three.balance_forward)
+            self.assertEqual(-100, three.balance_due)
 
 
     def test_delete_reebill(self):
