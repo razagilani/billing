@@ -135,15 +135,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual([utilbill_doc['_id']], [ObjectId(u['id']) for u in
                     reebill_doc.reebill_dict['utilbills']])
             self.assertEqual([utilbill_doc], reebill_doc._utilbills)
-            self.assertEqual(0, reebill_doc.payment_received)
-            self.assertEqual(0, reebill_doc.total_adjustment)
-            self.assertEqual(0, reebill_doc.manual_adjustment)
-            self.assertEqual(0, reebill_doc.ree_savings)
+            self.assertEqual(0, reebill.payment_received)
+            self.assertEqual(0, reebill.total_adjustment)
+            self.assertEqual(0, reebill.manual_adjustment)
+            self.assertEqual(0, reebill.ree_savings)
             # NOTE ignoring statistics because that will go away
-            self.assertEqual(0, reebill_doc.balance_due)
-            self.assertEqual(0, reebill_doc.prior_balance)
-            self.assertEqual(0, reebill_doc.hypothetical_total)
-            self.assertEqual(0, reebill_doc.balance_forward)
+            self.assertEqual(0, reebill.balance_due)
+            self.assertEqual(0, reebill.prior_balance)
+            # self.assertEqual(0, reebill.hypothetical_total)
+            self.assertEqual(0, reebill.balance_forward)
             self.assertEqual(billing_address, reebill_doc.billing_address)
             self.assertEqual(service_address, reebill_doc.service_address)
 
@@ -404,13 +404,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.update_utilbill_metadata(session, u2.id,
                     processed=True)
             self.process.create_next_reebill(session, acc)
-            bill2 = self.reebill_dao.load_reebill(acc, 2)
-            bill2.reebill_dict['utilbills'][0]['shadow_registers'][0]\
+            bill2 = self.state_db.get_reebill(session, acc, 2)
+            bill2_doc = self.reebill_dao.load_reebill(acc, 2)
+            bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
-            self.process._compute_reebill_document(session, bill2)
+            self.reebill_dao.save_reebill(bill2_doc)
+            self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
-            assert bill2.ree_charges == 100
-            self.reebill_dao.save_reebill(bill2)
+            assert bill2.ree_charge == 100
+            self.reebill_dao.save_reebill(bill2_doc)
 
             # bill2's late charge should be 0 before bill1's due date; on/after
             # the due date, it's balance * late charge rate, i.e.
@@ -435,11 +437,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be computed
-            self.process._compute_reebill_document(session, bill2)
+            self.process.compute_reebill(session, acc, 2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
-            bill3 = example_data.get_reebill(acc, 3)
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,3,1), date(2012,4,1), StringIO('March 2012'),
+                    'march.pdf')
+            self.process.create_next_reebill(session, acc)
+            bill3 = self.state_db.get_reebill(session, acc, 3)
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
@@ -451,40 +457,41 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 2 with a higher total, and check that the late charge comes from
             # version 1. 
             self.process.new_version(session, acc, 1)
-            bill1_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
+            bill1_1 = self.state_db.get_reebill(session, acc, 1, version=1)
             # replace the renewable energy quantity that came from
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
-            bill1_1.reebill_dict['utilbills'][0]['shadow_registers'][0] \
+            bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
+            bill1_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
                     ['quantity'] = 100
+            self.reebill_dao.save_reebill(bill1_1_doc)
             bill1_1.discount_rate = 0.75
-            self.process._compute_reebill_document(session, bill1_1)
-            assert bill1_1.ree_charges == 25
+            self.process.compute_reebill(session, acc, 1, version=1)
+            assert bill1_1.ree_charge == 25
             assert bill1_1.balance_due == 25
-            self.reebill_dao.save_reebill(bill1_1)
             self.process.issue(session, acc, 1, issue_date=date(2013,3,15))
             late_charge_source_amount = bill1_1.balance_due
 
             self.process.new_version(session, acc, 1)
-            bill1_2 = self.reebill_dao.load_reebill(acc, 1, version=2)
+            bill1_2 = self.state_db.get_reebill(session, acc, 1, version=2)
             # replace the renewable energy quantity that came from
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
-            bill1_2.reebill_dict['utilbills'][0]['shadow_registers'][0] \
+            bill1_2_doc = self.reebill_dao.load_reebill(acc, 1, version=2)
+            bill1_2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
                     ['quantity'] = 100
             bill1_2.discount_rate = 0.25
-            self.process._compute_reebill_document(session, bill1_2)
-            assert bill1_2.ree_charges == 75
+            self.process.compute_reebill(session, acc, 1, version=2)
+            assert bill1_2.ree_charge == 75
             assert bill1_2.balance_due == 75
-            self.reebill_dao.save_reebill(bill1_2)
             self.process.issue(session, acc, 1)
 
             # note that the issue date on which the late charge in bill2 is
             # based is the issue date of version 0--it doesn't matter when the
             # corrections were issued.
-            late_charge = self.process.get_late_charge(session, bill2,
+            late_charge = self.process.get_late_charge(session, bill2_doc,
                     date(2013,4,18))
-            self.assertEqual(late_charge_source_amount * bill2.late_charge_rate,
+            self.assertEqual(late_charge_source_amount * bill2_doc.late_charge_rate,
                     late_charge)
 
             # add a payment between 2012-01-01 (when bill1 version 0 was
@@ -493,20 +500,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.state_db.create_payment(session, acc, date(2012,6,5),
                     'a $10 payment in june', 10)
             self.assertEqual((late_charge_source_amount - 10) *
-                    bill2.late_charge_rate,
-                    self.process.get_late_charge(session, bill2,
+                    bill2_doc.late_charge_rate,
+                    self.process.get_late_charge(session, bill2_doc,
                     date(2013,1,1)))
 
             #Pay off the bill, make sure the late charge is 0
             self.state_db.create_payment(session, acc, date(2012,6,6),
                     'a $40 payment in june', 40)
-            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+            self.assertEqual(0, self.process.get_late_charge(session, bill2_doc,
                     date(2013,1,1)))
 
             #Overpay the bill, make sure the late charge is still 0
             self.state_db.create_payment(session, acc, date(2012,6,7),
                     'a $40 payment in june', 40)
-            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+            self.assertEqual(0, self.process.get_late_charge(session, bill2_doc,
                     date(2013,1,1)))
             
 
@@ -1319,8 +1326,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # 4th reebill
             self.process.create_next_reebill(session, acc)
-            four = self.reebill_dao.load_reebill(acc, 4)
-            self.reebill_dao.save_reebill(four)
+            four_doc = self.reebill_dao.load_reebill(acc, 4)
+            self.reebill_dao.save_reebill(four_doc)
 
             # no unissued corrections yet
             self.assertEquals([],
@@ -1336,23 +1343,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # explicitly overrides that)
             self.process.new_version(session, acc, 1)
             self.process.new_version(session, acc, 3)
-            one_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
-            three_1 = self.reebill_dao.load_reebill(acc, 3, version=1)
+            one_1 = self.state_db.get_reebill(session, acc, 1, version=1)
+            one_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
+            three_1 = self.state_db.get_reebill(session, acc, 3, version=1)
+            three_1_doc = self.reebill_dao.load_reebill(acc, 3, version=1)
             one_1.discount_rate = .75
             three_1.discount_rate = .25
             # re-update the register readings to undo the arbitary values
             # inserted by new_version above (this should really be done by
             # controlling the amount of energy reported by mock_skyliner
-            one_1.reebill_dict['utilbills'][0]['shadow_registers'][0][
+            one_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 100
-            three_1.reebill_dict['utilbills'][0]['shadow_registers'][0][
+            three_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 300
-            self.process._compute_reebill_document(session, one_1)
-            self.process._compute_reebill_document(session, three_1)
-            assert one_1.ree_charges == 25
-            assert three_1.ree_charges == 225
-            self.reebill_dao.save_reebill(one_1)
-            self.reebill_dao.save_reebill(three_1)
+            self.reebill_dao.save_reebill(one_1_doc)
+            self.reebill_dao.save_reebill(three_1_doc)
+            self.process.compute_reebill(session, acc, 1, version=1)
+            self.process.compute_reebill(session, acc, 3, version=1)
+            assert one_1.ree_charge == 25
+            assert three_1.ree_charge == 225
 
             # there should be 2 adjustments: -50 for the first bill, and +75
             # for the 3rd
@@ -1369,15 +1378,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     session, acc, 3)
 
             # get original balance of reebill 4 before applying corrections
-            four = self.reebill_dao.load_reebill(acc, 4)
-            self.process._compute_reebill_document(session, four)
+            four = self.state_db.get_reebill(session, acc, 4)
+            self.process.compute_reebill(session, acc, 4)
+            four_doc = self.reebill_dao.load_reebill(acc, 4)
             four_original_balance = four.balance_due
 
             # apply corrections to un-issued reebill 4. reebill 4 should be
             # updated, and the corrections (1 & 3) should be issued
             self.process.issue_corrections(session, acc, 4)
-            four = self.reebill_dao.load_reebill(acc, 4)
-            self.process._compute_reebill_document(session, four)
+            self.process.compute_reebill(session, acc, 4)
             # for some reason, adjustment is part of "balance forward"
             # https://www.pivotaltracker.com/story/show/32754231
             self.assertEqual(four.prior_balance - four.payment_received +
@@ -1454,19 +1463,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # (it needs energy data only so its correction will have the same
             # energy in it as the original version; only the late charge will
             # differ)
-            two = self.reebill_dao.load_reebill(acc, 2)
+            two = self.state_db.get_reebill(session, acc, 2)
+            two_doc = self.reebill_dao.load_reebill(acc, 2)
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
-                    two)
+                    two_doc)
+            self.reebill_dao.save_reebill(two_doc)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late
             # charge
             two.late_charge_rate = .5
-            self.process._compute_reebill_document(session, two)
+            self.process.compute_reebill(session, acc, 2)
             self.assertEqual(25, two.late_charges)
 
-            # save and issue 2nd reebill so a new version can be created
-            self.reebill_dao.save_reebill(two)
-            self.process.issue(session, acc, two.sequence)
+            # issue 2nd reebill so a new version can be created
+            self.process.issue(session, acc, 2)
 
             # add a payment of $30 30 days ago (10 days after 1st reebill was
             # issued). the late fee above is now wrong; it should be 50% of
@@ -1477,9 +1487,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # now a new version of the 2nd reebill should have a different late
             # charge: $10 instead of $50.
             self.process.new_version(session, acc, 2)
-            two_1 = self.reebill_dao.load_reebill(acc, 2)
-            self.process._compute_reebill_document(session, two_1)
-            self.assertEqual(10, two_1.late_charges)
+            two_1 = self.state_db.get_reebill(session, acc, 2, version=1)
+            self.process.compute_reebill(session, acc, 2, version=1)
+            self.assertEqual(10, two_1.late_charge)
 
             # that difference should show up as an error
             corrections = self.process.get_unissued_corrections(session, acc)
