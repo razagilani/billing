@@ -891,18 +891,18 @@ class MongoReebill(object):
 
     # NOTE deprecated (this is not used for calculating adjustments anymore;
     # see state.ReeBill.total)
-    @property
-    def total(self):
-        '''The sum of all charges on this bill that do not come from other
-        bills, i.e. charges that are being charged to the customer's account on
-        this bill's issue date. (This includes the late charge, which depends
-        on another bill for its value but belongs to the bill on which it
-        appears.) This total is what should be used to calculate the adjustment
-        produced by the difference between two versions of a bill.'''
-        # if/when more charges are added (e.g. "value-added charges") they
-        # should be included here
-        return self.ree_charges + (self.late_charges if 'late_charges' in
-                self.reebill_dict else 0)
+    # @property
+    # def total(self):
+    #     '''The sum of all charges on this bill that do not come from other
+    #     bills, i.e. charges that are being charged to the customer's account on
+    #     this bill's issue date. (This includes the late charge, which depends
+    #     on another bill for its value but belongs to the bill on which it
+    #     appears.) This total is what should be used to calculate the adjustment
+    #     produced by the difference between two versions of a bill.'''
+    #     # if/when more charges are added (e.g. "value-added charges") they
+    #     # should be included here
+    #     return self.ree_charges + (self.late_charges if 'late_charges' in
+    #             self.reebill_dict else 0)
 
     # @property
     # def balance_due(self):
