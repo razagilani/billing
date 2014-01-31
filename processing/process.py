@@ -232,17 +232,25 @@ class Process(object):
         # query that with SQLAlchemy.
         assert re.match(ACCOUNT_NAME_REGEX, account)
         statement = '''select sequence, max(version) as max_version,
-        period_start, period_end, issued, issue_date from
-        customer join reebill on customer.id = reebill.customer_id
+        period_start, period_end, issued, issue_date, hypothetical_total,
+        actual_total, ree_value, prior_balance, payment_received,
+        total_adjustment, balance_forward, ree_charge, balance_due
+        from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
         where account = %s
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
-                'period_end', 'issued', 'issue_date').from_statement(statement)
+                'period_end', 'issued', 'issue_date', 'hypothetical_total',
+                'actual_total', 'ree_value', 'prior_balance', 'payment_received',
+                'total_adjustment', 'balance_forward', 'ree_charge',
+                'balance_due'
+        ).from_statement(statement)
 
         for (sequence, max_version, period_start, period_end, issued,
-                issue_date) in query:
+                issue_date, hypothetical_total, actual_total, ree_value,
+                prior_balance, payment_received, total_adjustment,
+                balance_forward, ree_charge, balance_due) in query:
             # start with data from MySQL
             the_dict = {
                 'id': sequence,
@@ -252,7 +260,18 @@ class Process(object):
                 'period_end': period_end,
                 # invisible columns
                 'max_version': max_version,
-                'issued': self.state_db.is_issued(session, account, sequence)
+                'issued': self.state_db.is_issued(session, account, sequence),
+                'hypothetical_total': hypothetical_total,
+                'actual_total': actual_total,
+                'ree_value': ree_value,
+                'prior_balance': prior_balance,
+                'payment_received': payment_received,
+                'total_adjustment': total_adjustment,
+                'balance_forward': balance_forward,
+                'ree_charges': ree_charge,
+                'balance_due': balance_due,
+                'total_error': self.get_total_error(session, account,
+                        sequence),
             }
             issued = self.state_db.is_issued(session, account, sequence)
             if max_version > 0:
@@ -267,18 +286,7 @@ class Process(object):
             doc = self.reebill_dao.load_reebill(account, sequence,
                     version=max_version)
             the_dict.update({
-                'hypothetical_total': doc.hypothetical_total,
-                'actual_total': doc.actual_total,
-                'ree_value': doc.ree_value,
-                'prior_balance': doc.prior_balance,
-                'payment_received': doc.payment_received,
-                'total_adjustment': doc.total_adjustment,
-                'balance_forward': doc.balance_forward,
-                'ree_charges': doc.ree_charges,
-                'balance_due': doc.balance_due,
                 'services': [service.title() for service in doc.services],
-                'total_error': self.get_total_error(session, account,
-                        sequence),
             })
             # wrong energy unit can make this method fail causing the reebill
             # grid to not load; see
@@ -1202,8 +1210,10 @@ class Process(object):
         '''Returns the net difference between the total of the latest
         version (issued or not) and version 0 of the reebill given by account,
         sequence.'''
-        earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
-        latest = self.reebill_dao.load_reebill(account, sequence, 'max')
+        earliest = self.state_db.get_reebill(session, account,
+                sequence, version=0)
+        latest = self.state_db.get_reebill(session, account,
+                sequence, version='max')
         return latest.total - earliest.total
 
     def get_late_charge(self, session, reebill, day=datetime.utcnow().date()):
