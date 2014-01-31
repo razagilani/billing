@@ -79,6 +79,21 @@ class ReeBill(Base):
     version = Column(Integer, nullable=False)
     issue_date = Column(Date)
 
+    # new fields from Mongo
+    ree_charge = Column(Float, nullable=False)
+    balance_due = Column(Float, nullable=False)
+    balance_forward = Column(Float, nullable=False)
+    discount_rate = Column(Float, nullable=False)
+    due_date = Column(Date, nullable=False)
+    late_charge_rate = Column(Float, nullable=False)
+    late_charge = Column(Float, nullable=False)
+    total_adjustment = Column(Float, nullable=False)
+    manual_adjustment = Column(Float, nullable=False)
+    payment_received = Column(Float, nullable=False)
+    prior_balance = Column(Float, nullable=False)
+    ree_value = Column(Float, nullable=False)
+    ree_savings = Column(Float, nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
@@ -150,12 +165,33 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    def __init__(self, customer, sequence, version=0, utilbills=[]):
+    def __init__(self, customer, sequence, version=0, discount_rate=None,
+                    late_charge_rate=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
         self.utilbills = utilbills
         self.issued = 0
+        if discount_rate:
+            self.discount_rate = discount_rate
+        else:
+            self.discount_rate = self.customer.discountrate
+        if late_charge_rate:
+            self.late_charge_rate = late_charge_rate
+        else:
+            self.late_charge_rate = self.customer.latechargerate
+
+        self.ree_charge = 0
+        self.balance_due = 0
+        self.balance_forward = 0
+        self.due_date = None
+        self.late_charge = 0
+        self.total_adjustment = 0
+        self.manual_adjustment = 0
+        self.payment_received = 0
+        self.prior_balance = 0
+        self.ree_value = 0
+        self.ree_savings = 0
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
@@ -175,6 +211,16 @@ class ReeBill(Base):
         reebill. This will be None if this reebill is unissued.'''
         return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
                 if ubrb.utilbill == utilbill)
+
+    @property
+    def total(self):
+        '''The sum of all charges on this bill that do not come from other
+        bills, i.e. charges that are being charged to the customer's account on
+        this bill's issue date. (This includes the late charge, which depends
+        on another bill for its value but belongs to the bill on which it
+        appears.) This total is what should be used to calculate the adjustment
+        produced by the difference between two versions of a bill.'''
+        return self.ree_charge + self.late_charge
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -560,6 +606,8 @@ class StateDB(object):
 
         new_reebill = ReeBill(current_max_version_reebill.customer, sequence,
                 current_max_version_reebill.version + 1,
+                discount_rate=current_max_version_reebill.discount_rate,
+                late_charge_rate=current_max_version_reebill.late_charge_rate,
                 utilbills=current_max_version_reebill.utilbills)
         for ur in new_reebill._utilbill_reebills:
             ur.document_id, ur.uprs_id, = None, None
