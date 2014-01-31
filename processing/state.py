@@ -177,8 +177,10 @@ class ReeBill(Base):
         else:
             self.discount_rate = self.customer.discountrate
         if late_charge_rate:
+            assert isinstance(self.customer.latechargerate, (float, int))
             self.late_charge_rate = late_charge_rate
         else:
+            assert isinstance(self.customer.latechargerate, (float, int))
             self.late_charge_rate = self.customer.latechargerate
 
         self.ree_charge = 0
@@ -220,6 +222,10 @@ class ReeBill(Base):
         on another bill for its value but belongs to the bill on which it
         appears.) This total is what should be used to calculate the adjustment
         produced by the difference between two versions of a bill.'''
+        print self
+        print self.ree_charge
+        print self.late_charge
+        return 0
         return self.ree_charge + self.late_charge
 
 class UtilbillReebill(Base):
