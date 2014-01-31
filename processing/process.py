@@ -874,7 +874,7 @@ class Process(object):
         lc = self.get_late_charge(session, reebill)
         if lc is not None:
             # set late charge and include it in balance_due
-            reebill.late_charges = lc
+            reebill.late_charge = lc
             reebill.balance_due = reebill.balance_forward + \
                   reebill.ree_charge + reebill.late_charge
         else:
