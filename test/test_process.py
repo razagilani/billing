@@ -2491,6 +2491,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_next_reebill(session, account)
             self.process.compute_reebill(session, account, 2)
             reebill2 = self.state_db.get_reebill(session, account, 2)
+            # TODO this intermittently fails with a slight difference between
+            # bill1.balance_due and reebill2.prior_balance (bigger than the
+            # default tolerance of assertAlmostEqual):
+            # "AssertionError: 11.323866351411981 != 11.3239"
+            # this seems to happen only when all tests are run together, not
+            # when this test is run alone or with just ProcessTest.
             self.assertEquals(bill1.balance_due, reebill2.prior_balance)
             self.assertEquals(payment_amount, reebill2.payment_received)
             self.assertEquals(bill1.balance_due - payment_amount,
