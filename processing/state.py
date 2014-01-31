@@ -165,14 +165,21 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    def __init__(self, customer, sequence, version=0, utilbills=[]):
+    def __init__(self, customer, sequence, version=0, discount_rate=None,
+                    late_charge_rate=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
         self.utilbills = utilbills
         self.issued = 0
-        self.discount_rate = customer.discountrate
-        self.late_charge_rate = customer.latechargerate
+        if discount_rate:
+            self.discount_rate = discount_rate
+        else:
+            self.discount_rate = self.customer.discountrate
+        if late_charge_rate:
+            self.late_charge_rate = late_charge_rate
+        else:
+            self.late_charge_rate = self.customer.latechargerate
 
         self.ree_charge = 0
         self.balance_due = 0
@@ -599,6 +606,8 @@ class StateDB(object):
 
         new_reebill = ReeBill(current_max_version_reebill.customer, sequence,
                 current_max_version_reebill.version + 1,
+                discount_rate=current_max_version_reebill.discount_rate,
+                late_charge_rate=current_max_version_reebill.late_charge_rate,
                 utilbills=current_max_version_reebill.utilbills)
         for ur in new_reebill._utilbill_reebills:
             ur.document_id, ur.uprs_id, = None, None
