@@ -1474,9 +1474,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # charge
             two.late_charge_rate = .5
             self.process.compute_reebill(session, acc, 2)
-            self.assertEqual(25, two.late_charges)
+            self.assertEqual(25, two.late_charge)
 
-            # issue 2nd reebill so a new version can be created
+            # issue 2nd reebill so a new version of it can be created
             self.process.issue(session, acc, 2)
 
             # add a payment of $30 30 days ago (10 days after 1st reebill was
@@ -1489,6 +1489,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # charge: $10 instead of $50.
             self.process.new_version(session, acc, 2)
             two_1 = self.state_db.get_reebill(session, acc, 2, version=1)
+            assert two_1.late_charge_rate == .5
             self.process.compute_reebill(session, acc, 2, version=1)
             self.assertEqual(10, two_1.late_charge)
 
