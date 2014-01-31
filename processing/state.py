@@ -177,10 +177,8 @@ class ReeBill(Base):
         else:
             self.discount_rate = self.customer.discountrate
         if late_charge_rate:
-            assert isinstance(self.customer.latechargerate, (float, int))
             self.late_charge_rate = late_charge_rate
         else:
-            assert isinstance(self.customer.latechargerate, (float, int))
             self.late_charge_rate = self.customer.latechargerate
 
         self.ree_charge = 0
