@@ -83,3 +83,5 @@ for reebill in s.query(ReeBill).join(Customer)\
         set_key(key, key)
 
     #rbd.save_reebill(doc)
+
+s.commit()
