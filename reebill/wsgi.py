@@ -3,6 +3,17 @@ File: wsgi.py
 '''
 import sys
 import os
+import pprint
+
+# TODO: 64957006
+# Dislike having this exceptionally useful code here, whose purpose is to 
+# display the runtime  configuration to the operator of the software for 
+# troubleshooting.  Not having this code here, renders it useless.
+sys.stdout = sys.stderr
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
+
 import traceback
 import json
 import cherrypy
@@ -31,7 +42,7 @@ from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from billing.util.nexus_util import NexusUtil
+from nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
@@ -46,12 +57,6 @@ from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
 
-import pprint
-sys.stdout = sys.stderr
-# 29926885 output environment configs to debug virtual env
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
