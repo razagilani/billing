@@ -18,7 +18,7 @@ from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
 from billing.util.dictutils import deep_map
 from billing.test import example_data
-from billing.util.nexus_util import MockNexusUtil
+from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter
 
 class TestCaseWithSetup(unittest.TestCase):
@@ -114,6 +114,7 @@ port = 27017
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
                 logger=logger)
 
+        # TODO: 64956642 do not hard code nexus names
         self.nexus_util = MockNexusUtil([
             {
                 'billing': '99999',
@@ -124,7 +125,7 @@ port = 27017
         ])
 
         bill_mailer = Mailer({
-            # TODO
+            # TODO 64956668
         })
 
         renderer = ReebillRenderer({
