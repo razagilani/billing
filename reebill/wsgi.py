@@ -173,6 +173,7 @@ class BillToolBridge:
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
+            # TODO: 64958246
             # can't log this because logger hasn't been created yet (log file
             # name & associated info comes from config file)
             print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
