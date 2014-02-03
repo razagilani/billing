@@ -572,9 +572,8 @@ class MongoReebill(object):
             # computed
             'hypothetical_chargegroups': utilbill_doc['chargegroups'],
 
-            'ree_charges': 0,
-            'ree_savings': 0,
-            'ree_value': 0
+            # 'ree_charges': 0,
+            # 'ree_savings': 0,
         }
 
     @classmethod
@@ -596,22 +595,21 @@ class MongoReebill(object):
                 "sequence" : sequence,
                 "version" : version,
             },
-            "ree_charges" : 0,
-            "ree_value" : 0,
-            "discount_rate" : discount_rate,
-            'late_charge_rate': late_charge_rate,
-            'late_charges': 0,
-            "message" : None,
+            # "ree_charges" : 0,
+            # "discount_rate" : discount_rate,
+            # 'late_charge_rate': late_charge_rate,
+            # 'late_charges': 0,
+            # "message" : None,
             "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
-            "payment_received" : 0,
-            "due_date" : None,
-            "total_adjustment" : 0,
-            "manual_adjustment" : 0,
-            "ree_savings" : 0,
-            "balance_due" : 0,
-            "prior_balance" : 0,
+            # "payment_received" : 0,
+            # "due_date" : None,
+            # "total_adjustment" : 0,
+            # "manual_adjustment" : 0,
+            # "ree_savings" : 0,
+            # "balance_due" : 0,
+            # "prior_balance" : 0,
             #"hypothetical_total" : 0,
-            "balance_forward" : 0,
+            # "balance_forward" : 0,
             # NOTE these address fields are containers for utility bill
             # addresses. these addresses will eventually move into utility bill
             # documents, and if necessary new reebill-specific address fields
@@ -659,18 +657,15 @@ class MongoReebill(object):
                 [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
-        for subdoc in self.reebill_dict['utilbills']:
-            actual_total = total_of_all_charges(
-                    self._get_utilbill_for_handle(subdoc))
-            hypothetical_total = sum(charge['total'] for charge in
-                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+    def get_total_utility_charges(self):
+        return sum(total_of_all_charges(self._get_utilbill_for_handle(
+            subdoc)) for subdoc in self.reebill_dict['utilbills'])
 
-            subdoc['ree_value'] = hypothetical_total - actual_total
-            subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - discount_rate)
-            subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * discount_rate
-                
+    def get_total_hypothetical_charges(self):
+        return sum(sum(charge['total'] for charge in
+                chain.from_iterable(subdoc['hypothetical_chargegroups']
+                .itervalues())) for subdoc in self.reebill_dict['utilbills'])
+
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill.
@@ -822,23 +817,23 @@ class MongoReebill(object):
             ## don't have to set this because we modified the hypothetical_chargegroups
             ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
-    def update_summary_values(self, discount_rate):
-        '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
-        the reebill document. This should be done whenever the bill is
-        computed. Eventually code in Process._compute_reebill_document should move into
-        here and this method should be renamed to something more general.
-        '''
-        for subdoc in self.reebill_dict['utilbills']:
-            actual_total = total_of_all_charges(
-                    self._get_utilbill_for_handle(subdoc))
-            hypothetical_total = sum(charge['total'] for charge in
-                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
-
-            subdoc['ree_value'] = hypothetical_total - actual_total
-            subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - discount_rate)
-            subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * discount_rate
+    # def update_summary_values(self, discount_rate):
+    #     '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
+    #     the reebill document. This should be done whenever the bill is
+    #     computed. Eventually code in Process._compute_reebill_document should move into
+    #     here and this method should be renamed to something more general.
+    #     '''
+    #     for subdoc in self.reebill_dict['utilbills']:
+    #         actual_total = total_of_all_charges(
+    #                 self._get_utilbill_for_handle(subdoc))
+    #         hypothetical_total = sum(charge['total'] for charge in
+    #                 chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+    #
+    #         subdoc['ree_value'] = hypothetical_total - actual_total
+    #         subdoc['ree_charges'] = (hypothetical_total -
+    #                 actual_total) * (1 - discount_rate)
+    #         subdoc['ree_savings'] = (hypothetical_total -
+    #                 actual_total) * discount_rate
         
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are

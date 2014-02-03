@@ -2292,9 +2292,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "total" : 11.2,
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
-            with self.assertRaises(NoRSIError) as context:
-                self.process._compute_reebill_document(session, reebill_correction_doc)
             self.reebill_dao.save_reebill(reebill_correction_doc)
+            with self.assertRaises(NoRSIError) as context:
+                self.process.compute_reebill(session, account, 1, version=1)
 
             # delete the new version
             self.process.delete_reebill(session, reebill_correction)

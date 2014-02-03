@@ -760,6 +760,10 @@ class Process(object):
         document = self.reebill_dao.load_reebill(account, sequence, version)
         self._compute_reebill_document(session, document)
 
+        for utilbill in reebill.utilbills:
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            document.compute_charges(uprs)
+
 
 
 
@@ -770,15 +774,16 @@ class Process(object):
 
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
-        document.update_summary_values(reebill.discount_rate)
+        # document.update_summary_values(reebill.discount_rate)
 
-        # TODO refactor (add method in MongoReebill to return these sums)
-        reebill.ree_value = sum(subdoc['ree_value'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_charge = sum(subdoc['ree_charges'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_savings = sum(subdoc['ree_savings'] for subdoc in
-                document.reebill_dict['utilbills'])
+
+        actual_total = document.get_total_utility_charges()
+        hypothetical_total = document.get_total_hypothetical_charges()
+        reebill.ree_value = hypothetical_total - actual_total
+        reebill.ree_charge = (hypothetical_total - actual_total) * (1 -
+                reebill.discount_rate)
+        reebill.ree_savings = (hypothetical_total - actual_total) * \
+                reebill.discount_rate
 
 
 
@@ -900,17 +905,6 @@ class Process(object):
 
         Does not save anything in the database.
         '''
-        if reebill_doc.sequence == 1:
-            predecessor_doc = None
-        else:
-            predecessor = self.state_db.get_reebill(session,
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-            predecessor_doc = self.reebill_dao.load_reebill(
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-        acc = reebill_doc.account
-
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
@@ -928,17 +922,6 @@ class Process(object):
         # https://www.pivotaltracker.com/story/show/60611838
         #reebill_doc.update_utilbill_subdocs()
 
-        # get MySQL reebill row corresponding to the document 'reebill_doc'
-        # (would be better to pass in the state.ReeBill itself: see
-        # https://www.pivotaltracker.com/story/show/51922065)
-        customer = self.state_db.get_customer(session, reebill_doc.account)
-        reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
-                .filter(ReeBill.sequence == reebill_doc.sequence)\
-                .filter(ReeBill.version == reebill_doc.version).one()
-        for utilbill in reebill_row.utilbills:
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            reebill_doc.compute_charges(uprs)
 
 
 
