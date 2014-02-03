@@ -1,0 +1,9 @@
+Fabric==1.6.1
+coverage
+fabric
+ipdb
+minimock
+mock
+nose
+nose-progressive
+pudb
