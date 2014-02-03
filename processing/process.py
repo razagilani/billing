@@ -976,7 +976,9 @@ class Process(object):
     def create_next_reebill(self, session, account):
         '''Creates the successor to the highest-sequence state.ReeBill for the
         given account, or the first reebill if none exists yet, and its
-        associated Mongo document.'''
+        associated Mongo document.
+        Returns the newly-created state.ReeBill object.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
