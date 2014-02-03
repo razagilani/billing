@@ -80,8 +80,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).filter_by(customer=customer)\
                     .one()
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
 
             # check utility bill and its document
             self.assertEqual(UtilBill.Complete, utilbill.state)
@@ -319,8 +318,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
             self.process.issue(session, '99999', 1)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     service='water')
@@ -370,9 +368,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create first reebill
-            self.process.create_first_reebill(session,
+            bill1 = self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
-            bill1 = session.query(ReeBill).one()
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
             bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
@@ -1018,8 +1015,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.period_end == end).one()
             
             # when utilbill is attached to reebill, deletion should fail
-            self.process.create_first_reebill(session, utilbill)
-            first_reebill = session.query(ReeBill).one()
+            first_reebill = self.process.create_first_reebill(session,
+                    utilbill)
             assert first_reebill.utilbills == [utilbill]
             assert utilbill.is_attached()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
@@ -1289,9 +1286,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 uprs.save()
 
             # first reebill: saved 100 therms, $50
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
-            one = self.state_db.get_reebill(session, acc, 1)
+            one = self.process.create_first_reebill(session,
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             one.discount_rate = 0.5
             one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1442,9 +1439,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
             # (so it's 10 days late)
             # TODO don't use current date in a test!
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
-            one = self.state_db.get_reebill(session, acc, 1)
+            one = self.process.create_first_reebill(session, session.query(
+                    UtilBill).order_by(UtilBill.period_start).first())
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
@@ -1915,18 +1911,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.state_db.get_reebill(session, account, 1)
 
             # delete the reebill: should succeed, because it's not issued
             self.process.delete_reebill(session, reebill)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
-            self.assertEquals([], session.query(ReeBill).all())
+            self.assertEquals(0, session.query(ReeBill).count())
             self.assertEquals([utilbill], session.query(UtilBill).all())
 
             # re-create it
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
             self.assertEquals([1], self.state_db.listSequences(session,
                     account))
             self.assertEquals([utilbill], reebill.utilbills)
@@ -2453,7 +2448,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create reebill, bind, compute, issue
-            self.process.create_first_reebill(session, first_utilbill)
+            bill1 = self.process.create_first_reebill(session, first_utilbill)
             bill1 = self.state_db.get_reebill(session, account, 1)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
