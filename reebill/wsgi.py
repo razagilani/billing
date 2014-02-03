@@ -1758,8 +1758,6 @@ class BillToolBridge:
                     reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
 
-            toSelect = None
-
             if xaction == 'read':
                 # get dictionaries describing all registers in all utility bills
                 registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
