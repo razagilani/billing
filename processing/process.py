@@ -760,6 +760,10 @@ class Process(object):
         document = self.reebill_dao.load_reebill(account, sequence, version)
         self._compute_reebill_document(session, document)
 
+        for utilbill in reebill.utilbills:
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            document.compute_charges(uprs)
+
 
 
 
@@ -770,15 +774,16 @@ class Process(object):
 
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
-        document.update_summary_values(reebill.discount_rate)
+        # document.update_summary_values(reebill.discount_rate)
 
-        # TODO refactor (add method in MongoReebill to return these sums)
-        reebill.ree_value = sum(subdoc['ree_value'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_charge = sum(subdoc['ree_charges'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_savings = sum(subdoc['ree_savings'] for subdoc in
-                document.reebill_dict['utilbills'])
+
+        actual_total = document.get_total_utility_charges()
+        hypothetical_total = document.get_total_hypothetical_charges()
+        reebill.ree_value = hypothetical_total - actual_total
+        reebill.ree_charge = (hypothetical_total - actual_total) * (1 -
+                reebill.discount_rate)
+        reebill.ree_savings = (hypothetical_total - actual_total) * \
+                reebill.discount_rate
 
 
 
@@ -900,17 +905,6 @@ class Process(object):
 
         Does not save anything in the database.
         '''
-        if reebill_doc.sequence == 1:
-            predecessor_doc = None
-        else:
-            predecessor = self.state_db.get_reebill(session,
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-            predecessor_doc = self.reebill_dao.load_reebill(
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-        acc = reebill_doc.account
-
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
@@ -928,23 +922,13 @@ class Process(object):
         # https://www.pivotaltracker.com/story/show/60611838
         #reebill_doc.update_utilbill_subdocs()
 
-        # get MySQL reebill row corresponding to the document 'reebill_doc'
-        # (would be better to pass in the state.ReeBill itself: see
-        # https://www.pivotaltracker.com/story/show/51922065)
-        customer = self.state_db.get_customer(session, reebill_doc.account)
-        reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
-                .filter(ReeBill.sequence == reebill_doc.sequence)\
-                .filter(ReeBill.version == reebill_doc.version).one()
-        for utilbill in reebill_row.utilbills:
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            reebill_doc.compute_charges(uprs)
 
 
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
         based on the given state.UtilBill.
+        Returns new state.ReeBill object.
         This is a separate method from create_next_reebill because a specific
         utility bill is provided indicating where billing should start.
         '''
@@ -966,13 +950,18 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
-        session.add(ReeBill(customer, 1, version=0, utilbills=[utilbill]))
+        new_reebill = ReeBill(customer, 1, version=0, utilbills=[utilbill])
+        session.add(new_reebill)
+
+        return new_reebill
 
 
     def create_next_reebill(self, session, account):
         '''Creates the successor to the highest-sequence state.ReeBill for the
         given account, or the first reebill if none exists yet, and its
-        associated Mongo document.'''
+        associated Mongo document.
+        Returns the newly-created state.ReeBill object.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
@@ -1025,11 +1014,14 @@ class Process(object):
                 last_reebill_doc.suspended_services)
 
         # create reebill row in state database
-        session.add(ReeBill(customer, new_mongo_reebill.sequence,
-                new_mongo_reebill.version, utilbills=new_utilbills))
+        new_reebill = ReeBill(customer, new_mongo_reebill.sequence,
+                new_mongo_reebill.version, utilbills=new_utilbills)
+        session.add(new_reebill)
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
+
+        return new_reebill
 
     def roll_bill(self, session, account, start_date,
                                integrate_skyline_backend):
@@ -1294,6 +1286,14 @@ class Process(object):
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
+
+        # NOTE session.delete() fails with an errror like "InvalidRequestError:
+        # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
+        # not been persisted (i.e. flushed from SQLAlchemy cache to database)
+        # yet; the author says on Stack Overflow to use 'expunge' if the object
+        # is in 'session.new' and 'delete' otherwise, but for some reason
+        # 'reebill' does not get into 'session.new' when session.add() is
+        # called. i have not solved this problem yet.
         session.delete(reebill)
 
         # delete highest-version reebill document from Mongo
