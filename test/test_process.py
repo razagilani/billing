@@ -1809,17 +1809,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
-            one_doc = self.reebill_dao.load_reebill(acc, 1)
             self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertIsInstance(one_doc.bill_recipients, list)
-            self.assertEquals(len(one_doc.bill_recipients), 0)
+            self.assertEquals('', one.recipients)
 
-            two_doc.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
-            self.reebill_dao.save_reebill(two_doc)
-            
+            two.recipients = 'test1@example.com, test2@exmaple.com'
+
             # issue two
             self.process.issue(session, acc, 2)
 
@@ -1828,10 +1825,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
-            self.assertIsInstance(two_doc.bill_recipients, list)
-            self.assertEquals(len(two_doc.bill_recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two_doc.bill_recipients,
-                    [unicode]*len(two_doc.bill_recipients))))
+            self.assertEquals('test1@example.com, test2@exmaple.com',
+                    two.recipients)
 
     def test_issue_2_at_once(self):
         '''Tests issuing one bill immediately after another, without
