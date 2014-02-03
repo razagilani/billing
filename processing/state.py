@@ -933,69 +933,6 @@ class StateDB(object):
             UtilBill.period_start<=the_date,
             UtilBill.period_end>the_date).all()
 
-    def choose_next_utilbills(self, session, account, services):
-        '''Returns a list of UtilBill objects representing MySQL utility bills
-        that should be attached to the next reebill for the given account, one
-        for each service name in 'services'.'''
-        customer = self.get_customer(session, account)
-        last_sequence = self.last_sequence(session, account)
-
-        # if there is at least one reebill, we can choose utilbills following
-        # the end dates of the ones attached to that reebill. if not, start
-        # looking for utilbills at the beginning of time.
-        if last_sequence:
-            last_reebill = self.get_reebill(session, account, last_sequence)
-            last_utilbills = session.query(UtilBill)\
-                    .filter(UtilBill.reebills.contains(last_reebill)).all()
-            service_iter = ((ub.service, ub.period_end) for ub in
-                    last_utilbills if ub.service in services)
-        else:
-            last_utilbills = None
-            service_iter = ((service, date.min) for service in services)
-
-        next_utilbills = []
-
-        for service, period_end in service_iter:
-            # find the next unattached utilbill for this service
-            try:
-                utilbill = session.query(UtilBill).filter(
-                        UtilBill.customer==customer, UtilBill.service==service,
-                        UtilBill.period_start>=period_end)\
-                        .filter(not_(UtilBill.reebills.any()))\
-                        .order_by(asc(UtilBill.period_start)).first()
-            except NoResultFound:
-                # If the utilbill is not found, then the rolling process can't proceed
-                raise Exception('No new %s utility bill found' % service)
-            else:
-                if not utilbill:
-                    # If the utilbill is not found, then the rolling process can't proceed
-                    raise Exception('No new %s utility bill found' % service)
-
-            # Second, calculate the time gap between the last attached utilbill's end date and the next utilbill's start date.
-            # If there is a gap of more than one day, then someone may have mucked around in the database or another issue
-            # arose. In any case, it suggests missing data, and we don't want to proceed with potentially the wrong
-            # utilbill.
-            time_gap = utilbill.period_start - period_end
-            # Note that the time gap only matters if the account HAD a previous utilbill. For a new account, this isn't the case.
-            # Therefore, make sure that new accounts don't fail the time gap condition
-            if last_utilbills is not None and time_gap > timedelta(days=1):
-                raise Exception('There is a gap of %d days before the next %s utility bill found' % (abs(time_gap.days), service))
-            elif utilbill.state == UtilBill.Hypothetical:
-                # Hypothetical utilbills are not an acceptable basis for a reebill. Only allow a roll to subsequent reebills if
-                # the next utilbill(s) have been received or estimated
-                raise Exception("The next %s utility bill exists but has not been fully estimated or received" % service)
-
-            # Attach if no failure condition arose
-            next_utilbills.append(utilbill)
-
-        # This may be an irrelevant check, but if no specific exceptions were
-        # raised and yet there were no utilbills selected for attachment, there
-        # is a problem
-        if not next_utilbills:
-            raise Exception('No qualifying utility bills found for account #%s' % account)
-
-        return next_utilbills
-
     
     def fill_in_hypothetical_utilbills(self, session, account, service,
             utility, rate_class, begin_date, end_date):
