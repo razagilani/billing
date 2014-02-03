@@ -167,113 +167,6 @@ class BillToolBridge:
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
-        if not self.config.read(config_file_path):
-            # can't log this because logger hasn't been created yet (log file
-            # name & associated info comes from config file)
-            print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
-            self.config.add_section('runtime')
-            self.config.set('runtime', 'integrate_skyline_backend', 'true')
-            self.config.set('runtime', 'integrate_nexus', 'true')
-            self.config.set('runtime', 'sessions_key', 'some random bytes to all users to automatically reauthenticate')
-            self.config.set('runtime', 'mock_skyliner', 'false')
-
-            self.config.add_section('skyline_backend')
-            self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
-            self.config.set('skyline_backend', 'olap_host', 'tyrell')
-            self.config.set('skyline_backend', 'olap_database', 'dev')
-            self.config.set('skyline_backend', 'nexus_db_host', '[specify nexus mongo host for direct conns from skyliner]')
-            self.config.set('skyline_backend', 'nexus_web_host', '[specify nexus web host for NexusAPI/NexusUtil]')
-
-            self.config.add_section('journaldb')
-            self.config.set('journaldb', 'host', 'localhost')
-            self.config.set('journaldb', 'port', '27017')
-            self.config.set('journaldb', 'database', 'skyline')
-
-            self.config.add_section('http')
-            self.config.set('http', 'socket_port', '8185')
-            self.config.set('http', 'socket_host', '10.0.0.250')
-
-            self.config.add_section('rsdb')
-            self.config.set('rsdb', 'host', 'localhost')
-            self.config.set('rsdb', 'port', '27017')
-            self.config.set('rsdb', 'database', 'skyline')
-
-            self.config.add_section('billdb')
-            self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
-            self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
-            self.config.set('billdb', 'host', 'localhost')
-            self.config.set('billdb', 'port', '27017')
-            self.config.set('billdb', 'database', 'skyline')
-            self.config.set('billdb', 'utility_bill_trash_directory', '[root]db/skyline/utilitybills-deleted')
-
-            self.config.add_section('statedb')
-            self.config.set('statedb', 'host', 'localhost')
-            self.config.set('statedb', 'database', 'skyline')
-            self.config.set('statedb', 'user', '[your mysql user]')
-            self.config.set('statedb', 'password', '[your mysql password]')
-
-            self.config.add_section('usersdb')
-            self.config.set('usersdb', 'host', 'localhost')
-            self.config.set('usersdb', 'database', 'skyline')
-            self.config.set('usersdb', 'port', '27017')
-
-            self.config.add_section('mailer')
-            self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
-            self.config.set('mailer', 'smtp_port', '587')
-            self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
-            self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
-            self.config.set('mailer', 'bcc_list', '')
-            self.config.set('mailer', 'password', 'password')
-
-            self.config.add_section('authentication')
-            self.config.set('authentication', 'authenticate', 'true')
-
-            # For BillUpload
-            # default name of log file (config file can override this)
-            DEFAULT_LOG_FILE_NAME = 'reebill.log'
-
-            # default format of log entries (config file can override this)
-            DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-
-            # directory where bill images are temporarily stored
-            DEFAULT_BILL_IMAGE_DIRECTORY = '/tmp/billimages'
-
-            # directory to store temporary files for pdf rendering
-            DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
-            DEFAULT_TEMPLATE = 'skyline'
-
-            # log file info
-            self.config.add_section('log')
-            self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
-            self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
-
-            # bill image rendering
-            self.config.add_section('billimages')
-            self.config.set('billimages', 'bill_image_directory', DEFAULT_BILL_IMAGE_DIRECTORY)
-            self.config.set('billimages', 'show_reebill_images', 'true')
-
-            # reebill pdf rendering
-            self.config.add_section('reebillrendering')
-            self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
-            self.config.set('reebillrendering', 'template_directory', "absolute path to reebill_templates/")
-            self.config.set('reebillrendering', 'default_template', DEFAULT_TEMPLATE)
-            self.config.set('reebillrendering', 'teva_accounts', '')
-
-            # reebill reconciliation
-            # TODO 54911020 /tmp is a really bad default
-            DEFAULT_RECONCILIATION_LOG_DIRECTORY = '/tmp'
-            DEFAULT_RECONCILIATION_REPORT_DIRECTORY = '/tmp'
-            self.config.add_section('reebillreconciliation')
-            self.config.set('reebillreconciliation', 'log_directory', DEFAULT_RECONCILIATION_LOG_DIRECTORY)
-            self.config.set('reebillreconciliation', 'report_directory', DEFAULT_RECONCILIATION_REPORT_DIRECTORY)
-
-
-            # TODO default config file is incomplete
-
-            # Writing our configuration file to 'example.cfg'
-            with open(config_file_path, 'wb') as new_config_file:
-                self.config.write(new_config_file)
-
         self.config.read(config_file_path)
 
         # logging:
@@ -1501,13 +1394,16 @@ class BillToolBridge:
                 reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
                 for reebill_info in reebills:
                     row_dict = {}
-                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
+                    reebill = self.state_db.get_reebill(session,
+                            reebill_info[0], reebill_info[1])
+                    mongo_reebill = self.reebill_dao.load_reebill(
+                            reebill_info[0], reebill_info[1])
                     row_dict['id'] = reebill_info[0]
                     row_dict['account'] = reebill_info[0]
                     row_dict['sequence'] = reebill_info[1]
                     row_dict['util_total'] = reebill_info[2]
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
-                    row_dict['reebill_total'] = mongo_reebill.actual_total
+                    row_dict['reebill_total'] = 0 #reebill.actual_total
                     try:
                         row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
                     except ZeroDivisionError:
@@ -1521,7 +1417,7 @@ class BillToolBridge:
                 row = json.loads(kwargs["rows"])
                 mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
                 mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
-                self.reebill_dao.save_reebill(mongo_reebill)
+                self.reebill_dao.save_reebill(reebill)
                 return self.dumps({'success':True})
             
     @cherrypy.expose
