@@ -1403,7 +1403,7 @@ class BillToolBridge:
                     row_dict['sequence'] = reebill_info[1]
                     row_dict['util_total'] = reebill_info[2]
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
-                    row_dict['reebill_total'] = 0 #reebill.actual_total
+                    row_dict['reebill_total'] = reebill.actual_total
                     try:
                         row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
                     except ZeroDivisionError:
