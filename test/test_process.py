@@ -1816,8 +1816,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
             self.assertIsInstance(one_doc.bill_recipients, list)
             self.assertEquals(len(one_doc.bill_recipients), 0)
-            self.assertIsInstance(one_doc.last_recipients, list)
-            self.assertEquals(len(one_doc.last_recipients), 0)
 
             two_doc.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
             self.reebill_dao.save_reebill(two_doc)
