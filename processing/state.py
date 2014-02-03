@@ -193,6 +193,7 @@ class ReeBill(Base):
         self.prior_balance = 0
         self.ree_value = 0
         self.ree_savings = 0
+        self.recipients = ''
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
