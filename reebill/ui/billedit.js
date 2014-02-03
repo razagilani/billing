@@ -103,6 +103,69 @@ Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
 });
 Ext.grid.Column.types['checkboxcolumn'] = Ext.ux.grid.CheckboxColumn;  
 
+///////////////////////////////////////////////////
+//
+//         DEFAULT ERROR HANDLERS
+//  Ugly global functions/variables like this are necessary 
+//  because of the ugly function based design that we have
+//  in the future this should all be event based. The functions
+//  are named in case we want to dynamically remove them if we
+//  do not want the standard error handler for certain
+//  requests
+
+var defaultRequestException = function(conn, response, options){
+    // when a request times out, response.statuText will be "transaction
+    // aborted". when the server is restarted it is "communication failure"
+    Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
+}
+
+var defaultRequestComplete = function(dataconn, response) { 
+    try {
+        var jsonData = Ext.util.JSON.decode(response.responseText);
+        if (typeof(jsonData.success) === "undefined") {
+            console.log("Server returned malformed json reponse:  Success field missing.");
+            console.log(jsonData);
+        } else {
+            if (jsonData.success == false) {
+                if (typeof(jsonData.code) === "undefined") {
+                    console.log("Server returned malformed json reponse:  Code field missing.");
+                    console.log(jsonData);
+                } else {
+                    if (jsonData.code == 1) {
+                        // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                        // of which there may be many.
+                        window.location.href = 'http://'+location.host+'/reebill/logout'
+                    } else {
+                        string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
+                        while (string.search(/([^\n]{85})/) != -1) {
+                            string = string.replace(/([^\n]{84})([^\n])/, "$1\n$2");
+                        }
+                        string = string.replace(/</g,'&lt;');
+                        string = string.replace(/>/g,'&gt;');
+                        
+                        console.log(string)
+                        oldMinWidth = Ext.MessageBox.minWidth;
+                        Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
+                        Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
+                        //console.log(jsonData)
+                        Ext.MessageBox.minWidth = oldMinWidth;
+                    }
+                }
+            } else {
+                //console.log(jsonData);
+            }
+        }
+    } catch (e) {
+        console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
+        console.log(e);
+        Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
+    }
+}
+
+
+
+
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -113,57 +176,12 @@ function reeBillReady() {
 
     // this is a Record object in 'utilbillGridStore'
     var selected_utilbill = null;
-
+    
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection);
-    Ext.data.Connection.on('requestexception', function(conn, response, options) {
-        // when a request times out, response.statuText will be "transaction
-        // aborted". when the server is restarted it is "communication failure"
-        Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
-    });
-    Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
-        try {
-            var jsonData = Ext.util.JSON.decode(response.responseText);
-            if (typeof(jsonData.success) === "undefined") {
-                console.log("Server returned malformed json reponse:  Success field missing.");
-                console.log(jsonData);
-            } else {
-                if (jsonData.success == false) {
-                    if (typeof(jsonData.code) === "undefined") {
-                        console.log("Server returned malformed json reponse:  Code field missing.");
-                        console.log(jsonData);
-                    } else {
-                        if (jsonData.code == 1) {
-                            // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-                            // of which there may be many.
-                            window.location.href = 'http://'+location.host+'/reebill/logout'
-                        } else {
-                            string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
-                            while (string.search(/([^\n]{85})/) != -1) {
-                                string = string.replace(/([^\n]{84})([^\n])/, "$1\n$2");
-                            }
-                            string = string.replace(/</g,'&lt;');
-                            string = string.replace(/>/g,'&gt;');
-
-                            console.log(string)
-                            oldMinWidth = Ext.MessageBox.minWidth;
-                            Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
-                            Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
-                            //console.log(jsonData)
-                            Ext.MessageBox.minWidth = oldMinWidth;
-                        }
-                    }
-                } else {
-                    //console.log(jsonData);
-                }
-            }
-        } catch (e) {
-            console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
-            console.log(e);
-            Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
-        }
-    });
+    Ext.data.Connection.on('requestexception', defaultRequestException);
+    Ext.data.Connection.on('requestcomplete', defaultRequestComplete);
 
     // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
@@ -6330,6 +6348,10 @@ function loadDashboard()
     var revisionDataConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/revision.txt',
     });
+    
+    // Remove the default request exception
+    Ext.data.Connection.un('requestexception', defaultRequestException);
+    
     revisionDataConn.autoAbort = true;
     revisionDataConn.disableCaching = true;
 
@@ -6351,7 +6373,21 @@ function loadDashboard()
             versionInfo = Ext.get('SKYLINE_VERSIONINFO');
             versionInfo.update(date + " " + user + " " + version);
             //Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
+            
+            //Reattach the default request exceptions
+            Ext.data.Connection.on('requestexception', defaultRequestException);
         },
+    });
+    
+    revisionDataConn.on('requestexception', function(conn, response, options){
+        if(response.status == 404){
+            // Revision file not found. We probably have a development version
+            // or something went wrong with deployment
+            versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+            versionInfo.update('NO VERSION INFORMATION FOUND');
+        }
+        //Reattach the default request exceptions
+        Ext.data.Connection.on('requestexception', defaultRequestException);
     });
 
     // show username & logout link in the footer
