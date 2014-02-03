@@ -46,7 +46,7 @@ other_keys = [
 con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
     passwd='dev')
 cur = con.cursor()
-for key in keys_to_remove + other_keys + keys_to_rename.values():
+for key in other_keys + keys_to_rename.values():
     if key == 'due_date':
         sql = 'alter table reebill add column due_date date'
     elif key == 'recipients':
