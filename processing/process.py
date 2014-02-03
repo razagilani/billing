@@ -945,6 +945,7 @@ class Process(object):
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
         based on the given state.UtilBill.
+        Returns new state.ReeBill object.
         This is a separate method from create_next_reebill because a specific
         utility bill is provided indicating where billing should start.
         '''
@@ -966,13 +967,18 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
-        session.add(ReeBill(customer, 1, version=0, utilbills=[utilbill]))
+        new_reebill = ReeBill(customer, 1, version=0, utilbills=[utilbill])
+        session.add(new_reebill)
+
+        return new_reebill
 
 
     def create_next_reebill(self, session, account):
         '''Creates the successor to the highest-sequence state.ReeBill for the
         given account, or the first reebill if none exists yet, and its
-        associated Mongo document.'''
+        associated Mongo document.
+        Returns the newly-created state.ReeBill object.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
@@ -1025,11 +1031,14 @@ class Process(object):
                 last_reebill_doc.suspended_services)
 
         # create reebill row in state database
-        session.add(ReeBill(customer, new_mongo_reebill.sequence,
-                new_mongo_reebill.version, utilbills=new_utilbills))
+        new_reebill = ReeBill(customer, new_mongo_reebill.sequence,
+                new_mongo_reebill.version, utilbills=new_utilbills)
+        session.add(new_reebill)
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
+
+        return new_reebill
 
     def roll_bill(self, session, account, start_date,
                                integrate_skyline_backend):
@@ -1294,6 +1303,14 @@ class Process(object):
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
+
+        # NOTE session.delete() fails with an errror like "InvalidRequestError:
+        # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
+        # not been persisted (i.e. flushed from SQLAlchemy cache to database)
+        # yet; the author says on Stack Overflow to use 'expunge' if the object
+        # is in 'session.new' and 'delete' otherwise, but for some reason
+        # 'reebill' does not get into 'session.new' when session.add() is
+        # called. i have not solved this problem yet.
         session.delete(reebill)
 
         # delete highest-version reebill document from Mongo
