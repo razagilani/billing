@@ -88,7 +88,7 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     return x
 
 
-# TODO believed to be needed only by presentation code, so put it there.
+# NOTE deperecated; avoid using this if at all possible
 def flatten_chargegroups_dict(chargegroups):
     flat_charges = []
     for (chargegroup, charges) in chargegroups.items(): 
@@ -97,7 +97,7 @@ def flatten_chargegroups_dict(chargegroups):
             flat_charges.append(charge)
     return flat_charges
 
-# TODO believed to be needed only by presentation code, so put it there.
+# NOTE deperecated; avoid using this if at all possible
 def unflatten_chargegroups_list(flat_charges):
     new_chargegroups = {}
     for cg, charges in it.groupby(sorted(flat_charges, key=lambda
@@ -1059,21 +1059,21 @@ class MongoReebill(object):
         '''Assigns a list of e-mail addresses representing bill recipients.'''
         self.reebill_dict['bill_recipients'] = value
 
-    @property
-    def last_recipients(self):
-        '''E-mail addresses of bill recipients.
-
-        If these data exist, returns a list of strings. Otherwise, returns None.'''
-        res = self.reebill_dict.get('last_recipients', None)
-        if res is None:
-            self.reebill_dict['last_recipients'] = []
-            return self.reebill_dict['last_recipients']
-        return res
-    
-    @last_recipients.setter
-    def last_recipients(self, value):
-        '''Assigns a list of e-mail addresses representing bill recipients.'''
-        self.reebill_dict['last_recipients'] = value
+    # @property
+    # def last_recipients(self):
+    #     '''E-mail addresses of bill recipients.
+    #
+    #     If these data exist, returns a list of strings. Otherwise, returns None.'''
+    #     res = self.reebill_dict.get('last_recipients', None)
+    #     if res is None:
+    #         self.reebill_dict['last_recipients'] = []
+    #         return self.reebill_dict['last_recipients']
+    #     return res
+    #
+    # @last_recipients.setter
+    # def last_recipients(self, value):
+    #     '''Assigns a list of e-mail addresses representing bill recipients.'''
+    #     self.reebill_dict['last_recipients'] = value
         
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -1704,13 +1704,14 @@ class MongoReebill(object):
     # Helper functions
     #
 
-    # the following functions are all about flattening nested chargegroups for the UI grid
+    # NOTE deprecated; avoid using this if at all possible
     def hypothetical_chargegroups_flattened(self, service,
             chargegroups='hypothetical_chargegroups'):
         utilbill_handle = self._get_handle_for_service(service)
         return flatten_chargegroups_dict(copy.deepcopy(
                 utilbill_handle['hypothetical_chargegroups']))
 
+    # NOTE deprecated; avoid using this if at all possible
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill_handle = self._get_handle_for_service(service)
         utilbill_handle['hypothetical_chargegroups'] = \

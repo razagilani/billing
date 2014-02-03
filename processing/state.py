@@ -93,6 +93,7 @@ class ReeBill(Base):
     prior_balance = Column(Float, nullable=False)
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
+    recipients = Column(String, nullable=False)
 
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
