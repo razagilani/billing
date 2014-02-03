@@ -657,11 +657,15 @@ class MongoReebill(object):
                 [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
+    # NOTE avoid using this if at all possible,
+    # because MongoReebill._utilbills will go away
     def get_total_utility_charges(self):
         return sum(total_of_all_charges(self._get_utilbill_for_handle(
             subdoc)) for subdoc in self.reebill_dict['utilbills'])
 
     def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
         return sum(sum(charge['total'] for charge in
                 chain.from_iterable(subdoc['hypothetical_chargegroups']
                 .itervalues())) for subdoc in self.reebill_dict['utilbills'])
