@@ -1265,9 +1265,8 @@ class BillToolBridge:
                     # extract "id" field from the JSON because all remaining
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
-
                     # Fix boolean values that are interpreted as strings
-                    if row['shared'] == "false":
+                    if row['shared'] in ("false",False):
                         row['shared'] = False
                     else:
                         row['shared'] = True

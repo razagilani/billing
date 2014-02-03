@@ -3063,7 +3063,6 @@ function reeBillReady() {
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         RSIGrid.setDisabled(false);
-        console.log(store, records, options);
     });
 
     // grid's data store callback for when data is edited
