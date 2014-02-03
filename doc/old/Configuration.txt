@@ -1,0 +1,135 @@
+Windows:
+
+Components for PDF rendering
+
+python-2.6.4.msi
+(place python on executable path)
+
+Setup Tools
+http://pypi.python.org/pypi/setuptools
+http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11.win32-py2.6.exe#md5=1509752c3c2e64b5d0f9589aafe053dc
+add C:\Python26\Scripts to exe path
+
+
+http://www.reportlab.org/oss/rl-toolkit/download/
+reportlab-2.3.win32-py2.6.exe
+Get source dist for doc/examples
+
+http://www.pythonware.com/products/pil/
+PIL-1.1.6.win32-py2.6.exe
+
+Amara2
+http://wiki.xml3k.org/Amara2/Windows?action=AttachFile&do=view&target=Amara-2.0a3.win32-py2.6.msi
+
+http://www.advsofteng.com/download.html
+ChartDirector
+Install manually - no installer?
+PYTHONPATH must point to C:\Python26\Lib\site-packages\ChartDirector\lib
+
+
+inconsolata must be added to system fonts for chart director.  Figure out way for CD to depend on fonts directory.
+
+
+Linux ubunu (9.10 Karmic Koala):
+
+(install python, headers and setuptools)
+
+
+PIL
+
+	(Make sure Ubuntu server has properly graphics libs)
+	sudo aptitude install libjpeg-dev
+	sudo aptitude install libfreetype6
+	easy_install PIL
+
+
+
+Amara2 (2.0a4)
+easy_install amara
+
+Chart Director:
+
+	http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+	doc is at file:///home/[user]/Downloads/ChartDirector/doc/cdpython.htm
+	sudo cp -r ChartDirector/lib /usr/local/lib/python2.6/site-packages/chartdirector
+
+	(BASH VARIABLE - USER SPECIFIC - until we find a better way to set this globally)
+	Set pythonpath so pychartdir module can be found:
+	PYTHONPATH=/usr/local/lib/python2.6/site-packages/chartdirector
+	export PYTHONPATH
+
+ReportLab: 
+
+	dowbload reportlab: http://www.reportlab.com/ftp/ReportLab_2_4.tar.gz
+	download the pdf fonts: http://www.reportlab.com/ftp/fonts/pfbfer.zip
+
+	sudo python setup.py install
+	installs in:  /usr/local/lib/python2.6/dist-packages/reportlab/
+
+	copy fonts into /usr/local/lib/python2.6/dist-packages/reportlab/fonts
+	unzip pfbfer.zip /usr/local/lib/python2.6/dist-packages/reportlab/fonts/
+
+	To test install:
+		python setup.py tests
+
+
+
+Configuring File Server
+=======================
+
+predicate: Samba installed and running
+
+mkdir /db/skyline/bills
+sudo useradd -s /bin/true billing
+sudo passwd billing
+sudo smbpasswd -L -a billing
+(smbpasswd matches linux passwd.  is linux passwd even needed?)
+
+
+Update smb.conf
+
+[db]
+    path = /db/
+    browseable = yes
+    read only = no
+    writeable = yes
+    write list = 
+    guest ok = no
+    create mask = 0644
+    directory mask = 0755
+    force user = billing
+    force group = billing
+
+sudo service samba restart
+
+Mounting this filesystem on a linux client: 
+
+sudo smbmount //tyrell/db /db -o user=billing
+
+
+
+
+
+Creating the Billing database in eXist
+======================================
+
+URL prefix:
+
+/db/skyline/bills/[account]/[sequence].xml
+
+Ensure that UtilityBill.xsd is located at: /db/skyline/bills/UtilityBill.xsd as text/html
+Upload through the eXist admin client
+
+
+
+Bill entry UI
+=============
+
+client JS needs to proxy to bill_tool_bridge
+
+
+Tesseract
+=========
+
+    apt-get install libtiff-dev
+    apt-get install g++
