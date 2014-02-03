@@ -1391,23 +1391,20 @@ class BillToolBridge:
                     allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
-                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
-                for reebill_info in reebills:
+                issuable_reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+                for reebill_info in issuable_reebills:
                     row_dict = {}
-                    reebill = self.state_db.get_reebill(session,
-                            reebill_info[0], reebill_info[1])
                     mongo_reebill = self.reebill_dao.load_reebill(
-                            reebill_info[0], reebill_info[1])
-                    row_dict['id'] = reebill_info[0]
-                    row_dict['account'] = reebill_info[0]
-                    row_dict['sequence'] = reebill_info[1]
-                    row_dict['util_total'] = reebill_info[2]
+                            reebill_info['account'], reebill_info['sequence'])
+                    mongo_utilbills = [self.reebill_dao._load_utilbill_by_id(ub_id)
+                                       for ub_id in reebill_info['utilbill_ids']]
+                    row_dict['id'] = reebill_info['account']
+                    row_dict['account'] = reebill_info['account']
+                    row_dict['sequence'] = reebill_info['sequence']
+                    row_dict['util_total'] = reebill_info['total']
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
-                    row_dict['reebill_total'] = reebill.actual_total
-                    try:
-                        row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
-                    except ZeroDivisionError:
-                        row_dict['difference'] = float('inf')
+                    row_dict['reebill_total'] = sum(mongo.total_of_all_charges(ub_doc) for ub_doc in mongo_utilbills)
+                    row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
                 rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
