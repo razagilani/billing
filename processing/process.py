@@ -232,8 +232,8 @@ class Process(object):
         # query that with SQLAlchemy.
         assert re.match(ACCOUNT_NAME_REGEX, account)
         statement = '''select sequence, max(version) as max_version,
-        period_start, period_end, issued, issue_date, hypothetical_total,
-        actual_total, ree_value, prior_balance, payment_received,
+        period_start, period_end, issued, issue_date,
+        ree_value, prior_balance, payment_received,
         total_adjustment, balance_forward, ree_charge, balance_due
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
@@ -241,17 +241,17 @@ class Process(object):
         where account = %s
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
-                'period_end', 'issued', 'issue_date', 'hypothetical_total',
-                'actual_total', 'ree_value', 'prior_balance', 'payment_received',
+                'period_end', 'issued', 'issue_date',
+                'ree_value', 'prior_balance', 'payment_received',
                 'total_adjustment', 'balance_forward', 'ree_charge',
                 'balance_due'
         ).from_statement(statement)
 
         for (sequence, max_version, period_start, period_end, issued,
-                issue_date, hypothetical_total, actual_total, ree_value,
+                issue_date, ree_value,
                 prior_balance, payment_received, total_adjustment,
                 balance_forward, ree_charge, balance_due) in query:
-            document = self.reebill_dao.load_reebill(session, account,
+            document = self.reebill_dao.load_reebill(account,
                     sequence, version=max_version)
             # start with data from MySQL
             the_dict = {
@@ -1374,6 +1374,8 @@ class Process(object):
         return new_customer
 
 
+# keys above for which null values should be allowed in corresponding MySQL #
+# column
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
