@@ -120,6 +120,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('88888', reebill_doc.account)
             self.assertEqual(1, reebill_doc.sequence)
             self.assertEqual(0, reebill_doc.version)
+            self.assertEqual(0, reebill.ree_value)
+            self.assertEqual(0, reebill.ree_savings)
             self.assertEqual(0, reebill.ree_charge)
             # some bills lack late_charges key, which is supposed to be
             # distinct from late_charges: None, and late_charges: 0
@@ -2457,10 +2459,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(0, bill1.prior_balance)
             self.assertEquals(0, bill1.payment_received)
             self.assertEquals(0, bill1.balance_forward)
+            self.assertAlmostEqual(expected_energy_quantity, bill1.ree_value)
             self.assertAlmostEqual(expected_ree_charge,
                     bill1.ree_charge)
             self.assertAlmostEqual(expected_ree_charge,
                     bill1.balance_due)
+            self.assertEqual(bill1.ree_value - bill1.ree_charge,
+                    bill1.ree_savings)
             # TODO check everything else...
 
             # add a payment so payment_received is not 0
