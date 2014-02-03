@@ -26,7 +26,7 @@ keys_to_remove = [
 keys_to_rename = {
     'late_charges': 'late_charge',
     'ree_charges': 'ree_charge',
-   'bill_recipients': 'recipients',
+    'bill_recipients': 'recipients',
 }
 
 other_keys = [
@@ -43,6 +43,10 @@ other_keys = [
     'ree_savings',
 ]
 
+# keys above for which null values should be allowed in corresponding MySQL
+# column
+null_allowed = ['issue_date', 'due_date']
+
 con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
     passwd='dev')
 cur = con.cursor()
@@ -53,8 +57,11 @@ for key in other_keys + keys_to_rename.values():
         sql = 'alter table reebill add column recipients varchar(1000)'
     else:
         sql = 'alter table reebill add column %s float' % key
+
+    if key not in null_allowed:
+        sql += ' not null'
     cur.execute(sql)
-    print 'INFO', sql
+    print 'INFO executing:', sql
 
 for reebill in s.query(ReeBill).join(Customer)\
         .filter(ReeBill.customer_id==Customer.id)\
