@@ -251,6 +251,8 @@ class Process(object):
                 issue_date, hypothetical_total, actual_total, ree_value,
                 prior_balance, payment_received, total_adjustment,
                 balance_forward, ree_charge, balance_due) in query:
+            document = self.reebill_dao.load_reebill(session, account,
+                    sequence, version=max_version)
             # start with data from MySQL
             the_dict = {
                 'id': sequence,
@@ -261,8 +263,8 @@ class Process(object):
                 # invisible columns
                 'max_version': max_version,
                 'issued': self.state_db.is_issued(session, account, sequence),
-                'hypothetical_total': hypothetical_total,
-                'actual_total': actual_total,
+                'hypothetical_total': document.get_total_hypothetical_charges(),
+                'actual_total': document.get_total_utility_charges(),
                 'ree_value': ree_value,
                 'prior_balance': prior_balance,
                 'payment_received': payment_received,
