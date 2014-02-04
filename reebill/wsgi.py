@@ -1645,7 +1645,8 @@ class BillToolBridge:
             flattened_charges = mongo.get_charges_json(utilbill_doc)
 
             if xaction == "read":
-                return self.dumps({'success': True, 'rows': flattened_charges})
+                return self.dumps({'success': True, 'rows': flattened_charges,
+                                   'total':len(flattened_charges)})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1666,10 +1667,9 @@ class BillToolBridge:
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
-                return self.dumps({'success':True})
 
             if xaction == "create":
-                row = json.loads(kwargs["rows"])
+                row = json.loads(kwargs["rows"])[0]
                 # key rsi_binding must exist
                 if 'rsi_binding' not in row:
                     row['rsi_binding'] = ''
@@ -1687,17 +1687,17 @@ class BillToolBridge:
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-                return self.dumps({'success':True, 'rows': row})
-
             if xaction == "destroy":
-                the_id = json.loads(kwargs["rows"])
+                the_id = json.loads(kwargs["rows"])[0]
                 the_charge = get_charge_by_id(flattened_charges, the_id)
                 flattened_charges.remove(the_charge)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
                         flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-                return self.dumps({'success':True})
+            flattened_charges = mongo.get_charges_json(utilbill_doc)
+            return self.dumps({'success': True, 'rows': flattened_charges,
+                                'total':len(flattened_charges)})
 
 
     @cherrypy.expose
