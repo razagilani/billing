@@ -295,7 +295,7 @@ def get_charges_json(utilbill_doc):
 def get_service_address(utilbill_doc):
     return utilbill_doc['service_address']
 
-# TODO make this a method of a utility bill document class when one exists
+# NOTE deprecated; do not add new calls to this function
 def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
     # remove "id" field that came from the client
     flat_charges = copy.deepcopy(flat_charges)
@@ -364,6 +364,24 @@ def update_charge(utilbill_doc, rsi_binding, fields):
     '''
     charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
     charge.update(fields)
+
+# TODO make this a method of a utility bill document class when one exists
+# (if it doesn't go away first)
+def add_charge(utilbill_doc, group_name):
+    '''Add a new charge to the given utility bill with charge group "group_name"
+    and default value for all its fields.
+    '''
+    charges = [charge_list for name, charge_list in
+            utilbill_doc['chargegroups'].iteritems()
+            if group_name == group_name]
+    charges.append({
+        'rsi_binding': 'RSI binding required',
+        'description': 'description required',
+        'quantity': 0,
+        'quantity_units': 'kWh',
+        'rate': 0,
+        'total': 0,
+    })
 
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs):
