@@ -1899,7 +1899,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill = self.state_db.get_reebill(session, account, 1)
 
             # delete the reebill: should succeed, because it's not issued
-            self.process.delete_reebill(session, reebill)
+            self.process.delete_reebill(session, account, 1)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
             self.assertEquals(0, session.query(ReeBill).count())
@@ -1918,7 +1918,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
             b = self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
-                    session, reebill)
+                    session, account, 1)
 
             # create a new verison and delete it, returning to just version 0
             # (versioning requires a cprs)
@@ -1926,7 +1926,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_v1 = session.query(ReeBill).filter_by(version=1).one()
             self.assertEqual(1, self.state_db.max_version(session, account, 1))
             self.assertFalse(self.state_db.is_issued(session, account, 1))
-            self.process.delete_reebill(session, reebill_v1)
+            self.process.delete_reebill(session, account, 1)
             self.assertEqual(0, self.state_db.max_version(session, account, 1))
             self.assertTrue(self.state_db.is_issued(session, account, 1))
 
@@ -2290,7 +2290,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, account, 1, version=1)
 
             # delete the new version
-            self.process.delete_reebill(session, reebill_correction)
+            self.process.delete_reebill(session, account, 1)
             self.assertEquals(0, self.state_db.max_version(session, account,
                     1))
 

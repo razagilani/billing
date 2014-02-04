@@ -23,6 +23,7 @@ from itertools import chain
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
 import re
+import errno
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
@@ -35,7 +36,7 @@ from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.processing import fetch_bill_data, bill_mailer
-from nexusapi import nexus_util
+from billing.nexusapi import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
@@ -157,6 +158,32 @@ class Process(object):
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         mongo.update_charge(utilbill_doc, rsi_binding, fields)
         self.reebill_dao.save_utilbill(utilbill_doc)
+
+    def delete_charge(self, session, utilbill_id, rsi_binding):
+        '''Delete the charge given by 'rsi_binding' in the given utility
+        bill.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.delete_charge(utilbill_doc, rsi_binding)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
+    def get_hypothetical_matched_charges(self, account, sequence, service):
+        """ Gets all hypothetical charges from a reebill for a service and
+            matches the actual charge to each hypotheitical charge"""
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        if reebill is None:
+            raise NoSuchBillException
+        utilbill_doc = reebill._get_utilbill_for_service(service)
+        actual_charges = mongo.get_charges_json(utilbill_doc)
+        actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
+        hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
+        for hypothetical_charge_dict in hypothetical_charges:
+            matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
+            hypothetical_charge_dict['actual_rate'] = matching['rate']
+            hypothetical_charge_dict['actual_quantity'] = matching['quantity']
+            hypothetical_charge_dict['actual_total'] = matching['total']
+        return hypothetical_charges
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
@@ -329,6 +356,51 @@ class Process(object):
             result.append(the_dict)
 
         return result
+
+    def update_sequential_account_info(self, session, account, sequence,
+            discount_rate=None, late_charge_rate=None,
+            ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
+            ba_postal_code=None,
+            sa_addressee=None, sa_street=None, sa_city=None, sa_state=None,
+            sa_postal_code=None):
+        '''Update fields for the reebill given by account, sequence
+        corresponding to the "sequential account information" form in the UI,
+        '''
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        reebill_document = self.reebill_dao.load_reebill(account, sequence)
+
+        if discount_rate is not None:
+            reebill.discount_rate = discount_rate
+        if late_charge_rate is not None:
+            reebill.late_charge_rate = late_charge_rate
+
+        document = self.reebill_dao.load_reebill(account, sequence)
+
+        if ba_addressee is not None:
+            document.billing_address['addressee'] = ba_addressee
+        if ba_street is not None:
+            document.billing_address['street'] = ba_street
+        if ba_street is not None:
+            document.billing_address['street'] = ba_street
+        if ba_city is not None:
+            document.billing_address['city'] = ba_city
+        if ba_postal_code is not None:
+            document.billing_address['postal_code'] = ba_postal_code
+
+        if sa_addressee is not None:
+            document.service_address['addressee'] = sa_addressee
+        if sa_street is not None:
+            document.service_address['street'] = sa_street
+        if sa_street is not None:
+            document.service_address['street'] = sa_street
+        if sa_city is not None:
+            document.service_address['city'] = sa_city
+        if sa_postal_code is not None:
+            document.service_address['postal_code'] = sa_postal_code
+
+        self.reebill_dao.save_reebill(document)
 
 
     def upload_utility_bill(self, session, account, service, begin_date,
@@ -1051,19 +1123,12 @@ class Process(object):
         return new_reebill
 
     def roll_bill(self, session, account, start_date,
-                               integrate_skyline_backend):
-        """ This method invokes the different processes involved
-            when a new reebill is rolled via wsgi interface.
-            First a first or next reebill is created. Then the reebill
-            is bound and computed.
-            start_date: The start date of the bill
-            integrate_skyline_backend: runtime config option that tdetermines
-                whether the skyline_backend is integrated and should fetch
-                oltp data
-            Returns the sequence of the last document, the sequence
-            of the nuw doc and the version of the new reebill document
-            so they can be user for journaling purposes
-        """
+               integrate_skyline_backend):
+        '''Create first or next reebill for given account. 'start_date' must
+        be given for the first reebill.
+        'integrate_skyline_backend': this must be True to get renewable energy
+        data.
+        '''
         # 1st transaction: roll
         last_seq = self.state_db.last_sequence(session, account)
         if last_seq == 0:
@@ -1075,9 +1140,9 @@ class Process(object):
             if utilbill is None:
                 raise ValueError("No utility bill found starting on/after %s" %
                         start_date)
-            self.create_first_reebill(session, utilbill)
+            new_reebill = self.create_first_reebill(session, utilbill)
         else:
-            self.create_next_reebill(session, account)
+            new_reebill = self.create_next_reebill(session, account)
 
         new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq + 1)
         # 2nd transaction: bind and compute. if one of these fails, don't undo
@@ -1090,9 +1155,11 @@ class Process(object):
 
         self.reebill_dao.save_reebill(new_reebill_doc)
 
-        self.compute_reebill(session, new_reebill_doc)
-
-        return (last_seq, new_reebill_doc.sequence, new_reebill_doc.version)
+        try:
+            self.compute_reebill(session, account, last_seq + 1)
+        except Exception as e:
+            self.logger.error("Error when computing reebill %s: %s" % (
+                    new_reebill, e))
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
@@ -1300,19 +1367,17 @@ class Process(object):
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
-    def delete_reebill(self, session, reebill):
+
+    def delete_reebill(self, session, account, sequence):
         '''Deletes the the given reebill: removes the ReeBill object/row and
         its utility bill associations from MySQL, and its document from Mongo.
         A reebill version has been issued can't be deleted. Returns the version
         of the reebill that was deleted.'''
-        # don't delete an issued reebill
+        reebill = self.state_db.get_reebill(session, account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
 
         version = reebill.version
-
-        # delete reebill state data from MySQL and dissociate utilbills from it
-        # (save max version first because row may be deleted)
 
         # NOTE session.delete() fails with an errror like "InvalidRequestError:
         # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
@@ -1325,6 +1390,23 @@ class Process(object):
 
         # delete highest-version reebill document from Mongo
         self.reebill_dao.delete_reebill(reebill)
+
+        # Delete the PDF associated with a reebill if it was version 0
+        # because we believe it is confusing to delete the pdf when
+        # when a version still exists
+        if version == 0:
+            # path = self.config.get('billdb', 'billpath')+'%s' %(account)
+            # file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+            # full_path = os.path.join(path, file_name)
+            full_path = self.billupload.get_reebill_file_path(account,
+                    sequence)
+
+            # If the file exists, delete it, otherwise don't worry.
+            try:
+                os.remove(full_path)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
 
         return version
 
