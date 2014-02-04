@@ -1663,12 +1663,8 @@ class BillToolBridge:
                 self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
-                the_id = json.loads(kwargs["rows"])[0]
-                the_charge = get_charge_by_id(charges_json, the_id)
-                charges_json.remove(the_charge)
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        charges_json)
-                self.reebill_dao.save_utilbill(utilbill_doc)
+                rsi_binding = json.loads(kwargs["rows"])
+                self.process.delete_charge(session, utilbill_id, rsi_binding)
 
             charges_json = self.process.get_utilbill_charges_json(session,
                     utilbill_id)

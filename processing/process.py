@@ -158,6 +158,15 @@ class Process(object):
         mongo.update_charge(utilbill_doc, rsi_binding, fields)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
+    def delete_charge(self, session, utilbill_id, rsi_binding):
+        '''Delete the charge given by 'rsi_binding' in the given utility
+        bill.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.delete_charge(utilbill_doc, rsi_binding)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_class=None, processed=None):
