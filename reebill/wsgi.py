@@ -710,12 +710,7 @@ class BillToolBridge:
         '''Handler for the front end's "Compute Bill" operation.'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            # use version 0 of the predecessor to show the real account
-            # history (prior balance, payment received, balance forward)
-            mongo_reebill = self.reebill_dao.load_reebill(account,
-                    sequence, version='max')
-            self.process._compute_reebill_document(session, mongo_reebill)
-            self.reebill_dao.save_reebill(mongo_reebill)
+            self.process.compute_reebill(session,account,sequence,'max')
             return self.dumps({'success': True})
     
         
