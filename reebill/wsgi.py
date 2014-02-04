@@ -1266,13 +1266,14 @@ class BillToolBridge:
                     # extract "id" field from the JSON because all remaining
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
-
                     # Fix boolean values that are interpreted as strings
+
                     for key in ('shared', 'has_charge'):
-                        if row[key] == "false":
+                        if row[key] in ("false", False):
                             row[key] = False
                         else:
                             row[key] = True
+
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
                     # new one that will replace it (if there is one)
@@ -1760,8 +1761,6 @@ class BillToolBridge:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-
-            toSelect = None
 
             if xaction == 'read':
                 # get dictionaries describing all registers in all utility bills
