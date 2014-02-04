@@ -21,7 +21,7 @@ from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner.sky_paths import BufferingTLSSMTPHandler
-from billing.util.nexus_util import NexusUtil
+from nexusapi.nexus_util import NexusUtil
 from billing.processing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.process import Process
