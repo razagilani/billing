@@ -18,7 +18,7 @@ from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
 from billing.util.dictutils import deep_map
 from billing.test import example_data
-from nexusapi.nexus_util import MockNexusUtil
+from billing.nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter
 
 class TestCaseWithSetup(unittest.TestCase):
