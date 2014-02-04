@@ -136,9 +136,18 @@ class Process(object):
     def get_utilbill_charges_json(self, session, utilbill_id,
                     reebill_sequence=None, reebill_version=None):
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
-            reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
         return mongo.get_charges_json(utilbill_doc)
+
+    def update_charge(self, session, utilbill_id, rsi_binding, fields):
+        '''Modify the charge given by 'rsi_binding' by setting key-value pairs
+        to match the dictionary 'fields'.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.update_charge(utilbill_doc, rsi_binding, fields)
+        self.reebill_dao.save_utilbill(utilbill_doc)
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
@@ -154,7 +163,6 @@ class Process(object):
         old_start, old_end = utilbill.period_start, utilbill.period_end
 
         # load Mongo document
-        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill

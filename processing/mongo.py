@@ -351,6 +351,20 @@ def _validate_charges(utilbill_doc, rate_structure):
             raise NoRSIError('No rate structure item for "%s"' %
                            charge['rsi_binding'])
 
+def _get_charge_by_rsi_binding(utilbill_doc, rsi_binding):
+    charges = list(chain.from_iterable(
+            utilbill_doc['chargegroups'].itervalues()))
+    matches = [c for c in charges if c['rsi_binding'] == rsi_binding]
+    assert len(matches) == 1
+    return matches[0]
+
+def update_charge(utilbill_doc, rsi_binding, fields):
+    '''Modify the charge given by 'rsi_binding' by setting key-value pairs
+    to match the dictionary 'fields'.
+    '''
+    charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
+    charge.update(fields)
+
 # TODO make this a method of a utility bill document class when one exists
 def compute_all_charges(utilbill_doc, uprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this

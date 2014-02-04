@@ -1654,19 +1654,14 @@ class BillToolBridge:
                 raise IssuedBillError('Issued reebills cannot be modified')
 
             if xaction == "update":
-                rows = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
-                for row in rows:
-                    # replace all key-value pairs in the charge dictionary
-                    # with those from 'row'
-                    the_charge = get_charge_by_id(charges_json, row['id'])
-                    the_charge.clear()
-                    the_charge.update(row)
+                row = json.loads(kwargs["rows"])
+                # single edit comes in a dict; multiple would be in list of
+                # dicts but that should be impossible
+                assert isinstance(row, dict)
 
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        charges_json)
-                self.reebill_dao.save_utilbill(utilbill_doc)
+                rsi_binding = row.pop('id')
+                self.process.update_charge(session, utilbill_id, rsi_binding,
+                        row)
 
             if xaction == "create":
                 row = json.loads(kwargs["rows"])[0]
@@ -1695,9 +1690,10 @@ class BillToolBridge:
                         charges_json)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-            flattened_charges = mongo.get_charges_json(utilbill_doc)
-            return self.dumps({'success': True, 'rows': flattened_charges,
-                                'total':len(flattened_charges)})
+            charges_json = self.process.get_utilbill_charges_json(session,
+                    utilbill_id)
+            return self.dumps({'success': True, 'rows': charges_json,
+                                'total':len(charges_json)})
 
 
     @cherrypy.expose
