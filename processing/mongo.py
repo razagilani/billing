@@ -335,7 +335,8 @@ def refresh_charges(utilbill_doc, uprs):
         #'rate_units': 0,
         'total': 0,
         'description': rsi.description,
-    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))]}
+    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
+            if rsi.has_charge]}
 
 def _validate_charges(utilbill_doc, rate_structure):
     '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
