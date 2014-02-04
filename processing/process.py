@@ -166,6 +166,7 @@ class Process(object):
 
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         assert 'sequence' not in doc
         assert 'version' not in doc
 
