@@ -133,6 +133,13 @@ class Process(object):
         return load_method(utilbill, reebill=reebill)
 
 
+    def get_utilbill_charges_json(self, session, utilbill_id,
+                    reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+            reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+        return mongo.get_charges_json(utilbill_doc)
+
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_class=None, processed=None):
