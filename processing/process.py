@@ -356,6 +356,51 @@ class Process(object):
 
         return result
 
+    def update_sequential_account_info(self, session, account, sequence,
+            discount_rate=None, late_charge_rate=None,
+            ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
+            ba_postal_code=None,
+            sa_addressee=None, sa_street=None, sa_city=None, sa_state=None,
+            sa_postal_code=None):
+        '''Update fields for the reebill given by account, sequence
+        corresponding to the "sequential account information" form in the UI,
+        '''
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        reebill_document = self.reebill_dao.load_reebill(account, sequence)
+
+        if discount_rate is not None:
+            reebill.discount_rate = discount_rate
+        if late_charge_rate is not None:
+            reebill.late_charge_rate = late_charge_rate
+
+        document = self.reebill_dao.load_reebill(account, sequence)
+
+        if ba_addressee is not None:
+            document.billing_address['addressee'] = ba_addressee
+        if ba_street is not None:
+            document.billing_address['street'] = ba_street
+        if ba_street is not None:
+            document.billing_address['street'] = ba_street
+        if ba_city is not None:
+            document.billing_address['city'] = ba_city
+        if ba_postal_code is not None:
+            document.billing_address['postal_code'] = ba_postal_code
+
+        if sa_addressee is not None:
+            document.service_address['addressee'] = sa_addressee
+        if sa_street is not None:
+            document.service_address['street'] = sa_street
+        if sa_street is not None:
+            document.service_address['street'] = sa_street
+        if sa_city is not None:
+            document.service_address['city'] = sa_city
+        if sa_postal_code is not None:
+            document.service_address['postal_code'] = sa_postal_code
+
+        self.reebill_dao.save_reebill(document)
+
 
     def upload_utility_bill(self, session, account, service, begin_date,
             end_date, bill_file, file_name, utility=None, rate_class=None,
