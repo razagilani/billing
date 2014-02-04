@@ -365,6 +365,14 @@ def update_charge(utilbill_doc, rsi_binding, fields):
     charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
     charge.update(fields)
 
+def delete_charge(utilbill_doc, rsi_binding):
+    for charges_list in utilbill_doc['chargegroups'].itervalues():
+        for charge in charges_list:
+            if charge['rsi_binding'] == rsi_binding:
+                charges_list.remove(charge)
+                return
+    raise ValueError('RSI binding "%s" not found' % rsi_binding)
+
 # TODO make this a method of a utility bill document class when one exists
 # (if it doesn't go away first)
 def add_charge(utilbill_doc, group_name):
