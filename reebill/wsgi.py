@@ -47,6 +47,11 @@ from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
 
 import pprint
+sys.stdout = sys.stderr
+# 29926885 output environment configs to debug virtual env
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger

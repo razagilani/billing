@@ -550,6 +550,15 @@ class UtilBillTest(utils.TestCase):
                     quantity_units='therms',
                     rate='6',
                     shared=False,
+                ),
+                RateStructureItem(
+                    rsi_binding='NO_CHARGE',
+                    description='this RSI should not have a charge',
+                    quantity='7',
+                    quantity_units='therms',
+                    rate='8',
+                    shared=True,
+                    has_charge=False,
                 )
             ]
         )

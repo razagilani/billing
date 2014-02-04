@@ -80,8 +80,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).filter_by(customer=customer)\
                     .one()
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
 
             # check utility bill and its document
             self.assertEqual(UtilBill.Complete, utilbill.state)
@@ -121,6 +120,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('88888', reebill_doc.account)
             self.assertEqual(1, reebill_doc.sequence)
             self.assertEqual(0, reebill_doc.version)
+            self.assertEqual(0, reebill.ree_value)
+            self.assertEqual(0, reebill.ree_savings)
             self.assertEqual(0, reebill.ree_charge)
             # some bills lack late_charges key, which is supposed to be
             # distinct from late_charges: None, and late_charges: 0
@@ -319,8 +320,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
             self.process.issue(session, '99999', 1)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     service='water')
@@ -370,9 +370,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create first reebill
-            self.process.create_first_reebill(session,
+            bill1 = self.process.create_first_reebill(session,
                     session.query(UtilBill).one())
-            bill1 = session.query(ReeBill).one()
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
             bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
@@ -403,8 +402,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february.pdf')
             self.process.update_utilbill_metadata(session, u2.id,
                     processed=True)
-            self.process.create_next_reebill(session, acc)
-            bill2 = self.state_db.get_reebill(session, acc, 2)
+            bill2 = self.process.create_next_reebill(session, acc)
             bill2_doc = self.reebill_dao.load_reebill(acc, 2)
             bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
@@ -444,8 +442,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2012,3,1), date(2012,4,1), StringIO('March 2012'),
                     'march.pdf')
-            self.process.create_next_reebill(session, acc)
-            bill3 = self.state_db.get_reebill(session, acc, 3)
+            bill3 = self.process.create_next_reebill(session, acc)
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
@@ -1018,8 +1015,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.period_end == end).one()
             
             # when utilbill is attached to reebill, deletion should fail
-            self.process.create_first_reebill(session, utilbill)
-            first_reebill = session.query(ReeBill).one()
+            first_reebill = self.process.create_first_reebill(session,
+                    utilbill)
             assert first_reebill.utilbills == [utilbill]
             assert utilbill.is_attached()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
@@ -1289,9 +1286,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 uprs.save()
 
             # first reebill: saved 100 therms, $50
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
-            one = self.state_db.get_reebill(session, acc, 1)
+            one = self.process.create_first_reebill(session,
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             one.discount_rate = 0.5
             one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1303,8 +1300,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert one.ree_charge == 50
 
             # 2nd reebill: saved 200 therms, $100
-            self.process.create_next_reebill(session, acc)
-            two = self.state_db.get_reebill(session, acc, 2)
+            two = self.process.create_next_reebill(session, acc)
             two.discount_rate = 0.5
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             two_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1315,8 +1311,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert two.ree_charge == 100
 
             # 3rd reebill: saved 300 therms, $150
-            self.process.create_next_reebill(session, acc)
-            three = self.state_db.get_reebill(session, acc, 3)
+            three = self.process.create_next_reebill(session, acc)
             three_doc = self.reebill_dao.load_reebill(acc, 3)
             three.discount_rate = 0.5
             three_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1327,8 +1322,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # 4th reebill
             self.process.create_next_reebill(session, acc)
-            four_doc = self.reebill_dao.load_reebill(acc, 4)
-            self.reebill_dao.save_reebill(four_doc)
 
             # no unissued corrections yet
             self.assertEquals([],
@@ -1442,9 +1435,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
             # (so it's 10 days late)
             # TODO don't use current date in a test!
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
-            one = self.state_db.get_reebill(session, acc, 1)
+            one = self.process.create_first_reebill(session, session.query(
+                    UtilBill).order_by(UtilBill.period_start).first())
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
@@ -1458,13 +1450,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     issue_date=datetime.utcnow().date() - timedelta(40))
             
             # 2nd reebill, which will get a late charge from the 1st
-            self.process.create_next_reebill(session, acc)
+            two = self.process.create_next_reebill(session, acc)
 
             # "bind REE" in 2nd reebill
             # (it needs energy data only so its correction will have the same
             # energy in it as the original version; only the late charge will
             # differ)
-            two = self.state_db.get_reebill(session, acc, 2)
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
                     two_doc)
@@ -1798,12 +1789,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
                      'february.pdf')
-            self.process.create_first_reebill(session, session.query(UtilBill)
+            one = self.process.create_first_reebill(session, session.query(
+                UtilBill)
                     .order_by(UtilBill.period_start).first())
-            self.process.create_next_reebill(session, acc)
-            one = self.state_db.get_reebill(session, acc, 1)
+            two = self.process.create_next_reebill(session, acc)
             one_doc = self.reebill_dao.load_reebill(acc, 1)
-            two = self.state_db.get_reebill(session, acc, 2)
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
@@ -1819,19 +1809,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
-            one_doc = self.reebill_dao.load_reebill(acc, 1)
             self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertIsInstance(one_doc.bill_recipients, list)
-            self.assertEquals(len(one_doc.bill_recipients), 0)
-            self.assertIsInstance(one_doc.last_recipients, list)
-            self.assertEquals(len(one_doc.last_recipients), 0)
+            self.assertEquals('', one.recipients)
 
-            two_doc.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
-            self.reebill_dao.save_reebill(two_doc)
-            
+            two.recipients = 'test1@example.com, test2@exmaple.com'
+
             # issue two
             self.process.issue(session, acc, 2)
 
@@ -1840,10 +1825,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
-            self.assertIsInstance(two_doc.bill_recipients, list)
-            self.assertEquals(len(two_doc.bill_recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two_doc.bill_recipients,
-                    [unicode]*len(two_doc.bill_recipients))))
+            self.assertEquals('test1@example.com, test2@exmaple.com',
+                    two.recipients)
 
     def test_issue_2_at_once(self):
         '''Tests issuing one bill immediately after another, without
@@ -1868,10 +1851,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2000,3,1), date(2000,4,1), StringIO('february 2000'),
                     'february.pdf')
-            self.process.create_next_reebill(session, acc)
-            self.process.create_next_reebill(session, acc)
-            two, three = session.query(ReeBill).order_by(ReeBill.sequence)\
-                    .filter(ReeBill.sequence>=2).all()
+            two = self.process.create_next_reebill(session, acc)
+            three = self.process.create_next_reebill(session, acc)
 
             # add a payment, shown on bill #2
             self.state_db.create_payment(session, acc, date(2000,2,16),
@@ -1915,18 +1896,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.state_db.get_reebill(session, account, 1)
 
             # delete the reebill: should succeed, because it's not issued
             self.process.delete_reebill(session, reebill)
             self.assertRaises(NoSuchBillException,
                     self.reebill_dao.load_reebill, account, 1, version=0)
-            self.assertEquals([], session.query(ReeBill).all())
+            self.assertEquals(0, session.query(ReeBill).count())
             self.assertEquals([utilbill], session.query(UtilBill).all())
 
             # re-create it
-            self.process.create_first_reebill(session, utilbill)
-            reebill = session.query(ReeBill).one()
+            reebill = self.process.create_first_reebill(session, utilbill)
             self.assertEquals([1], self.state_db.listSequences(session,
                     account))
             self.assertEquals([utilbill], reebill.utilbills)
@@ -1972,15 +1952,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         StringIO('a utility bill'), 'filename.pdf')
             
             # create 1st reebill and issue it
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
+            one = self.process.create_first_reebill(session,
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
             self.process.issue(session, acc, 1)
 
             # create 2nd reebill, leaving it unissued
-            self.process.create_next_reebill(session, acc)
+            two = self.process.create_next_reebill(session, acc)
 
             # make a correction on reebill #1, producing an adjustment of 100
-            one = session.query(ReeBill).filter_by(sequence=1, version=0).one()
             # TODO: frozen utility bill document of the reebill does not
             # exist, causing failure when the document is looked up here.
             # something about freezing the document or setting its id in MySQL
@@ -1995,7 +1975,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # only 'two' should get an adjustment; 'one' is a correction, so it
             # can't have adjustments
-            two = session.query(ReeBill).filter_by(sequence=2).one()
             self.assertEquals(0, one.total_adjustment)
             self.assertEquals(100, two.total_adjustment)
 
@@ -2017,9 +1996,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
             # create reebill reebill #2
-            self.process.create_next_reebill(session, acc)
-            two = self.state_db.get_reebill(session, acc, 2)
-            #two_doc = self.reebill_dao.load_reebill(acc, 2)
+            two = self.process.create_next_reebill(session, acc)
 
             # payment on jan. 20 gets applied to #2
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
@@ -2032,7 +2009,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # be "current", not frozen
             self.process.new_version(session, acc, 1)
             one_1 = self.state_db.get_reebill(session, acc, 1, version=1)
-            two = self.state_db.get_reebill(session, acc, 2)
             self.process.compute_reebill(session, acc, 1)
             self.process.compute_reebill(session, acc, 2)
             self.assertEqual(0, one_1.payment_received)
@@ -2309,9 +2285,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         "total" : 11.2,
                         "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
                     })
-            with self.assertRaises(NoRSIError) as context:
-                self.process._compute_reebill_document(session, reebill_correction_doc)
             self.reebill_dao.save_reebill(reebill_correction_doc)
+            with self.assertRaises(NoRSIError) as context:
+                self.process.compute_reebill(session, account, 1, version=1)
 
             # delete the new version
             self.process.delete_reebill(session, reebill_correction)
@@ -2453,7 +2429,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create reebill, bind, compute, issue
-            self.process.create_first_reebill(session, first_utilbill)
+            bill1 = self.process.create_first_reebill(session, first_utilbill)
             bill1 = self.state_db.get_reebill(session, account, 1)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
@@ -2476,10 +2452,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(0, bill1.prior_balance)
             self.assertEquals(0, bill1.payment_received)
             self.assertEquals(0, bill1.balance_forward)
+            self.assertAlmostEqual(expected_energy_quantity, bill1.ree_value)
             self.assertAlmostEqual(expected_ree_charge,
                     bill1.ree_charge)
             self.assertAlmostEqual(expected_ree_charge,
                     bill1.balance_due)
+            self.assertEqual(bill1.ree_value - bill1.ree_charge,
+                    bill1.ree_savings)
             # TODO check everything else...
 
             # add a payment so payment_received is not 0
@@ -2488,9 +2467,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
-            self.process.create_next_reebill(session, account)
+            reebill2 = self.process.create_next_reebill(session, account)
             self.process.compute_reebill(session, account, 2)
-            reebill2 = self.state_db.get_reebill(session, account, 2)
             # TODO this intermittently fails with a slight difference between
             # bill1.balance_due and reebill2.prior_balance (bigger than the
             # default tolerance of assertAlmostEqual):

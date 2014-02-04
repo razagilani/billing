@@ -1,74 +1,84 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
-from datetime import date
+from billing.processing.state import StateDB, ReeBill, Payment
+from billing.processing.mongo import ReebillDAO
+from billing.processing.session_contextmanager import DBSession
+from datetime import date, datetime
 from billing.test import example_data
-import unittest
+import unittest, mock
 
-class MockStatePayment():
-    def __init__(self,credit,thedate):
-        self.customer=2
-        self.credit=credit
-        self.date_received=thedate
-        self.date_applied=thedate
-        self.description="Some Payment"
+def load_reebills_for():
+    return [example_data.get_reebill('10003',1,version=0)]
+def load_utilbills():
+    return [example_data.get_utilbill_dict('10003',start=date(2011,11,12), end=date(2011,12,14)),
+            example_data.get_utilbill_dict('10003',start=date(2011,12,15), end=date(2012,1,14))]
 
-class MockStateReebill():
-    def __init__(self,account, sequence, version):
-        self.customer=2
-        self.sequence=sequence
-        self.issued=1
-        self.issue_date=date(2011,12,15)
-        self.version=version
+def payments():
+    mock_Payment = mock.create_autospec(Payment)
+    mock_Payment.date_received = datetime(2011, 11, 30)
+    mock_Payment.date_applied = date(2011, 11, 30)
+    mock_Payment.credit = 400.13
+    mock_Payment2 = mock.create_autospec(Payment)
+    mock_Payment2.date_received = datetime(2011, 12, 1)
+    mock_Payment2.date_applied = date(2011, 12, 1)
+    mock_Payment2.credit = 13.37
+    return [mock_Payment, mock_Payment2]
+def listAccounts():
+    return ['10003','10004']
+# def get_reebill(self, session, account, sequence, version):
+#     return MockStateReebill(None,1,0)
 
-class MockDao():
-    def load_reebills_for(self, account, version):
-        return [example_data.get_reebill(account,x,version=(x-1)) for x in (1,2,3)]
-    def load_utilbills(self,account):
-        return [
-            example_data.get_utilbill_dict(account,start=date(2011,11,12), end=date(2011,12,14)),
-            example_data.get_utilbill_dict(account,start=date(2011,12,14), end=date(2012,1,13)),
-            example_data.get_utilbill_dict(account,start=date(2012,1,13), end=date(2012,2,14)),
-            example_data.get_utilbill_dict(account,start=date(2012,2,14), end=date(2012,3,12)),
-            ]
+def createMockReebill():
+    rb = mock.create_autospec(spec=ReeBill)
+    rb.issued = 1
+    rb.sequence = 1
+    rb.version = 0
+    rb.issue_date = date(2013,4,1)
+    rb.balance_due = 5.01
+    rb.balance_forward = 62.29
+    rb.discount_rate = 0.1
+    rb.total_adjustment = 0.0
+    rb.manual_adjustment = 0.0
+    rb.payment_received = None
+    rb.prior_balance = 2.20
+    rb.ree_value = 4.3
+    rb.ree_savings = 2.22
+    rb.late_charge = 32.20
+    rb.ree_charge = 122.20
+    return rb
 
-class MockStateDB():
-    def payments(self, session, account):
-        return [MockStatePayment(x['credit'], x['thedate']) for x in ({'credit':400.13,
-                                                                       'thedate':date(2011,12,11)},
-                                                                      {'credit':13.17,
-                                                                       'thedate':date(2011,12,12)})]
-    def listAccounts(self, session):
-        return ['10003','10004']
-    def get_reebill(self, session, account, sequence, version):
-        return MockStateReebill(None,1,0)
 
 class ExporterTest(unittest.TestCase):
 
     def setUp(self):
-        self.dao=MockDao()
-        self.statedb=MockStateDB()
-        self.exporter = Exporter(self.statedb, self.dao)
+        #Set up the mock
+        self.mock_StateDB = mock.create_autospec(StateDB)
+        self.mock_ReebillDAO = mock.create_autospec(ReebillDAO)
+        self.mock_session = mock.create_autospec(DBSession)
+        self.exp = Exporter(self.mock_StateDB, self.mock_ReebillDAO)
 
     def test_get_reebill_details_dataset(self):
+        #Set up the mock
+        self.mock_StateDB.listAccounts.return_value = listAccounts()
+        self.mock_StateDB.payments.return_value = payments()
+        self.mock_StateDB.get_reebill.return_value = createMockReebill()
+        self.mock_ReebillDAO.load_reebills_for.return_value = load_reebills_for()
 
-        dataset=self.exporter.get_export_reebill_details_dataset(None, None, None)
-        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542),
-            ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None),
-            ('10003', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542),
-            ('10003', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542),
-            ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, '2011-12-11', 400.13, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 118.42, 188.20197727, 1.2584352376926542),
-            ('10004', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-12', 13.17, None, None, None, None, None, None, None, None, None, None),
-            ('10004', 2, 1, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 236.84, 188.20197727, 1.2584352376926542),
-            ('10004', 3, 2, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2011-12-15', '2011-11-12', '2011-12-14', 980.33, 743.4900000000001, 236.84, 1027.79, 10, None, None, 0, 1027.79, 118.42, 12.34, 1146.21, '', 118.42, 355.26, 188.20197727, 1.2584352376926542)]
+        with self.mock_session(self.mock_StateDB) as session:
+            dataset=self.exp.get_export_reebill_details_dataset(session, None, None)
+        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', 17.25, 17.26, 4.3, 2.2, None, '2011-11-30', 400.13, 0.0, 62.29, 122.2, 32.2, 5.01, '', -117.9, -117.9, 188.20197727, -5.3134404563960955e-05),
+                      ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', 13.37, None, None, None, None, None, None, None, None, None, None),
+                      ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', 17.25, 17.26, 4.3, 2.2, None, None, None, 0.0, 62.29, 122.2, 32.2, 5.01, '', -117.9, -117.9, 188.20197727, -5.3134404563960955e-05)]
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
+        self.assertEqual(len(dataset), len(correct_data))
 
     def test_get_energy_usage_sheet(self):
-
-        dataset = self.exporter.get_energy_usage_sheet(None,'10003')
+        #Setup Mock
+        self.mock_ReebillDAO.load_utilbills.return_value=load_utilbills()
+        dataset = self.exp.get_energy_usage_sheet(None,'10003')
         correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
-            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-12-14', '2012-01-13', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
-            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2012-01-13', '2012-02-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
-            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2012-02-14', '2012-03-12', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2)]
+            ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-12-15', '2012-01-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),]
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
+        self.assertEqual(len(dataset), len(correct_data))

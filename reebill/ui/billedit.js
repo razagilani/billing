@@ -2433,6 +2433,7 @@ function reeBillReady() {
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         idProperty: 'id',
         root: 'rows',
+        totalProperty: 'total',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
@@ -2453,7 +2454,9 @@ function reeBillReady() {
     var aChargesWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: true,
+        // send and expect a list
+        listful: true
     });
 
     // This proxy is only used for reading charge item records, not writing.
@@ -2548,6 +2551,35 @@ function reeBillReady() {
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         aChargesGrid.setDisabled(false);
+    });
+    
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 64702470
+    aChargesStore.on('write', function(store, action, result, res, rs){
+        var selected_record_id = aChargesStore.indexOf(aChargesGrid.getSelectionModel().getSelected());
+        aChargesGrid.getSelectionModel().clearSelections();
+        aChargesStore.loadData(res.raw, false);
+        // Scroll based on action
+        if (action == 'create'){
+            var lastrow = aChargesStore.getCount() -1;
+            aChargesGrid.getView().focusRow(lastrow);
+            aChargesGrid.startEditing(lastrow, 0);
+        }else if(action == 'update'){
+            aChargesGrid.getView().focusRow(selected_record_id);
+        }
+    });
+    
+    aChargesStore.on('exception', function(type, action, options, response, arg){
+        if(action=='response' && options=='create'){
+            // Error during create. probably a duplicate RSI Binding
+            // Let's just reload the store
+            aChargesStore.reload();
+        }
     });
 
     var aChargesSummary = new Ext.ux.grid.GroupSummary();
@@ -2960,6 +2992,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'},
@@ -2970,6 +3003,7 @@ function reeBillReady() {
         encode: true,
         // write all fields, not just those that changed
         writeAllFields: true,
+        // send and expect a list
         listful: true
     });
 
@@ -2998,6 +3032,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'}
@@ -3063,7 +3098,6 @@ function reeBillReady() {
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         RSIGrid.setDisabled(false);
-        console.log(store, records, options);
     });
 
     // grid's data store callback for when data is edited
@@ -3148,6 +3182,13 @@ function reeBillReady() {
                 dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
+            },{
+                xtype: 'checkboxcolumn',
+                header: 'Has Charge',
+                dataIndex: 'has_charge',
+                on: true,
+                off: false,
+                width: 60
             }
         ]
     });

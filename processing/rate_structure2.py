@@ -55,6 +55,7 @@ class RateStructureItem(EmbeddedDocument):
     description = StringField(required=True, default='')
 
     shared = BooleanField(required=True, default=True)
+    has_charge = BooleanField(required=True, default=True)
 
     # the 'quantity' and 'rate' formulas provide the formula for computing the
     # charge when multiplied together; the separation into 'quantity' and
@@ -190,7 +191,8 @@ class RateStructureItem(EmbeddedDocument):
             #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
-            'shared': self.shared
+            'shared': self.shared,
+            'has_charge': self.has_charge
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,

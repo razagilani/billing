@@ -133,6 +133,31 @@ class Process(object):
         return load_method(utilbill, reebill=reebill)
 
 
+    def get_utilbill_charges_json(self, session, utilbill_id,
+                    reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        return mongo.get_charges_json(utilbill_doc)
+
+    def add_charge(self, session, utilbill_id, group_name):
+        '''Add a new charge to the given utility bill with charge group
+        "group_name" and default values for all its fields.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.add_charge(utilbill_doc, group_name)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
+    def update_charge(self, session, utilbill_id, rsi_binding, fields):
+        '''Modify the charge given by 'rsi_binding' in the given utility
+        bill by setting key-value pairs to match the dictionary 'fields'.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.update_charge(utilbill_doc, rsi_binding, fields)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_class=None, processed=None):
@@ -147,10 +172,10 @@ class Process(object):
         old_start, old_end = utilbill.period_start, utilbill.period_end
 
         # load Mongo document
-        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         assert 'sequence' not in doc
         assert 'version' not in doc
 
@@ -232,8 +257,8 @@ class Process(object):
         # query that with SQLAlchemy.
         assert re.match(ACCOUNT_NAME_REGEX, account)
         statement = '''select sequence, max(version) as max_version,
-        period_start, period_end, issued, issue_date, hypothetical_total,
-        actual_total, ree_value, prior_balance, payment_received,
+        period_start, period_end, issued, issue_date,
+        ree_value, prior_balance, payment_received,
         total_adjustment, balance_forward, ree_charge, balance_due
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
@@ -241,16 +266,18 @@ class Process(object):
         where account = %s
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
-                'period_end', 'issued', 'issue_date', 'hypothetical_total',
-                'actual_total', 'ree_value', 'prior_balance', 'payment_received',
+                'period_end', 'issued', 'issue_date',
+                'ree_value', 'prior_balance', 'payment_received',
                 'total_adjustment', 'balance_forward', 'ree_charge',
                 'balance_due'
         ).from_statement(statement)
 
         for (sequence, max_version, period_start, period_end, issued,
-                issue_date, hypothetical_total, actual_total, ree_value,
+                issue_date, ree_value,
                 prior_balance, payment_received, total_adjustment,
                 balance_forward, ree_charge, balance_due) in query:
+            document = self.reebill_dao.load_reebill(account,
+                    sequence, version=max_version)
             # start with data from MySQL
             the_dict = {
                 'id': sequence,
@@ -261,8 +288,8 @@ class Process(object):
                 # invisible columns
                 'max_version': max_version,
                 'issued': self.state_db.is_issued(session, account, sequence),
-                'hypothetical_total': hypothetical_total,
-                'actual_total': actual_total,
+                'hypothetical_total': document.get_total_hypothetical_charges(),
+                'actual_total': document.get_total_utility_charges(),
                 'ree_value': ree_value,
                 'prior_balance': prior_balance,
                 'payment_received': payment_received,
@@ -760,6 +787,10 @@ class Process(object):
         document = self.reebill_dao.load_reebill(account, sequence, version)
         self._compute_reebill_document(session, document)
 
+        for utilbill in reebill.utilbills:
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+            document.compute_charges(uprs)
+
 
 
 
@@ -770,15 +801,16 @@ class Process(object):
 
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
-        document.update_summary_values(reebill.discount_rate)
+        # document.update_summary_values(reebill.discount_rate)
 
-        # TODO refactor (add method in MongoReebill to return these sums)
-        reebill.ree_value = sum(subdoc['ree_value'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_charge = sum(subdoc['ree_charges'] for subdoc in
-                document.reebill_dict['utilbills'])
-        reebill.ree_savings = sum(subdoc['ree_savings'] for subdoc in
-                document.reebill_dict['utilbills'])
+
+        actual_total = document.get_total_utility_charges()
+        hypothetical_total = document.get_total_hypothetical_charges()
+        reebill.ree_value = hypothetical_total - actual_total
+        reebill.ree_charge = (hypothetical_total - actual_total) * (1 -
+                reebill.discount_rate)
+        reebill.ree_savings = (hypothetical_total - actual_total) * \
+                reebill.discount_rate
 
 
 
@@ -900,17 +932,6 @@ class Process(object):
 
         Does not save anything in the database.
         '''
-        if reebill_doc.sequence == 1:
-            predecessor_doc = None
-        else:
-            predecessor = self.state_db.get_reebill(session,
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-            predecessor_doc = self.reebill_dao.load_reebill(
-                    reebill_doc.account, reebill_doc.sequence - 1,
-                    version=0)
-        acc = reebill_doc.account
-
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
@@ -928,23 +949,13 @@ class Process(object):
         # https://www.pivotaltracker.com/story/show/60611838
         #reebill_doc.update_utilbill_subdocs()
 
-        # get MySQL reebill row corresponding to the document 'reebill_doc'
-        # (would be better to pass in the state.ReeBill itself: see
-        # https://www.pivotaltracker.com/story/show/51922065)
-        customer = self.state_db.get_customer(session, reebill_doc.account)
-        reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
-                .filter(ReeBill.sequence == reebill_doc.sequence)\
-                .filter(ReeBill.version == reebill_doc.version).one()
-        for utilbill in reebill_row.utilbills:
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            reebill_doc.compute_charges(uprs)
 
 
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
         based on the given state.UtilBill.
+        Returns new state.ReeBill object.
         This is a separate method from create_next_reebill because a specific
         utility bill is provided indicating where billing should start.
         '''
@@ -966,13 +977,18 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
-        session.add(ReeBill(customer, 1, version=0, utilbills=[utilbill]))
+        new_reebill = ReeBill(customer, 1, version=0, utilbills=[utilbill])
+        session.add(new_reebill)
+
+        return new_reebill
 
 
     def create_next_reebill(self, session, account):
         '''Creates the successor to the highest-sequence state.ReeBill for the
         given account, or the first reebill if none exists yet, and its
-        associated Mongo document.'''
+        associated Mongo document.
+        Returns the newly-created state.ReeBill object.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
@@ -1025,11 +1041,14 @@ class Process(object):
                 last_reebill_doc.suspended_services)
 
         # create reebill row in state database
-        session.add(ReeBill(customer, new_mongo_reebill.sequence,
-                new_mongo_reebill.version, utilbills=new_utilbills))
+        new_reebill = ReeBill(customer, new_mongo_reebill.sequence,
+                new_mongo_reebill.version, utilbills=new_utilbills)
+        session.add(new_reebill)
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
+
+        return new_reebill
 
     def roll_bill(self, session, account, start_date,
                                integrate_skyline_backend):
@@ -1294,6 +1313,14 @@ class Process(object):
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
+
+        # NOTE session.delete() fails with an errror like "InvalidRequestError:
+        # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
+        # not been persisted (i.e. flushed from SQLAlchemy cache to database)
+        # yet; the author says on Stack Overflow to use 'expunge' if the object
+        # is in 'session.new' and 'delete' otherwise, but for some reason
+        # 'reebill' does not get into 'session.new' when session.add() is
+        # called. i have not solved this problem yet.
         session.delete(reebill)
 
         # delete highest-version reebill document from Mongo
@@ -1372,6 +1399,8 @@ class Process(object):
         return new_customer
 
 
+# keys above for which null values should be allowed in corresponding MySQL #
+# column
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
@@ -1679,28 +1708,31 @@ class Process(object):
 
 
     def mail_reebills(self, session, account, sequences, recipient_list):
-        all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+        all_reebills = [self.state_db.get_reebill(session, account, sequence)
+                for sequence in sequences]
+        all_documents = [self.reebill_dao.load_reebill(account, sequence) for
                 sequence in sequences]
 
         # render all the bills
-        for reebill in all_bills:
+        for document in all_documents:
             the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
+                    document.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(session, reebill.account,
-                    reebill.sequence,
+            self.renderer.render_max_version(session, document.account,
+                    document.sequence,
                     # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
                     # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
                     dirname, basename, True)
 
         # "the last element" (???)
-        most_recent_bill = all_bills[-1]
+        most_recent_reebill = all_reebills[-1]
+        most_recent_document = all_documents[-1]
         bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
                 sequence in sequences]
-        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_bills])
+        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_documents])
         merge_fields = {
-            'street': most_recent_bill.service_address.get('street',''),
-            'balance_due': round(most_recent_bill.balance_due, 2),
+            'street': most_recent_document.service_address.get('street',''),
+            'balance_due': round(most_recent_reebill.balance_due, 2),
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }

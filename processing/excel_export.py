@@ -427,7 +427,9 @@ class Exporter(object):
                     for applicable_payment in applicable_payments:
                         payments.remove(applicable_payment)
 
-                savings = reebill_doc.ree_value - reebill_doc.ree_charges
+                savings = 0
+                if reebill.ree_value and reebill.ree_charge:
+                    savings = reebill.ree_value - reebill.ree_charge
                 cumulative_savings += savings
 
                 # The first payment applied to a bill is listed in the same row
@@ -443,36 +445,37 @@ class Exporter(object):
                 try:
                     total_ree = reebill_doc.total_renewable_energy()
                     if total_ree != 0:
-                        average_rate_unit_ree = (reebill_doc.hypothetical_total -
-                                reebill_doc.actual_total)/total_ree
+                        average_rate_unit_ree = (reebill
+                                                 .get_total_hypothetical_charges() -
+                                reebill.get_total_utility_charges())/total_ree
                 except StopIteration:
                     # A bill didnt have registers, ignore this column
                     total_ree = 'Error! No Registers found!'
                 try:
-                    late_charges = reebill_doc.late_charges
+                    late_charges = reebill.late_charge
                 except KeyError:
                     late_charges = None
 
                 row = [account,
-                       reebill_doc.sequence,
-                       reebill_doc.version,
+                       reebill.sequence,
+                       reebill.version,
                        format_addr(reebill_doc.billing_address),
                        format_addr(reebill_doc.service_address),
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),
-                       reebill_doc.hypothetical_total,
-                       reebill_doc.actual_total,
-                       reebill_doc.ree_value,
-                       reebill_doc.prior_balance,
-                       reebill_doc.payment_received,
+                       reebill.hypothetical_total,
+                       reebill.actual_total,
+                       reebill.ree_value,
+                       reebill.prior_balance,
+                       reebill.payment_received,
                        payment_date,
                        payment_amount,
-                       reebill_doc.total_adjustment,
-                       reebill_doc.balance_forward,
-                       reebill_doc.ree_charges,
-                       late_charges,
-                       reebill_doc.balance_due,
+                       reebill.total_adjustment,
+                       reebill.balance_forward,
+                       reebill.ree_charge,
+                       reebill.late_charge,
+                       reebill.balance_due,
                        '', #spacer
                        savings,
                        cumulative_savings,
