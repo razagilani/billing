@@ -916,27 +916,29 @@ class BillToolBridge:
                     self.process.full_names_of_accounts(session, accounts))]
             return self.dumps({'success': True, 'rows':rows})
 
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def listSequences(self, account, **kwargs):
-        '''Handles AJAX request to get reebill sequences for each account and
-        whether each reebill has been committed.'''
-        with DBSession(self.state_db) as session:
-            sequences = []
-            # eventually, this data will have to support pagination
-            sequences = self.state_db.listSequences(session, account)
-            # TODO "issued" is used for the value of "committed" here because
-            # committed is ill-defined: currently StateDB.is_committed()
-            # returns true iff the reebill has attached utilbills, which
-            # doesn't make sense.
-            # https://www.pivotaltracker.com/story/show/24382885
-            rows = [{'sequence': sequence,
-                'committed': self.state_db.is_issued(session, account, sequence)}
-                for sequence in sequences]
-            return self.dumps({'success': True, 'rows':rows})
+    # It is believed that this code is not used anymore. If there are no
+    # complaints concerning this export after release 19,
+    # this code can be removed.
+    # @cherrypy.expose
+    # @random_wait
+    # @authenticate_ajax
+    # @json_exception
+    # def listSequences(self, account, **kwargs):
+    #     '''Handles AJAX request to get reebill sequences for each account and
+    #     whether each reebill has been committed.'''
+    #     with DBSession(self.state_db) as session:
+    #         sequences = []
+    #         # eventually, this data will have to support pagination
+    #         sequences = self.state_db.listSequences(session, account)
+    #         # TODO "issued" is used for the value of "committed" here because
+    #         # committed is ill-defined: currently StateDB.is_committed()
+    #         # returns true iff the reebill has attached utilbills, which
+    #         # doesn't make sense.
+    #         # https://www.pivotaltracker.com/story/show/24382885
+    #         rows = [{'sequence': sequence,
+    #             'committed': self.state_db.is_issued(session, account, sequence)}
+    #             for sequence in sequences]
+    #         return self.dumps({'success': True, 'rows':rows})
 
 
     @cherrypy.expose
