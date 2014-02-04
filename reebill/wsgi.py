@@ -279,6 +279,9 @@ class BillToolBridge:
                 },
             )
 
+        self.integrate_skyline_backend = self.config.getboolean('runtime',
+                'integrate_skyline_backend')
+
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
             dict(self.config.items('reebillrendering')), self.state_db,
@@ -628,10 +631,10 @@ class BillToolBridge:
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        backend=self.config.getboolean('runtime', 'integrate_skyline_backend')
         with DBSession(self.state_db) as session:
             last_seq, new_seq, new_version = \
-                self.process.roll_bill(session,account,start_date,backend)
+                self.process.roll_bill(session,account,start_date,
+                        self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, last_seq + 1)
