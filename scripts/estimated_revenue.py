@@ -17,7 +17,7 @@ from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner import sky_handlers
-from nexusapi.nexus_util import NexusUtil
+from billing.nexusapi.nexus_util import NexusUtil
 from billing.util import json_util
 from billing.util import dateutils
 from billing.util.dateutils import date_to_datetime
