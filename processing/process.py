@@ -167,6 +167,23 @@ class Process(object):
         mongo.delete_charge(utilbill_doc, rsi_binding)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
+    def get_hypothetical_matched_charges(self, account, sequence, service):
+        """ Gets all hypothetical charges from a reebill for a service and
+            matches the actual charge to each hypotheitical charge"""
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        if reebill is None:
+            raise NoSuchBillException
+        utilbill_doc = reebill._get_utilbill_for_service(service)
+        actual_charges = mongo.get_charges_json(utilbill_doc)
+        actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
+        hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
+        for hypothetical_charge_dict in hypothetical_charges:
+            matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
+            hypothetical_charge_dict['actual_rate'] = matching['rate']
+            hypothetical_charge_dict['actual_quantity'] = matching['quantity']
+            hypothetical_charge_dict['actual_total'] = matching['total']
+        return hypothetical_charges
+
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_class=None, processed=None):

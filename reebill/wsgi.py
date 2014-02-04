@@ -1646,27 +1646,11 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested charges 
-        # if this is the case, return no charges.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested charges 
-        # TODO ensure that this is necessary with new datastore scheme
-        if reebill is None:
-            return self.dumps({'success':True, 'rows':[]})
-
-        utilbill_doc = reebill._get_utilbill_for_service(service)
-        flattened_charges_a = mongo.get_charges_json(utilbill_doc)
-        charge_dict_a = {c['rsi_binding']:c for c in flattened_charges_a}
-        flattened_charges_h = reebill.hypothetical_chargegroups_flattened(service)
-        for charge_dict_h in flattened_charges_h:
-            matching = charge_dict_a[charge_dict_h['rsi_binding']]
-            charge_dict_h['actual_rate'] = matching['rate']
-            charge_dict_h['actual_quantity'] = matching['quantity']
-            charge_dict_h['actual_total'] = matching['total']
+        charges=self.process.get_hypothetical_matched_charges(account, sequence,
+                                                                  service)
         if xaction == "read":
-            return self.dumps({'success': True, 'rows': flattened_charges_h})
+            return self.dumps({'success': True, 'rows': charges,
+                               'total':len(charges)})
         else:
             raise NotImplementedError('Cannot create, edit or destroy charges'+\
                                       ' from this grid.')
