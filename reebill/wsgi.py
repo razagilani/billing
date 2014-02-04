@@ -1548,11 +1548,9 @@ class BillToolBridge:
         ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street, sa_city, sa_state, sa_postal_code,
         **kwargs):
-        """ Update account information in "Sequential Account Information form.
-        """
+        '''Update account information in "Sequential Account Information" form.
+        '''
         sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
         discount_rate = float(discount_rate)
         late_charge_rate = float(late_charge_rate)
 
@@ -1570,7 +1568,7 @@ class BillToolBridge:
                     sa_addressee=sa_addressee, sa_street=sa_street,
                     sa_city=sa_city, sa_state=sa_state,
                     sa_postal_code=sa_postal_code)
-            return self.dumps({'success':True})
+            return self.dumps({'success': True})
 
 
     @cherrypy.expose
@@ -1583,7 +1581,6 @@ class BillToolBridge:
         (usually empty). Used to show service suspension checkboxes in
         "Sequential Account Information".'''
         sequence = int(sequence)
-
         reebill = self.reebill_dao.load_reebill(account, sequence)
         if reebill is None:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
