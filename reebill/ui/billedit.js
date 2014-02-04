@@ -2960,6 +2960,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'},
@@ -2998,6 +2999,7 @@ function reeBillReady() {
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
             //{name: 'total', mapping: 'total'}
@@ -3148,6 +3150,13 @@ function reeBillReady() {
                 dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
+            },{
+                xtype: 'checkboxcolumn',
+                header: 'Has Charge',
+                dataIndex: 'has_charge',
+                on: true,
+                off: false,
+                width: 60
             }
         ]
     });
