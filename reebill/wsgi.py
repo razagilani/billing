@@ -1640,14 +1640,13 @@ class BillToolBridge:
             return charge_matches[0]
 
         with DBSession(self.state_db) as session:
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
-                    reebill_sequence=reebill_sequence,
+            charges_json = self.process.get_utilbill_charges_json(session,
+                    utilbill_id, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-            flattened_charges = mongo.get_charges_json(utilbill_doc)
 
             if xaction == "read":
-                return self.dumps({'success': True, 'rows': flattened_charges,
-                                   'total':len(flattened_charges)})
+                return self.dumps({'success': True, 'rows': charges_json,
+                        'total':len(charges_json)})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1661,12 +1660,12 @@ class BillToolBridge:
                 for row in rows:
                     # replace all key-value pairs in the charge dictionary
                     # with those from 'row'
-                    the_charge = get_charge_by_id(flattened_charges, row['id'])
+                    the_charge = get_charge_by_id(charges_json, row['id'])
                     the_charge.clear()
                     the_charge.update(row)
 
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
+                        charges_json)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
             if xaction == "create":
@@ -1679,21 +1678,21 @@ class BillToolBridge:
                 # done for RSIs (if charges still exist independent of RSIs;
                 # otherwise all this code will be gone anyway)
                 if row['rsi_binding'] in (c['rsi_binding'] for c in
-                        flattened_charges):
+                        charges_json):
                     raise ValueError('Duplicate RSI binding "%s" (create '
                          'charges one at a time)' %
                          row['rsi_binding'])
-                flattened_charges.append(row)
+                charges_json.append(row)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
+                        charges_json)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
             if xaction == "destroy":
                 the_id = json.loads(kwargs["rows"])[0]
-                the_charge = get_charge_by_id(flattened_charges, the_id)
-                flattened_charges.remove(the_charge)
+                the_charge = get_charge_by_id(charges_json, the_id)
+                charges_json.remove(the_charge)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
+                        charges_json)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
             flattened_charges = mongo.get_charges_json(utilbill_doc)
