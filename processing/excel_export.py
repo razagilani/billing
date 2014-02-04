@@ -444,9 +444,10 @@ class Exporter(object):
                 average_rate_unit_ree=None
                 try:
                     total_ree = reebill_doc.total_renewable_energy()
-                    if total_ree != 0 and reebill.hypothetical_total and reebill.actual_total:
-                        average_rate_unit_ree = (reebill.hypothetical_total -
-                                reebill.actual_total)/total_ree
+                    if total_ree != 0:
+                        average_rate_unit_ree = (reebill
+                                                 .get_total_hypothetical_charges() -
+                                reebill.get_total_utility_charges())/total_ree
                 except StopIteration:
                     # A bill didnt have registers, ignore this column
                     total_ree = 'Error! No Registers found!'
