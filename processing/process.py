@@ -1129,9 +1129,9 @@ class Process(object):
             if utilbill is None:
                 raise ValueError("No utility bill found starting on/after %s" %
                         start_date)
-            self.create_first_reebill(session, utilbill)
+            new_reebill = self.create_first_reebill(session, utilbill)
         else:
-            self.create_next_reebill(session, account)
+            new_reebill = self.create_next_reebill(session, account)
 
         new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq + 1)
         # 2nd transaction: bind and compute. if one of these fails, don't undo
@@ -1144,7 +1144,11 @@ class Process(object):
 
         self.reebill_dao.save_reebill(new_reebill_doc)
 
-        self.compute_reebill(session, new_reebill_doc)
+        try:
+            self.compute_reebill(session, account, last_seq + 1)
+        except Exception as e:
+            self.logger.error("Error when computing reebill %s: %s" % (
+                    new_reebill, e))
 
         return (last_seq, new_reebill_doc.sequence, new_reebill_doc.version)
 
