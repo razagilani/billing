@@ -1658,23 +1658,9 @@ class BillToolBridge:
                         row)
 
             if xaction == "create":
-                row = json.loads(kwargs["rows"])[0]
-                # key rsi_binding must exist
-                if 'rsi_binding' not in row:
-                    row['rsi_binding'] = ''
-                # TODO make the server completely responsible for determining
-                # field values of newly-created charges, the same way it's
-                # done for RSIs (if charges still exist independent of RSIs;
-                # otherwise all this code will be gone anyway)
-                if row['rsi_binding'] in (c['rsi_binding'] for c in
-                        charges_json):
-                    raise ValueError('Duplicate RSI binding "%s" (create '
-                         'charges one at a time)' %
-                         row['rsi_binding'])
-                charges_json.append(row)
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        charges_json)
-                self.reebill_dao.save_utilbill(utilbill_doc)
+                row = json.loads(kwargs["rows"])
+                group_name = row['chargegroup']
+                self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
                 the_id = json.loads(kwargs["rows"])[0]

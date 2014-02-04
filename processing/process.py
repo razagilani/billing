@@ -140,9 +140,18 @@ class Process(object):
                 reebill_version=reebill_version)
         return mongo.get_charges_json(utilbill_doc)
 
+    def add_charge(self, session, utilbill_id, group_name):
+        '''Add a new charge to the given utility bill with charge group
+        "group_name" and default values for all its fields.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        mongo.add_charge(utilbill_doc, group_name)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
     def update_charge(self, session, utilbill_id, rsi_binding, fields):
-        '''Modify the charge given by 'rsi_binding' by setting key-value pairs
-        to match the dictionary 'fields'.
+        '''Modify the charge given by 'rsi_binding' in the given utility
+        bill by setting key-value pairs to match the dictionary 'fields'.
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
