@@ -1611,8 +1611,9 @@ class BillToolBridge:
                 raise IssuedBillError('Issued reebills cannot be modified')
 
             if xaction == "update":
-                row = json.loads(kwargs["rows"])
-                # single edit comes in a dict; multiple would be in list of
+                row = json.loads(kwargs["rows"])[0]
+                # single edit comes in a list containing a dict;
+                # multiple would be in list of
                 # dicts but that should be impossible
                 assert isinstance(row, dict)
 
@@ -1621,12 +1622,13 @@ class BillToolBridge:
                         row)
 
             if xaction == "create":
-                row = json.loads(kwargs["rows"])
+                row = json.loads(kwargs["rows"])[0]
+                assert isinstance(row, dict)
                 group_name = row['chargegroup']
                 self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
-                rsi_binding = json.loads(kwargs["rows"])
+                rsi_binding = json.loads(kwargs["rows"])[0]
                 self.process.delete_charge(session, utilbill_id, rsi_binding)
 
             charges_json = self.process.get_utilbill_charges_json(session,
