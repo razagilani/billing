@@ -1633,12 +1633,6 @@ class BillToolBridge:
     @json_exception
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
-        def get_charge_by_id(charges_json, the_id):
-            charge_matches = [c for c in flattened_charges
-                    if c['id'] == the_id]
-            assert len(charge_matches) == 1
-            return charge_matches[0]
-
         with DBSession(self.state_db) as session:
             charges_json = self.process.get_utilbill_charges_json(session,
                     utilbill_id, reebill_sequence=reebill_sequence,
