@@ -843,8 +843,9 @@ class BillToolBridge:
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
+            reebill = self.state_db.get_reebill(account, sequence)
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            recipients = mongo_reebill.bill_recipients
+            recipients = mongo_reebill.recipients
             unissued_corrections = self.process.get_unissued_corrections(session, account)
             unissued_correction_sequences = [c[0] for c in unissued_corrections]
             unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
@@ -860,7 +861,7 @@ class BillToolBridge:
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
             merge_fields["street"] = mongo_reebill.service_address.get("street","")
-            merge_fields["balance_due"] = round(mongo_reebill.balance_due, 2)
+            merge_fields["balance_due"] = round(reebill.balance_due, 2)
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
             bill_mailer.mail(recipients, merge_fields,
