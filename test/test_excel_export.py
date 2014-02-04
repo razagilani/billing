@@ -34,8 +34,6 @@ def createMockReebill():
     rb.sequence = 1
     rb.version = 0
     rb.issue_date = date(2013,4,1)
-    rb.hypothetical_total = 17.25
-    rb.actual_total = 17.26
     rb.balance_due = 5.01
     rb.balance_forward = 62.29
     rb.discount_rate = 0.1
