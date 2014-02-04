@@ -1731,7 +1731,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'rows': charges,
                                'total':len(charges)})
         else:
-        else:
             raise NotImplementedError('Cannot create, edit or destroy charges'+\
                                       ' from this grid.')
 
