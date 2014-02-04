@@ -1438,41 +1438,8 @@ class BillToolBridge:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
             for sequence in sequences:
-                # previously, a reebill was only allowed to be deleted if
-                # predecessor has an unissued version, so bills could only be
-                # deleted in sequence order. as of 54786706, the lesson that
-                # accounting history can never change has finally been learned;
-                # since there is no dependency of one bill's accounting history
-                # information on that of its predecessors, there is no need for
-                # the rule that corrections must always be in a contiguous
-                # block ending at the newest reebill that has ever been issued.
-                #last_sequence = self.state_db.last_sequence(session, account)
-                #max_version = self.state_db.max_version(session, account, sequence)
-                #if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
-                        #(sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
-                    #raise ValueError(("Can't delete a reebill version whose "
-                            #"predecessor is unissued, unless its version is 0 "
-                            #"and its sequence is the last one. Delete a "
-                            #"series of unissued bills in sequence order."))
-
-                reebill = self.state_db.get_reebill(session, account, sequence)
-                deleted_version = self.process.delete_reebill(session, reebill)
-
-                # Delete the PDF associated with a reebill if it was version 0
-                # because we believe it is confusing to delete the pdf when
-                # when a version still exists
-                if deleted_version == 0:
-                    path = self.config.get('billdb', 'billpath')+'%s' %(account)
-                    file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-                    full_path = os.path.join(path, file_name)
-
-                    # If the file exists, delete it, otherwise don't worry.
-                    try:
-                        os.remove(full_path)
-                    except OSError as e:
-                        if e.errno != errno.ENOENT:
-                            raise
-            
+                deleted_version = self.process.delete_reebill(session,
+                        account, sequence)
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
                 journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
