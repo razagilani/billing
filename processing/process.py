@@ -23,6 +23,7 @@ from itertools import chain
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
 import re
+import errno
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
@@ -1366,19 +1367,17 @@ class Process(object):
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
-    def delete_reebill(self, session, reebill):
+
+    def delete_reebill(self, session, account, sequence):
         '''Deletes the the given reebill: removes the ReeBill object/row and
         its utility bill associations from MySQL, and its document from Mongo.
         A reebill version has been issued can't be deleted. Returns the version
         of the reebill that was deleted.'''
-        # don't delete an issued reebill
+        reebill = self.state_db.get_reebill(session, account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
 
         version = reebill.version
-
-        # delete reebill state data from MySQL and dissociate utilbills from it
-        # (save max version first because row may be deleted)
 
         # NOTE session.delete() fails with an errror like "InvalidRequestError:
         # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
@@ -1391,6 +1390,23 @@ class Process(object):
 
         # delete highest-version reebill document from Mongo
         self.reebill_dao.delete_reebill(reebill)
+
+        # Delete the PDF associated with a reebill if it was version 0
+        # because we believe it is confusing to delete the pdf when
+        # when a version still exists
+        if version == 0:
+            # path = self.config.get('billdb', 'billpath')+'%s' %(account)
+            # file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+            # full_path = os.path.join(path, file_name)
+            full_path = self.billupload.get_reebill_file_path(account,
+                    sequence)
+
+            # If the file exists, delete it, otherwise don't worry.
+            try:
+                os.remove(full_path)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
 
         return version
 
