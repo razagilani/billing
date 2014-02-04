@@ -4,8 +4,6 @@ reebill/reebill.cfg
 reebill/reebill.log
 reebill/reconciliation.log
 reebill/reconciliation_report.json
-reebill/ui/ext-3.3.1
-reebill/ui/ext-3.2.1
 reebill/ui/revision.txt
 revision.txt
 .directory
