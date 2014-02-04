@@ -1507,39 +1507,36 @@ class BillToolBridge:
     def account_info(self, account, sequence, **args):
         '''Handles AJAX request for "Sequential Account Information form.
         '''
-        sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        with DBSession(self.state_db) as session:
+            sequence = int(sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            reebill_document = self.reebill_dao.load_reebill(account, sequence)
 
-        # It is possible that there is no reebill for the requested addresses
-        # if this is the case, return no periods.  
-        # This is done so that the UI can configure itself with no data
-        if reebill is None:
-            return self.dumps({'success': True})
+            def format_address(address):
+                # TODO: 64765002
+                # This function exists multiple times in here and in exporter
+                # code. Time to move it somewhere else!
+                return {
+                'addressee': address['addressee'] if 'addressee' in address else '',
+                'street': address['street'] if 'street' in address else '',
+                'city': address['city'] if 'city' in address else '',
+                'state': address['state'] if 'state' in address else '',
+                'postal_code': address['postal_code'] if 'postal_code' in address else '',
+            }
 
-        def format_address(address):
-            # TODO: 64765002
-            # This function exists multiple times in here and in exporter
-            # code. Time to move it somewhere else!
-            return {
-            'addressee': address['addressee'] if 'addressee' in address else '',
-            'street': address['street'] if 'street' in address else '',
-            'city': address['city'] if 'city' in address else '',
-            'state': address['state'] if 'state' in address else '',
-            'postal_code': address['postal_code'] if 'postal_code' in address else '',
-        }
-        
-        account_info = {'success': True,
-                        'billing_address': format_address(reebill.billing_address),
-                        'service_address': format_address(reebill.service_address),
-                        'discount_rate': reebill.discount_rate}
+            account_info = {'success': True,
+                    'billing_address': format_address(reebill_document
+                    .billing_address),
+                    'service_address': format_address(reebill_document.service_address),
+                    'discount_rate': reebill.discount_rate}
 
-        try:
-            account_info['late_charge_rate'] = reebill.late_charge_rate
-        except KeyError:
-            # ignore late charge rate when absent
-            pass
+            try:
+                account_info['late_charge_rate'] = reebill.late_charge_rate
+            except KeyError:
+                # ignore late charge rate when absent
+                pass
 
-        return self.dumps(account_info)
+            return self.dumps(account_info)
 
 
     @cherrypy.expose
@@ -1556,55 +1553,24 @@ class BillToolBridge:
         sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        # TODO: 27042211 numerical types
-        assert isinstance(discount_rate, basestring)
-        reebill.discount_rate = float(discount_rate)
-
-        # process late_charge_rate
-        # strip out anything unrelated to a decimal number
-        late_charge_rate = re.sub('[^0-9\.-]+', '', late_charge_rate)
-        assert isinstance(late_charge_rate, basestring)
+        discount_rate = float(discount_rate)
         late_charge_rate = float(late_charge_rate)
-        if late_charge_rate < 0 or late_charge_rate >1:
-            # TODO: form field validation belons in the client
-            return self.dumps({'success': False,
-                'errors': {'reason': 'Late Charge Rate',
-                'details': 'must be between 0 and 1',
-                'late_charge_rate': 'Invalid late charge rate'}})
-        reebill.late_charge_rate = late_charge_rate
-        
-        ba = {}
-        sa = {}
-        
-        ba['addressee'] = ba_addressee
-        ba['street'] = ba_street
-        ba['city'] = ba_city
-        ba['state'] = ba_state
-        ba['postal_code'] = ba_postal_code
-        reebill.billing_address = ba
 
-        sa['addressee'] = ba_addressee
-        sa['street'] = ba_street
-        sa['city'] = ba_city
-        sa['state'] = ba_state
-        sa['postal_code'] = ba_postal_code
-        reebill.service_address = sa
+        # rely on client-side validation
+        assert discount_rate >= 0 and discount_rate <= 1
+        assert late_charge_rate >= 0 and late_charge_rate <= 1
 
-        # set disabled services (services not mentioned in the request are
-        # automatically resumed)
-        for service in reebill.services:
-            if kwargs.get('%s_suspended' % service, '') == 'on' or kwargs \
-                    .get('%s_suspended' % service.lower(), '') == 'on':
-                reebill.suspend_service(service.lower())
-                #print service, 'suspended'
-            elif kwargs.get('%s_suspended' % service, '') == 'off' or kwargs \
-                    .get('%s_suspended' % service.lower(), '') == 'off':
-                #print service, 'resumed'
-                reebill.resume_service(service.lower())
-
-        self.reebill_dao.save_reebill(reebill)
-
-        return self.dumps({'success':True})
+        with DBSession(self.state_db) as session:
+            self.process.update_sequential_account_info(session, account,
+                    sequence, discount_rate=discount_rate,
+                    late_charge_rate=late_charge_rate,
+                    ba_addressee=ba_addressee, ba_street=ba_street,
+                    ba_city=ba_city, ba_state=ba_state,
+                    ba_postal_code=ba_postal_code,
+                    sa_addressee=sa_addressee, sa_street=sa_street,
+                    sa_city=sa_city, sa_state=sa_state,
+                    sa_postal_code=sa_postal_code)
+            return self.dumps({'success':True})
 
 
     @cherrypy.expose
