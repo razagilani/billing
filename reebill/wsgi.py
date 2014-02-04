@@ -843,9 +843,8 @@ class BillToolBridge:
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
-            reebill = self.state_db.get_reebill(account, sequence)
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            recipients = mongo_reebill.recipients
+            recipients = mongo_reebill.bill_recipients
             unissued_corrections = self.process.get_unissued_corrections(session, account)
             unissued_correction_sequences = [c[0] for c in unissued_corrections]
             unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
@@ -861,7 +860,7 @@ class BillToolBridge:
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
             merge_fields["street"] = mongo_reebill.service_address.get("street","")
-            merge_fields["balance_due"] = round(reebill.balance_due, 2)
+            merge_fields["balance_due"] = round(mongo_reebill.balance_due, 2)
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
             bill_mailer.mail(recipients, merge_fields,
@@ -1266,14 +1265,12 @@ class BillToolBridge:
                     # extract "id" field from the JSON because all remaining
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
+
                     # Fix boolean values that are interpreted as strings
-
-                    for key in ('shared', 'has_charge'):
-                        if row[key] in ("false", False):
-                            row[key] = False
-                        else:
-                            row[key] = True
-
+                    if row['shared'] == "false":
+                        row['shared'] = False
+                    else:
+                        row['shared'] = True
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
                     # new one that will replace it (if there is one)
@@ -1394,20 +1391,23 @@ class BillToolBridge:
                     allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
-                issuable_reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
-                for reebill_info in issuable_reebills:
+                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+                for reebill_info in reebills:
                     row_dict = {}
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
+                            reebill_info[0], reebill_info[1])
                     mongo_reebill = self.reebill_dao.load_reebill(
-                            reebill_info['account'], reebill_info['sequence'])
-                    mongo_utilbills = [self.reebill_dao._load_utilbill_by_id(ub_id)
-                                       for ub_id in reebill_info['utilbill_ids']]
-                    row_dict['id'] = reebill_info['account']
-                    row_dict['account'] = reebill_info['account']
-                    row_dict['sequence'] = reebill_info['sequence']
-                    row_dict['util_total'] = reebill_info['total']
+                            reebill_info[0], reebill_info[1])
+                    row_dict['id'] = reebill_info[0]
+                    row_dict['account'] = reebill_info[0]
+                    row_dict['sequence'] = reebill_info[1]
+                    row_dict['util_total'] = reebill_info[2]
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
-                    row_dict['reebill_total'] = sum(mongo.total_of_all_charges(ub_doc) for ub_doc in mongo_utilbills)
-                    row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
+                    row_dict['reebill_total'] = mongo_reebill.actual_total
+                    try:
+                        row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
+                    except ZeroDivisionError:
+                        row_dict['difference'] = float('inf')
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
                 rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
@@ -1417,7 +1417,7 @@ class BillToolBridge:
                 row = json.loads(kwargs["rows"])
                 mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
                 mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
-                self.reebill_dao.save_reebill(reebill)
+                self.reebill_dao.save_reebill(mongo_reebill)
                 return self.dumps({'success':True})
             
     @cherrypy.expose
@@ -1633,14 +1633,20 @@ class BillToolBridge:
     @json_exception
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
+        def get_charge_by_id(charges_json, the_id):
+            charge_matches = [c for c in flattened_charges
+                    if c['id'] == the_id]
+            assert len(charge_matches) == 1
+            return charge_matches[0]
+
         with DBSession(self.state_db) as session:
-            charges_json = self.process.get_utilbill_charges_json(session,
-                    utilbill_id, reebill_sequence=reebill_sequence,
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
+                    reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
+            flattened_charges = mongo.get_charges_json(utilbill_doc)
 
             if xaction == "read":
-                return self.dumps({'success': True, 'rows': charges_json,
-                        'total':len(charges_json)})
+                return self.dumps({'success': True, 'rows': flattened_charges})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1648,32 +1654,51 @@ class BillToolBridge:
                 raise IssuedBillError('Issued reebills cannot be modified')
 
             if xaction == "update":
-                row = json.loads(kwargs["rows"])
-                # single edit comes in a dict; multiple would be in list of
-                # dicts but that should be impossible
-                assert isinstance(row, dict)
+                rows = json.loads(kwargs["rows"])
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+                for row in rows:
+                    # replace all key-value pairs in the charge dictionary
+                    # with those from 'row'
+                    the_charge = get_charge_by_id(flattened_charges, row['id'])
+                    the_charge.clear()
+                    the_charge.update(row)
 
-                rsi_binding = row.pop('id')
-                self.process.update_charge(session, utilbill_id, rsi_binding,
-                        row)
+                mongo.set_actual_chargegroups_flattened(utilbill_doc,
+                        flattened_charges)
+                self.reebill_dao.save_utilbill(utilbill_doc)
+                return self.dumps({'success':True})
 
             if xaction == "create":
                 row = json.loads(kwargs["rows"])
-                group_name = row['chargegroup']
-                self.process.add_charge(session, utilbill_id, group_name)
-
-            if xaction == "destroy":
-                the_id = json.loads(kwargs["rows"])[0]
-                the_charge = get_charge_by_id(charges_json, the_id)
-                charges_json.remove(the_charge)
+                # key rsi_binding must exist
+                if 'rsi_binding' not in row:
+                    row['rsi_binding'] = ''
+                # TODO make the server completely responsible for determining
+                # field values of newly-created charges, the same way it's
+                # done for RSIs (if charges still exist independent of RSIs;
+                # otherwise all this code will be gone anyway)
+                if row['rsi_binding'] in (c['rsi_binding'] for c in
+                        flattened_charges):
+                    raise ValueError('Duplicate RSI binding "%s" (create '
+                         'charges one at a time)' %
+                         row['rsi_binding'])
+                flattened_charges.append(row)
                 mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        charges_json)
+                        flattened_charges)
                 self.reebill_dao.save_utilbill(utilbill_doc)
 
-            charges_json = self.process.get_utilbill_charges_json(session,
-                    utilbill_id)
-            return self.dumps({'success': True, 'rows': charges_json,
-                                'total':len(charges_json)})
+                return self.dumps({'success':True, 'rows': row})
+
+            if xaction == "destroy":
+                the_id = json.loads(kwargs["rows"])
+                the_charge = get_charge_by_id(flattened_charges, the_id)
+                flattened_charges.remove(the_charge)
+                mongo.set_actual_chargegroups_flattened(utilbill_doc,
+                        flattened_charges)
+                self.reebill_dao.save_utilbill(utilbill_doc)
+
+                return self.dumps({'success':True})
 
 
     @cherrypy.expose
@@ -1736,6 +1761,8 @@ class BillToolBridge:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
+
+            toSelect = None
 
             if xaction == 'read':
                 # get dictionaries describing all registers in all utility bills
