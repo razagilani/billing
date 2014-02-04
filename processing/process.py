@@ -1683,28 +1683,31 @@ class Process(object):
 
 
     def mail_reebills(self, session, account, sequences, recipient_list):
-        all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+        all_reebills = [self.state_db.get_reebill(session, account, sequence)
+                for sequence in sequences]
+        all_documents = [self.reebill_dao.load_reebill(account, sequence) for
                 sequence in sequences]
 
         # render all the bills
-        for reebill in all_bills:
+        for document in all_documents:
             the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
+                    document.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(session, reebill.account,
-                    reebill.sequence,
+            self.renderer.render_max_version(session, document.account,
+                    document.sequence,
                     # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
                     # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
                     dirname, basename, True)
 
         # "the last element" (???)
-        most_recent_bill = all_bills[-1]
+        most_recent_reebill = all_reebills[-1]
+        most_recent_document = all_documents[-1]
         bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
                 sequence in sequences]
-        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_bills])
+        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_documents])
         merge_fields = {
-            'street': most_recent_bill.service_address.get('street',''),
-            'balance_due': round(most_recent_bill.balance_due, 2),
+            'street': most_recent_document.service_address.get('street',''),
+            'balance_due': round(most_recent_reebill.balance_due, 2),
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
