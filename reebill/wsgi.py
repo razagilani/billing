@@ -1791,22 +1791,17 @@ class BillToolBridge:
             # NOTE 'file_to_upload.file' is always a CherryPy object; if no
             # file was specified, 'file_to_upload.file' will be None
 
-            try:
-                self.process.upload_utility_bill(session, account, service,
-                        begin_date_as_date,
-                        end_date_as_date, file_to_upload.file,
-                        file_to_upload.filename if file_to_upload else None,
-                        total=total_charges_as_float,
-                        state=UtilBill.Complete if file_to_upload.file else \
-                                UtilBill.SkylineEstimated,
-                        # determine these values from previous bills because
-                        # user does not want to specify them explicitly
-                        utility=None,
-                        rate_class=None)
-            except IOError:
-                self.logger.error('file upload failed:', begin_date, end_date,
-                        file_to_upload.filename)
-                raise
+            self.process.upload_utility_bill(session, account, service,
+                    begin_date_as_date,
+                    end_date_as_date, file_to_upload.file,
+                    file_to_upload.filename if file_to_upload else None,
+                    total=total_charges_as_float,
+                    state=UtilBill.Complete if file_to_upload.file else \
+                            UtilBill.SkylineEstimated,
+                    # determine these values from previous bills because
+                    # user does not want to specify them explicitly
+                    utility=None,
+                    rate_class=None)
 
             return self.dumps({'success': True})
 
