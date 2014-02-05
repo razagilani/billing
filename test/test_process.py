@@ -115,7 +115,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill.version)
             self.assertEqual(False, reebill.issued)
             self.assertEqual(None, reebill.issue_date)
-            self.assertEqual(None, reebill.recipients)
+            self.assertEqual(None, reebill.email_recipient)
             self.assertEqual([utilbill], reebill.utilbills)
             reebill_doc = self.reebill_dao.load_reebill('88888', 1)
             self.assertEqual('88888', reebill_doc.account)
@@ -1603,11 +1603,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create customers A, B, and C, their utility bill template
             # documents, and reebills #0 for each (which include utility bills)
             customer_a = Customer('Customer A', acc_a, .12, .34,
-                    '00000000000000000000000a')
+                    '00000000000000000000000a', 'example@example.com')
             customer_b = Customer('Customer B', acc_b, .12, .34,
-                    '00000000000000000000000b')
+                    '00000000000000000000000b', 'example@example.com')
             customer_c = Customer('Customer C', acc_c, .12, .34,
-                    '00000000000000000000000c')
+                    '00000000000000000000000c', 'example@example.com')
             session.add_all([customer_a, customer_b, customer_c])
             template_a = example_data.get_utilbill_dict(acc_a,
                     start=date(1900,1,1,), end=date(1900,2,1))
@@ -1809,14 +1809,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # issue one
             self.process.issue(session, acc, 1)
 
-            # re-load from mongo to see updated issue date and due date
+            # re-load from mongo to see updated issue date, due date,
+            # recipients
             self.assertEquals(True, one.issued)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertEquals('', one.recipients)
+            self.assertEquals('example@example.com', one.email_recipient)
 
-            two.recipients = 'test1@example.com, test2@exmaple.com'
+            two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
             # issue two
             self.process.issue(session, acc, 2)
@@ -1827,7 +1828,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
             self.assertEquals('test1@example.com, test2@exmaple.com',
-                    two.recipients)
+                    two.email_recipient)
 
     def test_issue_2_at_once(self):
         '''Tests issuing one bill immediately after another, without

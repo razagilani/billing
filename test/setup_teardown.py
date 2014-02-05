@@ -86,7 +86,7 @@ port = 27017
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34,
-                '000000000000000000000001')
+                '000000000000000000000001', 'example@example.com')
         session.add(customer)
         session.commit()
 

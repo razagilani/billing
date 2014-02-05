@@ -1447,7 +1447,7 @@ class Process(object):
         # template _id
         new_id = ObjectId()
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                new_id)
+                new_id, 'example@example.com')
         session.add(new_customer)
 
         # save utilbill document template in Mongo with new account, _id,
