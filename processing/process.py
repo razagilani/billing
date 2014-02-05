@@ -1542,7 +1542,7 @@ class Process(object):
         self.state_db.issue(session, account, sequence, issue_date=issue_date)
 
         # store email recipient in the bill
-        reebill.recipients = reebill.customer.bill_email_recipient
+        reebill.email_recipient = reebill.customer.bill_email_recipient
 
 
     def reebill_report_altitude(self, session):

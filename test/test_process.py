@@ -1817,7 +1817,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
             self.assertEquals('example@example.com', one.email_recipient)
 
-            two.email_recipient = 'test1@example.com, test2@exmaple.com'
+            customer = self.state_db.get_customer(session, acc)
+            customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
 
             # issue two
             self.process.issue(session, acc, 2)
