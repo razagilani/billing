@@ -42,8 +42,10 @@ class StateTest(utils.TestCase):
         # insert one customer (not relying on StateDB)
         c = mysql_connection.cursor()
         c.execute('''insert into customer
-                (name, account, discountrate, latechargerate) values
-                ('Test Customer', 99999, .12, .34)''')
+                (name, account, discountrate, latechargerate,
+                utilbill_template_id, bill_email_recipient) values
+                ('Test Customer', 99999, .12, .34,
+                '000000000000000000000000', 'example@example.com')''')
         mysql_connection.commit()
 
         # NOTE for some reason, when this is enabled, all tests fail with a
