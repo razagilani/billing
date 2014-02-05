@@ -400,12 +400,13 @@ class BillToolBridge:
             dict(self.config.items('reebillrendering')), self.state_db,
             self.reebill_dao, self.logger)
 
-        bill_mailer = Mailer(dict(self.config.items("mailer")))
+        self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
-                bill_mailer, self.renderer, self.splinter, logger=self.logger)
+                self.bill_mailer, self.renderer, self.splinter, logger=self
+                .logger)
 
 
         # determine whether authentication is on or off
@@ -954,9 +955,9 @@ class BillToolBridge:
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
-            reebill = self.state_db.get_reebill(account, sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            recipients = mongo_reebill.bill_recipients
+            recipients = reebill.customer.bill_email_recipient
             unissued_corrections = self.process.get_unissued_corrections(session, account)
             unissued_correction_sequences = [c[0] for c in unissued_corrections]
             unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
@@ -975,7 +976,7 @@ class BillToolBridge:
             merge_fields["balance_due"] = round(reebill.balance_due, 2)
             merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
-            bill_mailer.mail(recipients, merge_fields,
+            self.bill_mailer.mail([recipients], merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
 
@@ -1510,6 +1511,8 @@ class BillToolBridge:
                 issuable_reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
                 for reebill_info in issuable_reebills:
                     row_dict = {}
+                    customer = self.state_db.get_customer(session,
+                            reebill_info['account'])
                     mongo_reebill = self.reebill_dao.load_reebill(
                             reebill_info['account'], reebill_info['sequence'])
                     mongo_utilbills = [self.reebill_dao._load_utilbill_by_id(ub_id)
@@ -1518,7 +1521,7 @@ class BillToolBridge:
                     row_dict['account'] = reebill_info['account']
                     row_dict['sequence'] = reebill_info['sequence']
                     row_dict['util_total'] = reebill_info['total']
-                    row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
+                    row_dict['mailto'] = customer.bill_email_recipient
                     row_dict['reebill_total'] = sum(mongo.total_of_all_charges(ub_doc) for ub_doc in mongo_utilbills)
                     row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
@@ -1528,9 +1531,9 @@ class BillToolBridge:
                 return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
             elif xaction == 'update':
                 row = json.loads(kwargs["rows"])
-                mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
-                mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
-                self.reebill_dao.save_reebill(reebill)
+                reebill = self.state_db.get_reebill(session, row['account'],
+                        row['sequence'])
+                reebill.customer.bill_email_recipient = row['mailto']
                 return self.dumps({'success':True})
             
     @cherrypy.expose

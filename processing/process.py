@@ -1541,6 +1541,9 @@ class Process(object):
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence, issue_date=issue_date)
 
+        # store email recipient in the bill
+        reebill.recipients = reebill.customer.bill_email_recipient
+
 
     def reebill_report_altitude(self, session):
         accounts = self.state_db.listAccounts(session)
