@@ -742,7 +742,9 @@ class MongoReebill(object):
             compute_all_charges(hypothetical_utilbill, uprs)
 
             # copy the charges from there into the reebill
-            utilbill_doc['charges'] = hypothetical_utilbill['charges']
+            self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
+                    hypothetical_utilbill['charges']
+
 
 
 
