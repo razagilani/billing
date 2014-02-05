@@ -2427,7 +2427,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create reebill, bind, compute, issue
             bill1 = self.process.create_first_reebill(session, first_utilbill)
-            bill1 = self.state_db.get_reebill(session, account, 1)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
             fbd.fetch_oltp_data(self.splinter,
@@ -2442,7 +2441,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             expected_energy_quantity = 22.6477327028
 
             # check accounting numbers
-            bill1 = self.state_db.get_reebill(session, account, 1)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             expected_ree_charge = expected_energy_quantity * bill1\
                     .discount_rate

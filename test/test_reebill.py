@@ -176,6 +176,8 @@ class ReebillTest(TestCaseWithSetup):
                 subdict(utilbill_subdoc['hypothetical_charges'],
                 ['rsi_binding, description']))
 
+        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
+
         # check reebill charges. since there is no renewable energy,
         # hypothetical charges should be identical to actual charges:
         self.assertEqual([{
@@ -191,6 +193,8 @@ class ReebillTest(TestCaseWithSetup):
                 ['rsi_binding, description', 'quantity', 'rate', 'total']),
                 subdict(utilbill_subdoc['hypothetical_charges'],
                 ['rsi_binding, description', 'quantity', 'rate', 'total']))
+
+        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
