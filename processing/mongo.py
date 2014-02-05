@@ -12,7 +12,7 @@ from itertools import chain
 from collections import defaultdict
 import tsort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
-from billing.util.dictutils import deep_map, subdict
+from billing.util.dictutils import deep_map, subdict, dict_merge
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
@@ -282,27 +282,21 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
 def get_charges_json(utilbill_doc):
     '''Returns list of dictionaries describing charges for use in web browser.
     '''
-    result = flatten_chargegroups_dict(copy.deepcopy(
-            utilbill_doc['chargegroups']))
-
-    # add "id" field for use by Ext-JS
-    for charge_dict in result:
-        charge_dict['id'] = charge_dict['rsi_binding']
-
-    return result
+    return [dict_merge(c, {'id': c['rsi_binding']})
+            for c in utilbill_doc['charges']]
 
 # TODO make this a method of a utility bill document class when one exists
 def get_service_address(utilbill_doc):
     return utilbill_doc['service_address']
 
-# NOTE deprecated; do not add new calls to this function
-def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
-    # remove "id" field that came from the client
-    flat_charges = copy.deepcopy(flat_charges)
-    for c in flat_charges:
-        if 'id' in c:
-            del c['id']
-    utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
+# # NOTE deprecated; do not add new calls to this function
+# def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
+#     # remove "id" field that came from the client
+#     flat_charges = copy.deepcopy(flat_charges)
+#     for c in flat_charges:
+#         if 'id' in c:
+#             del c['id']
+#     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
 # TODO rename to get_meter_read_period
 # TODO make this a method of a utility bill document class when one exists
@@ -327,34 +321,30 @@ def refresh_charges(utilbill_doc, uprs):
     based on the Rate Structure Items in 'uprs'. A charge is created
     for every RSI. The charges are computed according to the rate structures.
     '''
-    utilbill_doc['chargegroups'] = {'All Charges': [{
+    utilbill_doc['charges'] = [{
         'rsi_binding': rsi.rsi_binding,
         'quantity': 0,
         'quantity_units': rsi.quantity_units,
         'rate': 0,
-        #'rate_units': 0,
         'total': 0,
         'description': rsi.description,
+        'group': 'All Charges',
     } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
-            if rsi.has_charge]}
+            if rsi.has_charge]
 
 def _validate_charges(utilbill_doc, rate_structure):
     '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
     a RateStructureItem in 'rate_structure'.
     '''
     rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
-    charges = list(sorted(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()),
-            key=lambda charge: charge['rsi_binding']))
-    for charge in charges:
+    for charge in utilbill_doc['charges']:
         if charge['rsi_binding'] not in rsi_bindings:
             raise NoRSIError('No rate structure item for "%s"' %
                            charge['rsi_binding'])
 
 def _get_charge_by_rsi_binding(utilbill_doc, rsi_binding):
-    charges = list(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()))
-    matches = [c for c in charges if c['rsi_binding'] == rsi_binding]
+    matches = [c for c in utilbill_doc['charges']
+            if c['rsi_binding'] ==  rsi_binding]
     assert len(matches) == 1
     return matches[0]
 
@@ -366,7 +356,7 @@ def update_charge(utilbill_doc, rsi_binding, fields):
     charge.update(fields)
 
 def delete_charge(utilbill_doc, rsi_binding):
-    for charges_list in utilbill_doc['chargegroups'].itervalues():
+    for charges_list in utilbill_doc['charges']:
         for charge in charges_list:
             if charge['rsi_binding'] == rsi_binding:
                 charges_list.remove(charge)
@@ -379,10 +369,7 @@ def add_charge(utilbill_doc, group_name):
     '''Add a new charge to the given utility bill with charge group "group_name"
     and default value for all its fields.
     '''
-    charges = [charge_list for name, charge_list in
-            utilbill_doc['chargegroups'].iteritems()
-            if group_name == group_name]
-    charges.append({
+    utilbill_doc['charges'].append({
         'rsi_binding': 'RSI binding required',
         'description': 'description required',
         'quantity': 0,
@@ -480,9 +467,8 @@ def compute_all_charges(utilbill_doc, uprs):
 
     assert len(evaluation_order) == len(rsis)
 
-    all_charges = list(sorted(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()),
-            key=lambda charge: charge['rsi_binding']))
+    all_charges = sorted(utilbill_doc['charges'],
+            key=lambda charge: charge['rsi_binding'])
 
     assert len(evaluation_order) == len(rsis)
 
@@ -526,8 +512,7 @@ def total_of_all_charges(utilbill_doc):
     # TODO: use method on SQLAlchemy UtilBill object to return this (or None
     # for a hypothetical utility bill). It can't be done here because 'state'
     # is not stored in the Mongo document.
-    return sum(charge.get('total', 0) for charge in
-            chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
+    return sum(charge.get('total', 0) for charge in utilbill_doc['charges'])
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -611,7 +596,7 @@ class MongoReebill(object):
             # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
             # computed
-            'hypothetical_chargegroups': utilbill_doc['chargegroups'],
+            'hypothetical_charges': utilbill_doc['charges'],
 
             # 'ree_charges': 0,
             # 'ree_savings': 0,
@@ -707,9 +692,9 @@ class MongoReebill(object):
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        return sum(sum(charge['total'] for charge in
-                chain.from_iterable(subdoc['hypothetical_chargegroups']
-                .itervalues())) for subdoc in self.reebill_dict['utilbills'])
+        return sum(sum(charge['total']
+                for charge in subdoc['hypothetical_charges'])
+                for subdoc in self.reebill_dict['utilbills'])
 
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
@@ -756,8 +741,7 @@ class MongoReebill(object):
             compute_all_charges(hypothetical_utilbill, uprs)
 
             # copy the charges from there into the reebill
-            self.set_hypothetical_chargegroups_for_service(service,
-                    hypothetical_utilbill['chargegroups'])
+            utilbill_doc['charges'] = hypothetical_utilbill['charges']
 
 
 
@@ -1229,40 +1213,40 @@ class MongoReebill(object):
     #def set_ree_charges_for_service(self, service_name, new_ree_charges):
     #    self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
 
-    def hypothetical_chargegroups_for_service(self, service_name):
-        '''Returns the list of hypothetical chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service.'''
-        return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
-
-    def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
-        '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
-        because it is customary to define the actual charges and base the hypothetical
-        charges on them.'''
-        self._get_handle_for_service(service_name)['hypothetical_chargegroups']\
-                = new_chargegroups
-
-    def actual_chargegroups_for_service(self, service_name):
-        '''Returns the list of actual chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']
-
-    def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
-        '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
-        because it is customary to define the actual charges and base the hypothetical
-        charges on them.'''
-        self._get_utilbill_for_service(service_name)['chargegroups'] \
-                = new_chargegroups
-
-    def chargegroups_model_for_service(self, service_name):
-        '''Returns a shallow list of chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']\
-                .keys()
+    # def hypothetical_chargegroups_for_service(self, service_name):
+    #     '''Returns the list of hypothetical chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service.'''
+    #     return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
+    #
+    # def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
+    #     '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
+    #     because it is customary to define the actual charges and base the hypothetical
+    #     charges on them.'''
+    #     self._get_handle_for_service(service_name)['hypothetical_chargegroups']\
+    #             = new_chargegroups
+    #
+    # def actual_chargegroups_for_service(self, service_name):
+    #     '''Returns the list of actual chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service, so an exception is raised if that happens (or if
+    #     there's no utilbill for that service).'''
+    #     return self._get_utilbill_for_service(service_name)['chargegroups']
+    #
+    # def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
+    #     '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
+    #     because it is customary to define the actual charges and base the hypothetical
+    #     charges on them.'''
+    #     self._get_utilbill_for_service(service_name)['chargegroups'] \
+    #             = new_chargegroups
+    #
+    # def chargegroups_model_for_service(self, service_name):
+    #     '''Returns a shallow list of chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service, so an exception is raised if that happens (or if
+    #     there's no utilbill for that service).'''
+    #     return self._get_utilbill_for_service(service_name)['chargegroups']\
+    #             .keys()
 
     @property
     def services(self):
@@ -1745,18 +1729,18 @@ class MongoReebill(object):
     # Helper functions
     #
 
-    # NOTE deprecated; avoid using this if at all possible
-    def hypothetical_chargegroups_flattened(self, service,
-            chargegroups='hypothetical_chargegroups'):
-        utilbill_handle = self._get_handle_for_service(service)
-        return flatten_chargegroups_dict(copy.deepcopy(
-                utilbill_handle['hypothetical_chargegroups']))
-
-    # NOTE deprecated; avoid using this if at all possible
-    def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
-        utilbill_handle = self._get_handle_for_service(service)
-        utilbill_handle['hypothetical_chargegroups'] = \
-                unflatten_chargegroups_list(flat_charges)
+    # # NOTE deprecated; avoid using this if at all possible
+    # def hypothetical_chargegroups_flattened(self, service,
+    #         chargegroups='hypothetical_chargegroups'):
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     return flatten_chargegroups_dict(copy.deepcopy(
+    #             utilbill_handle['hypothetical_chargegroups']))
+    #
+    # # NOTE deprecated; avoid using this if at all possible
+    # def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     utilbill_handle['hypothetical_chargegroups'] = \
+    #             unflatten_chargegroups_list(flat_charges)
 
 
 class ReebillDAO(object):
