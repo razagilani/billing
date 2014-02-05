@@ -901,91 +901,45 @@ class BillToolBridge:
             )
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences,
-            apply_corrections=True):
-        '''Issues all unissued bills given by account and sequences. These must
-        be version 0, not corrections. If apply_corrections is True, all
-        unissued corrections will be applied to the earliest unissued bill in
-        sequences.'''
-        # attach utility bills to all unissued bills
-        #for unissued_sequence in sequences:
-        #    self.attach_utility_bills(session, account, unissued_sequence)
-
-        if apply_corrections:
-            # get unissued corrections for this account
-            unissued_correction_sequences = self.process\
-                    .get_unissued_correction_sequences(session, account)
-
-            # apply all corrections to earliest un-issued bill, then issue
-            # that and all other un-issued bills
-            self.process.issue_corrections(session, account, sequences[0])
-
-        # compute and issue all unissued reebills
-        for unissued_sequence in sequences:
-            reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process._compute_reebill_document(session, reebill)
-            self.process.issue(session, account, unissued_sequence)
-
-        # journal attaching of utility bills
-        for unissued_sequence in sequences:
-            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                    account, unissued_sequence, self.state_db.max_version(session,
-                    account, unissued_sequence))
-        # journal issuing of corrections (applied to the earliest unissued
-        # bill), if any
-        if apply_corrections:
-            for correction_sequence in unissued_correction_sequences:
-                journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'],
-                        account, sequences[0],
-                        self.state_db.max_version(session, account,
-                        correction_sequence),
-                        applied_sequence=sequences[0])
-        # journal issuing of all unissued bills
-        for unissued_sequence in sequences:
-            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                    account, unissued_sequence, 0)
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issue_and_mail(self, account, sequence, apply_corrections, **kwargs):
+    def issue_and_mail(self, account, sequence, recipient, apply_corrections,
+                       **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
+
         with DBSession(self.state_db) as session:
-            reebill = self.state_db.get_reebill(account, sequence)
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            recipients = mongo_reebill.bill_recipients
+            # If there are unissued corrections and the user has not confirmed
+            # to issue them, we will return a list of those corrections and the
+            # sum of adjustments that have to be made so the client can create
+            # a confirmation message
             unissued_corrections = self.process.get_unissued_corrections(session, account)
-            unissued_correction_sequences = [c[0] for c in unissued_corrections]
-            unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
             if len(unissued_corrections) > 0 and not apply_corrections:
                     return self.dumps({'success': False,
-                        'corrections': unissued_correction_sequences,
-                        'adjustment': unissued_correction_adjustment })
-            self.issue_reebills(session, account, [sequence], apply_corrections=apply_corrections)
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.renderer.render_max_version(session, account, sequence,
-                                             self.config.get("billdb", "billpath")+ "%s" % account,
-                                             "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
-            bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-            merge_fields = {}
-            merge_fields["street"] = mongo_reebill.service_address.get("street","")
-            merge_fields["balance_due"] = round(reebill.balance_due, 2)
-            merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
-            merge_fields["last_bill"] = bill_name
-            bill_mailer.mail(recipients, merge_fields,
-                    os.path.join(self.config.get("billdb", "billpath"),
-                        account), [bill_name]);
+                        'corrections': [c[0] for c in unissued_corrections],
+                        'adjustment': sum(c[2] for c in unissued_corrections)})
 
-            last_sequence = self.state_db.last_sequence(session, account)
-            if sequence != last_sequence:
-                next_bill = self.reebill_dao.load_reebill(account, sequence+1)
-                next_bill.bill_recipients = recipients
-                self.reebill_dao.save_reebill(next_bill)
+            # The user has confirmed to issue unissued corrections.
+            # Let's issue
+            assert apply_corrections == True
+            if len(unissued_corrections) > 0:
+                self.process.issue_corrections(session,account,sequence)
+                for cor in unissued_corrections:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'],account, sequence,
+                        self.state_db.max_version(session, account, cor),
+                        applied_sequence=sequences[0])
+            self.process.compute_reebill(session, account, sequence)
+            self.process.issue(session, account, sequence)
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                                     account, sequence, 0)
+
+            # Let's mail!
+            self.process.mail_reebills(session,account, [sequence], [recipient])
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                     account, sequence, ", ".join(recipients))
+                                                account, sequence, recipient)
 
         return self.dumps({'success': True})
 
