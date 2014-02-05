@@ -60,12 +60,13 @@ class Customer(Base):
         self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
-            utilbill_template_id):
+            utilbill_template_id, bill_email_recipient):
         self.name = name
         self.account = account
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
         self.utilbill_template_id = utilbill_template_id
+        self.bill_email_recipient = bill_email_recipient
 
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \
@@ -96,7 +97,7 @@ class ReeBill(Base):
     prior_balance = Column(Float, nullable=False)
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
-    recipients = Column(String, nullable=False)
+    email_recipient = Column(String, nullable=True)
 
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
@@ -196,7 +197,7 @@ class ReeBill(Base):
         self.prior_balance = 0
         self.ree_value = 0
         self.ree_savings = 0
-        self.recipients = ''
+        self.email_recipient = None
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (

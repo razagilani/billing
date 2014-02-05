@@ -26,7 +26,7 @@ keys_to_remove = [
 keys_to_rename = {
     'late_charges': 'late_charge',
     'ree_charges': 'ree_charge',
-    'bill_recipients': 'recipients',
+    'bill_recipients': 'email_recipient',
 }
 
 other_keys = [
@@ -45,7 +45,7 @@ other_keys = [
 
 # keys above for which null values should be allowed in corresponding MySQL
 # column
-null_allowed = ['issue_date', 'due_date']
+null_allowed = ['issue_date', 'due_date', 'email_recipient']
 
 con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
     passwd='dev')
@@ -53,8 +53,8 @@ cur = con.cursor()
 for key in other_keys + keys_to_rename.values():
     if key == 'due_date':
         sql = 'alter table reebill add column due_date date'
-    elif key == 'recipients':
-        sql = 'alter table reebill add column recipients varchar(1000)'
+    elif key == 'email_recipient':
+        sql = 'alter table reebill add column email_recipient varchar(1000)'
     else:
         sql = 'alter table reebill add column %s float' % key
 

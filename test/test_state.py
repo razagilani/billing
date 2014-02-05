@@ -198,8 +198,10 @@ class StateTest(utils.TestCase):
                     acc, seq, version=10)
 
             # adding versions of bills for other accounts should have no effect
-            session.add(Customer('someone', '11111', 0.5, 0.1, 'id goes here'))
-            session.add(Customer('someone', '22222', 0.5, 0.1, 'id goes here'))
+            session.add(Customer('someone', '11111', 0.5, 0.1,
+                    'id goes here', 'customer1@example.com'))
+            session.add(Customer('someone', '22222', 0.5, 0.1,
+                    'id goes here', 'customer2@example.com'))
             self.state_db.new_reebill(session, '11111', 1)
             self.state_db.new_reebill(session, '11111', 2)
             self.state_db.new_reebill(session, '22222', 1)
