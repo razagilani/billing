@@ -178,6 +178,8 @@ class ReebillTest(TestCaseWithSetup):
                 in utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
         self.assertEqual(utilbill_charge_info, reebill_charge_info)
 
+        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
+
         # check reebill charges. since there is no renewable energy,
         # hypothetical charges should be identical to actual charges:
         self.assertEqual({'All Charges': [
@@ -199,6 +201,8 @@ class ReebillTest(TestCaseWithSetup):
             for group_name, charges in
             utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
         self.assertEqual(utilbill_charge_info, reebill_charge_info)
+
+        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
