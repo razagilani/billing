@@ -177,7 +177,8 @@ class Process(object):
         utilbill_doc = reebill._get_utilbill_for_service(service)
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
+        hypothetical_charges = reebill.reebill_dict.utilbills[0]\
+                ['hypothetical_charges']
         for hypothetical_charge_dict in hypothetical_charges:
             matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
             hypothetical_charge_dict['actual_rate'] = matching['rate']
@@ -656,19 +657,16 @@ class Process(object):
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
         valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates}
-        for group, charges in doc['chargegroups'].iteritems():
-            i = 0
-            while i < len(charges):
-                charge = charges[i]
-                # if the charge matches a valid RSI binding, mark that
-                # binding as matched; if not, delete the charge
-                if charge['rsi_binding'] in valid_bindings:
-                    valid_bindings[charge['rsi_binding']] = True
-                    i += 1
-                else:
-                    charges.pop(i)
-            # NOTE empty chargegroup is not removed because the user might
-            # want to add charges to it again
+        i = 0
+        while i < len(doc['charges']):
+            charge = doc['charges'][i]
+            # if the charge matches a valid RSI binding, mark that
+            # binding as matched; if not, delete the charge
+            if charge['rsi_binding'] in valid_bindings:
+                valid_bindings[charge['rsi_binding']] = True
+                i += 1
+            else:
+                doc['charges'].pop(i)
 
         # TODO add a charge for every RSI that doesn't have a charge, i.e.
         # the ones whose value in 'valid_bindings' is False.
@@ -860,11 +858,8 @@ class Process(object):
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
-        for service in document.services:
-            actual_chargegroups = document. \
-                    actual_chargegroups_for_service(service)
-            document.set_hypothetical_chargegroups_for_service(service,
-                    actual_chargegroups)
+        document.reebill_dict['utilbills'][0]['hypothetical_charges'] \
+                = document._utilbills[0]['charges']
 
         for utilbill in reebill.utilbills:
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
@@ -1197,7 +1192,7 @@ class Process(object):
             # document has to be saved first and it can't be saved again
             # because it has "sequence" and "version" keys
             self.compute_reebill(session, account, sequence,
-                    version=max_version+1)
+                        version=max_version+1)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
