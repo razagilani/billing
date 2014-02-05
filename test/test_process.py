@@ -1790,18 +1790,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
                      'february.pdf')
-            one = self.process.create_first_reebill(session, session.query(
-                UtilBill)
-                    .order_by(UtilBill.period_start).first())
+            one = self.process.create_first_reebill(session,
+                    session.query(UtilBill).order_by(UtilBill.period_start)
+                    .first())
             two = self.process.create_next_reebill(session, acc)
-            one_doc = self.reebill_dao.load_reebill(acc, 1)
-            two_doc = self.reebill_dao.load_reebill(acc, 2)
-            utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(None, one.issue_date)
             self.assertEquals(None, one.due_date)
+            self.assertEqual(None, one.email_recipient)
+            self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
+            self.assertEquals(None, two.issue_date)
+            self.assertEquals(None, two.due_date)
+            self.assertEqual(None, two.email_recipient)
 
             # two should not be issuable until one_doc is issued
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
