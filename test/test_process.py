@@ -115,6 +115,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill.version)
             self.assertEqual(False, reebill.issued)
             self.assertEqual(None, reebill.issue_date)
+            self.assertEqual(None, reebill.recipients)
             self.assertEqual([utilbill], reebill.utilbills)
             reebill_doc = self.reebill_dao.load_reebill('88888', 1)
             self.assertEqual('88888', reebill_doc.account)
