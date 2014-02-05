@@ -692,6 +692,7 @@ class MongoReebill(object):
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
+        assert len(self.reebill_dict['utilbills']) == 1
         return sum(sum(charge['total']
                 for charge in subdoc['hypothetical_charges'])
                 for subdoc in self.reebill_dict['utilbills'])
