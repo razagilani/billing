@@ -47,6 +47,9 @@ class Customer(Base):
     # template document for their first-ever utility bill
     utilbill_template_id = Column(String)
 
+    # email address(es) to receive reebills
+    bill_email_recipient = Column(String, nullable=False)
+
     def get_discount_rate(self):
         return self.discountrate
     def set_discountrate(self, value):
