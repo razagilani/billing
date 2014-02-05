@@ -376,7 +376,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
             bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
-            self.process._compute_reebill_document(session, bill1_doc)
+            self.process.compute_reebill(session, acc, 1)
             self.reebill_dao.save_reebill(bill1_doc)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(2011,12,31)))
@@ -731,8 +731,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
-            self.process._compute_reebill_document(session, reebill1)
-            self.reebill_dao.save_reebill(reebill1)
+            self.process.compute_reebill(session, account, 1)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
             hypothetical_charges = reebill1._utilbills[0]['charges']
             shadow_registers = reebill1.reebill_dict['utilbills'][0]\
@@ -1149,7 +1148,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             #        date(2012,1,1))
             mongo.set_meter_read_period(reebill._utilbills[0], date(2012,1,1),
                     date(2012,2,1))
-            self.process._compute_reebill_document(session, reebill)
+            self.process.compute_reebill(session, acc, 1)
             self.reebill_dao.save_reebill(reebill)
 
             # issue reebill
@@ -1517,7 +1516,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(reebill_1.period_end, date(2013,5,2))
 
             # reebill should be computable
-            self.process._compute_reebill_document(session, reebill_1)
+            self.process.compute_reebill(session, account, 1)
 
             self.process.issue(session, account, 1)
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
@@ -1566,13 +1565,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert formerly_hypo_utilbill.state == UtilBill.UtilityEstimated
 
             self.process.create_next_reebill(session, account)
-            reebill_1 = self.reebill_dao.load_reebill(account, 1)
             self.process.create_next_reebill(session, account)
-            reebill_2 = self.reebill_dao.load_reebill(account, 2)
-            self.process._compute_reebill_document(session, reebill_2)
+            self.process.compute_reebill(session, account, 2)
 
-            self.process.issue(session, account, reebill_2.sequence)
-            reebill_2 = self.reebill_dao.load_reebill(account, reebill_2.sequence)
+            self.process.issue(session, account, 2)
 
             # Shift later_utilbill a few days into the future so that there is
             # a time gap after the last attached utilbill
@@ -2068,7 +2064,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         use_olap=use_olap)
                 ree1 = reebill2_doc.total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
-                self.process._compute_reebill_document(session, reebill2_doc)
+                self.process.compute_reebill(session, acc, 2)
 
                 # check that total renewable energy quantity has not been
                 # changed by computing the bill for the first time (this
@@ -2085,8 +2081,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 total = reebill2.total
                 balance_due = reebill2.balance_due
 
+                self.reebill_dao.save_reebill(reebill2_doc)
+
                 # this function checks that current values match the orignals
                 def check():
+                    reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
                             reebill2_doc.total_renewable_energy())
@@ -2108,10 +2107,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 check()
-                self.process._compute_reebill_document(session, reebill2_doc)
+                self.process.compute_reebill(session, acc, 2)
                 check()
-                self.process._compute_reebill_document(session, reebill2_doc)
+                self.process.compute_reebill(session, acc, 2)
                 check()
+                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
+                    use_olap=use_olap)
+                self.reebill_dao.save_reebill(reebill2_doc)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
@@ -2120,19 +2123,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                    use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
                 check()
-                self.process._compute_reebill_document(session, reebill2_doc)
+                self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 check()
-                self.process._compute_reebill_document(session, reebill2_doc)
+                self.process.compute_reebill(session, acc, 2)
                 check()
 
     def test_choose_next_utilbills_bug(self):
@@ -2259,7 +2258,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), reebill_doc,
                     use_olap=True)
-            self.process._compute_reebill_document(session, reebill_doc)
+            self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1)
 
             # create new version

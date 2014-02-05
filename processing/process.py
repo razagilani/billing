@@ -853,9 +853,13 @@ class Process(object):
 
         # TODO update fields in reebill itself
 
-        # update fields in Mongo document
         document = self.reebill_dao.load_reebill(account, sequence, version)
-        self._compute_reebill_document(session, document)
+
+        # update "hypothetical charges" in reebill document to match actual
+        # charges in utility bill document. note that hypothetical charges are
+        # just replaced, so they will be wrong until computed below.
+        document.reebill_dict['utilbills'][0]['hypothetical_charges'] \
+                = document._utilbills[0]['charges']
 
         for utilbill in reebill.utilbills:
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
@@ -992,31 +996,6 @@ class Process(object):
             reebill.balance_due = reebill.balance_forward + reebill.ree_charge
 
         self.reebill_dao.save_reebill(document)
-
-
-    def _compute_reebill_document(self, session, reebill_doc):
-        '''Updates everything about the given reebill document that can be
-        continually updated. This should be called whenever anything about a
-        reebill or its utility bills has been changed, and should be
-        idempotent.
-
-        Does not save anything in the database.
-        '''
-        # update "hypothetical charges" in reebill document to match actual
-        # charges in utility bill document. note that hypothetical charges are
-        # just replaced, so they will be wrong until computed below.
-        for service in reebill_doc.services:
-            reebill_doc.reebill_dict['utilbills'][0]['hypothetical_charges'] \
-                    = reebill_doc._utilbills[0]['charges']
-
-        # replace "utilbills" sub-documents of reebill document with new ones
-        # generated directly from the reebill's '_utilbills'. these will
-        # contain hypothetical charges that match the actual charges until
-        # updated.
-        # TODO this causes bug 60548728; for solution, see
-        # https://www.pivotaltracker.com/story/show/60611838
-        #reebill_doc.update_utilbill_subdocs()
-
 
 
 
@@ -1212,7 +1191,8 @@ class Process(object):
             # TODO replace with compute_reebill; this is hard because the
             # document has to be saved first and it can't be saved again
             # because it has "sequence" and "version" keys
-            self._compute_reebill_document(session, reebill_doc)
+            self.compute_reebill(session, account, sequence,
+                        version=max_version+1)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
