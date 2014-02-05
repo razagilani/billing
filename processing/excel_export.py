@@ -442,15 +442,22 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
+                actual_total=reebill_doc.get_total_utility_charges()
+
+                try:
+                    hypothetical_total=reebill_doc.get_total_hypothetical_charges()
+                except KeyError:
+                    hypothetical_total="Error!"
                 try:
                     total_ree = reebill_doc.total_renewable_energy()
                     if total_ree != 0:
-                        average_rate_unit_ree = (reebill
-                                                 .get_total_hypothetical_charges() -
-                                reebill.get_total_utility_charges())/total_ree
+                        average_rate_unit_ree = (hypothetical_total-actual_total)/total_ree
                 except StopIteration:
                     # A bill didnt have registers, ignore this column
                     total_ree = 'Error! No Registers found!'
+                except TypeError:
+                    total_ree = 'Error!'
+
                 try:
                     late_charges = reebill.late_charge
                 except KeyError:
@@ -464,8 +471,8 @@ class Exporter(object):
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),
-                       reebill.hypothetical_total,
-                       reebill.actual_total,
+                       hypothetical_total,
+                       actual_total,
                        reebill.ree_value,
                        reebill.prior_balance,
                        reebill.payment_received,
@@ -482,6 +489,12 @@ class Exporter(object):
                        total_ree,
                        average_rate_unit_ree
                        ]
+                # Formatting
+                for i in (8,9,10,11,12,14,15,16,17,19,21,22,23,24):
+                    try:
+                        row[i] = ("%.2f" % row[i])
+                    except TypeError:
+                        pass
                 ds_rows.append(row)
 
                 # For each additional payment include a row containing
@@ -495,6 +508,10 @@ class Exporter(object):
                            applicable_payment.credit,
                             None, None, None, None, None,
                             None, None, None, None, None]
+                    try:
+                        row[14] = ("%.2f" % row[14])
+                    except TypeError:
+                        pass
                     ds_rows.append(row)
 
         # We got all rows! Assemble the dataset
@@ -567,6 +584,6 @@ if __name__ == '__main__':
     account = None
     if len(sys.argv) > 1:
         export_func = sys.argv[1]
-    elif len(sys.argv) > 2:
+    if len(sys.argv) > 2:
         account = sys.argv[2]
     main(export_func, filename, account)
