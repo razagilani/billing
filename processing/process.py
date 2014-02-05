@@ -862,6 +862,7 @@ class Process(object):
                 = document._utilbills[0]['charges']
 
         for utilbill in reebill.utilbills:
+            # TODO this is not updating the hypothetical chargs as expected
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             document.compute_charges(uprs)
 
