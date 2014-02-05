@@ -66,9 +66,9 @@ class ExporterTest(unittest.TestCase):
 
         with self.mock_session(self.mock_StateDB) as session:
             dataset=self.exp.get_export_reebill_details_dataset(session, None, None)
-        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', 17.25, 17.26, 4.3, 2.2, None, '2011-11-30', 400.13, 0.0, 62.29, 122.2, 32.2, 5.01, '', -117.9, -117.9, 188.20197727, -5.3134404563960955e-05),
-                      ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', 13.37, None, None, None, None, None, None, None, None, None, None),
-                      ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', 17.25, 17.26, 4.3, 2.2, None, None, None, 0.0, 62.29, 122.2, 32.2, 5.01, '', -117.9, -117.9, 188.20197727, -5.3134404563960955e-05)]
+        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
+                      ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', '13.37', None, None, None, None, None, None, None, None, None, None),
+                      ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
