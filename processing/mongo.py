@@ -1624,6 +1624,7 @@ class MongoReebill(object):
                    "in ccf: energy value is wrong; time to implement "
                    "https://www.pivotaltracker.com/story/show/28825375") \
                   % (self.account, self.sequence, self.version)
+            new_quantity /= 1e5
         else:
             raise ValueError('Unknown energy unit: "%s"' % unit)
 
