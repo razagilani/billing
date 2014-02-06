@@ -775,10 +775,11 @@ class BillToolBridge:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
 
-        self.process.bind_renewable_energy(account, sequence)
-
-        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence, reebill.version)
+        with DBSession(self.state_db) as session:
+            self.process.bind_renewable_energy(session, account, sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                    account, sequence, reebill.version)
         return self.dumps({'success': True})
 
 
