@@ -244,6 +244,8 @@ class UtilbillReebill(Base):
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
+    charges = relationship('ReeBillCharge', backref='reebill')
+
     def __init__(self, utilbill, document_id=None):
         # UtilbillReebill has only 'utilbill' in its __init__ because the
         # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
@@ -260,6 +262,27 @@ class UtilbillReebill(Base):
                 'document_id=...%s, uprs_document_id=...%s, ') % (
                 self.utilbill_id, self.reebill_id, self.document_id[-4:],
                 self.uprs_document_id[-4:]))
+
+
+class ReeBillCharge(Base):
+    __tablename__ = 'reebill_charge'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
+    rsi_binding = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    group = Column(String, nullable=False)
+    quantity = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
+    total = Column(Float, nullable=False)
+
+    def __init__(self, rsi_binding, description, group, quantity, rate, total):
+        self.rsi_binding = rsi_binding
+        self.description = description
+        self.group = group
+        self.quantity = quantity
+        self.rate = rate
+        self.total = total
 
 
 class UtilBill(Base):
