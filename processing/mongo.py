@@ -328,7 +328,7 @@ def refresh_charges(utilbill_doc, uprs):
         'rate': 0,
         'total': 0,
         'description': rsi.description,
-        'group': 'All Charges',
+        'group': rsi.group,
     } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
             if rsi.has_charge]
 
@@ -356,11 +356,10 @@ def update_charge(utilbill_doc, rsi_binding, fields):
     charge.update(fields)
 
 def delete_charge(utilbill_doc, rsi_binding):
-    for charges_list in utilbill_doc['charges']:
-        for charge in charges_list:
-            if charge['rsi_binding'] == rsi_binding:
-                charges_list.remove(charge)
-                return
+    for charge in utilbill_doc['charges']:
+        if charge['rsi_binding'] == rsi_binding:
+            utilbill_doc['charges'].remove(charge)
+            return
     raise ValueError('RSI binding "%s" not found' % rsi_binding)
 
 # TODO make this a method of a utility bill document class when one exists

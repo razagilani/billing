@@ -547,6 +547,7 @@ class UtilBillTest(utils.TestCase):
                     quantity='1',
                     quantity_units='dollars',
                     rate='2',
+                    # NOTE no group
                 ),
                 RateStructureItem(
                     rsi_binding='NEW_2',
@@ -555,6 +556,7 @@ class UtilBillTest(utils.TestCase):
                     quantity_units='therms',
                     rate='6',
                     shared=False,
+                    group='New Group',
                 ),
                 RateStructureItem(
                     rsi_binding='NO_CHARGE',
@@ -579,7 +581,7 @@ class UtilBillTest(utils.TestCase):
                 'quantity_units': 'dollars',
                 'rate': 0,
                 'total': 0,
-                'group': 'All Charges',
+                'group': '(no group)',
             },
             {
                 'rsi_binding': 'NEW_2',
@@ -588,6 +590,6 @@ class UtilBillTest(utils.TestCase):
                 'quantity_units': 'therms',
                 'rate': 0,
                 'total': 0,
-                'group': 'All Charges',
+                'group': 'New Group',
             },
         ], utilbill_doc['charges'])

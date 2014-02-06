@@ -2439,7 +2439,7 @@ function reeBillReady() {
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'group', mapping: 'group'},
             {name: 'id', mapping: 'id', allowBlank: false},
             {name: 'rsi_binding', mapping: 'rsi_binding', allowBlank: false},
             {name: 'description', mapping: 'description'},
@@ -2481,8 +2481,8 @@ function reeBillReady() {
         idProperty: 'id',
         writer: aChargesWriter,
         data: initialActualCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
+        sortInfo:{field: 'group', direction: 'ASC'},
+        groupField:'group'
     });
 
 
@@ -2588,11 +2588,11 @@ function reeBillReady() {
     {
         columns: [
             {
-                id:'chargegroup',
+                id:'group',
                 header: 'Charge Group',
                 width: 160,
                 sortable: true,
-                dataIndex: 'chargegroup',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 header: 'id',
@@ -2741,7 +2741,7 @@ function reeBillReady() {
                         // chargegroup name of the adjacent record, a new group is shown in the grid
                         // and the UI goes out of sync.  Try this by change the chargegroup below
                         // to some other string.
-                        chargegroup: selection.data.chargegroup,
+                        group: selection.data.group,
                         rsi_binding: 'RSI binding required',
                         id: 'RSI binding required',
                         description: 'description required',
@@ -2798,7 +2798,7 @@ function reeBillReady() {
                         var c = new ChargeItemType({
                             id: 'RSI binding required',
                             rsi_binding: 'RSI binding required',
-                            chargegroup: groupName,
+                            group: groupName,
                             description: 'Description required',
                             quantity: 0,
                             quantity_units: 'kWh',
@@ -2854,7 +2854,7 @@ function reeBillReady() {
         plugins: aChargesSummary,
         flex: 1,
         stripeRows: true,
-        autoExpandColumn: 'chargegroup',
+        autoExpandColumn: 'group',
         clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
@@ -2993,9 +2993,8 @@ function reeBillReady() {
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
             {name: 'has_charge', mapping: 'has_charge'},
-            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
-            //{name: 'total', mapping: 'total'},
+            {name: 'group', mapping: 'group'},
         ]
     });
 
@@ -3033,9 +3032,8 @@ function reeBillReady() {
             {name: 'rate', mapping: 'rate'},
             {name: 'shared', mapping: 'shared'},
             {name: 'has_charge', mapping: 'has_charge'},
-            //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'round_rule', mapping:'round_rule'},
-            //{name: 'total', mapping: 'total'}
+            {name: 'group', mapping: 'group'},
         ],
     });
 
@@ -3189,6 +3187,11 @@ function reeBillReady() {
                 on: true,
                 off: false,
                 width: 60
+            },{
+                header: 'Group',
+                dataIndex: 'group',
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 60,
             }
         ]
     });
@@ -5685,7 +5688,7 @@ function reeBillReady() {
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'group', mapping: 'group'},
             {name: 'uuid', mapping: 'uuid'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
@@ -5723,8 +5726,8 @@ function reeBillReady() {
         //idProperty: 'uuid',
         writer: hChargesWriter,
         data: {rows:[]},
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
+        sortInfo:{field: 'group', direction: 'ASC'},
+        groupField:'group'
     });
 
     hChargesStore.on('beforeload', function (store, options) {
@@ -5744,10 +5747,10 @@ function reeBillReady() {
     {
         columns: [
             {
-                id:'chargegroup',
+                id:'group',
                 header: 'Charge Group',
                 width: 160,
-                dataIndex: 'chargegroup',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 header: 'UUID',

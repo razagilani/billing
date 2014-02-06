@@ -177,7 +177,7 @@ class Process(object):
         utilbill_doc = reebill._get_utilbill_for_service(service)
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        hypothetical_charges = reebill.reebill_dict.utilbills[0]\
+        hypothetical_charges = reebill.reebill_dict['utilbills'][0]\
                 ['hypothetical_charges']
         for hypothetical_charge_dict in hypothetical_charges:
             matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
