@@ -15,6 +15,7 @@ from sqlalchemy import not_
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from operator import attrgetter, itemgetter
 import operator
 from bson import ObjectId
 import traceback
@@ -1807,3 +1808,43 @@ class Process(object):
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
             bill_file_paths)
 
+    def get_issuable_reebills_dict(self, session):
+        """ Returns a list of issuable reebill dictionaries containing
+            the account, sequence, total utility bill charges, total reebill
+            charges and the associated customer email address
+            of the earliest unissued version-0 reebill account
+        """
+
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
+        min_sequence = session.query(
+                unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
+
+        issuable_reebills = sorted([{'account': r.customer.account,
+                         'sequence':r.sequence,
+                         'util_total': sum(u.total_charges for u in r.utilbills),
+                         'mailto':r.customer.bill_email_recipient,
+                         'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
+                                            for ub_doc in(
+                                                self.reebill_dao._load_utilbill_by_id(ub_id)
+                                                    for ub_id in(
+                                                        u.document_id for u in r.utilbills
+                                                    )
+                                                )
+                                          )
+                         } for r in reebills.all()], key=itemgetter('account'))
+
+        return issuable_reebills
+
+    def update_bill_email_recipient(self, session, account, sequence, recepients):
+        """ Finds a particular reebill by account and sequence,
+            finds the connected customer and updates the customer's default
+            email recipient(s)
+        """
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill.customer.bill_email_recipient = recepients

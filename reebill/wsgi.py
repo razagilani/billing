@@ -1454,42 +1454,33 @@ class BillToolBridge:
         '''Return a list of the issuable reebills'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                start = kwargs['start']
-                limit = kwargs['limit']
+                start = int(kwargs['start'])
+                limit = int(kwargs['limit'])
                 sort = kwargs['sort']
                 direction = kwargs['dir']
-                rows = []
-                allowable_diff = 0
+
                 try:
                     allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
-                issuable_reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+
+                issuable_reebills = self.process.get_issuable_reebills_dict(session)
                 for reebill_info in issuable_reebills:
-                    row_dict = {}
-                    customer = self.state_db.get_customer(session,
-                            reebill_info['account'])
-                    mongo_reebill = self.reebill_dao.load_reebill(
-                            reebill_info['account'], reebill_info['sequence'])
-                    mongo_utilbills = [self.reebill_dao._load_utilbill_by_id(ub_id)
-                                       for ub_id in reebill_info['utilbill_ids']]
-                    row_dict['id'] = reebill_info['account']
-                    row_dict['account'] = reebill_info['account']
-                    row_dict['sequence'] = reebill_info['sequence']
-                    row_dict['util_total'] = reebill_info['total']
-                    row_dict['mailto'] = customer.bill_email_recipient
-                    row_dict['reebill_total'] = sum(mongo.total_of_all_charges(ub_doc) for ub_doc in mongo_utilbills)
-                    row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
-                    row_dict['matching'] = row_dict['difference'] < allowable_diff
-                    rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                rows.sort(key=lambda d: d['matching'], reverse = True)
-                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
+                    reebill_info['id'] = reebill_info['account'],
+                    reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
+                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+
+                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
+                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True,
+                                   'rows': issuable_reebills[start:start+limit],
+                                   'total': len(issuable_reebills)})
             elif xaction == 'update':
                 row = json.loads(kwargs["rows"])
-                reebill = self.state_db.get_reebill(session, row['account'],
-                        row['sequence'])
-                reebill.customer.bill_email_recipient = row['mailto']
+                self.process.update_bill_email_recipient(session,
+                                                         row['account'],
+                                                         row['sequence'],
+                                                         row['mailto'])
                 return self.dumps({'success':True})
             
     @cherrypy.expose

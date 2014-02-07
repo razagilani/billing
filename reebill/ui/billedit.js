@@ -5508,7 +5508,7 @@ function reeBillReady() {
                 editor: new Ext.form.NumberField(),
                 renderer: function(v, params, record)
                 {
-                    return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
+                    return Ext.util.Format.usMoney(record.data.difference);
                 },
             },
         ],
