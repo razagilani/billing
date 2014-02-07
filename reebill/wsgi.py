@@ -907,7 +907,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issue_and_mail(self, account, sequence, recipient, apply_corrections,
+    def issue_and_mail(self, account, sequence, recipients, apply_corrections,
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
@@ -925,9 +925,9 @@ class BillToolBridge:
 
             # The user has confirmed to issue unissued corrections.
             # Let's issue
-            assert apply_corrections == True
             if len(unissued_corrections) > 0:
-                self.process.issue_corrections(session,account,sequence)
+                assert apply_corrections is True
+                self.process.issue_corrections(session, account, sequence)
                 for cor in unissued_corrections:
                     journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'],account, sequence,
@@ -939,9 +939,10 @@ class BillToolBridge:
                                                      account, sequence, 0)
 
             # Let's mail!
-            self.process.mail_reebills(session,account, [sequence], [recipient])
+            # Recepients can be a comma seperated list of email addresses
+            self.process.mail_reebills(session, account, [sequence], recipients)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                account, sequence, recipient)
+                                                account, sequence, recipients)
 
         return self.dumps({'success': True})
 
