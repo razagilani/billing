@@ -907,7 +907,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issue_and_mail(self, account, sequence, recipient, apply_corrections,
+    def issue_and_mail(self, account, sequence, recipients, apply_corrections,
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
@@ -925,9 +925,9 @@ class BillToolBridge:
 
             # The user has confirmed to issue unissued corrections.
             # Let's issue
-            assert apply_corrections == True
             if len(unissued_corrections) > 0:
-                self.process.issue_corrections(session,account,sequence)
+                assert apply_corrections is True
+                self.process.issue_corrections(session, account, sequence)
                 for cor in unissued_corrections:
                     journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'],account, sequence,
@@ -939,9 +939,10 @@ class BillToolBridge:
                                                      account, sequence, 0)
 
             # Let's mail!
-            self.process.mail_reebills(session,account, [sequence], [recipient])
+            # Recepients can be a comma seperated list of email addresses
+            self.process.mail_reebills(session, account, [sequence], recipients)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                account, sequence, recipient)
+                                                account, sequence, recipients)
 
         return self.dumps({'success': True})
 
@@ -1453,42 +1454,33 @@ class BillToolBridge:
         '''Return a list of the issuable reebills'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                start = kwargs['start']
-                limit = kwargs['limit']
+                start = int(kwargs['start'])
+                limit = int(kwargs['limit'])
                 sort = kwargs['sort']
                 direction = kwargs['dir']
-                rows = []
-                allowable_diff = 0
+
                 try:
                     allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
-                issuable_reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+
+                issuable_reebills = self.process.get_issuable_reebills_dict(session)
                 for reebill_info in issuable_reebills:
-                    row_dict = {}
-                    customer = self.state_db.get_customer(session,
-                            reebill_info['account'])
-                    mongo_reebill = self.reebill_dao.load_reebill(
-                            reebill_info['account'], reebill_info['sequence'])
-                    mongo_utilbills = [self.reebill_dao._load_utilbill_by_id(ub_id)
-                                       for ub_id in reebill_info['utilbill_ids']]
-                    row_dict['id'] = reebill_info['account']
-                    row_dict['account'] = reebill_info['account']
-                    row_dict['sequence'] = reebill_info['sequence']
-                    row_dict['util_total'] = reebill_info['total']
-                    row_dict['mailto'] = customer.bill_email_recipient
-                    row_dict['reebill_total'] = sum(mongo.total_of_all_charges(ub_doc) for ub_doc in mongo_utilbills)
-                    row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
-                    row_dict['matching'] = row_dict['difference'] < allowable_diff
-                    rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                rows.sort(key=lambda d: d['matching'], reverse = True)
-                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
+                    reebill_info['id'] = reebill_info['account'],
+                    reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
+                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+
+                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
+                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True,
+                                   'rows': issuable_reebills[start:start+limit],
+                                   'total': len(issuable_reebills)})
             elif xaction == 'update':
                 row = json.loads(kwargs["rows"])
-                reebill = self.state_db.get_reebill(session, row['account'],
-                        row['sequence'])
-                reebill.customer.bill_email_recipient = row['mailto']
+                self.process.update_bill_email_recipient(session,
+                                                         row['account'],
+                                                         row['sequence'],
+                                                         row['mailto'])
                 return self.dumps({'success':True})
             
     @cherrypy.expose
@@ -2001,10 +1993,8 @@ class BillToolBridge:
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        try:
-            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
-        except IOError:
-            return self.dumps({'success':False})
+        result = self.billUpload.getUtilBillImagePath(account, begin_date,
+                end_date, resolution)
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
@@ -2016,10 +2006,8 @@ class BillToolBridge:
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        try:
-            result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
-        except IOError:
-            return self.dumps({'success':False})
+        result = self.billUpload.getReeBillImagePath(account, sequence,
+                resolution)
         return self.dumps({'success':True, 'imageName':result})
     
     @cherrypy.expose

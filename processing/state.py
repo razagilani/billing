@@ -851,40 +851,6 @@ class StateDB(object):
 
         return slice, count
 
-    def listAllIssuableReebillInfo(self, session):
-        '''Returns a list containing the account, sequence, total utility
-        bill charges, and associated utilbill mongo IDs (from MySQL)
-        of the earliest unissued version-0 reebilleach account,
-        and the size of the list.'''
-        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
-                .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
-        min_sequence = session.query(
-                unissued_v0_reebills.c.customer_id.label('customer_id'),
-                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)
-        #tuples = sorted([(r.customer.account, r.sequence,
-                ## 'total_charges' of all utility bills attached to each reebill
-                #session.query(func.sum(UtilBill.total_charges))\
-                        #.filter(UtilBill.reebills.contains(r)).one()[0])
-                #for r in reebills.all()],
-        # 'total_charges' of all utility bills attached to each reebill
-        dicts = sorted([{'account':r.customer.account,
-                         'sequence':r.sequence,
-                         'total':sum(u.total_charges for u in r.utilbills),
-                         'utilbill_ids':[u.document_id for u in r.utilbills]}
-                        for r in reebills.all()],
-                       key=itemgetter('account'))
-        #tuples = sorted([(r.customer.account, r.sequence,
-        #        sum(u.total_charges for u in r.utilbills))
-        #        for r in reebills.all()],
-                # sort by account ascending; worry about performance later
-                # (maybe when sort order is actually configurable)
-        #        key=itemgetter(0))
-        return dicts, len(dicts)
-
     def reebills(self, session, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
         in MySQL.'''
