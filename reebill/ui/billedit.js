@@ -5511,7 +5511,7 @@ function reeBillReady() {
                 editor: new Ext.form.NumberField(),
                 renderer: function(v, params, record)
                 {
-                    return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
+                    return Ext.util.Format.usMoney(record.data.difference);
                 },
             },
         ],
@@ -5540,6 +5540,7 @@ function reeBillReady() {
                     account: r.data.account,
                     sequence: r.data.sequence,
                     apply_corrections: false,
+                    recipients: r.data.mailto
                 },
                 success: function (response, options) {
                     var o = {};
@@ -5566,7 +5567,7 @@ function reeBillReady() {
                                 + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         issueDataConn.request({
-                                            params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
+                                            params: { account: r.data.account, sequence: r.data.sequence, recipients: r.data.mailto, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true) {
