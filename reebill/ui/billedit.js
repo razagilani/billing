@@ -3578,7 +3578,7 @@ function reeBillReady() {
                             Ext.Msg.confirm('Corrections must be applied',
                                 'Corrections from reebills ' + o.corrections +
                                 ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                + o.adjustment.toFixed(2) + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         mailDataConn.request({
                                             params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
@@ -5552,7 +5552,7 @@ function reeBillReady() {
                         var result = Ext.Msg.confirm('Corrections must be applied',
                                                      'Corrections from reebills ' + o.corrections +
                                                      ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                + o.adjustment.toFixed(2) + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         issueDataConn.request({
                                             params: { account: r.data.account, sequence: r.data.sequence, recipients: r.data.mailto, apply_corrections: true},
