@@ -1675,9 +1675,9 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
         if xaction == "read":
+            charges=self.process.get_hypothetical_matched_charges(account, sequence,
+                                                                  service)
             return self.dumps({'success': True, 'rows': charges,
                                'total':len(charges)})
         else:

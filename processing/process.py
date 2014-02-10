@@ -44,7 +44,7 @@ from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, \
     NotAttachable, BillStateError, NoSuchBillException, NotUniqueException, \
-    RSIError
+    RSIError, NoSuchRSIError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -179,11 +179,15 @@ class Process(object):
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
         hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
-        for hypothetical_charge_dict in hypothetical_charges:
-            matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
-            hypothetical_charge_dict['actual_rate'] = matching['rate']
-            hypothetical_charge_dict['actual_quantity'] = matching['quantity']
-            hypothetical_charge_dict['actual_total'] = matching['total']
+        try:
+            for hypothetical_charge_dict in hypothetical_charges:
+                matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
+                hypothetical_charge_dict['actual_rate'] = matching['rate']
+                hypothetical_charge_dict['actual_quantity'] = matching['quantity']
+                hypothetical_charge_dict['actual_total'] = matching['total']
+        except KeyError:
+            raise NoSuchRSIError('RSI found on Rate Structure, but not on the'
+                                 'selected Reebill. Please recompute the bill.')
         return hypothetical_charges
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
