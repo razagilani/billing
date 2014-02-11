@@ -1022,7 +1022,7 @@ class Process(object):
         last_reebill_row = session.query(ReeBill)\
                 .filter(ReeBill.customer == customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
-        
+
         new_utilbills, new_utilbill_docs = [], []
         if last_reebill_row is None:
             # No Reebills are associated with this account: Create the first one
@@ -1197,45 +1197,6 @@ class Process(object):
         self.reebill_dao.save_reebill(new_mongo_reebill)
 
         return new_reebill
-
-    def roll_bill(self, session, account, start_date,
-               integrate_skyline_backend):
-        '''Create first or next reebill for given account. 'start_date' must
-        be given for the first reebill.
-        'integrate_skyline_backend': this must be True to get renewable energy
-        data.
-        '''
-        # 1st transaction: roll
-        last_seq = self.state_db.last_sequence(session, account)
-        if last_seq == 0:
-            utilbill = session.query(UtilBill).join(Customer)\
-                    .filter(UtilBill.customer_id == Customer.id)\
-                    .filter_by(account=account)\
-                    .filter(UtilBill.period_start >= start_date)\
-                    .order_by(UtilBill.period_start).first()
-            if utilbill is None:
-                raise ValueError("No utility bill found starting on/after %s" %
-                        start_date)
-            new_reebill = self.create_first_reebill(session, utilbill)
-        else:
-            new_reebill = self.create_next_reebill(session, account)
-
-        new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq + 1)
-        # 2nd transaction: bind and compute. if one of these fails, don't undo
-        # the changes to MySQL above, leaving a Mongo reebill document without
-        # a corresponding MySQL row; only undo the changes related to binding
-        # and computing (currently there are none).
-        if integrate_skyline_backend:
-            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_reebill_doc, use_olap=True, verbose=True)
-
-        self.reebill_dao.save_reebill(new_reebill_doc)
-
-        try:
-            self.compute_reebill(session, account, last_seq + 1)
-        except Exception as e:
-            self.logger.error("Error when computing reebill %s: %s" % (
-                    new_reebill, e))
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at

@@ -747,7 +747,7 @@ class BillToolBridge:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
             last_seq, new_seq, new_version = \
-                self.process.roll_bill(session,account,start_date,
+                self.process.roll_rebill(session,account,start_date,
                         self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
