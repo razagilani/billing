@@ -1008,7 +1008,7 @@ class Process(object):
         self.reebill_dao.save_reebill(document)
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
-                     start_date=None):
+                     start_date=None, skip_compute=False):
         """
         Create first or next reebill for given account. 'start_date' must
         be given for the first reebill.
@@ -1094,11 +1094,13 @@ class Process(object):
                     new_mongo_reebill, use_olap=True, verbose=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
 
-        try:
-            self.compute_reebill(session, account, new_sequence)
-        except Exception as e:
-            self.logger.error("Error when computing reebill %s: %s" % (
-                    new_reebill, e))
+        if not skip_compute:
+            try:
+                self.compute_reebill(session, account, new_sequence)
+            except Exception as e:
+                self.logger.error("Error when computing reebill %s: %s" % (
+                        new_reebill, e))
+        return new_reebill
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
@@ -1127,74 +1129,6 @@ class Process(object):
         # add row in MySQL
         new_reebill = ReeBill(customer, 1, version=0, utilbills=[utilbill])
         session.add(new_reebill)
-
-        return new_reebill
-
-
-    def create_next_reebill(self, session, account):
-        '''Creates the successor to the highest-sequence state.ReeBill for the
-        given account, or the first reebill if none exists yet, and its
-        associated Mongo document.
-        Returns the newly-created state.ReeBill object.
-        '''
-        customer = session.query(Customer)\
-                .filter(Customer.account == account).one()
-        last_reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.customer == customer)\
-                .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
-
-        # now there is at least one reebill.
-        # find successor to every utility bill belonging to the reebill, along
-        # with its mongo document. note that Hypothetical utility bills are
-        # excluded.
-        # NOTE as far as i know, you can't filter SQLAlchemy objects by methods
-        # or by properties that do not correspond to db columns. so, there is
-        # no way to tell if a utility bill has reebills except by filtering
-        # _utilbill_reebills.
-        # see
-        new_utilbills, new_utilbill_docs = [], []
-        for utilbill in last_reebill_row.utilbills:
-            successor = session.query(UtilBill)\
-                .filter(UtilBill.customer == customer)\
-                .filter(not_(UtilBill._utilbill_reebills.any()))\
-                .filter(UtilBill.service == utilbill.service)\
-                .filter(UtilBill.utility == utilbill.utility)\
-                .filter(UtilBill.period_start >= utilbill.period_end)\
-                .order_by(UtilBill.period_end).first()
-            if successor == None:
-                raise NoSuchBillException(("Couldn't find next "
-                        "utility bill following %s") % utilbill)
-            if successor.state == UtilBill.Hypothetical:
-                raise NoSuchBillException(('The next utility bill is '
-                    '"hypothetical" so a reebill can\'t be based on it'))
-            new_utilbills.append(successor)
-            new_utilbill_docs.append(
-                    self.reebill_dao.load_doc_for_utilbill(successor))
-
-        # currently only one service is supported
-        assert len(new_utilbills) == 1
-
-        # create mongo document for the new reebill, based on the documents for
-        # the utility bills. discount rate and late charge rate are set to the
-        # "current" values for the customer in MySQL. the sequence is 1 greater
-        # than the predecessor's and the version is always 0.
-        new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                last_reebill_row.sequence + 1, 0, customer.get_discount_rate(),
-                customer.get_late_charge_rate(), new_utilbill_docs)
-
-        # copy 'suspended_services' list from predecessor reebill's document
-        last_reebill_doc = self.reebill_dao.load_reebill(account,
-                last_reebill_row.sequence, last_reebill_row.version)
-        assert all(new_mongo_reebill.suspend_service(s) for s in
-                last_reebill_doc.suspended_services)
-
-        # create reebill row in state database
-        new_reebill = ReeBill(customer, new_mongo_reebill.sequence,
-                new_mongo_reebill.version, utilbills=new_utilbills)
-        session.add(new_reebill)
-
-        # save reebill document in Mongo
-        self.reebill_dao.save_reebill(new_mongo_reebill)
 
         return new_reebill
 
