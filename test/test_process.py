@@ -620,7 +620,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill0.suspend_service('electric')
             self.reebill_dao.save_reebill(bill0)
 
-            bill1 = self.process.roll_bill(session, bill0)
+            bill1 = self.process.roll_rebill(session, bill0)
 
             self.assertEquals(['electric'], bill1.suspended_services)
 
