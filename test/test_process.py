@@ -403,7 +403,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february.pdf')
             self.process.update_utilbill_metadata(session, u2.id,
                     processed=True)
-            bill2 = self.process.create_next_reebill(session, acc)
+            bill2 = self.process.roll_reebill(session, acc)
             bill2_doc = self.reebill_dao.load_reebill(acc, 2)
             bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
@@ -443,7 +443,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2012,3,1), date(2012,4,1), StringIO('March 2012'),
                     'march.pdf')
-            bill3 = self.process.create_next_reebill(session, acc)
+            bill3 = self.process.roll_reebill(session, acc)
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
                     date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
@@ -1300,7 +1300,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert one.ree_charge == 50
 
             # 2nd reebill: saved 200 therms, $100
-            two = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc)
             two.discount_rate = 0.5
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             two_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1311,7 +1311,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert two.ree_charge == 100
 
             # 3rd reebill: saved 300 therms, $150
-            three = self.process.create_next_reebill(session, acc)
+            three = self.process.roll_reebill(session, acc)
             three_doc = self.reebill_dao.load_reebill(acc, 3)
             three.discount_rate = 0.5
             three_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1321,7 +1321,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert three.ree_charge == 150
 
             # 4th reebill
-            self.process.create_next_reebill(session, acc)
+            self.process.roll_reebill(session, acc)
 
             # no unissued corrections yet
             self.assertEquals([],
@@ -1450,7 +1450,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     issue_date=datetime.utcnow().date() - timedelta(40))
             
             # 2nd reebill, which will get a late charge from the 1st
-            two = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc)
 
             # "bind REE" in 2nd reebill
             # (it needs energy data only so its correction will have the same
@@ -1529,7 +1529,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
 
             # another reebill
-            self.process.create_next_reebill(session, account)
+            self.process.roll_reebill(session, account)
             reebills = session.query(ReeBill).order_by(ReeBill.id).all()
             utilbills = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()
@@ -1560,7 +1560,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # The next utility bill isn't estimated or final, so
             # create_next_reebill should fail
             self.assertRaises(NoSuchBillException,
-                    self.process.create_next_reebill, session, account)
+                    self.process.roll_reebill, session, account)
 
             # replace 'hypo_utilbill' with a UtilityEstimated one, so it has a
             # document and a reebill can be attached to it
@@ -1571,8 +1571,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .order_by(UtilBill.period_start).all()[2]
             assert formerly_hypo_utilbill.state == UtilBill.UtilityEstimated
 
-            self.process.create_next_reebill(session, account)
-            self.process.create_next_reebill(session, account)
+            self.process.roll_reebill(session, account)
+            self.process.roll_reebill(session, account)
             self.process.compute_reebill(session, account, 2)
 
             self.process.issue(session, account, 2)
@@ -1586,7 +1586,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # can't create another reebill because there are no more utility
             # bills
             with self.assertRaises(NoSuchBillException) as context:
-                self.process.create_next_reebill(session, account)
+                self.process.roll_reebill(session, account)
 
             # TODO: Test multiple services
 
@@ -1789,7 +1789,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one = self.process.create_first_reebill(session,
                     session.query(UtilBill).order_by(UtilBill.period_start)
                     .first())
-            two = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc)
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
@@ -1852,8 +1852,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2000,3,1), date(2000,4,1), StringIO('february 2000'),
                     'february.pdf')
-            two = self.process.create_next_reebill(session, acc)
-            three = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc)
+            three = self.process.roll_reebill(session, acc)
 
             # add a payment, shown on bill #2
             self.state_db.create_payment(session, acc, date(2000,2,16),
@@ -1959,7 +1959,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 1)
 
             # create 2nd reebill, leaving it unissued
-            two = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc,
+                                            integrate_skyline_backend=False)
 
             # make a correction on reebill #1, producing an adjustment of 100
             # TODO: frozen utility bill document of the reebill does not
@@ -1997,7 +1998,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
             # create reebill reebill #2
-            two = self.process.create_next_reebill(session, acc)
+            two = self.process.roll_reebill(session, acc)
 
             # payment on jan. 20 gets applied to #2
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
@@ -2057,8 +2058,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # below.
             self.process.create_first_reebill(session, utilbill_jan)
             reebill1 = self.reebill_dao.load_reebill(acc, 1)
-            self.process.create_next_reebill(session, acc)
-
+            self.process.roll_reebill(session, acc,
+                                      integrate_skyline_backend=False,
+                                      skip_compute=True)
             for use_olap in True, False:
                 reebill2 = self.state_db.get_reebill(session, acc, 2)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
@@ -2469,7 +2471,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
-            reebill2 = self.process.create_next_reebill(session, account)
+            reebill2 = self.process.roll_reebill(session, account,
+                                                 integrate_skyline_backend=False,
+                                                 skip_compute=True)
             self.process.compute_reebill(session, account, 2)
             # TODO this intermittently fails with a slight difference between
             # bill1.balance_due and reebill2.prior_balance (bigger than the
