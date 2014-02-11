@@ -3259,6 +3259,8 @@ function reeBillReady() {
         tbar: RSIToolbar,
         colModel: RSIColModel,
         autoExpandColumn: 'quantity',
+        enableDragDrop: true,
+        ddGroup: 'RSIRow',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: RSIStore,
         enableColumnMove: true,
@@ -3272,6 +3274,67 @@ function reeBillReady() {
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
         RSIGrid.getTopToolbar().findById('RSIRemoveBtn').setDisabled(sm.getCount() <1);
+    });
+
+    RSIGrid.on('render',function(){
+        var RSIGridDropTargetEL =  RSIGrid.getView().scroller.dom;
+            var RSIGridDropTarget = new Ext.dd.DropTarget(RSIGridDropTargetEL, {
+                    ddGroup: 'RSIRow',
+                    ignoreSelf: false,
+                    available: true,
+                    notifyDrop : function(ddSource, e, data){
+                            RSIStore.suspendEvents();
+                            var records =  ddSource.dragData.selections;
+                            console.log(ddSource, e, data, records);
+                            Ext.each(records, ddSource.grid.store.remove, ddSource.grid.store);
+                            RSIGrid.store.add(records);
+                            RSIStore.resumeEvents();
+                            return true
+                    }
+        });
+//        RSIGrid.dropZone = new Ext.dd.DropZone(RSIGrid.getView().scroller.dom, {
+//            ignoreSelf: false,
+//            groups: {'RSIRow':true},
+//    //      If the mouse is over a grid row, return that node. This is
+//    //      provided as the "target" parameter in all "onNodeXXXX" node event handling functions
+//            getTargetFromEvent: function(e) {
+//                console.log('getTargetFromEvent', e);
+//                return e.getTarget(RSIGrid.getView().rowSelector);
+//            },
+//
+//    //      On entry into a target node, highlight that node.
+//            onNodeEnter : function(target, dd, e, data){
+//                console.log('onNodeEnter', target, dd, e, data);
+//                Ext.fly(target).addClass('my-row-highlight-class');
+//            },
+//
+//    //      On exit from a target node, unhighlight that node.
+//            onNodeOut : function(target, dd, e, data){
+//                console.log('onNodeOut', target, dd, e, data);
+//                Ext.fly(target).removeClass('my-row-highlight-class');
+//            },
+//
+//    //      While over a target node, return the default drop allowed class which
+//    //      places a "tick" icon into the drag proxy.
+//            onNodeOver : function(target, dd, e, data){
+//                console.log('onNodeOver', target, dd, e, data);
+//                return Ext.dd.DropZone.prototype.dropAllowed;
+//            },
+//
+//    //      On node drop we can interrogate the target to find the underlying
+//    //      application object that is the real target of the dragged data.
+//    //      In this case, it is a Record in the GridPanel's Store.
+//    //      We can use the data set up by the DragZone's getDragData method to read
+//    //      any data we decided to attach in the DragZone's getDragData method.
+//            onNodeDrop : function(target, dd, e, data){
+//                console.log('onNodeDrop', target, dd, e, data);
+//                var rowIndex = RSIGrid.getView().findRowIndex(target);
+//                var r = RSIGrid.getStore().getAt(rowIndex);
+//                Ext.Msg.alert('Drop gesture', 'Dropped Record id ' + data.draggedRecord.id +
+//                    ' on Record id ' + r.id);
+//                return true;
+//            }
+//        });
     });
   
 
