@@ -1007,7 +1007,98 @@ class Process(object):
 
         self.reebill_dao.save_reebill(document)
 
+    def roll_reebill(self, session, account, integrate_skyline_backend=True,
+                     start_date=None):
+        """
+        Create first or next reebill for given account. 'start_date' must
+        be given for the first reebill.
+        'integrate_skyline_backend': this must be True to get renewable energy
+        data.
+        After the bill is rolled, this function binds and computes the bill
+        """
 
+        # 1st transaction: roll
+        customer = self.state_db.get_customer(session, account)
+        last_reebill_row = session.query(ReeBill)\
+                .filter(ReeBill.customer == customer)\
+                .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
+        
+        new_utilbills, new_utilbill_docs = [], []
+        if last_reebill_row is None:
+            # No Reebills are associated with this account: Create the first one
+            assert start_date is not None
+            utilbill = session.query(UtilBill)\
+                    .filter(UtilBill.customer == customer)\
+                    .filter(UtilBill.period_start >= start_date)\
+                    .order_by(UtilBill.period_start).first()
+            if utilbill is None:
+                raise ValueError("No utility bill found starting on/after %s" %
+                        start_date)
+            new_utilbill_docs.append(utilbill)
+
+            new_sequence = 1
+        else:
+            # There are Reebills associated with this account: Create the next Reebill
+            # First, find the successor to every utility bill belonging to the reebill, along
+            # with its mongo document. note that Hypothetical utility bills are
+            # excluded.
+            for utilbill in last_reebill_row.utilbills:
+                successor = session.query(UtilBill)\
+                    .filter(UtilBill.customer == customer)\
+                    .filter(not_(UtilBill._utilbill_reebills.any()))\
+                    .filter(UtilBill.service == utilbill.service)\
+                    .filter(UtilBill.utility == utilbill.utility)\
+                    .filter(UtilBill.period_start >= utilbill.period_end)\
+                    .order_by(UtilBill.period_end).first()
+                if successor is None:
+                    raise NoSuchBillException(("Couldn't find next "
+                            "utility bill following %s") % utilbill)
+                if successor.state == UtilBill.Hypothetical:
+                    raise NoSuchBillException(('The next utility bill is '
+                        '"hypothetical" so a reebill can\'t be based on it'))
+                new_utilbills.append(successor)
+                new_utilbill_docs.append(
+                        self.reebill_dao.load_doc_for_utilbill(successor))
+
+            new_sequence = last_reebill_row.sequence + 1
+
+             # copy 'suspended_services' list from predecessor reebill's document
+            last_reebill_doc = self.reebill_dao.load_reebill(account,
+                    last_reebill_row.sequence, last_reebill_row.version)
+            assert all(new_mongo_reebill.suspend_service(s) for s in
+                    last_reebill_doc.suspended_services)
+
+        # currently only one service is supported
+        assert len(new_utilbills) == 1
+
+        # create mongo document for the new reebill, based on the documents for
+        # the utility bills. discount rate and late charge rate are set to the
+        # "current" values for the customer in MySQL.
+        new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
+                new_sequence, 0, customer.get_discount_rate(),
+                customer.get_late_charge_rate(), new_utilbill_docs)
+
+        # create reebill row in state database
+        new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
+        session.add(new_reebill)
+
+        # save reebill document in Mongo
+        self.reebill_dao.save_reebill(new_mongo_reebill)
+
+        # 2nd transaction: bind and compute. if one of these fails, don't undo
+        # the changes to MySQL above, leaving a Mongo reebill document without
+        # a corresponding MySQL row; only undo the changes related to binding
+        # and computing (currently there are none).
+        if integrate_skyline_backend:
+            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
+                    new_mongo_reebill, use_olap=True, verbose=True)
+            self.reebill_dao.save_reebill(new_mongo_reebill)
+
+        try:
+            self.compute_reebill(session, account, new_sequence)
+        except Exception as e:
+            self.logger.error("Error when computing reebill %s: %s" % (
+                    new_reebill, e))
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
@@ -1060,7 +1151,7 @@ class Process(object):
         # or by properties that do not correspond to db columns. so, there is
         # no way to tell if a utility bill has reebills except by filtering
         # _utilbill_reebills.
-        # see 
+        # see
         new_utilbills, new_utilbill_docs = [], []
         for utilbill in last_reebill_row.utilbills:
             successor = session.query(UtilBill)\
