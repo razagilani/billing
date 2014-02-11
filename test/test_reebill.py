@@ -33,8 +33,7 @@ class ReebillTest(TestCaseWithSetup):
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf', utility='washgas',
                     rate_class='DC Non Residential Non Heat')
-            self.process.create_first_reebill(session,
-                    session.query(UtilBill).one())
+            self.process.roll_reebill(session, acc, start_date=date(2013,1,1))
             b = self.reebill_dao.load_reebill(acc, 1)
 
             # function to check that the utility bill matches the reebill's

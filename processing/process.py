@@ -1034,7 +1034,9 @@ class Process(object):
             if utilbill is None:
                 raise ValueError("No utility bill found starting on/after %s" %
                         start_date)
-            new_utilbill_docs.append(utilbill)
+            new_utilbills.append(utilbill)
+            new_utilbill_docs.append(
+                        self.reebill_dao.load_doc_for_utilbill(utilbill))
 
             new_sequence = 1
         else:
@@ -1100,36 +1102,6 @@ class Process(object):
             except Exception as e:
                 self.logger.error("Error when computing reebill %s: %s" % (
                         new_reebill, e))
-        return new_reebill
-
-    def create_first_reebill(self, session, utilbill):
-        '''Create and save the account's first reebill (in Mongo and MySQL),
-        based on the given state.UtilBill.
-        Returns new state.ReeBill object.
-        This is a separate method from create_next_reebill because a specific
-        utility bill is provided indicating where billing should start.
-        '''
-        customer = utilbill.customer
-
-        # make sure there are no reebills yet
-        num_existing_reebills = session.query(ReeBill).join(Customer)\
-                .filter(ReeBill.customer==customer).count()
-        if num_existing_reebills > 0:
-            raise ValueError("%s reebill(s) already exist for account %s" %
-                    (num_existing_reebills, customer.account))
-
-        # load document for the 'utilbill', use it to create the reebill
-        # document, and save the reebill document
-        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
-                utilbill.customer.account, 1, 0, customer.get_discount_rate(),
-                utilbill.customer.get_late_charge_rate(), [utilbill_doc])
-        self.reebill_dao.save_reebill(reebill_doc)
-
-        # add row in MySQL
-        new_reebill = ReeBill(customer, 1, version=0, utilbills=[utilbill])
-        session.add(new_reebill)
-
         return new_reebill
 
     def new_versions(self, session, account, sequence):
