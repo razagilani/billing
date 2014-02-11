@@ -80,8 +80,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).filter_by(customer=customer)\
                     .one()
-            reebill = self.process.create_first_reebill(session, utilbill)
-
+            reebill = self.process.roll_reebill(session, '88888', start_date=date(2013,1,1),
+                                      integrate_skyline_backend=False,
+                                      skip_compute=True)
             # check utility bill and its document
             self.assertEqual(UtilBill.Complete, utilbill.state)
             self.assertEqual('gas', utilbill.service)
@@ -205,7 +206,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # issue a reebill based on this utility bill, then modify the
             # editable utility bill so it's different from the frozen ones
-            self.process.create_first_reebill(session, utilbill)
+            self.process.roll_reebill(session, '99999', start_date=date(2013,1,1))
             self.process.issue(session, '99999', 1)
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
             uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
@@ -321,7 +322,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             
             # even when the utility bill is attached to an issued reebill, only
             # the editable document gets changed
-            reebill = self.process.create_first_reebill(session, utilbill)
+            reebill = self.process.roll_reebill(session, '99999', start_date=date(2013,1,1))
             self.process.issue(session, '99999', 1)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     service='water')
@@ -371,8 +372,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create first reebill
-            bill1 = self.process.create_first_reebill(session,
-                    session.query(UtilBill).one())
+            bill1 = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
             bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
@@ -642,7 +642,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                      date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                      'january.pdf')
             utilbill = session.query(UtilBill).one()
-            self.process.create_first_reebill(session, utilbill)
+            self.process.roll_reebill(session, account, start_date=date(2012,1,1),
+                                      integrate_skyline_backend=False)
 
             # the UPRS for this utility bill will be empty, because there are
             # no other utility bills in the db, and the bill will have no
@@ -1015,8 +1016,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.period_end == end).one()
             
             # when utilbill is attached to reebill, deletion should fail
-            first_reebill = self.process.create_first_reebill(session,
-                    utilbill)
+            first_reebill = self.process.roll_reebill(session, account, start_date=start)
             assert first_reebill.utilbills == [utilbill]
             assert utilbill.is_attached()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
@@ -1109,8 +1109,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
                      'january.pdf')
-            self.process.create_first_reebill(session,
-                    session.query(UtilBill).one())
+            self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
 
             # TODO creating new version of reebill should fail until it's
             # issued
@@ -1286,9 +1285,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 uprs.save()
 
             # first reebill: saved 100 therms, $50
-            one = self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start)
-                    .first())
+            one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             one.discount_rate = 0.5
             one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
@@ -1435,8 +1432,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
             # (so it's 10 days late)
             # TODO don't use current date in a test!
-            one = self.process.create_first_reebill(session, session.query(
-                    UtilBill).order_by(UtilBill.period_start).first())
+            one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
@@ -1513,9 +1509,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'may.pdf')
 
             # create reebill based on first utility bill
-            self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start)
-                    .first())
+            self.process.roll_reebill(session, account, start_date=date(2013,4,4))
 
             # Make sure the reebill period matches the utility bill
             reebill_1 = self.reebill_dao.load_reebill(account, 1)
@@ -1786,9 +1780,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                      date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
                      'february.pdf')
-            one = self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start)
-                    .first())
+            one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             two = self.process.roll_reebill(session, acc)
 
             # neither reebill should be issued yet
@@ -1841,8 +1833,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2000,1,1), date(2000,2,1), StringIO('january 2000'),
                     'january.pdf')
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
+            self.process.roll_reebill(session, acc, start_date=date(2000,1,1))
             self.process.issue(session, acc, 1, date(2000,2,15))
 
             # two more utility bills and reebills
@@ -1896,7 +1887,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
                     'january.pdf')
             utilbill = session.query(UtilBill).one()
-            self.process.create_first_reebill(session, utilbill)
+            self.process.roll_reebill(session, account, start_date=date(2012,1,1))
             reebill = self.state_db.get_reebill(session, account, 1)
 
             # delete the reebill: should succeed, because it's not issued
@@ -1907,7 +1898,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals([utilbill], session.query(UtilBill).all())
 
             # re-create it
-            reebill = self.process.create_first_reebill(session, utilbill)
+            reebill = self.process.roll_reebill(session, account, start_date=date(2012,1,1))
             self.assertEquals([1], self.state_db.listSequences(session,
                     account))
             self.assertEquals([utilbill], reebill.utilbills)
@@ -1953,9 +1944,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         StringIO('a utility bill'), 'filename.pdf')
             
             # create 1st reebill and issue it
-            one = self.process.create_first_reebill(session,
-                    session.query(UtilBill).order_by(UtilBill.period_start)
-                    .first())
+            one = self.process.roll_reebill(session, acc,
+                                            start_date=date(2012,1,1),
+                                            integrate_skyline_backend=False)
             self.process.issue(session, acc, 1)
 
             # create 2nd reebill, leaving it unissued
@@ -1966,8 +1957,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO: frozen utility bill document of the reebill does not
             # exist, causing failure when the document is looked up here.
             # something about freezing the document or setting its id in MySQL
-            # went wrong when it was issued. (also create_next_reebill above
-            # does not affect this.)
+            # went wrong when it was issued.
             self.process.new_version(session, acc, 1)
             one_corrected = session.query(ReeBill).filter_by(
                         sequence=1, version=1).one()
@@ -1992,8 +1982,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february.pdf')
 
             # create and issue reebill #1
-            self.process.create_first_reebill(session, session.query(UtilBill)
-                    .order_by(UtilBill.period_start).first())
+            self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
@@ -2056,7 +2045,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create a reebill for each utility bill. #2 will be computed
             # repeatedly and #1 will serve as its predecessor when computing
             # below.
-            self.process.create_first_reebill(session, utilbill_jan)
+            self.process.roll_reebill(session, acc, start_date=date(2012,1,1),
+                                      integrate_skyline_backend=False,
+                                      skip_compute=True)
             reebill1 = self.reebill_dao.load_reebill(acc, 1)
             self.process.roll_reebill(session, acc,
                                       integrate_skyline_backend=False,
@@ -2163,7 +2154,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             u1, u2 = session.query(UtilBill).order_by(UtilBill.period_start)\
                     .all()
 
-            self.process.create_first_reebill(session, u1)
+            self.process.roll_reebill(session, account, start_date=date(2013,1,1))
             r1 = self.reebill_dao.load_reebill(account, 1)
 
         # only u1 should be attached to the reebill
@@ -2228,7 +2219,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
             utilbill = session.query(UtilBill).one()
-            self.process.create_first_reebill(session, utilbill)
+            self.process.roll_reebill(session, '99999', start_date=date(2013,1,1))
             
             session.query(UtilBill).one() # verify there's only one
             reebill = session.query(ReeBill).one()
@@ -2244,9 +2235,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # (this is already partially handled by
             # test_reebill.ReebillTest.test_get_reebill_doc_for_utilbills, but
             # should be done here as well.)
-
-            self.assertRaises(ValueError, self.process.create_first_reebill,
-                    session, utilbill)
+            billing_address = {
+                'addressee': 'Andrew Mellon',
+                'street': '1785 Massachusetts Ave. NW',
+                'city': 'Washington',
+                'state': 'DC',
+                'postal_code': '20036',
+            }
+            service_address = {
+                'addressee': 'Skyline Innovations',
+                'street': '1606 20th St. NW',
+                'city': 'Washington',
+                'state': 'DC',
+                'postal_code': '20009',
+            }
+            self.process.create_new_account(session, '55555', 'Another New Account',
+                    0.6, 0.2, billing_address, service_address, '99999')
+            self.assertRaises(ValueError, self.process.roll_reebill,
+                    session, '55555', False, date(2013,2,1), True)
 
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for
@@ -2260,7 +2266,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session, account)).one()
-            self.process.create_first_reebill(session, utilbill)
+            self.process.roll_reebill(session, account, start_date=date(2013,1,1))
             reebill_doc = self.reebill_dao.load_reebill(account, 1)
 
             # bind, compute, issue
@@ -2435,7 +2441,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.save()
 
             # create reebill, bind, compute, issue
-            bill1 = self.process.create_first_reebill(session, first_utilbill)
+            bill1 = self.process.roll_reebill(session, account, start_date=date(2013,1,1),
+                                      integrate_skyline_backend=False,
+                                      skip_compute=True)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
             fbd.fetch_oltp_data(self.splinter,
