@@ -1997,7 +1997,7 @@ function reeBillReady() {
                             'displayText'
                         ],
                         // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                        data: [['dollars'], ['kWh'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
@@ -2624,7 +2624,7 @@ function reeBillReady() {
                             'displayText'
                         ],
                         // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                        data: [['dollars'], ['kWh'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'

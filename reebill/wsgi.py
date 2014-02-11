@@ -747,7 +747,7 @@ class BillToolBridge:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
             last_seq, new_seq, new_version = \
-                self.process.roll_bill(session,account,start_date,
+                self.process.roll_rebill(session,account,start_date,
                         self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
@@ -792,25 +792,9 @@ class BillToolBridge:
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # convert column letters into 0-based indices
-        if not re.match('[A-Za-z]', timestamp_column):
-            raise ValueError('Timestamp column must be a letter')
-        if not re.match('[A-Za-z]', energy_column):
-            raise ValueError('Energy column must be a letter')
-        timestamp_column = ord(timestamp_column.lower()) - ord('a')
-        energy_column = ord(energy_column.lower()) - ord('a')
-
-        # extract data from the file (assuming the format of AtSite's
-        # example files)
-        fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=register_identifier,
-                timestamp_column=timestamp_column,
-                energy_column=energy_column,
-                timestamp_format=timestamp_format, energy_unit=energy_unit)
-
-        self.reebill_dao.save_reebill(reebill)
+        reebill = self.process.upload_interval_meter_csv(account, sequence,
+                        csv_file,timestamp_column, timestamp_format,
+                        energy_column, energy_unit, register_identifier, args)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
         return self.dumps({'success': True})
