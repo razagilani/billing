@@ -581,7 +581,7 @@ class UtilBillTest(utils.TestCase):
                 'quantity_units': 'dollars',
                 'rate': 0,
                 'total': 0,
-                'group': '(no group)',
+                'group': '',
             },
             {
                 'rsi_binding': 'NEW_2',
