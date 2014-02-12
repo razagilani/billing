@@ -175,7 +175,6 @@ class ReeBill(Base):
         self.customer = customer
         self.sequence = sequence
         self.version = version
-        self.utilbills = utilbills
         self.issued = 0
         if discount_rate:
             self.discount_rate = discount_rate
@@ -198,6 +197,7 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+        self.utilbills = utilbills
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
