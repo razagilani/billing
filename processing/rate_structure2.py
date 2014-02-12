@@ -68,7 +68,7 @@ class RateStructureItem(EmbeddedDocument):
     # currently not used
     round_rule = StringField()
 
-    group = StringField(required=True, default="(no group)")
+    group = StringField(required=True, default='')
 
     def __init__(self, *args, **kwargs):
         super(RateStructureItem, self).__init__(*args, **kwargs)
