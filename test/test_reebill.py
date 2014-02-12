@@ -118,9 +118,9 @@ class ReebillTest(TestCaseWithSetup):
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
-            'chargegroups': {'All Charges': [
-                {'rsi_binding': 'A', 'quantity': 0},
-            ]},
+            'charges': [
+                {'rsi_binding': 'A', 'quantity': 0, 'group': 'All Charges'},
+            ],
             'meters': [{
                 'present_read_date': date(2000,2,1),
                 'prior_read_date': date(2000,1,1),
@@ -148,15 +148,16 @@ class ReebillTest(TestCaseWithSetup):
             },
         }
         mongo.compute_all_charges(utilbill_doc, uprs)
-        self.assertEqual({'All Charges': [
+        self.assertEqual([
             {
                 'rsi_binding': 'A',
                 'description': 'a',
                 'quantity': 100,
                 'rate': 2,
                 'total': 200,
+                'group': 'All Charges',
             }
-        ]}, utilbill_doc['chargegroups'])
+        ], utilbill_doc['charges'])
 
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('99999', 1,
                 0, 0.5, 0.1, [utilbill_doc])
@@ -169,37 +170,28 @@ class ReebillTest(TestCaseWithSetup):
         # check that there are the same group names and rsi_bindings and only,
         # by creating two dictionaries mapping group names to sets of
         # rsi_bindings and comparing them
-        utilbill_charge_info = {group_name: [subdict(c, ['rsi_binding',
-                'description']) for c in charges] for group_name, charges
-                in utilbill_doc['chargegroups'].iteritems()}
-        reebill_charge_info = {group_name: [subdict(c, ['rsi_binding',
-                'description']) for c in charges] for group_name, charges
-                in utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
-        self.assertEqual(utilbill_charge_info, reebill_charge_info)
+        self.assertEqual(subdict(utilbill_doc['charges'],
+                ['rsi_binding, description']),
+                subdict(utilbill_subdoc['hypothetical_charges'],
+                ['rsi_binding, description']))
 
         self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
 
         # check reebill charges. since there is no renewable energy,
         # hypothetical charges should be identical to actual charges:
-        self.assertEqual({'All Charges': [
-            {
-                'rsi_binding': 'A',
-                'description': 'a',
-                'quantity': 100,
-                'rate': 2,
-                'total': 200,
-            }
-        ]}, utilbill_subdoc['hypothetical_chargegroups'])
+        self.assertEqual([{
+            'rsi_binding': 'A',
+            'description': 'a',
+            'quantity': 100,
+            'rate': 2,
+            'total': 200,
+            'group': 'All Charges',
+        }], utilbill_subdoc['hypothetical_charges'])
 
-        utilbill_charge_info = {group_name: [subdict(c, ['rsi_binding',
-            'description', 'quantity', 'rate', 'total']) for c in charges]
-            for  group_name,  charges in
-            utilbill_doc['chargegroups'].iteritems()}
-        reebill_charge_info = {group_name: [subdict(c, ['rsi_binding',
-            'description', 'quantity', 'rate', 'total']) for c in charges]
-            for group_name, charges in
-            utilbill_subdoc['hypothetical_chargegroups'].iteritems()}
-        self.assertEqual(utilbill_charge_info, reebill_charge_info)
+        self.assertEqual(subdict(utilbill_doc['charges'],
+                ['rsi_binding, description', 'quantity', 'rate', 'total']),
+                subdict(utilbill_subdoc['hypothetical_charges'],
+                ['rsi_binding, description', 'quantity', 'rate', 'total']))
 
         self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
 

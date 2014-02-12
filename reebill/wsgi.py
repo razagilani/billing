@@ -1614,7 +1614,6 @@ class BillToolBridge:
             charges_json = self.process.get_utilbill_charges_json(session,
                     utilbill_id, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': charges_json,
                         'total':len(charges_json)})

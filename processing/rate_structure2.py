@@ -68,6 +68,8 @@ class RateStructureItem(EmbeddedDocument):
     # currently not used
     round_rule = StringField()
 
+    group = StringField(required=True, default="(no group)")
+
     def __init__(self, *args, **kwargs):
         super(RateStructureItem, self).__init__(*args, **kwargs)
 
@@ -192,7 +194,8 @@ class RateStructureItem(EmbeddedDocument):
             'round_rule': self.round_rule,
             'description': self.description,
             'shared': self.shared,
-            'has_charge': self.has_charge
+            'has_charge': self.has_charge,
+            'group': self.group,
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
