@@ -197,6 +197,15 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+
+        # supposedly, SQLAlchemy sends queries to the database whenever an
+        # association_proxy attribute is accessed, meaning that if
+        # 'utilbills' is set before the other attributes above, SQLAlchemy
+        # will try to insert the new row too soon, and fail because many
+        # fields are still null but the columns are defined as not-null. this
+        # can be fixed by setting 'utilbills' last, but there may be a better
+        # solution. see related bug:
+        # https://www.pivotaltracker.com/story/show/65502556
         self.utilbills = utilbills
 
     def __repr__(self):
