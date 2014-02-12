@@ -3136,6 +3136,7 @@ function reeBillReady() {
                 xtype: 'checkboxcolumn',
                 header: 'Shared',
                 dataIndex: 'shared',
+                sortable: true,
                 on: true,
                 off: false,
                 width: 60
@@ -3183,12 +3184,14 @@ function reeBillReady() {
                 xtype: 'checkboxcolumn',
                 header: 'Has Charge',
                 dataIndex: 'has_charge',
+                sortable: true,
                 on: true,
                 off: false,
                 width: 60
             },{
                 header: 'Group',
                 dataIndex: 'group',
+                sortable: true,
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 60,
             }
