@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<xs:schema xmlns:sb="skylinebill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="skylinebill" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="skylinebill">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="measuredusage" type="sb:measuredusageType" maxOccurs="2"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="measuredusageType">
+		<xs:sequence>
+			<xs:element name="meter" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="identifier"/>
+						<xs:element name="register" maxOccurs="unbounded">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="identifier"/>
+									<xs:element name="description"/>
+									<xs:element name="units"/>
+									<xs:element name="total"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="service">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="gas"/>
+					<xs:enumeration value="electric"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+</xs:schema>
