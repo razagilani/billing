@@ -15,7 +15,6 @@ from sqlalchemy import not_
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from operator import attrgetter, itemgetter
 import operator
 from bson import ObjectId
 import traceback
@@ -661,19 +660,16 @@ class Process(object):
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
         valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates}
-        for group, charges in doc['chargegroups'].iteritems():
-            i = 0
-            while i < len(charges):
-                charge = charges[i]
-                # if the charge matches a valid RSI binding, mark that
-                # binding as matched; if not, delete the charge
-                if charge['rsi_binding'] in valid_bindings:
-                    valid_bindings[charge['rsi_binding']] = True
-                    i += 1
-                else:
-                    charges.pop(i)
-            # NOTE empty chargegroup is not removed because the user might
-            # want to add charges to it again
+        i = 0
+        while i < len(doc['charges']):
+            charge = doc['charges'][i]
+            # if the charge matches a valid RSI binding, mark that
+            # binding as matched; if not, delete the charge
+            if charge['rsi_binding'] in valid_bindings:
+                valid_bindings[charge['rsi_binding']] = True
+                i += 1
+            else:
+                doc['charges'].pop(i)
 
         # TODO add a charge for every RSI that doesn't have a charge, i.e.
         # the ones whose value in 'valid_bindings' is False.
@@ -865,13 +861,11 @@ class Process(object):
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
-        for service in document.services:
-            actual_chargegroups = document. \
-                    actual_chargegroups_for_service(service)
-            document.set_hypothetical_chargegroups_for_service(service,
-                    actual_chargegroups)
+        document.reebill_dict['utilbills'][0]['hypothetical_charges'] \
+                = document._utilbills[0]['charges']
 
         for utilbill in reebill.utilbills:
+            # TODO this is not updating the hypothetical chargs as expected
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             document.compute_charges(uprs)
 
@@ -1080,6 +1074,13 @@ class Process(object):
                 new_sequence, 0, customer.get_discount_rate(),
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
+        # copy 'suspended_services' list from predecessor reebill's document
+        last_reebill_doc = self.reebill_dao.load_reebill(account,
+                last_reebill_row.sequence, last_reebill_row.version)
+        assert all(new_mongo_reebill.suspend_service(s) for s in
+                last_reebill_doc.suspended_services)
+
+        # create reebill row in state database
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
         session.add(new_reebill)
@@ -1160,7 +1161,7 @@ class Process(object):
             # document has to be saved first and it can't be saved again
             # because it has "sequence" and "version" keys
             self.compute_reebill(session, account, sequence,
-                    version=max_version+1)
+                        version=max_version+1)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
