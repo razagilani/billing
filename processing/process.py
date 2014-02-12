@@ -1074,12 +1074,6 @@ class Process(object):
                 new_sequence, 0, customer.get_discount_rate(),
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
-        # copy 'suspended_services' list from predecessor reebill's document
-        last_reebill_doc = self.reebill_dao.load_reebill(account,
-                last_reebill_row.sequence, last_reebill_row.version)
-        assert all(new_mongo_reebill.suspend_service(s) for s in
-                last_reebill_doc.suspended_services)
-
         # create reebill row in state database
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
