@@ -2534,7 +2534,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity_units': 'dollars',
                     'rate': 2,
                     'total': 2,
-                    'group': 'All Charges',
+                    'group': '(no group)',
                 },
                 {
                     'rsi_binding': 'NEW_2',
@@ -2543,7 +2543,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity_units': 'therms',
                     'rate': 6,
                     'total': 30,
-                    'group': 'All Charges',
+                    'group': '(no group)',
                 },
             ], utilbill_doc['charges'])
 
@@ -2573,7 +2573,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity': 0,
                     'rate': 0,
                     'total': 0,
-                    'group': 'All Charges',
+                    'group': '(no group)',
                 },
         ], utilbill_doc['charges'])
 
