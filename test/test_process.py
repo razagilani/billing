@@ -105,8 +105,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual('washgas', utilbill_doc['utility'])
             self.assertEqual(date(2013,1,1), utilbill_doc['start'])
             self.assertEqual(date(2013,2,1), utilbill_doc['end'])
-            self.assertEqual({'All Charges': []},
-                    utilbill_doc['chargegroups'])
+            self.assertEqual([], utilbill_doc['charges'])
             self.assertEqual(0, utilbill_doc['total'])
             self.assertEqual(billing_address, utilbill_doc['billing_address'])
             self.assertEqual(service_address, utilbill_doc['service_address'])
@@ -352,15 +351,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(u)
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-            utilbill_doc['chargegroups'] = {'All Charges': [
+            utilbill_doc['charges'] = [
                 {
                     'rsi_binding': 'THE_CHARGE',
                     'quantity': 100,
                     'quantity_units': 'therms',
                     'rate': 1,
                     'total': 100,
+                    'group': 'All Charges',
                 }
-            ]}
+            ]
             self.process.update_utilbill_metadata(session, u.id,
                     processed=True)
             self.reebill_dao.save_utilbill(utilbill_doc)
@@ -655,8 +655,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             uprs.rates = example_data.get_uprs().rates
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            utilbill_doc['chargegroups'] = example_data.get_utilbill_dict(
-                    '99999')['chargegroups']
+            utilbill_doc['charges'] = example_data.get_utilbill_dict(
+                    '99999')['charges']
             uprs.save()
             self.reebill_dao.save_utilbill(utilbill_doc)
 
@@ -667,9 +667,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
-            actual_chargegroups = reebill1.actual_chargegroups_for_service('gas')
-            assert actual_chargegroups.keys() == ['All Charges']
-            actual_charges = actual_chargegroups['All Charges']
+            actual_charges = reebill1._utilbills[0]['charges']
             total_regster = [r for r in chain.from_iterable(m['registers']
                     for m in reebill1._utilbills[0]['meters'])
                 if r['register_binding'] == 'REG_TOTAL'][0]
@@ -736,9 +734,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # check that each hypothetical charge was computed correctly:
             self.process.compute_reebill(session, account, 1)
             reebill1 = self.reebill_dao.load_reebill(account, 1)
-            hypothetical_chargegroups = reebill1.hypothetical_chargegroups_for_service('gas')
-            assert hypothetical_chargegroups.keys() == ['All Charges']
-            hypothetical_charges = hypothetical_chargegroups['All Charges']
+            hypothetical_charges = reebill1._utilbills[0]['charges']
             shadow_registers = reebill1.reebill_dict['utilbills'][0]\
                      ['shadow_registers']
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
@@ -1267,15 +1263,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         'file.pdf')
                 doc = self.reebill_dao.load_doc_for_utilbill(u)
                 uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-                doc['chargegroups'] = {'All Charges': [
-                    {
-                        'rsi_binding': 'THE_CHARGE',
-                        'quantity': 100,
-                        'quantity_units': 'therms',
-                        'rate': 1,
-                        'total': 100,
-                    }
-                ]}
+                doc['charges'] = [{
+                    'rsi_binding': 'THE_CHARGE',
+                    'quantity': 100,
+                    'quantity_units': 'therms',
+                    'rate': 1,
+                    'total': 100,
+                    'group': 'All Charges',
+                }]
                 self.reebill_dao.save_utilbill(doc)
                 uprs.rates = [RateStructureItem(
                     rsi_binding='THE_CHARGE',
@@ -1404,15 +1399,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                      date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                      'january.pdf')
             u1_doc = self.reebill_dao.load_doc_for_utilbill(u1)
-            u1_doc['chargegroups'] = {'All Charges': [
-                {
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 100,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 100,
-                }
-            ]}
+            u1_doc['charges'] = [{
+                'rsi_binding': 'THE_CHARGE',
+                'quantity': 100,
+                'quantity_units': 'therms',
+                'rate': 1,
+                'total': 100,
+            }]
             self.reebill_dao.save_utilbill(u1_doc)
             u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
             u1_uprs.rates = [RateStructureItem(
@@ -2028,8 +2021,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             uprs.rates = example_data.get_uprs().rates
             utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill_jan)
-            utilbill_jan_doc['chargegroups'] = example_data.get_utilbill_dict(
-                    '99999')['chargegroups']
+            utilbill_jan_doc['charges'] = example_data.get_utilbill_dict(
+                    '99999')['charges']
             uprs.save()
             self.reebill_dao.save_utilbill(utilbill_jan_doc)
 
@@ -2190,12 +2183,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # it will have no charges (all charges in the template get removed
             # because the UPRS and CPRS are empty)
             self.assertDocumentsEqualExceptKeys(utilbill_doc,
-                    utilbill_template, '_id', 'start', 'end', 'chargegroups')
+                    utilbill_template, '_id', 'start', 'end', 'charges')
             self.assertNotEqual(utilbill_doc['_id'],
                     ObjectId(utilbill_template['_id']))
             self.assertEquals(date(2013,1,1), utilbill_doc['start'])
             self.assertEquals(date(2013,2,1), utilbill_doc['end'])
-            self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
+            self.assertEquals([], utilbill_doc['charges'])
 
             # UPRS and CPRS documents should be created and be empty
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(ub)
@@ -2286,17 +2279,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # put it in an un-computable state by adding a charge without an RSI
             reebill_correction_doc = self.reebill_dao.load_reebill(account, 1,
                     version=1)
-            reebill_correction_doc._utilbills[0]['chargegroups']\
-                    ['All Charges'].append({
-                        'rsi_binding': 'NO_RSI',
-                        "description" : "Can't compute this",
-                        "quantity" : 1,
-                        "quantity_units" : "",
-                        "rate" : 11.2,
-                        #"rate_units" : "dollars",
-                        "total" : 11.2,
-                        "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc"
-                    })
+            reebill_correction_doc._utilbills[0]['charges'].append({
+                'rsi_binding': 'NO_RSI',
+                "description" : "Can't compute this",
+                "quantity" : 1,
+                "quantity_units" : "",
+                "rate" : 11.2,
+                "total" : 11.2,
+                "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc",
+                'group': 'All Charges'
+            })
             self.reebill_dao.save_reebill(reebill_correction_doc)
             with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, account, 1, version=1)
@@ -2366,9 +2358,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 )
             ]
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            doc['chargegroups'] = {'All Charges': [{'rsi_binding': rsi_binding,
-                    'quantity': 0, 'rate': 0, 'total': 0}
-                    for rsi_binding in ('AB')]}
+            doc['charges'] = [{'rsi_binding': rsi_binding,
+                    'quantity': 0, 'rate': 0, 'total': 0,
+                    'group': 'All Charges'} for rsi_binding in ('AB')]
             uprs.save()
             self.reebill_dao.save_utilbill(doc)
 
@@ -2386,7 +2378,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # check charges
             # NOTE if the commented-out lines are added below the test will
             # fail, because the charges are missing those keys.
-            self.assertEqual({'All Charges': [
+            self.assertEqual([
                 {
                     'rsi_binding': 'A',
                     'quantity': 2,
@@ -2394,6 +2386,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'rate': 3,
                     'total': 6,
                     'description': 'UPRS only',
+                    'group': 'All Charges',
                 }, {
                     'rsi_binding': 'B',
                     'quantity': 6,
@@ -2401,8 +2394,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'rate': 7,
                     'total': 42,
                     'description': 'not shared',
+                    'group': 'All Charges',
                 },
-            ]}, doc['chargegroups']);
+            ], doc['charges']);
 
 
     def test_compute_reebill(self):
@@ -2421,15 +2415,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     customer=self.state_db.get_customer(session, account))\
                     .order_by(UtilBill.period_start).first()
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(first_utilbill)
-            utilbill_doc['chargegroups'] = {'All Charges': [
-                {
+            utilbill_doc['charges'] = [{
                     'rsi_binding': 'THE_CHARGE',
                     'quantity': 10,
                     'quantity_units': 'therms',
                     'rate': 1,
                     'total': 10,
-                }
-            ]}
+                    'group': 'All Charges',
+            }]
             self.reebill_dao.save_utilbill(utilbill_doc)
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                     first_utilbill)
@@ -2449,6 +2442,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), doc1, use_olap=True)
             self.reebill_dao.save_reebill(doc1)
+            # TODO utilbill subdocument has 0 for its charge (also 0 quantity)
             self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))
             assert session.query(ReeBill).filter(ReeBill.sequence==1).one()\
@@ -2532,27 +2526,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             self.process.refresh_charges(session, utilbill.id)
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.assertEqual({
-                'All Charges': [
-                    {
-                        'rsi_binding': 'NEW_1',
-                        'description': 'a charge for this will be added',
-                        'quantity': 1,
-                        'quantity_units': 'dollars',
-                        'rate': 2,
-                        'total': 2,
-                    },
-                    {
-                        'rsi_binding': 'NEW_2',
-                        'description': 'a charge for this will be added too',
-                        'quantity': 5,
-                        'quantity_units': 'therms',
-                        'rate': 6,
-                        'total': 30,
-                    },
-                ]},
-                utilbill_doc['chargegroups']
-            )
+            self.assertEqual([
+                {
+                    'rsi_binding': 'NEW_1',
+                    'description': 'a charge for this will be added',
+                    'quantity': 1,
+                    'quantity_units': 'dollars',
+                    'rate': 2,
+                    'total': 2,
+                    'group': '',
+                },
+                {
+                    'rsi_binding': 'NEW_2',
+                    'description': 'a charge for this will be added too',
+                    'quantity': 5,
+                    'quantity_units': 'therms',
+                    'rate': 6,
+                    'total': 30,
+                    'group': '',
+                },
+            ], utilbill_doc['charges'])
 
         # TODO move the stuff below into a unit test (in test_utilbill.py)
         # when there's any kind of exception in computing the bill, the new
@@ -2571,8 +2564,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with self.assertRaises(RSIError) as e:
             self.process.refresh_charges(session, utilbill.id)
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-        self.assertEqual({
-            'All Charges': [
+        self.assertEqual([
                 {
                     'rsi_binding': 'BAD',
                     'description': "quantity formula can't be computed",
@@ -2581,9 +2573,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity': 0,
                     'rate': 0,
                     'total': 0,
+                    'group': '',
                 },
-            ],
-        }, utilbill_doc['chargegroups'])
+        ], utilbill_doc['charges'])
 
         # TODO test that document is still saved after any kind of Exception--
         # i'm not sure how to do this because the code should be (and is)
