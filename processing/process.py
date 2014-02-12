@@ -224,6 +224,17 @@ class Process(object):
             doc['service'] = service
             utilbill.service = service
 
+        if utility is not None:
+            utilbill.utility = utility
+            doc['utility'] = utility
+
+        if rate_class is not None:
+            utilbill.rate_class = rate_class
+            doc['rate_class'] = rate_class
+            
+        if processed is not None:
+            utilbill.processed=processed
+
         if period_start is not None:
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
@@ -238,36 +249,24 @@ class Process(object):
             for meter in doc['meters']:
                 meter['present_read_date'] = period_end
 
-        if utility is not None:
-            utilbill.utility = utility
-            doc['utility'] = utility
-
-        if rate_class is not None:
-            utilbill.rate_class = rate_class
-            doc['rate_class'] = rate_class
-            
-        if processed is not None:
-            utilbill.processed=processed
-
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
         self.state_db.trim_hypothetical_utilbills(session,
                 utilbill.customer.account, utilbill.service)
 
-        # finally, un-rollback-able operations: move the file, if there is one,
-        # and save in Mongo. (only utility bills that are Complete (0) or
+        # unfortunately, moving the bill file is an un-rollbackable
+        # operation, but if it needs to be done, it must be done before the
+        # UtilBill's period dates are updated with their new values, since
+        # dates are used in the file name
+        # (only utility bills that are Complete (0) or
         # UtilityEstimated (1) have files; SkylineEstimated (2) and
         # Hypothetical (3) ones don't.)
+        # TODO remove this when utility bill files are no longer named after
+        # dates
         if utilbill.state < state.UtilBill.SkylineEstimated:
-            self.billupload.move_utilbill_file(utilbill.customer.account,
-                    # don't trust the client to say what the original dates were
-                    # TODO don't pass dates into BillUpload as strings
-                    # https://www.pivotaltracker.com/story/show/24869817
-                    old_start, old_end,
-                    # dates in destination file name are the new ones
-                    period_start or utilbill.period_start,
-                    period_end or utilbill.period_end)
+            self.billupload.move_utilbill_file(utilbill, old_start, old_end)
 
+        # save in Mongo last because it can't be rolled back
         self.reebill_dao.save_utilbill(doc)
 
 
@@ -715,9 +714,7 @@ class Process(object):
         # OK to delete now.
         # first try to delete the file on disk
         try:
-            new_path = self.billupload.delete_utilbill_file(
-                    utilbill.customer.account, utilbill.period_start,
-                    utilbill.period_end)
+            new_path = self.billupload.delete_utilbill_file(utilbill)
         except IOError:
             # file never existed or could not be found
             new_path = None
