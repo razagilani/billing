@@ -179,15 +179,17 @@ class Process(object):
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
         hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
-        try:
-            for hypothetical_charge_dict in hypothetical_charges:
+        for hypothetical_charge_dict in hypothetical_charges:
+            try:
                 matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
-                hypothetical_charge_dict['actual_rate'] = matching['rate']
-                hypothetical_charge_dict['actual_quantity'] = matching['quantity']
-                hypothetical_charge_dict['actual_total'] = matching['total']
-        except KeyError:
-            raise NoSuchRSIError('RSI found on Rate Structure, but not on the'
-                                 'selected Reebill. Please recompute the bill.')
+            except KeyError:
+                raise NoSuchRSIError('The set of charges on the Reebill do not'
+                                     ' match the charges on the associated'
+                                     ' utility bill. Please recompute the'
+                                     ' ReeBill.')
+            hypothetical_charge_dict['actual_rate'] = matching['rate']
+            hypothetical_charge_dict['actual_quantity'] = matching['quantity']
+            hypothetical_charge_dict['actual_total'] = matching['total']
         return hypothetical_charges
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
