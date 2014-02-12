@@ -2832,14 +2832,14 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit:true,
-            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
+            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})',
             scrollOffset: 30
         }),
         plugins: aChargesSummary,
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'group',
-        clicksToEdit: 2
+        clicksToEdit: 2,
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
@@ -5832,7 +5832,7 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
-        fbar: new ext.toolbar({
+        fbar: new Ext.Toolbar({
                 height: 13,
                 items:[
                     {   xtype: 'displayfield',
