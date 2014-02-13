@@ -267,9 +267,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     utilbill.id, period_end=date(2014,2,1))
 
             # change start date
-            # TODO this is failing to actually move the file because
+            # TODO: this fails to actually move the file because
             # get_utilbill_file_path, called by move_utilbill, is using the
-            # UtilBill object, whose date attributes have not been updated yet.
+            # UtilBill object, whose date attributes have not been updated
+            # yet. it should start passing when the file's old path and the
+            # new it's path are the same.
             self.process.update_utilbill_metadata(session, utilbill.id,
                     period_start=date(2013,1,2))
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
