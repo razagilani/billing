@@ -267,6 +267,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     utilbill.id, period_end=date(2014,2,1))
 
             # change start date
+            # TODO: this fails to actually move the file because
+            # get_utilbill_file_path, called by move_utilbill, is using the
+            # UtilBill object, whose date attributes have not been updated
+            # yet. it should start passing when the file's old path and the
+            # new it's path are the same.
             self.process.update_utilbill_metadata(session, utilbill.id,
                     period_start=date(2013,1,2))
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -274,6 +279,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(date(2013,1,2), doc['start'])
             for meter in doc['meters']:
                 self.assertEqual(date(2013,1,2), meter['prior_read_date'])
+            # check that file really exists at the expected path
+            # (get_utilbill_file_path also checks for existence)
+            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
 
             # change end date
             self.process.update_utilbill_metadata(session, utilbill.id,
@@ -973,16 +981,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # sure it exists all 3 places)
             self.process.upload_utility_bill(session, account, 'gas',
                     start, end, StringIO("test"), 'january.pdf')
+            customer = session.query(Customer) \
+                .filter(Customer.account == account).one()
+            utilbill = session.query(UtilBill) \
+                .filter(UtilBill.customer_id == customer.id) \
+                .filter(UtilBill.period_start == start) \
+                .filter(UtilBill.period_end == end).one()
             assert self.state_db.list_utilbills(session, account)[1] == 1
-            bill_file_path = self.billupload.get_utilbill_file_path(account,
-                    start, end)
+            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
             assert os.access(bill_file_path, os.F_OK)
-            customer = session.query(Customer)\
-                    .filter(Customer.account == account).one()
-            utilbill = session.query(UtilBill)\
-                    .filter(UtilBill.customer_id == customer.id)\
-                    .filter(UtilBill.period_start == start)\
-                    .filter(UtilBill.period_end == end).one()
             self.reebill_dao.load_doc_for_utilbill(utilbill)
             self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
 
@@ -999,22 +1006,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
-                    account, start, end)
+                    deleted_bill)
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
             self.process.upload_utility_bill(session, account, 'gas',
                     start, end, StringIO("test"), 'january-gas.pdf')
+            utilbill = session.query(UtilBill) \
+                .filter(UtilBill.customer_id == customer.id) \
+                .filter(UtilBill.period_start == start) \
+                .filter(UtilBill.period_end == end).one()
             assert self.state_db.list_utilbills(session, account)[1] == 1
             self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
-            bill_file_path = self.billupload.get_utilbill_file_path(account,
-                    start, end)
+            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
             assert os.access(bill_file_path, os.F_OK)
-            utilbill = session.query(UtilBill)\
-                    .filter(UtilBill.customer_id == customer.id)\
-                    .filter(UtilBill.period_start == start)\
-                    .filter(UtilBill.period_end == end).one()
-            
+
             # when utilbill is attached to reebill, deletion should fail
             first_reebill = self.process.roll_reebill(session, account, start_date=start)
             assert first_reebill.utilbills == [utilbill]
@@ -1067,11 +1073,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,3,1), date(2013,4,1)))
 
             # test deletion of utility bill with non-standard file extension
-            self.process.upload_utility_bill(session, account, 'gas',
-                     date(2013,4,1), date(2013,5,1), StringIO("a bill"),
+            utilbill_apr = self.process.upload_utility_bill(session, account,
+                    'gas', date(2013,4,1), date(2013,5,1), StringIO("a bill"),
                      'billfile.abcdef')
-            the_path = self.billupload.get_utilbill_file_path(account,
-                    date(2013,4,1), date(2013,5,1))
+            the_path = self.billupload.get_utilbill_file_path(utilbill_apr)
             assert os.access(the_path, os.F_OK)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
@@ -1079,11 +1084,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
 
             # test deletion of utility bill with no file extension
-            self.process.upload_utility_bill(session, account, 'gas',
-                     date(2013,2,1), date(2013,3,1), StringIO("a bill"),
-                     'billwithnoextension')
-            the_path = self.billupload.get_utilbill_file_path(account,
-                    date(2013,2,1), date(2013,3,1))
+            utilbill_feb = self.process.upload_utility_bill(session, account,
+                    'gas', date(2013,2,1), date(2013,3,1), StringIO("a bill"),
+                    'billwithnoextension')
+            the_path = self.billupload.get_utilbill_file_path(utilbill_feb)
             assert os.access(the_path, os.F_OK)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
