@@ -855,20 +855,19 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(session, account, sequence,
                 version)
-
-        document = self.reebill_dao.load_reebill(account, sequence, version)
+        assert len(reebill.utilbills) == 1
 
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
+        utilbill_document = self.reebill_dao.load_doc_for_utilbill(reebill
+                                                               .utilbills[0])
+        document = self.reebill_dao.load_reebill(account, sequence, version)
         document.reebill_dict['utilbills'][0]['hypothetical_charges'] \
-                = document._utilbills[0]['charges']
-
+                = utilbill_document['charges']
         for utilbill in reebill.utilbills:
-            # TODO this is not updating the hypothetical chargs as expected
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             document.compute_charges(uprs)
-        self.reebill_dao.save_reebill(document)
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
         actual_total = document.get_total_utility_charges()
@@ -877,13 +876,15 @@ class Process(object):
         reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
         reebill.ree_savings = reebill.ree_value * reebill.discount_rate
 
+        self.reebill_dao.save_reebill(document)
+        # NOTE document is no longer used after this
+
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
         # (1) it's a version-0 bill, not a correction
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-
         if reebill.sequence == 1:
             reebill.total_adjustment = 0
 
