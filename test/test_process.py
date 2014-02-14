@@ -2573,7 +2573,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity': 0,
                     'rate': 0,
                     'total': 0,
-                    'group': 'All Charges',
+                    'group': '',
                 },
         ], utilbill_doc['charges'])
 
