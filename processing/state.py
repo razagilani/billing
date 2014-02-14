@@ -239,6 +239,12 @@ class ReeBill(Base):
         produced by the difference between two versions of a bill.'''
         return self.ree_charge + self.late_charge
 
+    def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
+        assert len(self.utilbills) == 1
+        return sum(charge.total for charge in self.charges)
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -274,6 +280,14 @@ class UtilbillReebill(Base):
 
 
 class ReeBillCharge(Base):
+    '''Table representing "hypothetical" versions of charges in reebills (so
+    named because these may not have the same schema as utility bill charges).
+    Note that, in the past, a set of "hypothetical charges" was associated
+    with each utility bill subdocument of a reebill Mongo document, of which
+    there was always 1 in practice. Now these charges are associated directly
+    with a reebill, so there would be no way to distinguish between charges
+    from different utility bills, if there mere multiple utility bills.
+    '''
     __tablename__ = 'reebill_charge'
 
     id = Column(Integer, primary_key=True)
