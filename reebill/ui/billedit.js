@@ -3137,6 +3137,7 @@ function reeBillReady() {
                 xtype: 'checkboxcolumn',
                 header: 'Shared',
                 dataIndex: 'shared',
+                sortable: true,
                 on: true,
                 off: false,
                 width: 60
@@ -3184,12 +3185,14 @@ function reeBillReady() {
                 xtype: 'checkboxcolumn',
                 header: 'Has Charge',
                 dataIndex: 'has_charge',
+                sortable: true,
                 on: true,
                 off: false,
                 width: 60
             },{
                 header: 'Group',
                 dataIndex: 'group',
+                sortable: true,
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 60,
             }
@@ -5511,7 +5514,7 @@ function reeBillReady() {
                 editor: new Ext.form.NumberField(),
                 renderer: function(v, params, record)
                 {
-                    return Ext.util.Format.usMoney(record.data.difference);
+                    return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
                 },
             },
         ],
@@ -5540,7 +5543,6 @@ function reeBillReady() {
                     account: r.data.account,
                     sequence: r.data.sequence,
                     apply_corrections: false,
-                    recipients: r.data.mailto
                 },
                 success: function (response, options) {
                     var o = {};
@@ -5567,7 +5569,7 @@ function reeBillReady() {
                                 + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         issueDataConn.request({
-                                            params: { account: r.data.account, sequence: r.data.sequence, recipients: r.data.mailto, apply_corrections: true},
+                                            params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true) {
