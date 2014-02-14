@@ -856,8 +856,6 @@ class Process(object):
         reebill = self.state_db.get_reebill(session, account, sequence,
                 version)
 
-        # TODO update fields in reebill itself
-
         document = self.reebill_dao.load_reebill(account, sequence, version)
 
         # update "hypothetical charges" in reebill document to match actual
@@ -915,9 +913,7 @@ class Process(object):
         else:
             predecessor = self.state_db.get_reebill(session, account, reebill
                     .sequence - 1, version=0)
-            predecessor_is_issued = self.state_db.is_issued(session,
-                    account, predecessor.sequence, version=0, nonexistent=False)
-            if reebill.version == 0 and predecessor_is_issued:
+            if reebill.version == 0 and predecessor.issued:
                 reebill.total_adjustment = self.get_total_adjustment(
                         session, account)
 
@@ -925,9 +921,7 @@ class Process(object):
             # predecessor's version 0 and issue date of current reebill's version 0
             # (if current reebill is unissued, its version 0 has None as its
             # issue_date, meaning the payment period lasts up until the present)
-            if self.state_db.is_issued(session, account,
-                            predecessor.sequence, version=0,
-                            nonexistent=False):
+            if predecessor.issued:
                 # if predecessor's version 0 is issued, gather all payments from
                 # its issue date until version 0 issue date of current bill, or
                 # today if this bill has never been issued
@@ -956,8 +950,7 @@ class Process(object):
 
             reebill.prior_balance = predecessor.balance_due
             reebill.balance_forward = predecessor.balance_due - \
-                                          reebill.payment_received + \
-                                          reebill.total_adjustment
+                  reebill.payment_received + reebill.total_adjustment
 
         # include manually applied adjustment
         reebill.balance_forward += reebill.manual_adjustment
@@ -966,14 +959,10 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
         lc = self.get_late_charge(session, reebill)
-        if lc is not None:
-            # set late charge and include it in balance_due
-            reebill.late_charge = lc
-            reebill.balance_due = reebill.balance_forward + \
-                  reebill.ree_charge + reebill.late_charge
-        else:
-            # ignore late charge
-            reebill.balance_due = reebill.balance_forward + reebill.ree_charge
+        reebill.late_charge = lc or 0
+        reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
+                reebill.late_charge
+
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
