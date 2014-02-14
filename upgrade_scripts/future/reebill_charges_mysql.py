@@ -1,4 +1,5 @@
-import sys
+from sys import stderr
+from itertools import chain
 import pymongo
 import mongoengine
 import MySQLdb
@@ -24,36 +25,56 @@ cur = con.cursor()
 
 # create new table reebill_charge
 cur.execute('''
-create table reebill_charge (
+create table if not exists reebill_charge (
     id integer not null auto_increment primary key,
-    reebill_id integer foreign key references reebill (id),
+    reebill_id integer not null,
     rsi_binding varchar(1000) not null,
     description varchar(1000) not null,
-    group,
+    group_name varchar(1000) not null,
     quantity float not null,
     rate float not null,
     total float not null,
+    foreign key (reebill_id) references reebill (id)
 )''')
 
 for reebill in s.query(ReeBill).join(Customer)\
         .filter(ReeBill.customer_id==Customer.id)\
         .order_by(Customer.account, ReeBill.sequence).all():
-    document = self.reebill_dao.load_reebill(reebill.customer.account,
+    document = rbd.load_reebill(reebill.customer.account,
             reebill.sequence, version=reebill.version)
     # TODO what about multiple utility bills? should charges actually be
     # associated with utilbill_reebill instead of reebill?
+    if len(document._utilbills) > 1:
+        print >> stderr, 'ERROR skipped %s due to multiple utility bills' % reebill
+
+    # charge subdocument key names to default values to be substituted when the keys are missing
+    # order is argument
+    keys_defaults = [
+       ('rsi_binding','UNKNOWN'),
+       ('description',''),
+       ('group',''),
+       ('quantity', 0),
+       ('rate', 0),
+       ('total', 0),
+    ]
+
+    #try:
+    charges = document.reebill_dict['utilbills'][0]['hypothetical_charges']
+    #except KeyError as e:
+        #print >> stderr, 'ERROR', reebill, e
+
+    if not all(chain.from_iterable((key in c for key, _ in keys_defaults) for c in charges)):
+        print >> stderr, 'WARNING: %s-%s-%s: default values substituted for missing keys' % (reebill.customer.account, reebill.sequence, reebill.version)
 
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # corresponding to new table)
-    reebill.charges = [ReeBillCharge(c['rsi_binding'], c['description'], c['group'],
-            c['quantity'], c['rate'], c['total'])
-            for c in document['hypothetical_charges']]
+    reebill.charges = [ReeBillCharge(*[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
 
     # remove charges fro Mongo
-    del document['hypothetical_charges']
-    self.reebill_dao.save_reebill(document)
+    del document.reebill_dict['utilbills'][0]['hypothetical_charges']
+    #rbd.reebill_dao.save_reebill(document)
 
-cur.commit()
+con.commit()
 s.commit()
 
 
