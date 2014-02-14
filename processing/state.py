@@ -170,6 +170,8 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
+    charges = relationship('ReeBillCharge', backref='reebill')
+
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
         self.customer = customer
@@ -253,8 +255,6 @@ class UtilbillReebill(Base):
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
 
-    charges = relationship('ReeBillCharge', backref='reebill')
-
     def __init__(self, utilbill, document_id=None):
         # UtilbillReebill has only 'utilbill' in its __init__ because the
         # relationship goes Reebill -> UtilbillReebill -> UtilBill. NOTE if the
@@ -280,7 +280,9 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    group = Column(String, nullable=False)
+    # NOTE alternate name is required because you can't have a column called
+    # "group" in MySQL
+    group = Column(String, name='group_name', nullable=False)
     quantity = Column(Float, nullable=False)
     rate = Column(Float, nullable=False)
     total = Column(Float, nullable=False)
