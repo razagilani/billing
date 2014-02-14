@@ -885,7 +885,6 @@ class Process(object):
         #     contribute to the adjustment on this bill)
 
         if reebill.sequence == 1:
-            predecessor = None
             reebill.total_adjustment = 0
 
             # include all payments since the beginning of time, in case there
@@ -911,11 +910,11 @@ class Process(object):
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
         else:
-            predecessor = self.state_db.get_reebill(session, account, reebill
-                    .sequence - 1, version=0)
+            predecessor = self.state_db.get_reebill(session, account,
+                    reebill.sequence - 1, version=0)
             if reebill.version == 0 and predecessor.issued:
-                reebill.total_adjustment = self.get_total_adjustment(
-                        session, account)
+                reebill.total_adjustment = self.get_total_adjustment(session,
+                                                                     account)
 
             # get payment_received: all payments between issue date of
             # predecessor's version 0 and issue date of current reebill's version 0
@@ -927,15 +926,12 @@ class Process(object):
                 # today if this bill has never been issued
                 if self.state_db.is_issued(session, account,
                                 reebill.sequence, version=0):
-                    prior_v0_issue_date = self.state_db.get_reebill(session,
-                            account, predecessor.sequence,
-                            version=0).issue_date
                     present_v0_issue_date = self.state_db.get_reebill(session,
                             account, reebill.sequence,
                             version=0).issue_date
                     reebill.payment_received = self.state_db. \
                             get_total_payment_since(session, account,
-                            prior_v0_issue_date,
+                            predecessor.issue_date,
                             end=present_v0_issue_date)
                 else:
                     reebill.payment_received = self.state_db. \
