@@ -169,29 +169,30 @@ class Process(object):
         mongo.delete_charge(utilbill_doc, rsi_binding)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
-    def get_hypothetical_matched_charges(self, account, sequence, service):
+    def get_hypothetical_matched_charges(self, session, account, sequence,
+             service):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        if reebill is None:
-            raise NoSuchBillException
-        utilbill_doc = reebill._get_utilbill_for_service(service)
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        hypothetical_charges = reebill.reebill_dict['utilbills'][0]\
-                ['hypothetical_charges']
-        for hypothetical_charge_dict in hypothetical_charges:
+        result = {}
+        for hypothetical_charge in reebill.charges:
             try:
-                matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
+                matching = actual_charge_dict[hypothetical_charge.rsi_binding]
             except KeyError:
                 raise NoSuchRSIError('The set of charges on the Reebill do not'
                                      ' match the charges on the associated'
                                      ' utility bill. Please recompute the'
                                      ' ReeBill.')
-            hypothetical_charge_dict['actual_rate'] = matching['rate']
-            hypothetical_charge_dict['actual_quantity'] = matching['quantity']
-            hypothetical_charge_dict['actual_total'] = matching['total']
-        return hypothetical_charges
+            result.append({
+                'actual_rate': matching['rate']
+                'actual_quantity': matching['quantity']
+                'actual_total': matching['total']
+            })
+        return result
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
