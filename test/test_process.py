@@ -377,7 +377,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 100
             self.process.compute_reebill(session, acc, 1)
-            self.reebill_dao.save_reebill(bill1_doc)
+            self.reebill_dao.save_reebill_and_utilbill(bill1_doc)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
@@ -407,11 +407,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill2_doc = self.reebill_dao.load_reebill(acc, 2)
             bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
-            self.reebill_dao.save_reebill(bill2_doc)
+            self.reebill_dao.save_reebill_and_utilbill(bill2_doc)
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charge == 100
-            self.reebill_dao.save_reebill(bill2_doc)
+            self.reebill_dao.save_reebill_and_utilbill(bill2_doc)
 
             # bill2's late charge should be 0 before bill1's due date; on/after
             # the due date, it's balance * late charge rate, i.e.
@@ -462,7 +462,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
             bill1_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
                     ['quantity'] = 100
-            self.reebill_dao.save_reebill(bill1_1_doc)
+            self.reebill_dao.save_reebill_and_utilbill(bill1_1_doc)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
             assert bill1_1.ree_charge == 25
@@ -478,7 +478,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill1_2_doc = self.reebill_dao.load_reebill(acc, 1, version=2)
             bill1_2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
                     ['quantity'] = 100
-            self.reebill_dao.save_reebill(bill1_2_doc)
+            self.reebill_dao.save_reebill_and_utilbill(bill1_2_doc)
             bill1_2.discount_rate = 0.25
             self.process.compute_reebill(session, acc, 1, version=2)
             assert bill1_2.ree_charge == 75
@@ -618,7 +618,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             })
             bill0._utilbills.append(electric_bill)
             bill0.suspend_service('electric')
-            self.reebill_dao.save_reebill(bill0)
+            self.reebill_dao.save_reebill_and_utilbill(bill0)
 
             bill1 = self.process.roll_rebill(session, bill0)
 
@@ -1043,7 +1043,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             other_utility_bill_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill)
             new_version_reebill_doc._utilbills[0]['_id'] = other_utility_bill_doc['_id']
-            self.reebill_dao.save_reebill(new_version_reebill_doc)
+            self.reebill_dao.save_reebill_and_utilbill(new_version_reebill_doc)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill)
             session.commit()
@@ -1151,7 +1151,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             mongo.set_meter_read_period(reebill._utilbills[0], date(2012,1,1),
                     date(2012,2,1))
             self.process.compute_reebill(session, acc, 1)
-            self.reebill_dao.save_reebill(reebill)
+            self.reebill_dao.save_reebill_and_utilbill(reebill)
 
             # issue reebill
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
@@ -1288,7 +1288,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one.discount_rate = 0.5
             one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 100
-            self.reebill_dao.save_reebill(one_doc)
+            self.reebill_dao.save_reebill_and_utilbill(one_doc)
             self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
             # one = self.reebill_dao.load_reebill(acc, one.sequence)
@@ -1300,7 +1300,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             two_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 200
-            self.reebill_dao.save_reebill(two_doc)
+            self.reebill_dao.save_reebill_and_utilbill(two_doc)
             self.process.compute_reebill(session, acc, 2)
             self.process.issue(session, acc, two.sequence)
             assert two.ree_charge == 100
@@ -1311,7 +1311,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             three.discount_rate = 0.5
             three_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 300
-            self.reebill_dao.save_reebill(three_doc)
+            self.reebill_dao.save_reebill_and_utilbill(three_doc)
             self.process.issue(session, acc, three.sequence)
             assert three.ree_charge == 150
 
@@ -1345,8 +1345,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'quantity'] = 100
             three_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
                     'quantity'] = 300
-            self.reebill_dao.save_reebill(one_1_doc)
-            self.reebill_dao.save_reebill(three_1_doc)
+            self.reebill_dao.save_reebill_and_utilbill(one_1_doc)
+            self.reebill_dao.save_reebill_and_utilbill(three_1_doc)
             self.process.compute_reebill(session, acc, 1, version=1)
             self.process.compute_reebill(session, acc, 3, version=1)
             assert one_1.ree_charge == 25
@@ -1435,7 +1435,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # so there's no need to replace that value with a known one here
             one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
                     ['quantity'] = 100
-            self.reebill_dao.save_reebill(one_doc)
+            self.reebill_dao.save_reebill_and_utilbill(one_doc)
             self.process.compute_reebill(session, acc, 1)
             assert one.ree_charge == 50
             assert one.balance_due == 50
@@ -1452,7 +1452,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
                     two_doc)
-            self.reebill_dao.save_reebill(two_doc)
+            self.reebill_dao.save_reebill_and_utilbill(two_doc)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late
             # charge
@@ -2078,7 +2078,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 total = reebill2.total
                 balance_due = reebill2.balance_due
 
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
 
                 # this function checks that current values match the orignals
                 def check():
@@ -2102,7 +2102,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                         use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
@@ -2111,22 +2111,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
                     use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
+                self.reebill_dao.save_reebill_and_utilbill(reebill2_doc)
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
@@ -2293,7 +2293,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffc",
                 'group': 'All Charges'
             })
-            self.reebill_dao.save_reebill(reebill_correction_doc)
+            self.reebill_dao.save_reebill_and_utilbill(reebill_correction_doc)
             with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, account, 1, version=1)
 
@@ -2445,7 +2445,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill1.discount_rate = 0.5
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), doc1, use_olap=True)
-            self.reebill_dao.save_reebill(doc1)
+            self.reebill_dao.save_reebill_and_utilbill(doc1)
             # TODO utilbill subdocument has 0 for its charge (also 0 quantity)
             self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))

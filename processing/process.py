@@ -410,7 +410,7 @@ class Process(object):
         if sa_postal_code is not None:
             document.service_address['postal_code'] = sa_postal_code
 
-        self.reebill_dao.save_reebill(document)
+        self.reebill_dao.save_reebill_and_utilbill(document)
 
 
     def upload_utility_bill(self, session, account, service, begin_date,
@@ -1089,7 +1089,7 @@ class Process(object):
         session.add(new_reebill)
 
         # save reebill document in Mongo
-        self.reebill_dao.save_reebill(new_mongo_reebill)
+        self.reebill_dao.save_reebill_and_utilbill(new_mongo_reebill)
 
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
@@ -1098,7 +1098,7 @@ class Process(object):
         if integrate_skyline_backend:
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_mongo_reebill, use_olap=True)
-            self.reebill_dao.save_reebill(new_mongo_reebill)
+            self.reebill_dao.save_reebill_and_utilbill(new_mongo_reebill)
 
         if not skip_compute:
             try:
@@ -1177,7 +1177,7 @@ class Process(object):
                     reebill_doc.version, reebill_doc.account,
                     reebill_doc.sequence, e, traceback.format_exc()))
 
-        self.reebill_dao.save_reebill(reebill_doc)
+        self.reebill_dao.save_reebill_and_utilbill(reebill_doc)
         return reebill_doc
 
     def get_unissued_corrections(self, session, account):
@@ -1468,12 +1468,12 @@ class Process(object):
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        frozen_utilbill_id = self.reebill_dao.save_reebill(reebill_document,
+        frozen_utilbill_id = self.reebill_dao.save_reebill_and_utilbill(reebill_document,
                 freeze_utilbills=True)
         reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
 
         # also duplicate UPRS, storing the new _ids in MySQL
-        # ('save_reebill' can't do it because ReeBillDAO deals only with bill
+        # ('save_reebill_and_utilbill' can't do it because ReeBillDAO deals only with bill
         # documents)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 reebill.utilbills[0])
@@ -1780,7 +1780,7 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
-        self.reebill_dao.save_reebill(reebill)
+        self.reebill_dao.save_reebill_and_utilbill(reebill)
 
 
     def mail_reebills(self, session, account, sequences, recipient_list):
@@ -1884,6 +1884,6 @@ class Process(object):
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
 
-        self.reebill_dao.save_reebill(reebill)
+        self.reebill_dao.save_reebill_and_utilbill(reebill)
 
         return reebill
