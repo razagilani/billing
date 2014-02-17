@@ -665,7 +665,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.compute_reebill(session, account, 1)
             reebill1 = self.state_db.get_reebill(session, account, 1)
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill1
-                                                                  .utilbills[ 0])
+                                                                  .utilbills[0])
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
@@ -680,11 +680,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertDecimalAlmostEqual(11.2, system_charge['total'])
 
             # right-of-way fee
+            # TODO this fails because the utility bill register quantity is 0.
+            # what was it before?
             row_charge = [c for c in actual_charges if c['rsi_binding'] ==
                     'RIGHT_OF_WAY'][0]
             self.assertDecimalAlmostEqual(0.03059 * float(total_regster['quantity']),
                     row_charge['total'], places=2) # TODO OK to be so inaccurate?
-            
+
             # sustainable energy trust fund
             setf_charge = [c for c in actual_charges if c['rsi_binding'] ==
                     'SETF'][0]
