@@ -70,13 +70,13 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
             # version of each bill. issued reebills need their own frozen
             # utilbills in Mongo, which are created by saving with
             # freeze_utilbills=True.
-            self.reebill_dao.save_reebill_and_utilbill(b0)
+            self.reebill_dao.save_reebill(b0)
             self.reebill_dao.save_reebill_and_utilbill(b1, freeze_utilbills=True)
             self.reebill_dao.save_reebill_and_utilbill(b1_1, freeze_utilbills=True)
-            self.reebill_dao.save_reebill_and_utilbill(b1_2)
-            self.reebill_dao.save_reebill_and_utilbill(b2)
+            self.reebill_dao.save_reebill(b1_2)
+            self.reebill_dao.save_reebill(b2)
             self.reebill_dao.save_reebill_and_utilbill(b3, freeze_utilbills=True)
-            self.reebill_dao.save_reebill_and_utilbill(b3_1)
+            self.reebill_dao.save_reebill(b3_1)
             self.state_db.new_reebill(session, '99999', 1, version=0)
             self.state_db.new_reebill(session, '99999', 1, version=1)
             self.state_db.new_reebill(session, '99999', 1, version=2)
@@ -183,7 +183,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
     def test_save_reebill(self):
         with DBSession(self.state_db) as session:
             b = example_data.get_reebill('99999', 1)
-            self.reebill_dao.save_reebill_and_utilbill(b)
+            self.reebill_dao.save_reebill(b)
             self.state_db.new_reebill(session, '99999', 1)
 
             # save frozen utility bills
@@ -206,8 +206,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
 
             # likewise, an issued reebill can't be saved
             self.state_db.issue(session, '99999', 1)
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill_and_utilbill,
-                    b)
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill, b)
             self.assertRaises(IssuedBillError,
                     self.reebill_dao.save_reebill_and_utilbill, b, freeze_utilbills=True)
 
