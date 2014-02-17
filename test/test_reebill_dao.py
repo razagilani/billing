@@ -307,7 +307,8 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         utility bill documents associated with it.'''
         # save reebill (with utility bills)
         b = example_data.get_reebill('99999', 1)
-        self.reebill_dao.save_reebill_and_utilbill(b)
+        self.reebill_dao.save_reebill(b)
+        self.reebill_dao.save_utilbill(b._utilbills[0])
 
         # reebill and utility bills should be in mongo. there are 2 utility
         # bills because of the template document that is already there.
