@@ -680,10 +680,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertDecimalAlmostEqual(11.2, system_charge['total'])
 
             # right-of-way fee
-            # TODO this fails because the utility bill register quantity is
-            # 0, but the charge is not 0. on default (54c927b3bcd9),
-            # the register quantity is also 0 but the charge is 0.
-            # why is the charge non-0 here?
             row_charge = [c for c in actual_charges if c['rsi_binding'] ==
                     'RIGHT_OF_WAY'][0]
             self.assertDecimalAlmostEqual(0.03059 * float(total_regster['quantity']),
