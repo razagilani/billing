@@ -746,19 +746,19 @@ class BillToolBridge:
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
-            last_seq, new_seq, new_version = \
-                self.process.roll_rebill(session,account,start_date,
-                        self.integrate_skyline_backend)
+            reebill = self.process.roll_reebill(session,account,
+                    start_date=start_date,
+                    integrate_skyline_backend=self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, last_seq + 1)
+                    account, reebill.sequence)
             # Process.roll includes attachment
             # TODO "attached" is no longer a useful event;
             # see https://www.pivotaltracker.com/story/show/55044870
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, last_seq + 1, new_version)
+                account, reebill.sequence, reebill.version)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_seq, new_version)
+                account, reebill.sequence, reebill.version)
 
         return self.dumps({'success': True})
 
@@ -1614,7 +1614,6 @@ class BillToolBridge:
             charges_json = self.process.get_utilbill_charges_json(session,
                     utilbill_id, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': charges_json,
                         'total':len(charges_json)})
