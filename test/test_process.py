@@ -735,9 +735,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
             self.process.compute_reebill(session, account, 1)
-            reebill1 = self.reebill_dao.load_reebill(account, 1)
-            hypothetical_charges = reebill1._utilbills[0]['charges']
-            shadow_registers = reebill1.reebill_dict['utilbills'][0]\
+            reebill = self.state_db.get_reebill(session, account, 1)
+            reebill_doc = self.reebill_dao.load_reebill(account, 1)
+            hypothetical_charges = reebill.charges
+            shadow_registers = reebill_doc.reebill_dict['utilbills'][0]\
                      ['shadow_registers']
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
             hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
