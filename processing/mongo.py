@@ -700,7 +700,6 @@ class MongoReebill(object):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill.
         '''
-        account, sequence = self.account, self.sequence
         # process rate structures for all services
         for service in self.services:
             utilbill_doc = self._get_utilbill_for_service(service)
@@ -1288,12 +1287,12 @@ class MongoReebill(object):
             if self.reebill_dict['suspended_services'] == []:
                 del self.reebill_dict['suspended_services']
 
-    def utilbill_period_for_service(self, service_name):
-        '''Returns start & end dates of the first utilbill found whose service
-        is 'service_name'. There's not supposed to be more than one utilbill
-        per service.'''
-        u = self._get_utilbill_for_service(service_name)
-        return u['start'], u['end']
+    # def utilbill_period_for_service(self, service_name):
+    #     '''Returns start & end dates of the first utilbill found whose service
+    #     is 'service_name'. There's not supposed to be more than one utilbill
+    #     per service.'''
+    #     u = self._get_utilbill_for_service(service_name)
+    #     return u['start'], u['end']
 
     #def set_utilbill_period_for_service(self, service, period):
     #    '''Changes the period dates of the first utility bill associated with
@@ -1309,75 +1308,75 @@ class MongoReebill(object):
         assert len(self._utilbills) == 1
         return meter_read_period(self._utilbills[0])
 
-    # TODO make this go away; don't use reebill object to get utility bill data
-    def meter_read_dates_for_service(self, service):
-        '''Returns (prior_read_date, present_read_date) of the shadowed meter
-        in the first utility bill found whose service is 'service_name'. (There
-        should only be one utility bill for the given service, and only one
-        register in one meter that has a corresponding shadow register in the
-        reebill.)'''
-        external_utilbill = self._get_utilbill_for_service(service)
-        utilbill_handle = self._get_handle_for_service(service)
-        for shadow_register in utilbill_handle['shadow_registers']:
-            for meter in external_utilbill['meters']:
-                for actual_register in meter['registers']:
-                    if actual_register['identifier'] == shadow_register['identifier']:
-                        return meter['prior_read_date'], meter['present_read_date']
-        raise ValueError(('Utility bill for service "%s" has no meter '
-                'containing a register whose identifier matches that of '
-                'a shadow register') % service)
-
-    #@property
-    #def utilbill_periods(self):
-    #    '''Return a dictionary whose keys are service and values are the
-    #    utilbill period.'''
-    #    return dict([(service, self.utilbill_period_for_service(service)) for
-    #        service in self.services])
-
-    # TODO make this go away when render.py is replaced
-    def meters_for_service(self, service_name):
-        '''Replicates part of an old version of the reebill/utility bill
-        document schema for use by render.py which is tightly coupled to it.
-        Do not add any new calls to this method!
-        '''
-        assert len(self._utilbills) == 1
-        meters = copy.deepcopy(
-                self._get_utilbill_for_service(service_name)['meters'])
-        utilbill_handle = self._get_handle_for_service(service_name)
-
-        result = []
-        for m in meters:
-            meter_dict = {
-                'prior_read_date': m['prior_read_date'],
-                'present_read_date': m['present_read_date'],
-                'identifier': m['identifier'],
-                'registers': [],
-            }
-            for register in m['registers']:
-                assert 'shadow' not in m['registers']
-                meter_dict['registers'].append({
-                    'shadow': False,
-                    'register_binding': register['register_binding'],
-                    'quantity_units': register['quantity_units'],
-                    'type': register['type'],
-                    'description': register['description'],
-                    'quantity': register['quantity'],
-                    'identifier': register['identifier'],
-                })
-                for sr in utilbill_handle['shadow_registers']:
-                    if sr['register_binding'] == register['register_binding']:
-                        meter_dict['registers'].append({
-                            'shadow': True,
-                            'register_binding': register['register_binding'],
-                            'quantity_units': register['quantity_units'],
-                            'type': register['type'],
-                            'description': register['description'],
-                            'identifier': register['identifier'],
-                            'quantity': sr['quantity'],
-                        })
-                        break
-            result.append(meter_dict)
-        return result
+    # # TODO make this go away; don't use reebill object to get utility bill data
+    # def meter_read_dates_for_service(self, service):
+    #     '''Returns (prior_read_date, present_read_date) of the shadowed meter
+    #     in the first utility bill found whose service is 'service_name'. (There
+    #     should only be one utility bill for the given service, and only one
+    #     register in one meter that has a corresponding shadow register in the
+    #     reebill.)'''
+    #     external_utilbill = self._get_utilbill_for_service(service)
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     for shadow_register in utilbill_handle['shadow_registers']:
+    #         for meter in external_utilbill['meters']:
+    #             for actual_register in meter['registers']:
+    #                 if actual_register['identifier'] == shadow_register['identifier']:
+    #                     return meter['prior_read_date'], meter['present_read_date']
+    #     raise ValueError(('Utility bill for service "%s" has no meter '
+    #             'containing a register whose identifier matches that of '
+    #             'a shadow register') % service)
+    #
+    # #@property
+    # #def utilbill_periods(self):
+    # #    '''Return a dictionary whose keys are service and values are the
+    # #    utilbill period.'''
+    # #    return dict([(service, self.utilbill_period_for_service(service)) for
+    # #        service in self.services])
+    #
+    # # TODO make this go away when render.py is replaced
+    # def meters_for_service(self, service_name):
+    #     '''Replicates part of an old version of the reebill/utility bill
+    #     document schema for use by render.py which is tightly coupled to it.
+    #     Do not add any new calls to this method!
+    #     '''
+    #     assert len(self._utilbills) == 1
+    #     meters = copy.deepcopy(
+    #             self._get_utilbill_for_service(service_name)['meters'])
+    #     utilbill_handle = self._get_handle_for_service(service_name)
+    #
+    #     result = []
+    #     for m in meters:
+    #         meter_dict = {
+    #             'prior_read_date': m['prior_read_date'],
+    #             'present_read_date': m['present_read_date'],
+    #             'identifier': m['identifier'],
+    #             'registers': [],
+    #         }
+    #         for register in m['registers']:
+    #             assert 'shadow' not in m['registers']
+    #             meter_dict['registers'].append({
+    #                 'shadow': False,
+    #                 'register_binding': register['register_binding'],
+    #                 'quantity_units': register['quantity_units'],
+    #                 'type': register['type'],
+    #                 'description': register['description'],
+    #                 'quantity': register['quantity'],
+    #                 'identifier': register['identifier'],
+    #             })
+    #             for sr in utilbill_handle['shadow_registers']:
+    #                 if sr['register_binding'] == register['register_binding']:
+    #                     meter_dict['registers'].append({
+    #                         'shadow': True,
+    #                         'register_binding': register['register_binding'],
+    #                         'quantity_units': register['quantity_units'],
+    #                         'type': register['type'],
+    #                         'description': register['description'],
+    #                         'identifier': register['identifier'],
+    #                         'quantity': sr['quantity'],
+    #                     })
+    #                     break
+    #         result.append(meter_dict)
+    #     return result
 
 
     #def _update_shadow_registers(self):
