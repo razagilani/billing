@@ -960,17 +960,17 @@ class Process(object):
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
 
-
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
-        """
-        Create first or next reebill for given account. 'start_date' must
-        be given for the first reebill.
+        """ Create first or roll the next reebill for given account.
+        After the bill is rolled, this function also binds renewable energy data
+        and computes the bill by default. This behavior can be modified by
+        adjusting the appropriate parameters.
+        'start_date': must be given for the first reebill.
         'integrate_skyline_backend': this must be True to get renewable energy
-        data.
-        After the bill is rolled, this function binds and computes the bill
-        """
-
+                                     data.
+        'skip_compute': for tests that want to check for correct default
+                        values before the bill was computed"""
         # 1st transaction: roll
         customer = self.state_db.get_customer(session, account)
         last_reebill_row = session.query(ReeBill)\
