@@ -410,7 +410,8 @@ class Process(object):
         if sa_postal_code is not None:
             document.service_address['postal_code'] = sa_postal_code
 
-        self.reebill_dao.save_reebill_and_utilbill(document)
+        self.reebill_dao.save_reebill(document)
+        self.reebill_dao.save_reebill(document._utilbills[0])
 
 
     def upload_utility_bill(self, session, account, service, begin_date,
@@ -1084,12 +1085,12 @@ class Process(object):
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
         # create reebill row in state database
-        # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
         session.add(new_reebill)
 
         # save reebill document in Mongo
-        self.reebill_dao.save_reebill_and_utilbill(new_mongo_reebill)
+        self.reebill_dao.save_reebill(new_mongo_reebill)
+        self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
@@ -1098,7 +1099,8 @@ class Process(object):
         if integrate_skyline_backend:
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_mongo_reebill, use_olap=True)
-            self.reebill_dao.save_reebill_and_utilbill(new_mongo_reebill)
+            self.reebill_dao.save_reebill(new_mongo_reebill)
+            self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
         if not skip_compute:
             try:
@@ -1177,7 +1179,8 @@ class Process(object):
                     reebill_doc.version, reebill_doc.account,
                     reebill_doc.sequence, e, traceback.format_exc()))
 
-        self.reebill_dao.save_reebill_and_utilbill(reebill_doc)
+        self.reebill_dao.save_reebill(reebill_doc)
+        self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
         return reebill_doc
 
     def get_unissued_corrections(self, session, account):
@@ -1780,8 +1783,7 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
-        self.reebill_dao.save_reebill_and_utilbill(reebill)
-
+        self.reebill_dao.save_reebill(reebill)
 
     def mail_reebills(self, session, account, sequences, recipient_list):
         all_reebills = [self.state_db.get_reebill(session, account, sequence)
@@ -1884,6 +1886,7 @@ class Process(object):
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
 
-        self.reebill_dao.save_reebill_and_utilbill(reebill)
+        self.reebill_dao.save_reebill(reebill)
+        # presumably utility bill does not need to be saved
 
         return reebill
