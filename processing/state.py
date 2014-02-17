@@ -170,7 +170,9 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
-    charges = relationship('ReeBillCharge', backref='reebill')
+    # see the following documentation fot delete cascade behavior
+    #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
+    charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
@@ -291,7 +293,7 @@ class ReeBillCharge(Base):
     __tablename__ = 'reebill_charge'
 
     id = Column(Integer, primary_key=True)
-    reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
     # NOTE alternate name is required because you can't have a column called
