@@ -2107,24 +2107,10 @@ class ReebillDAO(object):
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
 
-        # there will only be a return value if 'freeze_utilbills' is True
-        return_value = None
-
-        # NOTE returning the _id of the new frozen utility bill can only work
-        # if there is only one utility bill; otherwise some system is needed to
-        # specify which _id goes with which utility bill in MySQL
-        if len(reebill._utilbills) > 1:
-            raise NotImplementedError('Multiple services not yet supported')
-
-        for utilbill_handle in reebill.reebill_dict['utilbills']:
-            utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
-            self.save_utilbill(utilbill_doc, force=force)
-
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
         self.reebills_collection.save(reebill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
 
-        return return_value
 
     def save_reebill_and_utilbill(self, reebill, freeze_utilbills=False, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document

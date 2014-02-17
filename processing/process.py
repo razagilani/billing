@@ -1463,17 +1463,18 @@ class Process(object):
         # TODO: should this be replaced with a call to compute_reebill to
         # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
-        reebill_document = self.reebill_dao.load_reebill(account, sequence,
-                version=reebill.version)
         reebill.late_charge = self.get_late_charge(session, reebill)
 
         # save in mongo, creating a new frozen utility bill document, and put
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        frozen_utilbill_id = self.reebill_dao.save_reebill_and_utilbill(reebill_document,
-                freeze_utilbills=True)
-        reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
+        # reebill_document = self.reebill_dao.load_reebill(account, sequence,
+        #         version=reebill.version)
+        # frozen_utilbill_id = self.reebill_dao.save_reebill_and_utilbill(
+        #         reebill_document, freeze_utilbills=True)
+        # reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
+        self._freeze_utilbill_document(session, reebill)
 
         # also duplicate UPRS, storing the new _ids in MySQL
         # ('save_reebill_and_utilbill' can't do it because ReeBillDAO deals only with bill
@@ -1507,6 +1508,10 @@ class Process(object):
         Replacing an already-issued reebill (as determined by StateDB) or its
         utility bills is forbidden unless 'force' is True (this should only be
         used for testing).
+
+        Nore: this saves changes to the reebill document in Mongo, so that
+        document should be re-loaded if data are read from it after calling
+        this method.
         '''
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill.")
@@ -1538,6 +1543,7 @@ class Process(object):
                 reebill.sequence, version=reebill.version)
         reebill_doc.reebill_dict['utilbills'][0]['id'] = new_id
         reebill._utilbill_reebills[0].document_id = new_id
+        self.reebill_dao.save_reebill(reebill_doc)
 
 
     def reebill_report_altitude(self, session):
