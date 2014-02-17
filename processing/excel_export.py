@@ -445,7 +445,7 @@ class Exporter(object):
                 actual_total=reebill_doc.get_total_utility_charges()
 
                 try:
-                    hypothetical_total=reebill_doc.get_total_hypothetical_charges()
+                    hypothetical_total=reebill.get_total_hypothetical_charges()
                 except KeyError:
                     hypothetical_total="Error!"
                 try:
