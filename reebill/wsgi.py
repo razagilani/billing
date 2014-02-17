@@ -1974,11 +1974,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
+    def getUtilBillImage(self, utilbill_id):
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getUtilBillImagePath(account, begin_date,
-                end_date, resolution)
+        with DBSession(self.state_db) as session:
+            result = self.process.get_utilbill_image_path(session, utilbill_id,
+                                                          resolution)
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
