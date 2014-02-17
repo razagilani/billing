@@ -27,6 +27,7 @@ import errno
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
+import bson
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
 from billing.processing import mongo
@@ -1490,6 +1491,50 @@ class Process(object):
 
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
+
+    def _freeze_utilbill_document(self, session, reebill, force=False):
+        '''
+        Create and save a utility bill document representing the utility bill
+        of the given state.ReeBill, which is about to be issued. This document
+        is immutable and provides a permanent record of the utility bill
+        utility bill document as it was at the time of issuing. Its _id becomes
+        the "document_id" of the corresponding row in the  "utilbill_reebill"
+        table in MySQL.
+
+        Replacing an already-issued reebill (as determined by StateDB) or its
+        utility bills is forbidden unless 'force' is True (this should only be
+        used for testing).
+        '''
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill.")
+
+        # NOTE returning the _id of the new frozen utility bill can only work
+        # if there is only one utility bill; otherwise some system is needed to
+        # specify which _id goes with which utility bill in MySQL
+        if len(reebill.utilbills) > 1:
+            raise NotImplementedError('Multiple services not yet supported')
+
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+
+        # convert the utility bills into frozen copies by putting
+        # "sequence" and "version" keys in the utility bill, and
+        # changing its _id to a new one
+        new_id = bson.objectid.ObjectId()
+
+        # copy utility bill doc so changes to it do not persist if
+        # saving fails below
+        utilbill_doc = copy.deepcopy(utilbill_doc)
+        utilbill_doc['_id'] = new_id
+        self.reebill_dao.save_utilbill(utilbill_doc, force=force,
+                           sequence_and_version=(reebill.sequence,
+                                                 reebill.version))
+        # saving succeeded: set handle id to match the saved
+        # utility bill and replace the old utility bill document with the new one
+        reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, version=reebill.version)
+        reebill_doc.reebill_dict['utilbills'][0]['id'] = new_id
+        reebill._utilbill_reebills[0].document_id = new_id
 
 
     def reebill_report_altitude(self, session):
