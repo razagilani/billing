@@ -966,6 +966,7 @@ class Process(object):
         utilbill = reebill.utilbills[0]
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
         mongo.compute_all_charges(utilbill_doc, uprs)
+        self.reebill_dao.save_utilbill(utilbill_doc)
 
         # TODO temporary hack: duplicate the utility bill, set its register
         # quantities to the hypothetical values, recompute it, and then
