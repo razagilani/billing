@@ -253,18 +253,6 @@ class Process(object):
         self.state_db.trim_hypothetical_utilbills(session,
                 utilbill.customer.account, utilbill.service)
 
-        # unfortunately, moving the bill file is an un-rollbackable
-        # operation, but if it needs to be done, it must be done before the
-        # UtilBill's period dates are updated with their new values, since
-        # dates are used in the file name
-        # (only utility bills that are Complete (0) or
-        # UtilityEstimated (1) have files; SkylineEstimated (2) and
-        # Hypothetical (3) ones don't.)
-        # TODO remove this when utility bill files are no longer named after
-        # dates
-        if utilbill.state < state.UtilBill.SkylineEstimated:
-            self.billupload.move_utilbill_file(utilbill, old_start, old_end)
-
         # save in Mongo last because it can't be rolled back
         self.reebill_dao.save_utilbill(doc)
 
@@ -470,16 +458,6 @@ class Process(object):
             if rate_class is None:
                 rate_class = template['rate_class']
 
-        if bill_file is not None:
-            # if there is a file, get the Python file object and name
-            # string from CherryPy, and pass those to BillUpload to upload
-            # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billupload.upload(account, begin_date,
-                    end_date, bill_file, file_name)
-            if not upload_result:
-                raise IOError('File upload failed: %s %s %s' % (file_name,
-                        begin_date, end_date))
-
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(session, account)
@@ -496,11 +474,22 @@ class Process(object):
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
                 period_start=begin_date, period_end=end_date,
                 total_charges=total, date_received=datetime.utcnow().date())
+        session.add(new_utilbill)
+        session.flush()
+
+        if bill_file is not None:
+            # if there is a file, get the Python file object and name
+            # string from CherryPy, and pass those to BillUpload to upload
+            # the file (so BillUpload can stay independent of CherryPy)
+            upload_result = self.billupload.upload(new_utilbill, account,
+                                                   bill_file, file_name)
+            if not upload_result:
+                raise IOError('File upload failed: %s %s %s' % (account,
+                    new_utilbill.id, file_name))
 
         # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
         # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
         # which has no documents)
-        session.add(new_utilbill)
         if state < UtilBill.Hypothetical:
             doc, uprs = self._generate_docs_for_new_utility_bill(session,
                 new_utilbill)
