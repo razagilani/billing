@@ -188,9 +188,9 @@ class Process(object):
                                      ' utility bill. Please recompute the'
                                      ' ReeBill.')
             result.append({
-                'actual_rate': matching['rate']
-                'actual_quantity': matching['quantity']
-                'actual_total': matching['total']
+                'actual_rate': matching['rate'],
+                'actual_quantity': matching['quantity'],
+                'actual_total': matching['total'],
             })
         return result
 
