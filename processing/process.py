@@ -1097,7 +1097,7 @@ class Process(object):
         # and computing (currently there are none).
         if integrate_skyline_backend:
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_mongo_reebill, use_olap=True, verbose=True)
+                    new_mongo_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
 
         if not skip_compute:
@@ -1779,8 +1779,7 @@ class Process(object):
     def bind_renewable_energy(self, session, account, sequence):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, use_olap=True,
-                verbose=True)
+                self.nexus_util.olap_id(account), reebill, use_olap=True)
         self.reebill_dao.save_reebill(reebill)
 
 
