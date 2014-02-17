@@ -34,7 +34,7 @@ create table if not exists reebill_charge (
     quantity float not null,
     rate float not null,
     total float not null,
-    foreign key (reebill_id) references reebill (id)
+    foreign key (reebill_id) references reebill (id) on delete cascade
 )''')
 
 for reebill in s.query(ReeBill).join(Customer)\
