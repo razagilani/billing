@@ -715,23 +715,6 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
                     refreshUBVersionMenus();
-                    
-                    // a row was selected in the UI, update subordinate ReeBill Data
-                    //if (record.data.sequence != null) {
-                    //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
-                    //}
-                    // convert the parsed date into a string in the format expected by the back end
-                    var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
-                    var formatted_end_date_string = record.data.period_end.format('Y-m-d');
-                    
-                    // image rendering resolution
-                    // TODO Ext.getCmp vs doc.getElement
-                    var menu = document.getElementById('billresolutionmenu');
-                    if (menu) {
-                        resolution = menu.value;
-                    } else {
-                        resolution = DEFAULT_RESOLUTION;
-                    }
                     // Toggle 'Mark as Processed' Button between processed an unprocessed
                     // Then Enable the button
                     record.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
@@ -741,8 +724,7 @@ function reeBillReady() {
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
                         utilbillImageDataConn.request({
-                            params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                                end_date: formatted_end_date_string, resolution: resolution},
+                            params: {utilbill_id: selected_utilbill.id},
                             success: function(result, request) {
                                 var jsonData = null;
                                 try {

@@ -226,6 +226,17 @@ class Process(object):
             doc['service'] = service
             utilbill.service = service
 
+        if utility is not None:
+            utilbill.utility = utility
+            doc['utility'] = utility
+
+        if rate_class is not None:
+            utilbill.rate_class = rate_class
+            doc['rate_class'] = rate_class
+            
+        if processed is not None:
+            utilbill.processed=processed
+
         if period_start is not None:
             UtilBill.validate_utilbill_period(period_start, utilbill.period_end)
             utilbill.period_start = period_start
@@ -240,36 +251,12 @@ class Process(object):
             for meter in doc['meters']:
                 meter['present_read_date'] = period_end
 
-        if utility is not None:
-            utilbill.utility = utility
-            doc['utility'] = utility
-
-        if rate_class is not None:
-            utilbill.rate_class = rate_class
-            doc['rate_class'] = rate_class
-            
-        if processed is not None:
-            utilbill.processed=processed
-
         # delete any Hypothetical utility bills that were created to cover gaps
         # that no longer exist
         self.state_db.trim_hypothetical_utilbills(session,
                 utilbill.customer.account, utilbill.service)
 
-        # finally, un-rollback-able operations: move the file, if there is one,
-        # and save in Mongo. (only utility bills that are Complete (0) or
-        # UtilityEstimated (1) have files; SkylineEstimated (2) and
-        # Hypothetical (3) ones don't.)
-        if utilbill.state < state.UtilBill.SkylineEstimated:
-            self.billupload.move_utilbill_file(utilbill.customer.account,
-                    # don't trust the client to say what the original dates were
-                    # TODO don't pass dates into BillUpload as strings
-                    # https://www.pivotaltracker.com/story/show/24869817
-                    old_start, old_end,
-                    # dates in destination file name are the new ones
-                    period_start or utilbill.period_start,
-                    period_end or utilbill.period_end)
-
+        # save in Mongo last because it can't be rolled back
         self.reebill_dao.save_utilbill(doc)
 
 
@@ -474,16 +461,6 @@ class Process(object):
             if rate_class is None:
                 rate_class = template['rate_class']
 
-        if bill_file is not None:
-            # if there is a file, get the Python file object and name
-            # string from CherryPy, and pass those to BillUpload to upload
-            # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billupload.upload(account, begin_date,
-                    end_date, bill_file, file_name)
-            if not upload_result:
-                raise IOError('File upload failed: %s %s %s' % (file_name,
-                        begin_date, end_date))
-
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(session, account)
@@ -500,11 +477,22 @@ class Process(object):
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
                 period_start=begin_date, period_end=end_date,
                 total_charges=total, date_received=datetime.utcnow().date())
+        session.add(new_utilbill)
+        session.flush()
+
+        if bill_file is not None:
+            # if there is a file, get the Python file object and name
+            # string from CherryPy, and pass those to BillUpload to upload
+            # the file (so BillUpload can stay independent of CherryPy)
+            upload_result = self.billupload.upload(new_utilbill, account,
+                                                   bill_file, file_name)
+            if not upload_result:
+                raise IOError('File upload failed: %s %s %s' % (account,
+                    new_utilbill.id, file_name))
 
         # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
         # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
         # which has no documents)
-        session.add(new_utilbill)
         if state < UtilBill.Hypothetical:
             doc, uprs = self._generate_docs_for_new_utility_bill(session,
                 new_utilbill)
@@ -714,9 +702,7 @@ class Process(object):
         # OK to delete now.
         # first try to delete the file on disk
         try:
-            new_path = self.billupload.delete_utilbill_file(
-                    utilbill.customer.account, utilbill.period_start,
-                    utilbill.period_end)
+            new_path = self.billupload.delete_utilbill_file(utilbill)
         except IOError:
             # file never existed or could not be found
             new_path = None
@@ -1842,3 +1828,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill)
 
         return reebill
+
+    def get_utilbill_image_path(self, session, utilbill_id, resolution):
+        utilbill=session.query(UtilBill).filter_by(id=utilbill_id).one()
+        return self.billupload.getUtilBillImagePath(utilbill,resolution)
