@@ -38,13 +38,13 @@ for account in accounts:
                 reebill.period_begin = min(p[0] for p in
                         (reebill.utilbill_period_for_service(s) for s in
                         reebill.services))
-                reebill_dao.save_reebill(reebill)
+                reebill_dao.save_reebill_and_utilbill(reebill)
                 print '%s-%s begin fixed' % (account, sequence)
             if reebill.period_end is None:
                 reebill.period_end = max(p[1] for p in
                         (reebill.utilbill_period_for_service(s) for s in
                         reebill.services))
-                reebill_dao.save_reebill(reebill)
+                reebill_dao.save_reebill_and_utilbill(reebill)
                 print '%s-%s end fixed' % (account, sequence)
         except Exception as e:
             print '%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc())

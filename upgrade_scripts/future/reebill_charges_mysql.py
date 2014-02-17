@@ -72,7 +72,7 @@ for reebill in s.query(ReeBill).join(Customer)\
 
     # remove charges fro Mongo
     del document.reebill_dict['utilbills'][0]['hypothetical_charges']
-    #rbd.reebill_dao.save_reebill(document)
+    #rbd.reebill_dao.save_reebill_and_utilbill(document)
 
 con.commit()
 s.commit()

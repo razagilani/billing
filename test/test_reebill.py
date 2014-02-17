@@ -59,7 +59,7 @@ class ReebillTest(TestCaseWithSetup):
             b._get_utilbill_for_service(b.services[0])['end'] = date(2100,
                 2,1)
             check()
-            self.reebill_dao.save_reebill(b)
+            self.reebill_dao.save_reebill_and_utilbill(b)
             check()
 
             # NOTE account, utility name, service can't be changed, but if they
@@ -179,7 +179,7 @@ class ReebillTest(TestCaseWithSetup):
                 utilbill_subdoc['shadow_registers'])
 
         self.reebill_dao.save_utilbill(utilbill_doc)
-        self.reebill_dao.save_reebill(reebill_doc)
+        self.reebill_dao.save_reebill_and_utilbill(reebill_doc)
 
         #reebill_doc.compute_charges(uprs)
         self.process._compute_reebill_charges(reebill, uprs)
