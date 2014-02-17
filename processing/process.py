@@ -15,7 +15,6 @@ from sqlalchemy import not_
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from operator import attrgetter, itemgetter
 import operator
 from bson import ObjectId
 import traceback
@@ -662,19 +661,16 @@ class Process(object):
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
         valid_bindings = {rsi['rsi_binding']: False for rsi in uprs.rates}
-        for group, charges in doc['chargegroups'].iteritems():
-            i = 0
-            while i < len(charges):
-                charge = charges[i]
-                # if the charge matches a valid RSI binding, mark that
-                # binding as matched; if not, delete the charge
-                if charge['rsi_binding'] in valid_bindings:
-                    valid_bindings[charge['rsi_binding']] = True
-                    i += 1
-                else:
-                    charges.pop(i)
-            # NOTE empty chargegroup is not removed because the user might
-            # want to add charges to it again
+        i = 0
+        while i < len(doc['charges']):
+            charge = doc['charges'][i]
+            # if the charge matches a valid RSI binding, mark that
+            # binding as matched; if not, delete the charge
+            if charge['rsi_binding'] in valid_bindings:
+                valid_bindings[charge['rsi_binding']] = True
+                i += 1
+            else:
+                doc['charges'].pop(i)
 
         # TODO add a charge for every RSI that doesn't have a charge, i.e.
         # the ones whose value in 'valid_bindings' is False.
@@ -856,52 +852,29 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(session, account, sequence,
                 version)
-
-        # TODO update fields in reebill itself
-
-        document = self.reebill_dao.load_reebill(account, sequence, version)
+        assert len(reebill.utilbills) == 1
 
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
-        for service in document.services:
-            actual_chargegroups = document. \
-                    actual_chargegroups_for_service(service)
-            document.set_hypothetical_chargegroups_for_service(service,
-                    actual_chargegroups)
-
+        utilbill_document = self.reebill_dao.load_doc_for_utilbill(reebill
+                                                               .utilbills[0])
+        document = self.reebill_dao.load_reebill(account, sequence, version)
+        document.reebill_dict['utilbills'][0]['hypothetical_charges'] \
+                = utilbill_document['charges']
         for utilbill in reebill.utilbills:
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
             document.compute_charges(uprs)
 
-
-
-
-
-
-
-
-
-
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
-        # document.update_summary_values(reebill.discount_rate)
-
-
         actual_total = document.get_total_utility_charges()
         hypothetical_total = document.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
-        reebill.ree_charge = (hypothetical_total - actual_total) * (1 -
-                reebill.discount_rate)
-        reebill.ree_savings = (hypothetical_total - actual_total) * \
-                reebill.discount_rate
+        reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
+        reebill.ree_savings = reebill.ree_value * reebill.discount_rate
 
-
-
-
-
-        # set late charge, if any (this will be None if the previous bill has
-        # not been issued, 0 before the previous bill's due date, and non-0
-        # after that)
+        self.reebill_dao.save_reebill(document)
+        # NOTE document is no longer used after this
 
         # compute adjustment: this bill only gets an adjustment if it's the
         # earliest unissued version-0 bill, i.e. it meets 2 criteria:
@@ -909,23 +882,8 @@ class Process(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-
         if reebill.sequence == 1:
-            predecessor = None
-        else:
-            predecessor = self.state_db.get_reebill(session, account, reebill
-                    .sequence - 1, version=0)
-        if predecessor is not None and reebill.version == 0 \
-            and self.state_db.is_issued(session, account, predecessor.sequence,
-                                        version=0, nonexistent=False):
-            reebill.total_adjustment = self.get_total_adjustment(
-                session, account)
-        else:
             reebill.total_adjustment = 0
-
-        if predecessor is None:
-            # this is the first reebill
-            assert reebill.sequence == 1
 
             # include all payments since the beginning of time, in case there
             # happen to be any.
@@ -933,47 +891,45 @@ class Process(object):
             # until the issue date; otherwise get payments up until the
             # present.
             present_v0_issue_date = self.state_db.get_reebill(session,
-                    account, sequence, version=0).issue_date
+                  account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
                 reebill.payment_received = self.state_db. \
                     get_total_payment_since(session, account,
-                    state.MYSQLDB_DATETIME_MIN)
+                                            state.MYSQLDB_DATETIME_MIN)
             else:
                 reebill.payment_received = self.state_db. \
                     get_total_payment_since(session, account,
-                    state.MYSQLDB_DATETIME_MIN,
-                    end=present_v0_issue_date)
-                # obviously balances are 0
+                                            state.MYSQLDB_DATETIME_MIN,
+                                            end=present_v0_issue_date)
+            # obviously balances are 0
             reebill.prior_balance = 0
             reebill.balance_forward = 0
 
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
         else:
-            # calculations that depend on 'predecessor_doc' go here.
-            assert reebill.sequence > 1
+            predecessor = self.state_db.get_reebill(session, account,
+                    reebill.sequence - 1, version=0)
+            if reebill.version == 0 and predecessor.issued:
+                reebill.total_adjustment = self.get_total_adjustment(session,
+                                                                     account)
 
             # get payment_received: all payments between issue date of
             # predecessor's version 0 and issue date of current reebill's version 0
             # (if current reebill is unissued, its version 0 has None as its
             # issue_date, meaning the payment period lasts up until the present)
-            if self.state_db.is_issued(session, account,
-                            predecessor.sequence, version=0,
-                            nonexistent=False):
+            if predecessor.issued:
                 # if predecessor's version 0 is issued, gather all payments from
                 # its issue date until version 0 issue date of current bill, or
                 # today if this bill has never been issued
                 if self.state_db.is_issued(session, account,
                                 reebill.sequence, version=0):
-                    prior_v0_issue_date = self.state_db.get_reebill(session,
-                            account, predecessor.sequence,
-                            version=0).issue_date
                     present_v0_issue_date = self.state_db.get_reebill(session,
                             account, reebill.sequence,
                             version=0).issue_date
                     reebill.payment_received = self.state_db. \
                             get_total_payment_since(session, account,
-                            prior_v0_issue_date,
+                            predecessor.issue_date,
                             end=present_v0_issue_date)
                 else:
                     reebill.payment_received = self.state_db. \
@@ -988,34 +944,30 @@ class Process(object):
 
             reebill.prior_balance = predecessor.balance_due
             reebill.balance_forward = predecessor.balance_due - \
-                                          reebill.payment_received + \
-                                          reebill.total_adjustment
+                  reebill.payment_received + reebill.total_adjustment
 
         # include manually applied adjustment
         reebill.balance_forward += reebill.manual_adjustment
 
+        # set late charge, if any (this will be None if the previous bill has
+        # not been issued, 0 before the previous bill's due date, and non-0
+        # after that)
         lc = self.get_late_charge(session, reebill)
-        if lc is not None:
-            # set late charge and include it in balance_due
-            reebill.late_charge = lc
-            reebill.balance_due = reebill.balance_forward + \
-                  reebill.ree_charge + reebill.late_charge
-        else:
-            # ignore late charge
-            reebill.balance_due = reebill.balance_forward + reebill.ree_charge
-
-        self.reebill_dao.save_reebill(document)
+        reebill.late_charge = lc or 0
+        reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
+                reebill.late_charge
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
-        """
-        Create first or next reebill for given account. 'start_date' must
-        be given for the first reebill.
+        """ Create first or roll the next reebill for given account.
+        After the bill is rolled, this function also binds renewable energy data
+        and computes the bill by default. This behavior can be modified by
+        adjusting the appropriate parameters.
+        'start_date': must be given for the first reebill.
         'integrate_skyline_backend': this must be True to get renewable energy
-        data.
-        After the bill is rolled, this function binds and computes the bill
-        """
-
+                                     data.
+        'skip_compute': for tests that want to check for correct default
+                        values before the bill was computed"""
         # 1st transaction: roll
         customer = self.state_db.get_customer(session, account)
         last_reebill_row = session.query(ReeBill)\
@@ -1079,6 +1031,7 @@ class Process(object):
                 new_sequence, 0, customer.get_discount_rate(),
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
+        # create reebill row in state database
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
         session.add(new_reebill)
@@ -1159,7 +1112,7 @@ class Process(object):
             # document has to be saved first and it can't be saved again
             # because it has "sequence" and "version" keys
             self.compute_reebill(session, account, sequence,
-                    version=max_version+1)
+                        version=max_version+1)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
