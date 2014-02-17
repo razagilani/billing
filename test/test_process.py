@@ -662,14 +662,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # compute charges in the bill using the rate structure created from the
             # above documents
-            reebill1 = self.reebill_dao.load_reebill(account, 1)
-            reebill1.compute_charges(uprs)
+            self.process.compute_reebill(session, account, 1)
+            reebill1 = self.state_db.get_reebill(session, account, 1)
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill1
+                                                                  .utilbills[ 0])
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
-            actual_charges = reebill1._utilbills[0]['charges']
+            actual_charges = utilbill_doc['charges']
             total_regster = [r for r in chain.from_iterable(m['registers']
-                    for m in reebill1._utilbills[0]['meters'])
+                    for m in utilbill_doc['meters'])
                 if r['register_binding'] == 'REG_TOTAL'][0]
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
@@ -742,58 +744,58 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in hypothetical_charges if
-                    c['rsi_binding'] == 'SYSTEM_CHARGE'][0]
-            self.assertDecimalAlmostEqual(11.2, system_charge['total'])
+                    c.rsi_binding == 'SYSTEM_CHARGE'][0]
+            self.assertDecimalAlmostEqual(11.2, system_charge.total)
 
             # right-of-way fee
-            row_charge = [c for c in hypothetical_charges if c['rsi_binding']
+            row_charge = [c for c in hypothetical_charges if c.rsi_binding
                     == 'RIGHT_OF_WAY'][0]
             self.assertDecimalAlmostEqual(0.03059 * hypothetical_quantity,
-                    row_charge['total'], places=2) # TODO OK to be so inaccurate?
+                    row_charge.total, places=2) # TODO OK to be so inaccurate?
             
             # sustainable energy trust fund
-            setf_charge = [c for c in hypothetical_charges if c['rsi_binding']
+            setf_charge = [c for c in hypothetical_charges if c.rsi_binding
                     == 'SETF'][0]
             self.assertDecimalAlmostEqual(0.01399 * hypothetical_quantity,
-                    setf_charge['total'], places=1) # TODO OK to be so inaccurate?
+                    setf_charge.total, places=1) # TODO OK to be so inaccurate?
 
             # energy assistance trust fund
-            eatf_charge = [c for c in hypothetical_charges if c['rsi_binding']
+            eatf_charge = [c for c in hypothetical_charges if c.rsi_binding
                     == 'EATF'][0]
             self.assertDecimalAlmostEqual(0.006 * hypothetical_quantity,
-                    eatf_charge['total'], places=2)
+                    eatf_charge.total, places=2)
 
             # delivery tax
-            delivery_tax = [c for c in hypothetical_charges if c['rsi_binding']
+            delivery_tax = [c for c in hypothetical_charges if c.rsi_binding
                     == 'DELIVERY_TAX'][0]
             self.assertDecimalAlmostEqual(0.07777 * hypothetical_quantity,
-                    delivery_tax['total'], places=2)
+                    delivery_tax.total, places=2)
 
             # peak usage charge
             peak_usage_charge = [c for c in hypothetical_charges if
-                    c['rsi_binding'] == 'PUC'][0]
-            self.assertDecimalAlmostEqual(23.14, peak_usage_charge['total'])
+                    c.rsi_binding == 'PUC'][0]
+            self.assertDecimalAlmostEqual(23.14, peak_usage_charge.total)
 
             # distribution charge
             distribution_charge = [c for c in hypothetical_charges if
-                    c['rsi_binding'] == 'DISTRIBUTION_CHARGE'][0]
+                    c.rsi_binding == 'DISTRIBUTION_CHARGE'][0]
             self.assertDecimalAlmostEqual(.2935 * hypothetical_quantity,
-                    distribution_charge['total'], places=1)
+                    distribution_charge.total, places=1)
             
             # purchased gas charge
             purchased_gas_charge = [c for c in hypothetical_charges if
-                    c['rsi_binding'] == 'PGC'][0]
+                    c.rsi_binding == 'PGC'][0]
             self.assertDecimalAlmostEqual(.7653 * hypothetical_quantity,
-                    purchased_gas_charge['total'], places=2)
+                    purchased_gas_charge.total, places=2)
 
             # sales tax: depends on all of the above
-            sales_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
+            sales_tax = [c for c in hypothetical_charges if c.rsi_binding ==
                     'SALES_TAX'][0]
-            self.assertDecimalAlmostEqual(0.06 * (system_charge['total'] +
-                distribution_charge['total'] + purchased_gas_charge['total'] +
-                row_charge['total'] + peak_usage_charge['total'] +
-                setf_charge['total'] + eatf_charge['total'] +
-                delivery_tax['total']), sales_tax['total'], places=2)
+            self.assertDecimalAlmostEqual(0.06 * (system_charge.total +
+                distribution_charge.total + purchased_gas_charge.total +
+                row_charge.total + peak_usage_charge.total +
+                setf_charge.total + eatf_charge.total +
+                delivery_tax.total), sales_tax.total, places=2)
 
 
     def test_upload_utility_bill(self):
@@ -1401,6 +1403,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             u1_doc = self.reebill_dao.load_doc_for_utilbill(u1)
             u1_doc['charges'] = [{
                 'rsi_binding': 'THE_CHARGE',
+                'group': '',
                 'quantity': 100,
                 'quantity_units': 'therms',
                 'rate': 1,
