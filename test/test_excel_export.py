@@ -29,7 +29,7 @@ def listAccounts():
 #     return MockStateReebill(None,1,0)
 
 def createMockReebill():
-    rb = mock.create_autospec(spec=ReeBill)
+    rb = mock.create_autospec(spec=ReeBill, instance=True)
     rb.issued = 1
     rb.sequence = 1
     rb.version = 0
@@ -155,6 +155,8 @@ def createMockReebill():
             u'group': 'All Charges',
         }
     ]]
+    rb.get_total_hypothetical_charges.return_value = sum(c.total for c in rb
+        .charges)
     return rb
 
 
