@@ -1781,3 +1781,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill)
 
         return reebill
+
+    def get_utilbill_image_path(self, session, utilbill_id, resolution):
+        utilbill=session.query(UtilBill).filter_by(id=utilbill_id).one()
+        return self.billupload.getUtilBillImagePath(utilbill,resolution)

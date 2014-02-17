@@ -117,7 +117,7 @@ class BillUpload(object):
         # path to the bill file (in its original format):
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
         path_without_extension = os.path.join(self.save_directory,
-                utilbill.customer.account, utilbill.id)
+                str(utilbill.customer.account), str(utilbill.id))
          
         if extension == None:
             # extension not provided, so look for an actual file that already
