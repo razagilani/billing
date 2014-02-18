@@ -12,7 +12,7 @@ from itertools import chain
 from collections import defaultdict
 import tsort
 from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
-from billing.util.dictutils import deep_map, subdict
+from billing.util.dictutils import deep_map, subdict, dict_merge
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
@@ -88,7 +88,7 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     return x
 
 
-# TODO believed to be needed only by presentation code, so put it there.
+# NOTE deperecated; avoid using this if at all possible
 def flatten_chargegroups_dict(chargegroups):
     flat_charges = []
     for (chargegroup, charges) in chargegroups.items(): 
@@ -97,7 +97,7 @@ def flatten_chargegroups_dict(chargegroups):
             flat_charges.append(charge)
     return flat_charges
 
-# TODO believed to be needed only by presentation code, so put it there.
+# NOTE deperecated; avoid using this if at all possible
 def unflatten_chargegroups_list(flat_charges):
     new_chargegroups = {}
     for cg, charges in it.groupby(sorted(flat_charges, key=lambda
@@ -282,27 +282,21 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
 def get_charges_json(utilbill_doc):
     '''Returns list of dictionaries describing charges for use in web browser.
     '''
-    result = flatten_chargegroups_dict(copy.deepcopy(
-            utilbill_doc['chargegroups']))
-
-    # add "id" field for use by Ext-JS
-    for charge_dict in result:
-        charge_dict['id'] = charge_dict['rsi_binding']
-
-    return result
+    return [dict_merge(c, {'id': c['rsi_binding']})
+            for c in utilbill_doc['charges']]
 
 # TODO make this a method of a utility bill document class when one exists
 def get_service_address(utilbill_doc):
     return utilbill_doc['service_address']
 
-# TODO make this a method of a utility bill document class when one exists
-def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
-    # remove "id" field that came from the client
-    flat_charges = copy.deepcopy(flat_charges)
-    for c in flat_charges:
-        if 'id' in c:
-            del c['id']
-    utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
+# # NOTE deprecated; do not add new calls to this function
+# def set_actual_chargegroups_flattened(utilbill_doc, flat_charges):
+#     # remove "id" field that came from the client
+#     flat_charges = copy.deepcopy(flat_charges)
+#     for c in flat_charges:
+#         if 'id' in c:
+#             del c['id']
+#     utilbill_doc['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
 # TODO rename to get_meter_read_period
 # TODO make this a method of a utility bill document class when one exists
@@ -322,50 +316,78 @@ def set_meter_read_period(utilbill_doc, start, end):
     meter['prior_read_date'], meter['present_read_date'] = start, end
 
 # TODO make this a method of a utility bill document class when one exists
-def refresh_charges(utilbill_doc, uprs, cprs):
+def refresh_charges(utilbill_doc, uprs):
     '''Replaces charges in the utility bill document with newly-created ones
-    based on the Rate Structure Items in 'uprs' and 'cprs'. A charge is created
+    based on the Rate Structure Items in 'uprs'. A charge is created
     for every RSI. The charges are computed according to the rate structures.
     '''
-    utilbill_doc['chargegroups'] = {'All Charges': [{
+    utilbill_doc['charges'] = [{
         'rsi_binding': rsi.rsi_binding,
         'quantity': 0,
         'quantity_units': rsi.quantity_units,
         'rate': 0,
-        #'rate_units': 0,
         'total': 0,
         'description': rsi.description,
-    } for rsi in sorted(RateStructure.combine(uprs, cprs).rates,
-            key=itemgetter('rsi_binding'))]}
+        'group': rsi.group,
+    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
+            if rsi.has_charge]
 
 def _validate_charges(utilbill_doc, rate_structure):
     '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
     a RateStructureItem in 'rate_structure'.
     '''
     rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
-    charges = list(sorted(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()),
-            key=lambda charge: charge['rsi_binding']))
-    for charge in charges:
+    for charge in utilbill_doc['charges']:
         if charge['rsi_binding'] not in rsi_bindings:
             raise NoRSIError('No rate structure item for "%s"' %
                            charge['rsi_binding'])
 
+def _get_charge_by_rsi_binding(utilbill_doc, rsi_binding):
+    matches = [c for c in utilbill_doc['charges']
+            if c['rsi_binding'] ==  rsi_binding]
+    assert len(matches) == 1
+    return matches[0]
+
+def update_charge(utilbill_doc, rsi_binding, fields):
+    '''Modify the charge given by 'rsi_binding' by setting key-value pairs
+    to match the dictionary 'fields'.
+    '''
+    charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
+    charge.update(fields)
+
+def delete_charge(utilbill_doc, rsi_binding):
+    for charge in utilbill_doc['charges']:
+        if charge['rsi_binding'] == rsi_binding:
+            utilbill_doc['charges'].remove(charge)
+            return
+    raise ValueError('RSI binding "%s" not found' % rsi_binding)
+
 # TODO make this a method of a utility bill document class when one exists
-def compute_all_charges(utilbill_doc, uprs, cprs):
+# (if it doesn't go away first)
+def add_charge(utilbill_doc, group_name):
+    '''Add a new charge to the given utility bill with charge group "group_name"
+    and default value for all its fields.
+    '''
+    utilbill_doc['charges'].append({
+        'rsi_binding': 'RSI binding required',
+        'description': 'description required',
+        'quantity': 0,
+        'quantity_units': 'kWh',
+        'rate': 0,
+        'total': 0,
+    })
+
+# TODO make this a method of a utility bill document class when one exists
+def compute_all_charges(utilbill_doc, uprs):
     '''Updates "quantity", "rate", and "total" fields in all charges in this
     utility bill document so they're correct according to the formulas in the
-    RSIs in the given rate structures. RSIs in 'uprs' that have the same
-    'rsi_binding' as any RSI in 'cprs' are ignored.
+    RSIs in the given rate structures.
     '''
-    # catch any type errors in the rate structure documents up front to avoid
+    # catch any type errors in the rate structure document up front to avoid
     # confusing error messages later
     uprs.validate()
-    cprs.validate()
 
-    # get RSIs from a fake RateStructure in which anything in 'uprs' with the
-    # same 'rsi_binding' as in 'cprs' is replaced by the one in 'cprs'.
-    rate_structure = RateStructure.combine(uprs, cprs)
+    rate_structure = uprs
     rsis = rate_structure.rates
 
     # complain if any charge has an rsi_binding that does not match an RSI
@@ -444,9 +466,8 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
 
     assert len(evaluation_order) == len(rsis)
 
-    all_charges = list(sorted(chain.from_iterable(
-            utilbill_doc['chargegroups'].itervalues()),
-            key=lambda charge: charge['rsi_binding']))
+    all_charges = sorted(utilbill_doc['charges'],
+            key=lambda charge: charge['rsi_binding'])
 
     assert len(evaluation_order) == len(rsis)
 
@@ -470,9 +491,12 @@ def compute_all_charges(utilbill_doc, uprs, cprs):
             # this RSI has no charge corresponding to it
             pass
         else:
-            charge['quantity'] = quantity
-            charge['rate'] = rate
-            charge['total'] = total
+            charge.update({
+                'quantity': quantity,
+                'rate': rate,
+                'total': total,
+                'description': rsi['description']
+            })
 
         # update 'identifiers' so the results of this computation can be used
         # as identifier values in other RSIs
@@ -487,8 +511,7 @@ def total_of_all_charges(utilbill_doc):
     # TODO: use method on SQLAlchemy UtilBill object to return this (or None
     # for a hypothetical utility bill). It can't be done here because 'state'
     # is not stored in the Mongo document.
-    return sum(charge.get('total', 0) for charge in
-            chain.from_iterable(utilbill_doc['chargegroups'].itervalues()))
+    return sum(charge.get('total', 0) for charge in utilbill_doc['charges'])
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -572,11 +595,10 @@ class MongoReebill(object):
             # hypothetical charges are the same as actual (on the utility
             # bill); they will not reflect the renewable energy quantity until
             # computed
-            'hypothetical_chargegroups': utilbill_doc['chargegroups'],
+            'hypothetical_charges': utilbill_doc['charges'],
 
-            'ree_charges': 0,
-            'ree_savings': 0,
-            'ree_value': 0
+            # 'ree_charges': 0,
+            # 'ree_savings': 0,
         }
 
     @classmethod
@@ -598,22 +620,21 @@ class MongoReebill(object):
                 "sequence" : sequence,
                 "version" : version,
             },
-            "ree_charges" : 0,
-            "ree_value" : 0,
-            "discount_rate" : discount_rate,
-            'late_charge_rate': late_charge_rate,
-            'late_charges': 0,
-            "message" : None,
+            # "ree_charges" : 0,
+            # "discount_rate" : discount_rate,
+            # 'late_charge_rate': late_charge_rate,
+            # 'late_charges': 0,
+            # "message" : None,
             "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
-            "payment_received" : 0,
-            "due_date" : None,
-            "total_adjustment" : 0,
-            "manual_adjustment" : 0,
-            "ree_savings" : 0,
-            "balance_due" : 0,
-            "prior_balance" : 0,
+            # "payment_received" : 0,
+            # "due_date" : None,
+            # "total_adjustment" : 0,
+            # "manual_adjustment" : 0,
+            # "ree_savings" : 0,
+            # "balance_due" : 0,
+            # "prior_balance" : 0,
             #"hypothetical_total" : 0,
-            "balance_forward" : 0,
+            # "balance_forward" : 0,
             # NOTE these address fields are containers for utility bill
             # addresses. these addresses will eventually move into utility bill
             # documents, and if necessary new reebill-specific address fields
@@ -649,7 +670,7 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
-    def update_utilbill_subdocs(self):
+    def update_utilbill_subdocs(self, discount_rate):
         '''Refreshes the "utilbills" sub-documents of the reebill document to
         match the utility bill documents in _utilbills. (These represent the
         "hypothetical" version of each utility bill.)
@@ -661,28 +682,28 @@ class MongoReebill(object):
                 [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
-        for subdoc in self.reebill_dict['utilbills']:
-            actual_total = total_of_all_charges(
-                    self._get_utilbill_for_handle(subdoc))
-            hypothetical_total = sum(charge['total'] for charge in
-                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+    # NOTE avoid using this if at all possible,
+    # because MongoReebill._utilbills will go away
+    def get_total_utility_charges(self):
+        return sum(total_of_all_charges(self._get_utilbill_for_handle(
+            subdoc)) for subdoc in self.reebill_dict['utilbills'])
 
-            subdoc['ree_value'] = hypothetical_total - actual_total
-            subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - self.discount_rate)
-            subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * self.discount_rate
+    def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
+        assert len(self.reebill_dict['utilbills']) == 1
+        return sum(sum(charge['total']
+                for charge in subdoc['hypothetical_charges'])
+                for subdoc in self.reebill_dict['utilbills'])
 
-                
-    def compute_charges(self, uprs, cprs):
+    def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill.
         '''
-        account, sequence = self.account, self.sequence
         # process rate structures for all services
         for service in self.services:
             utilbill_doc = self._get_utilbill_for_service(service)
-            compute_all_charges(utilbill_doc, uprs, cprs)
+            compute_all_charges(utilbill_doc, uprs)
 
             # TODO temporary hack: duplicate the utility bill, set its register
             # quantities to the hypothetical values, recompute it, and then
@@ -716,11 +737,12 @@ class MongoReebill(object):
                         s_register['quantity']
 
             # compute the charges of the hypothetical utility bill
-            compute_all_charges(hypothetical_utilbill, uprs, cprs)
+            compute_all_charges(hypothetical_utilbill, uprs)
 
             # copy the charges from there into the reebill
-            self.set_hypothetical_chargegroups_for_service(service,
-                    hypothetical_utilbill['chargegroups'])
+            self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
+                    hypothetical_utilbill['charges']
+
 
 
 
@@ -825,31 +847,24 @@ class MongoReebill(object):
             ## don't have to set this because we modified the hypothetical_chargegroups
             ##reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
-    def update_summary_values(self):
-        '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
-        the reebill document. This should be done whenever the bill is
-        computed. Eventually code in Process.compute_reebill should move into
-        here and this method should be renamed to something more general.
-        '''
-        for subdoc in self.reebill_dict['utilbills']:
-            actual_total = total_of_all_charges(
-                    self._get_utilbill_for_handle(subdoc))
-            hypothetical_total = sum(charge['total'] for charge in
-                    chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
-
-            subdoc['ree_value'] = hypothetical_total - actual_total
-            subdoc['ree_charges'] = (hypothetical_total -
-                    actual_total) * (1 - self.discount_rate)
-            subdoc['ree_savings'] = (hypothetical_total -
-                    actual_total) * self.discount_rate
+    # def update_summary_values(self, discount_rate):
+    #     '''Update the values of "ree_value", "ree_charges" and "ree_savings" in
+    #     the reebill document. This should be done whenever the bill is
+    #     computed. Eventually code in Process._compute_reebill_document should move into
+    #     here and this method should be renamed to something more general.
+    #     '''
+    #     for subdoc in self.reebill_dict['utilbills']:
+    #         actual_total = total_of_all_charges(
+    #                 self._get_utilbill_for_handle(subdoc))
+    #         hypothetical_total = sum(charge['total'] for charge in
+    #                 chain.from_iterable(subdoc['hypothetical_chargegroups'].itervalues()))
+    #
+    #         subdoc['ree_value'] = hypothetical_total - actual_total
+    #         subdoc['ree_charges'] = (hypothetical_total -
+    #                 actual_total) * (1 - discount_rate)
+    #         subdoc['ree_savings'] = (hypothetical_total -
+    #                 actual_total) * discount_rate
         
-        self.ree_value = sum(subdoc['ree_value'] for subdoc in
-                self.reebill_dict['utilbills'])
-        self.ree_charges = sum(subdoc['ree_charges'] for subdoc in
-                self.reebill_dict['utilbills'])
-        self.ree_savings = sum(subdoc['ree_savings'] for subdoc in
-                self.reebill_dict['utilbills'])
-
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -877,12 +892,12 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    @property
-    def due_date(self):
-        return python_convert(self.reebill_dict['due_date'])
-    @due_date.setter
-    def due_date(self, value):
-        self.reebill_dict['due_date'] = value
+    # @property
+    # def due_date(self):
+    #     return python_convert(self.reebill_dict['due_date'])
+    # @due_date.setter
+    # def due_date(self, value):
+    #     self.reebill_dict['due_date'] = value
 
     # Periods are read-only on the basis of which utilbills have been attached
     @property
@@ -892,57 +907,59 @@ class MongoReebill(object):
     def period_end(self):
         return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     
-    @property
-    def discount_rate(self):
-        return self.reebill_dict['discount_rate']
-    @discount_rate.setter
-    def discount_rate(self, value):
-        self.reebill_dict['discount_rate'] = value
+    # @property
+    # def discount_rate(self):
+    #     return self.reebill_dict['discount_rate']
+    # @discount_rate.setter
+    # def discount_rate(self, value):
+    #     self.reebill_dict['discount_rate'] = value
 
-    @property
-    def total(self):
-        '''The sum of all charges on this bill that do not come from other
-        bills, i.e. charges that are being charged to the customer's account on
-        this bill's issue date. (This includes the late charge, which depends
-        on another bill for its value but belongs to the bill on which it
-        appears.) This total is what should be used to calculate the adjustment
-        produced by the difference between two versions of a bill.'''
-        # if/when more charges are added (e.g. "value-added charges") they
-        # should be included here
-        return self.ree_charges + (self.late_charges if 'late_charges' in
-                self.reebill_dict else 0)
+    # NOTE deprecated (this is not used for calculating adjustments anymore;
+    # see state.ReeBill.total)
+    # @property
+    # def total(self):
+    #     '''The sum of all charges on this bill that do not come from other
+    #     bills, i.e. charges that are being charged to the customer's account on
+    #     this bill's issue date. (This includes the late charge, which depends
+    #     on another bill for its value but belongs to the bill on which it
+    #     appears.) This total is what should be used to calculate the adjustment
+    #     produced by the difference between two versions of a bill.'''
+    #     # if/when more charges are added (e.g. "value-added charges") they
+    #     # should be included here
+    #     return self.ree_charges + (self.late_charges if 'late_charges' in
+    #             self.reebill_dict else 0)
 
-    @property
-    def balance_due(self):
-        '''Overall balance of the customer's account at the time this bill was
-        issued, including unpaid charges from previous bills.
-        '''
-        return self.reebill_dict['balance_due']
-    @balance_due.setter
-    def balance_due(self, value):
-        self.reebill_dict['balance_due'] = value
+    # @property
+    # def balance_due(self):
+    #     '''Overall balance of the customer's account at the time this bill was
+    #     issued, including unpaid charges from previous bills.
+    #     '''
+    #     return self.reebill_dict['balance_due']
+    # @balance_due.setter
+    # def balance_due(self, value):
+    #     self.reebill_dict['balance_due'] = value
 
-    @property
-    def late_charge_rate(self):
-        # currently, there is a population of reebills that do not have a late_charge_rate
-        # because late_charge_rate was not yet implemented.
-        # and since we may want to know this, let the key exception be raised.
-        return self.reebill_dict['late_charge_rate']
-    @late_charge_rate.setter
-    def late_charge_rate(self, value):
-        self.reebill_dict['late_charge_rate'] = value
-
-    @property
-    def late_charges(self):
-        """ This is an optional property of a ReeBill.  There was a day where
-        ReeBills were not part of a late charge program.  Consequently, we
-        would want to present bills from the past without a late charge box in
-        the UI.  So, an exception if they don't exist.  """
-        return self.reebill_dict['late_charges']
-
-    @late_charges.setter
-    def late_charges(self, value):
-        self.reebill_dict['late_charges'] = value
+    # @property
+    # def late_charge_rate(self):
+    #     # currently, there is a population of reebills that do not have a late_charge_rate
+    #     # because late_charge_rate was not yet implemented.
+    #     # and since we may want to know this, let the key exception be raised.
+    #     return self.reebill_dict['late_charge_rate']
+    # @late_charge_rate.setter
+    # def late_charge_rate(self, value):
+    #     self.reebill_dict['late_charge_rate'] = value
+    #
+    # @property
+    # def late_charges(self):
+    #     """ This is an optional property of a ReeBill.  There was a day where
+    #     ReeBills were not part of a late charge program.  Consequently, we
+    #     would want to present bills from the past without a late charge box in
+    #     the UI.  So, an exception if they don't exist.  """
+    #     return self.reebill_dict['late_charges']
+    #
+    # @late_charges.setter
+    # def late_charges(self, value):
+    #     self.reebill_dict['late_charges'] = value
 
     @property
     def billing_address(self):
@@ -969,55 +986,55 @@ class MongoReebill(object):
             print >> sys.stderr, self.reebill_dict['service_address']
             return '?'
 
-    @property
-    def prior_balance(self):
-        return self.reebill_dict['prior_balance']
-    @prior_balance.setter
-    def prior_balance(self, value):
-        self.reebill_dict['prior_balance'] = value
-
-    @property
-    def payment_received(self):
-        return self.reebill_dict['payment_received']
-
-    @payment_received.setter
-    def payment_received(self, value):
-        self.reebill_dict['payment_received'] = value
-
-    @property
-    def total_adjustment(self):
-        return self.reebill_dict['total_adjustment']
-    @total_adjustment.setter
-    def total_adjustment(self, value):
-        self.reebill_dict['total_adjustment'] = value
-
-    @property
-    def manual_adjustment(self):
-        return self.reebill_dict['manual_adjustment']
-    @manual_adjustment.setter
-    def manual_adjustment(self, value):
-        self.reebill_dict['manual_adjustment'] = value
-
-    @property
-    def ree_charges(self):
-        return self.reebill_dict['ree_charges']
-    @ree_charges.setter
-    def ree_charges(self, value):
-        self.reebill_dict['ree_charges'] = value
-
-    @property
-    def ree_savings(self):
-        return self.reebill_dict['ree_savings']
-    @ree_savings.setter
-    def ree_savings(self, value):
-        self.reebill_dict['ree_savings'] = value
-
-    @property
-    def balance_forward(self):
-        return self.reebill_dict['balance_forward']
-    @balance_forward.setter
-    def balance_forward(self, value):
-        self.reebill_dict['balance_forward'] = value
+    # @property
+    # def prior_balance(self):
+    #     return self.reebill_dict['prior_balance']
+    # @prior_balance.setter
+    # def prior_balance(self, value):
+    #     self.reebill_dict['prior_balance'] = value
+    #
+    # @property
+    # def payment_received(self):
+    #     return self.reebill_dict['payment_received']
+    #
+    # @payment_received.setter
+    # def payment_received(self, value):
+    #     self.reebill_dict['payment_received'] = value
+    #
+    # @property
+    # def total_adjustment(self):
+    #     return self.reebill_dict['total_adjustment']
+    # @total_adjustment.setter
+    # def total_adjustment(self, value):
+    #     self.reebill_dict['total_adjustment'] = value
+    #
+    # @property
+    # def manual_adjustment(self):
+    #     return self.reebill_dict['manual_adjustment']
+    # @manual_adjustment.setter
+    # def manual_adjustment(self, value):
+    #     self.reebill_dict['manual_adjustment'] = value
+    #
+    # @property
+    # def ree_charges(self):
+    #     return self.reebill_dict['ree_charges']
+    # @ree_charges.setter
+    # def ree_charges(self, value):
+    #     self.reebill_dict['ree_charges'] = value
+    #
+    # @property
+    # def ree_savings(self):
+    #     return self.reebill_dict['ree_savings']
+    # @ree_savings.setter
+    # def ree_savings(self, value):
+    #     self.reebill_dict['ree_savings'] = value
+    #
+    # @property
+    # def balance_forward(self):
+    #     return self.reebill_dict['balance_forward']
+    # @balance_forward.setter
+    # def balance_forward(self, value):
+    #     self.reebill_dict['balance_forward'] = value
 
     @property
     def motd(self):
@@ -1028,61 +1045,61 @@ class MongoReebill(object):
     def motd(self, value):
         self.reebill_dict['message'] = value
 
-    # TODO this must die https://www.pivotaltracker.com/story/show/36492387
-    @property
-    def actual_total(self):
-        '''Returns total of all charges of all utility bills belonging to this
-        reebill.
-        '''
-        return sum(total_of_all_charges(u) for u in self._utilbills)
+    # # TODO this must die https://www.pivotaltracker.com/story/show/36492387
+    # @property
+    # def actual_total(self):
+    #     '''Returns total of all charges of all utility bills belonging to this
+    #     reebill.
+    #     '''
+    #     return sum(total_of_all_charges(u) for u in self._utilbills)
+    #
+    # @property
+    # def hypothetical_total(self):
+    #     '''Returns total of all charges of all "hypothetical utility bill"
+    #     subdocuments belongong to this reebill.
+    #     '''
+    #     return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
+    #             subdoc['hypothetical_chargegroups'].itervalues()))
+    #             for subdoc in self.reebill_dict['utilbills'])
+    #
+    # @property
+    # def ree_value(self):
+    #     return self.reebill_dict['ree_value']
+    # @ree_value.setter
+    # def ree_value(self, value):
+    #     self.reebill_dict['ree_value'] = value
 
-    @property
-    def hypothetical_total(self):
-        '''Returns total of all charges of all "hypothetical utility bill"
-        subdocuments belongong to this reebill.
-        '''
-        return sum(sum(charge.get('total',0) for charge in chain.from_iterable(
-                subdoc['hypothetical_chargegroups'].itervalues()))
-                for subdoc in self.reebill_dict['utilbills'])
+    # @property
+    # def bill_recipients(self):
+    #     '''E-mail addresses of bill recipients.
+    #
+    #     If these data exist, returns a list of strings. Otherwise, returns None.'''
+    #     res = self.reebill_dict.get('bill_recipients', None)
+    #     if res is None:
+    #         self.reebill_dict['bill_recipients'] = []
+    #         return self.reebill_dict['bill_recipients']
+    #     return res
+    #
+    # @bill_recipients.setter
+    # def bill_recipients(self, value):
+    #     '''Assigns a list of e-mail addresses representing bill recipients.'''
+    #     self.reebill_dict['bill_recipients'] = value
 
-    @property
-    def ree_value(self):
-        return self.reebill_dict['ree_value']
-    @ree_value.setter
-    def ree_value(self, value):
-        self.reebill_dict['ree_value'] = value
-
-    @property
-    def bill_recipients(self):
-        '''E-mail addresses of bill recipients.
-
-        If these data exist, returns a list of strings. Otherwise, returns None.'''
-        res = self.reebill_dict.get('bill_recipients', None)
-        if res is None:
-            self.reebill_dict['bill_recipients'] = []
-            return self.reebill_dict['bill_recipients']
-        return res
-        
-    @bill_recipients.setter
-    def bill_recipients(self, value):
-        '''Assigns a list of e-mail addresses representing bill recipients.'''
-        self.reebill_dict['bill_recipients'] = value
-
-    @property
-    def last_recipients(self):
-        '''E-mail addresses of bill recipients.
-
-        If these data exist, returns a list of strings. Otherwise, returns None.'''
-        res = self.reebill_dict.get('last_recipients', None)
-        if res is None:
-            self.reebill_dict['last_recipients'] = []
-            return self.reebill_dict['last_recipients']
-        return res
-    
-    @last_recipients.setter
-    def last_recipients(self, value):
-        '''Assigns a list of e-mail addresses representing bill recipients.'''
-        self.reebill_dict['last_recipients'] = value
+    # @property
+    # def last_recipients(self):
+    #     '''E-mail addresses of bill recipients.
+    #
+    #     If these data exist, returns a list of strings. Otherwise, returns None.'''
+    #     res = self.reebill_dict.get('last_recipients', None)
+    #     if res is None:
+    #         self.reebill_dict['last_recipients'] = []
+    #         return self.reebill_dict['last_recipients']
+    #     return res
+    #
+    # @last_recipients.setter
+    # def last_recipients(self, value):
+    #     '''Assigns a list of e-mail addresses representing bill recipients.'''
+    #     self.reebill_dict['last_recipients'] = value
         
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -1159,6 +1176,18 @@ class MongoReebill(object):
         # replace that one with 'new_utilbill_doc'
         self._utilbills[matching_indices[0]] = new_utilbill_doc
 
+    def get_all_shadow_registers_json(self):
+        '''Given a utility bill document, returns a list of dictionaries describing
+        registers of all meters.'''
+        result = []
+        for register in self.reebill_dict['utilbills'][0]['shadow_registers']:
+                result.append({
+                    'measure': register['measure'],
+                    'register_binding': register['register_binding'],
+                    'quantity': register['quantity']
+                })
+        return result
+
     #def hypothetical_total_for_service(self, service_name):
         #'''Returns the total of hypothetical charges for the utilbill whose
         #service is 'service_name'. There's not supposed to be more than one
@@ -1197,40 +1226,40 @@ class MongoReebill(object):
     #def set_ree_charges_for_service(self, service_name, new_ree_charges):
     #    self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
 
-    def hypothetical_chargegroups_for_service(self, service_name):
-        '''Returns the list of hypothetical chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service.'''
-        return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
-
-    def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
-        '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
-        because it is customary to define the actual charges and base the hypothetical
-        charges on them.'''
-        self._get_handle_for_service(service_name)['hypothetical_chargegroups']\
-                = new_chargegroups
-
-    def actual_chargegroups_for_service(self, service_name):
-        '''Returns the list of actual chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']
-
-    def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
-        '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
-        because it is customary to define the actual charges and base the hypothetical
-        charges on them.'''
-        self._get_utilbill_for_service(service_name)['chargegroups'] \
-                = new_chargegroups
-
-    def chargegroups_model_for_service(self, service_name):
-        '''Returns a shallow list of chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']\
-                .keys()
+    # def hypothetical_chargegroups_for_service(self, service_name):
+    #     '''Returns the list of hypothetical chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service.'''
+    #     return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
+    #
+    # def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
+    #     '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
+    #     because it is customary to define the actual charges and base the hypothetical
+    #     charges on them.'''
+    #     self._get_handle_for_service(service_name)['hypothetical_chargegroups']\
+    #             = new_chargegroups
+    #
+    # def actual_chargegroups_for_service(self, service_name):
+    #     '''Returns the list of actual chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service, so an exception is raised if that happens (or if
+    #     there's no utilbill for that service).'''
+    #     return self._get_utilbill_for_service(service_name)['chargegroups']
+    #
+    # def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
+    #     '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
+    #     because it is customary to define the actual charges and base the hypothetical
+    #     charges on them.'''
+    #     self._get_utilbill_for_service(service_name)['chargegroups'] \
+    #             = new_chargegroups
+    #
+    # def chargegroups_model_for_service(self, service_name):
+    #     '''Returns a shallow list of chargegroups for the utilbill whose
+    #     service is 'service_name'. There's not supposed to be more than one
+    #     utilbill per service, so an exception is raised if that happens (or if
+    #     there's no utilbill for that service).'''
+    #     return self._get_utilbill_for_service(service_name)['chargegroups']\
+    #             .keys()
 
     @property
     def services(self):
@@ -1270,12 +1299,12 @@ class MongoReebill(object):
             if self.reebill_dict['suspended_services'] == []:
                 del self.reebill_dict['suspended_services']
 
-    def utilbill_period_for_service(self, service_name):
-        '''Returns start & end dates of the first utilbill found whose service
-        is 'service_name'. There's not supposed to be more than one utilbill
-        per service.'''
-        u = self._get_utilbill_for_service(service_name)
-        return u['start'], u['end']
+    # def utilbill_period_for_service(self, service_name):
+    #     '''Returns start & end dates of the first utilbill found whose service
+    #     is 'service_name'. There's not supposed to be more than one utilbill
+    #     per service.'''
+    #     u = self._get_utilbill_for_service(service_name)
+    #     return u['start'], u['end']
 
     #def set_utilbill_period_for_service(self, service, period):
     #    '''Changes the period dates of the first utility bill associated with
@@ -1291,75 +1320,75 @@ class MongoReebill(object):
         assert len(self._utilbills) == 1
         return meter_read_period(self._utilbills[0])
 
-    # TODO make this go away; don't use reebill object to get utility bill data
-    def meter_read_dates_for_service(self, service):
-        '''Returns (prior_read_date, present_read_date) of the shadowed meter
-        in the first utility bill found whose service is 'service_name'. (There
-        should only be one utility bill for the given service, and only one
-        register in one meter that has a corresponding shadow register in the
-        reebill.)'''
-        external_utilbill = self._get_utilbill_for_service(service)
-        utilbill_handle = self._get_handle_for_service(service)
-        for shadow_register in utilbill_handle['shadow_registers']:
-            for meter in external_utilbill['meters']:
-                for actual_register in meter['registers']:
-                    if actual_register['identifier'] == shadow_register['identifier']:
-                        return meter['prior_read_date'], meter['present_read_date']
-        raise ValueError(('Utility bill for service "%s" has no meter '
-                'containing a register whose identifier matches that of '
-                'a shadow register') % service)
-
-    #@property
-    #def utilbill_periods(self):
-    #    '''Return a dictionary whose keys are service and values are the
-    #    utilbill period.'''
-    #    return dict([(service, self.utilbill_period_for_service(service)) for
-    #        service in self.services])
-
-    # TODO make this go away when render.py is replaced
-    def meters_for_service(self, service_name):
-        '''Replicates part of an old version of the reebill/utility bill
-        document schema for use by render.py which is tightly coupled to it.
-        Do not add any new calls to this method!
-        '''
-        assert len(self._utilbills) == 1
-        meters = copy.deepcopy(
-                self._get_utilbill_for_service(service_name)['meters'])
-        utilbill_handle = self._get_handle_for_service(service_name)
-
-        result = []
-        for m in meters:
-            meter_dict = {
-                'prior_read_date': m['prior_read_date'],
-                'present_read_date': m['present_read_date'],
-                'identifier': m['identifier'],
-                'registers': [],
-            }
-            for register in m['registers']:
-                assert 'shadow' not in m['registers']
-                meter_dict['registers'].append({
-                    'shadow': False,
-                    'register_binding': register['register_binding'],
-                    'quantity_units': register['quantity_units'],
-                    'type': register['type'],
-                    'description': register['description'],
-                    'quantity': register['quantity'],
-                    'identifier': register['identifier'],
-                })
-                for sr in utilbill_handle['shadow_registers']:
-                    if sr['register_binding'] == register['register_binding']:
-                        meter_dict['registers'].append({
-                            'shadow': True,
-                            'register_binding': register['register_binding'],
-                            'quantity_units': register['quantity_units'],
-                            'type': register['type'],
-                            'description': register['description'],
-                            'identifier': register['identifier'],
-                            'quantity': sr['quantity'],
-                        })
-                        break
-            result.append(meter_dict)
-        return result
+    # # TODO make this go away; don't use reebill object to get utility bill data
+    # def meter_read_dates_for_service(self, service):
+    #     '''Returns (prior_read_date, present_read_date) of the shadowed meter
+    #     in the first utility bill found whose service is 'service_name'. (There
+    #     should only be one utility bill for the given service, and only one
+    #     register in one meter that has a corresponding shadow register in the
+    #     reebill.)'''
+    #     external_utilbill = self._get_utilbill_for_service(service)
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     for shadow_register in utilbill_handle['shadow_registers']:
+    #         for meter in external_utilbill['meters']:
+    #             for actual_register in meter['registers']:
+    #                 if actual_register['identifier'] == shadow_register['identifier']:
+    #                     return meter['prior_read_date'], meter['present_read_date']
+    #     raise ValueError(('Utility bill for service "%s" has no meter '
+    #             'containing a register whose identifier matches that of '
+    #             'a shadow register') % service)
+    #
+    # #@property
+    # #def utilbill_periods(self):
+    # #    '''Return a dictionary whose keys are service and values are the
+    # #    utilbill period.'''
+    # #    return dict([(service, self.utilbill_period_for_service(service)) for
+    # #        service in self.services])
+    #
+    # # TODO make this go away when render.py is replaced
+    # def meters_for_service(self, service_name):
+    #     '''Replicates part of an old version of the reebill/utility bill
+    #     document schema for use by render.py which is tightly coupled to it.
+    #     Do not add any new calls to this method!
+    #     '''
+    #     assert len(self._utilbills) == 1
+    #     meters = copy.deepcopy(
+    #             self._get_utilbill_for_service(service_name)['meters'])
+    #     utilbill_handle = self._get_handle_for_service(service_name)
+    #
+    #     result = []
+    #     for m in meters:
+    #         meter_dict = {
+    #             'prior_read_date': m['prior_read_date'],
+    #             'present_read_date': m['present_read_date'],
+    #             'identifier': m['identifier'],
+    #             'registers': [],
+    #         }
+    #         for register in m['registers']:
+    #             assert 'shadow' not in m['registers']
+    #             meter_dict['registers'].append({
+    #                 'shadow': False,
+    #                 'register_binding': register['register_binding'],
+    #                 'quantity_units': register['quantity_units'],
+    #                 'type': register['type'],
+    #                 'description': register['description'],
+    #                 'quantity': register['quantity'],
+    #                 'identifier': register['identifier'],
+    #             })
+    #             for sr in utilbill_handle['shadow_registers']:
+    #                 if sr['register_binding'] == register['register_binding']:
+    #                     meter_dict['registers'].append({
+    #                         'shadow': True,
+    #                         'register_binding': register['register_binding'],
+    #                         'quantity_units': register['quantity_units'],
+    #                         'type': register['type'],
+    #                         'description': register['description'],
+    #                         'identifier': register['identifier'],
+    #                         'quantity': sr['quantity'],
+    #                     })
+    #                     break
+    #         result.append(meter_dict)
+    #     return result
 
 
     #def _update_shadow_registers(self):
@@ -1606,6 +1635,7 @@ class MongoReebill(object):
                    "in ccf: energy value is wrong; time to implement "
                    "https://www.pivotaltracker.com/story/show/28825375") \
                   % (self.account, self.sequence, self.version)
+            new_quantity /= 1e5
         else:
             raise ValueError('Unknown energy unit: "%s"' % unit)
 
@@ -1713,17 +1743,18 @@ class MongoReebill(object):
     # Helper functions
     #
 
-    # the following functions are all about flattening nested chargegroups for the UI grid
-    def hypothetical_chargegroups_flattened(self, service,
-            chargegroups='hypothetical_chargegroups'):
-        utilbill_handle = self._get_handle_for_service(service)
-        return flatten_chargegroups_dict(copy.deepcopy(
-                utilbill_handle['hypothetical_chargegroups']))
-
-    def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
-        utilbill_handle = self._get_handle_for_service(service)
-        utilbill_handle['hypothetical_chargegroups'] = \
-                unflatten_chargegroups_list(flat_charges)
+    # # NOTE deprecated; avoid using this if at all possible
+    # def hypothetical_chargegroups_flattened(self, service,
+    #         chargegroups='hypothetical_chargegroups'):
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     return flatten_chargegroups_dict(copy.deepcopy(
+    #             utilbill_handle['hypothetical_chargegroups']))
+    #
+    # # NOTE deprecated; avoid using this if at all possible
+    # def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
+    #     utilbill_handle = self._get_handle_for_service(service)
+    #     utilbill_handle['hypothetical_chargegroups'] = \
+    #             unflatten_chargegroups_list(flat_charges)
 
 
 class ReebillDAO(object):
@@ -1896,7 +1927,6 @@ class ReebillDAO(object):
         if utilbill.state == UtilBill.Hypothetical:
             assert utilbill.document_id == None
             assert utilbill.uprs_document_id == None
-            assert utilbill.cprs_document_id == None
             raise ValueError('No document for hypothetical utilty bill: %s'
                     % utilbill)
         # empty document_ids are legitimate because "hypothetical" utility
@@ -2171,47 +2201,6 @@ class ReebillDAO(object):
                     "because it belongs to issued reebill %s-%s-%s") % (
                         utilbill_doc['account'], utilbill_doc['sequence'],
                         utilbill_doc['version']))
-
-        # check for uniqueness of {account, service, utility, start, end} (and
-        # sequence + version if appropriate). Mongo won't enforce this for us.
-        unique_fields = {
-            'account': utilbill_doc['account'],
-            'service': utilbill_doc['service'],
-            'utility': utilbill_doc['utility'],
-            'start': date_to_datetime(utilbill_doc['start']) if
-                    utilbill_doc['start'] is not None else None,
-            'end': date_to_datetime(utilbill_doc['end']) if utilbill_doc['end']
-                    is not None else None,
-        }
-        if sequence_and_version is not None:
-            # this utility bill is being frozen: check for existing frozen
-            # utility bills with same sequence and version (ignoring un-frozen
-            # ones)
-            unique_fields['sequence'] = sequence_and_version[0]
-            unique_fields['version'] = sequence_and_version[1]
-        elif 'sequence' in utilbill_doc:
-            # NOTE re-saving a frozen utility bill document can only happen when
-            # the 'force' argument is used
-            assert force is True
-            # check for existing frozen utility bills with the same sequence
-            # and version (ignoring un-frozen ones)
-            unique_fields['sequence'] = utilbill_doc['sequence']
-            unique_fields['version'] = utilbill_doc['version']
-        else:
-            # not frozen: only check for existing utility bills that don't have
-            # sequence/version keys
-            unique_fields['sequence'] = {'$exists': False}
-            unique_fields['version'] = {'$exists': False}
-        # NOTE do not use load_utilbills(**unique_fields) here because it
-        # unpacks None values into nonexistent keys!
-        # see bug #39717171
-        for duplicate in self.utilbills_collection.find(unique_fields):
-            if duplicate['_id'] != utilbill_doc['_id']:
-                raise NotUniqueException(("Can't save utility bill with "
-                        "_id=%s: There's already a utility bill with "
-                        "id=%s matching %s") % (utilbill_doc['_id'],
-                        duplicate['_id'],
-                        format_query(unique_fields)))
 
         if sequence_and_version is not None:
             utilbill_doc.update({

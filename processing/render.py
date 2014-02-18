@@ -219,9 +219,16 @@ class ReebillRenderer:
         # render each version
         max_version = self.state_db.max_version(session, account, sequence)
         for version in range(max_version + 1):
-            reebill = self.reebill_dao.load_reebill(account, sequence, version=version)
-            self.render_version(reebill, outputdir, outputfile + '-%s' %
-                    version, verbose)
+            reebill = self.state_db.get_reebill(session, account, sequence,
+                    version=version)
+            reebill_document = self.reebill_dao.load_reebill(account, sequence,
+                    version=version)
+            # TODO: #65978874 Once Reebills save their periods, use that
+            # instead of the Utilitybill's period
+            ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=version)[0]
+            self.render_version(reebill, reebill_document, ub, outputdir,
+                    outputfile +  '-%s' % version, verbose)
 
         # concatenate version pdfs
         input_paths = ['%s-%s' % (os.path.join(outputdir, outputfile), v)
@@ -246,10 +253,19 @@ class ReebillRenderer:
         else:
             self.current_template = self.default_template
         max_version = self.state_db.max_version(session, account, sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence, version=max_version)
-        self.render_version(reebill, outputdir, outputfile, verbose)
+        reebill = self.state_db.get_reebill(session, account, sequence,
+                version=max_version)
+        reebill_document = self.reebill_dao.load_reebill(account, sequence,
+                version=max_version)
+        # TODO: #65978874 Once Reebills save their periods, use that
+        # instead of the Utilitybill's period
+        ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=max_version)[0]
+        self.render_version(reebill, reebill_document, ub, outputdir, outputfile,
+                verbose)
 
-    def render_version(self, reebill, outputdir, outputfile, verbose):
+    def render_version(self, reebill, reebill_document, utilbill, outputdir,
+                       outputfile, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -326,12 +342,9 @@ class ReebillRenderer:
         # balance due block
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
-        # Special instructions frame
-        motdF = Frame(30, 41, 220, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='motd', showBoundary=_showBoundaries)
-
 
         # build page container for flowables to populate
-        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF, motdF])
+        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF])
         #
 
         # page two frames
@@ -381,10 +394,10 @@ class ReebillRenderer:
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
-        issue_date = self.state_db.get_reebill(self.state_db.session(), reebill.account,
-                reebill.sequence, version=reebill.version).issue_date
+        issue_date = reebill.issue_date
         accountNumber = [
-            [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
+            [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(
+                reebill.customer.account + " " + str(reebill.sequence),styles['BillField'])],
             [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(issue_date.strftime('%m-%d-%Y') if issue_date is not None else 'None', styles['BillField'])]
         ]
 
@@ -396,8 +409,12 @@ class ReebillRenderer:
 
         # populate due date and amount
         dueDateAndAmount = [
-            [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill.due_date.strftime('%m-%d-%Y') if reebill.due_date is not None else 'None', styles['BillFieldRight'])], 
-            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(format_for_display(reebill.balance_due), styles['BillFieldRight'])]
+            [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill
+            .due_date.strftime('%m-%d-%Y') if reebill.due_date is not None
+            else 'None', styles['BillFieldRight'])],
+            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(
+                format_for_display(reebill.balance_due), styles[
+                    'BillFieldRight'])]
         ]
         
         t = Table(dueDateAndAmount, [135,85])
@@ -409,7 +426,7 @@ class ReebillRenderer:
         Elements.append(Spacer(100,10))
         Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
-        sa = stringify(reebill.service_address)
+        sa = stringify(reebill_document.service_address)
         Elements.append(Paragraph(sa.get('addressee', ""), styles['BillField']))
         Elements.append(Paragraph(sa.get('street',""), styles['BillField']))
         Elements.append(Paragraph(" ".join((sa.get('city', ""), sa.get('state', ""), sa.get('postal_code', ""))), styles['BillField']))
@@ -421,7 +438,7 @@ class ReebillRenderer:
         
         # populate billing address
         Elements.append(Spacer(100,20))
-        ba = stringify(reebill.billing_address)
+        ba = stringify(reebill_document.billing_address)
         Elements.append(Paragraph(ba.get('addressee', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(" ".join((ba.get('city', ""), ba.get('state', ""), ba.get('postal_code',""))), styles['BillFieldLg']))
@@ -432,7 +449,7 @@ class ReebillRenderer:
 
 
         #if self.current_template is not 'teva':
-            #st = reebill.statistics
+            #st = reebill_document.statistics
 
             ## populate graph one
 
@@ -577,15 +594,16 @@ class ReebillRenderer:
 
         # populate billPeriodTableF
         # spacer so rows can line up with those in summarChargesTableF rows
+
         serviceperiod = [
                 [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
             ] + [
                 [
                     Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                    Paragraph(reebill.utilbill_period_for_service(service)[0].strftime('%m-%d-%Y'), styles['BillFieldRight']), 
-                    Paragraph(reebill.utilbill_period_for_service(service)[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
-                ] for service in reebill.services
+                    Paragraph(utilbill.period_start.strftime('%m-%d-%Y'), styles['BillFieldRight']),
+                    Paragraph(utilbill.period_end.strftime('%m-%d-%Y'), styles['BillFieldRight'])
+                ] for service in reebill_document.services
             ]
 
         t = Table(serviceperiod, colWidths=[115,63,63])
@@ -599,9 +617,12 @@ class ReebillRenderer:
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
         ]+[
             [
-                Paragraph(str(format_for_display(reebill.hypothetical_total)),styles['BillFieldRight']), 
-                Paragraph(str(format_for_display(reebill.actual_total)),styles['BillFieldRight']), 
-                Paragraph(str(format_for_display(reebill.ree_value)),styles['BillFieldRight'])
+                Paragraph(str(format_for_display(reebill_document
+                .get_total_hypothetical_charges())),styles['BillFieldRight']),
+                Paragraph(str(format_for_display(reebill_document
+                .get_total_utility_charges())),styles['BillFieldRight']),
+                Paragraph(str(format_for_display(reebill.ree_value)),styles[
+                    'BillFieldRight'])
             ]
         ]
 
@@ -613,8 +634,12 @@ class ReebillRenderer:
 
         # populate balances
         balances = [
-            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.prior_balance)),styles['BillFieldRight'])],
-            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.payment_received)), styles['BillFieldRight'])]
+            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(
+                str(format_for_display(reebill.prior_balance)),styles[
+                    'BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']),
+                Paragraph(str(format_for_display(reebill.payment_received)),
+                    styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
@@ -638,7 +663,7 @@ class ReebillRenderer:
 
         try:
             # populate current charges
-            late_charges = reebill.late_charges
+            late_charges = reebill.late_charge
         except KeyError:
             late_charges = None
 
@@ -648,13 +673,13 @@ class ReebillRenderer:
         if late_charges is not None:
             currentCharges = [
                 [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_savings)), styles['BillFieldRight'])],
-                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charges)), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charge)), styles['BillFieldRight'])],
                 [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(late_charges)), styles['BillFieldRight'])]
             ]
         else:
             currentCharges = [
                 [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_savings)), styles['BillFieldRight'])],
-                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charges)), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(format_for_display(reebill.ree_charge)), styles['BillFieldRight'])],
                 [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str("n/a"), styles['BillFieldRight'])]
             ]
 
@@ -685,9 +710,6 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-        # populate motd
-        Elements.append(Paragraph(reebill.motd if reebill.motd is not None else "", styles['BillFieldSm']))
-        Elements.append(UseUpSpace())
 
 
 
@@ -714,44 +736,30 @@ class ReebillRenderer:
             [None, None, None, None,  None, None,]
         ]
 
-        # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-        # TODO do not use the 'meters_for_service' method
-        mongo_measured_usage = dict((service,reebill.meters_for_service(service)) for service in reebill.services)
+        # Load registers and match up shadow registers to actual registers
+        shadow_registers = reebill_document.get_all_shadow_registers_json()
+        actual_registers = mongo.get_all_actual_registers_json(
+            self.reebill_dao.load_doc_for_utilbill(utilbill))
+        for s_register in shadow_registers:
 
-        # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
-        for service, meters in mongo_measured_usage.items():
-            for meter in meters:
-                keyfunc = lambda register:register['identifier']
-                # sort the registers by identifier to ensure similar identifiers are adjacent
-                registers = sorted(meter['registers'], key=keyfunc )
+            total = 0
 
-                # group by the identifier attribute of each register
-                for identifier, register_group in groupby(registers, key=keyfunc):
-
-                    shadow_total = None
-                    utility_total = None
-                    total = 0
-
-                    # TODO validate that there is only a utility and shadow register
-                    for register in register_group:
-                        if register['shadow'] is True:
-                            shadow_total = register['quantity']
-                            total += register['quantity']
-                        if register['shadow'] is False:
-                            utility_total = register['quantity']
-                            total += register['quantity']
-
+            for a_register in actual_registers:
+                if s_register['register_binding'] == a_register['binding']:
+                    shadow_total = s_register['quantity']
+                    utility_total = a_register['quantity']
+                    total += (utility_total + shadow_total)
                     measuredUsage.append([
-                        # TODO unless some wrapper class exists (pivotal 13643807) check for errors
-                        register['identifier'],
-                        register['description'],
-                        # as in the case of a second meter that doesn't have a shadow register (see family laundry)
-                        # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
-                        round_for_display(shadow_total) if shadow_total is not None else "",
+                        a_register['identifier'],
+                        a_register['description'],
+                        round_for_display(shadow_total),
                         utility_total,
                         round_for_display(total),
-                        register['quantity_units'],
+                        a_register['quantity_units']
                     ])
+
+
+
 
         measuredUsage.append([None, None, None, None, None, None])
 
@@ -802,11 +810,11 @@ class ReebillRenderer:
         ]
 
         # muliple services are not supported
-        assert len(reebill.services) == 1
-        for service in reebill.services:
+        assert len(reebill_document.services) == 1
+        for service in reebill_document.services:
             # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
             # mapping charge types (e.g. "All Charges") to lists of chargegroups.
-            chargegroups_dict = reebill.hypothetical_chargegroups_for_service(service)
+            chargegroups_dict = reebill_document.hypothetical_chargegroups_for_service(service)
             for charge_type in chargegroups_dict.keys():
                 chargeDetails.append([service, None, None, None, None, None, None])
                 for i, charge in enumerate(chargegroups_dict[charge_type]):
@@ -821,7 +829,9 @@ class ReebillRenderer:
                     ])
             # spacer
             chargeDetails.append([None, None, None, None, None, None, None])
-            chargeDetails.append([None, None, None, None, None, None, format_for_display(reebill.hypothetical_total)])
+            chargeDetails.append([None, None, None, None, None, None,
+                format_for_display(reebill_document
+                .get_total_utility_charges())])
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
