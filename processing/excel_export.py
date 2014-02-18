@@ -427,7 +427,9 @@ class Exporter(object):
                     for applicable_payment in applicable_payments:
                         payments.remove(applicable_payment)
 
-                savings = reebill_doc.ree_value - reebill_doc.ree_charges
+                savings = 0
+                if reebill.ree_value and reebill.ree_charge:
+                    savings = reebill.ree_value - reebill.ree_charge
                 cumulative_savings += savings
 
                 # The first payment applied to a bill is listed in the same row
@@ -440,45 +442,59 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
+                actual_total=reebill_doc.get_total_utility_charges()
+
+                try:
+                    hypothetical_total=reebill_doc.get_total_hypothetical_charges()
+                except KeyError:
+                    hypothetical_total="Error!"
                 try:
                     total_ree = reebill_doc.total_renewable_energy()
                     if total_ree != 0:
-                        average_rate_unit_ree = (reebill_doc.hypothetical_total -
-                                reebill_doc.actual_total)/total_ree
+                        average_rate_unit_ree = (hypothetical_total-actual_total)/total_ree
                 except StopIteration:
                     # A bill didnt have registers, ignore this column
                     total_ree = 'Error! No Registers found!'
+                except TypeError:
+                    total_ree = 'Error!'
+
                 try:
-                    late_charges = reebill_doc.late_charges
+                    late_charges = reebill.late_charge
                 except KeyError:
                     late_charges = None
 
                 row = [account,
-                       reebill_doc.sequence,
-                       reebill_doc.version,
+                       reebill.sequence,
+                       reebill.version,
                        format_addr(reebill_doc.billing_address),
                        format_addr(reebill_doc.service_address),
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),
-                       reebill_doc.hypothetical_total,
-                       reebill_doc.actual_total,
-                       reebill_doc.ree_value,
-                       reebill_doc.prior_balance,
-                       reebill_doc.payment_received,
+                       hypothetical_total,
+                       actual_total,
+                       reebill.ree_value,
+                       reebill.prior_balance,
+                       reebill.payment_received,
                        payment_date,
                        payment_amount,
-                       reebill_doc.total_adjustment,
-                       reebill_doc.balance_forward,
-                       reebill_doc.ree_charges,
-                       late_charges,
-                       reebill_doc.balance_due,
+                       reebill.total_adjustment,
+                       reebill.balance_forward,
+                       reebill.ree_charge,
+                       reebill.late_charge,
+                       reebill.balance_due,
                        '', #spacer
                        savings,
                        cumulative_savings,
                        total_ree,
                        average_rate_unit_ree
                        ]
+                # Formatting
+                for i in (8,9,10,11,12,14,15,16,17,19,21,22,23,24):
+                    try:
+                        row[i] = ("%.2f" % row[i])
+                    except TypeError:
+                        pass
                 ds_rows.append(row)
 
                 # For each additional payment include a row containing
@@ -492,6 +508,10 @@ class Exporter(object):
                            applicable_payment.credit,
                             None, None, None, None, None,
                             None, None, None, None, None]
+                    try:
+                        row[14] = ("%.2f" % row[14])
+                    except TypeError:
+                        pass
                     ds_rows.append(row)
 
         # We got all rows! Assemble the dataset
@@ -564,6 +584,6 @@ if __name__ == '__main__':
     account = None
     if len(sys.argv) > 1:
         export_func = sys.argv[1]
-    elif len(sys.argv) > 2:
+    if len(sys.argv) > 2:
         account = sys.argv[2]
     main(export_func, filename, account)
