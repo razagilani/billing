@@ -736,44 +736,30 @@ class ReebillRenderer:
             [None, None, None, None,  None, None,]
         ]
 
-        # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-        # TODO do not use the 'meters_for_service' method
-        mongo_measured_usage = dict((service,reebill_document.meters_for_service(service)) for service in reebill_document.services)
+        # Load registers and match up shadow registers to actual registers
+        shadow_registers = reebill_document.get_all_shadow_registers_json()
+        actual_registers = mongo.get_all_actual_registers_json(
+            self.reebill_dao.load_doc_for_utilbill(utilbill))
+        for s_register in shadow_registers:
 
-        # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
-        for service, meters in mongo_measured_usage.items():
-            for meter in meters:
-                keyfunc = lambda register:register['identifier']
-                # sort the registers by identifier to ensure similar identifiers are adjacent
-                registers = sorted(meter['registers'], key=keyfunc )
+            total = 0
 
-                # group by the identifier attribute of each register
-                for identifier, register_group in groupby(registers, key=keyfunc):
-
-                    shadow_total = None
-                    utility_total = None
-                    total = 0
-
-                    # TODO validate that there is only a utility and shadow register
-                    for register in register_group:
-                        if register['shadow'] is True:
-                            shadow_total = register['quantity']
-                            total += register['quantity']
-                        if register['shadow'] is False:
-                            utility_total = register['quantity']
-                            total += register['quantity']
-
+            for a_register in actual_registers:
+                if s_register['register_binding'] == a_register['binding']:
+                    shadow_total = s_register['quantity']
+                    utility_total = a_register['quantity']
+                    total += (utility_total + shadow_total)
                     measuredUsage.append([
-                        # TODO unless some wrapper class exists (pivotal 13643807) check for errors
-                        register['identifier'],
-                        register['description'],
-                        # as in the case of a second meter that doesn't have a shadow register (see family laundry)
-                        # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
-                        round_for_display(shadow_total) if shadow_total is not None else "",
+                        a_register['identifier'],
+                        a_register['description'],
+                        round_for_display(shadow_total),
                         utility_total,
                         round_for_display(total),
-                        register['quantity_units'],
+                        a_register['quantity_units']
                     ])
+
+
+
 
         measuredUsage.append([None, None, None, None, None, None])
 
