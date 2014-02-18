@@ -223,7 +223,11 @@ class ReebillRenderer:
                     version=version)
             reebill_document = self.reebill_dao.load_reebill(account, sequence,
                     version=version)
-            self.render_version(reebill, reebill_document, outputdir,
+            # TODO: #65978874 Once Reebills save their periods, use that
+            # instead of the Utilitybill's period
+            ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=version)[0]
+            self.render_version(reebill, reebill_document, ub, outputdir,
                     outputfile +  '-%s' % version, verbose)
 
         # concatenate version pdfs
@@ -253,11 +257,15 @@ class ReebillRenderer:
                 version=max_version)
         reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
-        self.render_version(reebill, reebill_document, outputdir, outputfile,
+        # TODO: #65978874 Once Reebills save their periods, use that
+        # instead of the Utilitybill's period
+        ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=max_version)[0]
+        self.render_version(reebill, reebill_document, ub, outputdir, outputfile,
                 verbose)
 
-    def render_version(self, reebill, reebill_document, outputdir, outputfile,
-                verbose):
+    def render_version(self, reebill, reebill_document, utilbill, outputdir,
+                       outputfile, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -586,14 +594,15 @@ class ReebillRenderer:
 
         # populate billPeriodTableF
         # spacer so rows can line up with those in summarChargesTableF rows
+
         serviceperiod = [
                 [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
             ] + [
                 [
                     Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                    Paragraph(reebill_document.utilbill_period_for_service(service)[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
-                    Paragraph(reebill_document.utilbill_period_for_service(service)[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
+                    Paragraph(utilbill.period_start.strftime('%m-%d-%Y'), styles['BillFieldRight']),
+                    Paragraph(utilbill.period_end.strftime('%m-%d-%Y'), styles['BillFieldRight'])
                 ] for service in reebill_document.services
             ]
 
