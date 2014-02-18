@@ -1884,5 +1884,5 @@ class Process(object):
         return reebill
 
     def get_utilbill_image_path(self, session, utilbill_id, resolution):
-        utilbill=session.query(UtilBill).filter_by(id=utilbill_id).one()
+        utilbill=self.state_db.get_utilbill_by_id(session,utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
