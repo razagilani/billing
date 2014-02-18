@@ -175,7 +175,6 @@ class ReeBill(Base):
         self.customer = customer
         self.sequence = sequence
         self.version = version
-        self.utilbills = utilbills
         self.issued = 0
         if discount_rate:
             self.discount_rate = discount_rate
@@ -198,6 +197,16 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+
+        # supposedly, SQLAlchemy sends queries to the database whenever an
+        # association_proxy attribute is accessed, meaning that if
+        # 'utilbills' is set before the other attributes above, SQLAlchemy
+        # will try to insert the new row too soon, and fail because many
+        # fields are still null but the columns are defined as not-null. this
+        # can be fixed by setting 'utilbills' last, but there may be a better
+        # solution. see related bug:
+        # https://www.pivotaltracker.com/story/show/65502556
+        self.utilbills = utilbills
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
@@ -539,10 +548,12 @@ class StateDB(object):
         '''Returns all utility bills for the reebill given by account,
         sequence, version (highest version by default).'''
         reebill = self.get_reebill(session, account, sequence, version=version)
-        utilbills = session.query(UtilBill)\
-                .filter(UtilBill.reebills.contains(reebill))\
-                .order_by(UtilBill.period_start)
-        return utilbills.all()
+        #utilbills = session.query(UtilBill)\
+        #        .filter(UtilBill.reebills.contains(reebill))\
+        #        .order_by(UtilBill.period_start)
+        #return utilbills.all()
+        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
+                                              ReeBill.id == reebill.id).all()
 
     #def delete_reebill(self, session, reebill):
         #'''Deletes the highest version of the given reebill, if it's not
@@ -1031,13 +1042,14 @@ class StateDB(object):
             Payment.date_applied < periodend)).all()
         return payments
         
-    def get_total_payment_since(self, session, account, start,
-            end=datetime.utcnow().date()):
+    def get_total_payment_since(self, session, account, start, end=None):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert type(start), type(end) == (date, date)
+        assert isinstance(start, date)
+        if end is None:
+            end=datetime.utcnow().date()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)

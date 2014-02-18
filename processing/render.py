@@ -223,7 +223,11 @@ class ReebillRenderer:
                     version=version)
             reebill_document = self.reebill_dao.load_reebill(account, sequence,
                     version=version)
-            self.render_version(reebill, reebill_document, outputdir,
+            # TODO: #65978874 Once Reebills save their periods, use that
+            # instead of the Utilitybill's period
+            ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=version)[0]
+            self.render_version(reebill, reebill_document, ub, outputdir,
                     outputfile +  '-%s' % version, verbose)
 
         # concatenate version pdfs
@@ -253,11 +257,15 @@ class ReebillRenderer:
                 version=max_version)
         reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
-        self.render_version(reebill, reebill_document, outputdir, outputfile,
+        # TODO: #65978874 Once Reebills save their periods, use that
+        # instead of the Utilitybill's period
+        ub = self.state_db.utilbills_for_reebill(session, account, sequence,
+                                                 version=max_version)[0]
+        self.render_version(reebill, reebill_document, ub, outputdir, outputfile,
                 verbose)
 
-    def render_version(self, reebill, reebill_document, outputdir, outputfile,
-                verbose):
+    def render_version(self, reebill, reebill_document, utilbill, outputdir,
+                       outputfile, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -586,14 +594,15 @@ class ReebillRenderer:
 
         # populate billPeriodTableF
         # spacer so rows can line up with those in summarChargesTableF rows
+
         serviceperiod = [
                 [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
             ] + [
                 [
                     Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                    Paragraph(reebill_document.utilbill_period_for_service(service)[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
-                    Paragraph(reebill_document.utilbill_period_for_service(service)[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
+                    Paragraph(utilbill.period_start.strftime('%m-%d-%Y'), styles['BillFieldRight']),
+                    Paragraph(utilbill.period_end.strftime('%m-%d-%Y'), styles['BillFieldRight'])
                 ] for service in reebill_document.services
             ]
 
@@ -727,44 +736,30 @@ class ReebillRenderer:
             [None, None, None, None,  None, None,]
         ]
 
-        # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-        # TODO do not use the 'meters_for_service' method
-        mongo_measured_usage = dict((service,reebill_document.meters_for_service(service)) for service in reebill_document.services)
+        # Load registers and match up shadow registers to actual registers
+        shadow_registers = reebill_document.get_all_shadow_registers_json()
+        actual_registers = mongo.get_all_actual_registers_json(
+            self.reebill_dao.load_doc_for_utilbill(utilbill))
+        for s_register in shadow_registers:
 
-        # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
-        for service, meters in mongo_measured_usage.items():
-            for meter in meters:
-                keyfunc = lambda register:register['identifier']
-                # sort the registers by identifier to ensure similar identifiers are adjacent
-                registers = sorted(meter['registers'], key=keyfunc )
+            total = 0
 
-                # group by the identifier attribute of each register
-                for identifier, register_group in groupby(registers, key=keyfunc):
-
-                    shadow_total = None
-                    utility_total = None
-                    total = 0
-
-                    # TODO validate that there is only a utility and shadow register
-                    for register in register_group:
-                        if register['shadow'] is True:
-                            shadow_total = register['quantity']
-                            total += register['quantity']
-                        if register['shadow'] is False:
-                            utility_total = register['quantity']
-                            total += register['quantity']
-
+            for a_register in actual_registers:
+                if s_register['register_binding'] == a_register['binding']:
+                    shadow_total = s_register['quantity']
+                    utility_total = a_register['quantity']
+                    total += (utility_total + shadow_total)
                     measuredUsage.append([
-                        # TODO unless some wrapper class exists (pivotal 13643807) check for errors
-                        register['identifier'],
-                        register['description'],
-                        # as in the case of a second meter that doesn't have a shadow register (see family laundry)
-                        # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
-                        round_for_display(shadow_total) if shadow_total is not None else "",
+                        a_register['identifier'],
+                        a_register['description'],
+                        round_for_display(shadow_total),
                         utility_total,
                         round_for_display(total),
-                        register['quantity_units'],
+                        a_register['quantity_units']
                     ])
+
+
+
 
         measuredUsage.append([None, None, None, None, None, None])
 

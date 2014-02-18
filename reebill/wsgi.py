@@ -746,19 +746,19 @@ class BillToolBridge:
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
-            last_seq, new_seq, new_version = \
-                self.process.roll_bill(session,account,start_date,
-                        self.integrate_skyline_backend)
+            reebill = self.process.roll_reebill(session,account,
+                    start_date=start_date,
+                    integrate_skyline_backend=self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, last_seq + 1)
+                    account, reebill.sequence)
             # Process.roll includes attachment
             # TODO "attached" is no longer a useful event;
             # see https://www.pivotaltracker.com/story/show/55044870
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, last_seq + 1, new_version)
+                account, reebill.sequence, reebill.version)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_seq, new_version)
+                account, reebill.sequence, reebill.version)
 
         return self.dumps({'success': True})
 
@@ -792,25 +792,9 @@ class BillToolBridge:
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # convert column letters into 0-based indices
-        if not re.match('[A-Za-z]', timestamp_column):
-            raise ValueError('Timestamp column must be a letter')
-        if not re.match('[A-Za-z]', energy_column):
-            raise ValueError('Energy column must be a letter')
-        timestamp_column = ord(timestamp_column.lower()) - ord('a')
-        energy_column = ord(energy_column.lower()) - ord('a')
-
-        # extract data from the file (assuming the format of AtSite's
-        # example files)
-        fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=register_identifier,
-                timestamp_column=timestamp_column,
-                energy_column=energy_column,
-                timestamp_format=timestamp_format, energy_unit=energy_unit)
-
-        self.reebill_dao.save_reebill(reebill)
+        reebill = self.process.upload_interval_meter_csv(account, sequence,
+                        csv_file,timestamp_column, timestamp_format,
+                        energy_column, energy_unit, register_identifier, args)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
         return self.dumps({'success': True})
@@ -1630,7 +1614,6 @@ class BillToolBridge:
             charges_json = self.process.get_utilbill_charges_json(session,
                     utilbill_id, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-
             if xaction == "read":
                 return self.dumps({'success': True, 'rows': charges_json,
                         'total':len(charges_json)})
@@ -1675,9 +1658,9 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
         if xaction == "read":
+            charges=self.process.get_hypothetical_matched_charges(account, sequence,
+                                                                  service)
             return self.dumps({'success': True, 'rows': charges,
                                'total':len(charges)})
         else:
@@ -1991,11 +1974,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
+    def getUtilBillImage(self, utilbill_id):
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getUtilBillImagePath(account, begin_date,
-                end_date, resolution)
+        with DBSession(self.state_db) as session:
+            result = self.process.get_utilbill_image_path(session, utilbill_id,
+                                                          resolution)
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
