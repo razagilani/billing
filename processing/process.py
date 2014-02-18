@@ -6,19 +6,16 @@ Description: Various utility procedures to process bills
 import sys
 import os
 import copy
-import datetime
 from datetime import date, datetime, timedelta
-import calendar
-from optparse import OptionParser
+from operator import itemgetter
+import traceback
+from itertools import chain
 from sqlalchemy.sql import desc
 from sqlalchemy import not_
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-import operator
 from bson import ObjectId
-import traceback
-from itertools import chain
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
