@@ -1,0 +1,176 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="0" account="[customer id here]" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
+	<ub:car>
+		<ub:accountnumber/>
+		<ub:serviceaddress>
+			<ub:addressee/>
+			<ub:street/>
+			<ub:city/>
+			<ub:state/>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee> </ub:addressee>
+			<ub:street/>
+			<ub:city/>
+			<ub:state/>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
+	<ub:skylinebill>
+		<ub:billperiodbegin/>
+		<ub:billperiodend/>
+		<ub:priorbalance>0.00</ub:priorbalance>
+		<ub:paymentreceived/>
+		<ub:totaladjustment/>
+		<ub:balanceforward/>
+		<ub:actualservicecharges/>
+		<ub:hypotheticalservicecharges/>
+		<ub:energycharges/>
+		<ub:customersavings/>
+		<ub:currentcharges/>
+		<ub:totaldue/>
+		<ub:duedate/>
+		<ub:issued/>
+		<ub:message>Welcome to Skyline Innovations!</ub:message>
+	</ub:skylinebill>
+	<ub:summary service="Gas">
+		<ub:priorbalance/>
+		<ub:previouspayment>
+			<ub:payee/>
+			<ub:amount/>
+		</ub:previouspayment>
+		<ub:balanceforward/>
+		<ub:billperiodbegin/>
+		<ub:billperiodend/>
+		<ub:issuedate/>
+		<ub:hypotheticalcharges/>
+		<ub:currentcharges/>
+		<ub:skylinevalue/>
+		<ub:skylinesavings/>
+		<ub:totaldue/>
+		<ub:duedate/>
+		<ub:latepayment>
+			<ub:penalty/>
+			<ub:amount>0.00</ub:amount>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:details service="Gas">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms"/>
+					<ub:rate units="dollars"/>
+					<ub:total/>
+				</ub:charge>
+				<ub:total/>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description/>
+					<ub:quantity units="Therms"/>
+					<ub:rate units="dollars"/>
+					<ub:total/>
+				</ub:charge>
+				<ub:total/>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="actual"/>
+		<ub:total type="hypothetical"/>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate/>
+			<ub:presentreaddate/>
+			<ub:identifier/>
+			<ub:register shadow="false">
+				<ub:identifier/>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total/>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier/>
+				<ub:description>Skyline Generated Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total/>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed/>
+		<ub:renewableconsumed/>
+		<ub:renewableutilization/>
+		<ub:conventionalutilization/>
+		<ub:renewableproduced/>
+		<ub:co2offset/>
+		<ub:totalsavings/>
+		<ub:totalrenewableconsumed/>
+		<ub:totalrenewableproduced/>
+		<ub:totaltrees/>
+		<ub:totalco2offset/>
+		<ub:consumptiontrend>
+			<ub:period month="Nov" quantity=""/>
+			<ub:period month="Dec" quantity=""/>
+			<ub:period month="Jan" quantity=""/>
+			<ub:period month="Feb" quantity=""/>
+			<ub:period month="Mar" quantity=""/>
+			<ub:period month="Apr" quantity=""/>
+			<ub:period month="May" quantity=""/>
+			<ub:period month="Jun" quantity=""/>
+			<ub:period month="Jul" quantity=""/>
+			<ub:period month="Aug" quantity=""/>
+			<ub:period month="Sep" quantity=""/>
+			<ub:period month="Oct" quantity=""/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:utilitybill>
