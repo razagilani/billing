@@ -170,6 +170,10 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
+    # see the following documentation fot delete cascade behavior
+    #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
+    charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
+
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
         self.customer = customer
@@ -237,6 +241,12 @@ class ReeBill(Base):
         produced by the difference between two versions of a bill.'''
         return self.ree_charge + self.late_charge
 
+    def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
+        assert len(self.utilbills) == 1
+        return sum(charge.total for charge in self.charges)
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -269,6 +279,37 @@ class UtilbillReebill(Base):
                 'document_id=...%s, uprs_document_id=...%s, ') % (
                 self.utilbill_id, self.reebill_id, self.document_id[-4:],
                 self.uprs_document_id[-4:]))
+
+
+class ReeBillCharge(Base):
+    '''Table representing "hypothetical" versions of charges in reebills (so
+    named because these may not have the same schema as utility bill charges).
+    Note that, in the past, a set of "hypothetical charges" was associated
+    with each utility bill subdocument of a reebill Mongo document, of which
+    there was always 1 in practice. Now these charges are associated directly
+    with a reebill, so there would be no way to distinguish between charges
+    from different utility bills, if there mere multiple utility bills.
+    '''
+    __tablename__ = 'reebill_charge'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
+    rsi_binding = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    # NOTE alternate name is required because you can't have a column called
+    # "group" in MySQL
+    group = Column(String, name='group_name', nullable=False)
+    quantity = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
+    total = Column(Float, nullable=False)
+
+    def __init__(self, rsi_binding, description, group, quantity, rate, total):
+        self.rsi_binding = rsi_binding
+        self.description = description
+        self.group = group
+        self.quantity = quantity
+        self.rate = rate
+        self.total = total
 
 
 class UtilBill(Base):
