@@ -1176,6 +1176,18 @@ class MongoReebill(object):
         # replace that one with 'new_utilbill_doc'
         self._utilbills[matching_indices[0]] = new_utilbill_doc
 
+    def get_all_shadow_registers_json(self):
+        '''Given a utility bill document, returns a list of dictionaries describing
+        registers of all meters.'''
+        result = []
+        for register in self._get_utilbill_for_handle['shadow_registers']:
+                result.append({
+                    'measure': register['measure'],
+                    'register_binding': register['register_binding'],
+                    'quantity': register['quantity']
+                })
+        return result
+
     #def hypothetical_total_for_service(self, service_name):
         #'''Returns the total of hypothetical charges for the utilbill whose
         #service is 'service_name'. There's not supposed to be more than one
