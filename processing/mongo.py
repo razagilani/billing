@@ -1180,7 +1180,7 @@ class MongoReebill(object):
         '''Given a utility bill document, returns a list of dictionaries describing
         registers of all meters.'''
         result = []
-        for register in self._get_utilbill_for_handle['shadow_registers']:
+        for register in self.reebill_dict['utilbills'][0]['shadow_registers']:
                 result.append({
                     'measure': register['measure'],
                     'register_binding': register['register_binding'],
