@@ -589,10 +589,12 @@ class StateDB(object):
         '''Returns all utility bills for the reebill given by account,
         sequence, version (highest version by default).'''
         reebill = self.get_reebill(session, account, sequence, version=version)
-        utilbills = session.query(UtilBill)\
-                .filter(UtilBill.reebills.contains(reebill))\
-                .order_by(UtilBill.period_start)
-        return utilbills.all()
+        #utilbills = session.query(UtilBill)\
+        #        .filter(UtilBill.reebills.contains(reebill))\
+        #        .order_by(UtilBill.period_start)
+        #return utilbills.all()
+        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
+                                              ReeBill.id == reebill.id).all()
 
     #def delete_reebill(self, session, reebill):
         #'''Deletes the highest version of the given reebill, if it's not
