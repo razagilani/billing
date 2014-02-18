@@ -22,15 +22,22 @@ class UtilBillTest(utils.TestCase):
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
-            'chargegroups': {'All Charges': [
-                {'rsi_binding': 'CONSTANT', 'quantity': 0},
-                {'rsi_binding': 'LINEAR', 'quantity': 0},
-                {'rsi_binding': 'LINEAR_PLUS_CONSTANT', 'quantity': 0},
-                {'rsi_binding': 'BLOCK_1', 'quantity': 0},
-                {'rsi_binding': 'BLOCK_2', 'quantity': 0},
-                {'rsi_binding': 'BLOCK_3', 'quantity': 0},
-                {'rsi_binding': 'REFERENCES_CPRS', 'quantity': 0},
-            ]},
+            'charges': [
+                {'rsi_binding': 'CONSTANT', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'LINEAR', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'LINEAR_PLUS_CONSTANT', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'BLOCK_1', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'BLOCK_2', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'BLOCK_3', 'quantity': 0,
+                        'group': 'All Charges'},
+                {'rsi_binding': 'REFERENCES_ANOTHER', 'quantity': 0,
+                        'group': 'All Charges'},
+            ],
             'meters': [{
                 'present_read_date': date(2000,2,1),
                 'prior_read_date': date(2000,1,1),
@@ -49,13 +56,12 @@ class UtilBillTest(utils.TestCase):
         # rate structure document containing some common RSI types
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[
                 RateStructureItem(
-                  rsi_binding='CONSTANT',
-                  quantity='50',
-                  quantity_units='dollars',
-                  rate='0.2',
+                    rsi_binding='CONSTANT',
+                    quantity='100',
+                    quantity_units='dollars',
+                    rate='0.4',
                 ),
                 RateStructureItem(
                   rsi_binding='LINEAR',
@@ -88,9 +94,10 @@ class UtilBillTest(utils.TestCase):
                   rate='0.1',
                 ),
                 RateStructureItem(
-                    rsi_binding='REFERENCES_CPRS',
+                    rsi_binding='REFERENCES_ANOTHER',
                     # TODO also try "total" here
-                    quantity='USED_IN_UPRS.quantity + USED_IN_UPRS.rate',
+                    quantity='REFERENCED_BY_ANOTHER.quantity + '
+                             'REFERENCED_BY_ANOTHER.rate',
                     quantity_units='therms',
                     rate='1',
                 ),
@@ -100,39 +107,23 @@ class UtilBillTest(utils.TestCase):
                   quantity_units='therms',
                   rate='1',
                 ),
-            ]
-        )
-
-        cprs = RateStructure(
-            id=ObjectId(),
-            type='CPRS',
-            registers=[],
-            rates=[
-                # this RSI should override the "CONSTANT" RSI in 'uprs'
-                RateStructureItem(
-                    rsi_binding='CONSTANT',
-                    quantity='100',
-                    quantity_units='dollars',
-                    rate='0.4',
-                ),
                 # this RSI has no charge associated with it, but is used to
-                # provide identifiers in the formula of the "REFERENCES_CPRS"
+                # provide identifiers in the formula of the "REFERENCES_ANOTHER"
                 # RSI in 'uprs'
                 RateStructureItem(
-                    rsi_binding='USED_IN_UPRS',
+                    rsi_binding='REFERENCED_BY_ANOTHER',
                     quantity='2',
                     quantity_units='therms',
                     rate='3',
                 )
-            ],
+            ]
         )
 
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
 
         # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
-            return next(c['total'] for c in
-                    utilbill_doc['chargegroups']['All Charges']
+            return next(c['total'] for c in utilbill_doc['charges']
                     if c['rsi_binding'] == rsi_binding)
 
         # check "total" for each of the charges in the utility bill at the
@@ -142,7 +133,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(161,
@@ -150,7 +141,7 @@ class UtilBillTest(utils.TestCase):
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(51,
@@ -158,7 +149,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(236,
@@ -166,7 +157,7 @@ class UtilBillTest(utils.TestCase):
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(1,
@@ -174,7 +165,7 @@ class UtilBillTest(utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_CPRS'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         self.assertRaises(StopIteration, the_charge_named,
                 'NO_CHARGE_FOR_THIS_RSI')
         self.assertDecimalAlmostEqual(46,
@@ -190,9 +181,10 @@ class UtilBillTest(utils.TestCase):
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
-            'chargegroups': {'All Charges': [
-                {'rsi_binding': 'LINEAR', 'quantity': 0},
-            ]},
+            'charges': [
+                {'rsi_binding': 'LINEAR', 'quantity': 0, 'group': 'All '
+                                                                  'Charges'},
+            ],
             'meters': [],
             'billing_address': {}, # addresses are irrelevant
             'service_address': {},
@@ -364,31 +356,31 @@ class UtilBillTest(utils.TestCase):
                 "street" : "8975 Guilford Rd Ste 100",
                 "postal_code" : "21046"
             },
-            "chargegroups" : {
-                "Generation/Supply" : [
-                    {
-                        "rsi_binding" : "SUPPLY_COMMODITY",
-                        "uuid" : "a1107f8e-3044-11e3-8b17-1231390e8112",
-                        "quantity" : 396.8,
-                        "rate_units" : "dollars",
-                        "rate" : 0.747,
-                        "quantity_units" : "therms",
-                        "total" : 296.41,
-                        "description" : "Commodity"
-                    },
-                    {
-                        "rsi_binding" : "MD_SUPPLY_SALES_TAX",
-                        "uuid" : "a11083ee-3044-11e3-8b17-1231390e8112",
-                        "quantity" : 296.41,
-                        "rate_units" : "percent",
-                        "processingnote" : "",
-                        "rate" : 0.06,
-                        "quantity_units" : "dollars",
-                        "total" : 17.79,
-                        "description" : "MD Sales tax commodity"
-                    }
-                ],
-            },
+            "charges" : [
+                {
+                    "rsi_binding" : "SUPPLY_COMMODITY",
+                    "uuid" : "a1107f8e-3044-11e3-8b17-1231390e8112",
+                    "quantity" : 396.8,
+                    "rate_units" : "dollars",
+                    "rate" : 0.747,
+                    "quantity_units" : "therms",
+                    "total" : 296.41,
+                    "description" : "Commodity",
+                    'group': 'Generation/Supply',
+                },
+                {
+                    "rsi_binding" : "MD_SUPPLY_SALES_TAX",
+                    "uuid" : "a11083ee-3044-11e3-8b17-1231390e8112",
+                    "quantity" : 296.41,
+                    "rate_units" : "percent",
+                    "processingnote" : "",
+                    "rate" : 0.06,
+                    "quantity_units" : "dollars",
+                    "total" : 17.79,
+                    "description" : "MD Sales tax commodity",
+                    'group': 'Generation/Supply',
+                }
+            ],
             "end" : dateutil.parser.parse("2013-12-16T00:00:00Z"), "meters" : [
                 {
                     "present_read_date" : dateutil.parser.parse("2013-12-16T00:00:00Z"),
@@ -420,13 +412,11 @@ class UtilBillTest(utils.TestCase):
             "utility" : "washgas"
         }
 
-        # UPRS was empty
-        uprs = RateStructure(type='UPRS', rates=[])
-
         # simplified version of document with _id 52b455467eb49a52d23d105c
-        cprs =  RateStructure.from_json('''{
+        # (originally this was a CPRS with an empty UPRS)
+        uprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
-            "type" : "CPRS",
+            "type" : "UPRS",
             "rates" : [
                 {
                     "rate" : "1",
@@ -479,7 +469,7 @@ class UtilBillTest(utils.TestCase):
         }''')
 
         # this should not raise an exception
-        mongo.compute_all_charges(utilbill_doc, uprs, cprs)
+        mongo.compute_all_charges(utilbill_doc, uprs)
 
 
     def test_compute_charge_without_rsi(self):
@@ -491,10 +481,11 @@ class UtilBillTest(utils.TestCase):
             'account': '12345', 'service': 'gas', 'utility': 'washgas',
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
-            'chargegroups': {'All Charges': [
+            'charges': [
                 # a charge with no corrseponding RSI
-                {'rsi_binding': 'NO_RSI', 'quantity': 0},
-            ]},
+                {'rsi_binding': 'NO_RSI', 'quantity': 0, 'group': 'All '
+                                                                  'Charges'}
+            ],
             'meters': [{
                 'present_read_date': date(2000,2,1),
                 'prior_read_date': date(2000,1,1),
@@ -513,19 +504,17 @@ class UtilBillTest(utils.TestCase):
         # rate structures are empty
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[]
         )
         cprs = RateStructure(
             id=ObjectId(),
-            type='CPRS',
             rates=[]
         )
 
         # compute_all_charges should raise a KeyError if not all charges have
         # an RSI
         self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
-                uprs, cprs)
+                uprs)
 
     def test_get_service_address(self):
         utilbill_doc = example_data.get_utilbill_dict('10003')
@@ -539,22 +528,18 @@ class UtilBillTest(utils.TestCase):
     def test_refresh_charges(self):
         utilbill_doc = example_data.get_utilbill_dict('99999', start=date(
                 2000,1,1), end=date(2000,2,1))
-        utilbill_doc['chargegroups'] = {
-            'All Charges': [
-                {
-                    'rsi_binding': 'OLD',
-                    'description': 'this will get removed',
-                    'quantity': 2,
-                    'quantity_units': 'therms',
-                    'rate': 3,
-                    'total': 6,
-                },
-            ],
-        }
+        utilbill_doc['charges'] = [{
+            'rsi_binding': 'OLD',
+            'description': 'this will get removed',
+            'quantity': 2,
+            'quantity_units': 'therms',
+            'rate': 3,
+            'total': 6,
+            'group': 'All Charges'
+        }],
 
         uprs = RateStructure(
             id=ObjectId(),
-            type='UPRS',
             rates=[
                 RateStructureItem(
                     rsi_binding='NEW_1',
@@ -562,51 +547,49 @@ class UtilBillTest(utils.TestCase):
                     quantity='1',
                     quantity_units='dollars',
                     rate='2',
+                    # NOTE no group
                 ),
-                RateStructureItem(
-                    rsi_binding='NEW_2',
-                    description='ignored because overridden by CPRS',
-                    quantity='3',
-                    quantity_units='kWh',
-                    rate='4',
-                )
-            ]
-        )
-        cprs = RateStructure(
-            id=ObjectId(),
-            type='CPRS',
-            rates=[
                 RateStructureItem(
                     rsi_binding='NEW_2',
                     description='a charge for this will be added too',
                     quantity='5',
                     quantity_units='therms',
                     rate='6',
+                    shared=False,
+                    group='New Group',
+                ),
+                RateStructureItem(
+                    rsi_binding='NO_CHARGE',
+                    description='this RSI should not have a charge',
+                    quantity='7',
+                    quantity_units='therms',
+                    rate='8',
+                    shared=True,
+                    has_charge=False,
                 )
             ]
         )
 
-        mongo.refresh_charges(utilbill_doc, uprs, cprs)
+        mongo.refresh_charges(utilbill_doc, uprs)
 
         self.maxDiff = None
-        self.assertEqual({
-            'All Charges': [
-                {
-                    'rsi_binding': 'NEW_1',
-                    'description': 'a charge for this will be added',
-                    'quantity': 0,
-                    'quantity_units': 'dollars',
-                    'rate': 0,
-                    'total': 0,
-                },
-                {
-                    'rsi_binding': 'NEW_2',
-                    'description': 'a charge for this will be added too',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'rate': 0,
-                    'total': 0,
-                },
-            ]},
-            utilbill_doc['chargegroups']
-        )
+        self.assertEqual([
+            {
+                'rsi_binding': 'NEW_1',
+                'description': 'a charge for this will be added',
+                'quantity': 0,
+                'quantity_units': 'dollars',
+                'rate': 0,
+                'total': 0,
+                'group': '',
+            },
+            {
+                'rsi_binding': 'NEW_2',
+                'description': 'a charge for this will be added too',
+                'quantity': 0,
+                'quantity_units': 'therms',
+                'rate': 0,
+                'total': 0,
+                'group': 'New Group',
+            },
+        ], utilbill_doc['charges'])
