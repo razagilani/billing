@@ -225,6 +225,11 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
+    def set_renewable_energy_reading(self, register_binding, quantity):
+        reading = next(r for r in self.readings
+                       if r.register_binding == register_binding)
+        reading.renewable_quantity = register_binding
+
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this
