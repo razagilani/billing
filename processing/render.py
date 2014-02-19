@@ -827,7 +827,10 @@ class ReebillRenderer:
             ])
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None,
-                              reebill_document.get_total_hypothetical_charges()])
+            format_for_display(
+                reebill_document.get_total_hypothetical_charges(),
+                places=2)
+        ])
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
