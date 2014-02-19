@@ -349,6 +349,12 @@ class Reading(Base):
 
     unit = Column(String, nullable=False)
 
+    def __init__(self, register_binding, measure, conventional_quantity,
+                 renewable_quantity, unit):
+        self.register_binding = register_binding
+        self.measure = measure
+        self.conventional_quantity = conventional_quantity
+        self.unit = unit
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
