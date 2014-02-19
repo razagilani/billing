@@ -83,9 +83,11 @@ class RenewableEnergyGetter(object):
 
     # TODO 35345191 rename this function
     def fetch_oltp_data(self, olap_id, reebill, use_olap=True, verbose=False):
-        '''Update hypothetical register quantities in reebill  with Skyline-generated
-        energy. The OLAP database is the default source of energy-sold values; use
-        use_olap=False to get them directly from OLTP.
+        '''Update hypothetical register quantities in reebill with
+        Skyline-generated energy. The OLAP database is the default source of
+        energy-sold values; use use_olap=False to get them directly from OLTP.
+
+        Changes to the reebill document are saved.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
         start, end = reebill.get_period()
@@ -114,7 +116,13 @@ class RenewableEnergyGetter(object):
                 total += timeseries[index]
             return total
 
-        self.usage_data_to_virtual_register(reebill, energy_function)
+        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, reebill.version)
+        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        self._usage_data_to_virtual_register(reebill_doc, utilbill_doc,
+                energy_function)
+        self._reebill_dao.save_reebill(reebill_doc)
 
     def fetch_interval_meter_data(self, reebill, csv_file,
                                   meter_identifier=None,
@@ -127,7 +135,12 @@ class RenewableEnergyGetter(object):
         energy_function = self.get_interval_meter_data_source(csv_file,
                 timestamp_column=timestamp_column, energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
-        self.usage_data_to_virtual_register(reebill, energy_function)
+        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, reebill.version)
+        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        self._usage_data_to_virtual_register(reebill_doc, utilbill_doc,
+                energy_function)
 
     def get_interval_meter_data_source(self, csv_file, timestamp_column=0,
             energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
@@ -280,7 +293,7 @@ class RenewableEnergyGetter(object):
                 result += energy_function(day, hour_range)
         return result
 
-    # def usage_data_to_virtual_register(reebill, energy_function,
+    # def _usage_data_to_virtual_register(reebill, energy_function,
     #         verbose=False):
     #     '''Gets energy quantities from 'energy_function' and puts them in the
     #     "quantity" fields of the register subdocuments in the 'MongoReebill' object
@@ -350,11 +363,11 @@ class RenewableEnergyGetter(object):
     #         reebill.set_hypothetical(register['identifier'], total_energy)
 
 
-    def usage_data_to_virtual_register(self, reebill, energy_function,
-                    verbose=False):
+    def _usage_data_to_virtual_register(self, reebill_doc,
+            utilbill_doc, energy_function, verbose=False):
         '''Gets energy quantities from 'energy_function' and puts them in the
         "quantity" fields of the register subdocuments in the given
-        state.ReeBill.
+        MongoReebill.
 
         'energy_function' should be a function mapping a date and an hour
         range (pair of integers in [0,23]) to a float representing energy used
@@ -408,10 +421,6 @@ class RenewableEnergyGetter(object):
                     total_energy += float(energy_today)
             return total_energy
 
-        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
-                reebill.sequence, version=reebill.version)
-        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
         for meter in utilbill_doc['meters']:
             for register in meter['registers']:
                 hypothetical_quantity = get_renewable_energy_for_register(
