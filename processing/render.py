@@ -223,11 +223,7 @@ class ReebillRenderer:
                     version=version)
             reebill_document = self.reebill_dao.load_reebill(account, sequence,
                     version=version)
-            # TODO: #65978874 Once Reebills save their periods, use that
-            # instead of the Utilitybill's period
-            ub = self.state_db.utilbills_for_reebill(session, account, sequence,
-                                                 version=version)[0]
-            self.render_version(reebill, reebill_document, ub, outputdir,
+            self.render_version(reebill, reebill_document, outputdir,
                     outputfile +  '-%s' % version, verbose)
 
         # concatenate version pdfs
@@ -257,14 +253,10 @@ class ReebillRenderer:
                 version=max_version)
         reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
-        # TODO: #65978874 Once Reebills save their periods, use that
-        # instead of the Utilitybill's period
-        ub = self.state_db.utilbills_for_reebill(session, account, sequence,
-                                                 version=max_version)[0]
-        self.render_version(reebill, reebill_document, ub, outputdir, outputfile,
+        self.render_version(reebill, reebill_document, outputdir, outputfile,
                 verbose)
 
-    def render_version(self, reebill, reebill_document, utilbill, outputdir,
+    def render_version(self, reebill, reebill_document, outputdir,
                        outputfile, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
@@ -594,15 +586,15 @@ class ReebillRenderer:
 
         # populate billPeriodTableF
         # spacer so rows can line up with those in summarChargesTableF rows
-
+        periods=reebill_document.renewable_energy_period()
         serviceperiod = [
                 [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
             ] + [
                 [
                     Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                    Paragraph(utilbill.period_start.strftime('%m-%d-%Y'), styles['BillFieldRight']),
-                    Paragraph(utilbill.period_end.strftime('%m-%d-%Y'), styles['BillFieldRight'])
+                    Paragraph(periods[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
+                    Paragraph(periods[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
                 ] for service in reebill_document.services
             ]
 
@@ -737,20 +729,20 @@ class ReebillRenderer:
         ]
 
         # Load registers and match up shadow registers to actual registers
+        assert len(reebill.utilbills)==1
         shadow_registers = reebill_document.get_all_shadow_registers_json()
+        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
         actual_registers = mongo.get_all_actual_registers_json(
-            self.reebill_dao.load_doc_for_utilbill(utilbill))
+           utilbill_doc)
         for s_register in shadow_registers:
-
             total = 0
-
             for a_register in actual_registers:
                 if s_register['register_binding'] == a_register['binding']:
                     shadow_total = s_register['quantity']
                     utility_total = a_register['quantity']
                     total += (utility_total + shadow_total)
                     measuredUsage.append([
-                        a_register['identifier'],
+                        a_register['meter_id'],
                         a_register['description'],
                         round_for_display(shadow_total),
                         utility_total,
@@ -811,27 +803,31 @@ class ReebillRenderer:
 
         # muliple services are not supported
         assert len(reebill_document.services) == 1
-        for service in reebill_document.services:
-            # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
-            # mapping charge types (e.g. "All Charges") to lists of chargegroups.
-            chargegroups_dict = reebill_document.hypothetical_chargegroups_for_service(service)
-            for charge_type in chargegroups_dict.keys():
-                chargeDetails.append([service, None, None, None, None, None, None])
-                for i, charge in enumerate(chargegroups_dict[charge_type]):
-                    chargeDetails.append([
-                        charge_type if i == 0 else "",
-                        charge.get('description', "No description"),
-                        format_for_display(charge['quantity'], places=3) if 'quantity' in charge else Decimal("1"),
-                        charge.get('quantity_units', ""),
-                        format_for_display(charge['rate'], places=5) if 'rate' in charge else "",
-                        #charge.get('rate_units', ""), 
-                        format_for_display(charge['total'], places=2) if 'total' in charge else "",
-                    ])
-            # spacer
-            chargeDetails.append([None, None, None, None, None, None, None])
-            chargeDetails.append([None, None, None, None, None, None,
-                format_for_display(reebill_document
-                .get_total_utility_charges())])
+        last_group=None
+        for charge in reebill_document.get_all_hypothetical_charges():
+            # Only print the group if it changed
+            if last_group == charge['group']:
+                group = None
+            else:
+                last_group = charge['group']
+                group = last_group
+                chargeDetails.append([reebill_document.services[0],
+                              None, None, None, None, None, None])
+            chargeDetails.append([
+                group,
+                charge.get('description', "No description"),
+                format_for_display(charge['quantity'], places=3)
+                    if 'quantity' in charge else Decimal("1"),
+                charge.get('quantity_units', None),
+                format_for_display(charge['rate'], places=5)
+                    if 'rate' in charge else None,
+                charge.get('rate_units', None),
+                format_for_display(charge['total'], places=2)
+                    if 'total' in charge else None
+            ])
+        chargeDetails.append([None, None, None, None, None, None, None])
+        chargeDetails.append([None, None, None, None, None, None,
+                              reebill_document.get_total_hypothetical_charges()])
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
