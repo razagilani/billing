@@ -217,6 +217,13 @@ class ReeBill(Base):
                 self.customer.account, self.sequence, self.version, 'issued' if
                 self.issued else 'unissued', len(self.utilbills))
 
+    def get_period(self):
+        '''Returns period of the first (only) utility bill for this reebill
+        as tuple of dates.
+        '''
+        assert len(self.utilbills) == 1
+        return self.utilbills[0].period_start, self.utilbills[0].period_end
+
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this

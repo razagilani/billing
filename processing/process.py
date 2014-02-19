@@ -1082,7 +1082,7 @@ class Process(object):
         # and computing (currently there are none).
         if integrate_skyline_backend:
             self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
-                                            new_mongo_reebill, use_olap=True)
+                                            new_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
             self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
@@ -1144,7 +1144,7 @@ class Process(object):
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
         self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
-                                        reebill_doc)
+                                        reebill)
         try:
             # TODO replace with compute_reebill; this is hard because the
             # document has to be saved first and it can't be saved again
