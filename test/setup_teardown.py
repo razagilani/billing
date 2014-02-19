@@ -16,6 +16,7 @@ from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
+from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.util.dictutils import deep_map
 from billing.test import example_data
 from billing.nexusapi.nexus_util import MockNexusUtil
@@ -136,9 +137,12 @@ port = 27017
             'teva_accounts': '',
         }, self.state_db, self.reebill_dao,
                 logger)
+
+        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao)
+
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
-                bill_mailer, renderer,
+                bill_mailer, renderer, ree_getter,
                 self.splinter, logger=logger)
 
     def tearDown(self):

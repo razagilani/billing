@@ -1469,8 +1469,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # energy in it as the original version; only the late charge will
             # differ)
             two_doc = self.reebill_dao.load_reebill(acc, 2)
-            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
-                    two_doc)
+            self.process.ree_getter.fetch_oltp_data(
+                                        self.nexus_util.olap_id(acc), two_doc)
             self.reebill_dao.save_reebill(two_doc)
             self.reebill_dao.save_utilbill(two_doc._utilbills[0])
 
@@ -2077,8 +2077,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # bind & compute once to start. this change should be
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                        use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                                           reebill2_doc, use_olap=use_olap)
                 ree1 = reebill2_doc.total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, acc, 2)
@@ -2121,8 +2121,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                        use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                        reebill2_doc, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
@@ -2131,26 +2131,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                    use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                        reebill2_doc, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                    use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                        reebill2_doc, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                    use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                        reebill2_doc, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2_doc,
-                    use_olap=use_olap)
+                self.process.ree_getter.fetch_oltp_data(olap_id,
+                        reebill2_doc, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
@@ -2293,7 +2293,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_doc = self.reebill_dao.load_reebill(account, 1)
 
             # bind, compute, issue
-            fbd.fetch_oltp_data(self.splinter,
+            self.process.ree_getter.fetch_oltp_data(
                     self.nexus_util.olap_id(account), reebill_doc,
                     use_olap=True)
             self.process.compute_reebill(session, account, 1)
@@ -2471,7 +2471,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                       skip_compute=True)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
-            fbd.fetch_oltp_data(self.splinter,
+            self.process.ree_getter.fetch_oltp_data(
                     self.nexus_util.olap_id(account), doc1, use_olap=True)
             self.reebill_dao.save_reebill(doc1)
             self.reebill_dao.save_utilbill(doc1._utilbills[0])

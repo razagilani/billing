@@ -65,6 +65,9 @@ class FetchTest(unittest.TestCase):
         })
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['skyline-dev'])
+        self.splinter = MockSplinter(deterministic=True)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                                                    self.reebill_dao)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
@@ -82,7 +85,8 @@ class FetchTest(unittest.TestCase):
             '2012-01-01T03:30:00Z, 11, therms',
             '2012-01-01T03:45:00Z, 12, therms',
         ]))
-        get_energy_for_hour = fbd.get_interval_meter_data_source(csv_file)
+        get_energy_for_hour = self.ree_getter.get_interval_meter_data_source(
+                csv_file)
 
         # outside allowed time range
         self.assertRaises(IndexError, get_energy_for_hour, date(2012,12,31), [0,0])
@@ -105,7 +109,8 @@ class FetchTest(unittest.TestCase):
             '2012-01-01T01:45:00Z, 4, therms',
             '2012-01-01T02:00:00Z, 5, therms',
             ]))
-        get_energy_for_hour = fbd.get_interval_meter_data_source(csv2)
+        get_energy_for_hour = self.ree_getter.get_interval_meter_data_source(
+                csv2)
         self.assertEquals(14, get_energy_for_hour(date(2012,1,1),[1,1]))
 
         # TODO test a csv with bad timestamps
@@ -133,7 +138,8 @@ class FetchTest(unittest.TestCase):
 "2012-03-28 21:00:00",0,0,0,2277760,0,,,,4029260,0,,,,2645978.655,9.81,9,0.315,45,319,0,,,,2218128.388,184.68,186.923,162,220.909,,,,,,,,,,,,,,,,0,0''')
  
         # the column we care about is "PEPCO Meter (kwh)" at index 24
-        get_energy_for_hour = fbd.get_interval_meter_data_source(atsite_csv,
+        get_energy_for_hour = self.ree_getter.get_interval_meter_data_source(
+                atsite_csv,
                 timestamp_column=0, energy_column=24,
                 timestamp_format='%Y-%m-%d %H:%M:%S', energy_unit='kwh')
 
@@ -167,7 +173,7 @@ class FetchTest(unittest.TestCase):
         # writing the file puts the file pointer at the end, so move it back
         csv_file.seek(0)
 
-        fbd.fetch_interval_meter_data(reebill, csv_file)
+        self.ree_getter.fetch_interval_meter_data(reebill, csv_file)
 
 
     def test_fetch_oltp_data(self):
@@ -176,12 +182,11 @@ class FetchTest(unittest.TestCase):
         reebill = example_data.get_reebill('99999', 1)
 
         # create mock skyliner objects
-        splinter = MockSplinter(deterministic=True)
-        monguru = splinter.get_monguru()
-        install = splinter.get_install_obj_for('99999')
+        monguru = self.splinter.get_monguru()
+        install = self.splinter.get_install_obj_for('99999')
 
         # gather REE data into the reebill
-        fbd.fetch_oltp_data(splinter, install.name, reebill)
+        self.ree_getter.fetch_oltp_data(install.name, reebill)
 
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'

@@ -25,7 +25,6 @@ import skyliner
 from billing.processing import state
 from billing.processing import mongo
 import bson
-from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
 from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
@@ -66,7 +65,8 @@ class Process(object):
     config = None
 
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, splinter=None, logger=None):
+            nexus_util, bill_mailer, renderer, ree_getter,
+            splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -74,6 +74,7 @@ class Process(object):
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
+        self.ree_getter = ree_getter
         self.renderer = renderer
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
@@ -1080,8 +1081,8 @@ class Process(object):
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
         if integrate_skyline_backend:
-            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_mongo_reebill, use_olap=True)
+            self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                            new_mongo_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
             self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
@@ -1142,8 +1143,8 @@ class Process(object):
         # prior balance. this is always version 0, because we want those values
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill_doc)
+        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                        reebill_doc)
         try:
             # TODO replace with compute_reebill; this is hard because the
             # document has to be saved first and it can't be saved again
