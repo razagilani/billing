@@ -90,7 +90,11 @@ class RenewableEnergyGetter(object):
         Changes to the reebill document are saved.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
-        start, end = reebill.get_period()
+        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
+                                                     reebill.sequence, reebill.version)
+        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        start, end = mongo.meter_read_period(utilbill_doc)
 
         # get hourly "energy sold" values during this period
         if use_olap:
@@ -116,10 +120,6 @@ class RenewableEnergyGetter(object):
                 total += timeseries[index]
             return total
 
-        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
-                reebill.sequence, reebill.version)
-        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
         self._usage_data_to_virtual_register(reebill_doc, utilbill_doc,
                 energy_function)
         self._reebill_dao.save_reebill(reebill_doc)
