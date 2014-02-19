@@ -1,12 +1,12 @@
+'''Move data from "shadow_registers" subdocuments in Mongo to new "reading"
+table in MySQL.
+'''
 from sys import stderr
-from itertools import chain
 import pymongo
-import mongoengine
 import MySQLdb
 from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
-from billing.processing import mongo
 from itertools import chain
 
 sdb = StateDB(**{
