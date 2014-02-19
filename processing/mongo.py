@@ -1611,9 +1611,10 @@ class MongoReebill(object):
 
     def set_hypothetical_register_quantity(self, register_binding,
                     new_quantity):
-        '''Sets the "quantity" field of the given register subdocument to the
-        given value, assumed to be in BTU. When stored, this quantity is
-        converetd to the same unit as the corresponding utility bill register.
+        ''' Sets the "quantity" field of the given register subdocument to the
+        given value, assumed to be in BTU for thermal and kW for PV.
+        When stored, this quantity is converted to the same unit as the
+        corresponding utility bill register.
         '''
         assert isinstance(new_quantity, float)
 
@@ -1628,7 +1629,7 @@ class MongoReebill(object):
                 for m in utilbill['meters']))
         unit = utilbill_register['quantity_units'].lower()
 
-        # convert quantity to therms according to unit, and add it to
+        # Thermal: convert quantity to therms according to unit, and add it to
         # the total
         if unit == 'therms':
             new_quantity /= 1e5
@@ -1648,6 +1649,9 @@ class MongoReebill(object):
                    "https://www.pivotaltracker.com/story/show/28825375") \
                   % (self.account, self.sequence, self.version)
             new_quantity /= 1e5
+        # PV: Unit is kilowatt; no conversion needs to happen
+        elif unit == 'kwd':
+            pass
         else:
             raise ValueError('Unknown energy unit: "%s"' % unit)
 
@@ -1747,6 +1751,8 @@ class MongoReebill(object):
                               % (self.account, self.sequence, self.version)
                         # assume conversion factor is 1
                         total_therms += quantity
+                elif unit =='kwd':
+                    total_therms += quantity
                 else:
                     raise ValueError('Unknown energy unit: "%s"' % unit)
 
