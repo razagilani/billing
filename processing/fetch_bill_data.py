@@ -88,7 +88,7 @@ class RenewableEnergyGetter(object):
         use_olap=False to get them directly from OLTP.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
-        start, end = reebill.renewable_energy_period()
+        start, end = reebill.get_period()
 
         # get hourly "energy sold" values during this period
         if use_olap:
@@ -353,8 +353,8 @@ class RenewableEnergyGetter(object):
     def usage_data_to_virtual_register(self, reebill, energy_function,
                     verbose=False):
         '''Gets energy quantities from 'energy_function' and puts them in the
-        "quantity" fields of the register subdocuments in the 'MongoReebill' object
-        'reebill'.
+        "quantity" fields of the register subdocuments in the given
+        state.ReeBill.
 
         'energy_function' should be a function mapping a date and an hour
         range (pair of integers in [0,23]) to a float representing energy used
@@ -408,12 +408,15 @@ class RenewableEnergyGetter(object):
                     total_energy += float(energy_today)
             return total_energy
 
-        for utilbill_doc in reebill._utilbills:
-            for meter in utilbill_doc['meters']:
-                for register in meter['registers']:
-                    hypothetical_quantity = get_renewable_energy_for_register(
-                            register, meter['prior_read_date'],
-                            meter['present_read_date'])
-                    reebill.set_hypothetical_register_quantity(
-                            register['register_binding'], hypothetical_quantity)
+        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, version=reebill.version)
+        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        for meter in utilbill_doc['meters']:
+            for register in meter['registers']:
+                hypothetical_quantity = get_renewable_energy_for_register(
+                        register, meter['prior_read_date'],
+                        meter['present_read_date'])
+                reebill_doc.set_hypothetical_register_quantity(
+                        register['register_binding'], hypothetical_quantity)
 
