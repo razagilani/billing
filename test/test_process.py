@@ -382,8 +382,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create first reebill
             bill1 = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
-            bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
-                    ['quantity'] = 100
+            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.process.compute_reebill(session, acc, 1)
             self.reebill_dao.save_reebill(bill1_doc)
             self.reebill_dao.save_utilbill(bill1_doc._utilbills[0])
@@ -416,6 +415,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill2_doc = self.reebill_dao.load_reebill(acc, 2)
             bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
+            bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
             self.reebill_dao.save_reebill(bill2_doc)
             self.reebill_dao.save_utilbill(bill2_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 2)
@@ -471,8 +471,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
             bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            bill1_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
+            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.reebill_dao.save_reebill(bill1_1_doc)
             self.reebill_dao.save_utilbill(bill1_1_doc._utilbills[0])
             bill1_1.discount_rate = 0.75
@@ -488,8 +487,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
             bill1_2_doc = self.reebill_dao.load_reebill(acc, 1, version=2)
-            bill1_2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
+            bill2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.reebill_dao.save_reebill(bill1_2_doc)
             self.reebill_dao.save_utilbill(bill1_2_doc._utilbills[0])
             bill1_2.discount_rate = 0.25
@@ -1264,7 +1262,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # if the total REE is 'correct_energy_amount_therms' (within
             # floating-point error), the correct meter read period was used.
             self.assertAlmostEqual(correct_energy_amount_therms,
-                    float(new_reebill_doc.total_renewable_energy()))
+                    float(new_reebill.get_total_renewable_energy()))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections(), get_total_adjustment(), and
@@ -1300,8 +1298,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             one.discount_rate = 0.5
-            one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 100
+            # NOTE register quantity must be set in BTU
+            one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.reebill_dao.save_reebill(one_doc)
             self.reebill_dao.save_utilbill(one_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 1)
@@ -1313,8 +1311,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two = self.process.roll_reebill(session, acc)
             two.discount_rate = 0.5
             two_doc = self.reebill_dao.load_reebill(acc, 2)
-            two_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 200
+            # NOTE register quantity must be set in BTU
+            two.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
             self.reebill_dao.save_reebill(two_doc)
             self.reebill_dao.save_utilbill(two_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 2)
@@ -1325,8 +1323,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             three = self.process.roll_reebill(session, acc)
             three_doc = self.reebill_dao.load_reebill(acc, 3)
             three.discount_rate = 0.5
-            three_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 300
+            # NOTE register quantity must be set in BTU
+            three.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
             self.reebill_dao.save_reebill(three_doc)
             self.reebill_dao.save_utilbill(three_doc._utilbills[0])
             self.process.issue(session, acc, three.sequence)
@@ -1358,10 +1356,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # re-update the register readings to undo the arbitary values
             # inserted by new_version above (this should really be done by
             # controlling the amount of energy reported by mock_skyliner
-            one_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 100
-            three_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 300
+            # NOTE register quantity must be set in BTU
+            one_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            three_1.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
             self.reebill_dao.save_reebill(one_1_doc)
             self.reebill_dao.save_utilbill(one_1_doc._utilbills[0])
             self.reebill_dao.save_reebill(three_1_doc)
