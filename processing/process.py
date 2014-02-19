@@ -1138,6 +1138,10 @@ class Process(object):
                 for u in reebill.utilbills]
         reebill_doc.update_utilbill_subdocs(reebill.discount_rate)
 
+        # document must be saved before fetch_oltp_data is called.
+        # unfortunately, this can't be undone if an exception happens.
+        self.reebill_dao.save_reebill(reebill_doc)
+
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
         # prior balance. this is always version 0, because we want those values
