@@ -1449,9 +1449,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
-            one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
-            self.reebill_dao.save_reebill(one_doc)
+            one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.reebill_dao.save_utilbill(one_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 1)
             assert one.ree_charge == 50
