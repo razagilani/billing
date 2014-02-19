@@ -589,10 +589,12 @@ class StateDB(object):
         '''Returns all utility bills for the reebill given by account,
         sequence, version (highest version by default).'''
         reebill = self.get_reebill(session, account, sequence, version=version)
-        utilbills = session.query(UtilBill)\
-                .filter(UtilBill.reebills.contains(reebill))\
-                .order_by(UtilBill.period_start)
-        return utilbills.all()
+        #utilbills = session.query(UtilBill)\
+        #        .filter(UtilBill.reebills.contains(reebill))\
+        #        .order_by(UtilBill.period_start)
+        #return utilbills.all()
+        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
+                                              ReeBill.id == reebill.id).all()
 
     #def delete_reebill(self, session, reebill):
         #'''Deletes the highest version of the given reebill, if it's not
@@ -1081,13 +1083,14 @@ class StateDB(object):
             Payment.date_applied < periodend)).all()
         return payments
         
-    def get_total_payment_since(self, session, account, start,
-            end=datetime.utcnow().date()):
+    def get_total_payment_since(self, session, account, start, end=None):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert type(start), type(end) == (date, date)
+        assert isinstance(start, date)
+        if end is None:
+            end=datetime.utcnow().date()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)
