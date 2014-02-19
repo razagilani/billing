@@ -1149,6 +1149,9 @@ class Process(object):
         # about any corrections that might have been made to that bill later.
         self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
                                         reebill)
+
+        reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, version=reebill.version)
         try:
             # TODO replace with compute_reebill; this is hard because the
             # document has to be saved first and it can't be saved again
@@ -1169,7 +1172,6 @@ class Process(object):
 
         self.reebill_dao.save_reebill(reebill_doc)
         self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
-        return reebill_doc
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
