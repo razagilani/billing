@@ -237,10 +237,86 @@ class ReeBill(Base):
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
 
-    def set_renewable_energy_reading(self, register_binding, quantity):
+    def get_renewable_energy_reading(self, register_binding):
+        assert isinstance(register_binding, basestring)
+        try:
+            reading = next(r for r in self.readings
+                           if r.register_binding == register_binding)
+        except StopIteration:
+            raise ValueError('Unknown register binding "%s"' % register_binding)
+        return reading.renewable_quantity
+
+    def set_renewable_energy_reading(self, register_binding, new_quantity):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(new_quantity, (float, int))
         reading = next(r for r in self.readings
                        if r.register_binding == register_binding)
-        reading.renewable_quantity = register_binding
+        unit = reading.unit
+
+        # Thermal: convert quantity to therms according to unit, and add it to
+        # the total
+        if unit == 'therms':
+            new_quantity /= 1e5
+        elif unit == 'btu':
+            # TODO physical constants must be global
+            pass
+        elif unit == 'kwh':
+            # TODO physical constants must be global
+            new_quantity /= 1e5
+            new_quantity /= .0341214163
+        elif unit == 'ccf':
+            # deal with non-energy unit "CCF" by converting to therms with
+            # conversion factor 1
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                   "in ccf: energy value is wrong; time to implement "
+                   "https://www.pivotaltracker.com/story/show/28825375") \
+                  % (self.account, self.sequence, self.version)
+            new_quantity /= 1e5
+        # PV: Unit is kilowatt; no conversion needs to happen
+        elif unit == 'kwd':
+            pass
+        else:
+            raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        reading.renewable_quantity = new_quantity
+
+
+    def get_total_renewable_energy(self, ccf_conversion_factor=None):
+        total_therms = 0
+        for reading in self.readings:
+            quantity = reading.renewable_quantity
+            unit = reading.unit
+            assert isinstance(quantity, (float, int))
+            assert isinstance(unit, basestring)
+
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if unit == 'therms':
+                total_therms += quantity
+            elif unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += quantity / 100000.0
+            elif unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += quantity / .0341214163
+            elif unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                           "in ccf: energy value is wrong; time to implement "
+                           "https://www.pivotaltracker.com/story/show/28825375") \
+                          % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
+            elif unit =='kwd':
+                total_therms += quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        return total_therms
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -363,10 +439,15 @@ class Reading(Base):
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, unit):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(measure, basestring)
+        assert isinstance(conventional_quantity, (float, int))
+        assert isinstance(renewable_quantity, (float, int))
+        assert isinstance(unit, basestring)
         self.register_binding = register_binding
         self.measure = measure
         self.conventional_quantity = conventional_quantity
-        self.renewable_quantity = 0
+        self.renewable_quantity = renewable_quantity
         self.unit = unit
 
 class UtilBill(Base):
