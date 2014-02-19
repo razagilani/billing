@@ -30,7 +30,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge
+    UtilBillLoader, ReeBillCharge, Reading
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.processing import fetch_bill_data, bill_mailer
@@ -810,7 +810,6 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
-
         # update Mongo document to match "metadata" columns in MySQL:
         document.update({
             'account': utilbill.customer.account,
@@ -977,14 +976,15 @@ class Process(object):
         # set the quantity of each "hypothetical register" to the sum of
         # the corresponding "actual" and "shadow" registers.
         for h_register in hypothetical_registers:
+            # TODO start using "readings" for conventional energy quantity too
             a_register = next(r for r in actual_registers
                               if r['register_binding'] ==
                                  h_register['register_binding'])
-            s_register = next(r for r in shadow_registers
-                              if r['register_binding'] ==
-                                 h_register['register_binding'])
+            s_quantity = reebill.get_renewable_energy_reading(
+                    h_register['register_binding'])
+
             h_register['quantity'] = a_register['quantity'] + \
-                                     s_register['quantity']
+                                     s_quantity
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
@@ -1069,8 +1069,16 @@ class Process(object):
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
         # create reebill row in state database
-        new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
+        new_reebill = ReeBill(customer, new_sequence, 0,
+                              utilbills=new_utilbills)
+
+        # assign Reading objects to the ReeBill based on registers from the
+        # utility bill document
+        assert len(new_utilbill_docs) == 1
+        new_reebill.update_readings_from_document(new_utilbill_docs[0])
+
         session.add(new_reebill)
+        session.add_all(new_reebill.readings)
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
@@ -1134,13 +1142,18 @@ class Process(object):
         # (note that utility bill subdocuments in the reebill also get updated
         # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
         # they are updated)
-        reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
-                for u in reebill.utilbills]
+        assert len(reebill.utilbills) == 1
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill_doc._utilbills = [utilbill_doc]
         reebill_doc.update_utilbill_subdocs(reebill.discount_rate)
 
         # document must be saved before fetch_oltp_data is called.
         # unfortunately, this can't be undone if an exception happens.
         self.reebill_dao.save_reebill(reebill_doc)
+
+        # update readings to match utility bill document
+        reebill.update_readings_from_document(utilbill_doc)
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
