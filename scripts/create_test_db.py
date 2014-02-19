@@ -2,6 +2,7 @@
 '''Create a test database with the same schema as the development
 database, but empty. Any existing database of the same name is replaced.'''
 from MySQLdb import Connection
+import tsort
 
 USER, PASSWORD = 'root', 'root' # use root because only root or the "definer" can create a view
 DEV_DB, TEST_DB = 'skyline_dev', 'test'
@@ -23,10 +24,21 @@ cur.execute('''select table_name from information_schema.tables where
         table_schema = '%s' and table_type = "VIEW"''' % DEV_DB);
 dev_views = [x[0] for x in cur.fetchall()]
 
+
+# sort tables in order of dependency
+cur.execute('''select referenced_table_name, table_name
+        FROM information_schema.key_column_usage
+        where referenced_table_name is not null''')
+dependency_graph = list(cur.fetchall())
+dependent_tables_sorted = tsort.topological_sort(dependency_graph)
+
+# there may also be some leftover tables that have no dependency on others
+independent_tables = [t for t in dev_tables if t not in dependent_tables_sorted]
+
 # copy tables from dev db to test db
 # (constraints and indices are only fully copied if the "create table" command
 # is executed--"create table like" does do this.)
-for table in dev_tables:
+for table in independent_tables + dependent_tables_sorted:
     cur.execute("show create table %s.%s" % (DEV_DB, table))
     create_command = cur.fetchone()[1]
     cur.execute(create_command)
