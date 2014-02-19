@@ -523,23 +523,6 @@ class StateTest(utils.TestCase):
             self.assertRaises(NoSuchBillException,
                     self.state_db.get_last_real_utilbill, session, '99999',
                     date(2000,3,1))
-    def test_utilbills_for_reebill(self):
-        with DBSession(self.state_db) as session:
-            customer = session.query(Customer).one()
-            gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                    period_end=date(2000,2,1))
-            session.add(gas_bill_1)
-            gas_bill_2 = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', period_start=date(2000,2,2),
-                    period_end=date(2000,3,1))
-            session.add(gas_bill_2)
-            reebill1 = ReeBill(customer, 1, utilbills=[gas_bill_1,gas_bill_2])
-            session.add(reebill1)
-            ub=self.state_db.utilbills_for_reebill(session, customer.account, 1)
-            self.assertEqual(ub[0].id,gas_bill_1.id)
-            self.assertEqual(ub[1].id,gas_bill_2.id)
-            self.assertEqual(len(ub), 2)
 
 if __name__ == '__main__':
     unittest.main()
