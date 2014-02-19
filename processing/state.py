@@ -173,6 +173,7 @@ class ReeBill(Base):
     # see the following documentation fot delete cascade behavior
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
+    readings = relationship('Reading', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
@@ -254,6 +255,7 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return sum(charge.total for charge in self.charges)
 
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -317,6 +319,30 @@ class ReeBillCharge(Base):
         self.quantity = quantity
         self.rate = rate
         self.total = total
+
+class Reading(Base):
+    '''Stores utility register readings and renewable energy offseting the
+    value of each register.
+    '''
+    __tablename__ = 'reading'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'))
+
+    # identifies which utility bill register this corresponds to
+    register_binding = Column(String, nullable=False)
+
+    # name of measure in OLAP database to use for getting renewable energy
+    # quantity
+    measure = Column(String, nullable=False)
+
+    # actual reading from utility bill
+    conventional_quantity = Column(Float, nullable=False)
+
+    # renewable energy offsetting the above
+    renewable_quantity = Column(Float, nullable=False)
+
+    unit = Column(String, nullable=False)
 
 
 class UtilBill(Base):
