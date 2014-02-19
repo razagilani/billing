@@ -688,6 +688,17 @@ class MongoReebill(object):
         return sum(total_of_all_charges(self._get_utilbill_for_handle(
             subdoc)) for subdoc in self.reebill_dict['utilbills'])
 
+    # NOTE avoid using this if at all possible,
+    # because MongoReebill._utilbills will go away
+    def get_all_hypothetical_charges(self):
+        ''' Returns all "hypothetical" versions of all charges, sorted
+            alphabetically by group
+        '''
+        assert len(self.reebill_dict['utilbills']) == 1
+        return sorted((charge for subdoc in self.reebill_dict['utilbills']
+                       for charge in subdoc['hypothetical_charges']),
+                            key=itemgetter('group','rsi_binding'))
+
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
@@ -1179,6 +1190,7 @@ class MongoReebill(object):
     def get_all_shadow_registers_json(self):
         '''Given a utility bill document, returns a list of dictionaries describing
         registers of all meters.'''
+        assert len(self.reebill_dict['utilbills']) == 1
         result = []
         for register in self.reebill_dict['utilbills'][0]['shadow_registers']:
                 result.append({
