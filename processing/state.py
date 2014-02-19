@@ -335,6 +335,8 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
+    unit = Column(String, nullable=False)
+
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
