@@ -1032,7 +1032,6 @@ class Process(object):
         if integrate_skyline_backend:
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_mongo_reebill, use_olap=True)
-            print "Executing"
             self.reebill_dao.save_reebill(new_mongo_reebill)
 
         if not skip_compute:
