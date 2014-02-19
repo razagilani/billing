@@ -6,7 +6,7 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from itertools import groupby
+from itertools import groupby, chain
 from operator import attrgetter, itemgetter
 import sqlalchemy
 from sqlalchemy import Table, Column, MetaData, ForeignKey
@@ -230,9 +230,12 @@ class ReeBill(Base):
         the list of registers in the given utility bill document. Renewable
         energy quantities are all set to 0.
         '''
-        self.readings = [Reading(reg_dict['binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, reg_dict['quantity_units']) for
-                reg_dict in mongo.get_all_actual_registers_json(utilbill_doc)]
+        # NOTE mongo.get_all_actual_registers_json can't be used here due to
+        # circular dependency
+        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
+                reg_dict['quantity'], 0, reg_dict['quantity_units'])
+                for reg_dict in chain.from_iterable(
+                (r for r in m['registers']) for m in utilbill_doc['meters'])]
 
     def set_renewable_energy_reading(self, register_binding, quantity):
         reading = next(r for r in self.readings
@@ -363,6 +366,7 @@ class Reading(Base):
         self.register_binding = register_binding
         self.measure = measure
         self.conventional_quantity = conventional_quantity
+        self.renewable_quantity = 0
         self.unit = unit
 
 class UtilBill(Base):
