@@ -225,6 +225,15 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
+    def update_readings_from_document(self, utilbill_doc):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given utility bill document. Renewable
+        energy quantities are all set to 0.
+        '''
+        self.readings = [Reading(reg_dict['binding'], 'Energy Sold',
+                reg_dict['quantity'], 0, reg_dict['quantity_units']) for
+                reg_dict in mongo.get_all_actual_registers_json(utilbill_doc)]
+
     def set_renewable_energy_reading(self, register_binding, quantity):
         reading = next(r for r in self.readings
                        if r.register_binding == register_binding)
