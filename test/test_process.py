@@ -1220,7 +1220,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
 
             # create new version of 1
-            new_reebill_doc = self.process.new_version(session, acc, 1)
+            self.process.new_version(session, acc, 1)
+            new_reebill_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
             new_reebill = self.state_db.get_reebill(session, acc, 1, version=1)
 
             # basic facts about new version
@@ -1471,7 +1472,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             self.process.ree_getter.fetch_oltp_data(
                                         self.nexus_util.olap_id(acc), two)
-            self.reebill_dao.save_reebill(two_doc)
             self.reebill_dao.save_utilbill(two_doc._utilbills[0])
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late
