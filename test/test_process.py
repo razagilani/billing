@@ -1470,7 +1470,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # differ)
             two_doc = self.reebill_dao.load_reebill(acc, 2)
             self.process.ree_getter.fetch_oltp_data(
-                                        self.nexus_util.olap_id(acc), two_doc)
+                                        self.nexus_util.olap_id(acc), two)
             self.reebill_dao.save_reebill(two_doc)
             self.reebill_dao.save_utilbill(two_doc._utilbills[0])
 
@@ -2078,7 +2078,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                                           reebill2_doc, use_olap=use_olap)
+                                           reebill2, use_olap=use_olap)
                 ree1 = reebill2_doc.total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, acc, 2)
@@ -2122,7 +2122,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                        reebill2_doc, use_olap=use_olap)
+                        reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
@@ -2132,17 +2132,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                        reebill2_doc, use_olap=use_olap)
+                        reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                        reebill2_doc, use_olap=use_olap)
+                        reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                        reebill2_doc, use_olap=use_olap)
+                        reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
@@ -2150,7 +2150,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                 self.process.ree_getter.fetch_oltp_data(olap_id,
-                        reebill2_doc, use_olap=use_olap)
+                        reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 self.reebill_dao.save_utilbill(reebill2_doc._utilbills[0])
                 check()
@@ -2290,11 +2290,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill = session.query(UtilBill).filter_by(
                     customer=self.state_db.get_customer(session, account)).one()
             self.process.roll_reebill(session, account, start_date=date(2013,1,1))
+            reebill = self.state_db.get_reebill(session, account, 1)
             reebill_doc = self.reebill_dao.load_reebill(account, 1)
 
             # bind, compute, issue
             self.process.ree_getter.fetch_oltp_data(
-                    self.nexus_util.olap_id(account), reebill_doc,
+                    self.nexus_util.olap_id(account), reebill,
                     use_olap=True)
             self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1)
@@ -2472,7 +2473,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
             self.process.ree_getter.fetch_oltp_data(
-                    self.nexus_util.olap_id(account), doc1, use_olap=True)
+                    self.nexus_util.olap_id(account), bill1, use_olap=True)
             self.reebill_dao.save_reebill(doc1)
             self.reebill_dao.save_utilbill(doc1._utilbills[0])
             # TODO utilbill subdocument has 0 for its charge (also 0 quantity)
