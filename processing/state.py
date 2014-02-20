@@ -6,7 +6,7 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from itertools import groupby
+from itertools import groupby, chain
 from operator import attrgetter, itemgetter
 import sqlalchemy
 from sqlalchemy import Table, Column, MetaData, ForeignKey
@@ -173,6 +173,7 @@ class ReeBill(Base):
     # see the following documentation fot delete cascade behavior
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
+    readings = relationship('Reading', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
@@ -224,6 +225,99 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
+    def update_readings_from_document(self, utilbill_doc):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given utility bill document. Renewable
+        energy quantities are all set to 0.
+        '''
+        # NOTE mongo.get_all_actual_registers_json can't be used here due to
+        # circular dependency
+        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
+                reg_dict['quantity'], 0, reg_dict['quantity_units'])
+                for reg_dict in chain.from_iterable(
+                (r for r in m['registers']) for m in utilbill_doc['meters'])]
+
+    def get_renewable_energy_reading(self, register_binding):
+        assert isinstance(register_binding, basestring)
+        try:
+            reading = next(r for r in self.readings
+                           if r.register_binding == register_binding)
+        except StopIteration:
+            raise ValueError('Unknown register binding "%s"' % register_binding)
+        return reading.renewable_quantity
+
+    def set_renewable_energy_reading(self, register_binding, new_quantity):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(new_quantity, (float, int))
+        reading = next(r for r in self.readings
+                       if r.register_binding == register_binding)
+        unit = reading.unit
+
+        # Thermal: convert quantity to therms according to unit, and add it to
+        # the total
+        if unit == 'therms':
+            new_quantity /= 1e5
+        elif unit == 'btu':
+            # TODO physical constants must be global
+            pass
+        elif unit == 'kwh':
+            # TODO physical constants must be global
+            new_quantity /= 1e5
+            new_quantity /= .0341214163
+        elif unit == 'ccf':
+            # deal with non-energy unit "CCF" by converting to therms with
+            # conversion factor 1
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                   "in ccf: energy value is wrong; time to implement "
+                   "https://www.pivotaltracker.com/story/show/28825375") \
+                  % (self.account, self.sequence, self.version)
+            new_quantity /= 1e5
+        # PV: Unit is kilowatt; no conversion needs to happen
+        elif unit == 'kwd':
+            pass
+        else:
+            raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        reading.renewable_quantity = new_quantity
+
+
+    def get_total_renewable_energy(self, ccf_conversion_factor=None):
+        total_therms = 0
+        for reading in self.readings:
+            quantity = reading.renewable_quantity
+            unit = reading.unit
+            assert isinstance(quantity, (float, int))
+            assert isinstance(unit, basestring)
+
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if unit == 'therms':
+                total_therms += quantity
+            elif unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += quantity / 100000.0
+            elif unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += quantity / .0341214163
+            elif unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                           "in ccf: energy value is wrong; time to implement "
+                           "https://www.pivotaltracker.com/story/show/28825375") \
+                          % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
+            elif unit =='kwd':
+                total_therms += quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        return total_therms
+
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this
@@ -253,6 +347,7 @@ class ReeBill(Base):
         '''
         assert len(self.utilbills) == 1
         return sum(charge.total for charge in self.charges)
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -318,6 +413,42 @@ class ReeBillCharge(Base):
         self.rate = rate
         self.total = total
 
+class Reading(Base):
+    '''Stores utility register readings and renewable energy offseting the
+    value of each register.
+    '''
+    __tablename__ = 'reading'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'))
+
+    # identifies which utility bill register this corresponds to
+    register_binding = Column(String, nullable=False)
+
+    # name of measure in OLAP database to use for getting renewable energy
+    # quantity
+    measure = Column(String, nullable=False)
+
+    # actual reading from utility bill
+    conventional_quantity = Column(Float, nullable=False)
+
+    # renewable energy offsetting the above
+    renewable_quantity = Column(Float, nullable=False)
+
+    unit = Column(String, nullable=False)
+
+    def __init__(self, register_binding, measure, conventional_quantity,
+                 renewable_quantity, unit):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(measure, basestring)
+        assert isinstance(conventional_quantity, (float, int))
+        assert isinstance(renewable_quantity, (float, int))
+        assert isinstance(unit, basestring)
+        self.register_binding = register_binding
+        self.measure = measure
+        self.conventional_quantity = conventional_quantity
+        self.renewable_quantity = renewable_quantity
+        self.unit = unit
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
