@@ -257,16 +257,19 @@ class RateStructureDAOTest(unittest.TestCase):
         self.utilbill_1.uprs_document_id = str(self.rs_1.id)
         self.utilbill_1.period_start = date(2000,1,1)
         self.utilbill_1.period_end = date(2000,2,1)
+        self.utilbill_1.processed = False
 
         self.utilbill_2 = Mock()
         self.utilbill_2.uprs_document_id = str(self.rs_2.id)
         self.utilbill_2.period_start = date(2000,1,1)
         self.utilbill_2.period_end = date(2000,2,1)
+        self.utilbill_2.processed = False
 
         self.utilbill_3 = Mock()
         self.utilbill_3.period_start = date(2000,1,1)
         self.utilbill_3.period_end = date(2000,2,1)
         self.utilbill_3.uprs_document_id = str(self.rs_3.id)
+        self.utilbill_3.processed = False
 
         class MockQuerySet(object):
             def __init__(self, *documents):
@@ -316,8 +319,26 @@ class RateStructureDAOTest(unittest.TestCase):
 
     def test_get_probable_uprs(self):
         utilbill_loader = Mock()
+
+        # with no utility bills, predicted rate structure is empty
+        utilbill_loader.load_real_utilbills.return_value = []
+        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+                'DC Non Residential Non Heat', date(2000,1,1), date(2000,2,1))
+        self.assertEqual([], uprs.rates)
+
+        # with 3 utility bills, but none processed, still empty
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
-            self.utilbill_2, self.utilbill_3]
+                                            self.utilbill_2, self.utilbill_3]
+        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+                'DC Non Residential Non Heat', date(2000,1,1), date(2000,2,1))
+        self.assertEqual([], uprs.rates)
+
+        # with 3 processed utility bills
+        self.utilbill_1.processed = True
+        self.utilbill_2.processed = True
+        self.utilbill_3.processed = True
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                self.utilbill_2, self.utilbill_3]
 
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
                 'DC Non Residential Non Heat', date(2000,1,1), date(2000,2,1))
