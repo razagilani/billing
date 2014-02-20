@@ -449,7 +449,7 @@ class Exporter(object):
                 except KeyError:
                     hypothetical_total="Error!"
                 try:
-                    total_ree = reebill_doc.total_renewable_energy()
+                    total_ree = reebill.get_total_renewable_energy()
                     if total_ree != 0:
                         average_rate_unit_ree = (hypothetical_total-actual_total)/total_ree
                 except StopIteration:
