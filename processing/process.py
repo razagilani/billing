@@ -396,7 +396,6 @@ class Process(object):
             document.service_address['postal_code'] = sa_postal_code
 
         self.reebill_dao.save_reebill(document)
-        self.reebill_dao.save_reebill(document._utilbills[0])
 
 
     def upload_utility_bill(self, session, account, service, begin_date,
@@ -1074,7 +1073,6 @@ class Process(object):
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
-        self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
@@ -1084,7 +1082,6 @@ class Process(object):
             self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
                                             new_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
-            self.reebill_dao.save_utilbill(new_mongo_reebill._utilbills[0])
 
         if not skip_compute:
             try:
