@@ -218,7 +218,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
                               == register_id]
         if len(existing_registers) > 0:
             raise ValueError("There is already a register with id %s and meter"
-                             " id %sj" %(register_id, original_meter_id))
+                             " id %s" %(register_id, original_meter_id))
     if meter_id is not None:
         # meter id is being updated, and there is an existing meter with
         # the given id, the register must be removed from its old meter and
