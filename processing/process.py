@@ -168,13 +168,13 @@ class Process(object):
     def get_hypothetical_matched_charges(self, account, sequence, service):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        if reebill is None:
+        reebill_doc = self.reebill_dao.load_reebill(account, sequence)
+        if reebill_doc is None:
             raise NoSuchBillException
-        utilbill_doc = reebill._get_utilbill_for_service(service)
+        utilbill_doc = reebill_doc._get_utilbill_for_service(service)
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        hypothetical_charges = reebill.hypothetical_chargegroups_flattened(service)
+        hypothetical_charges = reebill_doc.get_all_hypothetical_charges()
         for hypothetical_charge_dict in hypothetical_charges:
             try:
                 matching = actual_charge_dict[hypothetical_charge_dict['rsi_binding']]
