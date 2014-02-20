@@ -320,21 +320,14 @@ class RateStructureDAOTest(unittest.TestCase):
     def test_get_probable_uprs(self):
         utilbill_loader = Mock()
 
-        # with no utility bills, predicted rate structure is empty
+        # with no processed utility bills, predicted rate structure is empty.
+        # note that since 'utilbill_loader' is used, actually loading the
+        # utility bills with the given attributes is outside the scope of
+        # RateStructureDAO
         utilbill_loader.load_real_utilbills.return_value = []
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
         utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
-        self.assertEqual([], uprs.rates)
-
-        # with 3 utility bills, but none processed, still empty
-        utilbill_loader.load_real_utilbills.return_value = []
-        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
-                'whatever', date(2000,1,1), date(2000,2,1))
-        self.assertEqual(2, utilbill_loader.load_real_utilbills.call_count)
-        utilbill_loader.load_real_utilbills.assert_called_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([], uprs.rates)
@@ -344,7 +337,7 @@ class RateStructureDAOTest(unittest.TestCase):
                 self.utilbill_2, self.utilbill_3]
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
-        self.assertEqual(3, utilbill_loader.load_real_utilbills.call_count)
+        self.assertEqual(2, utilbill_loader.load_real_utilbills.call_count)
         utilbill_loader.load_real_utilbills.assert_called_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
