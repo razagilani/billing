@@ -471,9 +471,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
             bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            self.reebill_dao.save_reebill(bill1_1_doc)
-            self.reebill_dao.save_utilbill(bill1_1_doc._utilbills[0])
+            bill1_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
             assert bill1_1.ree_charge == 25
@@ -486,10 +484,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # replace the renewable energy quantity that came from
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
-            bill1_2_doc = self.reebill_dao.load_reebill(acc, 1, version=2)
-            bill2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            self.reebill_dao.save_reebill(bill1_2_doc)
-            self.reebill_dao.save_utilbill(bill1_2_doc._utilbills[0])
+            bill1_2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             bill1_2.discount_rate = 0.25
             self.process.compute_reebill(session, acc, 1, version=2)
             assert bill1_2.ree_charge == 75
