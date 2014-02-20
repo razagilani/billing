@@ -332,18 +332,30 @@ class RateStructureDAOTest(unittest.TestCase):
                 processed=True)
         self.assertEqual([], uprs.rates)
 
-        # with 3 processed utility bills
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
-                self.utilbill_2, self.utilbill_3]
+        # with only the 1st utility bill (containing rsi_a_shared and
+        # rsi_b_unshared), only rsi_a_shared should appear in the result
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1]
         uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
         self.assertEqual(2, utilbill_loader.load_real_utilbills.call_count)
         utilbill_loader.load_real_utilbills.assert_called_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
+        self.assertEqual([self.rsi_a_shared], uprs.rates)
+
+        # with 3 processed utility bills
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                self.utilbill_2, self.utilbill_3]
+        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+                'whatever', date(2000,1,1), date(2000,2,1))
+        self.assertEqual(3, utilbill_loader.load_real_utilbills.call_count)
+        utilbill_loader.load_real_utilbills.assert_called_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
         # should be included here
         self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], uprs.rates)
+
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
