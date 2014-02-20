@@ -2528,8 +2528,17 @@ function reeBillReady() {
 
     // fired when the datastore has completed loading
     aChargesStore.on('load', function (store, records, options) {
+        // Update the GrandTotal
+        var total = 0;
+        for(var i=0; i<records.length; i++){
+            total+=records[i].data.total;
+        }
+        Ext.getCmp('chargesGrandTotalLabel').setValue('Grand Total:');
+        total=Ext.util.Format.usMoney(total);
+        Ext.getCmp('chargesGrandTotal').setValue('<b>'+total+'</b>');
+
         //console.log('aChargesStore load');
-        // the grid is disabled by the panel that contains it  
+        // the grid is disabled by the panel that contains it
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         aChargesGrid.setDisabled(false);
@@ -2825,7 +2834,7 @@ function reeBillReady() {
         tbar: aChargesToolbar,
         colModel: aChargesColModel,
         autoScroll: true,
-        layout: 'fit',  
+        layout: 'fit',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: aChargesStore,
         enableColumnMove: false,
@@ -2837,10 +2846,24 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'group',
-        clicksToEdit: 2
+        clicksToEdit: 2,
         // config options for stateful behavior
         //stateful: true,
-        //stateId: 'grid' 
+        //stateId: 'grid'
+        fbar: new Ext.Toolbar({
+                height: 13,
+                items:[
+                    {   xtype: 'displayfield',
+                        label: 'Grand Total',
+                        id: 'chargesGrandTotalLabel',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'chargesGrandTotal',
+                        width:100
+                    }
+                ]
+        })
     });
 
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -2853,7 +2876,7 @@ function reeBillReady() {
         // if there was a selection, allow an insertion
         aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
     });
-    
+
     aChargesGrid.on('activate', function(panel) {
         //console.log("aCharges Grid Activated");
         //console.log(panel);
@@ -5723,6 +5746,19 @@ function reeBillReady() {
     });
     
     hChargesStore.on('load', function (store, records, options) {
+        // Update the GrandTotal
+        var total = 0;
+        var atotal =0;
+        for(var i=0; i<records.length; i++){
+            total+=records[i].data.total;
+            atotal+=records[i].data.actual_total;
+        }
+        Ext.getCmp('reebillChargesGrandTotalLabel').setValue('Grand Total:');
+        total=Ext.util.Format.usMoney(total);
+        Ext.getCmp('reebillChargesGrandTotal').setValue('<b>'+total+'</b>');
+        atotal=Ext.util.Format.usMoney(atotal);
+        Ext.getCmp('reebillChargesGrandActualTotal').setValue('<b>'+atotal+'</b>');
+
         hChargesGrid.setDisabled(false);
     });
     
@@ -5811,6 +5847,24 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
+        fbar: new Ext.Toolbar({
+                height: 13,
+                items:[
+                    {   xtype: 'displayfield',
+                        label: 'Grand Total',
+                        id: 'reebillChargesGrandTotalLabel',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'reebillChargesGrandActualTotal',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'reebillChargesGrandTotal',
+                        width:100
+                    }
+                ]
+        })
     });
 
     reebillChargesPanel = new Ext.Panel({
