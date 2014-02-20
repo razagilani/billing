@@ -692,7 +692,7 @@ class MongoReebill(object):
     # because MongoReebill._utilbills will go away
     def get_all_hypothetical_charges(self):
         ''' Returns all "hypothetical" versions of all charges, sorted
-            alphabetically by group
+            alphabetically by group and rsi_binding
         '''
         assert len(self.reebill_dict['utilbills']) == 1
         return sorted((charge for subdoc in self.reebill_dict['utilbills']
