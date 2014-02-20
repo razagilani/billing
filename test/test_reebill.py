@@ -173,6 +173,7 @@ class ReebillTest(TestCaseWithSetup):
                 uprs_id=uprs.id)
         reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                 utilbills=[utilbill])
+        reebill.update_readings_from_document(utilbill_doc)
         reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
                 0, 0.5, 0.1, [utilbill_doc])
         utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]

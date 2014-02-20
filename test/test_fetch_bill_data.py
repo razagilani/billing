@@ -1,4 +1,3 @@
-#!/usr/bin/python
 from itertools import chain
 from StringIO import StringIO
 import csv
@@ -76,6 +75,7 @@ class FetchTest(unittest.TestCase):
                 start=date(2000,1,1), end=date(2000,2,1), utility='washgas',
                 service='gas')
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
+        self.reebill.update_readings_from_document(utilbill_doc)
         self.reebill_doc = example_data.get_reebill('12345', 1,
                 start=date(2000,1,1), end=date(2000,1,1))
         reebill_dao = Mock()
@@ -217,7 +217,7 @@ class FetchTest(unittest.TestCase):
         # compare 'total_btu' to reebill's total REE (converted from therms to
         # BTU).
         self.assertAlmostEqual(total_btu,
-                self.reebill_doc.total_renewable_energy() * 100000)
+                self.reebill.get_total_renewable_energy() * 100000)
 
 if __name__ == '__main__':
     unittest.main()
