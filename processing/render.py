@@ -586,7 +586,7 @@ class ReebillRenderer:
 
         # populate billPeriodTableF
         # spacer so rows can line up with those in summarChargesTableF rows
-        periods=reebill_document.renewable_energy_period()
+        periods=reebill_document.get_period()
         serviceperiod = [
                 [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
