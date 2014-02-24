@@ -973,9 +973,10 @@ class StateDB(object):
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
+        session.query(UtilBill).all()
         return UtilBillLoader(session).get_last_real_utilbill(account, end,
                 service=service, utility=utility, rate_class=rate_class,
-                processed=None)
+                processed=processed)
 
     def create_payment(self, session, account, date_applied, description,
             credit, date_received=None):
