@@ -729,35 +729,12 @@ class Process(object):
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
-        # TODO remove duplicate code between this method and Process
-        # ._generate_docs_for_new_utility_bill
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
-        new_uprs = self.rate_structure_dao.get_probable_uprs(
-                UtilBillLoader(session),
-                utilbill.utility, utilbill.service, utilbill.rate_class,
-                utilbill.period_start, utilbill.period_end,
-                ignore=lambda uprs: uprs.id == existing_uprs.id)
-
-        # add any RSIs from the predecessor's UPRS that are not already there
-        try:
-            predecessor = self.state_db.get_last_real_utilbill(session,
-                utilbill.customer.account, utilbill.period_start,
-                service=utilbill.service, utility=utilbill.utility,
-                rate_class=utilbill.rate_class, processed=True)
-        except NoSuchBillException:
-            # if there's no predecessor, there are no RSIs to add
-            pass
-        else:
-            predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                    predecessor)
-            for rsi in predecessor_uprs.rates:
-                if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
-                        new_uprs.rates)):
-                    new_uprs.rates.append(rsi)
-
-        existing_uprs.rates = new_uprs.rates
+        new_rs = self.rate_structure_dao.get_predicted_rate_structure(utilbill,
+                UtilBillLoader(session))
+        existing_uprs.rates = new_rs.rates
         existing_uprs.save()
 
     def has_utilbill_predecessor(self, session, utilbill_id):
