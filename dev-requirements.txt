@@ -1,0 +1,12 @@
+# 62431060 paramiko bug necessitated this version? Nope.
+# 63545928 requires 1.6.1?
+# Fabric==1.6.1
+# let's use the latest in development
+fabric
+coverage
+ipdb
+minimock
+mock
+nose
+nose-progressive
+pudb
