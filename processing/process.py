@@ -33,7 +33,6 @@ from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.processing import fetch_bill_data, bill_mailer
-from billing.nexusapi import nexus_util
 from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
