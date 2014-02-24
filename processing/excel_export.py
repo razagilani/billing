@@ -55,7 +55,8 @@ class Exporter(object):
                                                end_date=end_date))
         output_file.write(book.xls)
 
-    def get_account_charges_sheet(self, session, account):
+    def get_account_charges_sheet(self, session, account, start_date=None,
+                                  end_date=None):
         '''
         Returns a tablib Dataset consisting of all actual and hypothetical
         charges for all utility bills belonging to 'account'. Format: account &
