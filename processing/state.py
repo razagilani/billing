@@ -966,30 +966,16 @@ class StateDB(object):
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
+    # NOTE deprectated in favor of UtilBillLoader.get_last_real_utilbill
     def get_last_real_utilbill(self, session, account, end, service=None,
             utility=None, rate_class=None, processed=None):
         '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
-        customer = self.get_customer(session, account)
-        cursor = session.query(UtilBill)\
-                .filter(UtilBill.customer == customer)\
-                .filter(UtilBill.state != UtilBill.Hypothetical)\
-                .filter(UtilBill.period_end <= end)
-        if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
-        if utility is not None:
-            cursor = cursor.filter(UtilBill.utility == utility)
-        if rate_class is not None:
-            cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        if processed is not None:
-            assert isinstance(processed, bool)
-            cursor = cursor.filter(UtilBill.processed == processed)
-        result = cursor.order_by(desc(UtilBill.period_end)).first()
-        if result is None:
-            raise NoSuchBillException
-        return result
+        return UtilBillLoader(session).get_last_real_utilbill(account, end,
+                service=service, utility=utility, rate_class=rate_class,
+                processed=None)
 
     def create_payment(self, session, account, date_applied, description,
             credit, date_received=None):
@@ -1101,6 +1087,32 @@ class UtilBillLoader(object):
         for key, value in kwargs.iteritems():
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
+
+    def get_last_real_utilbill(self, account, end, service=None, utility=None,
+                rate_class=None, processed=None):
+        '''Returns the latest-ending non-Hypothetical UtilBill whose
+        end date is before/on 'end', optionally with the given service,
+        utility, rate class, and 'processed' status.
+        '''
+        customer = self._session.query(Customer).filter_by(account=account)\
+                .one()
+        cursor = self._session.query(UtilBill) \
+                .filter(UtilBill.customer == customer) \
+                .filter(UtilBill.state != UtilBill.Hypothetical) \
+                .filter(UtilBill.period_end <= end)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if processed is not None:
+            assert isinstance(processed, bool)
+            cursor = cursor.filter(UtilBill.processed == processed)
+        result = cursor.order_by(desc(UtilBill.period_end)).first()
+        if result is None:
+            raise NoSuchBillException
+        return result
 
 if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
