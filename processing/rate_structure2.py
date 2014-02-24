@@ -518,16 +518,6 @@ class RateStructureDAO(object):
         '''Returns a list of (UPRS document, start date, end date) tuples with
         the given utility and rate structure name.
         '''
-        # skip Hypothetical utility bills--they have a UPRS document, but it's
-        # fake, so it should not count toward the probability of RSIs being
-        # included in other bills. (ignore utility bills that are
-        # 'SkylineEstimated' or 'Hypothetical')
-        # utilbills = session.query(UtilBill)\
-        #         .filter(UtilBill.service==service)\
-        #         .filter(UtilBill.utility==utility_name)\
-        #         .filter(UtilBill.rate_class==rate_class)\
-        #         .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
-        #         .filter(UtilBill.processed==True)
         utilbills = utilbill_loader.load_real_utilbills(
             service=service,
             utility=utility_name,
