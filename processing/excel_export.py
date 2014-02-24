@@ -55,9 +55,7 @@ class Exporter(object):
                                                end_date=end_date))
         output_file.write(book.xls)
 
-    def get_account_charges_sheet(self, session, account,
-                                  start_date=None,
-                                  end_date=None):
+    def get_account_charges_sheet(self, session, account):
         '''
         Returns a tablib Dataset consisting of all actual and hypothetical
         charges for all utility bills belonging to 'account'. Format: account &
@@ -74,12 +72,7 @@ class Exporter(object):
         dataset.headers = ['Account', 'Sequence', 'Period Start', 'Period End',
                            'Billing Month', 'Estimated']
 
-        # load customer from MySQL in order to load reebill and utilbill below
-
-        customer = self.state_db.get_customer(session, account)
-
-        for sequence in sorted(self.state_db.listSequences(session,
-                                                           account)):
+        for sequence in sorted(self.state_db.listSequences(session, account)):
             reebill_doc = self.reebill_dao.load_reebill(account, sequence)
             reebill = self.state_db.get_reebill(session, account, sequence)
 
@@ -164,7 +157,6 @@ class Exporter(object):
                         dataset.append_col([''] * dataset.height,
                                            header=column_name)
                     row.append(("%.2f" % total))
-            print dataset.height, dataset.width, len(row)
             dataset.append(row)
         return dataset
 
