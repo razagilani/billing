@@ -11,7 +11,7 @@ from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
-    NotUniqueException
+    NotUniqueException, NoSuchBillException
 from billing.processing.state import UtilBill
 
 # minimum normlized score for an RSI to get included in a probable UPRS
@@ -450,6 +450,43 @@ class RateStructureDAO(object):
         return RateStructure(type='UPRS', rates=self._get_probable_rsis(
                 utilbill_loader, utility, service, rate_class, (start, end),
                 ignore=ignore))
+
+    def get_predicted_rate_structure(self, utilbill, utilbill_loader):
+        '''Returns a guess of the rate structure for the given utility bill
+        based on those for other existing bills.
+
+        'utilbill_loader': an object that has a 'load_utilbills' method
+        returning an iterable of state.UtilBills matching criteria given as
+        keyword arguments (see state.UtilBillLoader). For testing, this can be
+        replaced with a mock object.
+
+        The returned document has no _id, so the caller can add one before
+        saving.
+        '''
+        result = self.get_probable_uprs(utilbill_loader, utilbill.utility,
+                utilbill.service, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end,
+                # skip RS of current utility bill, if it exists
+                ignore=lambda uprs: uprs.id == utilbill.uprs_document_id)
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        try:
+            predecessor = utilbill_loader.get_last_real_utilbill(
+                    utilbill.customer.account, utilbill.period_start,
+                    service=utilbill.service, utility=utilbill.utility,
+                    rate_class=utilbill.rate_class, processed=True)
+        except NoSuchBillException:
+            # if there's no predecessor, there are no RSIs to add
+            pass
+        else:
+            predecessor_rs = self.load_uprs_for_utilbill(predecessor)
+            for rsi in predecessor_rs.rates:
+                if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                            result.rates)):
+                    result.rates.append(rsi)
+
+        return result
+
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a UPRS document for the given state.Utilbill.
