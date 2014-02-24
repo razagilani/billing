@@ -924,7 +924,9 @@ class BillToolBridge:
 
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
-            self.process.mail_reebills(session, account, [sequence], recipients)
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+            self.process.mail_reebills(session, account, [sequence],
+                                       recipient_list)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                                                 account, sequence, recipients)
 
