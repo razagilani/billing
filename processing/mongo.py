@@ -218,7 +218,7 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
                               == register_id]
         if len(existing_registers) > 0:
             raise ValueError("There is already a register with id %s and meter"
-                             " id %sj" %(register_id, original_meter_id))
+                             " id %s" %(register_id, original_meter_id))
     if meter_id is not None:
         # meter id is being updated, and there is an existing meter with
         # the given id, the register must be removed from its old meter and
@@ -702,8 +702,9 @@ class MongoReebill(object):
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        assert len(self.reebill_dict['utilbills']) == 1
-        return sum(sum(charge['total']
+        # NOTE extreme tolerance for malformed data is required to acommodate
+        # old bills; see https://www.pivotaltracker.com/story/show/66177446
+        return sum(sum(charge.get('total', 0)
                 for charge in subdoc['hypothetical_charges'])
                 for subdoc in self.reebill_dict['utilbills'])
 
