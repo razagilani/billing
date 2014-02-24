@@ -145,14 +145,14 @@ class Exporter(object):
             for charge in hypothetical_charges + actual_charges + extra_charges:
                 column_name = '%s: %s' % (charge.get('group',''),
                                           charge.get('description','Error: No Description Found!'))
-                total = charge.get('total','')
+                total = charge.get('total', 0)
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
                     # cell?
                     col_idx = dataset.headers.index(column_name)
                     if row[col_idx] == '':
-                        row[col_idx] = total
+                        row[col_idx] = ("%.2f" % total)
                     else:
                         row[col_idx] = ('ERROR: duplicate charge name'
                                                 '"%s"') % column_name
@@ -163,7 +163,7 @@ class Exporter(object):
                     else:
                         dataset.append_col([''] * dataset.height,
                                            header=column_name)
-                    row.append(str(total))
+                    row.append(("%.2f" % total))
             print dataset.height, dataset.width, len(row)
             dataset.append(row)
         return dataset
@@ -243,7 +243,7 @@ class Exporter(object):
                         # write cell in existing column
                         try:
                             if row[col_idx] == '':
-                                row[col_idx] = ("%.2f" % total)
+                                row[col_idx] = total
                             else:
                                 row[col_idx] = ('ERROR: duplicate charge name'
                                                 '"%s"') % name
@@ -252,7 +252,7 @@ class Exporter(object):
                     else:
                         # header doesn't exists, append a new one
                         ds_headers.append(name)
-                        row.append(("%.2f" % total))
+                        row.append(total)
                 # add row to dataset
             ds_rows.append(row)
             # Bring the dataset to uniform dimensions by padding
