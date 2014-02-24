@@ -3945,7 +3945,13 @@ function reeBillReady() {
             },
         ]
     });
-    
+
+    var setFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setFilterPreference',
+        autoAbort: true,
+        disableCaching: true
+    });
+
     var filterAccountsStore = new Ext.data.ArrayStore({
         id: 0,
         fields: ['abbr','name'],
@@ -3975,6 +3981,35 @@ function reeBillReady() {
         // Set the filter as a baseParam, so filter is persistant through page switches
         accountStore.baseParams.filtername=record.id;
         accountStore.load({params:{filtername:record.id, start:0, limit:30}});
+        // Save the selection as default
+        setFilterPreferenceConn.request({
+            params: { 'filtername': record.id},
+        });
+    });
+
+    // get default filter from the server
+    var getFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getFilterPreference',
+        autoAbort: true,
+        disableCaching: true
+    });
+    // TODO: 22360193 populating a form from Ajax creates a race condition.
+    // What if the network doesn't return and user enters a value nefore the callback is fired?
+    getFilterPreferenceConn.request({
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    var filtername = jsonData['filtername'];
+                    filterAccountsCombo.setValue(filtername);
+                } else {
+                    // handle success:false here if needed
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+            }
+        },
     });
 
     // this grid tracks the state of the currently selected account
@@ -4616,78 +4651,6 @@ function reeBillReady() {
         },
     });
 
-    var filterPreferenceCombo = new Ext.form.ComboBox({
-        id:'filterPreferenceCombo',
-        queryMode:'local',
-        mode:'local',
-        store:  filterAccountsStore,
-        autoSelect:true,
-        allowBlank: false,
-        editable: false,
-        value:'',
-        valueField: 'abbr',
-        displayField: 'name',
-        triggerAction: 'all',
-        typeAhead: false,
-        width: 300,
-    });
-    
-    var setFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/setFilterPreference',
-    });
-    setFilterPreferenceConn.autoAbort = true;
-    setFilterPreferenceConn.disableCaching = true;
-    var filterPreferenceFormPanel = new Ext.FormPanel({
-        labelWidth: 240, // label settings here cascade unless overridden
-        frame: true,
-        title: 'Account Filter Preferences',
-        bodyStyle: 'padding:5px 5px 0',
-        //width: 610,
-        defaults: {width: 435},
-            layout: 'fit', 
-            defaultType: 'textfield',
-                items: [
-                filterPreferenceCombo,
-                ],
-                buttons: [
-                new Ext.Button({
-                    text: 'Save',
-                    handler: function() {
-                        setFilterPreferenceConn.request({
-                            params: { 'filtername': filterPreferenceCombo.getValue()},
-                        });
-                    }
-                }),
-                ],
-    });
-    
-    // get initial value of this field from the server
-    var getFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getFilterPreference',
-    });
-    getFilterPreferenceConn.autoAbort = true;
-    getFilterPreferenceConn.disableCaching = true;
-    // TODO: 22360193 populating a form from Ajax creates a race condition.  
-    // What if the network doesn't return and user enters a value nefore the callback is fired?
-    var filterPreference = null;
-    getFilterPreferenceConn.request({
-        success: function(result, request) {
-            var jsonData = null;
-            try {
-                jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    filtername = jsonData['filtername'];
-                    filterPreferenceCombo.setValue(filtername);
-                    filterAccountsCombo.setValue(filtername);
-                } else {
-                    // handle success:false here if needed
-                }
-            } catch (err) {
-                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-            }
-        },
-    });    
-
     //
     // Instantiate the Preference panel
     //
@@ -4700,7 +4663,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, thresholdFormPanel, filterPreferenceFormPanel],
+        items: [preferencesFormPanel, thresholdFormPanel],
     });
 
     ///////////////////////////////////////
