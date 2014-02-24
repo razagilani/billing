@@ -432,6 +432,8 @@ class RateStructureDAO(object):
                     quantity=quantity))
         return result
 
+    # TODO: remove this method, combine RateStructureDAOTest method that uses
+    # it with test_get_predicted_rate_structure
     def _get_predicted_shared_rate_structure(self, utilbill_loader, utility,
             service, rate_class, start, end, ignore=lambda x: False):
         '''Returns a guess of the rate structure for a new utility bill of the
