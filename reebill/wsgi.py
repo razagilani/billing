@@ -1640,7 +1640,7 @@ class BillToolBridge:
             if xaction == "create":
                 row = json.loads(kwargs["rows"])[0]
                 assert isinstance(row, dict)
-                group_name = row['chargegroup']
+                group_name = row['group']
                 self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
