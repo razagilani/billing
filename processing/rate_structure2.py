@@ -432,28 +432,6 @@ class RateStructureDAO(object):
                     quantity=quantity))
         return result
 
-    # TODO: remove this method, combine RateStructureDAOTest method that uses
-    # it with test_get_predicted_rate_structure
-    def _get_predicted_shared_rate_structure(self, utilbill_loader, utility,
-            service, rate_class, start, end, ignore=lambda x: False):
-        '''Returns a guess of the rate structure for a new utility bill of the
-        given utility name, service, and dates, including only shared RSIs
-        from other bills.
-        
-        'utilbill_loader': an object that has a 'load_utilbills' method
-        returning an iterable of state.UtilBills matching criteria given as
-        keyword arguments (see state.UtilBillLoader). For testing, this can be
-        replaced with a mock object.
-
-        'ignore' is a boolean-valued function that should return True when
-        given a UPRS document should be excluded from prediction.
-        
-        The returned document has no _id, so the caller can add one before
-        saving.'''
-        return RateStructure(type='UPRS', rates=self._get_probable_shared_rsis(
-                utilbill_loader, utility, service, rate_class, (start, end),
-                ignore=ignore))
-
     def get_predicted_rate_structure(self, utilbill, utilbill_loader):
         '''Returns a guess of the rate structure for the given utility bill
         based on those for other existing bills.
@@ -466,11 +444,12 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.
         '''
-        result = self._get_predicted_shared_rate_structure(utilbill_loader, utilbill.utility,
-                utilbill.service, utilbill.rate_class,
-                utilbill.period_start, utilbill.period_end,
-                # skip RS of current utility bill, if it exists
-                ignore=lambda uprs: uprs.id == utilbill.uprs_document_id)
+        result = RateStructure(type='UPRS',
+                rates=self._get_probable_shared_rsis(utilbill_loader,
+                utilbill.utility, utilbill.service, utilbill.rate_class,
+                (utilbill.period_start, utilbill.period_end),
+                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+        result.id = ObjectId()
 
         # add any RSIs from the predecessor's UPRS that are not already there
         try:

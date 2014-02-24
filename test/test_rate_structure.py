@@ -383,8 +383,7 @@ class RateStructureDAOTest(unittest.TestCase):
         utilbill_loader.reset_mock()
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader,
-                'washgas', 'gas', 'whatever', date(2000,1,1), date(2000,2,1))
+        uprs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
         utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
