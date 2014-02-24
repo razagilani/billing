@@ -1574,7 +1574,17 @@ function reeBillReady() {
                                 reeBillStore.setDefaultSort('sequence', 'DESC');
                                 pageSize = reeBillGrid.getBottomToolbar().pageSize;
                                 reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                                    reeBillGrid.getSelectionModel().selectFirstRow();
+                                    // In order to avoid the error message from
+                                    // thie first bill not being rendered yet,
+                                    // we have to suspend the selection events and
+                                    // call loadReeBillUIForSequence with
+                                    // loadReebillImage=false
+                                    var sm = reeBillGrid.getSelectionModel();
+                                    sm.suspendEvents();
+                                    sm.selectFirstRow();
+                                    loadReeBillUIForSequence(jsonData.account,
+                                        jsonData.sequence, false);
+                                    sm.resumeEvents();
                                 }});
                             }
                         } catch (err) {
@@ -1612,7 +1622,17 @@ function reeBillReady() {
                             reeBillStore.setDefaultSort('sequence', 'DESC');
                             pageSize = reeBillGrid.getBottomToolbar().pageSize;
                             reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                                reeBillGrid.getSelectionModel().selectFirstRow();
+                                // In order to avoid the error message from
+                                // thie first bill not being rendered yet,
+                                // we have to suspend the selection events and
+                                // call loadReeBillUIForSequence with
+                                // loadReebillImage=false
+                                var sm = reeBillGrid.getSelectionModel();
+                                sm.suspendEvents();
+                                sm.selectFirstRow();
+                                loadReeBillUIForSequence(jsonData.account,
+                                    jsonData.sequence, false);
+                                sm.resumeEvents();
                             }});
                         }
                     } catch (err) {
@@ -6130,8 +6150,10 @@ function reeBillReady() {
     reeBillImageDataConn.autoAbort = true;
     reeBillImageDataConn.disableCaching = true;
 
-    function loadReeBillUIForSequence(account, sequence) {
+    function loadReeBillUIForSequence(account, sequence, loadReebillImage) {
         /* null argument means no sequence is selected */
+        // Load the ReebillImage by default
+        loadReebillImage = typeof loadReebillImage !== 'undefined' ? loadReebillImage : true;
 
         // get selected reebill's record and the predecessor's record
         var record = reeBillGrid.getSelectionModel().getSelected();
@@ -6189,18 +6211,6 @@ function reeBillReady() {
         }
         //Enable the reebill charges panel when a reebill is selected
         reebillChargesPanel.setDisabled(false);
-        // enable or disable the reebill delete button depending on whether the
-        // selected reebill is issued: only un-issued bills should be
-        // deletable.
-        // apparently there is no way to get the selected index of a combobox;
-        // you have to get the value of the selection and then search for it in
-        // the data store. better hope the values are unique.
-        // http://stackoverflow.com/questions/6014593/how-do-i-get-the-selected-index-of-an-extjs-combobox
-        // TODO: enable/disable delete button
-        // TODO: 25419697
-        //var sequenceRecordIndex = sequencesStore.find('sequence', sequence);
-        //var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
-        //deleteButton.setDisabled(sequenceRecord.get('committed'))
         
         // TODO:23046181 abort connections in progress
         services = record.data.services;
@@ -6215,48 +6225,53 @@ function reeBillReady() {
             Ext.getCmp('service_for_charges').clearValue();
             Ext.getCmp('service_for_charges').setDisabled(true);
         }
-            
-        // image rendering resolution
-        var menu = document.getElementById('reebillresolutionmenu');
-        if (menu) {
-            resolution = menu.value;
-        } else {
-            resolution = DEFAULT_RESOLUTION;
-        }
 
-        // while waiting for the next ajax request to finish, show a loading message
-        // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-        
-        // ajax call to generate image, get the name of it, and display it in a
-        // new window
-        // abort previous transaction
-        reeBillImageDataConn.request({
-            disablecaching: true,
-            params: {account: selected_account, sequence: selected_sequence, resolution: resolution},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    var imageUrl = '';
-                    if (jsonData.success == true) {
-                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+        if(loadReebillImage){
+            // image rendering resolution
+            var menu = document.getElementById('reebillresolutionmenu');
+            if (menu) {
+                resolution = menu.value;
+            } else {
+                resolution = DEFAULT_RESOLUTION;
+            }
+
+            // while waiting for the next ajax request to finish, show a loading message
+            // in the utilbill image box
+            Ext.DomHelper.overwrite('reebillimagebox',
+                {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
+
+            // ajax call to generate image, get the name of it, and display it in a
+            // new window
+            // abort previous transaction
+            reeBillImageDataConn.request({
+                disablecaching: true,
+                params: {account: selected_account, sequence: selected_sequence,
+                            resolution: resolution},
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        var imageUrl = '';
+                        if (jsonData.success == true) {
+                            imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                        }
+                        // handle failure if needed
+                        Ext.DomHelper.overwrite('reebillimagebox',
+                            getImageBoxHTML(imageUrl, 'Reebill', 'reebill',
+                                NO_REEBILL_SELECTED_MESSAGE), true);
+
+                    } catch (err) {
+                        Ext.MessageBox.alert('error', err);
                     }
-                    // handle failure if needed
-                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-
-                } catch (err) {
-                    Ext.MessageBox.alert('error', err);
-                }
-            },
-            // this is called when the server returns 500 as well as when there's no response
-            failure: function() { 
-                // replace reebill image with a missing graphic
-                Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                    html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-            },
-        });
-
+                },
+                // this is called when the server returns 500 as well as when there's no response
+                failure: function() {
+                    // replace reebill image with a missing graphic
+                    Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                        html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
+                },
+            });
+        }
 
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on

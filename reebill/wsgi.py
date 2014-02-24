@@ -760,7 +760,8 @@ class BillToolBridge:
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, reebill.sequence, reebill.version)
 
-        return self.dumps({'success': True})
+        return self.dumps({'success': True, 'account':account,
+                           'sequence': reebill.sequence})
 
     @cherrypy.expose
     @random_wait
