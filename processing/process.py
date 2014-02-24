@@ -631,7 +631,7 @@ class Process(object):
                 register['quantity'] = 0
 
         # generate predicted UPRS
-        uprs = self.rate_structure_dao.get_probable_uprs(
+        uprs = self.rate_structure_dao._get_predicted_shared_rate_structure(
                 UtilBillLoader(session),
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,

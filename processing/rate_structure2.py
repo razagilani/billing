@@ -339,7 +339,7 @@ class RateStructureDAO(object):
         self._rate_structure_class = rate_structure_class
         self.logger = logger
 
-    def _get_probable_rsis(self, utilbill_loader, utility, service,
+    def _get_probable_shared_rsis(self, utilbill_loader, utility, service,
             rate_class, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
@@ -432,10 +432,11 @@ class RateStructureDAO(object):
                     quantity=quantity))
         return result
 
-    def get_probable_uprs(self, utilbill_loader, utility, service, rate_class,
-            start, end, ignore=lambda x: False):
+    def _get_predicted_shared_rate_structure(self, utilbill_loader, utility,
+            service, rate_class, start, end, ignore=lambda x: False):
         '''Returns a guess of the rate structure for a new utility bill of the
-        given utility name, service, and dates.
+        given utility name, service, and dates, including only shared RSIs
+        from other bills.
         
         'utilbill_loader': an object that has a 'load_utilbills' method
         returning an iterable of state.UtilBills matching criteria given as
@@ -447,7 +448,7 @@ class RateStructureDAO(object):
         
         The returned document has no _id, so the caller can add one before
         saving.'''
-        return RateStructure(type='UPRS', rates=self._get_probable_rsis(
+        return RateStructure(type='UPRS', rates=self._get_probable_shared_rsis(
                 utilbill_loader, utility, service, rate_class, (start, end),
                 ignore=ignore))
 
@@ -463,7 +464,7 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.
         '''
-        result = self.get_probable_uprs(utilbill_loader, utilbill.utility,
+        result = self._get_predicted_shared_rate_structure(utilbill_loader, utilbill.utility,
                 utilbill.service, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end,
                 # skip RS of current utility bill, if it exists

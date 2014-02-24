@@ -333,7 +333,7 @@ class RateStructureDAOTest(unittest.TestCase):
         # utility bills with the given attributes is outside the scope of
         # RateStructureDAO
         utilbill_loader.load_real_utilbills.return_value = []
-        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
         utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
@@ -343,7 +343,7 @@ class RateStructureDAOTest(unittest.TestCase):
         # with only the 1st utility bill (containing rsi_a_shared and
         # rsi_b_unshared), only rsi_a_shared should appear in the result
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1]
-        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
         self.assertEqual(2, utilbill_loader.load_real_utilbills.call_count)
         utilbill_loader.load_real_utilbills.assert_called_with(
@@ -354,7 +354,7 @@ class RateStructureDAOTest(unittest.TestCase):
         # with 3 processed utility bills
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        uprs = self.dao.get_probable_uprs(utilbill_loader, 'washgas', 'gas',
+        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
                 'whatever', date(2000,1,1), date(2000,2,1))
         self.assertEqual(3, utilbill_loader.load_real_utilbills.call_count)
         utilbill_loader.load_real_utilbills.assert_called_with(
