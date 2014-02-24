@@ -1634,13 +1634,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
             utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
             utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
             utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
@@ -1705,15 +1705,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bill and reebill #2 for A
             utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
-                    'gas', date(2013,2,1), date(2013,3,1),
-                     StringIO('February 2013 A'), 'february-a.pdf', total=0,
+                    'gas', date(2000,2,1), date(2000,3,1),
+                     StringIO('February 2000 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual([], uprs_a_2.rates)
 
             # when the other bills have been marked as "processed", they should
@@ -1729,7 +1729,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # un-shared RSIs always get copied from each bill to its successor.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
@@ -1752,8 +1752,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the latter are more numerous, but A-1 should outweigh them
             # because weight decreases quickly with distance.
             self.process.upload_utility_bill(session, acc_b, 'gas',
-                     date(2013,2,5), date(2013,3,5),
-                     StringIO('February 2013 B'),
+                     date(2000,2,5), date(2000,3,5),
+                     StringIO('February 2000 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
