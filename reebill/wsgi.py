@@ -760,7 +760,8 @@ class BillToolBridge:
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, reebill.sequence, reebill.version)
 
-        return self.dumps({'success': True})
+        return self.dumps({'success': True, 'account':account,
+                           'sequence': reebill.sequence})
 
     @cherrypy.expose
     @random_wait
@@ -924,7 +925,9 @@ class BillToolBridge:
 
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
-            self.process.mail_reebills(session, account, [sequence], recipients)
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+            self.process.mail_reebills(session, account, [sequence],
+                                       recipient_list)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                                                 account, sequence, recipients)
 
