@@ -11,7 +11,9 @@ from billing.processing.state import StateDB, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError
+from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+    NoSuchBillException
+
 
 def compare_rsis(rsi1, rsi2):
     '''Compares two Rate Structure Item dictionaries, ignoring differences
@@ -237,15 +239,24 @@ class RateStructureDAOTest(unittest.TestCase):
             rate='2',
             shared=False,
         )
+        self.rsi_c_unshared = RateStructureItem(
+            rsi_binding='C',
+            quantity='3',
+            rate='3',
+            shared=False,
+        )
 
-        # 3 rate structures, one containing B shared and one containing B
+        # 3 rate structures, two containing B shared and one containing B
         # unshared. If unshared RSIs count as "absent", B is more absent than
         # present and should be excluded from a new predicted rate structure.
         # If unshared RSIs count as neutral, B shared occurs 1 out of 1 times,
-        # so it should be included in a new predicted rate structure.
+        # so it should be included in a new predicted rate structure. C is
+        # never shared so it never gets included in any bill, except one
+        # whose "predecessor" contains it.
         self.rs_1 = RateStructure(id=ObjectId(), rates=[
             self.rsi_a_shared,
-            self.rsi_b_unshared
+            self.rsi_b_unshared,
+            self.rsi_c_unshared,
         ])
         self.rs_2 = RateStructure(id=ObjectId(), rates=[
             self.rsi_a_shared,
@@ -253,23 +264,20 @@ class RateStructureDAOTest(unittest.TestCase):
         ])
         self.rs_3 = RateStructure(id=ObjectId(), rates=[self.rsi_b_shared])
 
-        self.utilbill_1 = Mock()
-        self.utilbill_1.uprs_document_id = str(self.rs_1.id)
-        self.utilbill_1.period_start = date(2000,1,1)
-        self.utilbill_1.period_end = date(2000,2,1)
-        self.utilbill_1.processed = False
-
-        self.utilbill_2 = Mock()
-        self.utilbill_2.uprs_document_id = str(self.rs_2.id)
-        self.utilbill_2.period_start = date(2000,1,1)
-        self.utilbill_2.period_end = date(2000,2,1)
-        self.utilbill_2.processed = False
-
-        self.utilbill_3 = Mock()
-        self.utilbill_3.period_start = date(2000,1,1)
-        self.utilbill_3.period_end = date(2000,2,1)
-        self.utilbill_3.uprs_document_id = str(self.rs_3.id)
-        self.utilbill_3.processed = False
+        def make_mock_utilbill(account, rs):
+            u = Mock()
+            u.customer.account = account
+            u.uprs_document_id = str(rs.id)
+            u.period_start = date(2000,1,1)
+            u.period_end = date(2000,2,1)
+            u.processed = False
+            u.service = 'gas'
+            u.utility = 'washgas'
+            u.rate_class = 'whatever'
+            return u
+        self.utilbill_1 = make_mock_utilbill('00001', self.rs_1)
+        self.utilbill_2 = make_mock_utilbill('00002', self.rs_2)
+        self.utilbill_3 = make_mock_utilbill('00003', self.rs_3)
 
         class MockQuerySet(object):
             def __init__(self, *documents):
@@ -356,6 +364,81 @@ class RateStructureDAOTest(unittest.TestCase):
         # should be included here
         self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], uprs.rates)
 
+    def test_get_predicted_rate_structure(self):
+        utilbill_loader = Mock()
+
+        # utility bill for which to predict a rate structure, using the
+        # ones created in setUp
+        u = Mock()
+        u.customer.account = '00004'
+        u.period_start = date(2000,1,1)
+        u.period_end = date(2000,2,1)
+        u.processed = False
+        u.service = 'gas'
+        u.utility = 'washgas'
+        u.rate_class = 'whatever'
+
+        # with no processed utility bills, predicted rate structure is empty.
+        def raise_nsbe(*args, **kwargs):
+            raise NoSuchBillException
+        utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
+        utilbill_loader.load_real_utilbills.return_value = []
+        rs = self.dao.get_predicted_rate_structure(u,
+                utilbill_loader)
+        utilbill_loader.get_last_real_utilbill.assert_called_once_with(
+                u.customer.account, u.period_start,
+                service=u.service, utility=u.utility,
+                rate_class=u.rate_class, processed=True)
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        self.assertEqual([], rs.rates)
+
+        utilbill_loader.reset_mock()
+
+        # with 2 existing utility bills processed, predicted rate structure
+        # includes both A (shared) and B (shared)
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                self.utilbill_2, self.utilbill_3]
+        rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], rs.rates)
+
+        utilbill_loader.reset_mock()
+
+        # the same is true when the period of 'u' starts after the period of
+        # the existing bills
+        u.period_start, u.period_end = date(2000,2,1), date(2000,3,1)
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                                            self.utilbill_2, self.utilbill_3]
+        rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], rs.rates)
+
+        utilbill_loader.reset_mock()
+
+        # however, when u belongs to the same account as an existing bill,
+        # and that bill meets the requirements to be its "predecessor",
+        # un-shared RSIs from the "predecessor" of u also get included.
+        u.customer.account = '10001'
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                                            self.utilbill_2, self.utilbill_3]
+        utilbill_loader.get_last_real_utilbill.side_effect = None
+        utilbill_loader.get_last_real_utilbill.return_value = self.utilbill_1
+        rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared,
+                self.rsi_c_unshared], rs.rates)
+
+
+    # TODO test that RS of the bill being predicted is ignored, whether or not
+    # that RS exists in the db yet
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
