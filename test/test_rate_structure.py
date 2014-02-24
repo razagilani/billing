@@ -325,45 +325,6 @@ class RateStructureDAOTest(unittest.TestCase):
         self.assertRaises(DoesNotExist, self.dao.load_uprs_for_utilbill,
                 unknown_utilbill)
 
-    def test_get_probable_uprs(self):
-        utilbill_loader = Mock()
-
-        # with no processed utility bills, predicted rate structure is empty.
-        # note that since 'utilbill_loader' is used, actually loading the
-        # utility bills with the given attributes is outside the scope of
-        # RateStructureDAO
-        utilbill_loader.load_real_utilbills.return_value = []
-        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
-                'whatever', date(2000,1,1), date(2000,2,1))
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
-        self.assertEqual([], uprs.rates)
-
-        # with only the 1st utility bill (containing rsi_a_shared and
-        # rsi_b_unshared), only rsi_a_shared should appear in the result
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1]
-        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
-                'whatever', date(2000,1,1), date(2000,2,1))
-        self.assertEqual(2, utilbill_loader.load_real_utilbills.call_count)
-        utilbill_loader.load_real_utilbills.assert_called_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
-        self.assertEqual([self.rsi_a_shared], uprs.rates)
-
-        # with 3 processed utility bills
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
-                self.utilbill_2, self.utilbill_3]
-        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader, 'washgas', 'gas',
-                'whatever', date(2000,1,1), date(2000,2,1))
-        self.assertEqual(3, utilbill_loader.load_real_utilbills.call_count)
-        utilbill_loader.load_real_utilbills.assert_called_with(
-                service='gas', utility='washgas', rate_class='whatever',
-                processed=True)
-        # see explanation in setUp for why rsi_a_shared and rsi_b_shared
-        # should be included here
-        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], uprs.rates)
-
     def test_get_predicted_rate_structure(self):
         utilbill_loader = Mock()
 
@@ -379,6 +340,9 @@ class RateStructureDAOTest(unittest.TestCase):
         u.rate_class = 'whatever'
 
         # with no processed utility bills, predicted rate structure is empty.
+        # note that since 'utilbill_loader' is used, actually loading the
+        # utility bills with the given attributes is outside the scope of
+        # RateStructureDAO
         def raise_nsbe(*args, **kwargs):
             raise NoSuchBillException
         utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
@@ -394,10 +358,19 @@ class RateStructureDAOTest(unittest.TestCase):
                 processed=True)
         self.assertEqual([], rs.rates)
 
+        # with only the 1st utility bill (containing rsi_a_shared and
+        # rsi_b_unshared), only rsi_a_shared should appear in the result
         utilbill_loader.reset_mock()
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1]
+        rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        self.assertEqual([self.rsi_a_shared], rs.rates)
 
         # with 2 existing utility bills processed, predicted rate structure
         # includes both A (shared) and B (shared)
+        utilbill_loader.reset_mock()
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
         rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
@@ -406,24 +379,35 @@ class RateStructureDAOTest(unittest.TestCase):
                 processed=True)
         self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], rs.rates)
 
+        # with 3 processed utility bills
         utilbill_loader.reset_mock()
+        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+                self.utilbill_2, self.utilbill_3]
+        uprs = self.dao._get_predicted_shared_rate_structure(utilbill_loader,
+                'washgas', 'gas', 'whatever', date(2000,1,1), date(2000,2,1))
+        utilbill_loader.load_real_utilbills.assert_called_once_with(
+                service='gas', utility='washgas', rate_class='whatever',
+                processed=True)
+        # see explanation in setUp for why rsi_a_shared and rsi_b_shared
+        # should be included here
+        self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], uprs.rates)
 
         # the same is true when the period of 'u' starts after the period of
         # the existing bills
+        utilbill_loader.reset_mock()
         u.period_start, u.period_end = date(2000,2,1), date(2000,3,1)
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
-                                            self.utilbill_2, self.utilbill_3]
+                self.utilbill_2, self.utilbill_3]
         rs = self.dao.get_predicted_rate_structure(u, utilbill_loader)
         utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([self.rsi_a_shared, self.rsi_b_shared], rs.rates)
 
-        utilbill_loader.reset_mock()
-
         # however, when u belongs to the same account as an existing bill,
         # and that bill meets the requirements to be its "predecessor",
         # un-shared RSIs from the "predecessor" of u also get included.
+        utilbill_loader.reset_mock()
         u.customer.account = '10001'
         utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
                                             self.utilbill_2, self.utilbill_3]
