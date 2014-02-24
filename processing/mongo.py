@@ -375,6 +375,7 @@ def add_charge(utilbill_doc, group_name):
         'quantity_units': 'kWh',
         'rate': 0,
         'total': 0,
+        'group': group_name,
     })
 
 # TODO make this a method of a utility bill document class when one exists
