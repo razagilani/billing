@@ -630,19 +630,8 @@ class Process(object):
             for register in meter['registers']:
                 register['quantity'] = 0
 
-        # generate predicted UPRS
-        uprs = self.rate_structure_dao._get_predicted_shared_rate_structure(
-                UtilBillLoader(session),
-                utilbill.utility, utilbill.service, utilbill.rate_class,
-                utilbill.period_start, utilbill.period_end,
-                ignore=lambda uprs: False)
-        uprs.id = ObjectId()
-
-        # add any RSIs from the predecessor's UPRS that are not already there
-        for rsi in predecessor_uprs.rates:
-            if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
-                    uprs.rates)):
-                uprs.rates.append(rsi)
+        uprs = self.rate_structure_dao.get_predicted_rate_structure(utilbill,
+                UtilBillLoader(session))
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
