@@ -6,7 +6,7 @@ Ext.define('DocumentTools.store.Images', {
     autoLoad: true,
 	proxy: {
 		type: 'ajax',
-		url: 'php/images.php',
+		url: '../reebill/dlaimage',
 	    pageParam: false, 
     	startParam: false,
     	limitParam: false,

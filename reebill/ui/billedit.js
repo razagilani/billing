@@ -593,7 +593,21 @@ function reeBillReady() {
                 text: 'Layout',
                 disabled: true,
                 handler: function() {
-                    window.location.href = "http://"+location.host+"/dla/index.html"
+                    var selection = utilbillGrid.getSelectionModel().getSelections()[0];
+                    var formatted_begin_date_string = selection.data.period_start.format('Y-m-d');
+                    var formatted_end_date_string = selection.data.period_end.format('Y-m-d');
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/addImagetoDLA',
+
+                        params: { account: selection.data.account, begin_date: formatted_begin_date_string, end_date: formatted_end_date_string},
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                utilbillGridStore.reload();
+                            }
+                        },
+                    });
+
                 }
             },
         ]
