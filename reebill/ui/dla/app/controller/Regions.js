@@ -303,7 +303,7 @@ Ext.define('DocumentTools.controller.Regions', {
             scope = this;
 
         Ext.Ajax.request({
-            url: 'php/saveRegion.php',
+            url: '../reebill/dlasaveregion',
             method: 'POST',          
             params: {
                 id: rec.get('id'),
@@ -335,7 +335,7 @@ Ext.define('DocumentTools.controller.Regions', {
             scope = this;
 
         Ext.Ajax.request({
-            url: 'php/deleteRegion.php',
+            url: '../reebill/dladeleteregion',
             method: 'POST',          
             params: {
                 id: rec.get('id')

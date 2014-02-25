@@ -152,7 +152,7 @@ Ext.define('DocumentTools.controller.Tags', {
             scope = this;
 
         Ext.Ajax.request({
-            url: 'php/saveTag.php',
+            url: '../reebill/dlasavetag',
             method: 'POST',          
             params: {
                 id: rec.get('id'),

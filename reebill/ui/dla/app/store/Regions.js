@@ -4,7 +4,7 @@ Ext.define('DocumentTools.store.Regions', {
     model: 'DocumentTools.model.Region',
 	proxy: {
 		type: 'ajax',
-		url: 'php/regions.php',
+		url: '../reebill/dlaregions',
 	    pageParam: false, 
     	startParam: false,
     	limitParam: false,

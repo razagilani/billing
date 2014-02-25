@@ -4,7 +4,7 @@ Ext.define('DocumentTools.store.Tags', {
     model: 'DocumentTools.model.Tag',
 	proxy: {
 		type: 'ajax',
-		url: 'php/tags.php',
+		url: '../reebill/dlatags',
 	    pageParam: false, 
     	startParam: false,
     	limitParam: false,
