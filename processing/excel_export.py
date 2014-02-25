@@ -79,6 +79,9 @@ class Exporter(object):
 
             # load utilbill from mysql to find out if the bill was
             # (utility-)estimated
+            if not len(reebill.utilbills) == 1:
+                continue    # Skip old reebills that are based
+                            # on two utility bills
             assert len(reebill.utilbills) == 1
             utilbill = reebill.utilbills[0]
             utilbill_doc = self.reebill_dao._load_utilbill_by_id(
