@@ -7,17 +7,31 @@ Ext.define('DocumentTools.view.Regions', {
     
     viewConfig: {
         trackOver: false,
-        stripeRows: false
+        stripeRows: false,
+        getRowClass: function(rec) {
+            if (rec.get('hidden'))
+                return 'disabled-row';
+        }
     },
     
     columns: [
-        {header: 'Name', dataIndex: 'name', menuDisabled: true, flex: 1}
+        {header: 'Name', dataIndex: 'name', menuDisabled: true, flex: 1, renderer: function(val, md, rec) {
+            if (rec.get('hidden'))
+                return val + ' (hidden)';
+
+            return val;
+        }},
+        {header: '', dataIndex: 'color', menuDisabled: true, width: 25, renderer: function(val, md, rec) {
+            
+            return '<span style="font-size: 8px;border: 1px solid black; background-color: #' + val + '">&nbsp;&nbsp;&nbsp;&nbsp;</span>';
+        }}            
     ],
     
     plugins: [{
         ptype: 'rowexpander',
         rowBodyTpl : new Ext.XTemplate(
             '<b>Name:</b> {name}<br/>',
+            '<b>Type:</b> {type}</br>',
             '<b>Description:</b> {description}</br>',
             '<b>Color:</b> <span style="font-size: 8px;border: 1px solid black; background-color: #{color}">&nbsp;&nbsp;&nbsp;&nbsp;</span>',
         {
@@ -32,22 +46,28 @@ Ext.define('DocumentTools.view.Regions', {
         dock: 'top',
         items: [{
             text: 'Add',
-            action: 'addRegion'
+            action: 'addRegion',
+            iconCls: 'silk-shape-square-add'
         },{
             text: 'Edit',
-            action: 'editRegion'
+            action: 'editRegion',
+            iconCls: 'silk-shape-square-edit'
         },{
             text: 'Delete',
-            action: 'deleteRegion'
+            action: 'deleteRegion',
+            iconCls: 'silk-shape-square-delete'
+        },{
+            text: 'Toggle',
+            action: 'toggleShow',
+            iconCls: 'silk-eye'
         }]
     }]
 });
 
 Ext.create('Ext.Window', {
-    title: 'New Region',
-    name: 'newRegionWindow',
+    title: 'Region',
+    name: 'regionWindow',
 
-    height: 230,
     width: 300,
     
     closable: true,
@@ -61,7 +81,7 @@ Ext.create('Ext.Window', {
     items: [{
         xtype: 'form',
         layout: 'form',
-        id: 'newRegionForm',
+        id: 'regionForm',
         bodyPadding: 10,
         fieldDefaults: {
             msgTarget: 'side',
@@ -73,10 +93,25 @@ Ext.create('Ext.Window', {
             name: 'name',
             allowBlank: false
         },{
+            xtype: 'combo',
+            fieldLabel: 'Type',
+            name: 'type',
+            store: Ext.create('Ext.data.Store', {
+                fields: ['label', 'value'],
+                data : [
+                    {'label':'Slice', 'value':'slice'},
+                    {'label':'Mask', 'value':'mask'}
+                ]
+            }),
+            queryMode: 'local',
+            displayField: 'label',
+            valueField: 'value',
+            value: 'slice'
+        },{
             xtype: 'textarea',
             fieldLabel: 'Description',
             name: 'description',
-            allowBlank: false
+            allowBlank: true
         },{
             xtype: 'colorfield',
             name: 'color',
@@ -88,15 +123,18 @@ Ext.create('Ext.Window', {
             fieldLabel: 'Opacity',
             name: 'opacity',
             value: 65
+        },{
+            xtype: 'hiddenfield',
+            name: 'id'
         }],
 
         buttonAlign: 'center',
         buttons: [{
             text: 'Save',
-            action: 'saveNewRegion'
+            action: 'saveRegion'
         },{
             text: 'Cancel',
-            action: 'cancelNewRegion'
+            action: 'cancelRegion'
         }]
     }]
     

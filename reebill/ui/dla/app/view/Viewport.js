@@ -11,6 +11,20 @@ Ext.define('DocumentTools.view.Viewport', {
                 split: true
             },
             items: [{
+                xtype: 'toolbar',
+                region: 'north',
+                items: ['->',{
+                    xtype: 'button',
+                    iconCls: 'silk-photo',
+                    text: 'Images',
+                    action: 'showImages'
+                },{
+                    xtype: 'button',
+                    iconCls: 'silk-page-white-code-red',
+                    text: 'Export JSON',
+                    action: 'exportJSON'                    
+                }]
+            },{
                 region: 'west',
                 layout: 'border',
                 width: 250,

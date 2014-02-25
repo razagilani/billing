@@ -2,13 +2,18 @@ Ext.application({
     name: 'DocumentTools',
     autoCreateViewport: true,
     
-    controllers: ['Tags', 'Regions'],
+    controllers: ['DocumentViewer', 'Exporter', 'Images', 'Regions', 'Tags'],
     
-    stores: ['Tags', 'Regions'],
-    models: ['Tag', 'Region'],
+    stores: ['Images', 'Regions', 'Tags'],
+    models: ['Image', 'Region', 'Tag'],
     
     launch: function() {
         $('#imageTool').draggable();
+
+        $("#imageTool").data({
+		    'originalLeft': $("#imageTool").css('left'),
+		    'origionalTop': $("#imageTool").css('top')
+		});
     }
 
 });

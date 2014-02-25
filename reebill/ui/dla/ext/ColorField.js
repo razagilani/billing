@@ -40,6 +40,7 @@ Ext.define('Ext.ux.ColorField', {
     
     setColor : function(hex) {
         Ext.ux.ColorField.superclass.setFieldStyle.call(this, {
+            'color': '#' + hex,
             'background-color': '#' + hex,
             'background-image': 'none'
         });

@@ -3,17 +3,19 @@ Ext.define('DocumentTools.view.DocumentViewer', {
 
     alias: 'widget.viewer',    
     
-    html: '<div id="imageTool"><div id="imageContainer"><img id="documentImage" src="images/bill.png" /> </div></div>',
+    html: '<div id="imageTool"><div id="imageContainer"></div></div>',
 
     dockedItems: [{
         xtype: 'toolbar',
         dock: 'top',
         items: [{
-            text: '+ Zoom In',
-            action: 'zoomIn'
+            text: 'Zoom In',
+            action: 'zoomIn',
+            iconCls: 'silk-zoom-in'
         },{
-            text: '- Zoom Out',
-            action: 'zoomOut'
+            text: 'Zoom Out',
+            action: 'zoomOut',
+            iconCls: 'silk-zoom-out'
         }]
     }]
 });
