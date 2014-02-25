@@ -24,6 +24,7 @@ import errno
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
+from billing.processing import journal
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
@@ -75,6 +76,7 @@ class Process(object):
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
+        self.journal_dao = journal.JournalDAO()
 
     def get_utilbill_doc(self, session, utilbill_id, reebill_sequence=None,
             reebill_version=None):
@@ -1746,3 +1748,86 @@ class Process(object):
     def get_utilbill_image_path(self, session, utilbill_id, resolution):
         utilbill=self.state_db.get_utilbill_by_id(session,utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
+
+    def list_account_status(self, session, start, limit, filtername, sortcol,
+                            sort_reverse):
+        """ Returns a list of dictonaries (containing Account, Nexus Codename,
+          Casual name, Primus Name, Utility Service Address, Date of last
+          issued bill, Days since then and the last event) and the length
+          of the list """
+        #Various filter functions used below to filter the resulting rows
+        def filter_reebillcustomers(row):
+            return int(row['account'])<20000
+        def filter_xbillcustomers(row):
+            return int(row['account'])>=20000
+        # Function to format the "Utility Service Address" grid column
+        def format_service_address(service_address, account):
+            try:
+                return '%(street)s, %(city)s, %(state)s' % service_address
+            except KeyError as e:
+                self.logger.error(('Utility bill service address for %s '
+                        'lacks key "%s": %s') % (
+                                account, e.message, service_address))
+                return '?'
+
+        statuses = self.state_db.retrieve_status_days_since(session, sortcol, sort_reverse)
+        name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
+
+        rows = []
+        # To make this for loop faster we only include nexus data, status data
+        # and data for the column that is sorted. After that we filter and limit
+        # the rows for pagination and only after that we add all missing fields
+        for status in statuses:
+            new_record = {
+                'account': status.account,
+                'codename': name_dicts[status.account]['codename'] if
+                       'codename' in name_dicts[status.account] else '',
+                'casualname': name_dicts[status.account]['casualname'] if
+                       'casualname' in name_dicts[status.account] else '',
+                'primusname': name_dicts[status.account]['primus'] if
+                'primus' in name_dicts[status.account] else '',
+                'dayssince': status.dayssince,
+                'provisionable': False
+            }
+            if sortcol=='utilityserviceaddress':
+                try:
+                    service_address = self.get_service_address(session,
+                                                                status.account)
+                    service_address=format_service_address(service_address,
+                                                            status.account)
+                except NoSuchBillException:
+                    service_address = ''
+                new_record['utilityserviceaddress']=service_address
+            elif sortcol=='lastissuedate':
+                last_reebill = self.state_db.get_last_reebill(session,
+                     status.account, issued_only=True)
+                new_record['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+            rows.append(new_record)
+
+        #Apply filters
+        if filtername=="reebillcustomers":
+            rows=filter(filter_reebillcustomers, rows)
+        elif filtername=="xbillcustomers":
+            rows=filter(filter_xbillcustomers, rows)
+        rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
+        total_length=len(rows)
+        rows = rows[start:start+limit]
+
+        # Add all missing fields
+        for row in rows:
+            row['lastevent']=self.journal_dao.last_event_summary(row['account'])
+            if sortcol != 'utilityserviceaddress':
+                try:
+                    service_address = self.get_service_address(session,
+                                                                row['account'])
+                    service_address=format_service_address(service_address,
+                                                            row['account'])
+                except NoSuchBillException:
+                    service_address = ''
+                row['utilityserviceaddress']=service_address
+            elif sortcol != 'lastissuedate':
+                last_reebill = self.state_db.get_last_reebill(session,
+                     row['account'], issued_only=True)
+                row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+
+        return total_length, rows

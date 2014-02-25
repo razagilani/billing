@@ -1003,29 +1003,13 @@ class BillToolBridge:
     def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
-        #Various filter functions used below to filter the resulting rows
-        def filter_reebillcustomers(row):
-            return int(row['account'])<20000
-        def filter_xbillcustomers(row):
-            return int(row['account'])>=20000
-        # this function is used below to format the "Utility Service Address"
-        # grid column
-        def format_service_address(service_address, account):
-            try:
-                return '%(street)s, %(city)s, %(state)s' % service_address
-            except KeyError as e:
-                self.logger.error(('Utility bill service address for %s '
-                        'lacks key "%s": %s') % (
-                                account, e.message, service_address))
-                return '?'
 
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
         with DBSession(self.state_db) as session:
             start, limit = int(start), int(limit)
 
-            # result is a list of dictionaries of the form
-            # {account: full name, dayssince: days}
+            filtername = kwargs.get('filtername', None)
+            if filtername is None:
+                filtername = cherrypy.session['user'].preferences.get('filtername','')
 
             sortcol = kwargs.get('sort', None)
             if sortcol is None:
@@ -1040,55 +1024,7 @@ class BillToolBridge:
             else:
                 sortreverse = True
 
-            # pass the sort params if we want the db to do any sorting work
-            statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
-
-            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-
-            rows = []
-            for status in statuses:
-                last_reebill = self.state_db.get_last_reebill(session,
-                         status.account, issued_only=True)
-                lastevent = self.journal_dao.last_event_summary(status.account)
-                try:
-                    service_address = self.process.get_service_address(session,
-                                                                status.account)
-                    service_address=format_service_address(service_address,
-                                                        status.account)
-                except NoSuchBillException:
-                    service_address = ''
-                rows.append({
-                    'account': status.account,
-                    'codename': name_dicts[status.account]['codename'] if
-                           'codename' in name_dicts[status.account] else '',
-                    'casualname': name_dicts[status.account]['casualname'] if
-                           'casualname' in name_dicts[status.account] else '',
-                    'primusname': name_dicts[status.account]['primus'] if
-                           'primus' in name_dicts[status.account] else '',
-                    'utilityserviceaddress': service_address,
-                    'dayssince': status.dayssince,
-                    'lastissuedate': last_reebill.issue_date if last_reebill \
-                            else '',
-                    'lastevent': lastevent,
-                    'provisionable': False,
-                })
-            
-            #Apply filters
-            filtername = kwargs.get('filtername', None)
-            if filtername is None:
-                filtername = cherrypy.session['user'].preferences.get('filtername','')
-            if filtername=="reebillcustomers":
-                rows=filter(filter_reebillcustomers, rows)
-            elif filtername=="xbillcustomers":
-                rows=filter(filter_xbillcustomers, rows)
-            rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
-
-            # count includes both billing and non-billing customers (front end
-            # needs this for pagination)
-            count = len(rows)
-
-            # take slice for one page of the grid's data
-            rows = rows[start:start+limit]
+            count, rows = self.process.list_account_status(session,start,limit,filtername,sortcol,sortreverse)
 
             cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
             cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
