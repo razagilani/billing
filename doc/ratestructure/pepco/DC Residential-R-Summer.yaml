@@ -1,0 +1,229 @@
+!rate_structure
+name: DC Residential R Summer
+service: Electric
+effective: 2010-08-01
+expires: 2010-08-30
+registers: 
+    - !register
+      descriptor: REG_TOTAL
+      description: Total kWh register
+      quantity: 0
+      quantityunits: kWh
+rates:
+    - !rate_structure_item
+      descriptor: CUSTOMER_CHARGE
+      description: Monthly flat charge
+      quantity: 1
+      rate: 6.65
+      ratunits: dollars
+    - !rate_structure_item
+      descriptor: DISTRIBUTION_ENERGY_FIRST_BLOCK
+      description: First 400 kWh usage
+      quantity: (400) if (REG_TOTAL.quantity > 400) else (REG_TOTAL.quantity)
+      quantityunits: kWh
+      rate: 0.005
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: DISTRIBUTION_ENERGY_SECOND_BLOCK
+      description: kWh usage after 400 kWh
+      quantity: (REG_TOTAL.quantity - 400) if (REG_TOTAL.quantity > 400) else (0)
+      quantityunits: kWh
+      rate: 0.0190058
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: EATF
+      description: Energy Assistance Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.00075
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: SETF
+      description: Sustainable Energy Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.0013
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: PSOS
+      description: Public Space Occupancy Surcharge
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.00183
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: DELIVERY_TAX
+      description: Delivery Tax
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.007
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: RADS
+      description: Residential Aid Discount Surcharge
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.00005
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: GENERATION_ENERGY_MINIMUM_CHARGE
+      description: Minimum charge for generation
+      quantity: 30
+      quantityunits: kWh
+      rate: 0.1113
+      rateunits: dollars
+      total: 3.34
+    - !rate_structure_item
+      descriptor: GENERATION_ENERGY
+      description: Energy charge for generation
+      quantity: (REG_TOTAL.quantity - 30) if (REG_TOTAL.quantity > 30) else (0)
+      quantityunits: kWh
+      rate: 0.11147
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: PCA
+      description: Procurement cost adjustment
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.0004590
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: TRANSMISSION_ENERGY_MINIMUM_CHARGE
+      description: Minimum charge for transmission
+      quantity: 30
+      quantityunits: kWh
+      rate: 0.004
+      rateunits: dollars
+      total: 0.12
+    - !rate_structure_item
+      descriptor: TRANSMISSION_ENERGY
+      description: Energy charge for generation
+      quantity: (REG_TOTAL.quantity - 30) if (REG_TOTAL.quantity > 30) else (0)
+      quantityunits: kWh
+      rate: 0.00344
+      rateunits: dollars
+      total:
+---
+!rate_structure
+name: DC Residential R Summer
+service: Electric
+effective: 2010-08-30
+expires: 2010-10-01
+registers: 
+    - !register
+      descriptor: REG_TOTAL
+      description: Total kWh register
+      quantity: 0
+      quantityunits: kWh
+rates:
+    - !rate_structure_item
+      descriptor: CUSTOMER_CHARGE
+      description: Monthly flat charge
+      quantity: 1
+      rate: 6.65
+      ratunits: dollars
+    - !rate_structure_item
+      descriptor: DISTRIBUTION_ENERGY_FIRST_BLOCK
+      description: First 400 kWh usage
+      quantity: (400) if (REG_TOTAL.quantity > 400) else (REG_TOTAL.quantity)
+      quantityunits: kWh
+      rate: 0.0049750
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: DISTRIBUTION_ENERGY_SECOND_BLOCK
+      description: kWh usage after 400 kWh
+      quantity: (REG_TOTAL.quantity - 400) if (REG_TOTAL.quantity > 400) else (0)
+      quantityunits: kWh
+      rate: 0.0190378
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: EATF
+      description: Energy Assistance Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.0000607
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: SETF
+      description: Sustainable Energy Trust Fund
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.0015
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: PSOS
+      description: Public Space Occupancy Surcharge
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.00183
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: DELIVERY_TAX
+      description: Delivery Tax
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.007
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: RADS
+      description: Residential Aid Discount Surcharge
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: 0.0000503
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: GENERATION_ENERGY_MINIMUM_CHARGE
+      description: Minimum charge for generation
+      quantity: 30
+      quantityunits: kWh
+      rate: 0.11147
+      rateunits: dollars
+      total: 3.34
+    - !rate_structure_item
+      descriptor: GENERATION_ENERGY
+      description: Energy charge for generation
+      quantity: (REG_TOTAL.quantity - 30) if (REG_TOTAL.quantity > 30) else (0)
+      quantityunits: kWh
+      rate: 0.11147
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: PCA
+      description: Procurement cost adjustment
+      quantity: REG_TOTAL.quantity
+      quantityunits: kWh
+      rate: -0.000129
+      rateunits: dollars
+      total:
+    - !rate_structure_item
+      descriptor: TRANSMISSION_ENERGY_MINIMUM_CHARGE
+      description: Minimum charge for transmission
+      quantity: 30
+      quantityunits: kWh
+      rate: 0.004
+      rateunits: dollars
+      total: 0.12
+    - !rate_structure_item
+      descriptor: TRANSMISSION_ENERGY
+      description: Energy charge for generation
+      quantity: (REG_TOTAL.quantity - 30) if (REG_TOTAL.quantity > 30) else (0)
+      quantityunits: kWh
+      rate: 0.00344
+      rateunits: dollars
+      total:

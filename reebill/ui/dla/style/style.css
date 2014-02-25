@@ -1,0 +1,10 @@
+.region {
+	cursor: pointer; 
+	padding: 0.5em; 
+	float: left;
+	margin: 0 10px 10px 0;
+}
+
+.disabled-row {
+	color: gray;
+}
