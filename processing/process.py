@@ -1774,18 +1774,11 @@ class Process(object):
         name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
 
         rows = []
+        # To make this for loop faster we only include nexus data, status data
+        # and data for the column that is sorted. After that we filter and limit
+        # the rows for pagination and only after that we add all missing fields
         for status in statuses:
-            last_reebill = self.state_db.get_last_reebill(session,
-                     status.account, issued_only=True)
-            lastevent = self.journal_dao.last_event_summary(status.account)
-            try:
-                service_address = self.get_service_address(session,
-                                                            status.account)
-                service_address=format_service_address(service_address,
-                                                        status.account)
-            except NoSuchBillException:
-                service_address = ''
-            rows.append({
+            new_record = {
                 'account': status.account,
                 'codename': name_dicts[status.account]['codename'] if
                        'codename' in name_dicts[status.account] else '',
@@ -1793,13 +1786,23 @@ class Process(object):
                        'casualname' in name_dicts[status.account] else '',
                 'primusname': name_dicts[status.account]['primus'] if
                 'primus' in name_dicts[status.account] else '',
-                'utilityserviceaddress': service_address,
                 'dayssince': status.dayssince,
-                'lastissuedate': last_reebill.issue_date if last_reebill \
-                        else '',
-                'lastevent': lastevent,
                 'provisionable': False
-            })
+            }
+            if sortcol=='utilityserviceaddress':
+                try:
+                    service_address = self.get_service_address(session,
+                                                                status.account)
+                    service_address=format_service_address(service_address,
+                                                            status.account)
+                except NoSuchBillException:
+                    service_address = ''
+                new_record['utilityserviceaddress']=service_address
+            elif sortcol=='lastissuedate':
+                last_reebill = self.state_db.get_last_reebill(session,
+                     status.account, issued_only=True)
+                new_record['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+            rows.append(new_record)
 
         #Apply filters
         if filtername=="reebillcustomers":
@@ -1807,5 +1810,24 @@ class Process(object):
         elif filtername=="xbillcustomers":
             rows=filter(filter_xbillcustomers, rows)
         rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
+        total_length=len(rows)
         rows = rows[start:start+limit]
-        return len(rows), rows
+
+        # Add all missing fields
+        for row in rows:
+            row['lastevent']=self.journal_dao.last_event_summary(row['account'])
+            if sortcol != 'utilityserviceaddress':
+                try:
+                    service_address = self.get_service_address(session,
+                                                                row['account'])
+                    service_address=format_service_address(service_address,
+                                                            row['account'])
+                except NoSuchBillException:
+                    service_address = ''
+                row['utilityserviceaddress']=service_address
+            elif sortcol != 'lastissuedate':
+                last_reebill = self.state_db.get_last_reebill(session,
+                     row['account'], issued_only=True)
+                row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+
+        return total_length, rows
