@@ -1,34 +1,25 @@
-import sys
-import os
+from os.path import realpath, join, dirname
 import unittest
-import operator
 from StringIO import StringIO
 import ConfigParser
 import logging
 import pymongo
 from bson import ObjectId
-import sqlalchemy
 import mongoengine
-from skyliner.splinter import Splinter
-from skyliner.skymap.monguru import Monguru
+import MySQLdb
 from datetime import date, datetime, timedelta
 from billing.util import dateutils
 from billing.processing import mongo
-from billing.processing.session_contextmanager import DBSession
-from billing.util.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure2
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
+from billing.processing.bill_mailer import Mailer
+from billing.processing.render import ReebillRenderer
 from billing.util.dictutils import deep_map
-import MySQLdb
-from billing.util.mongo_utils import python_convert
 from billing.test import example_data
-from skyliner.mock_skyliner import MockSplinter, MockMonguru
-from billing.util.nexus_util import MockNexusUtil
-from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError
-from billing.processing import fetch_bill_data as fbd
+from nexusapi.nexus_util import MockNexusUtil
+from skyliner.mock_skyliner import MockSplinter
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -95,7 +86,7 @@ port = 27017
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34,
-                '000000000000000000000001')
+                '000000000000000000000001', 'example@example.com')
         session.add(customer)
         session.commit()
 
@@ -123,6 +114,7 @@ port = 27017
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
                 logger=logger)
 
+        # TODO: 64956642 do not hard code nexus names
         self.nexus_util = MockNexusUtil([
             {
                 'billing': '99999',
@@ -131,8 +123,22 @@ port = 27017
                 'primus': '1785 Massachusetts Ave.',
             },
         ])
+
+        bill_mailer = Mailer({
+            # TODO 64956668
+        })
+
+        renderer = ReebillRenderer({
+            'temp_directory': '/tmp',
+            'template_directory': join(dirname(realpath(__file__)), '..',
+                    'reebill_templates'),
+            'default_template': '/dev/null',
+            'teva_accounts': '',
+        }, self.state_db, self.reebill_dao,
+                logger)
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
+                bill_mailer, renderer,
                 self.splinter, logger=logger)
 
     def tearDown(self):

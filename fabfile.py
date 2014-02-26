@@ -30,6 +30,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-dev-template.cfg", "/var/local/reebill-dev/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-dev/billing/skyliner/config.yaml"),
         ],
     },
     "stage": {
@@ -51,6 +52,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-stage-template.cfg", "/var/local/reebill-stage/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-stage/billing/skyliner/config.yaml"),
         ],
     },
     "prod": {
@@ -72,6 +74,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-prod-template.cfg", "/var/local/reebill-prod/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-prod/billing/skyliner/config.yaml"),
         ],
     },
     "demo": {
@@ -98,9 +101,11 @@ common.CommonFabTask.update_deployment_configs({
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
+# TODO: 64357046 don't set the manifest file this way, pass it into the @fabtask
+# TODO: 64357530 this runs before promptconfig, so there is no way to determine the deploy env targeted
 class CreateReeBillRevision(common.CreateRevision):
 
-    manifest_file = "reebill/ui/billedit.js"
+    manifest_file = "reebill/ui/revision.txt"
 
 
 @fabtask(task_class=CreateReeBillRevision, alias='create_reebill_revision')

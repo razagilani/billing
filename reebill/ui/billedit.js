@@ -46,6 +46,126 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 /* Constructor for menus that show versions of utility bills in
  * utility-bill-editing tabs */
 
+///////////////////////////////////////////////////
+//
+//         CUSTOM COMPONENTS
+//  TODO: Move this into a seperate file
+//  once we migrate to ExtJS4 and use events properly
+
+Ext.ns('Ext.ux.grid');
+
+/**
+ * A Column definition class which renders enum data fields.
+ * @class Ext.ux.grid.CheckboxColumn
+ * @extends Ext.grid.Column
+ * @author Tran Cong Ly - tcl_java@yahoo.com - http://5cent.net
+ * Create the column:
+ *   
+ v ar cm = new Ext.grid.ColumnModel([                                    *
+ new Ext.ux.grid.CheckboxColumn({
+     header: 'Header #1',
+     dataIndex: 'field_name_1'
+     },
+     {
+         xtype: 'checkboxcolumn',
+         header: 'Header #2',
+         dataIndex: 'field_name_2',
+         on: 1,
+         off: 0
+         },
+         {
+             xtype: 'checkboxcolumn',
+             header: 'Header #3',
+             dataIndex: 'field_name_3',
+             on: 'abc',
+             off: 'def'
+             }])
+             
+             */
+Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
+    on: true,
+    off: false,
+    constructor: function (cfg) {
+        Ext.ux.grid.CheckboxColumn.superclass.constructor.call(this, cfg);
+        this.editor = new Ext.form.Field();
+        var cellEditor = this.getCellEditor(),
+                                        on = this.on,
+                                        off = this.off;
+                                        cellEditor.on('startedit', function (el, v) {
+                                            cellEditor.setValue(String(v) == String(on) ? off : on);
+                                            cellEditor.hide();
+                                        });
+                                        this.renderer = function (value, metaData, record, rowIndex, colIndex, store) {
+                                            metaData.css += ' x-grid3-check-col-td';
+                                            return '<div class="x-grid3-check-col' + (String(value) == String(on) ? '-on' : '') + '"></div>';
+                                        }
+    }
+});
+Ext.grid.Column.types['checkboxcolumn'] = Ext.ux.grid.CheckboxColumn;  
+
+///////////////////////////////////////////////////
+//
+//         DEFAULT ERROR HANDLERS
+//  Ugly global functions/variables like this are necessary 
+//  because of the ugly function based design that we have
+//  in the future this should all be event based. The functions
+//  are named in case we want to dynamically remove them if we
+//  do not want the standard error handler for certain
+//  requests
+
+var defaultRequestException = function(conn, response, options){
+    // when a request times out, response.statuText will be "transaction
+    // aborted". when the server is restarted it is "communication failure"
+    Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
+}
+
+var defaultRequestComplete = function(dataconn, response) { 
+    try {
+        var jsonData = Ext.util.JSON.decode(response.responseText);
+        if (typeof(jsonData.success) === "undefined") {
+            console.log("Server returned malformed json reponse:  Success field missing.");
+            console.log(jsonData);
+        } else {
+            if (jsonData.success == false) {
+                if (typeof(jsonData.code) === "undefined") {
+                    console.log("Server returned malformed json reponse:  Code field missing.");
+                    console.log(jsonData);
+                } else {
+                    if (jsonData.code == 1) {
+                        // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                        // of which there may be many.
+                        window.location.href = 'http://'+location.host+'/reebill/logout'
+                    } else {
+                        string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
+                        while (string.search(/([^\n]{85})/) != -1) {
+                            string = string.replace(/([^\n]{84})([^\n])/, "$1\n$2");
+                        }
+                        string = string.replace(/</g,'&lt;');
+                        string = string.replace(/>/g,'&gt;');
+                        
+                        console.log(string)
+                        oldMinWidth = Ext.MessageBox.minWidth;
+                        Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
+                        Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
+                        //console.log(jsonData)
+                        Ext.MessageBox.minWidth = oldMinWidth;
+                    }
+                }
+            } else {
+                //console.log(jsonData);
+            }
+        }
+    } catch (e) {
+        console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
+        console.log(e);
+        Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
+    }
+}
+
+
+
+
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -56,57 +176,12 @@ function reeBillReady() {
 
     // this is a Record object in 'utilbillGridStore'
     var selected_utilbill = null;
-
+    
     // handle global success:false responses
     // monitor session status and display login panel if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection);
-    Ext.data.Connection.on('requestexception', function(conn, response, options) {
-        // when a request times out, response.statuText will be "transaction
-        // aborted". when the server is restarted it is "communication failure"
-        Ext.MessageBox.alert("Error", response.status.toString() + ': ' + response.statusText)
-    });
-    Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
-        try {
-            var jsonData = Ext.util.JSON.decode(response.responseText);
-            if (typeof(jsonData.success) === "undefined") {
-                console.log("Server returned malformed json reponse:  Success field missing.");
-                console.log(jsonData);
-            } else {
-                if (jsonData.success == false) {
-                    if (typeof(jsonData.code) === "undefined") {
-                        console.log("Server returned malformed json reponse:  Code field missing.");
-                        console.log(jsonData);
-                    } else {
-                        if (jsonData.code == 1) {
-                            // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-                            // of which there may be many.
-                            window.location.href = 'http://'+location.host+'/reebill/logout'
-                        } else {
-                            string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
-                            while (string.search(/([^\n]{85})/) != -1) {
-                                string = string.replace(/([^\n]{84})([^\n])/, "$1\n$2");
-                            }
-                            string = string.replace(/</g,'&lt;');
-                            string = string.replace(/>/g,'&gt;');
-
-                            console.log(string)
-                            oldMinWidth = Ext.MessageBox.minWidth;
-                            Ext.MessageBox.minWidth = ERROR_MESSAGE_BOX_WIDTH;
-                            Ext.MessageBox.alert("Server Error", '<pre>'+string+'</pre>')
-                            //console.log(jsonData)
-                            Ext.MessageBox.minWidth = oldMinWidth;
-                        }
-                    }
-                } else {
-                    //console.log(jsonData);
-                }
-            }
-        } catch (e) {
-            console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
-            console.log(e);
-            Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
-        }
-    });
+    Ext.data.Connection.on('requestexception', defaultRequestException);
+    Ext.data.Connection.on('requestcomplete', defaultRequestComplete);
 
     // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
@@ -171,6 +246,9 @@ function reeBillReady() {
         fieldLabel: 'Service',
         name: 'service',
         allowBlank: false,
+        triggerAction: 'all',
+        typeAhead: false,
+        mode:'local',
         store: ['Gas', 'Electric'],
         value: 'Gas',
         width: 50,
@@ -313,6 +391,18 @@ function reeBillReady() {
                 }
             }
             upload_service.setValue(last_record.data.service);
+        }
+        
+        // Activate the delete button if for the selected row
+        // if the reebill for the selected row has been deleted
+        var record = utilbillGrid.getSelectionModel().getSelected();
+        if(record){
+            if(record.data.editable && record.data.reebills.length == 0){
+                utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
+            }
+            else{
+                utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(true);
+            }            
         }
     });
 
@@ -530,7 +620,7 @@ function reeBillReady() {
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
-                                aChargesStore.reload();
+                                utilbillGridStore.reload()
                             }
                         },
                     });
@@ -647,23 +737,6 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     selected_utilbill = record.data;
                     refreshUBVersionMenus();
-                    
-                    // a row was selected in the UI, update subordinate ReeBill Data
-                    //if (record.data.sequence != null) {
-                    //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
-                    //}
-                    // convert the parsed date into a string in the format expected by the back end
-                    var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
-                    var formatted_end_date_string = record.data.period_end.format('Y-m-d');
-                    
-                    // image rendering resolution
-                    // TODO Ext.getCmp vs doc.getElement
-                    var menu = document.getElementById('billresolutionmenu');
-                    if (menu) {
-                        resolution = menu.value;
-                    } else {
-                        resolution = DEFAULT_RESOLUTION;
-                    }
                     // Toggle 'Mark as Processed' Button between processed an unprocessed
                     // Then Enable the button
                     record.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
@@ -673,8 +746,7 @@ function reeBillReady() {
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
                         utilbillImageDataConn.request({
-                            params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                                end_date: formatted_end_date_string, resolution: resolution},
+                            params: {utilbill_id: selected_utilbill.id},
                             success: function(result, request) {
                                 var jsonData = null;
                                 try {
@@ -771,7 +843,6 @@ function reeBillReady() {
 
         // demand that the store configure and load itself
         utilbillGridStore.reload();
-
     });
 
           
@@ -1526,7 +1597,17 @@ function reeBillReady() {
                                 reeBillStore.setDefaultSort('sequence', 'DESC');
                                 pageSize = reeBillGrid.getBottomToolbar().pageSize;
                                 reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                                    reeBillGrid.getSelectionModel().selectFirstRow();
+                                    // In order to avoid the error message from
+                                    // thie first bill not being rendered yet,
+                                    // we have to suspend the selection events and
+                                    // call loadReeBillUIForSequence with
+                                    // loadReebillImage=false
+                                    var sm = reeBillGrid.getSelectionModel();
+                                    sm.suspendEvents();
+                                    sm.selectFirstRow();
+                                    loadReeBillUIForSequence(jsonData.account,
+                                        jsonData.sequence, false);
+                                    sm.resumeEvents();
                                 }});
                             }
                         } catch (err) {
@@ -1564,7 +1645,17 @@ function reeBillReady() {
                             reeBillStore.setDefaultSort('sequence', 'DESC');
                             pageSize = reeBillGrid.getBottomToolbar().pageSize;
                             reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                                reeBillGrid.getSelectionModel().selectFirstRow();
+                                // In order to avoid the error message from
+                                // thie first bill not being rendered yet,
+                                // we have to suspend the selection events and
+                                // call loadReeBillUIForSequence with
+                                // loadReebillImage=false
+                                var sm = reeBillGrid.getSelectionModel();
+                                sm.suspendEvents();
+                                sm.selectFirstRow();
+                                loadReeBillUIForSequence(jsonData.account,
+                                    jsonData.sequence, false);
+                                sm.resumeEvents();
                             }});
                         }
                     } catch (err) {
@@ -1848,9 +1939,17 @@ function reeBillReady() {
             options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
         }
     });
-
+    
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 63585822
     ubRegisterStore.on('write', function(store, action, result, res, rs) {
         ubRegisterGrid.getSelectionModel().clearSelections();
+        console.log(store,action,result,res,rs);
         ubRegisterStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
             ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(res.raw.current_selected_id))
@@ -1862,13 +1961,22 @@ function reeBillReady() {
         intervalMeterFormPanel.setDisabled(true);
     });
     
+    ubRegisterStore.on('exception', function(store, type, action, options, response, arg){
+        if (arg.arg == 'rows' && arg.message == 'root-undefined-response'){
+            // The server returned an error message
+            // Chances are the User did something unexpected
+            // Let's trust the server and reload the store
+            ubRegisterStore.reload()
+        }
+    });
+    
     ubRegisterColModel = new Ext.grid.ColumnModel({
         columns:[
             {
                 id: 'service',
                 header: 'Service',
                 dataIndex: 'service',
-                editable: true,
+                editable: false,
                 sortable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
                 width: 70,
@@ -2350,12 +2458,13 @@ function reeBillReady() {
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         idProperty: 'id',
         root: 'rows',
+        totalProperty: 'total',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'group', mapping: 'group'},
             {name: 'id', mapping: 'id', allowBlank: false},
             {name: 'rsi_binding', mapping: 'rsi_binding', allowBlank: false},
             {name: 'description', mapping: 'description'},
@@ -2370,7 +2479,9 @@ function reeBillReady() {
     var aChargesWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: true,
+        // send and expect a list
+        listful: true
     });
 
     // This proxy is only used for reading charge item records, not writing.
@@ -2395,8 +2506,8 @@ function reeBillReady() {
         idProperty: 'id',
         writer: aChargesWriter,
         data: initialActualCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
+        sortInfo:{field: 'group', direction: 'ASC'},
+        groupField:'group'
     });
 
 
@@ -2460,11 +2571,49 @@ function reeBillReady() {
 
     // fired when the datastore has completed loading
     aChargesStore.on('load', function (store, records, options) {
+        // Update the GrandTotal
+        var total = 0;
+        for(var i=0; i<records.length; i++){
+            total+=records[i].data.total;
+        }
+        Ext.getCmp('chargesGrandTotalLabel').setValue('Grand Total:');
+        total=Ext.util.Format.usMoney(total);
+        Ext.getCmp('chargesGrandTotal').setValue('<b>'+total+'</b>');
+
         //console.log('aChargesStore load');
-        // the grid is disabled by the panel that contains it  
+        // the grid is disabled by the panel that contains it
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         aChargesGrid.setDisabled(false);
+    });
+    
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 64702470
+    aChargesStore.on('write', function(store, action, result, res, rs){
+        var selected_record_id = aChargesStore.indexOf(aChargesGrid.getSelectionModel().getSelected());
+        aChargesGrid.getSelectionModel().clearSelections();
+        aChargesStore.loadData(res.raw, false);
+        // Scroll based on action
+        if (action == 'create'){
+            var lastrow = aChargesStore.getCount() -1;
+            aChargesGrid.getView().focusRow(lastrow);
+            aChargesGrid.startEditing(lastrow, 0);
+        }else if(action == 'update'){
+            aChargesGrid.getView().focusRow(selected_record_id);
+        }
+    });
+    
+    aChargesStore.on('exception', function(type, action, options, response, arg){
+        if(action=='response' && options=='create'){
+            // Error during create. probably a duplicate RSI Binding
+            // Let's just reload the store
+            aChargesStore.reload();
+        }
     });
 
     var aChargesSummary = new Ext.ux.grid.GroupSummary();
@@ -2473,11 +2622,11 @@ function reeBillReady() {
     {
         columns: [
             {
-                id:'chargegroup',
+                id:'group',
                 header: 'Charge Group',
                 width: 160,
                 sortable: true,
-                dataIndex: 'chargegroup',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 header: 'id',
@@ -2498,6 +2647,7 @@ function reeBillReady() {
                 header: 'Description',
                 width: 75,
                 sortable: true,
+                editable: false,
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
@@ -2625,7 +2775,7 @@ function reeBillReady() {
                         // chargegroup name of the adjacent record, a new group is shown in the grid
                         // and the UI goes out of sync.  Try this by change the chargegroup below
                         // to some other string.
-                        chargegroup: selection.data.chargegroup,
+                        group: selection.data.group,
                         rsi_binding: 'RSI binding required',
                         id: 'RSI binding required',
                         description: 'description required',
@@ -2682,7 +2832,7 @@ function reeBillReady() {
                         var c = new ChargeItemType({
                             id: 'RSI binding required',
                             rsi_binding: 'RSI binding required',
-                            chargegroup: groupName,
+                            group: groupName,
                             description: 'Description required',
                             quantity: 0,
                             quantity_units: 'kWh',
@@ -2727,7 +2877,7 @@ function reeBillReady() {
         tbar: aChargesToolbar,
         colModel: aChargesColModel,
         autoScroll: true,
-        layout: 'fit',  
+        layout: 'fit',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: aChargesStore,
         enableColumnMove: false,
@@ -2738,11 +2888,25 @@ function reeBillReady() {
         plugins: aChargesSummary,
         flex: 1,
         stripeRows: true,
-        autoExpandColumn: 'chargegroup',
-        clicksToEdit: 2
+        autoExpandColumn: 'group',
+        clicksToEdit: 2,
         // config options for stateful behavior
         //stateful: true,
-        //stateId: 'grid' 
+        //stateId: 'grid'
+        fbar: new Ext.Toolbar({
+                height: 13,
+                items:[
+                    {   xtype: 'displayfield',
+                        label: 'Grand Total',
+                        id: 'chargesGrandTotalLabel',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'chargesGrandTotal',
+                        width:100
+                    }
+                ]
+        })
     });
 
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -2755,7 +2919,7 @@ function reeBillReady() {
         // if there was a selection, allow an insertion
         aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
     });
-    
+
     aChargesGrid.on('activate', function(panel) {
         //console.log("aCharges Grid Activated");
         //console.log(panel);
@@ -2855,391 +3019,77 @@ function reeBillReady() {
     // Rate Structure Tab
 
 
-    // the CPRS
-
-    var initialCPRSRSI = {
-        rows: [
-        ]
+    var initialRSI = {
+        rows: [],
+        total: 0
     };
 
-    var CPRSRSIReader = new Ext.data.JsonReader({
-        idProperty: 'id',
-        //root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            //{name: 'rate_units', mapping: 'rate_units'},
-            {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
-
-    var CPRSRSIWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true ,
-        fields: [
-            {name: 'id'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
-    
-    var CPRSRSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/cprsrsi',
-    });
-    CPRSRSIStoreProxyConn.autoAbort = true;
-    
-    var CPRSRSIStoreProxy = new Ext.data.HttpProxy(CPRSRSIStoreProxyConn);
-
-    var CPRSRSIStore = new Ext.data.JsonStore({
-        proxy: CPRSRSIStoreProxy,
-        autoSave: true,
-        reader: CPRSRSIReader,
-        writer: CPRSRSIWriter,
-        data: initialCPRSRSI,
+    var RSIReader = new Ext.data.JsonReader({
+        //idProperty: 'id',
         root: 'rows',
-        idProperty: 'id',
-        fields: [
-            {name: 'id'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantity_units'},
-            {name: 'rate'},
-            //{name: 'rate_units'},
-            {name: 'round_rule'},
-            {name: 'total'},
-        ],
-    });
-
-    CPRSRSIStore.on('save', function (store, batch, data) {
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-    });
-
-    CPRSRSIStore.on('beforeload', function (store, options) {
-        CPRSRSIGrid.setDisabled(true);
-        options.params.utilbill_id = selected_utilbill.id;
-        //Include the reebill's associated sequence and version if the utilbill is associated with one
-        record = chargesUBVersionMenu.selected_record
-        //If there is no sequence or version, don't include those parameters
-        if (record.data.sequence == null) {
-            if (options.params.reebill_sequence != undefined) {
-                delete options.params.reebill_sequence
-            }
-            if (options.params.reebill_version != undefined) {
-                delete options.params.reebill_version
-            }
-        }
-        //Otherwise, get the correct sequence and version
-        else {
-            options.params.reebill_sequence = record.data.sequence
-            options.params.reebill_version = record.data.version
-        }
-
-        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
-            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
-        }
+        totalProperty: 'total',
         
-        // Disable Regenerate-from-Predecessor-Button if there is no predecessor
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/has_utilbill_predecessor',
-            params: { utilbill_id: selected_utilbill.id},
-            success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    Ext.getCmp('regenerateCPRSButton').setDisabled(!jsonData.has_predecessor);
-                }
-            },
-        });
-        
-    });
-
-    CPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
-        options.params.utilbill_id = selected_utilbill.id;
-        //Include the reebill's associated sequence and version if the utilbill is associated with one
-        record = chargesUBVersionMenu.selected_record
-        //If there is no sequence or version, don't include those parameters
-        if (record.data.sequence == null) {
-            if (options.params.reebill_sequence != undefined) {
-                delete options.params.reebill_sequence
-            }
-            if (options.params.reebill_version != undefined) {
-                delete options.params.reebill_version
-            }
-        }
-        //Otherwise, get the correct sequence and version
-        else {
-            options.params.reebill_sequence = record.data.sequence
-            options.params.reebill_version = record.data.version
-        }
-
-        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
-            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
-        }
-    });
-
-    // fired when the datastore has completed loading
-    CPRSRSIStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
-        CPRSRSIGrid.setDisabled(false);
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
-    CPRSRSIStore.on('beforesave', function(store, data) {
-    });
-
-    var CPRSRSIColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'RSI Binding',
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editable: true,
-                editor: new Ext.form.TextField({allowBlank: false}),
-                width: 150,
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 100,
-            },{
-                header: 'Quantity',
-                id: 'quantity',
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                allowBlank: false,
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'quantity_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-            },{
-                header: 'Rate',
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-                allowBlank: false,
-            },{
-                header: 'Units',
-                sortable: true,
-                //dataIndex: 'rate_units',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 50,
-            },{
-                header: 'Round Rule',
-                sortable: true,
-                dataIndex: 'round_rule',
-                editor: new Ext.form.TextField({allowBlank: true}),
-                width: 100,
-            //},{
-                //header: 'Total', 
-                //sortable: true, 
-                //dataIndex: 'total', 
-                //summaryType: 'sum',
-                //align: 'right',
-                //editor: new Ext.form.TextField({allowBlank: true})
-            }
-        ]
-    });
-
-    var CPRSRSIToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'CPRSRSIInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
-                {
-                    CPRSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = CPRSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
-                    var r = new CPRSRSIType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = CPRSRSIStore.indexOf(selection);
-                    CPRSRSIStore.insert(insertionPoint + 1, r);
-                    CPRSRSIGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'CPRSRSIRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    CPRSRSIGrid.stopEditing();
-
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = CPRSRSIGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        CPRSRSIStore.remove(r);
-                    }
-                    CPRSRSIStore.save(); 
-                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-                }
-            },{
-                xtype:'tbseparator'
-            },
-            {
-                xtype: 'button',
-                id: 'regenerateCPRSButton',
-                text: 'Regenerate from Predecessor',
-                handler: function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/regenerate_cprs',
-                        params: { utilbill_id: selected_utilbill.id },
-                        success: function(result, request) {
-                            var jsonData = Ext.util.JSON.decode(result.responseText);
-                            if (jsonData.success == true) {
-                                CPRSRSIGrid.setDisabled(true);
-                                CPRSRSIGrid.setDisabled(true);
-                                CPRSRSIStore.reload();
-                                CPRSRSIStore.reload();
-                            }
-                        },
-                    });
-                }
-            },
-        ]
-    });
-
-    var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: CPRSRSIToolbar,
-        colModel: CPRSRSIColModel,
-        autoExpandColumn: 'quantity',
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: CPRSRSIStore,
-        enableColumnMove: true,
-        frame: true,
-        stripeRows: true,
-        title: 'Individual Rate Structure Items',
-        clicksToEdit: 2
-    });
-
-    CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    
-    // the UPRS
-    var initialUPRSRSI = {
-        rows: [
-        ]
-    };
-
-    var UPRSRSIReader = new Ext.data.JsonReader({
-        idProperty: 'id',
-        //root: 'rows',
-
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'id'},
+            {name: 'id', mapping: 'id'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            //{name: 'rate_units', mapping: 'rate_units'},
+            {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
             {name: 'round_rule', mapping:'round_rule'},
-            {name: 'total', mapping: 'total'},
+            {name: 'group', mapping: 'group'},
         ]
     });
 
-    var UPRSRSIWriter = new Ext.data.JsonWriter({
+    var RSIWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
-        writeAllFields: true 
+        writeAllFields: true,
+        // send and expect a list
+        listful: true
     });
 
-    var UPRSRSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/uprsrsi',
+    var RSIStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/rsi',
         disableCaching: true,
     });
-    UPRSRSIStoreProxyConn.autoAbort = true;
+    RSIStoreProxyConn.autoAbort = true;
 
-    var UPRSRSIStoreProxy = new Ext.data.HttpProxy(UPRSRSIStoreProxyConn);
+    var RSIStoreProxy = new Ext.data.HttpProxy(RSIStoreProxyConn);
 
-    var UPRSRSIStore = new Ext.data.JsonStore({
-        proxy: UPRSRSIStoreProxy,
+    var RSIStore = new Ext.data.JsonStore({
+        proxy: RSIStoreProxy,
         autoSave: true,
-        reader: UPRSRSIReader,
-        writer: UPRSRSIWriter,
+        reader: RSIReader,
+        writer: RSIWriter,
         //baseParams: { account:selected_account, sequence: selected_sequence},
-        data: initialUPRSRSI,
+        data: initialRSI,
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {name: 'id'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantity_units'},
-            {name: 'rate'},
-            //{name: 'rate_units'},
-            {name: 'round_rule'},
-            {name: 'total'},
+            {name: 'id', mapping: 'id'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'shared', mapping: 'shared'},
+            {name: 'has_charge', mapping: 'has_charge'},
+            {name: 'round_rule', mapping:'round_rule'},
+            {name: 'group', mapping: 'group'},
         ],
     });
 
-    UPRSRSIStore.on('save', function (store, batch, data) {
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+    RSIStore.on('save', function (store, batch, data) {
     });
 
-    UPRSRSIStore.on('beforeload', function (store, options) {
-        UPRSRSIGrid.setDisabled(true);
+    RSIStore.on('beforeload', function (store, options) {
+        RSIGrid.setDisabled(true);
         options.params.utilbill_id = selected_utilbill.id;
         
         //Include the reebill's associated sequence and version if the utilbill is associated with one
@@ -3264,7 +3114,7 @@ function reeBillReady() {
         }
     });
 
-    UPRSRSIStore.on('beforewrite', function(store, action, rs, options, arg) {
+    RSIStore.on('beforewrite', function(store, action, rs, options, arg) {
         options.params.utilbill_id = selected_utilbill.id;
         //Include the reebill's associated sequence and version if the utilbill is associated with one
         record = rsUBVersionMenu.selected_record
@@ -3289,26 +3139,57 @@ function reeBillReady() {
     });
 
     // fired when the datastore has completed loading
-    UPRSRSIStore.on('load', function (store, records, options) {
+    RSIStore.on('load', function (store, records, options) {
         // the grid is disabled by the panel that contains it  
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
-        UPRSRSIGrid.setDisabled(false);
+        RSIGrid.setDisabled(false);
     });
 
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    UPRSRSIStore.on('update', function(){
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+    RSIStore.on('update', function(){
     });
 
-    UPRSRSIStore.on('beforesave', function() {
+    // Because of a bug in ExtJS, a record id that has been changed on the server
+    // will not be updated in ExtJS.
+    // As a workaround, the Server has to return all records on write (instead
+    // of just the record that changed)
+    // and the following function will replace the store's records
+    // with the returned records from the server.
+    // For more explanaition see 63585822
+    RSIStore.on('write', function(store, action, result, res, rs) {
+        var selected_record_id = RSIStore.indexOf(RSIGrid.getSelectionModel().getSelected());
+        RSIGrid.getSelectionModel().clearSelections();
+        RSIStore.loadData(res.raw, false);
+        if (selected_record_id < RSIStore.getCount()) {
+            RSIGrid.getSelectionModel().selectRow(selected_record_id)
+        }
+        // Scroll based on action
+        if (action == 'create'){
+            var lastrow = RSIStore.getCount() -1;
+            RSIGrid.getView().focusRow(lastrow);
+            RSIGrid.startEditing(lastrow, 1);
+        }else if(action == 'update'){
+            RSIGrid.getView().focusRow(selected_record_id);
+        }
+    });
+    
+    RSIStore.on('beforesave', function() {
     });
 
-    var UPRSRSIColModel = new Ext.grid.ColumnModel(
+    var RSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
+                xtype: 'checkboxcolumn',
+                header: 'Shared',
+                dataIndex: 'shared',
+                sortable: true,
+                on: true,
+                off: false,
+                width: 60
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3348,82 +3229,80 @@ function reeBillReady() {
                 dataIndex: 'round_rule',
                 editor: new Ext.form.TextField({allowBlank: true}),
                 width: 100,
+            },{
+                xtype: 'checkboxcolumn',
+                header: 'Has Charge',
+                dataIndex: 'has_charge',
+                sortable: true,
+                on: true,
+                off: false,
+                width: 60
+            },{
+                header: 'Group',
+                dataIndex: 'group',
+                sortable: true,
+                editor: new Ext.form.TextField({allowBlank: true}),
+                width: 60,
             }
         ]
     });
 
-    var UPRSRSIToolbar = new Ext.Toolbar({
+    var RSIToolbar = new Ext.Toolbar({
         items: [
             {
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'UPRSRSIInsertBtn',
+                id: 'RSIInsertBtn',
                 iconCls: 'icon-add',
                 text: 'Insert',
                 disabled: false,
                 handler: function()
                 {
-                    UPRSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = UPRSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
-                    var defaultData = { };
-                    var r = new UPRSRSIType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = UPRSRSIStore.indexOf(selection);
-                    UPRSRSIStore.insert(insertionPoint + 1, r);
-                    UPRSRSIGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+                    RSIGrid.stopEditing();
+                    var RSIType = RSIGrid.getStore().recordType;
+                    var defaultData = {};
+                    var r = new RSIType(defaultData);
+                    RSIStore.add([r]);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'UPRSRSIRemoveBtn',
+                id: 'RSIRemoveBtn',
                 iconCls: 'icon-delete',
                 text: 'Remove',
                 disabled: true,
                 handler: function()
                 {
-                    UPRSRSIGrid.stopEditing();
-                    UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    UPRSRSIStore.setBaseParam("account", selected_account);
-                    UPRSRSIStore.setBaseParam("sequence", selected_sequence);
+                    RSIGrid.stopEditing();
+                    RSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    RSIStore.setBaseParam("account", selected_account);
+                    RSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
-                    var s = UPRSRSIGrid.getSelectionModel().getSelections();
+                    var s = RSIGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
-                        UPRSRSIStore.remove(r);
+                        RSIStore.remove(r);
                     }
-                    UPRSRSIStore.save(); 
-                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
             },
             {
                 xtype: 'button',
-                id: 'regenerateUPRSButton',
-                text: 'Regenerate from Prediction',
+                id: 'regenerateRSButton',
+                text: 'Regenerate',
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/regenerate_uprs',
+                        url: 'http://'+location.host+'/reebill/regenerate_rs',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
-                                UPRSRSIGrid.setDisabled(true);
-                                CPRSRSIGrid.setDisabled(true);
-                                UPRSRSIStore.reload();
-                                CPRSRSIStore.reload();
+                                RSIGrid.setDisabled(true);
+                                RSIStore.reload();
                             }
                         },
                     });
@@ -3432,24 +3311,23 @@ function reeBillReady() {
         ]
     });
 
-    var UPRSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: UPRSRSIToolbar,
-        colModel: UPRSRSIColModel,
+    var RSIGrid = new Ext.grid.EditorGridPanel({
+        tbar: RSIToolbar,
+        colModel: RSIColModel,
         autoExpandColumn: 'quantity',
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: UPRSRSIStore,
+        store: RSIStore,
         enableColumnMove: true,
-        frame: true,
         stripeRows: true,
-        title: 'Shared Rate Structure Items',
-        clicksToEdit: 2
+        clicksToEdit: 2,
+        flex:1
     });
 
-    UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+    RSIGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        UPRSRSIGrid.getTopToolbar().findById('UPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+        RSIGrid.getTopToolbar().findById('RSIRemoveBtn').setDisabled(sm.getCount() <1);
     });
   
 
@@ -3457,7 +3335,7 @@ function reeBillReady() {
     // Instantiate the Rate Structure panel 
     //
 
-    rsUBVersionMenu = new UBVersionMenu([CPRSRSIStore, UPRSRSIStore]);
+    rsUBVersionMenu = new UBVersionMenu([RSIStore]);
 
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
@@ -3470,46 +3348,14 @@ function reeBillReady() {
         },
         items: [
             rsUBVersionMenu,
-            {
-                xtype:'panel',
-                flex: 1,
-                border: false,
-                layout:'border',
-                items: [
-                    {
-                        xtype: 'panel',
-                        region: 'north',
-                        border: false,
-                        split: true,
-                        layout: 'fit',
-                        items: [UPRSRSIGrid],
-                        minHeight: 0,
-                        height: 300,
-                    },
-                    {
-                        xtype: 'panel',
-                        region: 'center',
-                        border: false,
-                        split: true,
-                        layout: 'fit',
-                        items: [CPRSRSIGrid],
-                    },
-                ],
-            },
+            RSIGrid,
         ],
     });
 
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
     rateStructurePanel.on('activate', function (panel) {
-
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        CPRSRSIStore.reload();
-
-        //URSRSIStore.reload();
-
-        UPRSRSIStore.reload();
+        RSIStore.reload();
 
     });
 
@@ -4122,7 +3968,13 @@ function reeBillReady() {
             },
         ]
     });
-    
+
+    var setFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setFilterPreference',
+        autoAbort: true,
+        disableCaching: true
+    });
+
     var filterAccountsStore = new Ext.data.ArrayStore({
         id: 0,
         fields: ['abbr','name'],
@@ -4152,6 +4004,35 @@ function reeBillReady() {
         // Set the filter as a baseParam, so filter is persistant through page switches
         accountStore.baseParams.filtername=record.id;
         accountStore.load({params:{filtername:record.id, start:0, limit:30}});
+        // Save the selection as default
+        setFilterPreferenceConn.request({
+            params: { 'filtername': record.id},
+        });
+    });
+
+    // get default filter from the server
+    var getFilterPreferenceConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getFilterPreference',
+        autoAbort: true,
+        disableCaching: true
+    });
+    // TODO: 22360193 populating a form from Ajax creates a race condition.
+    // What if the network doesn't return and user enters a value nefore the callback is fired?
+    getFilterPreferenceConn.request({
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    var filtername = jsonData['filtername'];
+                    filterAccountsCombo.setValue(filtername);
+                } else {
+                    // handle success:false here if needed
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+            }
+        },
     });
 
     // this grid tracks the state of the currently selected account
@@ -4734,7 +4615,7 @@ function reeBillReady() {
       minValue: 0,
       allowDecimals: true,
       decimalPrecision: 2,
-      incrementValue: 1,
+      incrementValue: 0.01,
       accelerate: true
     });
 
@@ -4793,78 +4674,6 @@ function reeBillReady() {
         },
     });
 
-    var filterPreferenceCombo = new Ext.form.ComboBox({
-        id:'filterPreferenceCombo',
-        queryMode:'local',
-        mode:'local',
-        store:  filterAccountsStore,
-        autoSelect:true,
-        allowBlank: false,
-        editable: false,
-        value:'',
-        valueField: 'abbr',
-        displayField: 'name',
-        triggerAction: 'all',
-        typeAhead: false,
-        width: 300,
-    });
-    
-    var setFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/setFilterPreference',
-    });
-    setFilterPreferenceConn.autoAbort = true;
-    setFilterPreferenceConn.disableCaching = true;
-    var filterPreferenceFormPanel = new Ext.FormPanel({
-        labelWidth: 240, // label settings here cascade unless overridden
-        frame: true,
-        title: 'Account Filter Preferences',
-        bodyStyle: 'padding:5px 5px 0',
-        //width: 610,
-        defaults: {width: 435},
-            layout: 'fit', 
-            defaultType: 'textfield',
-                items: [
-                filterPreferenceCombo,
-                ],
-                buttons: [
-                new Ext.Button({
-                    text: 'Save',
-                    handler: function() {
-                        setFilterPreferenceConn.request({
-                            params: { 'filtername': filterPreferenceCombo.getValue()},
-                        });
-                    }
-                }),
-                ],
-    });
-    
-    // get initial value of this field from the server
-    var getFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getFilterPreference',
-    });
-    getFilterPreferenceConn.autoAbort = true;
-    getFilterPreferenceConn.disableCaching = true;
-    // TODO: 22360193 populating a form from Ajax creates a race condition.  
-    // What if the network doesn't return and user enters a value nefore the callback is fired?
-    var filterPreference = null;
-    getFilterPreferenceConn.request({
-        success: function(result, request) {
-            var jsonData = null;
-            try {
-                jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    filtername = jsonData['filtername'];
-                    filterPreferenceCombo.setValue(filtername);
-                    filterAccountsCombo.setValue(filtername);
-                } else {
-                    // handle success:false here if needed
-                }
-            } catch (err) {
-                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-            }
-        },
-    });    
-
     //
     // Instantiate the Preference panel
     //
@@ -4877,7 +4686,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, thresholdFormPanel, filterPreferenceFormPanel],
+        items: [preferencesFormPanel, thresholdFormPanel],
     });
 
     ///////////////////////////////////////
@@ -5744,7 +5553,8 @@ function reeBillReady() {
                 params: {
                     account: r.data.account,
                     sequence: r.data.sequence,
-                    apply_corrections: false,
+                    recipients: r.data.mailto,
+                    apply_corrections: false
                 },
                 success: function (response, options) {
                     var o = {};
@@ -5771,7 +5581,12 @@ function reeBillReady() {
                                 + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         issueDataConn.request({
-                                            params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
+                                            params: {
+                                                account: r.data.account,
+                                                sequence: r.data.sequence,
+                                                recipients: r.data.mailto,
+                                                apply_corrections: true
+                                            },
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true) {
@@ -5787,6 +5602,9 @@ function reeBillReady() {
                                                 issuableGrid.setDisabled(false);
                                             }
                                         });
+                                    }
+                                    else{
+                                        issuableGrid.setDisabled(false);
                                     }
                                 });
                     }
@@ -5890,7 +5708,7 @@ function reeBillReady() {
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'group', mapping: 'group'},
             {name: 'uuid', mapping: 'uuid'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
@@ -5928,8 +5746,8 @@ function reeBillReady() {
         //idProperty: 'uuid',
         writer: hChargesWriter,
         data: {rows:[]},
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
+        sortInfo:{field: 'group', direction: 'ASC'},
+        groupField:'group'
     });
 
     hChargesStore.on('beforeload', function (store, options) {
@@ -5940,6 +5758,19 @@ function reeBillReady() {
     });
     
     hChargesStore.on('load', function (store, records, options) {
+        // Update the GrandTotal
+        var total = 0;
+        var atotal =0;
+        for(var i=0; i<records.length; i++){
+            total+=records[i].data.total;
+            atotal+=records[i].data.actual_total;
+        }
+        Ext.getCmp('reebillChargesGrandTotalLabel').setValue('Grand Total:');
+        total=Ext.util.Format.usMoney(total);
+        Ext.getCmp('reebillChargesGrandTotal').setValue('<b>'+total+'</b>');
+        atotal=Ext.util.Format.usMoney(atotal);
+        Ext.getCmp('reebillChargesGrandActualTotal').setValue('<b>'+atotal+'</b>');
+
         hChargesGrid.setDisabled(false);
     });
     
@@ -5949,10 +5780,10 @@ function reeBillReady() {
     {
         columns: [
             {
-                id:'chargegroup',
+                id:'group',
                 header: 'Charge Group',
                 width: 160,
-                dataIndex: 'chargegroup',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 header: 'UUID',
@@ -6028,6 +5859,24 @@ function reeBillReady() {
         flex: 1,
         stripeRows: true,
         autoExpandColumn: 'rsi_binding',
+        fbar: new Ext.Toolbar({
+                height: 13,
+                items:[
+                    {   xtype: 'displayfield',
+                        label: 'Grand Total',
+                        id: 'reebillChargesGrandTotalLabel',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'reebillChargesGrandActualTotal',
+                        width:100
+                    },{
+                        xtype: 'displayfield',
+                        id: 'reebillChargesGrandTotal',
+                        width:100
+                    }
+                ]
+        })
     });
 
     reebillChargesPanel = new Ext.Panel({
@@ -6135,7 +5984,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYCONFIG" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
+            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;"></div><div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;"></div></div>',
           },
         ]
       }
@@ -6287,8 +6136,10 @@ function reeBillReady() {
     reeBillImageDataConn.autoAbort = true;
     reeBillImageDataConn.disableCaching = true;
 
-    function loadReeBillUIForSequence(account, sequence) {
+    function loadReeBillUIForSequence(account, sequence, loadReebillImage) {
         /* null argument means no sequence is selected */
+        // Load the ReebillImage by default
+        loadReebillImage = typeof loadReebillImage !== 'undefined' ? loadReebillImage : true;
 
         // get selected reebill's record and the predecessor's record
         var record = reeBillGrid.getSelectionModel().getSelected();
@@ -6346,18 +6197,6 @@ function reeBillReady() {
         }
         //Enable the reebill charges panel when a reebill is selected
         reebillChargesPanel.setDisabled(false);
-        // enable or disable the reebill delete button depending on whether the
-        // selected reebill is issued: only un-issued bills should be
-        // deletable.
-        // apparently there is no way to get the selected index of a combobox;
-        // you have to get the value of the selection and then search for it in
-        // the data store. better hope the values are unique.
-        // http://stackoverflow.com/questions/6014593/how-do-i-get-the-selected-index-of-an-extjs-combobox
-        // TODO: enable/disable delete button
-        // TODO: 25419697
-        //var sequenceRecordIndex = sequencesStore.find('sequence', sequence);
-        //var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
-        //deleteButton.setDisabled(sequenceRecord.get('committed'))
         
         // TODO:23046181 abort connections in progress
         services = record.data.services;
@@ -6372,48 +6211,53 @@ function reeBillReady() {
             Ext.getCmp('service_for_charges').clearValue();
             Ext.getCmp('service_for_charges').setDisabled(true);
         }
-            
-        // image rendering resolution
-        var menu = document.getElementById('reebillresolutionmenu');
-        if (menu) {
-            resolution = menu.value;
-        } else {
-            resolution = DEFAULT_RESOLUTION;
-        }
 
-        // while waiting for the next ajax request to finish, show a loading message
-        // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-        
-        // ajax call to generate image, get the name of it, and display it in a
-        // new window
-        // abort previous transaction
-        reeBillImageDataConn.request({
-            disablecaching: true,
-            params: {account: selected_account, sequence: selected_sequence, resolution: resolution},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    var imageUrl = '';
-                    if (jsonData.success == true) {
-                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+        if(loadReebillImage){
+            // image rendering resolution
+            var menu = document.getElementById('reebillresolutionmenu');
+            if (menu) {
+                resolution = menu.value;
+            } else {
+                resolution = DEFAULT_RESOLUTION;
+            }
+
+            // while waiting for the next ajax request to finish, show a loading message
+            // in the utilbill image box
+            Ext.DomHelper.overwrite('reebillimagebox',
+                {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
+
+            // ajax call to generate image, get the name of it, and display it in a
+            // new window
+            // abort previous transaction
+            reeBillImageDataConn.request({
+                disablecaching: true,
+                params: {account: selected_account, sequence: selected_sequence,
+                            resolution: resolution},
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        var imageUrl = '';
+                        if (jsonData.success == true) {
+                            imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                        }
+                        // handle failure if needed
+                        Ext.DomHelper.overwrite('reebillimagebox',
+                            getImageBoxHTML(imageUrl, 'Reebill', 'reebill',
+                                NO_REEBILL_SELECTED_MESSAGE), true);
+
+                    } catch (err) {
+                        Ext.MessageBox.alert('error', err);
                     }
-                    // handle failure if needed
-                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-
-                } catch (err) {
-                    Ext.MessageBox.alert('error', err);
-                }
-            },
-            // this is called when the server returns 500 as well as when there's no response
-            failure: function() { 
-                // replace reebill image with a missing graphic
-                Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                    html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-            },
-        });
-
+                },
+                // this is called when the server returns 500 as well as when there's no response
+                failure: function() {
+                    // replace reebill image with a missing graphic
+                    Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                        html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
+                },
+            });
+        }
 
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
@@ -6586,17 +6430,55 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
 
 function loadDashboard()
 {
-    // pass configuration information to containing webpage
-    // 'UNSPECIFIED' is expanded to a version string by deployment script
-    var SKYLINE_VERSIONINFO="Tue Jan 14 14:53:13 EST 2014 03c725bad940+ (stable) tip randrews"
-    var SKYLINE_DEPLOYCONFIG=""
-    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
-    versionInfo.update(SKYLINE_VERSIONINFO);
-    deployEnv = Ext.get('SKYLINE_DEPLOYCONFIG');
-    deployEnv.update(SKYLINE_DEPLOYCONFIG);
 
     title = Ext.get('pagetitle');
-    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYCONFIG)
+    // temporary title until revision information received
+    title.update("Skyline ReeBill")
+
+    var revisionDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/revision.txt',
+    });
+    
+    // Remove the default request exception
+    Ext.data.Connection.un('requestexception', defaultRequestException);
+    
+    revisionDataConn.autoAbort = true;
+    revisionDataConn.disableCaching = true;
+
+    revisionDataConn.request({
+        success: function(result, request) {
+            // check success status
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            // handle failure
+            var date = jsonData['date'];
+            var user = jsonData['user'];
+            var version = jsonData['version'];
+            // TODO 64357530: need to have this data properly created by fabfile
+            //var deploy_env = jsonData['deploy_env'];
+
+            // update with deployment env from revision.txt
+            //title = Ext.get('pagetitle');
+            //title.update("Skyline ReeBill - " + deploy_env)  
+
+            versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+            versionInfo.update(date + " " + user + " " + version);
+            //Ext.get('SKYLINE_DEPLOYENV').update(deploy_env);
+            
+            //Reattach the default request exceptions
+            Ext.data.Connection.on('requestexception', defaultRequestException);
+        },
+    });
+    
+    revisionDataConn.on('requestexception', function(conn, response, options){
+        if(response.status == 404){
+            // Revision file not found. We probably have a development version
+            // or something went wrong with deployment
+            versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+            versionInfo.update('NO VERSION INFORMATION FOUND');
+        }
+        //Reattach the default request exceptions
+        Ext.data.Connection.on('requestexception', defaultRequestException);
+    });
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';

@@ -5,6 +5,8 @@ import errno
 import logging
 import time
 import datetime
+import random
+import string
 from uuid import uuid1
 import re
 import subprocess
@@ -60,26 +62,15 @@ class BillUpload(object):
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
         self.reebill_directory = self.config.get('billdb', 'billpath')
 
-    def upload(self, account, begin_date, end_date, the_file, file_name):
-        '''Uploads the file 'the_file' (whose name is 'file_name') to the
-        location
-        [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
-        True for success, or throws one of various exceptions if something
-        doesn't work. (The caller takes care of reporting the error in the
-        proper format.) '''
+    def upload(self, utilbill, account, the_file, file_name):
+        '''
+        Uploads the file 'the_file' (whose name is 'file_name') to the
+        location [SAVE_DIRECTORY]/[account]/[utilbill.id].[extension].
+        '''
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
             raise ValueError('invalid account name: "%s"' % account)
-
-        # convert dates into the proper format, & report error if that fails
-        try:
-            formatted_begin_date = format_date(str(begin_date))
-            formatted_end_date = format_date(str(end_date))
-        except Exception as e:
-            raise ValueError('unexpected date format(s): %s, %s: %s' \
-                    % (begin_date, end_date, str(e)))
-        
         # read whole file in one chunk
         try:
             data = the_file.read()
@@ -89,18 +80,14 @@ class BillUpload(object):
             raise
         finally:
             the_file.close()
-        
-        # path where file will be saved:
-        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension] (NB:
-        # date format is determined by the submitter)
-        save_file_path = os.path.join(self.save_directory, account,
-                formatted_begin_date + '-' + formatted_end_date \
-                + os.path.splitext(file_name)[1])
+
+        new_file_name=str(utilbill.id)+os.path.splitext(file_name)[1]
+        save_file_path = os.path.join(self.save_directory, account, new_file_name)
 
         # create the save directory if it doesn't exist
-        create_directory_if_necessary(os.path.join( self.save_directory,
+        create_directory_if_necessary(os.path.join(self.save_directory,
                 account), self.logger)
-        
+
         # write the file in SAVE_DIRECTORY
         # (overwrite if it's already there)
         save_file = None
@@ -114,10 +101,9 @@ class BillUpload(object):
         finally:
             if save_file is not None:
                 save_file.close()
-
         return True
 
-    def get_utilbill_file_path(self, account, begin_date, end_date, extension=None):
+    def get_utilbill_file_path(self, utilbill, extension=None):
         '''Returns the path to the file containing the utility bill for the
         given account and dates.
         If 'extension' is given, the path to a hypothetical file is constructed
@@ -127,19 +113,11 @@ class BillUpload(object):
         'UTILBILL_EXTENSIONS' are chosen first, in order of their appearance
         there).
         An IOError will be raised if the file does not exist.'''
-        # convert dates into the proper format, & report error if that fails
-        formatted_begin_date = datetime.datetime.strftime(begin_date, OUTPUT_DATE_FORMAT)
-        formatted_end_date = datetime.datetime.strftime(end_date, OUTPUT_DATE_FORMAT)
-
-        # name of bill file (in its original format), without extension:
-        # [begin_date]-[end_date].[extension]
-        bill_file_name_without_extension = formatted_begin_date + '-' + \
-                formatted_end_date
 
         # path to the bill file (in its original format):
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-        path_without_extension = os.path.join(self.save_directory, \
-                account, bill_file_name_without_extension)
+        path_without_extension = os.path.join(self.save_directory,
+                str(utilbill.customer.account), str(utilbill.id))
          
         if extension == None:
             # extension not provided, so look for an actual file that already
@@ -169,36 +147,47 @@ class BillUpload(object):
         # (yet) exist
         return path_without_extension + extension
 
-    def move_utilbill_file(self, account, old_period_start, old_period_end,
-            new_period_start, new_period_end):
-        '''Moves the utility bill file identified by 'account',
-        'old_period_start', and 'old_period_end' to a new file name identified
-        by 'new_period_start, new_period_end. This method assumes that the file
-        exists and raises an IOError if it doesn't.'''
-        # TODO this only works when there's one file with the given account and
-        # dates: see
-        # https://www.pivotaltracker.com/story/show/24866603
+    # DEPRECTATED: It is believed that this code is not used anymore.
+    #              It should no longer be neccessary to move utility
+    #              bill files
+    # def move_utilbill_file(self, utilbill, old_period_start, old_period_end):
+    #     '''Moves the file corresponding to the given state.UtilBill formerly
+    #     havint the period dates 'old_period_start' and 'old_period_end' to
+    #     its current correct path. This method assumes that the file
+    #     exists and raises an IOError if it doesn't.
+    #
+    #     Note: the old dates must be used because it is better for file-moving to
+    #     occur last in a series of updates because it can't always be undone,
+    #     which means the UtilBill's period_start and period_end attributes are
+    #     updated first.
+    #     '''
+    #     # TODO this only works when there's one file with the given account and
+    #     # dates: see
+    #     # https://www.pivotaltracker.com/story/show/24866603
+    #
+    #     # here's a hack to get the old path
+    #     # (this file must actually exist)
+    #     from copy import deepcopy
+    #     duplicate = deepcopy(utilbill)
+    #     duplicate.period_start = old_period_start
+    #     duplicate.period_end = old_period_end
+    #     old_path = self.get_utilbill_file_path(duplicate)
+    #
+    #     # get new path (this must not be a file that exists)
+    #     new_path = self.get_utilbill_file_path(utilbill)
+    #
+    #     # move
+    #     shutil.move(old_path, new_path)
 
-        # get old path (this must be a file that actually exists)
-        old_path = self.get_utilbill_file_path(account, old_period_start,
-                old_period_end)
-
-        # get new path (this must not be a file that exists)
-        extension = os.path.splitext(old_path)[1] # note that splitext includes the '.'
-        new_path = self.get_utilbill_file_path(account, new_period_start,
-                new_period_end, extension=extension)
-
-        # move
-        shutil.move(old_path, new_path)
-
-    def delete_utilbill_file(self, account, period_start, period_end):
+    def delete_utilbill_file(self, utilbill):
         '''Deletes the utility bill file given by account and period, by moving
         it to 'utilbill_trash_dir'. The path to the new file is returned.'''
         # TODO due to multiple services, utility bills cannot be uniquely
         # identified by account and period
         # see https://www.pivotaltracker.com/story/show/30079049
-        path = self.get_utilbill_file_path(account, period_start, period_end)
-        deleted_file_name = 'deleted_utilbill_%s_%s' % (account, uuid1())
+        path = self.get_utilbill_file_path(utilbill)
+        deleted_file_name = 'deleted_utilbill_%s_%s' % (
+                utilbill.customer.account, uuid1())
         new_path = os.path.join(self.utilbill_trash_dir, deleted_file_name)
         
         # create trash directory if it doesn't exist yet
@@ -209,38 +198,27 @@ class BillUpload(object):
 
         return new_path
 
-    def get_reebill_file_path(self, account, sequence, branch=0):
-        # TODO implement like the utilbill version
-        raise Exception("not implemented")
+    def get_reebill_file_path(self, account, sequence):
+        '''Return the path for the PDF file of the reebill given by account,
+        sequence.
+        '''
+        return os.path.join(self.reebill_directory, account,
+                '%s_%.4d.pdf' % (account, sequence))
 
     # TODO rename: ImagePath -> ImageName
-    def getUtilBillImagePath(self, account, begin_date, end_date, resolution):
-        '''Given an account and dates for a utility bill, renders that bill as
+    def getUtilBillImagePath(self, utilbill, resolution):
+        '''Given an utility bill, renders that bill as
         an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
         file. (The caller is responsble for providing a URL to the client where
         that image can be accessed.)'''
-        # check account name (validate_account just checks that it's a string
-        # and that it matches a regex)
-        if not validate_account(account):
-            raise ValueError('invalid account name: "%s"' % account)
-
-        # check dates
-        # TODO don't pass around dates as strings; convert these in BillToolBridge
-        try:
-            begin_date = datetime.datetime.strptime(begin_date, INPUT_DATE_FORMAT)
-            end_date = datetime.datetime.strptime(end_date, INPUT_DATE_FORMAT)
-        except Exception as e:
-            raise ValueError('unexpected date format(s): %s, %s: %s' \
-                    % (begin_date, end_date, str(e)))
-
-        bill_file_path = self.get_utilbill_file_path(account, begin_date,
-                end_date)
+        bill_file_path = self.get_utilbill_file_path(utilbill)
         bill_file_name = os.path.split(bill_file_path)[1]
         bill_file_name_without_extension = os.path.splitext(bill_file_name)[0]
         extension = os.path.splitext(bill_file_name)[1][1:] # splitext includes '.'!
 
         # name and path of bill image: name includes date so it's always unique
-        bill_image_name_without_extension = 'utilbill_' + account + '_' \
+        bill_image_name_without_extension = 'utilbill_' + \
+                utilbill.customer.account + '_' \
                 + bill_file_name_without_extension + '_' + \
                 str(datetime.datetime.today()).replace(' ', '') \
                 .replace('.','').replace(':','')
