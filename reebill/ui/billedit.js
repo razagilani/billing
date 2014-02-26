@@ -684,12 +684,10 @@ function reeBillReady() {
                 disabled: true,
                 handler: function() {
                     var selection = utilbillGrid.getSelectionModel().getSelections()[0];
-                    var formatted_begin_date_string = selection.data.period_start.format('Y-m-d');
-                    var formatted_end_date_string = selection.data.period_end.format('Y-m-d');
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/addImagetoDLA',
 
-                        params: { account: selection.data.account, begin_date: formatted_begin_date_string, end_date: formatted_end_date_string},
+                        params: { utilbill_id: selection.data.id},
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
