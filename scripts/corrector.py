@@ -21,7 +21,7 @@ from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner.sky_paths import BufferingTLSSMTPHandler
-from billing.util.nexus_util import NexusUtil
+from nexusapi.nexus_util import NexusUtil
 from billing.processing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.process import Process
@@ -115,7 +115,7 @@ class BillCorrector(object):
                                 verbose=True)
                         predecessor = self.reebill_dao.load_reebill(account,
                                 sequence - 1, version=0)
-                        self.process.compute_reebill(session, predecessor, copy)
+                        self.process._compute_reebill_document(session, predecessor, copy)
 
                         # compare copy to original
                         if copy.total == original.total:
