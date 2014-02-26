@@ -2481,7 +2481,13 @@ class BillToolBridge:
     @json_exception
     def dlasavetag(self, id, image_id, tag, **kwargs):
         try:
-            self.dlataglist.append({"id": id, "image_id": image_id, "tag":tag})
+            if id == '':
+                self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
+            else:
+                for tags in self.dlataglist:
+                    if int(tags['id']) == int(id):
+                        self.dlataglist.remove(tags)
+                self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
         except IOError:
             return self.dumps({'success':False})
         return self.dumps({'success':True})
@@ -2490,9 +2496,11 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def dladeletetag(self, id, image_id, tag, **kwargs):
+    def dladeletetag(self, id, **kwargs):
         try:
-            self.dlataglist.remove({"id": id, "image_id": image_id, "tag":tag})
+            for tag in self.dlataglist:
+                if int(tag['id']) == int(id):
+                    self.dlataglist.remove(tag)
         except IOError:
             return self.dumps({'success':False})
         return self.dumps({'success':True})
