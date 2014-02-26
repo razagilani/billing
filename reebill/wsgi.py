@@ -2023,11 +2023,13 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def addImagetoDLA(self, account, begin_date, end_date, **args):
+    def addImagetoDLA(self, utilbill_id):
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
         try:
-            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
-            self.dlaimages.append({"id": account, "name": account, "path": "../utilitybillimages/"+result})
+            with DBSession(self.state_db) as session:
+                result = self.process.get_utilbill_image_path(session, utilbill_id,
+                                                            resolution)
+            self.dlaimages.append({"id": utilbill_id, "name": utilbill_id, "path": "../utilitybillimages/"+result})
         except IOError:
             return self.dumps({'success':False})
         return self.dumps({'success':True})
