@@ -96,6 +96,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-demo-template.cfg", "/var/local/reebill-demo/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-demo/billing/skyliner/config.yaml"),
         ],
     },
 })
