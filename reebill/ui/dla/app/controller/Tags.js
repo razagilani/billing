@@ -182,7 +182,7 @@ Ext.define('DocumentTools.controller.Tags', {
             scope = this;
 
         Ext.Ajax.request({
-            url: 'php/deleteTag.php',
+            url: '../reebill/dladeletetag',
             method: 'POST',          
             params: {
                 id: rec.get('id')
