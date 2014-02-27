@@ -21,7 +21,8 @@ ReeBill.LoginFormFields = [
 // used by external pages such as login.html
 ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
     id: "WelcomeLoginFormPanel",
-    url: 'http://' + location.host + '/reebill/login',
+    //url: 'http://' + location.host + '/reebill/login',
+    url: 'http://reebill-demo.skylineinnovations.net/reebill/login',
     border: false,
     padding: 1, // chrome truncates top border of username text field
     defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
@@ -35,7 +36,8 @@ ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
             Ext.getCmp('WelcomeLoginFormPanel').form.submit({
                 waitMsg:'Authenticating',
                 success: function() {
-                    window.location = 'http://' + location.host + '/billentry.html';
+                    //window.location = 'http://' + location.host + '/billentry.html';
+                    window.location = 'http://reebill-demo.skylineinnovations.net/billentry.html';
                 }
             });
         },
@@ -60,7 +62,8 @@ ReeBill.LoginWindow = new Ext.Window({
     items: new Ext.form.FormPanel({
         id: "LoginFormPanel",
         //standardSubmit: true,
-        url: 'http://' + location.host + '/reebill/login',
+        //url: 'http://' + location.host + '/reebill/login',
+        url: 'http://reebill-demo.skylineinnovations.net/reebill/login',
         border: false,
         padding: '10px 0px 0px 10px',
         defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
