@@ -3,7 +3,8 @@ from itertools import chain
 import pymongo
 import mongoengine
 import MySQLdb
-from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge
+from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, \
+    Address
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 
@@ -37,12 +38,28 @@ create table if not exists reebill_charge (
     foreign key (reebill_id) references reebill (id) on delete cascade
 )''')
 
+# create new table address
+cur.execute('''
+create table if not exists address (
+    id integer not null auto_increment primary key,
+    reebill_id integer not null,
+    addressee varchar(1000) not null,
+    street varchar(1000) not null,
+    city varchar(1000) not null,
+    state varchar(1000) not null,
+    postal_code varchar(1000) not null,
+    foreign key (reebill_id) references reebill (id) on delete cascade
+)''')
+cur.execute('''
+alter table reebill add column billing_address_id integer not null;
+alter table reebill add constraint fk_billing_address_address foreign key (billing_address_id) references address (id);
+)''')
+
 for reebill in s.query(ReeBill).join(Customer)\
         .filter(ReeBill.customer_id==Customer.id)\
         .order_by(Customer.account, ReeBill.sequence).all():
     document = rbd.load_reebill(reebill.customer.account,
-            reebill.sequence, version=reebill.version)
-    # TODO what about multiple utility bills? should charges actually be
+            reebill.sequence, version=reebill.version) # TODO what about multiple utility bills? should charges actually be
     # associated with utilbill_reebill instead of reebill?
     if len(document._utilbills) > 1:
         print >> stderr, 'ERROR skipped %s due to multiple utility bills' % reebill
@@ -70,8 +87,21 @@ for reebill in s.query(ReeBill).join(Customer)\
     # corresponding to new table)
     reebill.charges = [ReeBillCharge(*[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
 
-    # remove charges fro Mongo
+    # copy addresses to MySQL
+    ba = document.reebill_dict['billing_address']
+    sa = document.reebill_dict['service_address']
+    # fix up some malformed data
+    for a in (ba, sa):
+        if 'ntry' in ba:
+            a['postal_code'] = a['ntry']
+            del a['ntry']
+    reebill.billing_address = Address(**ba)
+    reebill.service_address = Address(**sa)
+
+    # remove charges and address from Mongo
     del document.reebill_dict['utilbills'][0]['hypothetical_charges']
+    del document.reebill_dict['billing_address']
+    del document.reebill_dict['service_address']
     #rbd.reebill_dao.save_reebill(document)
 
 con.commit()
