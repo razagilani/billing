@@ -2,20 +2,33 @@ import sys
 import pymongo
 import mongoengine
 import MySQLdb
+import argparse
 from billing.processing.state import StateDB, UtilBill, Customer
 from billing.processing.mongo import ReebillDAO
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 
+# command-line arguments
+parser = argparse.ArgumentParser(description='03_merge_rs')
+parser.add_argument('--statedbhost', required=True)
+parser.add_argument('--statedbname', required=True)
+parser.add_argument('--statedbuser', required=True)
+parser.add_argument('--statedbpasswd', required=True)
+
+parser.add_argument('--billdbhost', required=True)
+parser.add_argument('--billdbname', required=True)
+
+args = parser.parse_args()
+
 sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
+    'host': args.statedbhost,
+    'database': args.statedbname,
+    'user': args.statedbuser,
+    'password': args.statedbpasswd
 })
-mongoengine.connect('skyline-dev',
-        host='localhost',
+mongoengine.connect(args.billdbname,
+        host=args.billdbhost,
         alias='ratestructure')
-db = pymongo.Connection(host='localhost')['skyline-dev']
+db = pymongo.Connection(host=args.billdbhost)[args.billdbname]
 rbd = ReebillDAO(sdb, db)
 rsd = RateStructureDAO()
 
@@ -46,18 +59,3 @@ for utilbill in query.all():
 
     uprs.rates = combined_rs.rates
     uprs.save()
-
-
-# drop cprs_document_id columns
-con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
-        passwd='dev')
-cur = con.cursor()
-# cur.execute('alter table utilbill drop column cprs_document_id')
-# cur.execute('alter table utilbill_reebill drop column cprs_document_id')
-
-# # rename uprs_document_id columns
-# cur.execute(('alter table utilbill change column uprs_document_id '
-#              'rs_document_id varchar(24)'))
-# cur.execute(('alter table utilbill_reebill change column uprs_document_id '
-#              'rs_document_id varchar(24)'))
-#con.commit()
