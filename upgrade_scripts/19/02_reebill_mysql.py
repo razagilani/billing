@@ -2,17 +2,31 @@ import sys
 import pymongo
 import mongoengine
 import MySQLdb
+import argparse
 from billing.processing.state import StateDB, UtilBill, Customer, ReeBill
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 
+
+# command-line arguments
+parser = argparse.ArgumentParser(description='02_reebill_mysql')
+parser.add_argument('--statedbhost', required=True)
+parser.add_argument('--statedbname', required=True)
+parser.add_argument('--statedbuser', required=True)
+parser.add_argument('--statedbpasswd', required=True)
+
+parser.add_argument('--billdbhost', required=True)
+parser.add_argument('--billdbname', required=True)
+
+args = parser.parse_args()
+
 sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
+    'host': args.statedbhost,
+    'database': args.statedbname,
+    'user': args.statedbuser,
+    'password': args.statedbpasswd
 })
-db = pymongo.Connection(host='localhost')['skyline-dev']
+db = pymongo.Connection(host=args.billdbhost)[args.billdbname]
 rbd = ReebillDAO(sdb, db)
 rsd = RateStructureDAO()
 
@@ -47,8 +61,8 @@ other_keys = [
 # column
 null_allowed = ['issue_date', 'due_date', 'email_recipient']
 
-con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
-    passwd='dev')
+con = MySQLdb.Connect(host=args.statedbhost, db=args.statedbname, user=args.statedbuser,
+    passwd=args.statedbpasswd)
 cur = con.cursor()
 for key in other_keys + keys_to_rename.values():
     if key == 'due_date':
