@@ -420,6 +420,10 @@ class BillToolBridge:
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
+        
+        self.dlaimages = list()
+        self.dlataglist = list()
+        self.dlaregionlist = list()
 
     def dumps(self, data):
 
@@ -1920,6 +1924,115 @@ class BillToolBridge:
             result = self.process.get_utilbill_image_path(session, utilbill_id,
                                                           resolution)
         return self.dumps({'success':True, 'imageName':result})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlaimage(self, **kwargs):
+        #dlaimages.append({"id" : 1, "name" : "test", "path" : "/utilitybillimages/utilbill_20019_20130917-20131016_2014-02-25140249621731.png" })
+        return self.dumps({'success': True,
+            'images': [image for image in self.dlaimages]})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlatags(self, id, **kwargs):
+        tags = list()
+        for tag in self.dlataglist:
+            if tag['image_id'] == id:
+                tags.append(tag)
+        return self.dumps({'success': True,
+            'tags': tags})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlasavetag(self, id, image_id, tag, **kwargs):
+        try:
+            if id == '':
+                self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
+            else:
+                for tags in self.dlataglist:
+                    if int(tags['id']) == int(id):
+                        self.dlataglist.remove(tags)
+                self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dladeletetag(self, id, **kwargs):
+        try:
+            for tag in self.dlataglist:
+                if int(tag['id']) == int(id):
+                    self.dlataglist.remove(tag)
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlaregions(self, id, **kwargs):
+        regions = list()
+        for region in self.dlaregionlist:
+            if region['image_id'] == id:
+                regions.append(region)
+        return self.dumps({'success': True, 'regions': regions})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlasaveregion(self, id, image_id, name, description, x, y, width, height, color, opacity, hidden, **kwargs):
+        try:
+            if id == '':
+                self.dlaregionlist.append({"id": len(self.dlaregionlist), "image_id": image_id, "name": name, "description": description, "x": x, "y": y, "width": width, "height": height, "color": color, "opacity": opacity, "hidden": hidden})
+            else:
+                for region in self.dlaregionlist:
+                    print region['id']
+                    if int(region['id']) == int(id):
+                        self.dlaregionlist.remove(region)
+                self.dlaregionlist.append({"id": id, "image_id": image_id, "name": name, "description": description, "x": x, "y": y, "width": width, "height": height, "color": color, "opacity": opacity, "hidden": hidden})
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dladeleteregion(self, id):
+        try:
+            for region in self.dlaregionlist:
+                if region['id'] == id:
+                    self.dlaregionlist.remove(region)
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
+
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def addImagetoDLA(self, utilbill_id):
+        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
+        try:
+            with DBSession(self.state_db) as session:
+                result = self.process.get_utilbill_image_path(session, utilbill_id,
+                                                            resolution)
+            self.dlaimages.append({"id": utilbill_id, "name": utilbill_id, "path": "../utilitybillimages/"+result})
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
 
     @cherrypy.expose
     @random_wait
