@@ -77,6 +77,28 @@ common.CommonFabTask.update_deployment_configs({
             ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-prod/billing/skyliner/config.yaml"),
         ],
     },
+    "demo": {
+        "app_name":"reebill-demo", 
+        # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
+        "os_user":"reebill-demo", 
+        "os_group":"reebill-demo",
+        "default_deployment_dir":"/var/local/reebill-demo/billing",
+        # set up mappings between names and remote files so that a local file can be 
+        # associated and deployed to the value of the name below
+        "deployment_dirs": {
+            # package name:destination path
+            # package names are specified in tasks wrapper decorators
+            "app": "/var/local/reebill-demo/billing",
+            "www": "/var/local/reebill-demo/billing/www",
+            "skyliner": "/var/local/reebill-demo/billing/skyliner",
+            "doc": "/home/reebill-demo/doc",
+            "mydoc": "/tmp",
+        },
+        "config_files": [
+            ("conf/reebill-demo-template.cfg", "/var/local/reebill-demo/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-demo/billing/skyliner/config.yaml"),
+        ],
+    },
 })
 common.CommonFabTask.set_default_deployment_config_key("dev")
 
