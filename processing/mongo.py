@@ -729,7 +729,6 @@ class MongoReebill(object):
                     % (self.account, self.sequence, self.version, e)
             print >> sys.stderr, self.reebill_dict['service_address']
             return '?'
-
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
@@ -873,7 +872,6 @@ class MongoReebill(object):
         When stored, this quantity is converted to the same unit as the
         corresponding utility bill register.
         '''
-        # TODO eliminate duplicate code with total_renewable_energy
         assert isinstance(new_quantity, float)
 
         # NOTE this may choose the wrong utility bill register if there are

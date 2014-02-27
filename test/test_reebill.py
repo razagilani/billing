@@ -105,6 +105,11 @@ class ReebillTest(TestCaseWithSetup):
         }, reebill.service_address)
 
     def test_compute_charges(self):
+        # TODO make this a real unit test when possible (when utility bill
+        # charges are no longer in Mongo so Process.compute_reebill doesn't
+        # need to load and save utility bill documents and
+        # Process._compute_reebill_charges becomes state.ReeBill
+        # .compute_charges)
         uprs = RateStructure(rates=[
             RateStructureItem(
                 rsi_binding='A',
@@ -159,13 +164,25 @@ class ReebillTest(TestCaseWithSetup):
             }
         ], utilbill_doc['charges'])
 
-        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('99999', 1,
+        customer = Customer('someone', '11111', 0.5, 0.1, None,
+                            'example@example.com')
+        utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
+                'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
+                uprs_id=uprs.id)
+        reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
+                utilbills=[utilbill])
+        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
                 0, 0.5, 0.1, [utilbill_doc])
         utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
         assert all(register['quantity'] == 0 for register in
                 utilbill_subdoc['shadow_registers'])
 
-        reebill_doc.compute_charges(uprs)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+        self.reebill_dao.save_reebill(reebill_doc)
+
+        #reebill_doc.compute_charges(uprs)
+        self.process._compute_reebill_charges(reebill, uprs)
 
         # check that there are the same group names and rsi_bindings and only,
         # by creating two dictionaries mapping group names to sets of
@@ -175,7 +192,7 @@ class ReebillTest(TestCaseWithSetup):
                 subdict(utilbill_subdoc['hypothetical_charges'],
                 ['rsi_binding, description']))
 
-        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
+        self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
         # check reebill charges. since there is no renewable energy,
         # hypothetical charges should be identical to actual charges:
@@ -193,7 +210,7 @@ class ReebillTest(TestCaseWithSetup):
                 subdict(utilbill_subdoc['hypothetical_charges'],
                 ['rsi_binding, description', 'quantity', 'rate', 'total']))
 
-        self.assertEqual(200, reebill_doc.get_total_hypothetical_charges())
+        self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
