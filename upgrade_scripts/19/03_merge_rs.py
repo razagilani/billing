@@ -46,18 +46,3 @@ for utilbill in query.all():
 
     uprs.rates = combined_rs.rates
     uprs.save()
-
-
-# drop cprs_document_id columns
-con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
-        passwd='dev')
-cur = con.cursor()
-# cur.execute('alter table utilbill drop column cprs_document_id')
-# cur.execute('alter table utilbill_reebill drop column cprs_document_id')
-
-# # rename uprs_document_id columns
-# cur.execute(('alter table utilbill change column uprs_document_id '
-#              'rs_document_id varchar(24)'))
-# cur.execute(('alter table utilbill_reebill change column uprs_document_id '
-#              'rs_document_id varchar(24)'))
-#con.commit()
