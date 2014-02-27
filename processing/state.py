@@ -174,6 +174,9 @@ class ReeBill(Base):
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
 
+    billing_address = relationship('Address', uselist=False, cascade='delete')
+    service_address = relationship('Address', uselist=False, cascade='delete')
+
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
         self.customer = customer
@@ -311,6 +314,27 @@ class ReeBillCharge(Base):
         self.rate = rate
         self.total = total
 
+class Address(Base):
+    '''Table representing both "billing addresses" and "service addresses" in
+    reebills.
+    '''
+    __tablename__ = 'address'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
+    addressee = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    postal_code = Column(String, nullable=False)
+
+    def __init__(self, addressee='', street='', city='', state='',
+                 postal_code=''):
+        self.addressee = addressee
+        self.street = street
+        self.city = city
+        self.state = state
+        self.postal_code = postal_code
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
