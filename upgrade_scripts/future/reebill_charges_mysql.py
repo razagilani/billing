@@ -1,12 +1,45 @@
 from sys import stderr
 from itertools import chain
 import pymongo
-import mongoengine
 import MySQLdb
 from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, \
     Address
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
+
+con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
+                      passwd='dev')
+cur = con.cursor()
+
+# create new tables reebill_charge and address
+cur.execute('''
+create table if not exists reebill_charge (
+    id integer not null auto_increment primary key,
+    reebill_id integer not null,
+    rsi_binding varchar(1000) not null,
+    description varchar(1000) not null,
+    group_name varchar(1000) not null,
+    quantity float not null,
+    rate float not null,
+    total float not null,
+    foreign key (reebill_id) references reebill (id) on delete cascade
+);
+
+create table if not exists address (
+    id integer not null auto_increment primary key,
+    reebill_id integer not null,
+    addressee varchar(1000) not null,
+    street varchar(1000) not null,
+    city varchar(1000) not null,
+    state varchar(1000) not null,
+    postal_code varchar(1000) not null,
+    foreign key (reebill_id) references reebill (id) on delete cascade
+);
+
+alter table reebill add column billing_address_id integer not null;
+alter table reebill add constraint fk_billing_address_address foreign key (billing_address_id) references address (id);
+)''')
+con.commit()
 
 sdb = StateDB(**{
     'host': 'localhost',
@@ -20,40 +53,6 @@ rsd = RateStructureDAO()
 
 s = sdb.session()
 
-con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
-    passwd='dev')
-cur = con.cursor()
-
-# create new table reebill_charge
-cur.execute('''
-create table if not exists reebill_charge (
-    id integer not null auto_increment primary key,
-    reebill_id integer not null,
-    rsi_binding varchar(1000) not null,
-    description varchar(1000) not null,
-    group_name varchar(1000) not null,
-    quantity float not null,
-    rate float not null,
-    total float not null,
-    foreign key (reebill_id) references reebill (id) on delete cascade
-)''')
-
-# create new table address
-cur.execute('''
-create table if not exists address (
-    id integer not null auto_increment primary key,
-    reebill_id integer not null,
-    addressee varchar(1000) not null,
-    street varchar(1000) not null,
-    city varchar(1000) not null,
-    state varchar(1000) not null,
-    postal_code varchar(1000) not null,
-    foreign key (reebill_id) references reebill (id) on delete cascade
-)''')
-cur.execute('''
-alter table reebill add column billing_address_id integer not null;
-alter table reebill add constraint fk_billing_address_address foreign key (billing_address_id) references address (id);
-)''')
 
 for reebill in s.query(ReeBill).join(Customer)\
         .filter(ReeBill.customer_id==Customer.id)\
@@ -104,7 +103,7 @@ for reebill in s.query(ReeBill).join(Customer)\
     del document.reebill_dict['service_address']
     #rbd.reebill_dao.save_reebill(document)
 
-con.commit()
+#con.commit()
 s.commit()
 
 
