@@ -23,22 +23,23 @@ create table if not exists reebill_charge (
     rate float not null,
     total float not null,
     foreign key (reebill_id) references reebill (id) on delete cascade
-);
-
+)''')
+cur.execute('''
 create table if not exists address (
     id integer not null auto_increment primary key,
-    reebill_id integer not null,
     addressee varchar(1000) not null,
     street varchar(1000) not null,
     city varchar(1000) not null,
     state varchar(1000) not null,
-    postal_code varchar(1000) not null,
-    foreign key (reebill_id) references reebill (id) on delete cascade
+    postal_code varchar(1000) not null
 );
-
-alter table reebill add column billing_address_id integer not null;
-alter table reebill add constraint fk_billing_address_address foreign key (billing_address_id) references address (id);
-)''')
+''')
+cur.execute('''alter table reebill add column billing_address_id
+integer not null
+''')
+cur.execute('''alter table reebill add column service_address_id
+integer not null
+''')
 con.commit()
 
 sdb = StateDB(**{
@@ -74,13 +75,13 @@ for reebill in s.query(ReeBill).join(Customer)\
        ('total', 0),
     ]
 
-    #try:
-    charges = document.reebill_dict['utilbills'][0]['hypothetical_charges']
-    #except KeyError as e:
-        #print >> stderr, 'ERROR', reebill, e
+    try:
+        charges = document.reebill_dict['utilbills'][0]['hypothetical_charges']
+    except KeyError as e:
+        print >> stderr, 'ERROR', reebill, e
 
     if not all(chain.from_iterable((key in c for key, _ in keys_defaults) for c in charges)):
-        print >> stderr, 'WARNING: %s-%s-%s: default values substituted for missing keys' % (reebill.customer.account, reebill.sequence, reebill.version)
+        print >> stderr, 'WARNING %s-%s-%s: default values substituted for missing keys' % (reebill.customer.account, reebill.sequence, reebill.version)
 
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # corresponding to new table)
@@ -96,6 +97,9 @@ for reebill in s.query(ReeBill).join(Customer)\
             del a['ntry']
     reebill.billing_address = Address(**ba)
     reebill.service_address = Address(**sa)
+    s.add(reebill.billing_address)
+    s.add(reebill.service_address)
+    #import ipdb; ipdb.set_trace()
 
     # remove charges and address from Mongo
     del document.reebill_dict['utilbills'][0]['hypothetical_charges']
@@ -103,7 +107,14 @@ for reebill in s.query(ReeBill).join(Customer)\
     del document.reebill_dict['service_address']
     #rbd.reebill_dao.save_reebill(document)
 
-#con.commit()
+con.commit()
 s.commit()
+
+cur.execute('''alter table reebill add constraint fk_billing_address_address
+foreign key (billing_address_id) references address (id);
+''')
+cur.execute('''alter table reebill add constraint fk_service_address_address
+foreign key (service_address_id) references address (id);
+''')
 
 
