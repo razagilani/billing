@@ -99,8 +99,21 @@ class ReeBill(Base):
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
 
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
+
+    # i think SQLAlchemy does not automatically know which keys to use to
+    # determine billing and service addresses of a ReeBill because there are
+    # two foreign keys to Address; this can be fixed by using "primaryjoin"
+    billing_address = relationship('Address', uselist=False, cascade='delete',
+            primaryjoin='ReeBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='delete',
+            primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
             # 'cascade' controls how all insert/delete operations are
@@ -173,9 +186,6 @@ class ReeBill(Base):
     # see the following documentation fot delete cascade behavior
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
-
-    billing_address = relationship('Address', uselist=False, cascade='delete')
-    service_address = relationship('Address', uselist=False, cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
@@ -321,7 +331,6 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     addressee = Column(String, nullable=False)
     street = Column(String, nullable=False)
     city = Column(String, nullable=False)
