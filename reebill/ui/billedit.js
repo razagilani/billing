@@ -134,7 +134,7 @@ var defaultRequestComplete = function(dataconn, response) {
                     if (jsonData.code == 1) {
                         // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
                         // of which there may be many.
-                        window.location.href = 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/logout'
+                        window.location.href = 'http://'+location.host+'/reebill/logout'
                     } else {
                         string = jsonData.errors.reason+'\n\n'+jsonData.errors.details
                         while (string.search(/([^\n]{85})/) != -1) {
@@ -297,7 +297,7 @@ function reeBillReady() {
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
         title: 'Upload Utility Bill',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/upload_utility_bill',
+        url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
         region: 'north',
         maxSize: 250,
@@ -342,7 +342,7 @@ function reeBillReady() {
     });
 
     var utilbillStoreDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_grid',
+        url: 'http://'+location.host+'/reebill/utilbill_grid',
     });
     utilbillStoreDataConn.autoAbort = true;
     utilbillStoreDataConn.disableCaching = true;
@@ -599,7 +599,7 @@ function reeBillReady() {
 
     // put this by the other dataconnection instantiations
     var utilbillImageDataConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/getUtilBillImage',
+        url: 'http://' + location.host + '/reebill/getUtilBillImage',
         timeout: 60000, // 1 minute
     });
     utilbillImageDataConn.autoAbort = true;
@@ -615,7 +615,7 @@ function reeBillReady() {
                 disabled: true,
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_utility_bill',
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -664,7 +664,7 @@ function reeBillReady() {
                 handler: function() {
                     var selection = utilbillGrid.getSelectionModel().getSelections()[0];
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/mark_utilbill_processed',
+                        url: 'http://'+location.host+'/reebill/mark_utilbill_processed',
                         params: { utilbill: selection.data.id, processed: +(!selection.data.processed) },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -685,12 +685,68 @@ function reeBillReady() {
                 handler: function() {
                     var selection = utilbillGrid.getSelectionModel().getSelections()[0];
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/addImagetoDLA',
+                        url: 'http://'+location.host+'/reebill/addImagetoDLA',
 
                         params: { utilbill_id: selection.data.id},
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
                             if (jsonData.success == true) {
+                                utilbillGridStore.reload();
+                                window.open("http://"+location.host+"/dla/index.html")
+                            }
+                        },
+                    });
+
+                }
+            },
+            {
+                xtype: 'button',
+                id: 'utilbillSliceButton',
+                text: 'Identify',
+                disabled: true,
+                handler: function() {
+                    var selection = utilbillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/dlasliceimage',
+
+                        params: { utilbill_id: selection.data.id},
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                Ext.MessageBox.alert('Status', "Task created, press the 'results' button to see if an answer has been submitted.")
+                                utilbillGridStore.reload();
+                            }
+                        },
+                    });
+
+                }
+            },
+            {
+                xtype: 'button',
+                id: 'utilbillResultsButton',
+                text: 'Results',
+                disabled: true,
+                handler: function() {
+                    var selection = utilbillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/dlagetresults',
+
+                        params: { utilbill_id: selection.data.id},
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                var response = ""
+                                for (var i=0; i<jsonData.results.length; i++)
+                                {
+                                    response += ("Question: "+jsonData.results[i].question+"<br>"+
+                                                 "Answer: "+jsonData.results[i]["Answer.answer"]+"<br>"+
+                                                 "Task Status: "+jsonData.results[i].hitstatus+"<br>"+
+                                                 "============================<br>")
+                                }
+                                Ext.MessageBox.alert('Data', response)
+                                //Ext.MessageBox.alert('Data',"Question: "+JSON.stringify(jsonData.question)+"<br>"+
+                                //    "Answer: "+JSON.stringify(jsonData.answer)+"<br>"+
+                                //    "Task Status: "+JSON.stringify(jsonData.hitstatus)+"<br>");
                                 utilbillGridStore.reload();
                             }
                         },
@@ -751,7 +807,7 @@ function reeBillReady() {
                                     jsonData = Ext.util.JSON.decode(result.responseText);
                                     var imageUrl = '';
                                     if (jsonData.success == true) {
-                                        imageUrl = 'http://' + 'reebill-demo.skylineinnovations.net' + '/utilitybillimages/' + jsonData.imageName;
+                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                                     }
                                     // TODO handle failure if needed
                                     Ext.DomHelper.overwrite('utilbillimagebox',
@@ -794,6 +850,8 @@ function reeBillReady() {
         nothingselected=(sm.getSelections().length==0);
         Ext.getCmp('utilbillComputeButton').setDisabled(nothingselected);
         Ext.getCmp('utilbillDlaButton').setDisabled(nothingselected);
+        Ext.getCmp('utilbillSliceButton').setDisabled(nothingselected);
+        Ext.getCmp('utilbillResultsButton').setDisabled(nothingselected);
         Ext.getCmp('utilbillToggleProcessed').setDisabled(nothingselected);
         
     });
@@ -876,7 +934,7 @@ function reeBillReady() {
          * to go away, just tell the server to do the right thing, then reload
          * the store to get the latest data from the server. */
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/delete_reebill',
+            url: 'http://'+location.host+'/reebill/delete_reebill',
             params: { account: selected_account, sequences: sequences },
             success: function(result, request) {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -912,7 +970,7 @@ function reeBillReady() {
     })
 
     var newVersionConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/new_reebill_version',
+        url: 'http://'+location.host+'/reebill/new_reebill_version',
         disableCaching: true,
         timeout: 960000,
     });
@@ -924,7 +982,7 @@ function reeBillReady() {
             var waitMask = new Ext.LoadMask(Ext.getBody(), { msg:"Creating new versions; please wait" });
             waitMask.show();
             newVersionConn.request({
-                url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/new_reebill_version',
+                url: 'http://'+location.host+'/reebill/new_reebill_version',
 
                 params: { account: selected_account, sequence: selected_sequence },
                 success: function(result, request) {
@@ -969,7 +1027,7 @@ function reeBillReady() {
     });
 
     var reeBillStoreDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/reebill',
+        url: 'http://'+location.host+'/reebill/reebill',
     });
     reeBillStoreDataConn.autoAbort = true;
     reeBillStoreDataConn.disableCaching = true;
@@ -1312,7 +1370,7 @@ function reeBillReady() {
 
 
     var accountInfoDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/account_info',
+        url: 'http://'+location.host+'/reebill/account_info',
     });
     accountInfoDataConn.autoAbort = true;
     accountInfoDataConn.disableCaching = true;
@@ -1428,7 +1486,7 @@ function reeBillReady() {
         id: 'accountInfoFormPanel',
         title: 'Sequential Account Information',
         header: true,
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/set_account_info',
+        url: 'http://'+location.host+'/reebill/set_account_info',
         border: false,
         frame: true,
         flex: 1,
@@ -1526,7 +1584,7 @@ function reeBillReady() {
     }
 
     var computeBillOperationConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_bill',
+        url: 'http://'+location.host+'/reebill/compute_bill',
         disableCaching: true,
     });
     computeBillOperationConn.autoAbort = true;
@@ -1546,7 +1604,7 @@ function reeBillReady() {
     }
 
     var bindREEOperationConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/bindree',
+        url: 'http://'+location.host+'/reebill/bindree',
         disableCaching: true,
         timeout: 960000,
     });
@@ -1567,7 +1625,7 @@ function reeBillReady() {
     }
 
     var rollOperationConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/roll',
+        url: 'http://'+location.host+'/reebill/roll',
         disableCaching: true,
         timeout: 120000, // 2 minutes
     });
@@ -1673,7 +1731,7 @@ function reeBillReady() {
     }
 
     var renderDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/render',
+        url: 'http://'+location.host+'/reebill/render',
     });
     renderDataConn.autoAbort = true;
     renderDataConn.disableCaching = true;
@@ -1709,7 +1767,7 @@ function reeBillReady() {
     }
 
     /*var attachDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/attach_utilbills',
+        url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
     attachDataConn.autoAbort = true;
     attachDataConn.disableCaching = true;
@@ -1859,7 +1917,7 @@ function reeBillReady() {
     });
 
     var ubRegisterStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_registers'
+        url: 'http://'+location.host+'/reebill/utilbill_registers'
     });
     ubRegisterStoreProxyConn.autoAbort = true;
     ubRegisterStoreProxyConn.disableCaching = true;
@@ -2106,7 +2164,7 @@ function reeBillReady() {
         id: 'interval-meter-csv-field',
         title: 'Upload Interval Meter CSV',
         fileUpload: true,
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/upload_interval_meter_csv',
+        url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
         frame:true,
         //bodyStyle: 'padding: 10px 10px 0 10px;',
         labelWidth: 175,
@@ -2489,7 +2547,7 @@ function reeBillReady() {
 
     // make a connections instance so that it may be specifically aborted
     var aChargesStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+        url: 'http://'+location.host+'/reebill/actualCharges',
         disableCaching: true,
     })
     aChargesStoreProxyConn.autoAbort = true;
@@ -2734,7 +2792,7 @@ function reeBillReady() {
                 text: 'Recompute All',
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_utility_bill',
+                        url: 'http://'+location.host+'/reebill/compute_utility_bill',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -2856,7 +2914,7 @@ function reeBillReady() {
             enabled: true,
             handler: function() {
                 Ext.Ajax.request({
-                    url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/refresh_charges',
+                    url: 'http://'+location.host+'/reebill/refresh_charges',
                     params: { utilbill_id: selected_utilbill.id },
                     success: function(result, request) {
                         var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -3053,7 +3111,7 @@ function reeBillReady() {
     });
 
     var RSIStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/rsi',
+        url: 'http://'+location.host+'/reebill/rsi',
         disableCaching: true,
     });
     RSIStoreProxyConn.autoAbort = true;
@@ -3294,7 +3352,7 @@ function reeBillReady() {
                 text: 'Regenerate',
                 handler: function() {
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/regenerate_rs',
+                        url: 'http://'+location.host+'/reebill/regenerate_rs',
                         params: { utilbill_id: selected_utilbill.id },
                         success: function(result, request) {
                             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -3396,7 +3454,7 @@ function reeBillReady() {
     });
 
     var paymentStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/payment',
+        url: 'http://'+location.host+'/reebill/payment',
     });
     paymentStoreProxyConn.autoAbort = true;
 
@@ -3608,7 +3666,7 @@ function reeBillReady() {
     ///////////////////////////////////////
     // Mail Tab
     var mailDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/mail',
+        url: 'http://'+location.host+'/reebill/mail',
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
@@ -3679,7 +3737,7 @@ function reeBillReady() {
     });
 
     var mailReeBillStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/reebill',
+        url: 'http://'+location.host+'/reebill/reebill',
     });
     mailReeBillStoreProxyConn.autoAbort = true;
     var mailReeBillStoreProxy = new Ext.data.HttpProxy(mailReeBillStoreProxyConn);
@@ -3860,7 +3918,7 @@ function reeBillReady() {
     });
 
     var accountStoreProxyConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/retrieve_account_status',
+        url: 'http://' + location.host + '/reebill/retrieve_account_status',
     });
     accountStoreProxyConn.autoAbort = true;
     var accountStoreProxy = new Ext.data.HttpProxy(accountStoreProxyConn);
@@ -3968,7 +4026,7 @@ function reeBillReady() {
     });
 
     var setFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/setFilterPreference',
+        url: 'http://'+location.host+'/reebill/setFilterPreference',
         autoAbort: true,
         disableCaching: true
     });
@@ -4010,7 +4068,7 @@ function reeBillReady() {
 
     // get default filter from the server
     var getFilterPreferenceConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/getFilterPreference',
+        url: 'http://'+location.host+'/reebill/getFilterPreference',
         autoAbort: true,
         disableCaching: true
     });
@@ -4105,7 +4163,7 @@ function reeBillReady() {
     });
 
     var accountReeValueProxyConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/summary_ree_charges',
+        url: 'http://' + location.host + '/reebill/summary_ree_charges',
     });
     accountReeValueProxyConn.autoAbort = true;
     var accountReeValueProxy = new Ext.data.HttpProxy(accountReeValueProxyConn);
@@ -4205,7 +4263,7 @@ function reeBillReady() {
                 id: 'accountReeValueExportCSVBtn',
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
-                href: "http://"+'reebill-demo.skylineinnovations.net'+"/reebill/reebill_details_xls",
+                href: "http://"+location.host+"/reebill/reebill_details_xls",
                 text: 'Export ReeBill XLS',
                 disabled: false,
             },{
@@ -4213,7 +4271,7 @@ function reeBillReady() {
                 iconCls: 'icon-application-go',
                 // TODO:25227403 - export one account at a time 
                 xtype: 'linkbutton',
-                href: "http://"+'reebill-demo.skylineinnovations.net'+"/reebill/excel_export",
+                href: "http://"+location.host+"/reebill/excel_export",
                 text: 'Export All Utility Bills to XLS',
                 disabled: false,
             },{
@@ -4221,7 +4279,7 @@ function reeBillReady() {
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
                 // account parameter for URL is set in loadReeBillUIForAccount()
-                href: "http://"+'reebill-demo.skylineinnovations.net'+"/reebill/excel_export",
+                href: "http://"+location.host+"/reebill/excel_export",
                 text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, // disabled until account is selected
             }]
@@ -4264,7 +4322,7 @@ function reeBillReady() {
     ///////////////////////////////////////
     // Create New Account 
     var newAccountTemplateStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/listAccounts',
+        url: 'http://'+location.host+'/reebill/listAccounts',
     });
     newAccountTemplateStoreProxyConn.autoAbort = true;
     var newAccountTemplateStoreProxy = new Ext.data.HttpProxy(newAccountTemplateStoreProxyConn);
@@ -4294,7 +4352,7 @@ function reeBillReady() {
     });
 
     var newAccountFieldDataConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/get_next_account_number',
+        url: 'http://' + location.host + '/reebill/get_next_account_number',
     });
     newAccountFieldDataConn.autoAbort = true;
     newAccountFieldDataConn.disableCaching = true;
@@ -4336,13 +4394,13 @@ function reeBillReady() {
     });
 
     var newAccountDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/new_account',
+        url: 'http://'+location.host+'/reebill/new_account',
     });
     newAccountDataConn.autoAbort = true;
     newAccountDataConn.disableCaching = true;
     var newAccountFormPanel = new Ext.FormPanel({
         id: 'newAccountFormPanel',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/new_account',
+        url: 'http://'+location.host+'/reebill/new_account',
         labelWidth: 120, // label settings here cascade unless overridden
         frame: true,
         title: 'Create New Account',
@@ -4551,7 +4609,7 @@ function reeBillReady() {
     });
 
     var setPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/setBillImageResolution',
+        url: 'http://'+location.host+'/reebill/setBillImageResolution',
     });
     setPreferencesDataConn.autoAbort = true;
     setPreferencesDataConn.disableCaching = true;
@@ -4581,7 +4639,7 @@ function reeBillReady() {
 
     // get initial value of this field from the server
     var getPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/getBillImageResolution',
+        url: 'http://'+location.host+'/reebill/getBillImageResolution',
     });
     getPreferencesDataConn.autoAbort = true;
     getPreferencesDataConn.disableCaching = true;
@@ -4618,7 +4676,7 @@ function reeBillReady() {
     });
 
     var setThresholdDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/setDifferenceThreshold',
+        url: 'http://'+location.host+'/reebill/setDifferenceThreshold',
     });
     setThresholdDataConn.autoAbort = true;
     setThresholdDataConn.disableCaching = true;
@@ -4648,7 +4706,7 @@ function reeBillReady() {
 
     // get initial value of this field from the server
     var getThresholdDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/getDifferenceThreshold',
+        url: 'http://'+location.host+'/reebill/getDifferenceThreshold',
     });
     getThresholdDataConn.autoAbort = true;
     getThresholdDataConn.disableCaching = true;
@@ -4717,7 +4775,7 @@ function reeBillReady() {
     });
 
     var journalStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/journal',
+        url: 'http://'+location.host+'/reebill/journal',
         timeout: 60000,
     });
     journalStoreProxyConn.autoAbort = true;
@@ -4947,7 +5005,7 @@ function reeBillReady() {
         },
     });
     var journalFormPanel = new Ext.form.FormPanel({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/save_journal_entry',
+        url: 'http://'+location.host+'/reebill/save_journal_entry',
         frame: true,
         border: false,
         height: 100,
@@ -5040,7 +5098,7 @@ function reeBillReady() {
     // reconciliation report
 
     var reconciliationProxyConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/get_reconciliation_data',
+        url: 'http://' + location.host + '/reebill/get_reconciliation_data',
     });
     reconciliationProxyConn.autoAbort = true;
     var reconciliationProxy = new Ext.data.HttpProxy(reconciliationProxyConn);
@@ -5148,7 +5206,7 @@ function reeBillReady() {
     // "Estimated Revenue" grid
 
     var revenueProxyConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/get_estimated_revenue_data',
+        url: 'http://' + location.host + '/reebill/get_estimated_revenue_data',
         timeout: 60000,
     });
     revenueProxyConn.autoAbort = true;
@@ -5263,7 +5321,7 @@ function reeBillReady() {
                     id: 'estimatedRevenueDownloadButton',
                     iconCls: 'icon-application-go',
                     xtype: 'linkbutton',
-                    href: "http://"+'reebill-demo.skylineinnovations.net'+"/reebill/estimated_revenue_xls",
+                    href: "http://"+location.host+"/reebill/estimated_revenue_xls",
                     text: 'Download Excel Spreadsheet',
                     disabled: false,
                 },]
@@ -5324,7 +5382,7 @@ function reeBillReady() {
 
     var reebillExportPanel = new Ext.form.FormPanel({
         id: 'reebillExportPanel',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/reebill_details_xls',
+        url: 'http://'+location.host+'/reebill/reebill_details_xls',
         labelwidth: 120,
         frame: true,
         title: "Export ReeBill XLS",
@@ -5412,7 +5470,7 @@ function reeBillReady() {
     });
 
     var issuableStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/issuable'
+        url: 'http://'+location.host+'/reebill/issuable'
     });
     issuableStoreProxyConn.autoAbort = true;
     issuableStoreProxyConn.disableCaching = true;
@@ -5530,7 +5588,7 @@ function reeBillReady() {
     });
 
     var issueDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/issue_and_mail',
+        url: 'http://'+location.host+'/reebill/issue_and_mail',
     });
     issueDataConn.autoAbort = true;
     issueDataConn.disableCaching = true;
@@ -5729,7 +5787,7 @@ function reeBillReady() {
     });
     
     var hChargesStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/hypotheticalCharges',
+        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
         disableCaching: true,
     })
     hChargesStoreProxyConn.autoAbort = true;
@@ -6010,7 +6068,7 @@ function reeBillReady() {
     // update all other dependent widgets
 
     var lastUtilBillEndDateDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/last_utilbill_end_date',
+        url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
     });
     lastUtilBillEndDateDataConn.autoAbort = true;
     lastUtilBillEndDateDataConn.disableCaching = true;
@@ -6121,7 +6179,7 @@ function reeBillReady() {
     // datastores.
     //
     var ubMeasuredUsagesDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/ubMeasuredUsages',
+        url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
     });
     ubMeasuredUsagesDataConn.autoAbort = true;
     ubMeasuredUsagesDataConn.disableCaching = true;
@@ -6129,7 +6187,7 @@ function reeBillReady() {
 
 
     var reeBillImageDataConn = new Ext.data.Connection({
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/getReeBillImage',
+        url: 'http://'+location.host+'/reebill/getReeBillImage',
     });
     reeBillImageDataConn.autoAbort = true;
     reeBillImageDataConn.disableCaching = true;
@@ -6237,7 +6295,7 @@ function reeBillReady() {
                         jsonData = Ext.util.JSON.decode(result.responseText);
                         var imageUrl = '';
                         if (jsonData.success == true) {
-                            imageUrl = 'http://' + 'reebill-demo.skylineinnovations.net' + '/utilitybillimages/' + jsonData.imageName;
+                            imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                         }
                         // handle failure if needed
                         Ext.DomHelper.overwrite('reebillimagebox',
@@ -6269,7 +6327,7 @@ function reeBillReady() {
         // create checkboxes in Sequential Account Information form for
         // suspending services of the selected reebill
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/get_reebill_services?',
+            url: 'http://'+location.host+'/reebill/get_reebill_services?',
             params: { account: selected_account, sequence: selected_sequence },
             success: function(result, request) {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -6434,7 +6492,7 @@ function loadDashboard()
     title.update("Skyline ReeBill")
 
     var revisionDataConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/revision.txt',
+        url: 'http://' + location.host + '/revision.txt',
     });
     
     // Remove the default request exception
@@ -6479,10 +6537,10 @@ function loadDashboard()
     });
 
     // show username & logout link in the footer
-    var logoutLink = '<a href="http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/logout">log out</a>';
+    var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
 
     var usernameDataConn = new Ext.data.Connection({
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/getUsername',
+        url: 'http://' + location.host + '/reebill/getUsername',
     });
     usernameDataConn.autoAbort = true;
     usernameDataConn.disableCaching = true;

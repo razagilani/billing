@@ -110,17 +110,17 @@
 
           /* load ui configuration from server (which tabs to show/hide) */
           Ext.Ajax.request({
-            url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/ui_configuration',
+            url: 'http://' + location.host + '/reebill/ui_configuration',
             success: function(response) {
                 // preload graphics
                 var img1 = new Image();
-                img1.src = "http://" + 'reebill-demo.skylineinnovations.net' + "/green_stripe.jpg";
+                img1.src = "http://" + location.host + "/green_stripe.jpg";
                 var img2 = new Image();
-                img2.src = "http://" + 'reebill-demo.skylineinnovations.net' + "/skyline_logo.png";
+                img2.src = "http://" + location.host + "/skyline_logo.png";
                 var img3 = new Image();
-                img3.src = "http://" + 'reebill-demo.skylineinnovations.net' + "/money_chaser.png";
+                img3.src = "http://" + location.host + "/money_chaser.png";
                 var img4 = new Image();
-                img4.src = "http://" + 'reebill-demo.skylineinnovations.net' + "/reebill_logo.png";
+                img4.src = "http://" + location.host + "/reebill_logo.png";
                 var jsonData = Ext.util.JSON.decode(response.responseText);
                 mailPanelDisabled = jsonData.mail_panel_disabled;
                 preferencesPanelDisabled = jsonData.preferences_panel_disabled;
