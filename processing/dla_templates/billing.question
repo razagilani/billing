@@ -34,8 +34,8 @@
     <FreeTextAnswer>
         <Constraints>
             <Length minLength="1" />
-            <AnswerFormatRegex regex="(^\$[0-9]+\.?[0-9]?[0-9]?)"
-                errorText="Answer must start with $ and contain only numbers and decimals" />
+            <AnswerFormatRegex regex="(^[0-9]+\.?[0-9]?[0-9]?)"
+                errorText="Answer must contain only numbers and decimals" />
         </Constraints>
     </FreeTextAnswer>
 </AnswerSpecification>
