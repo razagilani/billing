@@ -110,9 +110,11 @@ class ReeBill(Base):
     # i think SQLAlchemy does not automatically know which keys to use to
     # determine billing and service addresses of a ReeBill because there are
     # two foreign keys to Address; this can be fixed by using "primaryjoin"
-    billing_address = relationship('Address', uselist=False, cascade='delete',
+    billing_address = relationship('Address', uselist=False,
+            cascade='all',
             primaryjoin='ReeBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False, cascade='delete',
+    service_address = relationship('Address', uselist=False,
+            cascade='all',
             primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
@@ -214,6 +216,9 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+
+        self.billing_address = Address()
+        self.service_address = Address()
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
