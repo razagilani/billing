@@ -56,6 +56,7 @@ from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
+from billing.processing import dla_tools
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -1929,10 +1930,67 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def dlaregionjson(self, image_id, **kwargs):
+        #dlaimages.append({"id" : 1, "name" : "test", "path" : "/utilitybillimages/utilbill_20019_20130917-20131016_2014-02-25140249621731.png" })
+        regions = list()
+        for region in self.dlaregionlist:
+            if region['image_id'] == image_id:
+                regions.append(region)
+        return self.dumps({'success': True,
+            'regions': regions})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def dlaimage(self, **kwargs):
         #dlaimages.append({"id" : 1, "name" : "test", "path" : "/utilitybillimages/utilbill_20019_20130917-20131016_2014-02-25140249621731.png" })
         return self.dumps({'success': True,
             'images': [image for image in self.dlaimages]})
+    
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlasliceimage(self, utilbill_id, **kwargs):
+        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
+        try:
+            with DBSession(self.state_db) as session:
+                result = self.process.get_utilbill_image_path(session, utilbill_id, resolution)
+            regions = list()
+            for region in self.dlaregionlist:
+                if region['image_id'] == utilbill_id:
+
+                    regions.append(region)
+            for region in regions:
+                dla_tools.slice_area(result, utilbill_id, region['id'],
+                                       region['x'], region['y'],
+                                       region['width'], region['height'])
+                dla_tools.create_turk_input_file(utilbill_id, region['id'])
+                dla_tools.create_turk_question_file(utilbill_id, region['id'], region) 
+                dla_tools.create_turk_hit(region['id'], utilbill_id)
+            
+        except IOError:
+            return self.dumps({'success':False})
+        return self.dumps({'success':True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def dlagetresults(self, utilbill_id, **kwargs):
+        dlaresultlist = list()
+        for region in self.dlaregionlist:
+            results = dla_tools.get_turk_results(utilbill_id, region['id'])
+            results['utilbill_id'] = utilbill_id
+            results['region'] = region['id']
+            results['question'] = region['description']
+            dlaresultlist.append(results)
+        
+        return self.dumps({'success': True, 'hitstatus': results['hitstatus'],
+                           'answer':results['Answer.answer'],
+                           'question':results['question'],
+                           'results':dlaresultlist})
 
     @cherrypy.expose
     @random_wait
@@ -2026,12 +2084,17 @@ class BillToolBridge:
     def addImagetoDLA(self, utilbill_id):
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
         try:
+            for image in self.dlaimages:
+                if image['id'] == utilbill_id:
+                    return self.dumps({'success':True})
+
             with DBSession(self.state_db) as session:
                 result = self.process.get_utilbill_image_path(session, utilbill_id,
                                                             resolution)
             self.dlaimages.append({"id": utilbill_id, "name": utilbill_id, "path": "../utilitybillimages/"+result})
         except IOError:
             return self.dumps({'success':False})
+        print"+++++++++++++++++++++ added image"
         return self.dumps({'success':True})
 
     @cherrypy.expose
