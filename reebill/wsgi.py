@@ -1931,7 +1931,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlaregionjson(self, image_id, **kwargs):
-        #dlaimages.append({"id" : 1, "name" : "test", "path" : "/utilitybillimages/utilbill_20019_20130917-20131016_2014-02-25140249621731.png" })
+        # Get regions for the given image_id
         regions = list()
         for region in self.dlaregionlist:
             if region['image_id'] == image_id:
@@ -1944,7 +1944,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlaimage(self, **kwargs):
-        #dlaimages.append({"id" : 1, "name" : "test", "path" : "/utilitybillimages/utilbill_20019_20130917-20131016_2014-02-25140249621731.png" })
+        # Get the available images for processing
         return self.dumps({'success': True,
             'images': [image for image in self.dlaimages]})
     
@@ -1953,6 +1953,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlasliceimage(self, utilbill_id, **kwargs):
+        # Create image slices from defined regions, assemble questions, and
+        # upload to turk
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
         try:
             with DBSession(self.state_db) as session:
@@ -1979,6 +1981,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlagetresults(self, utilbill_id, **kwargs):
+        # Get turk results for each region in an image
         dlaresultlist = list()
         for region in self.dlaregionlist:
             results = dla_tools.get_turk_results(utilbill_id, region['id'])
@@ -1997,6 +2000,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlatags(self, id, **kwargs):
+        # get tags for a given image
         tags = list()
         for tag in self.dlataglist:
             if tag['image_id'] == id:
@@ -2009,6 +2013,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlasavetag(self, id, image_id, tag, **kwargs):
+        # Save a new tag to the list with a unique id number. If the tag
+        # already exists, remove it and re-add it with it's previous id.
         try:
             if id == '':
                 self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
@@ -2016,7 +2022,7 @@ class BillToolBridge:
                 for tags in self.dlataglist:
                     if int(tags['id']) == int(id):
                         self.dlataglist.remove(tags)
-                self.dlataglist.append({"id": len(self.dlataglist), "image_id": image_id, "tag": tag})
+                self.dlataglist.append({"id": id, "image_id": image_id, "tag": tag})
         except IOError:
             return self.dumps({'success':False})
         return self.dumps({'success':True})
@@ -2026,6 +2032,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dladeletetag(self, id, **kwargs):
+        # Delete tags for a given image
         try:
             for tag in self.dlataglist:
                 if int(tag['id']) == int(id):
@@ -2039,6 +2046,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlaregions(self, id, **kwargs):
+        # Get regions for a given image
         regions = list()
         for region in self.dlaregionlist:
             if region['image_id'] == id:
@@ -2050,6 +2058,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dlasaveregion(self, id, image_id, name, description, x, y, width, height, color, opacity, hidden, **kwargs):
+        # Save regions for a given image with a unique id. If region already
+        # exists, delete it and re-add it with it's previous id.
         try:
             if id == '':
                 self.dlaregionlist.append({"id": len(self.dlaregionlist), "image_id": image_id, "name": name, "description": description, "x": x, "y": y, "width": width, "height": height, "color": color, "opacity": opacity, "hidden": hidden})
@@ -2068,6 +2078,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def dladeleteregion(self, id):
+        # Delete region for a given image
         try:
             for region in self.dlaregionlist:
                 if region['id'] == id:
@@ -2082,6 +2093,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def addImagetoDLA(self, utilbill_id):
+        # For a given utility bill id, generate an image and add that path to
+        # the dlaimages list.
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
         try:
             for image in self.dlaimages:
@@ -2094,7 +2107,6 @@ class BillToolBridge:
             self.dlaimages.append({"id": utilbill_id, "name": utilbill_id, "path": "../utilitybillimages/"+result})
         except IOError:
             return self.dumps({'success':False})
-        print"+++++++++++++++++++++ added image"
         return self.dumps({'success':True})
 
     @cherrypy.expose
