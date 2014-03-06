@@ -677,6 +677,7 @@ function reeBillReady() {
                     });
                 }
             },
+            {xtype: 'tbseparator'},
             {
                 xtype: 'button',
                 id: 'utilbillDlaButton',
@@ -724,7 +725,7 @@ function reeBillReady() {
             {
                 xtype: 'button',
                 id: 'utilbillResultsButton',
-                text: 'Results',
+                text: 'Review',
                 disabled: true,
                 handler: function() {
                     var selection = utilbillGrid.getSelectionModel().getSelections()[0];
