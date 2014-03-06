@@ -8,7 +8,7 @@
         <List>
             <ListItem>Look at the image and copy the fields specified in the questions.</ListItem>
             <ListItem>Provide the requested number or text in each field.</ListItem>
-            <ListItem>If a dollar amount is requested, include a dollar sign ($) in your answer.</ListItem>
+            <ListItem>If a dollar amount is requested, do not include a dollar sign ($) in your answer.</ListItem>
             <ListItem>Not all requested values will be dollar amounts, be sure to read the question carefully.</ListItem>
         </List>
 
@@ -34,8 +34,6 @@
     <FreeTextAnswer>
         <Constraints>
             <Length minLength="1" />
-            <AnswerFormatRegex regex="(^[0-9]+\.?[0-9]?[0-9]?)"
-                errorText="Answer must contain only numbers and decimals" />
         </Constraints>
     </FreeTextAnswer>
 </AnswerSpecification>

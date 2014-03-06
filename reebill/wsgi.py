@@ -1984,11 +1984,12 @@ class BillToolBridge:
         # Get turk results for each region in an image
         dlaresultlist = list()
         for region in self.dlaregionlist:
-            results = dla_tools.get_turk_results(utilbill_id, region['id'])
-            results['utilbill_id'] = utilbill_id
-            results['region'] = region['id']
-            results['question'] = region['description']
-            dlaresultlist.append(results)
+            if region['image_id'] == utilbill_id:
+                results = dla_tools.get_turk_results(utilbill_id, region['id'])
+                results['utilbill_id'] = utilbill_id
+                results['region'] = region['id']
+                results['question'] = region['description']
+                dlaresultlist.append(results)
         
         return self.dumps({'success': True, 'hitstatus': results['hitstatus'],
                            'answer':results['Answer.answer'],
