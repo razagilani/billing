@@ -7,14 +7,14 @@ import subprocess
 def slice_area(image_path, utilbill_id, regionID, x, y, width, height):
     call("convert " + "/tmp/billimages/"+image_path + " -crop {0}x{1}+{2}+{3} ".format(width, height, x, y) +
           #"/tmp/slices/{0}{1}.png".format(utilbill_id, regionID), shell=True)
-          "/home/josh/Dropbox/Public/{0}{1}.png".format(utilbill_id, regionID), shell=True)
+          "/tmp/slices/{0}{1}.png".format(utilbill_id, regionID), shell=True)
 
 def create_turk_input_file(utilbill_id, regionID):
     file_path = "/tmp/slices/"+utilbill_id+str(regionID)
     f = open(file_path+".input", 'w')
     f.write("image_url\n")
-    #f.write("http://reebill-localdev/slices/"+utilbill_id+str(regionID)+'.png')
-    f.write("https://dl.dropboxusercontent.com/u/7142407/"+utilbill_id+str(regionID)+'.png')
+    f.write("http://reebill-demo.skylineinnovations.net/slices/"+utilbill_id+str(regionID)+'.png')
+    #f.write("https://dl.dropboxusercontent.com/u/7142407/"+utilbill_id+str(regionID)+'.png')
     f.close()
 
 def create_turk_question_file(utilbill_id, regionID, region):
