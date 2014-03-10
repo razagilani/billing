@@ -30,11 +30,15 @@ def create_turk_question_file(utilbill_id, regionID, region):
     f.close()
 
 def create_turk_hit(regionID, utilbill_id):
-    subprocess.call(["/home/josh/skyline-workspace/billing/processing/load_mturk_hit.sh",
-                     utilbill_id+str(regionID), utilbill_id+str(regionID)])
+    load_hit = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'load_mturk_hit.sh')
+    properties_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dla_templates', 'billImage.properties')
+    output = open("/tmp/stdout", 'w')
+    subprocess.call([load_hit, utilbill_id+str(regionID), properties_file], stdout=output)
     
 def get_turk_results(utilbill_id, regionID):
-    subprocess.call(["/home/josh/skyline-workspace/billing/processing/get_mturk_results.sh", utilbill_id+str(regionID)])
+    get_hit = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'get_mturk_results.sh')
+    subprocess.call([get_hit, utilbill_id+str(regionID)])
+    
     with open('/tmp/slices/{0}.results'.format(utilbill_id+str(regionID))) as response:
         csv_response = csv.DictReader(response, delimiter="\t")
         output = dict()
