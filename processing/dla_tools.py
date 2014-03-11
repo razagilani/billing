@@ -4,8 +4,9 @@ import csv
 from jinja2 import Template, Environment, FileSystemLoader
 import subprocess
 
-def slice_area(image_path, utilbill_id, regionID, x, y, width, height):
-    call("convert " + "/tmp/billimages/"+image_path + " -crop {0}x{1}+{2}+{3} ".format(width, height, x, y) +
+def slice_area(image_path, utilbill_id, regionID, x, y, width, height, environment):
+    call("convert " + environment + "/" +
+          image_path + " -crop {0}x{1}+{2}+{3} ".format(width, height, x, y) +
           #"/tmp/slices/{0}{1}.png".format(utilbill_id, regionID), shell=True)
           "/tmp/slices/{0}{1}.png".format(utilbill_id, regionID), shell=True)
 

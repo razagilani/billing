@@ -1967,7 +1967,8 @@ class BillToolBridge:
             for region in regions:
                 dla_tools.slice_area(result, utilbill_id, region['id'],
                                        region['x'], region['y'],
-                                       region['width'], region['height'])
+                                       region['width'], region['height'],
+                                     self.config.get('billimages', 'bill_image_directory'))
                 dla_tools.create_turk_input_file(utilbill_id, region['id'])
                 dla_tools.create_turk_question_file(utilbill_id, region['id'], region) 
                 dla_tools.create_turk_hit(region['id'], utilbill_id)
