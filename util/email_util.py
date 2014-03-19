@@ -26,7 +26,6 @@ def send_email(from_user, recipients, subject, originator, password, smtp_host,
     container['Subject'] = subject
     container['From'] = from_user
     container['To'] = u', '.join(recipients)
-
     html = Template(template_html).render(template_values)
 
     for path in attachment_paths:

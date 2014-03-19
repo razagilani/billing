@@ -30,6 +30,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-dev-template.cfg", "/var/local/reebill-dev/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-dev/billing/skyliner/config.yaml"),
         ],
     },
     "stage": {
@@ -51,6 +52,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-stage-template.cfg", "/var/local/reebill-stage/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-stage/billing/skyliner/config.yaml"),
         ],
     },
     "prod": {
@@ -72,6 +74,7 @@ common.CommonFabTask.update_deployment_configs({
         },
         "config_files": [
             ("conf/reebill-prod-template.cfg", "/var/local/reebill-prod/billing/reebill/reebill.cfg"),
+            ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-prod/billing/skyliner/config.yaml"),
         ],
     },
 })

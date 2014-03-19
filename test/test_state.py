@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import MySQLdb
 import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
@@ -42,8 +42,10 @@ class StateTest(utils.TestCase):
         # insert one customer (not relying on StateDB)
         c = mysql_connection.cursor()
         c.execute('''insert into customer
-                (name, account, discountrate, latechargerate) values
-                ('Test Customer', 99999, .12, .34)''')
+                (name, account, discountrate, latechargerate,
+                utilbill_template_id, bill_email_recipient) values
+                ('Test Customer', 99999, .12, .34,
+                '000000000000000000000000', 'example@example.com')''')
         mysql_connection.commit()
 
         # NOTE for some reason, when this is enabled, all tests fail with a
@@ -198,8 +200,10 @@ class StateTest(utils.TestCase):
                     acc, seq, version=10)
 
             # adding versions of bills for other accounts should have no effect
-            session.add(Customer('someone', '11111', 0.5, 0.1, 'id goes here'))
-            session.add(Customer('someone', '22222', 0.5, 0.1, 'id goes here'))
+            session.add(Customer('someone', '11111', 0.5, 0.1,
+                    'id goes here', 'customer1@example.com'))
+            session.add(Customer('someone', '22222', 0.5, 0.1,
+                    'id goes here', 'customer2@example.com'))
             self.state_db.new_reebill(session, '11111', 1)
             self.state_db.new_reebill(session, '11111', 2)
             self.state_db.new_reebill(session, '22222', 1)
@@ -425,201 +429,6 @@ class StateTest(utils.TestCase):
             self.assertEqual([q], self.state_db.find_payment(session, acc,
                     date(2012,1,1), date(2012,4,1)))
 
-    def utilbill_period_single_unattached(self):
-        # Add ten, nice, sequential gas bills
-        account = '99999'
-        services = ['gas']
-        dt = date.today()
-        with DBSession(self.state_db) as session:
-            customer = self.state_db.get_customer(session, account)
-
-            # Add ten utilbills "associated" to reebills
-            reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
-            for r in reebills:
-                r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
-                    dt+timedelta(days=30*(x+1)), reebill=reebills[x])
-                    for x in xrange(0, 10)]
-            for x in xrange(10):
-                session.add(reebills[x])
-                session.add(utilbills[x])
-
-            # Add one utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas'
-                    'DC Non Residential Non Heat',
-                    period_start=dt+timedelta(days=30*10),
-                    period_end=dt+timedelta(days=30*11), reebill=None)
-            session.add(target_utilbill)
-
-            utilbills = self.state_db.choose_next_utilbills(session, account, services)
-            self.assertListEqual(services, [ub.service for ub in utilbills])
-            self.assertEqual(len(utilbills), 1)
-            self.assertIsNotNone(utilbills[0])
-            self.assertIsNone(utilbills[0].reebill)
-            self.assertEqual(utilbills[0], target_utilbill)
-
-    def utilbill_period_multiple_unattached(self):
-        # Add ten, nice, sequential gas bills
-        account = '99999'
-        services = ['gas']
-        dt = date.today()
-        with DBSession(self.state_db) as session:
-            customer = self.state_db.get_customer(session, account)
-
-            # Add ten utilbills "associated" to reebills
-            reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
-            for r in reebills:
-                r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    dt+timedelta(days=30*x),
-                    dt+timedelta(days=30*(x+1)),
-                    reebill=reebills[x]) for x in xrange(0, 10)]
-            for x in xrange(10):
-                session.add(reebills[x])
-                session.add(utilbills[x])
-
-            # Add multiple utilbills that come after the last utilbill from the
-            # above loop
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt+timedelta(days=30*10),
-                    period_end=dt+timedelta(days=30*11), reebill=None)
-            session.add(target_utilbill)
-            session.add(UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt+timedelta(days=30*11),
-                    period_end=dt+timedelta(days=30*12), reebill=None))
-            session.add(UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt+timedelta(days=30*12),
-                    period_end=dt+timedelta(days=30*13), reebill=None))
-
-            # Same tests
-            utilbills = self.state_db.choose_next_utilbills(session, account,
-                    services)
-            self.assertListEqual(services, [ub.service for ub in utilbills])
-            self.assertEqual(len(utilbills), 1)
-            self.assertIsNotNone(utilbills[0])
-            self.assertIsNone(utilbills[0].reebill)
-            self.assertEqual(utilbills[0], target_utilbill)
-
-    def utilbill_period_legacy_unattached(self):
-        account = '99999'
-        services = ['gas']
-        dt = date.today()
-        with DBSession(self.state_db) as session:
-            customer = self.state_db.get_customer(session, account)
-
-            # 7 reebills, 10 utilbills
-            reebills = [None, None, None] + [ReeBill(customer, x+1) for x in xrange(1, 8)]
-            for r in reebills:
-                if r is not None:
-                    r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
-                    dt+timedelta(days=30*(x+1)),
-                    reebill=reebills[x]) for x in xrange(0, 10)]
-
-            # None entries in reebills won't go into the database, so they are stripped here
-            reebills = reebills[3:]
-
-            # Add ten utilbills "associated" to reebills, but the first three have no reebill association
-            for r in reebills:
-                session.add(r)
-            for ub in utilbills:
-                session.add(ub)
-
-            # Add an unattached utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt+timedelta(days=30*10),
-                    period_end=dt+timedelta(days=30*11), reebill=None)
-            session.add(target_utilbill)
-
-            # Same tests
-            utilbills = self.state_db.choose_next_utilbills(session, account, services)
-            self.assertListEqual(services, [ub.service for ub in utilbills])
-            self.assertEqual(len(utilbills), 1)
-            self.assertIsNotNone(utilbills[0])
-            self.assertIsNone(utilbills[0].reebill)
-            self.assertEqual(utilbills[0], target_utilbill)
-
-    def utilbill_period_multiple_services(self):
-        account = '99999'
-        services = ['gas', 'electric']
-        dt_gas = date.today()
-        dt_elec = date.today() + timedelta(days=9)
-        
-        with DBSession(self.state_db) as session:
-            customer = self.state_db.get_customer(session, account)
-
-            reebills = [ReeBill(customer, x+1) for x in xrange(1, 11)]
-            for r in reebills:
-                r.issued = 1
-            gas_utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    dt_gas+timedelta(days=30*x),
-                    dt_gas+timedelta(days=30*(x+1)),
-                    reebill=reebills[x]) for x in xrange(0, 10)]
-            elec_utilbills = [UtilBill(customer, 0, 'electric', 'pepco',
-                    'DC Non Residential Non Heat',
-                    dt_elec+timedelta(days=30*x),\
-                    dt_elec+timedelta(days=30*(x+1)), reebill=reebills[x])
-                    for x in xrange(0, 10)]
-
-            # Add twenty utilbills "associated" to reebills, ten of gas and ten of electric
-            # The gas and electric bills are on different time periods
-            for x in xrange(10):
-                session.add(reebills[x])
-                session.add(gas_utilbills[x])
-                session.add(elec_utilbills[x])
-
-            target_gas_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt_gas+timedelta(days=30*10),
-                    period_end=dt_gas+timedelta(days=30*11), reebill=None)
-            session.add(target_gas_utilbill)
-
-            target_elec_utilbill = UtilBill(customer, 0, 'electric', 'pepco',
-                    'DC Non Residential Non Heat',
-                    period_start=dt_elec+timedelta(days=30*10),
-                    period_end=dt_elec+timedelta(days=30*11), reebill=None)
-            session.add(target_elec_utilbill)
-
-            utilbills = self.state_db.choose_next_utilbills(session, account,
-                    services)
-            self.assertListEqual(services, [ub.service for ub in utilbills])
-            self.assertEqual(len(utilbills), 2)
-            self.assertIsNotNone(utilbills[0])
-            self.assertIsNotNone(utilbills[1])
-            self.assertIsNone(utilbills[0].reebill)
-            self.assertIsNone(utilbills[1].reebill)
-            ub_dict = {ub.service: ub for ub in utilbills}
-            self.assertEqual(ub_dict['gas'], target_gas_utilbill)
-            self.assertEqual(ub_dict['electric'], target_elec_utilbill)
-
-    def utilbill_period_first_utilbill(self):
-        account = '99999'
-        services = ['gas']
-        dt = date.today()
-        
-        with DBSession(self.state_db) as session:
-            customer = self.state_db.get_customer(session, account)
-
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                    'DC Non Residential Non Heat',
-                    period_start=dt, period_end=dt+timedelta(days=30),
-                    reebill=None)
-            session.add(target_utilbill)
-
-            utilbills = self.state_db.choose_next_utilbills(session, account, services)
-            self.assertListEqual(services, [ub.service for ub in utilbills])
-            self.assertEqual(len(utilbills), 1)
-            self.assertIsNotNone(utilbills[0])
-            self.assertIsNone(utilbills[0].reebill)
-            self.assertEqual(utilbills[0], target_utilbill)
 
     def test_get_last_reebill(self):
         with DBSession(self.state_db) as session:
@@ -714,7 +523,6 @@ class StateTest(utils.TestCase):
             self.assertRaises(NoSuchBillException,
                     self.state_db.get_last_real_utilbill, session, '99999',
                     date(2000,3,1))
-
 
 if __name__ == '__main__':
     unittest.main()
