@@ -3,6 +3,17 @@ File: wsgi.py
 '''
 import sys
 import os
+import pprint
+
+# TODO: 64957006
+# Dislike having this exceptionally useful code here, whose purpose is to 
+# display the runtime  configuration to the operator of the software for 
+# troubleshooting.  Not having this code here, renders it useless.
+sys.stdout = sys.stderr
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
+
 import traceback
 import json
 import cherrypy
@@ -27,20 +38,18 @@ from StringIO import StringIO
 from itertools import chain
 import pymongo
 import mongoengine
-from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
-#TODO don't rely on test code, if we are, it isn't test code
 from skyliner import mock_skyliner
-from billing.util import json_util as ju, dateutils, nexus_util as nu
+from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from billing.util.nexus_util import NexusUtil
+from nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
-from billing.processing import mongo, billupload, excel_export
-from billing.util import monthmath
+from billing.processing import mongo, excel_export
+from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
 from billing.processing.state import UtilBill, Customer
 from billing.processing.billupload import BillUpload
-from billing.processing import journal, bill_mailer
+from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
@@ -48,20 +57,6 @@ from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
 
-
-
-# collection names: all collections are now hard-coded. maybe this should go in
-# some kind of documentation when we have documentation...
-# rate structures: 'ratestructure'
-# reebills: 'reebill'
-# users: 'users'
-
-import pprint
-sys.stdout = sys.stderr
-# 29926885 output environment configs to debug virtual env
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
@@ -178,6 +173,7 @@ class BillToolBridge:
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
+            # TODO: 64958246
             # can't log this because logger hasn't been created yet (log file
             # name & associated info comes from config file)
             print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
@@ -396,33 +392,29 @@ class BillToolBridge:
                 },
             )
 
-        # create one Process object to use for all related bill processing
-        # TODO it's theoretically bad to hard-code these, but all skyliner
-        # configuration is hard-coded right now anyway
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            self.process = process.Process(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter, logger=self.logger)
-        else:
-            self.process = process.Process(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, None, None)
+        self.integrate_skyline_backend = self.config.getboolean('runtime',
+                'integrate_skyline_backend')
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
-                dict(self.config.items('reebillrendering')), self.state_db,
-                self.reebill_dao, self.logger)
+            dict(self.config.items('reebillrendering')), self.state_db,
+            self.reebill_dao, self.logger)
 
-        # configure mailer
-        bill_mailer.config = dict(self.config.items("mailer"))
+        self.bill_mailer = Mailer(dict(self.config.items("mailer")))
+
+        # create one Process object to use for all related bill processing
+        self.process = process.Process(self.state_db, self.reebill_dao,
+                self.ratestructure_dao, self.billUpload, self.nexus_util,
+                self.bill_mailer, self.renderer, self.splinter, logger=self
+                .logger)
+
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
-        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
 
-        # TODO: allow the log to be viewed in the UI
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
@@ -612,17 +604,6 @@ class BillToolBridge:
                     " to: %s") % inspect.stack()[1][3])
             raise Unauthenticated("No Session")
 
-    # TODO 30164355 DBSession should log rollbacks the way this did
-    #def rollback_session(self, session):
-    #    try:
-    #        if session is not None: session.rollback()
-    #    except:
-    #        try:
-    #            self.logger.error('Could not rollback session:\n%s' % traceback.format_exc())
-    #        except:
-    #            print >> sys.stderr, ('Logger not functioning\nCould not '
-    #                    'roll back session:\n%s') % traceback.format_exc()
-
     def handle_exception(self, e):
         if type(e) is cherrypy.HTTPRedirect:
             # don't treat cherrypy redirect as an error
@@ -764,49 +745,23 @@ class BillToolBridge:
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-
-        # 1st transaction: roll
         with DBSession(self.state_db) as session:
-            last_seq = self.state_db.last_sequence(session, account)
-            if last_seq == 0:
-                utilbill = session.query(UtilBill).join(Customer)\
-                        .filter(UtilBill.customer_id == Customer.id)\
-                        .filter_by(account=account)\
-                        .filter(UtilBill.period_start >= start_date)\
-                        .order_by(UtilBill.period_start).first()
-                if utilbill is None:
-                    raise ValueError("No utility bill found starting on/after %s" %
-                            start_date)
-                self.process.create_first_reebill(session, utilbill)
-            else:
-                self.process.create_next_reebill(session, account)
-            new_reebill_doc = self.reebill_dao.load_reebill(account, last_seq +
-                    1)
+            reebill = self.process.roll_reebill(session,account,
+                    start_date=start_date,
+                    integrate_skyline_backend=self.integrate_skyline_backend)
 
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, last_seq + 1)
+                    account, reebill.sequence)
             # Process.roll includes attachment
             # TODO "attached" is no longer a useful event;
             # see https://www.pivotaltracker.com/story/show/55044870
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, last_seq + 1, new_reebill_doc.version)
-
-        # 2nd transaction: bind and compute. if one of these fails, don't undo
-        # the changes to MySQL above, leaving a Mongo reebill document without
-        # a corresponding MySQL row; only undo the changes related to binding
-        # and computing (currently there are none).
-        with DBSession(self.state_db) as session:
-            if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-                fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_reebill_doc, use_olap=True, verbose=True)
-            self.reebill_dao.save_reebill(new_reebill_doc)
+                account, reebill.sequence, reebill.version)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill_doc.sequence, new_reebill_doc.version)
-            
-            self.process.compute_reebill(session, new_reebill_doc)
-            self.reebill_dao.save_reebill(new_reebill_doc)
+                account, reebill.sequence, reebill.version)
 
-            return self.dumps({'success': True})
+        return self.dumps({'success': True, 'account':account,
+                           'sequence': reebill.sequence})
 
     @cherrypy.expose
     @random_wait
@@ -820,15 +775,12 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            fbd.fetch_oltp_data(self.splinter,
-                    self.nexus_util.olap_id(account), reebill, use_olap=True,
-                    verbose=True)
-        self.reebill_dao.save_reebill(reebill)
-        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence, reebill.version)
+        with DBSession(self.state_db) as session:
+            self.process.bind_renewable_energy(session, account, sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                    account, sequence, reebill.version)
         return self.dumps({'success': True})
 
 
@@ -841,25 +793,9 @@ class BillToolBridge:
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # convert column letters into 0-based indices
-        if not re.match('[A-Za-z]', timestamp_column):
-            raise ValueError('Timestamp column must be a letter')
-        if not re.match('[A-Za-z]', energy_column):
-            raise ValueError('Energy column must be a letter')
-        timestamp_column = ord(timestamp_column.lower()) - ord('a')
-        energy_column = ord(energy_column.lower()) - ord('a')
-
-        # extract data from the file (assuming the format of AtSite's
-        # example files)
-        fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=register_identifier,
-                timestamp_column=timestamp_column,
-                energy_column=energy_column,
-                timestamp_format=timestamp_format, energy_unit=energy_unit)
-
-        self.reebill_dao.save_reebill(reebill)
+        reebill = self.process.upload_interval_meter_csv(account, sequence,
+                        csv_file,timestamp_column, timestamp_format,
+                        energy_column, energy_unit, register_identifier, args)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
         return self.dumps({'success': True})
@@ -874,12 +810,7 @@ class BillToolBridge:
         '''Handler for the front end's "Compute Bill" operation.'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            # use version 0 of the predecessor to show the real account
-            # history (prior balance, payment received, balance forward)
-            mongo_reebill = self.reebill_dao.load_reebill(account,
-                    sequence, version='max')
-            self.process.compute_reebill(session, mongo_reebill)
-            self.reebill_dao.save_reebill(mongo_reebill)
+            self.process.compute_reebill(session,account,sequence,'max')
             return self.dumps({'success': True})
     
         
@@ -926,20 +857,9 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def regenerate_uprs(self, utilbill_id, **args):
+    def regenerate_rs(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.regenerate_uprs(session, utilbill_id)
-            # NOTE utility bill is not automatically computed after rate
-            # structure is changed. nor are charges updated to match.
-            return self.dumps({'success': True})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def regenerate_cprs(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            self.process.regenerate_cprs(session, utilbill_id)
             # NOTE utility bill is not automatically computed after rate
             # structure is changed. nor are charges updated to match.
             return self.dumps({'success': True})
@@ -968,90 +888,48 @@ class BillToolBridge:
             )
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences,
-            apply_corrections=True):
-        '''Issues all unissued bills given by account and sequences. These must
-        be version 0, not corrections. If apply_corrections is True, all
-        unissued corrections will be applied to the earliest unissued bill in
-        sequences.'''
-        # attach utility bills to all unissued bills
-        #for unissued_sequence in sequences:
-        #    self.attach_utility_bills(session, account, unissued_sequence)
-
-        if apply_corrections:
-            # get unissued corrections for this account
-            unissued_correction_sequences = self.process\
-                    .get_unissued_correction_sequences(session, account)
-
-            # apply all corrections to earliest un-issued bill, then issue
-            # that and all other un-issued bills
-            self.process.issue_corrections(session, account, sequences[0])
-
-        # compute and issue all unissued reebills
-        for unissued_sequence in sequences:
-            reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
-            self.process.compute_reebill(session, reebill)
-            self.process.issue(session, account, unissued_sequence)
-
-        # journal attaching of utility bills
-        for unissued_sequence in sequences:
-            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                    account, unissued_sequence, self.state_db.max_version(session,
-                    account, unissued_sequence))
-        # journal issuing of corrections (applied to the earliest unissued
-        # bill), if any
-        if apply_corrections:
-            for correction_sequence in unissued_correction_sequences:
-                journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'],
-                        account, sequences[0],
-                        self.state_db.max_version(session, account,
-                        correction_sequence),
-                        applied_sequence=sequences[0])
-        # journal issuing of all unissued bills
-        for unissued_sequence in sequences:
-            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                    account, unissued_sequence, 0)
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issue_and_mail(self, account, sequence, apply_corrections, **kwargs):
+    def issue_and_mail(self, account, sequence, recipients, apply_corrections,
+                       **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
+
         with DBSession(self.state_db) as session:
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            recipients = mongo_reebill.bill_recipients
+            # If there are unissued corrections and the user has not confirmed
+            # to issue them, we will return a list of those corrections and the
+            # sum of adjustments that have to be made so the client can create
+            # a confirmation message
             unissued_corrections = self.process.get_unissued_corrections(session, account)
-            unissued_correction_sequences = [c[0] for c in unissued_corrections]
-            unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
             if len(unissued_corrections) > 0 and not apply_corrections:
                     return self.dumps({'success': False,
-                        'corrections': unissued_correction_sequences,
-                        'adjustment': unissued_correction_adjustment })
-            self.issue_reebills(session, account, [sequence], apply_corrections=apply_corrections)
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.renderer.render_max_version(session, account, sequence,
-                                             self.config.get("billdb", "billpath")+ "%s" % account,
-                                             "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
-            bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-            merge_fields = {}
-            merge_fields["street"] = mongo_reebill.service_address.get("street","")
-            merge_fields["balance_due"] = round(mongo_reebill.balance_due, 2)
-            merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
-            merge_fields["last_bill"] = bill_name
-            bill_mailer.mail(recipients, merge_fields,
-                    os.path.join(self.config.get("billdb", "billpath"),
-                        account), [bill_name]);
+                        'corrections': [c[0] for c in unissued_corrections],
+                        'adjustment': sum(c[2] for c in unissued_corrections)})
 
-            last_sequence = self.state_db.last_sequence(session, account)
-            if sequence != last_sequence:
-                next_bill = self.reebill_dao.load_reebill(account, sequence+1)
-                next_bill.bill_recipients = recipients
-                self.reebill_dao.save_reebill(next_bill)
+            # The user has confirmed to issue unissued corrections.
+            # Let's issue
+            if len(unissued_corrections) > 0:
+                assert apply_corrections is True
+                self.process.issue_corrections(session, account, sequence)
+                for cor in unissued_corrections:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'],account, sequence,
+                        self.state_db.max_version(session, account, cor),
+                        applied_sequence=sequences[0])
+            self.process.compute_reebill(session, account, sequence)
+            self.process.issue(session, account, sequence)
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                                     account, sequence, 0)
+
+            # Let's mail!
+            # Recepients can be a comma seperated list of email addresses
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+            self.process.mail_reebills(session, account, [sequence],
+                                       recipient_list)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                     account, sequence, ", ".join(recipients))
+                                                account, sequence, recipients)
 
         return self.dumps({'success': True})
 
@@ -1071,85 +949,15 @@ class BillToolBridge:
             sequences = [int(sequences)]
 
         with DBSession(self.state_db) as session:
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
-                    sequence in sequences]
-
-            # render all the bills
-            # TODO 25560415 this fails if reebill rendering is turned
-            # off--there should be a better error message
-            for reebill in all_bills:
-                self.renderer.render_max_version(session, reebill.account, reebill.sequence,
-                    self.config.get("billdb", "billpath")+ "%s" % reebill.account,
-                    "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)), True)
-
-            # "the last element" (???)
-            most_recent_bill = all_bills[-1]
-            bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for sequence in sequences]
-            bill_dates = ["%s" % (b.period_end) for b in all_bills]
-            bill_dates = ", ".join(bill_dates)
-            merge_fields = {}
-            merge_fields["street"] = most_recent_bill.service_address.get("street","")
-            merge_fields["balance_due"] = round(most_recent_bill.balance_due, 2)
-            merge_fields["bill_dates"] = bill_dates
-            merge_fields["last_bill"] = bill_file_names[-1]
-            print recipient_list, merge_fields,os.path.join(self.config.get("billdb", "billpath"),account), bill_file_names
-            bill_mailer.mail(recipient_list, merge_fields,
-                    os.path.join(self.config.get("billdb", "billpath"),
-                        account), bill_file_names);
+            self.process.mail_reebills(session, account, sequences,
+                    recipient_list)
 
             # journal mailing of every bill
-            for reebill in all_bills:
-                journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                        reebill.account, reebill.sequence, recipients)
+            for sequence in sequences:
+                journal.ReeBillMailedEvent.save_instance(
+                        cherrypy.session['user'], account, sequence, recipients)
 
             return self.dumps({'success': True})
-
-    def all_names_of_accounts(self, accounts):
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
-
-        return name_dicts
-
-    def full_names_of_accounts(self, accounts):
-        '''Given a list of account numbers (as strings), returns a list
-        containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus" (sorted by
-        account). Names that do not exist for a given account are skipped.'''
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
-            return accounts
-
-        # get list of customer name dictionaries sorted by their billing account
-        name_dicts = self.all_names_of_accounts(accounts)
-
-        result = []
-        with DBSession(self.state_db) as session:
-            for account, all_names in name_dicts:
-                res = account + ' - '
-                # Only include the names that exist in Nexus
-                names = [all_names[name] for name in
-                         ('codename', 'casualname', 'primus')
-                         if all_names.get(name)]
-                res += '/'.join(names)
-                if len(names) > 0:
-                    res += ' - '
-                #Append utility and rate_class from the last utilbill for the
-                #account if one exists as per
-                #https://www.pivotaltracker.com/story/show/58027082
-                try:
-                    last_utilbill = self.state_db.get_last_utilbill(
-                        session, account)
-                except NoSuchBillException:
-                    #No utilbill found, just don't append utility info
-                    pass
-                else:
-                    res += "%s: %s" %(last_utilbill.utility,
-                                      last_utilbill.rate_class)
-                result.append(res)
-        return result
 
     @cherrypy.expose
     @random_wait
@@ -1157,34 +965,35 @@ class BillToolBridge:
     @json_exception
     def listAccounts(self, **kwargs):
         with DBSession(self.state_db) as session:
-            accounts = []
-            # eventually, this data will have to support pagination
             accounts = self.state_db.listAccounts(session)
             rows = [{'account': account, 'name': full_name} for account,
-                    full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+                    full_name in zip(accounts,
+                    self.process.full_names_of_accounts(session, accounts))]
             return self.dumps({'success': True, 'rows':rows})
 
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def listSequences(self, account, **kwargs):
-        '''Handles AJAX request to get reebill sequences for each account and
-        whether each reebill has been committed.'''
-        with DBSession(self.state_db) as session:
-            sequences = []
-            # eventually, this data will have to support pagination
-            sequences = self.state_db.listSequences(session, account)
-            # TODO "issued" is used for the value of "committed" here because
-            # committed is ill-defined: currently StateDB.is_committed()
-            # returns true iff the reebill has attached utilbills, which
-            # doesn't make sense.
-            # https://www.pivotaltracker.com/story/show/24382885
-            rows = [{'sequence': sequence,
-                'committed': self.state_db.is_issued(session, account, sequence)}
-                for sequence in sequences]
-            return self.dumps({'success': True, 'rows':rows})
+    # It is believed that this code is not used anymore. If there are no
+    # complaints concerning this export after release 19,
+    # this code can be removed.
+    # @cherrypy.expose
+    # @random_wait
+    # @authenticate_ajax
+    # @json_exception
+    # def listSequences(self, account, **kwargs):
+    #     '''Handles AJAX request to get reebill sequences for each account and
+    #     whether each reebill has been committed.'''
+    #     with DBSession(self.state_db) as session:
+    #         sequences = []
+    #         # eventually, this data will have to support pagination
+    #         sequences = self.state_db.listSequences(session, account)
+    #         # TODO "issued" is used for the value of "committed" here because
+    #         # committed is ill-defined: currently StateDB.is_committed()
+    #         # returns true iff the reebill has attached utilbills, which
+    #         # doesn't make sense.
+    #         # https://www.pivotaltracker.com/story/show/24382885
+    #         rows = [{'sequence': sequence,
+    #             'committed': self.state_db.is_issued(session, account, sequence)}
+    #             for sequence in sequences]
+    #         return self.dumps({'success': True, 'rows':rows})
 
 
     @cherrypy.expose
@@ -1194,29 +1003,13 @@ class BillToolBridge:
     def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
-        #Various filter functions used below to filter the resulting rows
-        def filter_reebillcustomers(row):
-            return int(row['account'])<20000
-        def filter_xbillcustomers(row):
-            return int(row['account'])>=20000
-        # this function is used below to format the "Utility Service Address"
-        # grid column
-        def format_service_address(service_address, account):
-            try:
-                return '%(street)s, %(city)s, %(state)s' % service_address
-            except KeyError as e:
-                self.logger.error(('Utility bill service address for %s '
-                        'lacks key "%s": %s') % (
-                                account, e.message, service_address))
-                return '?'
 
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
         with DBSession(self.state_db) as session:
             start, limit = int(start), int(limit)
 
-            # result is a list of dictionaries of the form
-            # {account: full name, dayssince: days}
+            filtername = kwargs.get('filtername', None)
+            if filtername is None:
+                filtername = cherrypy.session['user'].preferences.get('filtername','')
 
             sortcol = kwargs.get('sort', None)
             if sortcol is None:
@@ -1231,88 +1024,7 @@ class BillToolBridge:
             else:
                 sortreverse = True
 
-            # pass the sort params if we want the db to do any sorting work
-            statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
-
-            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-
-            rows = []
-            for status in statuses:
-                last_reebill = self.state_db.get_last_reebill(session,
-                         status.account, issued_only=True)
-                lastevent = self.journal_dao.last_event_summary(status.account)
-                try:
-                    service_address = self.process.get_service_address(session,
-                                                                status.account)
-                    service_address=format_service_address(service_address,
-                                                        status.account)
-                except NoSuchBillException:
-                    service_address = ''
-                rows.append({
-                    'account': status.account,
-                    'codename': name_dicts[status.account]['codename'] if
-                           'codename' in name_dicts[status.account] else '',
-                    'casualname': name_dicts[status.account]['casualname'] if
-                           'casualname' in name_dicts[status.account] else '',
-                    'primusname': name_dicts[status.account]['primus'] if
-                           'primus' in name_dicts[status.account] else '',
-                    'utilityserviceaddress': service_address,
-                    'dayssince': status.dayssince,
-                    'lastissuedate': last_reebill.issue_date if last_reebill \
-                            else '',
-                    'lastevent': lastevent,
-                    'provisionable': False,
-                })
-            
-            #Apply filters
-            filtername = kwargs.get('filtername', None)
-            if filtername is None:
-                filtername = cherrypy.session['user'].preferences.get('filtername','')
-            if filtername=="reebillcustomers":
-                rows=filter(filter_reebillcustomers, rows)
-            elif filtername=="xbillcustomers":
-                rows=filter(filter_xbillcustomers, rows)
-            rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
-
-            ## also get customers from Nexus who don't exist in billing yet
-            ## (do not sort these; just append them to the end)
-            ## TODO: we DO want to sort these, but we just want to them to come
-            ## after all the billing billing customers
-            #non_billing_customers = self.nexus_util.get_non_billing_customers()
-            #morerows = []
-            #for customer in non_billing_customers:
-                #morerows.append(dict([
-                    ## we have the olap_id too but we don't show it
-                    #('account', 'n/a'),
-                    #('codename', customer['codename']),
-                    #('casualname', customer['casualname']),
-                    #('primusname', customer['primus']),
-                    #('dayssince', 'n/a'),
-                    #('lastevent', 'n/a'),
-                    #('provisionable', True)
-                #]))
-
-            #if sortcol == 'account':
-                #morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
-            #elif sortcol == 'codename':
-                #morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
-            #elif sortcol == 'casualname':
-                #morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
-            #elif sortcol == 'primusname':
-                #morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
-            #elif sortcol == 'dayssince':
-                #morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
-            #elif sortcol == 'lastevent':
-                #morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
-
-            #rows.extend(morerows)
-
-            # count includes both billing and non-billing customers (front end
-            # needs this for pagination)
-            count = len(rows)
-
-            # take slice for one page of the grid's data
-            rows = rows[start:start+limit]
+            count, rows = self.process.list_account_status(session,start,limit,filtername,sortcol,sortreverse)
 
             cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
             cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
@@ -1324,49 +1036,12 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def summary_ree_charges(self, start, limit, **args):
-        '''Handles AJAX request for "Summary and Export" grid in "Accounts"
-        tab.'''
-        return self.dumps({'success': True})
-        with DBSession(self.state_db) as session:
-            accounts, totalCount = self.state_db.list_accounts(session,
-                    int(start), int(limit))
-            account_names = self.all_names_of_accounts([account for account in
-                    accounts])
-            rows = self.process.summary_ree_charges(session, accounts, account_names)
-            for row in rows:
-                outstanding_balance = self.process.get_outstanding_balance(session,
-                        row['account'])
-                days_since_due_date = None
-                if outstanding_balance > 0:
-                    payments = self.state_db.payments(session, row['account'])
-                    if payments:
-                        last_payment_date = payments[-1].date_received
-                        reebills_since = self.reebill_dao.load_reebills_in_period(
-                                row['account'], 'any', last_payment_date, date.today())
-                        if reebills_since and reebills_since[0].due_date:
-                            days_since_due_date = (date.today() -
-                                    reebills_since[0].due_date).days
-
-                row.update({'outstandingbalance': '$%.2f' % outstanding_balance,
-                           'days_late': days_since_due_date})
-            return self.dumps({'success': True, 'rows':rows,
-                    'results':totalCount})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
         '''
         Responds with an excel spreadsheet containing all actual charges, total
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, ISO_8601_DATE).date() if x else None
-        begin_date = make_date(begin_date)
-        end_date = make_date(end_date)
         #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
             buf = StringIO()
@@ -1383,78 +1058,84 @@ class BillToolBridge:
                 datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
 
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def all_ree_charges_csv_altitude(self, **args):
-        with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report_altitude(session)
+    # It is believed that this code is not used anymore. If there are no
+    # complaints concerning this export after release 19,
+    # this code can be removed.
+    # @cherrypy.expose
+    # @random_wait
+    # @authenticate_ajax
+    # @json_exception
+    # def all_ree_charges_csv_altitude(self, **args):
+    #     with DBSession(self.state_db) as session:
+    #         rows, total_count = self.process.reebill_report_altitude(session)
+    #
+    #         import csv
+    #         import StringIO
+    #
+    #         buf = StringIO.StringIO()
+    #
+    #         writer = csv.writer(buf)
+    #
+    #         writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
+    #
+    #         for row in rows:
+    #             ba = row['billing_address']
+    #             bill_addr_str = "%s %s %s %s %s" % (
+    #                 ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
+    #                 ba['street'] if 'street' in ba and ba['street'] is not None else "",
+    #                 ba['city'] if 'city' in ba and ba['city'] is not None else "",
+    #                 ba['state'] if 'state' in ba and ba['state'] is not None else "",
+    #                 ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
+    #             )
+    #             sa = row['service_address']
+    #             service_addr_str = "%s %s %s %s %s" % (
+    #                 sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
+    #                 sa['street'] if 'street' in sa and sa['street'] is not None else "",
+    #                 sa['city'] if 'city' in sa and sa['city'] is not None else "",
+    #                 sa['state'] if 'state' in sa and sa['state'] is not None else "",
+    #                 sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
+    #             )
+    #
+    #             writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
+    #
+    #             cherrypy.response.headers['Content-Type'] = 'text/csv'
+    #             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+    #
+    #
+    #         data = buf.getvalue()
+    #         return data
 
-            import csv
-            import StringIO
-
-            buf = StringIO.StringIO()
-
-            writer = csv.writer(buf)
-
-            writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
-
-            for row in rows:
-                ba = row['billing_address']
-                bill_addr_str = "%s %s %s %s %s" % (
-                    ba['addressee'] if 'addressee' in ba and ba['addressee'] is not None else "",
-                    ba['street'] if 'street' in ba and ba['street'] is not None else "",
-                    ba['city'] if 'city' in ba and ba['city'] is not None else "",
-                    ba['state'] if 'state' in ba and ba['state'] is not None else "",
-                    ba['postal_code'] if 'postal_code' in ba and ba['postal_code'] is not None else "",
-                )
-                sa = row['service_address']
-                service_addr_str = "%s %s %s %s %s" % (
-                    sa['addressee'] if 'addressee' in sa and sa['addressee'] is not None else "",
-                    sa['street'] if 'street' in sa and sa['street'] is not None else "",
-                    sa['city'] if 'city' in sa and sa['city'] is not None else "",
-                    sa['state'] if 'state' in sa and sa['state'] is not None else "",
-                    sa['postal_code'] if 'postal_code' in sa and sa['postal_code'] is not None else "",
-                )
-
-                writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
-
-                cherrypy.response.headers['Content-Type'] = 'text/csv'
-                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
-
-
-            data = buf.getvalue()
-            return data
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def discount_rates_csv_altitude(self, **args):
-        with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report_altitude(session)
-
-            import csv
-            import StringIO
-
-            buf = StringIO.StringIO()
-
-            writer = csv.writer(buf)
-
-            writer.writerow(['Account', 'Discount Rate'])
-
-            for account, group in it.groupby(rows, lambda row: row['account']):
-                for row in group:
-                    if row['discount_rate']:
-                        writer.writerow([account, row['discount_rate']])
-                        break
-
-            cherrypy.response.headers['Content-Type'] = 'text/csv'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=reebill_discount_rates_%s.csv' % datetime.now().strftime("%Y%m%d")
-
-            data = buf.getvalue()
-            return data
+    # It is believed that this code is not used anymore. If there are no
+    # complaints concerning this export after release 19,
+    # this code can be removed.
+    # @cherrypy.expose
+    # @random_wait
+    # @authenticate_ajax
+    # @json_exception
+    # def discount_rates_csv_altitude(self, **args):
+    #     with DBSession(self.state_db) as session:
+    #         rows, total_count = self.process.reebill_report_altitude(session)
+    #
+    #         import csv
+    #         import StringIO
+    #
+    #         buf = StringIO.StringIO()
+    #
+    #         writer = csv.writer(buf)
+    #
+    #         writer.writerow(['Account', 'Discount Rate'])
+    #
+    #         for account, group in it.groupby(rows, lambda row: row['account']):
+    #             for row in group:
+    #                 if row['discount_rate']:
+    #                     writer.writerow([account, row['discount_rate']])
+    #                     break
+    #
+    #         cherrypy.response.headers['Content-Type'] = 'text/csv'
+    #         cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=reebill_discount_rates_%s.csv' % datetime.now().strftime("%Y%m%d")
+    #
+    #         data = buf.getvalue()
+    #         return data
 
 
     @cherrypy.expose
@@ -1537,35 +1218,19 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def uprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
+    def rsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
         '''AJAX request handler for "Shared Rate Structure Items" grid.
-        '''
-        return self.rsi_crud(utilbill_id, 'uprs', xaction, reebill_sequence,
-                reebill_version, kwargs.get('rows'))
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def cprsrsi(self, utilbill_id, xaction, reebill_sequence=None,
-            reebill_version=None, **kwargs):
-        '''AJAX request handler for "Individual Rate Structure Items" grid.
-        '''
-        return self.rsi_crud(utilbill_id, 'cprs', xaction, reebill_sequence,
-                reebill_version, kwargs.get('rows'))
-
-    def rsi_crud(self, utilbill_id, rsi_type, xaction, reebill_sequence,
-            reebill_version, rows):
-        '''Performs all CRUD operations on the UPRS or CPRS of the utility bill
+        Performs all CRUD operations on the UPRS of the utility bill
         given by its MySQL id (and reebill_sequence and reebill_version if
         non-None). 'xaction' is one of the Ext-JS operation names "create",
         "read", "update", "destroy". If 'xaction' is not "read", 'rows' should
         contain data to create
         '''
+        rows = kwargs.get('rows')
         with DBSession(self.state_db) as session:
             rate_structure = self.process.get_rs_doc(session, utilbill_id,
-                    rsi_type, reebill_sequence=reebill_sequence,
+                    'uprs', reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
             rates = rate_structure.rates
 
@@ -1594,6 +1259,13 @@ class BillToolBridge:
                     # extract "id" field from the JSON because all remaining
                     # key-value pairs are fields to update in the RSI
                     id = row.pop('id')
+
+                    # Fix boolean values that are interpreted as strings
+                    for key in ('shared', 'has_charge'):
+                        if row[key] in ("false", False):
+                            row[key] = False
+                        else:
+                            row[key] = True
 
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
@@ -1705,40 +1377,33 @@ class BillToolBridge:
         '''Return a list of the issuable reebills'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                start = kwargs['start']
-                limit = kwargs['limit']
+                start = int(kwargs['start'])
+                limit = int(kwargs['limit'])
                 sort = kwargs['sort']
                 direction = kwargs['dir']
-                rows = []
-                allowable_diff = 0
+
                 try:
                     allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
-                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
-                for reebill_info in reebills:
-                    row_dict = {}
-                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
-                    row_dict['id'] = reebill_info[0]
-                    row_dict['account'] = reebill_info[0]
-                    row_dict['sequence'] = reebill_info[1]
-                    row_dict['util_total'] = reebill_info[2]
-                    row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
-                    row_dict['reebill_total'] = mongo_reebill.actual_total
-                    try:
-                        row_dict['difference'] = abs(row_dict['reebill_total']-row_dict['util_total'])
-                    except ZeroDivisionError:
-                        row_dict['difference'] = float('inf')
-                    row_dict['matching'] = row_dict['difference'] < allowable_diff
-                    rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                rows.sort(key=lambda d: d['matching'], reverse = True)
-                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
+
+                issuable_reebills = self.process.get_issuable_reebills_dict(session)
+                for reebill_info in issuable_reebills:
+                    reebill_info['id'] = reebill_info['account'],
+                    reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
+                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+
+                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
+                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True,
+                                   'rows': issuable_reebills[start:start+limit],
+                                   'total': len(issuable_reebills)})
             elif xaction == 'update':
                 row = json.loads(kwargs["rows"])
-                mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
-                mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
-                self.reebill_dao.save_reebill(mongo_reebill)
+                self.process.update_bill_email_recipient(session,
+                                                         row['account'],
+                                                         row['sequence'],
+                                                         row['mailto'])
                 return self.dumps({'success':True})
             
     @cherrypy.expose
@@ -1754,41 +1419,8 @@ class BillToolBridge:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
             for sequence in sequences:
-                # previously, a reebill was only allowed to be deleted if
-                # predecessor has an unissued version, so bills could only be
-                # deleted in sequence order. as of 54786706, the lesson that
-                # accounting history can never change has finally been learned;
-                # since there is no dependency of one bill's accounting history
-                # information on that of its predecessors, there is no need for
-                # the rule that corrections must always be in a contiguous
-                # block ending at the newest reebill that has ever been issued.
-                #last_sequence = self.state_db.last_sequence(session, account)
-                #max_version = self.state_db.max_version(session, account, sequence)
-                #if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
-                        #(sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
-                    #raise ValueError(("Can't delete a reebill version whose "
-                            #"predecessor is unissued, unless its version is 0 "
-                            #"and its sequence is the last one. Delete a "
-                            #"series of unissued bills in sequence order."))
-
-                reebill = self.state_db.get_reebill(session, account, sequence)
-                deleted_version = self.process.delete_reebill(session, reebill)
-
-                # Delete the PDF associated with a reebill if it was version 0
-                # because we believe it is confusing to delete the pdf when
-                # when a version still exists
-                if deleted_version == 0:
-                    path = self.config.get('billdb', 'billpath')+'%s' %(account)
-                    file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-                    full_path = os.path.join(path, file_name)
-
-                    # If the file exists, delete it, otherwise don't worry.
-                    try:
-                        os.remove(full_path)
-                    except OSError as e:
-                        if e.errno != errno.ENOENT:
-                            raise
-            
+                deleted_version = self.process.delete_reebill(session,
+                        account, sequence)
             # deletions must all have succeeded, so journal them
             for sequence in sequences:
                 journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
@@ -1828,47 +1460,36 @@ class BillToolBridge:
     def account_info(self, account, sequence, **args):
         '''Handles AJAX request for "Sequential Account Information form.
         '''
-        sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        with DBSession(self.state_db) as session:
+            sequence = int(sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            reebill_document = self.reebill_dao.load_reebill(account, sequence)
 
-        # It is possible that there is no reebill for the requested addresses
-        # if this is the case, return no periods.  
-        # This is done so that the UI can configure itself with no data
-        if reebill is None:
-            # TODO: 40161259 - must return success field
-            return self.dumps({})
+            def format_address(address):
+                # TODO: 64765002
+                # This function exists multiple times in here and in exporter
+                # code. Time to move it somewhere else!
+                return {
+                'addressee': address['addressee'] if 'addressee' in address else '',
+                'street': address['street'] if 'street' in address else '',
+                'city': address['city'] if 'city' in address else '',
+                'state': address['state'] if 'state' in address else '',
+                'postal_code': address['postal_code'] if 'postal_code' in address else '',
+            }
 
-        ba = reebill.billing_address
-        sa = reebill.service_address
-        
-        account_info = {'success': True}
+            account_info = {'success': True,
+                    'billing_address': format_address(reebill_document
+                    .billing_address),
+                    'service_address': format_address(reebill_document.service_address),
+                    'discount_rate': reebill.discount_rate}
 
-        account_info['billing_address'] = {
-            'addressee': ba['addressee'] if 'addressee' in ba else '',
-            'street': ba['street'] if 'street' in ba else '',
-            'city': ba['city'] if 'city' in ba else '',
-            'state': ba['state'] if 'state' in ba else '',
-            'postal_code': ba['postal_code'] if 'postal_code' in ba else '',
-        }
+            try:
+                account_info['late_charge_rate'] = reebill.late_charge_rate
+            except KeyError:
+                # ignore late charge rate when absent
+                pass
 
-        account_info['service_address'] = {
-            'addressee': sa['addressee'] if 'addressee' in sa else '',
-            'street': sa['street'] if 'street' in sa else '',
-            'city': sa['city'] if 'city' in sa else '',
-            'state': sa['state'] if 'state' in sa else '',
-            'postal_code': sa['postal_code'] if 'postal_code' in sa else '',
-        }
-
-        try:
-            account_info['late_charge_rate'] = reebill.late_charge_rate
-        except KeyError:
-            # ignore late charge rate when absent
-            pass
-
-        account_info['discount_rate'] = reebill.discount_rate
-
-        # TODO: 40161259 - must return success field
-        return self.dumps(account_info)
+            return self.dumps(account_info)
 
 
     @cherrypy.expose
@@ -1880,60 +1501,27 @@ class BillToolBridge:
         ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street, sa_city, sa_state, sa_postal_code,
         **kwargs):
-        """ Update account information in "Sequential Account Information form.
-        """
+        '''Update account information in "Sequential Account Information" form.
+        '''
         sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # TODO: 27042211 numerical types
-        assert isinstance(discount_rate, basestring)
-        reebill.discount_rate = float(discount_rate)
-
-        # process late_charge_rate
-        # strip out anything unrelated to a decimal number
-        late_charge_rate = re.sub('[^0-9\.-]+', '', late_charge_rate)
-        assert isinstance(late_charge_rate, basestring)
+        discount_rate = float(discount_rate)
         late_charge_rate = float(late_charge_rate)
-        if late_charge_rate < 0 or late_charge_rate >1:
-            # TODO: form field validation belons in the client
-            return self.dumps({'success': False,
-                'errors': {'reason': 'Late Charge Rate',
-                'details': 'must be between 0 and 1',
-                'late_charge_rate': 'Invalid late charge rate'}})
-        reebill.late_charge_rate = late_charge_rate
-        
-        ba = {}
-        sa = {}
-        
-        ba['addressee'] = ba_addressee
-        ba['street'] = ba_street
-        ba['city'] = ba_city
-        ba['state'] = ba_state
-        ba['postal_code'] = ba_postal_code
-        reebill.billing_address = ba
 
-        sa['addressee'] = ba_addressee
-        sa['street'] = ba_street
-        sa['city'] = ba_city
-        sa['state'] = ba_state
-        sa['postal_code'] = ba_postal_code
-        reebill.service_address = sa
+        # rely on client-side validation
+        assert discount_rate >= 0 and discount_rate <= 1
+        assert late_charge_rate >= 0 and late_charge_rate <= 1
 
-        # set disabled services (services not mentioned in the request are
-        # automatically resumed)
-        for service in reebill.services:
-            if kwargs.get('%s_suspended' % service, '') == 'on' or kwargs \
-                    .get('%s_suspended' % service.lower(), '') == 'on':
-                reebill.suspend_service(service.lower())
-                #print service, 'suspended'
-            elif kwargs.get('%s_suspended' % service, '') == 'off' or kwargs \
-                    .get('%s_suspended' % service.lower(), '') == 'off':
-                #print service, 'resumed'
-                reebill.resume_service(service.lower())
-
-        self.reebill_dao.save_reebill(reebill)
-
-        return self.dumps({'success':True})
+        with DBSession(self.state_db) as session:
+            self.process.update_sequential_account_info(session, account,
+                    sequence, discount_rate=discount_rate,
+                    late_charge_rate=late_charge_rate,
+                    ba_addressee=ba_addressee, ba_street=ba_street,
+                    ba_city=ba_city, ba_state=ba_state,
+                    ba_postal_code=ba_postal_code,
+                    sa_addressee=sa_addressee, sa_street=sa_street,
+                    sa_city=sa_city, sa_state=sa_state,
+                    sa_postal_code=sa_postal_code)
+            return self.dumps({'success': True})
 
 
     @cherrypy.expose
@@ -1946,7 +1534,6 @@ class BillToolBridge:
         (usually empty). Used to show service suspension checkboxes in
         "Sequential Account Information".'''
         sequence = int(sequence)
-
         reebill = self.reebill_dao.load_reebill(account, sequence)
         if reebill is None:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
@@ -1956,32 +1543,19 @@ class BillToolBridge:
             'suspended_services': reebill.suspended_services
         })
 
-    #
-    ################
-
-    ################
-    # handle actual and hypothetical charges 
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
-        def get_charge_by_id(charges_json, the_id):
-            charge_matches = [c for c in flattened_charges
-                    if c['id'] == the_id]
-            assert len(charge_matches) == 1
-            return charge_matches[0]
-
         with DBSession(self.state_db) as session:
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
-                    reebill_sequence=reebill_sequence,
+            charges_json = self.process.get_utilbill_charges_json(session,
+                    utilbill_id, reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-            flattened_charges = mongo.get_charges_json(utilbill_doc)
-
             if xaction == "read":
-                return self.dumps({'success': True, 'rows': flattened_charges})
+                return self.dumps({'success': True, 'rows': charges_json,
+                        'total':len(charges_json)})
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1989,51 +1563,30 @@ class BillToolBridge:
                 raise IssuedBillError('Issued reebills cannot be modified')
 
             if xaction == "update":
-                rows = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
-                for row in rows:
-                    # replace all key-value pairs in the charge dictionary
-                    # with those from 'row'
-                    the_charge = get_charge_by_id(flattened_charges, row['id'])
-                    the_charge.clear()
-                    the_charge.update(row)
+                row = json.loads(kwargs["rows"])[0]
+                # single edit comes in a list containing a dict;
+                # multiple would be in list of
+                # dicts but that should be impossible
+                assert isinstance(row, dict)
 
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
-                self.reebill_dao.save_utilbill(utilbill_doc)
-                return self.dumps({'success':True})
+                rsi_binding = row.pop('id')
+                self.process.update_charge(session, utilbill_id, rsi_binding,
+                        row)
 
             if xaction == "create":
-                row = json.loads(kwargs["rows"])
-                # key rsi_binding must exist
-                if 'rsi_binding' not in row:
-                    row['rsi_binding'] = ''
-                # TODO make the server completely responsible for determining
-                # field values of newly-created charges, the same way it's
-                # done for RSIs (if charges still exist independent of RSIs;
-                # otherwise all this code will be gone anyway)
-                if row['rsi_binding'] in (c['rsi_binding'] for c in
-                        flattened_charges):
-                    raise ValueError('Duplicate RSI binding "%s" (create '
-                         'charges one at a time)' %
-                         row['rsi_binding'])
-                flattened_charges.append(row)
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
-                self.reebill_dao.save_utilbill(utilbill_doc)
-
-                return self.dumps({'success':True, 'rows': row})
+                row = json.loads(kwargs["rows"])[0]
+                assert isinstance(row, dict)
+                group_name = row['group']
+                self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
-                the_id = json.loads(kwargs["rows"])
-                the_charge = get_charge_by_id(flattened_charges, the_id)
-                flattened_charges.remove(the_charge)
-                mongo.set_actual_chargegroups_flattened(utilbill_doc,
-                        flattened_charges)
-                self.reebill_dao.save_utilbill(utilbill_doc)
+                rsi_binding = json.loads(kwargs["rows"])[0]
+                self.process.delete_charge(session, utilbill_id, rsi_binding)
 
-                return self.dumps({'success':True})
+            charges_json = self.process.get_utilbill_charges_json(session,
+                    utilbill_id)
+            return self.dumps({'success': True, 'rows': charges_json,
+                                'total':len(charges_json)})
 
 
     @cherrypy.expose
@@ -2044,27 +1597,11 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested charges 
-        # if this is the case, return no charges.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested charges 
-        # TODO ensure that this is necessary with new datastore scheme
-        if reebill is None:
-            return self.dumps({'success':True, 'rows':[]})
-
-        utilbill_doc = reebill._get_utilbill_for_service(service)
-        flattened_charges_a = mongo.get_charges_json(utilbill_doc)
-        charge_dict_a = {c['rsi_binding']:c for c in flattened_charges_a}
-        flattened_charges_h = reebill.hypothetical_chargegroups_flattened(service)
-        for charge_dict_h in flattened_charges_h:
-            matching = charge_dict_a[charge_dict_h['rsi_binding']]
-            charge_dict_h['actual_rate'] = matching['rate']
-            charge_dict_h['actual_quantity'] = matching['quantity']
-            charge_dict_h['actual_total'] = matching['total']
         if xaction == "read":
-            return self.dumps({'success': True, 'rows': flattened_charges_h})
+            charges=self.process.get_hypothetical_matched_charges(account, sequence,
+                                                                  service)
+            return self.dumps({'success': True, 'rows': charges,
+                               'total':len(charges)})
         else:
             raise NotImplementedError('Cannot create, edit or destroy charges'+\
                                       ' from this grid.')
@@ -2096,8 +1633,6 @@ class BillToolBridge:
             utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
                     reebill_version=reebill_version)
-
-            toSelect = None
 
             if xaction == 'read':
                 # get dictionaries describing all registers in all utility bills
@@ -2238,22 +1773,17 @@ class BillToolBridge:
             # NOTE 'file_to_upload.file' is always a CherryPy object; if no
             # file was specified, 'file_to_upload.file' will be None
 
-            try:
-                self.process.upload_utility_bill(session, account, service,
-                        begin_date_as_date,
-                        end_date_as_date, file_to_upload.file,
-                        file_to_upload.filename if file_to_upload else None,
-                        total=total_charges_as_float,
-                        state=UtilBill.Complete if file_to_upload.file else \
-                                UtilBill.SkylineEstimated,
-                        # determine these values from previous bills because
-                        # user does not want to specify them explicitly
-                        utility=None,
-                        rate_class=None)
-            except IOError:
-                self.logger.error('file upload failed:', begin_date, end_date,
-                        file_to_upload.filename)
-                raise
+            self.process.upload_utility_bill(session, account, service,
+                    begin_date_as_date,
+                    end_date_as_date, file_to_upload.file,
+                    file_to_upload.filename if file_to_upload else None,
+                    total=total_charges_as_float,
+                    state=UtilBill.Complete if file_to_upload.file else \
+                            UtilBill.SkylineEstimated,
+                    # determine these values from previous bills because
+                    # user does not want to specify them explicitly
+                    utility=None,
+                    rate_class=None)
 
             return self.dumps({'success': True})
 
@@ -2320,54 +1850,13 @@ class BillToolBridge:
         wants to read data and "update" when a cell in the grid was edited.'''
         with DBSession(self.state_db) as session:
             if xaction == 'read':
-                account, start, limit = kwargs['account'], kwargs['start'], kwargs['limit']
-
-                # result is a list of dictionaries of the form {account: account
-                # number, name: full name, period_start: date, period_end: date,
-                # sequence: reebill sequence number (if present)}
-                utilbills, totalCount = self.state_db.list_utilbills(session,
-                        account, int(start), int(limit))
-                # NOTE does not support multiple reebills per utility bill
-                state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
-                        ub._utilbill_reebills] for ub in utilbills)
-
-                full_names = self.full_names_of_accounts([account])
-                full_name = full_names[0] if full_names else account
-
-                rows = [{
-                    # TODO: sending real database ids to the client a security
-                    # risk; these should be encrypted
-                    'id': ub.id,
-                    'account': ub.customer.account,
-                    'name': full_name,
-                    'utility': ub.utility,
-                    'rate_class': ub.rate_class,
-                    # capitalize service name
-                    'service': 'Unknown' if ub.service is None else
-                           ub.service[0].upper() + ub.service[1:],
-                    'period_start': ub.period_start,
-                    'period_end': ub.period_end,
-                    'total_charges': ub.total_charges,
-                    # NOTE a type-based conditional is a bad pattern; this will
-                    # have to go away
-                    'computed_total': mongo.total_of_all_charges(
-                            self.reebill_dao.load_doc_for_utilbill(ub)) if ub
-                            .state < UtilBill.Hypothetical else None,
-                    # NOTE the value of 'issue_date' in this JSON object is
-                    # used by the client to determine whether a frozen utility
-                    # bill version exists (when issue date == null, the reebill
-                    # is unissued, so there is no frozen version of the utility
-                    # bill corresponding to it).
-                    'reebills': ub.sequence_version_json(),
-                    'state': ub.state_name(),
-                    # utility bill rows are always editable (since editing them
-                    # should not affect utility bill data in issued reebills)
-                    'processed': ub.processed,
-                    'editable': True,
-                } for ub in utilbills]
-
+                account = kwargs['account']
+                start, limit = int(kwargs['start']), int(kwargs['limit'])
+                rows, total_count = self.process.get_all_utilbills_json(
+                        session, account, start, limit)
                 return self.dumps({'success': True, 'rows':rows,
-                        'results':totalCount})
+                        'results': total_count})
+
             elif xaction == 'update':
                 # ext sends a JSON object if there is one row, a list of
                 # objects if there are more than one. but in this case only one
@@ -2412,40 +1901,24 @@ class BillToolBridge:
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
                 for utilbill_id in ids:
-                    # load utilbill to get its dates and service
-                    utilbill = session.query(state.UtilBill)\
-                            .filter(state.UtilBill.id == utilbill_id).one()
-                    start, end = utilbill.period_start, utilbill.period_end
-                    service = utilbill.service
-
-                    # delete it & get new path (will be None if there was never
-                    # a utility bill file or the file could not be found)
-                    deleted_path = self.process.delete_utility_bill(session,
-                            utilbill)
-
-                    # log it
+                    utilbill, deleted_path = self.process\
+                            .delete_utility_bill_by_id(session, utilbill_id)
                     journal.UtilBillDeletedEvent.save_instance(
-                            cherrypy.session['user'], account, start, end,
-                            service, deleted_path)
-
-                # delete any estimated utility bills that were created to
-                # cover gaps that no longer exist
-                self.state_db.trim_hypothetical_utilbills(session,
-                        utilbill.customer.account, utilbill.service)
-
+                            cherrypy.session['user'], account,
+                            utilbill.period_start, utilbill.period_end,
+                            utilbill.service, deleted_path)
                 return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
+    def getUtilBillImage(self, utilbill_id):
         # TODO: put url here, instead of in billentry.js?
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        try:
-            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
-        except IOError:
-            return self.dumps({'success':False})
+        with DBSession(self.state_db) as session:
+            result = self.process.get_utilbill_image_path(session, utilbill_id,
+                                                          resolution)
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
@@ -2457,10 +1930,8 @@ class BillToolBridge:
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        try:
-            result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
-        except IOError:
-            return self.dumps({'success':False})
+        result = self.billUpload.getReeBillImagePath(account, sequence,
+                resolution)
         return self.dumps({'success':True, 'imageName':result})
     
     @cherrypy.expose
