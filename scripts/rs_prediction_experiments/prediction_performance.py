@@ -99,7 +99,7 @@ with DBSession(state_db) as session:
                             return True
 
                     # guess the set of UPRS bindings, without the real one in the db
-                    guessed_rsis = rs_dao._get_probable_rsis(utility_name,
+                    guessed_rsis = rs_dao._get_probable_shared_rsis(utility_name,
                             rate_structure_name,
                             period=reebill.utilbill_period_for_service(service),
                             weight_func=globals()[weight_func_name],

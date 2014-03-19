@@ -28,99 +28,106 @@ _example_utilbill = {
     u"start" : ISODate("2011-11-12T00:00:00Z"),
     u"end" : ISODate("2011-12-14T00:00:00Z"),
 
-    u"chargegroups" : {
-        u"All Charges" : [
-            {
-                u"rsi_binding" : u"SYSTEM_CHARGE",
-                u"description" : u"System Charge",
-                u"quantity" : 1,
-                u"processingnote" : u"",
-                u"rate" : 11.2,
-                u"quantity_units" : u"",
-                u"total" : 11.2,
-                u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-                u"description" : u"Distribution charge for all therms",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.2935,
-                u"quantity_units" : u"therms",
-                u"total" : 164.92,
-                u"uuid" : u"c9709ec0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PGC",
-                u"description" : u"Purchased Gas Charge",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.7653,
-                u"quantity_units" : u"therms",
-                u"total" : 430.02,
-                u"uuid" : u"c9717458-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"PUC",
-                u"quantity_units" : u"kWh",
-                u"quantity" : 1,
-                u"description" : u"Peak Usage Charge",
-                u"rate" : 23.14,
-                u"total" : 23.14,
-                u"uuid" : u"c97254b8-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"RIGHT_OF_WAY",
-                u"description" : u"DC Rights-of-Way Fee",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.03059,
-                u"quantity_units" : u"therms",
-                u"total" : 17.19,
-                u"uuid" : u"c973271c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SETF",
-                u"description" : u"Sustainable Energy Trust Fund",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.01399,
-                u"quantity_units" : u"therms",
-                u"total" : 7.87,
-                u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"EATF",
-                u"description" : u"DC Energy Assistance Trust Fund",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.006,
-                u"quantity_units" : u"therms",
-                u"total" : 3.37,
-                u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"SALES_TAX",
-                u"description" : u"Sales tax",
-                u"quantity" : 701.41,
-                u"processingnote" : u"",
-                u"rate" : 0.06,
-                u"quantity_units" : u"dollars",
-                u"total" : 42.08,
-                u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                u"rsi_binding" : u"DELIVERY_TAX",
-                u"description" : u"Delivery tax",
-                u"quantity" : 561.9,
-                u"processingnote" : u"",
-                u"rate" : 0.07777,
-                u"quantity_units" : u"therms",
-                u"total" : 43.7,
-                u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },
+    'charges': [
+        {
+            u"rsi_binding" : u"SYSTEM_CHARGE",
+            u"description" : u"System Charge",
+            u"quantity" : 1,
+            u"processingnote" : u"",
+            u"rate" : 11.2,
+            u"quantity_units" : u"",
+            u"total" : 11.2,
+            u"uuid" : u"c96fc8b0-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"DISTRIBUTION_CHARGE",
+            u"description" : u"Distribution charge for all therms",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.2935,
+            u"quantity_units" : u"therms",
+            u"total" : 164.92,
+            u"uuid" : u"c9709ec0-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"PGC",
+            u"description" : u"Purchased Gas Charge",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.7653,
+            u"quantity_units" : u"therms",
+            u"total" : 430.02,
+            u"uuid" : u"c9717458-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"PUC",
+            u"quantity_units" : u"kWh",
+            u"quantity" : 1,
+            u"description" : u"Peak Usage Charge",
+            u"rate" : 23.14,
+            u"total" : 23.14,
+            u"uuid" : u"c97254b8-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"RIGHT_OF_WAY",
+            u"description" : u"DC Rights-of-Way Fee",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.03059,
+            u"quantity_units" : u"therms",
+            u"total" : 17.19,
+            u"uuid" : u"c973271c-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"SETF",
+            u"description" : u"Sustainable Energy Trust Fund",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.01399,
+            u"quantity_units" : u"therms",
+            u"total" : 7.87,
+            u"uuid" : u"c973320c-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"EATF",
+            u"description" : u"DC Energy Assistance Trust Fund",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.006,
+            u"quantity_units" : u"therms",
+            u"total" : 3.37,
+            u"uuid" : u"c973345a-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"SALES_TAX",
+            u"description" : u"Sales tax",
+            u"quantity" : 701.41,
+            u"processingnote" : u"",
+            u"rate" : 0.06,
+            u"quantity_units" : u"dollars",
+            u"total" : 42.08,
+            u"uuid" : u"c9733676-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        },
+        {
+            u"rsi_binding" : u"DELIVERY_TAX",
+            u"description" : u"Delivery tax",
+            u"quantity" : 561.9,
+            u"processingnote" : u"",
+            u"rate" : 0.07777,
+            u"quantity_units" : u"therms",
+            u"total" : 43.7,
+            u"uuid" : u"c973386a-2c16-11e1-8c7f-002421e88ffb",
+            u'group': u"All Charges",
+        }
+    ],
     u"service_address" : {
         u"postal_code" : u"20010",
         u"city" : u"Washington",
@@ -188,99 +195,106 @@ _example_reebill = {
             }],
 
             u"hypothetical_total" : 980.33,
-            u"hypothetical_chargegroups" : {
-                u"All Charges" : [
-                    {
-                        u"rsi_binding" : u"SYSTEM_CHARGE",
-                        u"description" : u"System Charge",
-                        u"quantity" : 1,
-                        u"processingnote" : u"",
-                        u"rate" : 11.2,
-                        u"quantity_units" : u"",
-                        u"total" : 11.2,
-                        u"uuid" : u"c9733cca-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-                        u"description" : u"Distribution charge for all therms",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.2935,
-                        u"quantity_units" : u"therms",
-                        u"total" : 220.16,
-                        u"uuid" : u"c9733ed2-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"PGC",
-                        u"description" : u"Purchased Gas Charge",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.7653,
-                        u"quantity_units" : u"therms",
-                        u"total" : 574.05,
-                        u"uuid" : u"c97340da-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"PUC",
-                        u"quantity_units" : u"kWh",
-                        u"quantity" : 1,
-                        u"description" : u"Peak Usage Charge",
-                        u"rate" : 23.14,
-                        u"total" : 23.14,
-                        u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"RIGHT_OF_WAY",
-                        u"description" : u"DC Rights-of-Way Fee",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.03059,
-                        u"quantity_units" : u"therms",
-                        u"total" : 22.95,
-                        u"uuid" : u"c97344f4-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"SETF",
-                        u"description" : u"Sustainable Energy Trust Fund",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.01399,
-                        u"quantity_units" : u"therms",
-                        u"total" : 10.5,
-                        u"uuid" : u"c97346f2-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"EATF",
-                        u"description" : u"DC Energy Assistance Trust Fund",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.006,
-                        u"quantity_units" : u"therms",
-                        u"total" : 4.5,
-                        u"uuid" : u"c9734af8-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"SALES_TAX",
-                        u"description" : u"Sales tax",
-                        u"quantity" : 924.84,
-                        u"processingnote" : u"",
-                        u"rate" : 0.06,
-                        u"quantity_units" : u"dollars",
-                        u"total" : 55.49,
-                        u"uuid" : u"c9734f3a-2c16-11e1-8c7f-002421e88ffb"
-                    },
-                    {
-                        u"rsi_binding" : u"DELIVERY_TAX",
-                        u"description" : u"Delivery tax",
-                        u"quantity" : 750.10197727,
-                        u"processingnote" : u"",
-                        u"rate" : 0.07777,
-                        u"quantity_units" : u"therms",
-                        u"total" : 58.34,
-                        u"uuid" : u"c9735372-2c16-11e1-8c7f-002421e88ffb"
-                    }
-                ]
-            },
+            u"hypothetical_charges" : [
+                {
+                    u"rsi_binding" : u"SYSTEM_CHARGE",
+                    u"description" : u"System Charge",
+                    u"quantity" : 1,
+                    u"processingnote" : u"",
+                    u"rate" : 11.2,
+                    u"quantity_units" : u"",
+                    u"total" : 11.2,
+                    u"uuid" : u"c9733cca-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"DISTRIBUTION_CHARGE",
+                    u"description" : u"Distribution charge for all therms",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.2935,
+                    u"quantity_units" : u"therms",
+                    u"total" : 220.16,
+                    u"uuid" : u"c9733ed2-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"PGC",
+                    u"description" : u"Purchased Gas Charge",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.7653,
+                    u"quantity_units" : u"therms",
+                    u"total" : 574.05,
+                    u"uuid" : u"c97340da-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"PUC",
+                    u"quantity_units" : u"kWh",
+                    u"quantity" : 1,
+                    u"description" : u"Peak Usage Charge",
+                    u"rate" : 23.14,
+                    u"total" : 23.14,
+                    u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"RIGHT_OF_WAY",
+                    u"description" : u"DC Rights-of-Way Fee",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.03059,
+                    u"quantity_units" : u"therms",
+                    u"total" : 22.95,
+                    u"uuid" : u"c97344f4-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"SETF",
+                    u"description" : u"Sustainable Energy Trust Fund",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.01399,
+                    u"quantity_units" : u"therms",
+                    u"total" : 10.5,
+                    u"uuid" : u"c97346f2-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"EATF",
+                    u"description" : u"DC Energy Assistance Trust Fund",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.006,
+                    u"quantity_units" : u"therms",
+                    u"total" : 4.5,
+                    u"uuid" : u"c9734af8-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"SALES_TAX",
+                    u"description" : u"Sales tax",
+                    u"quantity" : 924.84,
+                    u"processingnote" : u"",
+                    u"rate" : 0.06,
+                    u"quantity_units" : u"dollars",
+                    u"total" : 55.49,
+                    u"uuid" : u"c9734f3a-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                },
+                {
+                    u"rsi_binding" : u"DELIVERY_TAX",
+                    u"description" : u"Delivery tax",
+                    u"quantity" : 750.10197727,
+                    u"processingnote" : u"",
+                    u"rate" : 0.07777,
+                    u"quantity_units" : u"therms",
+                    u"total" : 58.34,
+                    u"uuid" : u"c9735372-2c16-11e1-8c7f-002421e88ffb",
+                    u'group': 'All Charges',
+                }
+            ],
         }
     ],
 	u"payment_received" : 10,
@@ -343,145 +357,67 @@ _example_reebill = {
 
 
 _example_uprs = RateStructure(
-    type='UPRS',
     rates=[
         RateStructureItem(
             rsi_binding='SYSTEM_CHARGE',
-            description='System Charge',
-            quantity='1',
-            quantity_units='',
-            rate='45.6',
-            round_rule='',
-            uuid="b11e2500-01a9-11e1-af85-002422358023",
+            uuid='af91ba26-01a9-11e1-af85-002421e88ffb',
+            rate='11.2',
+            quantity='1'
         ),
         RateStructureItem(
             rsi_binding='DELIVERY_TAX',
-            description='Delivery Tax',
-            quantity='REG_TOTAL.quantity',
-            quantity_units='',
-            rate='0.1',
-            round_rule='',
-            uuid="b11e3216-01a9-11e1-af85-560964835ffb",
+            uuid='af91c4bc-01a9-11e1-af85-002421e88ffb',
+            rate='0.07777',
+            quantity_units='therms',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            rate='.2935',
             rsi_binding='DISTRIBUTION_CHARGE',
-            description='Distribution charge for all therms',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.2935',
-            round_rule='',
-            uuid="c9733ed2-2c16-11e1-8c7f-002421e88ffb",
+            uuid='8ced8464-4dc1-11e1-ab51-002421e88ffb',
+            roundrule='ROUND_UP',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-            rsi_binding='pgc',
-            description='purchased gas charge',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.7653',
-            round_rule='',
-            uuid="c97340da-2c16-11e1-8c7f-002421e88ffb",
+            rate='.7653',
+            rsi_binding='PGC',
+            uuid='c6b809f8-4dc1-11e1-bba8-002421e88ffb',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            uuid='a77bf062-2108-11e1-98b3-002421e88ffb',
+            rate='23.14',
             rsi_binding='PUC',
             description='Peak Usage Charge',
-            quantity='1',
-            quantity_units='therms',
-            rate='23.14',
-            round_rule='',
-            uuid="c97342e2-2c16-11e1-8c7f-002421e88ffb",
+            quantity='1'
         ),
         RateStructureItem(
+            rate='0.03059',
             rsi_binding='RIGHT_OF_WAY',
-            description='DC Rights-of-Way Fee',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.03059',
-            round_rule='',
-            uuid="c97344f4-2c16-11e1-8c7f-002421e88ffb",
+            uuid='af91bfda-01a9-11e1-af85-002421e88ffb',
+            roundrule='ROUND_HALF_EVEN',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
+            rate='0.01399',
             rsi_binding='SETF',
-            description='Sustainable Energy Trust Fund',
-            quantity='750.10197727',
-            quantity_units='therms',
-            rate='0.03059',
-            round_rule='',
-            uuid="c97346f2-2c16-11e1-8c7f-002421e88ffb",
+            uuid='af91c17e-01a9-11e1-af85-002421e88ffb',
+            roundrule='ROUND_UP',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-            rsi_binding='EATF',
-            description='Energy Assistance Trust Fund',
-            quantity='750.10197727',
-            quantity_units='therms',
             rate='0.006',
-            round_rule='',
-            uuid="c9734af8-2c16-11e1-8c7f-002421e88ffb",
-        ),
-    ],
-)
-
-_example_cprs = RateStructure(type='CPRS',
-    rates=[
-		RateStructureItem(
-            rsi_binding='SYSTEM_CHARGE',
-			uuid='af91ba26-01a9-11e1-af85-002421e88ffb',
-			rate='11.2',
-			quantity='1'
+            rsi_binding='EATF',
+            uuid='af91c318-01a9-11e1-af85-002421e88ffb',
+            quantity='REG_TOTAL.quantity'
         ),
         RateStructureItem(
-			rate='0.03059',
-			rsi_binding='RIGHT_OF_WAY',
-			uuid='af91bfda-01a9-11e1-af85-002421e88ffb',
-			roundrule='ROUND_HALF_EVEN',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.01399',
-			rsi_binding='SETF',
-			uuid='af91c17e-01a9-11e1-af85-002421e88ffb',
-			roundrule='ROUND_UP',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.006',
-			rsi_binding='EATF',
-			uuid='af91c318-01a9-11e1-af85-002421e88ffb',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rsi_binding='DELIVERY_TAX',
-			uuid='af91c4bc-01a9-11e1-af85-002421e88ffb',
-			rate='0.07777',
-			quantity_units='therms',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='0.06',
-			rsi_binding='SALES_TAX',
-			uuid='af91c674-01a9-11e1-af85-002421e88ffb',
-			quantity=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
-                    'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
-                    'SETF.total + EATF.total + DELIVERY_TAX.total')
-        ),
-        RateStructureItem(
-			uuid='a77bf062-2108-11e1-98b3-002421e88ffb',
-			rate='23.14',
-			rsi_binding='PUC',
-			description='Peak Usage Charge',
-			quantity='1'
-		),
-        RateStructureItem(
-			rate='.2935',
-			rsi_binding='DISTRIBUTION_CHARGE',
-			uuid='8ced8464-4dc1-11e1-ab51-002421e88ffb',
-			roundrule='ROUND_UP',
-			quantity='REG_TOTAL.quantity'
-		),
-        RateStructureItem(
-			rate='.7653',
-			rsi_binding='PGC',
-			uuid='c6b809f8-4dc1-11e1-bba8-002421e88ffb',
-			quantity='REG_TOTAL.quantity'
+            rate='0.06',
+            rsi_binding='SALES_TAX',
+            uuid='af91c674-01a9-11e1-af85-002421e88ffb',
+            quantity=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
+                      'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
+                      'SETF.total + EATF.total + DELIVERY_TAX.total')
         ),
     ],
 )
@@ -537,7 +473,3 @@ def get_uprs():
     result.id = ObjectId()
     return result
 
-def get_cprs():
-    result = deepcopy(_example_cprs)
-    result.id = ObjectId()
-    return result
