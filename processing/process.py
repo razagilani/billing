@@ -1831,3 +1831,18 @@ class Process(object):
                 row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
 
         return total_length, rows
+
+    def get_all_time_total_savings(self, session, account):
+        '''Returns total of renewable energy savings (dollars) for all issued
+        reebills belonging to the customer given by 'account'.
+        
+        This is currently only used by "deck" and should become part of the
+        API for use by other applications.
+        '''
+        result = session.query(func.sum(ReeBill.ree_savings)).join(Customer)\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.issued==True).one()[0]
+        # for some reason, when you sum over 0 rows, you get NULL instead of 0
+        if result is None:
+            return 0
+        return result

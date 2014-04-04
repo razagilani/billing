@@ -2588,6 +2588,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # replaced with a mock that did this.
 
 
+    def test_get_all_time_total_savings(self):
+        with DBSession(self.state_db) as session:
+            # no reebills
+            self.assertEqual(0,
+                    self.process.get_all_time_total_savings(session, '99999'))
+
+            # one
+            self.process.upload_utility_bill(session, '99999', 'gas',
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2013'),
+                    'january.pdf')
+            self.process.roll_reebill(session, '99999', start_date=date(2000,1,1))
+            # TODO get energy into this bill
+            self.assertEqual(0,
+                    self.process.get_all_time_total_savings(session, '99999'))
+
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()
