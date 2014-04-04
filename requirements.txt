@@ -14,6 +14,7 @@ numpy==1.6.2
 ordereddict==1.1
 paramiko==1.12.0
 py-bcrypt==0.4
+pyPdf==1.13
 pycrypto==2.6.1
 pymongo==2.5.2
 python-dateutil==2.1
