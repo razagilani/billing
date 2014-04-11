@@ -35,6 +35,48 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 # tables
 Base = declarative_base()
 
+class Address(Base):
+    '''Table representing both "billing addresses" and "service addresses" in
+    reebills.
+    '''
+    __tablename__ = 'address'
+
+    id = Column(Integer, primary_key=True)
+    addressee = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    postal_code = Column(String, nullable=False)
+
+    def __init__(self, addressee='', street='', city='', state='',
+                 postal_code=''):
+        self.addressee = addressee
+        self.street = street
+        self.city = city
+        self.state = state
+        self.postal_code = postal_code
+
+    def __hash__(self):
+        return hash(self.addressee + self.street + self.city +
+                    self.postal_code)
+
+    def __eq__(self, other):
+        return all([
+            self.addressee == other.addressee,
+            self.street == other.street,
+            self.city == other.city,
+            self.state == other.state,
+            self.postal_code == other.postal_code
+        ])
+
+    def __repr__(self):
+        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+                                         self.city, self.state, self.postal_code)
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.street, self.city, self.state)
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -190,7 +232,8 @@ class ReeBill(Base):
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
-                    late_charge_rate=None, utilbills=[]):
+                    late_charge_rate=None, billing_address=Address(),
+                    service_address=Address(), utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
@@ -217,8 +260,8 @@ class ReeBill(Base):
         self.ree_savings = 0
         self.email_recipient = None
 
-        self.billing_address = Address()
-        self.service_address = Address()
+        self.billing_address = billing_address
+        self.service_address = service_address
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
@@ -264,6 +307,9 @@ class ReeBill(Base):
         '''
         assert len(self.utilbills) == 1
         return sum(charge.total for charge in self.charges)
+
+    def get_service_address_formatted(self):
+        return str(self.service_address)
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -328,27 +374,6 @@ class ReeBillCharge(Base):
         self.quantity = quantity
         self.rate = rate
         self.total = total
-
-class Address(Base):
-    '''Table representing both "billing addresses" and "service addresses" in
-    reebills.
-    '''
-    __tablename__ = 'address'
-
-    id = Column(Integer, primary_key=True)
-    addressee = Column(String, nullable=False)
-    street = Column(String, nullable=False)
-    city = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    postal_code = Column(String, nullable=False)
-
-    def __init__(self, addressee='', street='', city='', state='',
-                 postal_code=''):
-        self.addressee = addressee
-        self.street = street
-        self.city = city
-        self.state = state
-        self.postal_code = postal_code
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'

@@ -99,7 +99,6 @@ for reebill in s.query(ReeBill).join(Customer)\
     reebill.service_address = Address(**sa)
     s.add(reebill.billing_address)
     s.add(reebill.service_address)
-    #import ipdb; ipdb.set_trace()
 
     # remove charges and address from Mongo
     del document.reebill_dict['utilbills'][0]['hypothetical_charges']

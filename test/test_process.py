@@ -12,7 +12,8 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill, \
+    Address
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
@@ -146,8 +147,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill.prior_balance)
             # self.assertEqual(0, reebill.hypothetical_total)
             self.assertEqual(0, reebill.balance_forward)
-            self.assertEqual(billing_address, reebill_doc.billing_address)
-            self.assertEqual(service_address, reebill_doc.service_address)
+            self.assertEqual(Address(**billing_address),
+                    reebill.billing_address)
+            self.assertEqual(Address(**service_address),
+                    reebill.service_address)
 
             # TODO check Mongo rate structure documents
 
@@ -1525,20 +1528,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # another reebill
             self.process.roll_reebill(session, account)
-            reebills = session.query(ReeBill).order_by(ReeBill.id).all()
+            reebill_1, reebill_2 = session.query(ReeBill)\
+                    .order_by(ReeBill.id).all()
             utilbills = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()
-            self.assertEquals([utilbills[0]], reebills[0].utilbills)
-            self.assertEquals([utilbills[1]], reebills[1].utilbills)
+            self.assertEquals([utilbills[0]], reebill_1.utilbills)
+            self.assertEquals([utilbills[1]], reebill_2.utilbills)
 
             # addresses should be preserved from one reebill document to the
             # next
             reebill_doc_1 = self.reebill_dao.load_reebill(account, 1)
             reebill_doc_2 = self.reebill_dao.load_reebill(account, 2)
-            self.assertEquals(reebill_doc_1.billing_address,
-                    reebill_doc_2.billing_address)
-            self.assertEquals(reebill_doc_1.service_address,
-                    reebill_doc_2.service_address)
+            self.assertEquals(reebill_1.billing_address,
+                    reebill_2.billing_address)
+            self.assertEquals(reebill_1.service_address,
+                    reebill_2.service_address)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
