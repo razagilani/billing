@@ -436,7 +436,7 @@ class UtilBill(Base):
     }
 
     def __init__(self, customer, state, service, utility, rate_class,
-            account_number, period_start=None, period_end=None, doc_id=None,
+            account_number='', period_start=None, period_end=None, doc_id=None,
             uprs_id=None, total_charges=0, date_received=None,  processed=False,
             reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
