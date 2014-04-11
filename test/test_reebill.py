@@ -89,21 +89,6 @@ class ReebillTest(TestCaseWithSetup):
         # self.assertEquals(0, reebill.prior_balance)
         # self.assertEquals(0, reebill.balance_forward)
 
-        self.assertEquals({
-            "city" : u"Silver Spring",
-            "state" : u"MD",
-            "addressee" : u"Managing Member Monroe Towers",
-            "postal_code" : u"20910",
-            "street" : u"3501 13TH ST NW LLC"
-        }, reebill.billing_address)
-        self.assertEquals({
-            "addressee" : u"Monroe Towers",
-            "state" : u"DC",
-            "city" : u"Washington",
-            "street" : u"3501 13TH ST NW #WH",
-            "postal_code" : u"20010"
-        }, reebill.service_address)
-
     def test_compute_charges(self):
         # TODO make this a real unit test when possible (when utility bill
         # charges are no longer in Mongo so Process.compute_reebill doesn't

@@ -31,7 +31,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge
+    UtilBillLoader, ReeBillCharge, Address
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.processing import fetch_bill_data, bill_mailer
@@ -1042,7 +1042,12 @@ class Process(object):
 
         # create reebill row in state database
         # create reebill row in state database
-        new_reebill = ReeBill(customer, new_sequence, 0, utilbills=new_utilbills)
+        new_reebill = ReeBill(customer, new_sequence, 0,
+                utilbills=new_utilbills,
+                billing_address=Address(**new_utilbill_docs[0]
+                        ['billing_address']),
+                service_address=Address(**new_utilbill_docs[0]
+                        ['service_address']))
         session.add(new_reebill)
 
         # save reebill document in Mongo
