@@ -35,6 +35,48 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 # tables
 Base = declarative_base()
 
+class Address(Base):
+    '''Table representing both "billing addresses" and "service addresses" in
+    reebills.
+    '''
+    __tablename__ = 'address'
+
+    id = Column(Integer, primary_key=True)
+    addressee = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    postal_code = Column(String, nullable=False)
+
+    def __init__(self, addressee='', street='', city='', state='',
+                 postal_code=''):
+        self.addressee = addressee
+        self.street = street
+        self.city = city
+        self.state = state
+        self.postal_code = postal_code
+
+    def __hash__(self):
+        return hash(self.addressee + self.street + self.city +
+                    self.postal_code)
+
+    def __eq__(self, other):
+        return all([
+            self.addressee == other.addressee,
+            self.street == other.street,
+            self.city == other.city,
+            self.state == other.state,
+            self.postal_code == other.postal_code
+        ])
+
+    def __repr__(self):
+        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+                                         self.city, self.state, self.postal_code)
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.street, self.city, self.state)
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -99,8 +141,23 @@ class ReeBill(Base):
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
 
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
+
+    # i think SQLAlchemy does not automatically know which keys to use to
+    # determine billing and service addresses of a ReeBill because there are
+    # two foreign keys to Address; this can be fixed by using "primaryjoin"
+    billing_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
             # 'cascade' controls how all insert/delete operations are
@@ -170,8 +227,13 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
+    # see the following documentation fot delete cascade behavior
+    #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
+    charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
+
     def __init__(self, customer, sequence, version=0, discount_rate=None,
-                    late_charge_rate=None, utilbills=[]):
+                    late_charge_rate=None, billing_address=Address(),
+                    service_address=Address(), utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
@@ -197,6 +259,9 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+
+        self.billing_address = billing_address
+        self.service_address = service_address
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
@@ -237,6 +302,15 @@ class ReeBill(Base):
         produced by the difference between two versions of a bill.'''
         return self.ree_charge + self.late_charge
 
+    def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
+        assert len(self.utilbills) == 1
+        return sum(charge.total for charge in self.charges)
+
+    def get_service_address_formatted(self):
+        return str(self.service_address)
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
@@ -270,6 +344,36 @@ class UtilbillReebill(Base):
                 self.utilbill_id, self.reebill_id, self.document_id[-4:],
                 self.uprs_document_id[-4:]))
 
+
+class ReeBillCharge(Base):
+    '''Table representing "hypothetical" versions of charges in reebills (so
+    named because these may not have the same schema as utility bill charges).
+    Note that, in the past, a set of "hypothetical charges" was associated
+    with each utility bill subdocument of a reebill Mongo document, of which
+    there was always 1 in practice. Now these charges are associated directly
+    with a reebill, so there would be no way to distinguish between charges
+    from different utility bills, if there mere multiple utility bills.
+    '''
+    __tablename__ = 'reebill_charge'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
+    rsi_binding = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    # NOTE alternate name is required because you can't have a column called
+    # "group" in MySQL
+    group = Column(String, name='group_name', nullable=False)
+    quantity = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
+    total = Column(Float, nullable=False)
+
+    def __init__(self, rsi_binding, description, group, quantity, rate, total):
+        self.rsi_binding = rsi_binding
+        self.description = description
+        self.group = group
+        self.quantity = quantity
+        self.rate = rate
+        self.total = total
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
