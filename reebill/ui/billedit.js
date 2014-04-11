@@ -3839,6 +3839,7 @@ function reeBillReady() {
 
     var accountStoreProxyConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/retrieve_account_status',
+        timeout: 120000,
     });
     accountStoreProxyConn.autoAbort = true;
     var accountStoreProxy = new Ext.data.HttpProxy(accountStoreProxyConn);
