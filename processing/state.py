@@ -284,6 +284,7 @@ class UtilBill(Base):
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
     date_received = Column(DateTime)
+    account_number = Column(String, nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -331,8 +332,9 @@ class UtilBill(Base):
     }
 
     def __init__(self, customer, state, service, utility, rate_class,
-            period_start=None, period_end=None, doc_id=None, uprs_id=None,
-            total_charges=0, date_received=None, processed=False, reebill=None):
+            account_number, period_start=None, period_end=None, doc_id=None,
+            uprs_id=None, total_charges=0, date_received=None,  processed=False,
+            reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -346,6 +348,7 @@ class UtilBill(Base):
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
+        self.account_number = account_number
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
