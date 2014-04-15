@@ -21,6 +21,7 @@ from bson import ObjectId
 import uuid as UUID
 import re
 import errno
+import bson
 import skyliner
 from billing.processing import state
 from billing.processing import mongo

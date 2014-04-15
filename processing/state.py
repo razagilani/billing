@@ -243,8 +243,8 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
-    def __init__(self, customer, sequence, version=0, discount_rate=None,
-                    late_charge_rate=None, utilbills=[]):
+                    late_charge_rate=None, billing_address=None,
+                    service_address=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
