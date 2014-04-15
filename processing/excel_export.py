@@ -55,8 +55,7 @@ class Exporter(object):
                                                end_date=end_date))
         output_file.write(book.xls)
 
-    def get_account_charges_sheet(self, statedb_session, account,
-                                  start_date=None,
+    def get_account_charges_sheet(self, session, account, start_date=None,
                                   end_date=None):
         '''
         Returns a tablib Dataset consisting of all actual and hypothetical
@@ -74,84 +73,55 @@ class Exporter(object):
         dataset.headers = ['Account', 'Sequence', 'Period Start', 'Period End',
                            'Billing Month', 'Estimated']
 
-        # load customer from MySQL in order to load reebill and utilbill below
-        customer = statedb_session.query(Customer) \
-            .filter(Customer.account == account).one()
-
-        for sequence in sorted(self.state_db.listSequences(statedb_session,
-                                                           account)):
-            if self.verbose:
-                print '%s-%s' % (account, sequence)
-
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            ## if this reebill is not inside of the given date range, skip this
-            ## iteration
-            #if (start_date and reebill.period_start >= start_date) \
-            #or (end_date and reebill.period_end <= end_date):
-
-            # load reebill from MySQL in order to load utilbill below
-            rb = statedb_session.query(ReeBill) \
-                .filter(ReeBill.customer == customer) \
-                .filter(ReeBill.sequence == sequence) \
-                .filter(
-                ReeBill.version == self.state_db.max_version(statedb_session,
-                                                             account,
-                                                             sequence)).one()
+        for sequence in sorted(self.state_db.listSequences(session, account)):
+            reebill_doc = self.reebill_dao.load_reebill(account, sequence)
+            reebill = self.state_db.get_reebill(session, account, sequence)
 
             # load utilbill from mysql to find out if the bill was
             # (utility-)estimated
-            utilbills = rb.utilbills
-            mongo_utilbills = self.reebill_dao.load_utilbills(
-                account=rb.customer.account,
-                sequence=rb.sequence,
-                version=rb.version)
-            estimated = any([u.state == UtilBill.UtilityEstimated
-                             for u in utilbills])
-            if utilbills == []:
-                print 'No utilbills in MySQL for %s-%s' % (account, sequence)
-                estimated = False
+            if not len(reebill.utilbills) == 1:
+                continue    # Skip old reebills that are based
+                            # on two utility bills
+            assert len(reebill.utilbills) == 1
+            utilbill = reebill.utilbills[0]
+            utilbill_doc = self.reebill_dao._load_utilbill_by_id(
+                utilbill.document_id)
+            estimated = utilbill.state == UtilBill.UtilityEstimated
 
-            # new row. initially contains 5 columns: account, sequence, start,
-            # end, fuzzy month
+            # new row. initially contains 6 columns: account, sequence, start,
+            # end, fuzzy month, estimated?
             row = [
                 account,
-                #sequence if not error else '%s: ERROR' % sequence,
                 sequence,
-                reebill.period_begin.strftime(dateutils.ISO_8601_DATE),
-                reebill.period_end.strftime(dateutils.ISO_8601_DATE),
+                reebill_doc.period_begin.strftime(dateutils.ISO_8601_DATE),
+                reebill_doc.period_end.strftime(dateutils.ISO_8601_DATE),
                 # TODO rich hypothesizes that for utilities, the fuzzy "billing
                 # month" is the month in which the billing period ends
-                approximate_month(reebill.period_begin,
-                                  reebill.period_end).strftime('%Y-%m'),
+                approximate_month(reebill_doc.period_begin,
+                                  reebill_doc.period_end).strftime('%Y-%m'),
                 'Yes' if estimated else 'No'
             ]
             # pad row with blank cells to match dataset width
             row.extend([''] * (dataset.width - len(row)))
 
-            # get all charges from this bill in "flattened" format, sorted by
-            # name, with (actual) or (hypothetical) appended
-            services = reebill.services
+            # get all charges from this bill
             try:
-                actual_charges = sorted(chain.from_iterable(
-                    mongo.get_charges_json(m_ub)
-                    for m_ub in mongo_utilbills), key=itemgetter('description'))
-                hypothetical_charges = sorted(chain.from_iterable(
-                    reebill.hypothetical_chargegroups_flattened(service)
-                    for service in services), key=itemgetter('description'))
+                actual_charges = sorted(mongo.get_charges_json(utilbill_doc),
+                                        key=itemgetter('description'))
+                hypothetical_charges = reebill_doc.get_all_hypothetical_charges()
             except KeyError as e:
                 print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
                         sequence, e.message, traceback.format_exc()))
                 continue
+
             for charge in actual_charges:
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
                 charge['description'] += ' (hypothetical)'
                 # extra charges: actual and hypothetical totals, difference between
                 # them, Skyline's late fee from the reebill
-            actual_total = sum(ac.get('total', 0) for ac in actual_charges)
-            hypothetical_total = float(
-                sum(hc.get('total', 0) for hc in hypothetical_charges))
+            actual_total = reebill_doc.get_total_utility_charges()
+            hypothetical_total = reebill_doc.get_total_hypothetical_charges()
             extra_charges = [
                 {'description': 'Actual Total', 'total': actual_total},
                 {'description': 'Hypothetical Total',
@@ -162,63 +132,35 @@ class Exporter(object):
                 },
                 {
                     'description': 'Skyline Late Charge',
-                    'total': reebill.late_charges \
-                        if hasattr(reebill, 'late_charges') else 0
+                    'total': reebill_doc.late_charges \
+                        if hasattr(reebill_doc, 'late_charges') else 0
                 },
             ]
 
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
             for charge in hypothetical_charges + actual_charges + extra_charges:
-                try:
-                    if 'chargegroup' in charge:
-                        name = '{chargegroup}: {description}'.format(**charge)
+                column_name = '%s: %s' % (charge.get('group',''),
+                                          charge.get('description','Error: No Description Found!'))
+                total = charge.get('total', 0)
+
+                if column_name in dataset.headers:
+                    # Column already exists. Is there already something in the
+                    # cell?
+                    col_idx = dataset.headers.index(column_name)
+                    if row[col_idx] == '':
+                        row[col_idx] = ("%.2f" % total)
                     else:
-                        # totals do not have a chargegroup
-                        name = charge['description']
-                    total = charge['total']
-                except KeyError as key_error:
-                    print >> sys.stderr, '%s-%s ERROR %s: %s' % (account,
-                                                                 sequence,
-                                                                 key_error,
-                                                                 pformat(
-                                                                     charge))
-                except IndexError as index_error:
-                    print >> sys.stderr, ('%s-%s ERROR %s: no hypothetical '
-                                          'charge matching actual charge "%s"') % (
-                        account,
-                        sequence, index_error,
-                        charge['chargegroup'] +
-                        ': ' + charge['description'])
+                        row[col_idx] = ('ERROR: duplicate charge name'
+                                                '"%s"') % column_name
                 else:
-                    # if this charge's name already exists in
-                    # charge_names_columns, either put the total of that charge
-                    # in the existing column with that charge's name, or create
-                    # a new column
-                    if name in dataset.headers:
-                        # get existing column whose header is the charge name
-                        col_idx = dataset.headers.index(name)
-                        try:
-                            if row[col_idx] == '':
-                                row[col_idx] = total
-                            else:
-                                row[col_idx] = ('ERROR: duplicate charge name'
-                                                '"%s"') % name
-                        # write cell in existing column
-                        except IndexError as index_error:
-                            raise
+                    # Add a new column 'column_name'
+                    if dataset.height == 0:
+                        dataset.headers.append(column_name)
                     else:
-                        # add new column: first add all-blank column to
-                        # existing dataset, then put total in a new cell at the
-                        # end of the row
-                        #dataset.append_col([''] * dataset.height, header=name)
-                        # TODO https://github.com/kennethreitz/tablib/issues/64
-                        if dataset.height == 0:
-                            dataset.headers.append(name)
-                        else:
-                            dataset.append_col([''] * dataset.height,
-                                               header=name)
-                        row.append(str(total))
+                        dataset.append_col([''] * dataset.height,
+                                           header=column_name)
+                    row.append(("%.2f" % total))
             dataset.append(row)
         return dataset
 
@@ -466,8 +408,8 @@ class Exporter(object):
                 row = [account,
                        reebill.sequence,
                        reebill.version,
-                       format_addr(reebill_doc.billing_address),
-                       format_addr(reebill_doc.service_address),
+                       format_addr(reebill.billing_address),
+                       format_addr(reebill.service_address),
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),

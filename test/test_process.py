@@ -12,7 +12,8 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill, \
+    Address
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
@@ -146,8 +147,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill.prior_balance)
             # self.assertEqual(0, reebill.hypothetical_total)
             self.assertEqual(0, reebill.balance_forward)
-            self.assertEqual(billing_address, reebill_doc.billing_address)
-            self.assertEqual(service_address, reebill_doc.service_address)
+            self.assertEqual(Address(**billing_address),
+                    reebill.billing_address)
+            self.assertEqual(Address(**service_address),
+                    reebill.service_address)
 
             # TODO check Mongo rate structure documents
 
@@ -1521,20 +1524,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # another reebill
             self.process.roll_reebill(session, account)
-            reebills = session.query(ReeBill).order_by(ReeBill.id).all()
+            reebill_1, reebill_2 = session.query(ReeBill)\
+                    .order_by(ReeBill.id).all()
             utilbills = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()
-            self.assertEquals([utilbills[0]], reebills[0].utilbills)
-            self.assertEquals([utilbills[1]], reebills[1].utilbills)
+            self.assertEquals([utilbills[0]], reebill_1.utilbills)
+            self.assertEquals([utilbills[1]], reebill_2.utilbills)
 
             # addresses should be preserved from one reebill document to the
             # next
             reebill_doc_1 = self.reebill_dao.load_reebill(account, 1)
             reebill_doc_2 = self.reebill_dao.load_reebill(account, 2)
-            self.assertEquals(reebill_doc_1.billing_address,
-                    reebill_doc_2.billing_address)
-            self.assertEquals(reebill_doc_1.service_address,
-                    reebill_doc_2.service_address)
+            self.assertEquals(reebill_1.billing_address,
+                    reebill_2.billing_address)
+            self.assertEquals(reebill_1.service_address,
+                    reebill_2.service_address)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
@@ -1634,13 +1638,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
             utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
             utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
             utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
@@ -1705,15 +1709,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bill and reebill #2 for A
             utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
-                    'gas', date(2013,2,1), date(2013,3,1),
-                     StringIO('February 2013 A'), 'february-a.pdf', total=0,
+                    'gas', date(2000,2,1), date(2000,3,1),
+                     StringIO('February 2000 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual([], uprs_a_2.rates)
 
             # when the other bills have been marked as "processed", they should
@@ -1729,7 +1733,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # un-shared RSIs always get copied from each bill to its successor.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
@@ -1752,8 +1756,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the latter are more numerous, but A-1 should outweigh them
             # because weight decreases quickly with distance.
             self.process.upload_utility_bill(session, acc_b, 'gas',
-                     date(2013,2,5), date(2013,3,5),
-                     StringIO('February 2013 B'),
+                     date(2000,2,5), date(2000,3,5),
+                     StringIO('February 2000 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))

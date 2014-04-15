@@ -418,7 +418,7 @@ class ReebillRenderer:
         Elements.append(Spacer(100,10))
         Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
-        sa = stringify(reebill_document.service_address)
+        sa = stringify(reebill.service_address.to_dict())
         Elements.append(Paragraph(sa.get('addressee', ""), styles['BillField']))
         Elements.append(Paragraph(sa.get('street',""), styles['BillField']))
         Elements.append(Paragraph(" ".join((sa.get('city', ""), sa.get('state', ""), sa.get('postal_code', ""))), styles['BillField']))
@@ -430,7 +430,7 @@ class ReebillRenderer:
         
         # populate billing address
         Elements.append(Spacer(100,20))
-        ba = stringify(reebill_document.billing_address)
+        ba = stringify(reebill.billing_address.to_dict())
         Elements.append(Paragraph(ba.get('addressee', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(" ".join((ba.get('city', ""), ba.get('state', ""), ba.get('postal_code',""))), styles['BillFieldLg']))

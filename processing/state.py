@@ -35,6 +35,58 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 # tables
 Base = declarative_base()
 
+class Address(Base):
+    '''Table representing both "billing addresses" and "service addresses" in
+    reebills.
+    '''
+    __tablename__ = 'address'
+
+    id = Column(Integer, primary_key=True)
+    addressee = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    postal_code = Column(String, nullable=False)
+
+    def __init__(self, addressee='', street='', city='', state='',
+                 postal_code=''):
+        self.addressee = addressee
+        self.street = street
+        self.city = city
+        self.state = state
+        self.postal_code = postal_code
+
+    def __hash__(self):
+        return hash(self.addressee + self.street + self.city +
+                    self.postal_code)
+
+    def __eq__(self, other):
+        return all([
+            self.addressee == other.addressee,
+            self.street == other.street,
+            self.city == other.city,
+            self.state == other.state,
+            self.postal_code == other.postal_code
+        ])
+
+    def __repr__(self):
+        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+                                         self.city, self.state, self.postal_code)
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.street, self.city, self.state)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'addressee': self.addressee,
+            'street': self.street,
+            'city': self.city,
+            'state': self.state,
+            'postalcode': self.postal_code,
+        }
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -99,8 +151,23 @@ class ReeBill(Base):
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
 
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
+
+    # i think SQLAlchemy does not automatically know which keys to use to
+    # determine billing and service addresses of a ReeBill because there are
+    # two foreign keys to Address; this can be fixed by using "primaryjoin"
+    billing_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
             # 'cascade' controls how all insert/delete operations are
@@ -176,6 +243,7 @@ class ReeBill(Base):
     readings = relationship('Reading', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
+    def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
@@ -202,6 +270,15 @@ class ReeBill(Base):
         self.ree_value = 0
         self.ree_savings = 0
         self.email_recipient = None
+
+        # NOTE: billing/service_address arguments can't be given default value
+        # 'Address()' because that causes the same Address instance to be
+        # assigned every time. ('Address()' is evaluated once, at the time
+        # the module is imported.)
+        self.billing_address = Address() if billing_address is None \
+                else  billing_address
+        self.service_address = Address() if service_address is None \
+                else service_address
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
@@ -348,6 +425,8 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return sum(charge.total for charge in self.charges)
 
+    def get_service_address_formatted(self):
+        return str(self.service_address)
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -463,6 +542,7 @@ class UtilBill(Base):
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
     date_received = Column(DateTime)
+    account_number = Column(String, nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -510,8 +590,9 @@ class UtilBill(Base):
     }
 
     def __init__(self, customer, state, service, utility, rate_class,
-            period_start=None, period_end=None, doc_id=None, uprs_id=None,
-            total_charges=0, date_received=None, processed=False, reebill=None):
+            account_number='', period_start=None, period_end=None, doc_id=None,
+            uprs_id=None, total_charges=0, date_received=None,  processed=False,
+            reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -525,6 +606,7 @@ class UtilBill(Base):
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
+        self.account_number = account_number
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
@@ -1145,30 +1227,17 @@ class StateDB(object):
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
+    # NOTE deprectated in favor of UtilBillLoader.get_last_real_utilbill
     def get_last_real_utilbill(self, session, account, end, service=None,
             utility=None, rate_class=None, processed=None):
         '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
-        customer = self.get_customer(session, account)
-        cursor = session.query(UtilBill)\
-                .filter(UtilBill.customer == customer)\
-                .filter(UtilBill.state != UtilBill.Hypothetical)\
-                .filter(UtilBill.period_end <= end)
-        if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
-        if utility is not None:
-            cursor = cursor.filter(UtilBill.utility == utility)
-        if rate_class is not None:
-            cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        if processed is not None:
-            assert isinstance(processed, bool)
-            cursor = cursor.filter(UtilBill.processed == processed)
-        result = cursor.order_by(desc(UtilBill.period_end)).first()
-        if result is None:
-            raise NoSuchBillException
-        return result
+        session.query(UtilBill).all()
+        return UtilBillLoader(session).get_last_real_utilbill(account, end,
+                service=service, utility=utility, rate_class=rate_class,
+                processed=processed)
 
     def create_payment(self, session, account, date_applied, description,
             credit, date_received=None):
@@ -1280,6 +1349,32 @@ class UtilBillLoader(object):
         for key, value in kwargs.iteritems():
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
+
+    def get_last_real_utilbill(self, account, end, service=None, utility=None,
+                rate_class=None, processed=None):
+        '''Returns the latest-ending non-Hypothetical UtilBill whose
+        end date is before/on 'end', optionally with the given service,
+        utility, rate class, and 'processed' status.
+        '''
+        customer = self._session.query(Customer).filter_by(account=account)\
+                .one()
+        cursor = self._session.query(UtilBill) \
+                .filter(UtilBill.customer == customer) \
+                .filter(UtilBill.state != UtilBill.Hypothetical) \
+                .filter(UtilBill.period_end <= end)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if processed is not None:
+            assert isinstance(processed, bool)
+            cursor = cursor.filter(UtilBill.processed == processed)
+        result = cursor.order_by(desc(UtilBill.period_end)).first()
+        if result is None:
+            raise NoSuchBillException
+        return result
 
 if __name__ == '__main__':
     # verify that SQLAlchemy setup is working
