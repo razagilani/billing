@@ -76,6 +76,16 @@ class Address(Base):
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'addressee': self.addressee,
+            'street': self.street,
+            'city': self.city,
+            'state': self.state,
+            'postalcode': self.postal_code,
+        }
+
 
 class Customer(Base):
     __tablename__ = 'customer'
