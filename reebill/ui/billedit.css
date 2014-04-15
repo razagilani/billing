@@ -166,3 +166,7 @@ pre.code{
 .x-panel-footer.x-panel-btns{
     padding-top: 0px; !important
 }
+/* Disable padding for Grand Total Toolbar */
+.x-panel-footer.x-panel-btns{
+    padding-top: 0px; !important
+}

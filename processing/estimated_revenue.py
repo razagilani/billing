@@ -8,7 +8,6 @@ from skyliner.skymap.monguru import Monguru
 from skyliner import sky_handlers
 from billing.processing.process import Process
 from billing.util.dateutils import estimate_month, month_offset, months_of_past_year, date_generator, date_to_datetime
-from billing.nexusapi.nexus_util import NexusUtil
 from billing.processing import state
 from billing.processing.state import StateDB
 from billing.util.dictutils import deep_map

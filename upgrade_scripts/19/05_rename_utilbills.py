@@ -1,27 +1,32 @@
 import MySQLdb
-import ConfigParser
 import os
 import sys
 import re
 import shutil
+import argparse
 from billing.processing.state import StateDB, UtilBill, Customer
 from datetime import date, timedelta
 from sqlalchemy.orm.exc import NoResultFound
 
 DATETOLERANCE=10 # if no exact match could be found search a bill starting/ending within +-X days
 
+# command-line arguments
+parser = argparse.ArgumentParser(description='05_rename_utilbills')
+parser.add_argument('--statedbhost', required=True)
+parser.add_argument('--statedbname', required=True)
+parser.add_argument('--statedbuser', required=True)
+parser.add_argument('--statedbpasswd', required=True)
+parser.add_argument('--utilitybillpath', required=True)
+args = parser.parse_args()
+
 sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
+    'host': args.statedbhost,
+    'database': args.statedbname,
+    'user': args.statedbuser,
+    'password': args.statedbpasswd
 })
 
-config = ConfigParser.RawConfigParser()
-os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-config_file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))),'reebill','reebill.cfg')
-config.read(config_file_path)
-utilbillpath=config.get('billdb', 'utilitybillpath')
+utilbillpath=args.utilitybillpath
 
 s = sdb.session()
 pattern=re.compile('^(\d{4})(\d{2})(\d{2})-(\d{4})(\d{2})(\d{2}).pdf')

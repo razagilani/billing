@@ -29,12 +29,16 @@ def listAccounts():
 # def get_reebill(self, session, account, sequence, version):
 #     return MockStateReebill(None,1,0)
 
+def createMockUtilBill():
+    ub = mock.create_autospec(UtilBill)
+    return ub
+
 def createMockReebill():
     rb = mock.create_autospec(spec=ReeBill, instance=True)
     rb.issued = 1
     rb.sequence = 1
     rb.version = 0
-    rb.issue_date = date(2013,4,1)
+    rb.issue_date = date(2013, 4, 1)
     rb.balance_due = 5.01
     rb.balance_forward = 62.29
     rb.discount_rate = 0.1

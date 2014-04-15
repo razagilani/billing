@@ -26,9 +26,11 @@ dev_views = [x[0] for x in cur.fetchall()]
 
 
 # sort tables in order of dependency
-cur.execute('''select referenced_table_name, table_name
-        FROM information_schema.key_column_usage
-        where referenced_table_name is not null''')
+cur.execute('''select referenced_table_name, information_schema.key_column_usage.table_name
+               from information_schema.key_column_usage
+               left join information_schema.tables
+               on information_schema.key_column_usage.table_name=information_schema.tables.table_name
+               where referenced_table_name is not null and information_schema.tables.table_schema="%s"''' % DEV_DB)
 dependency_graph = list(cur.fetchall())
 dependent_tables_sorted = tsort.topological_sort(dependency_graph)
 

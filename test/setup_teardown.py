@@ -19,7 +19,7 @@ from billing.processing.render import ReebillRenderer
 from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.util.dictutils import deep_map
 from billing.test import example_data
-from billing.nexusapi.nexus_util import MockNexusUtil
+from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter
 
 class TestCaseWithSetup(unittest.TestCase):

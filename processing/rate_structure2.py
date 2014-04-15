@@ -11,7 +11,7 @@ from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
-    NotUniqueException
+    NotUniqueException, NoSuchBillException
 from billing.processing.state import UtilBill
 
 # minimum normlized score for an RSI to get included in a probable UPRS
@@ -339,7 +339,7 @@ class RateStructureDAO(object):
         self._rate_structure_class = rate_structure_class
         self.logger = logger
 
-    def _get_probable_rsis(self, utilbill_loader, utility, service,
+    def _get_probable_shared_rsis(self, utilbill_loader, utility, service,
             rate_class, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
@@ -432,24 +432,43 @@ class RateStructureDAO(object):
                     quantity=quantity))
         return result
 
-    def get_probable_uprs(self, utilbill_loader, utility, service, rate_class,
-            start, end, ignore=lambda x: False):
-        '''Returns a guess of the rate structure for a new utility bill of the
-        given utility name, service, and dates.
-        
+    def get_predicted_rate_structure(self, utilbill, utilbill_loader):
+        '''Returns a guess of the rate structure for the given utility bill
+        based on those for other existing bills.
+
         'utilbill_loader': an object that has a 'load_utilbills' method
         returning an iterable of state.UtilBills matching criteria given as
         keyword arguments (see state.UtilBillLoader). For testing, this can be
         replaced with a mock object.
 
-        'ignore' is a boolean-valued function that should return True when
-        given a UPRS document should be excluded from prediction.
-        
         The returned document has no _id, so the caller can add one before
-        saving.'''
-        return RateStructure(type='UPRS', rates=self._get_probable_rsis(
-                utilbill_loader, utility, service, rate_class, (start, end),
-                ignore=ignore))
+        saving.
+        '''
+        result = RateStructure(type='UPRS',
+                rates=self._get_probable_shared_rsis(utilbill_loader,
+                utilbill.utility, utilbill.service, utilbill.rate_class,
+                (utilbill.period_start, utilbill.period_end),
+                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+        result.id = ObjectId()
+
+        # add any RSIs from the predecessor's UPRS that are not already there
+        try:
+            predecessor = utilbill_loader.get_last_real_utilbill(
+                    utilbill.customer.account, utilbill.period_start,
+                    service=utilbill.service, utility=utilbill.utility,
+                    rate_class=utilbill.rate_class, processed=True)
+        except NoSuchBillException:
+            # if there's no predecessor, there are no RSIs to add
+            pass
+        else:
+            predecessor_rs = self.load_uprs_for_utilbill(predecessor)
+            for rsi in predecessor_rs.rates:
+                if not (rsi.shared or rsi.rsi_binding in (r.rsi_binding for r in
+                            result.rates)):
+                    result.rates.append(rsi)
+
+        return result
+
 
     def load_uprs_for_utilbill(self, utilbill, reebill=None):
         '''Loads and returns a UPRS document for the given state.Utilbill.
@@ -499,16 +518,6 @@ class RateStructureDAO(object):
         '''Returns a list of (UPRS document, start date, end date) tuples with
         the given utility and rate structure name.
         '''
-        # skip Hypothetical utility bills--they have a UPRS document, but it's
-        # fake, so it should not count toward the probability of RSIs being
-        # included in other bills. (ignore utility bills that are
-        # 'SkylineEstimated' or 'Hypothetical')
-        # utilbills = session.query(UtilBill)\
-        #         .filter(UtilBill.service==service)\
-        #         .filter(UtilBill.utility==utility_name)\
-        #         .filter(UtilBill.rate_class==rate_class)\
-        #         .filter(UtilBill.state <= UtilBill.SkylineEstimated)\
-        #         .filter(UtilBill.processed==True)
         utilbills = utilbill_loader.load_real_utilbills(
             service=service,
             utility=utility_name,
