@@ -232,8 +232,8 @@ class ReeBill(Base):
     charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
-                    late_charge_rate=None, billing_address=Address(),
-                    service_address=Address(), utilbills=[]):
+                    late_charge_rate=None, billing_address=None,
+                    service_address=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
@@ -260,8 +260,14 @@ class ReeBill(Base):
         self.ree_savings = 0
         self.email_recipient = None
 
-        self.billing_address = billing_address
-        self.service_address = service_address
+        # NOTE: billing/service_address arguments can't be given default value
+        # 'Address()' because that causes the same Address instance to be
+        # assigned every time. ('Address()' is evaluated once, at the time
+        # the module is imported.)
+        self.billing_address = Address() if billing_address is None \
+                else  billing_address
+        self.service_address = Address() if service_address is None \
+                else service_address
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
