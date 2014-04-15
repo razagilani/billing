@@ -549,9 +549,10 @@ class MongoReebill(object):
         '''Returns a newly-created MongoReebill object having the given account
         number, discount rate, late charge rate, and list of utility bill
         documents. Hypothetical charges are the same as the utility bill's
-        actual charges. Addresses are copied from the utility bill template.
+        actual charges.
         Note that the utility bill document _id is not changed; the caller is
-        responsible for properly duplicating utility bill documents.'''
+        responsible for properly duplicating utility bill documents.
+        '''
         # NOTE currently only one utility bill is allowed
         assert len(utilbill_docs) == 1
         utilbill = utilbill_docs[0]
@@ -563,23 +564,6 @@ class MongoReebill(object):
                 "version" : version,
             },
             "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
-            # copy addresses from utility bill
-            # specifying keys explicitly to provide validation and to document
-            # the schema
-            "billing_address": {
-                'addressee': utilbill['billing_address']['addressee'],
-                'street': utilbill['billing_address']['street'],
-                'city': utilbill['billing_address']['city'],
-                'state': utilbill['billing_address']['state'],
-                'postal_code': utilbill['billing_address']['postal_code'],
-            },
-            "service_address": {
-                'addressee': utilbill['service_address']['addressee'],
-                'street': utilbill['service_address']['street'],
-                'city': utilbill['service_address']['city'],
-                'state': utilbill['service_address']['state'],
-                'postal_code': utilbill['service_address']['postal_code'],
-            },
         }
         return MongoReebill(reebill_doc, utilbill_docs)
 
@@ -704,31 +688,6 @@ class MongoReebill(object):
     @property
     def period_end(self):
         return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
-
-    @property
-    def billing_address(self):
-        '''Returns a dict.'''
-        return self.reebill_dict['billing_address']
-    @billing_address.setter
-    def billing_address(self, value):
-        self.reebill_dict['billing_address'] = value
-
-    @property
-    def service_address(self):
-        '''Returns a dict.'''
-        return self.reebill_dict['service_address']
-    @service_address.setter
-    def service_address(self, value):
-        self.reebill_dict['service_address'] = value
-
-    def service_address_formatted(self):
-        try:
-            return '%(street)s, %(city)s, %(state)s' % self.reebill_dict['service_address']
-        except KeyError as e:
-            print >> sys.stderr, 'Reebill %s-%s-%s service address lacks key "%s"' \
-                    % (self.account, self.sequence, self.version, e)
-            print >> sys.stderr, self.reebill_dict['service_address']
-            return '?'
 
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -873,7 +832,6 @@ class MongoReebill(object):
         When stored, this quantity is converted to the same unit as the
         corresponding utility bill register.
         '''
-        # TODO eliminate duplicate code with total_renewable_energy
         assert isinstance(new_quantity, float)
 
         # NOTE this may choose the wrong utility bill register if there are
