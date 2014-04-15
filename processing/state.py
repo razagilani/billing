@@ -239,8 +239,8 @@ class ReeBill(Base):
 
     # see the following documentation fot delete cascade behavior
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
-    charges = relationship('ReeBillCharge', backref='reebill', cascade='delete')
-    readings = relationship('Reading', backref='reebill', cascade='delete')
+    charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
+    readings = relationship('Reading', backref='reebill', cascade='all')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                     late_charge_rate=None, billing_address=None,
