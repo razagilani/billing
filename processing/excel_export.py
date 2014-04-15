@@ -387,7 +387,7 @@ class Exporter(object):
                 actual_total=reebill_doc.get_total_utility_charges()
 
                 try:
-                    hypothetical_total=reebill_doc.get_total_hypothetical_charges()
+                    hypothetical_total=reebill.get_total_hypothetical_charges()
                 except KeyError:
                     hypothetical_total="Error!"
                 try:
@@ -408,8 +408,8 @@ class Exporter(object):
                 row = [account,
                        reebill.sequence,
                        reebill.version,
-                       format_addr(reebill_doc.billing_address),
-                       format_addr(reebill_doc.service_address),
+                       format_addr(reebill.billing_address),
+                       format_addr(reebill.service_address),
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),
