@@ -1597,14 +1597,15 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        if xaction == "read":
-            charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
-        else:
-            raise NotImplementedError('Cannot create, edit or destroy charges'+\
+        if not xaction == "read":
+            raise NotImplementedError('Cannot create, edit or destroy charges'+ \
                                       ' from this grid.')
+
+        with DBSession(self.state_db) as session:
+                charges=self.process.get_hypothetical_matched_charges(
+                    session, account, sequence)
+                return self.dumps({'success': True, 'rows': charges,
+                                   'total':len(charges)})
 
 
     @cherrypy.expose

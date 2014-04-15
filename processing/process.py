@@ -170,8 +170,7 @@ class Process(object):
         mongo.delete_charge(utilbill_doc, rsi_binding)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
-    def get_hypothetical_matched_charges(self, session, account, sequence,
-             service):
+    def get_hypothetical_matched_charges(self, session, account, sequence):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
         reebill = self.state_db.get_reebill(session, account, sequence)
