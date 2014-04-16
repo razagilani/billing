@@ -1511,16 +1511,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create reebill based on first utility bill
             self.process.roll_reebill(session, account, start_date=date(2013,4,4))
 
-            # Make sure the reebill period matches the utility bill
-            reebill_1 = self.reebill_dao.load_reebill(account, 1)
-            self.assertEqual(reebill_1.period_begin, date(2013,4,4))
-            self.assertEqual(reebill_1.period_end, date(2013,5,2))
-
             # reebill should be computable
             self.process.compute_reebill(session, account, 1)
 
             self.process.issue(session, account, 1)
-            reebill_1 = self.reebill_dao.load_reebill(account, 1)
 
             # another reebill
             self.process.roll_reebill(session, account)

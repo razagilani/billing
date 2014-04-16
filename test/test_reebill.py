@@ -54,10 +54,8 @@ class ReebillTest(TestCaseWithSetup):
             check()
 
             # change utilbill period
-            b._get_utilbill_for_service(b.services[0])['start'] = date(2100,
-                    1,1)
-            b._get_utilbill_for_service(b.services[0])['end'] = date(2100,
-                2,1)
+            b._utilbills[0]['start'] = date(2100,1,1)
+            b._utilbills[0]['start'] = date(2100,2,1)
             check()
             self.reebill_dao.save_reebill(b)
             self.reebill_dao.save_utilbill(b._utilbills[0])

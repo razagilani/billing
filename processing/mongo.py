@@ -616,47 +616,45 @@ class MongoReebill(object):
         associated utility bill.
         '''
         # process rate structures for all services
-        for service in self.services:
-            utilbill_doc = self._get_utilbill_for_service(service)
-            compute_all_charges(utilbill_doc, uprs)
+        utilbill_doc = self._utilbills[0]
+        compute_all_charges(utilbill_doc, uprs)
 
-            # TODO temporary hack: duplicate the utility bill, set its register
-            # quantities to the hypothetical values, recompute it, and then
-            # copy all the charges back into the reebill
-            hypothetical_utilbill = deepcopy(self._get_utilbill_for_service(
-                    service))
+        # TODO temporary hack: duplicate the utility bill, set its register
+        # quantities to the hypothetical values, recompute it, and then
+        # copy all the charges back into the reebill
+        hypothetical_utilbill = deepcopy(self._utilbills[0])
 
-            # these three generators iterate through "actual registers" of the
-            # real utility bill (describing conventional energy usage), "shadow
-            # registers" of the reebill (describing renewable energy usage
-            # offsetting conventional energy), and "hypothetical registers" in
-            # the copy of the utility bill (which will be set to the sum of the
-            # other two).
-            actual_registers = chain.from_iterable(m['registers']
-                    for m in utilbill_doc['meters'])
-            shadow_registers = chain.from_iterable(u['shadow_registers']
-                    for u in self.reebill_dict['utilbills'])
-            hypothetical_registers = chain.from_iterable(m['registers'] for m
-                    in hypothetical_utilbill['meters'])
+        # these three generators iterate through "actual registers" of the
+        # real utility bill (describing conventional energy usage), "shadow
+        # registers" of the reebill (describing renewable energy usage
+        # offsetting conventional energy), and "hypothetical registers" in
+        # the copy of the utility bill (which will be set to the sum of the
+        # other two).
+        actual_registers = chain.from_iterable(m['registers']
+                for m in utilbill_doc['meters'])
+        shadow_registers = chain.from_iterable(u['shadow_registers']
+                for u in self.reebill_dict['utilbills'])
+        hypothetical_registers = chain.from_iterable(m['registers'] for m
+                in hypothetical_utilbill['meters'])
 
-            # set the quantity of each "hypothetical register" to the sum of
-            # the corresponding "actual" and "shadow" registers.
-            for h_register in hypothetical_registers:
-                a_register = next(r for r in actual_registers
-                        if r['register_binding'] == 
-                        h_register['register_binding'])
-                s_register = next(r for r in shadow_registers
-                        if r['register_binding'] == 
-                        h_register['register_binding'])
-                h_register['quantity'] = a_register['quantity'] + \
-                        s_register['quantity']
+        # set the quantity of each "hypothetical register" to the sum of
+        # the corresponding "actual" and "shadow" registers.
+        for h_register in hypothetical_registers:
+            a_register = next(r for r in actual_registers
+                    if r['register_binding'] ==
+                    h_register['register_binding'])
+            s_register = next(r for r in shadow_registers
+                    if r['register_binding'] ==
+                    h_register['register_binding'])
+            h_register['quantity'] = a_register['quantity'] + \
+                    s_register['quantity']
 
-            # compute the charges of the hypothetical utility bill
-            compute_all_charges(hypothetical_utilbill, uprs)
+        # compute the charges of the hypothetical utility bill
+        compute_all_charges(hypothetical_utilbill, uprs)
 
-            # copy the charges from there into the reebill
-            self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
-                    hypothetical_utilbill['charges']
+        # copy the charges from there into the reebill
+        self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
+                hypothetical_utilbill['charges']
 
     # TODO should _id fields even have setters? they're never supposed to
     # change.
@@ -681,13 +679,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    # Periods are read-only on the basis of which utilbills have been attached
-    @property
-    def period_begin(self):
-        return min([self._get_utilbill_for_service(s)['start'] for s in self.services])
-    @property
-    def period_end(self):
-        return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
@@ -774,32 +765,32 @@ class MongoReebill(object):
         operation.'''
         return self.reebill_dict.get('suspended_services', [])
 
-    # TODO remove, since this feature is dead
-    def suspend_service(self, service):
-        '''Adds 'service' to the list of suspended services. Returns True iff
-        it was added, False if it already present.'''
-        service = service.lower()
-        if service not in [s.lower() for s in self.services]:
-            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+    # # TODO remove, since this feature is dead
+    # def suspend_service(self, service):
+    #     '''Adds 'service' to the list of suspended services. Returns True iff
+    #     it was added, False if it already present.'''
+    #     service = service.lower()
+    #     if service not in [s.lower() for s in self.services]:
+    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+    #
+    #     if 'suspended_services' not in self.reebill_dict:
+    #         self.reebill_dict['suspended_services'] = []
+    #     if service not in self.reebill_dict['suspended_services']:
+    #         self.reebill_dict['suspended_services'].append(service)
 
-        if 'suspended_services' not in self.reebill_dict:
-            self.reebill_dict['suspended_services'] = []
-        if service not in self.reebill_dict['suspended_services']:
-            self.reebill_dict['suspended_services'].append(service)
-
-    # TODO remove, since this feature is dead
-    def resume_service(self, service):
-        '''Removes 'service' from the list of suspended services. Returns True
-        iff it was removed, False if it was not present.'''
-        service = service.lower()
-        if service not in [s.lower() for s in self.services]:
-            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
-
-        if service in self.reebill_dict.get('suspended_services', {}):
-            self.reebill_dict['suspended_services'].remove(service)
-            # might as well take out the key if the list is empty
-            if self.reebill_dict['suspended_services'] == []:
-                del self.reebill_dict['suspended_services']
+    # # TODO remove, since this feature is dead
+    # def resume_service(self, service):
+    #     '''Removes 'service' from the list of suspended services. Returns True
+    #     iff it was removed, False if it was not present.'''
+    #     service = service.lower()
+    #     if service not in [s.lower() for s in self.services]:
+    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+    #
+    #     if service in self.reebill_dict.get('suspended_services', {}):
+    #         self.reebill_dict['suspended_services'].remove(service)
+    #         # might as well take out the key if the list is empty
+    #         if self.reebill_dict['suspended_services'] == []:
+    #             del self.reebill_dict['suspended_services']
 
     def renewable_energy_period(self):
         '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
