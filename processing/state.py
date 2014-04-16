@@ -395,6 +395,18 @@ class ReeBill(Base):
 
         return total_therms
 
+    def update_charges_from_utilbill_doc(self, session, utilbill_doc):
+        '''Updates the set of Charges belonging to this reebill to match the
+        given utility bill document. All new Charge objects are created,
+        and old ones are delted, so references to existing charges should not
+        be used after this method is called.
+        '''
+        for charge in self.charges:
+            session.delete(charge)
+        self.charges = [ReeBillCharge(self, c['rsi_binding'],  c['description'],
+                c['group'], c['quantity'], c['rate'], c['total']) for c in
+                utilbill_doc['charges']]
+
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this
@@ -484,7 +496,10 @@ class ReeBillCharge(Base):
     rate = Column(Float, nullable=False)
     total = Column(Float, nullable=False)
 
-    def __init__(self, rsi_binding, description, group, quantity, rate, total):
+    def __init__(self, reebill, rsi_binding, description, group, quantity,
+                 rate, total):
+        # TODO: should this be necessary? look at SQLAlchemy docs
+        self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group

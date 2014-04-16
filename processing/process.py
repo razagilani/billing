@@ -827,7 +827,7 @@ class Process(object):
                                                                .utilbills[0])
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill
                 .utilbills[0])
-        self._compute_reebill_charges(reebill, uprs)
+        self._compute_reebill_charges(session, reebill, uprs)
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
         actual_total = mongo.total_of_all_charges(utilbill_document)
@@ -917,7 +917,7 @@ class Process(object):
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
 
-    def _compute_reebill_charges(self, reebill, uprs):
+    def _compute_reebill_charges(self, session, reebill, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill. This should be moved to state.ReeBill when
         utility bill documents are gone.
@@ -964,9 +964,8 @@ class Process(object):
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
 
         # copy the charges from there into the reebill
-        reebill.charges = [ReeBillCharge(c['rsi_binding'], c['description'],
-                c['group'], c['quantity'], c['rate'], c['total']) for c in
-                hypothetical_utilbill['charges']]
+        reebill.update_charges_from_utilbill_doc(session,
+                hypothetical_utilbill)
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
