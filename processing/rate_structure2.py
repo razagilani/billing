@@ -144,9 +144,6 @@ class RateStructureItem(EmbeddedDocument):
         and returns ( quantity  result, rate result). Raises FormulaSyntaxError
         if either of the formulas could not be parsed.
         '''
-        # from pprint import PrettyPrinter
-        # PrettyPrinter().pprint(register_quantities)
-
         # validate argument types to avoid more confusing errors below
         assert all(
             isinstance(k, basestring) and isinstance(v, dict)
@@ -190,7 +187,6 @@ class RateStructureItem(EmbeddedDocument):
             'quantity': self.quantity,
             'quantity_units': self.quantity_units,
             'rate': self.rate,
-            #'rate_units': self.rate_units,
             'round_rule': self.round_rule,
             'description': self.description,
             'shared': self.shared,
@@ -215,7 +211,7 @@ class RateStructureItem(EmbeddedDocument):
 
     def __repr__(self):
         return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
-        self.rate)
+                self.rate)
 
     def __eq__(self, other):
         return (
@@ -263,8 +259,7 @@ class RateStructure(Document):
         '''
         combined_dict = uprs.rsis_dict()
         combined_dict.update(cprs.rsis_dict())
-        return RateStructure(type='UPRS',
-            rates=combined_dict.values())
+        return RateStructure(type='UPRS', rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to
