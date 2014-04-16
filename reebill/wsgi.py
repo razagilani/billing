@@ -402,10 +402,12 @@ class BillToolBridge:
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                self.reebill_dao)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.splinter, logger=self
+                self.bill_mailer, self.renderer, self.ree_getter, logger=self
                 .logger)
 
 
