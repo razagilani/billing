@@ -1764,10 +1764,9 @@ class Process(object):
         return data, total_count
 
     def bind_renewable_energy(self, session, account, sequence):
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
-        self.reebill_dao.save_reebill(reebill)
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                        reebill, use_olap=True)
 
     def mail_reebills(self, session, account, sequences, recipient_list):
         all_reebills = [self.state_db.get_reebill(session, account, sequence)
