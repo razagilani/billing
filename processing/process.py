@@ -1447,16 +1447,9 @@ class Process(object):
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        # reebill_document = self.reebill_dao.load_reebill(account, sequence,
-        #         version=reebill.version)
-        # frozen_utilbill_id = self.reebill_dao.save_reebill_and_utilbill(
-        #         reebill_document, freeze_utilbills=True)
-        # reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
         self._freeze_utilbill_document(session, reebill)
 
         # also duplicate UPRS, storing the new _ids in MySQL
-        # ('save_reebill_and_utilbill' can't do it because ReeBillDAO deals only with bill
-        # documents)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 reebill.utilbills[0])
         uprs.id = ObjectId()
