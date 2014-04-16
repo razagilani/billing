@@ -653,35 +653,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    def _get_utilbill_for_handle(self, utilbill_handle):
-        '''Returns the utility bill dictionary whose _id correspinds to the
-        "id" in the given internal utilbill dictionary.'''
-        # i am calling each subdocument in the "utilbills" list (which contains
-        # the utility bill's _id and data related to that bill) a "handle"
-        # because it is what you use to grab a utility bill and it's kind of
-        # like a pointer.
-        id = utilbill_handle['id']
-        matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
-        if len(matching_utilbills) == 0:
-            raise ValueError('No utilbill found for id "%s"' % id)
-        if len(matching_utilbills) > 1:
-            raise ValueError('Multiple utilbills found for id "%s"' % id)
-        return matching_utilbills[0]
-
-    def _get_utilbill_for_rs(self, utility, service, rate_class):
-        '''Returns the utility bill dictionary with the given utility name and
-        rate structure name.'''
-        matching_utilbills = [u for u in self._utilbills if u['utility'] ==
-                utility and u['service'] == service and
-                u['rate_structure_binding'] == rate_class]
-        if len(matching_utilbills) == 0:
-            raise ValueError(('No utilbill found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_class))
-        if len(matching_utilbills) > 1:
-            raise ValueError(('Multiple utilbills found for utility "%s", rate'
-                    'structure "%s"') % (utility, rate_class))
-        return matching_utilbills[0]
-
     def get_all_shadow_registers_json(self):
         '''Given a utility bill document, returns a list of dictionaries describing
         registers of all meters.'''
