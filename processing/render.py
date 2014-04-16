@@ -404,17 +404,17 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        total_utility_charges = mongo.total_of_all_charges(utilbill_doc)
         utilitycharges = [
             [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
         ]+[
             [
-                Paragraph(str(format_for_display(reebill_document
-                .get_total_hypothetical_charges())),styles['BillFieldRight']),
-                Paragraph(str(format_for_display(reebill_document
-                .get_total_utility_charges())),styles['BillFieldRight']),
-                Paragraph(str(format_for_display(reebill.ree_value)),styles[
-                    'BillFieldRight'])
+                Paragraph(str(format_for_display(reebill.get_total_hypothetical_charges())),styles['BillFieldRight']),
+                Paragraph(str(format_for_display(total_utility_charges)),styles['BillFieldRight']),
+                Paragraph(str(format_for_display(reebill.ree_value)),styles['BillFieldRight'])
             ]
         ]
 
@@ -602,7 +602,6 @@ class ReebillRenderer:
         ]
 
         # muliple services are not supported
-        assert len(reebill_document.services) == 1
         last_group=None
         for charge in reebill_document.get_all_hypothetical_charges():
             # Only print the group if it changed
@@ -611,8 +610,7 @@ class ReebillRenderer:
             else:
                 last_group = charge['group']
                 group = last_group
-                chargeDetails.append([reebill_document.services[0],
-                              None, None, None, None, None, None])
+                chargeDetails.append(['', None, None, None, None, None, None])
             chargeDetails.append([
                 group,
                 charge.get('description', "No description"),
@@ -628,7 +626,7 @@ class ReebillRenderer:
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None,
             format_for_display(
-                reebill_document.get_total_hypothetical_charges(),
+                reebill.get_total_hypothetical_charges(),
                 places=2)
         ])
 

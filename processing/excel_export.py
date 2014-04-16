@@ -108,7 +108,7 @@ class Exporter(object):
             try:
                 actual_charges = sorted(mongo.get_charges_json(utilbill_doc),
                                         key=itemgetter('description'))
-                hypothetical_charges = reebill_doc.get_all_hypothetical_charges()
+                hypothetical_charges = reebill.charges
             except KeyError as e:
                 print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
                         sequence, e.message, traceback.format_exc()))
@@ -117,10 +117,12 @@ class Exporter(object):
             for charge in actual_charges:
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
-                charge['description'] += ' (hypothetical)'
+                charge.description += ' (hypothetical)'
                 # extra charges: actual and hypothetical totals, difference between
                 # them, Skyline's late fee from the reebill
-            actual_total = reebill_doc.get_total_utility_charges()
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
+                    .utilbills[0])
+            actual_total = sum(mongo.total_of_all_charges(utilbill_doc))
             hypothetical_total = reebill_doc.get_total_hypothetical_charges()
             extra_charges = [
                 {'description': 'Actual Total', 'total': actual_total},
@@ -142,7 +144,7 @@ class Exporter(object):
             for charge in hypothetical_charges + actual_charges + extra_charges:
                 column_name = '%s: %s' % (charge.get('group',''),
                                           charge.get('description','Error: No Description Found!'))
-                total = charge.get('total', 0)
+                total = charge.total
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
