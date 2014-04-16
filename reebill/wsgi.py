@@ -1531,6 +1531,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def get_reebill_services(self, account, sequence, **args):
+        # TODO: delete this? is it ever used?
         '''Returns the utililty services associated with the reebill given by
         account and sequence, and a list of which services are suspended
         (usually empty). Used to show service suspension checkboxes in
@@ -1541,7 +1542,7 @@ class BillToolBridge:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
         # TODO: 40161259 must return success field
         return self.dumps({
-            'services': reebill.services,
+            'services': [],
             'suspended_services': reebill.suspended_services
         })
 

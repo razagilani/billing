@@ -336,7 +336,8 @@ class Process(object):
             doc = self.reebill_dao.load_reebill(account, sequence,
                     version=max_version)
             the_dict.update({
-                'services': [service.title() for service in doc.services],
+                # TODO: is this used at all? does it need to be populated?
+                'services': [],
             })
             # wrong energy unit can make this method fail causing the reebill
             # grid to not load; see

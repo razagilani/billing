@@ -392,10 +392,10 @@ class ReebillRenderer:
                 [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
             ] + [
                 [
-                    Paragraph(service + u' service',styles['BillLabelSmRight']), 
+                    Paragraph(u' service',styles['BillLabelSmRight']),
                     Paragraph(periods[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
                     Paragraph(periods[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
-                ] for service in reebill_document.services
+                ]
             ]
 
         t = Table(serviceperiod, colWidths=[115,63,63])
