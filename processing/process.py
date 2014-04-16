@@ -1793,7 +1793,7 @@ class Process(object):
                 sequence in sequences]
         bill_dates = ', '.join(["%s" % (b.period_end) for b in all_documents])
         merge_fields = {
-            'street': most_recent_document.service_address.get('street',''),
+            'street': most_recent_reebill.service_address.street,
             'balance_due': round(most_recent_reebill.balance_due, 2),
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
