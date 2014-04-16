@@ -440,6 +440,9 @@ class ReeBill(Base):
     def get_service_address_formatted(self):
         return str(self.service_address)
 
+    def get_total_renewable_energy(self):
+        return sum(r.renewable_quantity for r in self.readings)
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
