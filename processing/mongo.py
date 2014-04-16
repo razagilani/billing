@@ -585,32 +585,6 @@ class MongoReebill(object):
                 [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
                 utilbill_doc in self._utilbills]
 
-    # NOTE avoid using this if at all possible,
-    # because MongoReebill._utilbills will go away
-    def get_total_utility_charges(self):
-        return sum(total_of_all_charges(self._get_utilbill_for_handle(
-            subdoc)) for subdoc in self.reebill_dict['utilbills'])
-
-    # NOTE avoid using this if at all possible,
-    # because MongoReebill._utilbills will go away
-    def get_all_hypothetical_charges(self):
-        ''' Returns all "hypothetical" versions of all charges, sorted
-            alphabetically by group and rsi_binding
-        '''
-        assert len(self.reebill_dict['utilbills']) == 1
-        return sorted((charge for subdoc in self.reebill_dict['utilbills']
-                       for charge in subdoc['hypothetical_charges']),
-                            key=itemgetter('group','rsi_binding'))
-
-    def get_total_hypothetical_charges(self):
-        '''Returns sum of "hypothetical" versions of all charges.
-        '''
-        # NOTE extreme tolerance for malformed data is required to acommodate
-        # old bills; see https://www.pivotaltracker.com/story/show/66177446
-        return sum(sum(charge.get('total', 0)
-                for charge in subdoc['hypothetical_charges'])
-                for subdoc in self.reebill_dict['utilbills'])
-
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill.
@@ -679,37 +653,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    def _utilbill_ids(self):
-        '''Useful for debugging.'''
-        # note order is not guranteed so the result may look weird
-        return zip([h['id'] for h in self.reebill_dict['utilbills']],
-                [u['_id'] for u in self._utilbills])
-
-    def _get_utilbill_for_service(self, service):
-        '''Returns utility bill document having the given service. There must
-        be exactly one.'''
-        matching_utilbills = [u for u in self._utilbills if u['service'] ==
-                service]
-        if len(matching_utilbills) == 0:
-            raise ValueError('No utilbill found for service "%s"' % service)
-        if len(matching_utilbills) > 1:
-            raise ValueError('Multiple utilbills found for service "%s"' % service)
-        return matching_utilbills[0]
-
-    def _get_handle_for_service(self, service):
-        '''Returns internal 'utibills' subdictionary whose corresponding
-        utility bill has the given service. There must be exactly 1.'''
-        u = self._get_utilbill_for_service(service)
-        handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
-                u['_id']]
-        if len(handles) == 0:
-            raise ValueError(('Reebill has no reference to utilbill for '
-                    'service "%s"') % service)
-        if len(handles) > 1:
-            raise ValueError(('Reebil has mulutple references to utilbill '
-                    'for service "%s"' % service))
-        return handles[0]
-
     def _get_utilbill_for_handle(self, utilbill_handle):
         '''Returns the utility bill dictionary whose _id correspinds to the
         "id" in the given internal utilbill dictionary.'''
@@ -792,65 +735,57 @@ class MongoReebill(object):
     #         if self.reebill_dict['suspended_services'] == []:
     #             del self.reebill_dict['suspended_services']
 
-    def renewable_energy_period(self):
-        '''Returns 2-tuple of dates (inclusive start, exclusive end) describing
-        the period of renewable energy consumption in this bill. In practice,
-        this means the read dates of the only meter in the utility bill which
-        is equivalent to the utility bill's period.'''
-        assert len(self._utilbills) == 1
-        return meter_read_period(self._utilbills[0])
-
-    def set_hypothetical_register_quantity(self, register_binding,
-                    new_quantity):
-        ''' Sets the "quantity" field of the given register subdocument to the
-        given value, assumed to be in BTU for thermal and kW for PV.
-        When stored, this quantity is converted to the same unit as the
-        corresponding utility bill register.
-        '''
-        assert isinstance(new_quantity, float)
-
-        # NOTE this may choose the wrong utility bill register if there are
-        # multiple utility bills
-        assert len(self.reebill_dict['utilbills']) == 1
-
-        # look up corresponding utility bill register to get unit
-        utilbill = self._utilbills[0]
-        utilbill_register = next(chain.from_iterable((r for r in m['registers']
-                if r['register_binding'] == register_binding)
-                for m in utilbill['meters']))
-        unit = utilbill_register['quantity_units'].lower()
-
-        # Thermal: convert quantity to therms according to unit, and add it to
-        # the total
-        if unit == 'therms':
-            new_quantity /= 1e5
-        elif unit == 'btu':
-            # TODO physical constants must be global
-            pass
-        elif unit == 'kwh':
-            # TODO physical constants must be global
-            new_quantity /= 1e5
-            new_quantity /= .0341214163
-        elif unit == 'ccf':
-            # deal with non-energy unit "CCF" by converting to therms with
-            # conversion factor 1
-            # TODO: 28825375 - need the conversion factor for this
-            print ("Register in reebill %s-%s-%s contains gas measured "
-                   "in ccf: energy value is wrong; time to implement "
-                   "https://www.pivotaltracker.com/story/show/28825375") \
-                  % (self.account, self.sequence, self.version)
-            new_quantity /= 1e5
-        # PV: Unit is kilowatt; no conversion needs to happen
-        elif unit == 'kwd':
-            pass
-        else:
-            raise ValueError('Unknown energy unit: "%s"' % unit)
-
-        all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
-                in self.reebill_dict['utilbills'])
-        register_subdoc = next(r for r in all_hypo_registers
-                if r['register_binding'] == register_binding)
-        register_subdoc['quantity'] = new_quantity
+    # def set_hypothetical_register_quantity(self, register_binding,
+    #                 new_quantity):
+    #     ''' Sets the "quantity" field of the given register subdocument to the
+    #     given value, assumed to be in BTU for thermal and kW for PV.
+    #     When stored, this quantity is converted to the same unit as the
+    #     corresponding utility bill register.
+    #     '''
+    #     assert isinstance(new_quantity, float)
+    #
+    #     # NOTE this may choose the wrong utility bill register if there are
+    #     # multiple utility bills
+    #     assert len(self.reebill_dict['utilbills']) == 1
+    #
+    #     # look up corresponding utility bill register to get unit
+    #     utilbill = self._utilbills[0]
+    #     utilbill_register = next(chain.from_iterable((r for r in m['registers']
+    #             if r['register_binding'] == register_binding)
+    #             for m in utilbill['meters']))
+    #     unit = utilbill_register['quantity_units'].lower()
+    #
+    #     # Thermal: convert quantity to therms according to unit, and add it to
+    #     # the total
+    #     if unit == 'therms':
+    #         new_quantity /= 1e5
+    #     elif unit == 'btu':
+    #         # TODO physical constants must be global
+    #         pass
+    #     elif unit == 'kwh':
+    #         # TODO physical constants must be global
+    #         new_quantity /= 1e5
+    #         new_quantity /= .0341214163
+    #     elif unit == 'ccf':
+    #         # deal with non-energy unit "CCF" by converting to therms with
+    #         # conversion factor 1
+    #         # TODO: 28825375 - need the conversion factor for this
+    #         print ("Register in reebill %s-%s-%s contains gas measured "
+    #                "in ccf: energy value is wrong; time to implement "
+    #                "https://www.pivotaltracker.com/story/show/28825375") \
+    #               % (self.account, self.sequence, self.version)
+    #         new_quantity /= 1e5
+    #     # PV: Unit is kilowatt; no conversion needs to happen
+    #     elif unit == 'kwd':
+    #         pass
+    #     else:
+    #         raise ValueError('Unknown energy unit: "%s"' % unit)
+    #
+    #     all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
+    #             in self.reebill_dict['utilbills'])
+    #     register_subdoc = next(r for r in all_hypo_registers
+    #             if r['register_binding'] == register_binding)
+    #     register_subdoc['quantity'] = new_quantity
 
     def total_renewable_energy(self, ccf_conversion_factor=None):
         # TODO eliminate duplicate code with set_hypothetical_register_quantity
