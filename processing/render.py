@@ -1,43 +1,21 @@
 #!/usr/bin/env python
 import sys
 import os  
-from pprint import pprint
-from types import NoneType
-import math
 from decimal import *
-from itertools import groupby
-from datetime import datetime
-import subprocess
-import reportlab  
+import reportlab
 from pyPdf import PdfFileWriter, PdfFileReader
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
-from reportlab.rl_config import defaultPageSize
-from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors
-from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from reportlab.pdfgen.pathobject import PDFPathObject 
-from reportlab.pdfbase import pdfmetrics  
+from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont  
-from reportlab.pdfgen.canvas import Canvas  
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
-#
-# for chart graphics
-#
-#import pychartdir
-#  Activate ChartDirector License
-#pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
-
-#from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
 from billing.processing import mongo
-
-# Unused
-#from billing import graph
 
 # TODO render should not depend on BillUpload--move this function out to its
 # own file
@@ -77,40 +55,17 @@ class SIBillDocTemplate(BaseDocTemplate):
  
         BaseDocTemplate.build(self,flowables, canvasmaker=canvasmaker)
         
-    #def beforePage(self):
-        #print "Before Page: ", self.pageTemplate.id
-        
     def afterPage(self):
-        #print "After Page"
         if self.pageTemplate.id == firstPageName:
             self.canv.saveState()
-            #self.canv.setStrokeColorRGB(32,32,32)
-            #self.canv.setLineWidth(.05)
-            #self.canv.setDash(1,3)
-            #self.canv.line(0,537,612,537)
-            #self.canv.line(0,264,612,264)
             self.canv.restoreState()
         if self.pageTemplate.id == secondPageName:
             self.canv.saveState()
-            #self.canv.setStrokeColorRGB(0,0,0)
-            #self.canv.setLineWidth(.05)
-            #self.canv.setDash(1,3)
-            #self.canv.line(0,264,612,264)
             self.canv.restoreState()
         
         
     def handle_pageBegin(self):
-        #print "handle_pageBegin"
         BaseDocTemplate.handle_pageBegin(self)
-
-
-def progress(type,value):
-    # TODO fix module to support verbose flag passed in from cmd arg parser 
-    #if (options.verbose):
-    # TODO 37460179: log to logger
-    # print "%s %s" %(type, value)
-    pass
-    
 
 
 def stringify(d):
@@ -231,12 +186,6 @@ class ReebillRenderer:
                 for v in range(max_version + 1)]
         output_path = os.path.join(outputdir, outputfile)
         concat_pdfs(input_paths, output_path)
-        #command = ['pdftk'] + input_paths + ['cat', 'output', output_path]
-        ##print command
-        #result = subprocess.Popen(command, stderr=subprocess.PIPE)
-        #result.wait()
-        #if result.returncode != 0:
-            #raise Exception('rendering failed: ' + result.communicate()[1])
 
         # delete version pdfs, leaving only the combined version
         for input_path in input_paths:
@@ -371,7 +320,6 @@ class ReebillRenderer:
 
         # TODO: 17377331 - find out why the failure is silent
         # for some reasons, if the file path passed in does not exist, SIBillDocTemplate fails silently 
-        # print "%s %s" % (outputdir, outputfile)
         doc = SIBillDocTemplate("%s/%s" % (outputdir, outputfile), pagesize=letter, showBoundary=0, allowSplitting=0)
         doc.addPageTemplates([firstPage, secondPage])
 
@@ -424,10 +372,6 @@ class ReebillRenderer:
         Elements.append(Paragraph(" ".join((sa.get('city', ""), sa.get('state', ""), sa.get('postal_code', ""))), styles['BillField']))
         Elements.append(UseUpSpace())
 
-        # populate special instructions
-        #Elements.append(Spacer(50,50))
-        #Elements.append(UseUpSpace())
-        
         # populate billing address
         Elements.append(Spacer(100,20))
         ba = stringify(reebill.billing_address.to_dict())
@@ -435,150 +379,6 @@ class ReebillRenderer:
         Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(" ".join((ba.get('city', ""), ba.get('state', ""), ba.get('postal_code',""))), styles['BillFieldLg']))
         Elements.append(UseUpSpace())
-
-
-        # statistics
-
-
-        #if self.current_template is not 'teva':
-            #st = reebill_document.statistics
-
-            ## populate graph one
-
-            ## Construct period consumption/production ratio graph
-            ## TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
-            #renewableUtilization = st.get('renewable_utilization', "n/a")
-            #conventionalUtilization = st.get('conventional_utilization', "n/a")
-            #data = [renewableUtilization if renewableUtilization is not None else 0,
-                #conventionalUtilization if conventionalUtilization is not None else 0]
-            #labels = ["Renewable", "Conventional"]
-            #c = PieChart(10*270, 10*127)
-            #c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-
-            ## Configure the labels using CDML to include the icon images
-            #c.setLabelFormat("{label} {percent|1}%")
-
-
-            #c.setColors2(DataColor, [0x007437,0x5a8f47]) 
-            #c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
-            #c.setData(data, labels)
-            #c.setLabelStyle('Inconsolata.ttf', 64)
-            #image_filename = "utilization-%s.png" % datetime.now()
-            #image_path = os.path.join(self.temp_directory, image_filename)
-            #c.makeChart(image_path)
-           
-            #Elements.append(Image(image_path, 270*.9, 127*.9))
-            #Elements.append(UseUpSpace())
-
-
-
-            ## populate graph two 
-            
-            ## construct period environmental benefit
-
-            #periodRenewableConsumed = st.get('renewable_consumed', 0)
-            #periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
-
-            #periodPoundsCO2Offset = st.get('co2_offset', 0)
-            #periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
-            
-            #environmentalBenefit = [
-                #[Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-                #[Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
-                #[Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
-            #]
-
-            #t = Table(environmentalBenefit, [180,90])
-            #t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
-
-            #Elements.append(t)
-            #Elements.append(UseUpSpace())
-
-
-            ## populate graph three 
-            
-            ## construct system life cumulative numbers table
-
-            #total_renewable_consumed = st.get('total_renewable_consumed', 0)
-            #total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
-            #total_co2_offset = st.get('total_co2_offset', 0)
-            #total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
-
-            #total_trees = st.get('total_trees', 0)
-            #total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
-
-            #systemLife = [
-                #[Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-                #[Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
-                #[Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
-                #[Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
-                #[Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
-            #]
-
-            #t = Table(systemLife, [180,90])
-            #t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
-
-            #Elements.append(t)
-            #Elements.append(Spacer(100,20))
-            
-            ## build string for trees:
-            ## each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
-            #if float(total_trees) <= 10:
-                #tree_images = float(total_trees)
-                #tree_label = 'Trees'
-            #else:
-                #tree_images = float(total_trees) / 10.0
-                #tree_label = 'Tens of Trees'
-            ## number of whole trees to show is the floor of tree_images; the fractional
-            ## tree image that is shown (if any) is determined by the fractional part of
-            ## tree_images
-            #tree_image_fraction, whole_tree_images = math.modf(tree_images)
-            #whole_tree_images = int(whole_tree_images)
-            ## round the fractional part to the nearest tenth, and convert it into a string
-            ## (so it's now one of the digits 0-9)
-            #tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
-
-
-            #treeString = ""
-            #while (whole_tree_images) > 0:
-                #treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images", "tree3.png") +"\"/>"
-                #whole_tree_images -= 1
-
-            #if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
-
-            #Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
-
-            #Elements.append(Spacer(100,5))
-            #Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
-
-            #Elements.append(UseUpSpace())
-
-
-            ## populate graph four 
-            
-            ## construct annual production graph
-            #data = []
-            #labels = []
-            #for period in (st.get('consumption_trend',[])):
-                #labels.append(str(period.get("month")))
-                #data.append(float(period.get("quantity")))
-
-            #c = XYChart(10*270, 10*127)
-            #c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
-            #c.setColors2(DataColor, [0x9bbb59, 0xff0000]) 
-            #c.addBarLayer(data)
-            #c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-            #c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
-            #c.yAxis().setTickDensity(100)
-            #c.yAxis().setTitle("Therms", 'Inconsolata.ttf', 52)
-            #c.xAxis().setLabels(labels)
-            #c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
-            #image_filename = "Graph4-%s.png" % datetime.now()
-            #c.makeChart(os.path.join(self.temp_directory,image_filename))    
-
-            #Elements.append(Image(os.path.join(self.temp_directory,image_filename), 270*.9, 127*.9))
-            #Elements.append(UseUpSpace())
-
 
         # populate summary background
         Elements.append(Image(os.path.join(self.template_directory,'images','SummaryBackground.png'), 443, 151))
