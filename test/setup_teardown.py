@@ -19,7 +19,7 @@ from billing.processing.render import ReebillRenderer
 from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.util.dictutils import deep_map
 from billing.test import example_data
-from billing.nexusapi.nexus_util import MockNexusUtil
+from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter
 
 class TestCaseWithSetup(unittest.TestCase):
@@ -93,8 +93,12 @@ port = 27017
 
         # set up logger, but ingore all log output
         logger = logging.getLogger('test')
+        # a logger is required to have >= 1 handler
         logger.addHandler(logging.NullHandler())
-
+        # this is how you prevent the logger from printing to
+        # stdout/stderr, according to
+        # http://stackoverflow.com/questions/2266646/how-to-i-disable-and-re-enable-console-logging-in-python
+        logger.propagate = False
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')

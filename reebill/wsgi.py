@@ -42,7 +42,7 @@ from skyliner.splinter import Splinter
 from skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from billing.util.nexus_util import NexusUtil
+from nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
@@ -402,10 +402,12 @@ class BillToolBridge:
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                self.reebill_dao)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.splinter, logger=self
+                self.bill_mailer, self.renderer, self.ree_getter, logger=self
                 .logger)
 
 
@@ -760,7 +762,8 @@ class BillToolBridge:
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, reebill.sequence, reebill.version)
 
-        return self.dumps({'success': True})
+        return self.dumps({'success': True, 'account':account,
+                           'sequence': reebill.sequence})
 
     @cherrypy.expose
     @random_wait
@@ -924,7 +927,9 @@ class BillToolBridge:
 
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
-            self.process.mail_reebills(session, account, [sequence], recipients)
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+            self.process.mail_reebills(session, account, [sequence],
+                                       recipient_list)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                                                 account, sequence, recipients)
 
@@ -1000,29 +1005,13 @@ class BillToolBridge:
     def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
-        #Various filter functions used below to filter the resulting rows
-        def filter_reebillcustomers(row):
-            return int(row['account'])<20000
-        def filter_xbillcustomers(row):
-            return int(row['account'])>=20000
-        # this function is used below to format the "Utility Service Address"
-        # grid column
-        def format_service_address(service_address, account):
-            try:
-                return '%(street)s, %(city)s, %(state)s' % service_address
-            except KeyError as e:
-                self.logger.error(('Utility bill service address for %s '
-                        'lacks key "%s": %s') % (
-                                account, e.message, service_address))
-                return '?'
 
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
         with DBSession(self.state_db) as session:
             start, limit = int(start), int(limit)
 
-            # result is a list of dictionaries of the form
-            # {account: full name, dayssince: days}
+            filtername = kwargs.get('filtername', None)
+            if filtername is None:
+                filtername = cherrypy.session['user'].preferences.get('filtername','')
 
             sortcol = kwargs.get('sort', None)
             if sortcol is None:
@@ -1037,55 +1026,7 @@ class BillToolBridge:
             else:
                 sortreverse = True
 
-            # pass the sort params if we want the db to do any sorting work
-            statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
-
-            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-
-            rows = []
-            for status in statuses:
-                last_reebill = self.state_db.get_last_reebill(session,
-                         status.account, issued_only=True)
-                lastevent = self.journal_dao.last_event_summary(status.account)
-                try:
-                    service_address = self.process.get_service_address(session,
-                                                                status.account)
-                    service_address=format_service_address(service_address,
-                                                        status.account)
-                except NoSuchBillException:
-                    service_address = ''
-                rows.append({
-                    'account': status.account,
-                    'codename': name_dicts[status.account]['codename'] if
-                           'codename' in name_dicts[status.account] else '',
-                    'casualname': name_dicts[status.account]['casualname'] if
-                           'casualname' in name_dicts[status.account] else '',
-                    'primusname': name_dicts[status.account]['primus'] if
-                           'primus' in name_dicts[status.account] else '',
-                    'utilityserviceaddress': service_address,
-                    'dayssince': status.dayssince,
-                    'lastissuedate': last_reebill.issue_date if last_reebill \
-                            else '',
-                    'lastevent': lastevent,
-                    'provisionable': False,
-                })
-            
-            #Apply filters
-            filtername = kwargs.get('filtername', None)
-            if filtername is None:
-                filtername = cherrypy.session['user'].preferences.get('filtername','')
-            if filtername=="reebillcustomers":
-                rows=filter(filter_reebillcustomers, rows)
-            elif filtername=="xbillcustomers":
-                rows=filter(filter_xbillcustomers, rows)
-            rows.sort(key=itemgetter(sortcol), reverse=sortreverse)
-
-            # count includes both billing and non-billing customers (front end
-            # needs this for pagination)
-            count = len(rows)
-
-            # take slice for one page of the grid's data
-            rows = rows[start:start+limit]
+            count, rows = self.process.list_account_status(session,start,limit,filtername,sortcol,sortreverse)
 
             cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
             cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
@@ -1590,6 +1531,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def get_reebill_services(self, account, sequence, **args):
+        # TODO: delete this? is it ever used?
         '''Returns the utililty services associated with the reebill given by
         account and sequence, and a list of which services are suspended
         (usually empty). Used to show service suspension checkboxes in
@@ -1600,7 +1542,7 @@ class BillToolBridge:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
         # TODO: 40161259 must return success field
         return self.dumps({
-            'services': reebill.services,
+            'services': [],
             'suspended_services': reebill.suspended_services
         })
 
@@ -1637,7 +1579,7 @@ class BillToolBridge:
             if xaction == "create":
                 row = json.loads(kwargs["rows"])[0]
                 assert isinstance(row, dict)
-                group_name = row['chargegroup']
+                group_name = row['group']
                 self.process.add_charge(session, utilbill_id, group_name)
 
             if xaction == "destroy":
@@ -1658,14 +1600,15 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        if xaction == "read":
-            charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
-        else:
-            raise NotImplementedError('Cannot create, edit or destroy charges'+\
+        if not xaction == "read":
+            raise NotImplementedError('Cannot create, edit or destroy charges'+ \
                                       ' from this grid.')
+
+        with DBSession(self.state_db) as session:
+                charges=self.process.get_hypothetical_matched_charges(
+                    session, account, sequence)
+                return self.dumps({'success': True, 'rows': charges,
+                                   'total':len(charges)})
 
 
     @cherrypy.expose

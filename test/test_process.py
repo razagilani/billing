@@ -12,7 +12,8 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill, \
+    Address
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
@@ -146,8 +147,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0, reebill.prior_balance)
             # self.assertEqual(0, reebill.hypothetical_total)
             self.assertEqual(0, reebill.balance_forward)
-            self.assertEqual(billing_address, reebill_doc.billing_address)
-            self.assertEqual(service_address, reebill_doc.service_address)
+            self.assertEqual(Address(**billing_address),
+                    reebill.billing_address)
+            self.assertEqual(Address(**service_address),
+                    reebill.service_address)
 
             # TODO check Mongo rate structure documents
 
@@ -382,8 +385,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create first reebill
             bill1 = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             bill1_doc = self.reebill_dao.load_reebill(acc, 1)
-            bill1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
-                    ['quantity'] = 100
+            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.process.compute_reebill(session, acc, 1)
             self.reebill_dao.save_reebill(bill1_doc)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
@@ -415,6 +417,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill2_doc = self.reebill_dao.load_reebill(acc, 2)
             bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
                     ['quantity'] = 200
+            bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
             self.reebill_dao.save_reebill(bill2_doc)
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
@@ -468,9 +471,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
             bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            bill1_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
-            self.reebill_dao.save_reebill(bill1_1_doc)
+            bill1_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
             assert bill1_1.ree_charge == 25
@@ -483,10 +484,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # replace the renewable energy quantity that came from
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
-            bill1_2_doc = self.reebill_dao.load_reebill(acc, 1, version=2)
-            bill1_2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
-            self.reebill_dao.save_reebill(bill1_2_doc)
+            bill1_2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             bill1_2.discount_rate = 0.25
             self.process.compute_reebill(session, acc, 1, version=2)
             assert bill1_2.ree_charge == 75
@@ -1258,7 +1256,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # if the total REE is 'correct_energy_amount_therms' (within
             # floating-point error), the correct meter read period was used.
             self.assertAlmostEqual(correct_energy_amount_therms,
-                    float(new_reebill_doc.total_renewable_energy()))
+                    float(new_reebill.get_total_renewable_energy()))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections(), get_total_adjustment(), and
@@ -1294,8 +1292,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             one.discount_rate = 0.5
-            one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 100
+            # NOTE register quantity must be set in BTU
+            one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.reebill_dao.save_reebill(one_doc)
             self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
@@ -1306,8 +1304,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two = self.process.roll_reebill(session, acc)
             two.discount_rate = 0.5
             two_doc = self.reebill_dao.load_reebill(acc, 2)
-            two_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 200
+            # NOTE register quantity must be set in BTU
+            two.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
             self.reebill_dao.save_reebill(two_doc)
             self.process.compute_reebill(session, acc, 2)
             self.process.issue(session, acc, two.sequence)
@@ -1317,8 +1315,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             three = self.process.roll_reebill(session, acc)
             three_doc = self.reebill_dao.load_reebill(acc, 3)
             three.discount_rate = 0.5
-            three_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 300
+            # NOTE register quantity must be set in BTU
+            three.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
             self.reebill_dao.save_reebill(three_doc)
             self.process.issue(session, acc, three.sequence)
             assert three.ree_charge == 150
@@ -1349,10 +1347,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # re-update the register readings to undo the arbitary values
             # inserted by new_version above (this should really be done by
             # controlling the amount of energy reported by mock_skyliner
-            one_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 100
-            three_1_doc.reebill_dict['utilbills'][0]['shadow_registers'][0][
-                    'quantity'] = 300
+            # NOTE register quantity must be set in BTU
+            one_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            three_1.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
             self.reebill_dao.save_reebill(one_1_doc)
             self.reebill_dao.save_reebill(three_1_doc)
             self.process.compute_reebill(session, acc, 1, version=1)
@@ -1441,9 +1438,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
-            one_doc.reebill_dict['utilbills'][0]['shadow_registers'][0] \
-                    ['quantity'] = 100
-            self.reebill_dao.save_reebill(one_doc)
+            one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            self.reebill_dao.save_utilbill(one_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 1)
             assert one.ree_charge == 50
             assert one.balance_due == 50
@@ -1515,33 +1511,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create reebill based on first utility bill
             self.process.roll_reebill(session, account, start_date=date(2013,4,4))
 
-            # Make sure the reebill period matches the utility bill
-            reebill_1 = self.reebill_dao.load_reebill(account, 1)
-            self.assertEqual(reebill_1.period_begin, date(2013,4,4))
-            self.assertEqual(reebill_1.period_end, date(2013,5,2))
-
             # reebill should be computable
             self.process.compute_reebill(session, account, 1)
 
             self.process.issue(session, account, 1)
-            reebill_1 = self.reebill_dao.load_reebill(account, 1)
 
             # another reebill
             self.process.roll_reebill(session, account)
-            reebills = session.query(ReeBill).order_by(ReeBill.id).all()
+            reebill_1, reebill_2 = session.query(ReeBill)\
+                    .order_by(ReeBill.id).all()
             utilbills = session.query(UtilBill)\
                     .order_by(UtilBill.period_start).all()
-            self.assertEquals([utilbills[0]], reebills[0].utilbills)
-            self.assertEquals([utilbills[1]], reebills[1].utilbills)
+            self.assertEquals([utilbills[0]], reebill_1.utilbills)
+            self.assertEquals([utilbills[1]], reebill_2.utilbills)
 
             # addresses should be preserved from one reebill document to the
             # next
             reebill_doc_1 = self.reebill_dao.load_reebill(account, 1)
             reebill_doc_2 = self.reebill_dao.load_reebill(account, 2)
-            self.assertEquals(reebill_doc_1.billing_address,
-                    reebill_doc_2.billing_address)
-            self.assertEquals(reebill_doc_1.service_address,
-                    reebill_doc_2.service_address)
+            self.assertEquals(reebill_1.billing_address,
+                    reebill_2.billing_address)
+            self.assertEquals(reebill_1.service_address,
+                    reebill_2.service_address)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
@@ -1641,13 +1632,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
             utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
             utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
             utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
+                    date(2000,1,1), date(2000,2,1), StringIO('January 2000 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
@@ -1712,15 +1703,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create utility bill and reebill #2 for A
             utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
-                    'gas', date(2013,2,1), date(2013,3,1),
-                     StringIO('February 2013 A'), 'february-a.pdf', total=0,
+                    'gas', date(2000,2,1), date(2000,3,1),
+                     StringIO('February 2000 A'), 'february-a.pdf', total=0,
                      state=UtilBill.Complete)
 
             # initially there will be no RSIs in A's 2nd utility bill, because
             # there are no "processed" utility bills yet.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual([], uprs_a_2.rates)
 
             # when the other bills have been marked as "processed", they should
@@ -1736,7 +1727,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # un-shared RSIs always get copied from each bill to its successor.
             uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
                     session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2013,2,1)).one())
+                    period_start=date(2000,2,1)).one())
             self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
 
@@ -1759,8 +1750,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the latter are more numerous, but A-1 should outweigh them
             # because weight decreases quickly with distance.
             self.process.upload_utility_bill(session, acc_b, 'gas',
-                     date(2013,2,5), date(2013,3,5),
-                     StringIO('February 2013 B'),
+                     date(2000,2,5), date(2000,3,5),
+                     StringIO('February 2000 B'),
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
@@ -2066,14 +2057,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 olap_id = 'MockSplinter ignores olap id'
                 self.process.ree_getter.fetch_oltp_data(olap_id,
                                            reebill2, use_olap=use_olap)
-                ree1 = reebill2_doc.total_renewable_energy()
+                ree1 = reebill2.get_total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, acc, 2)
 
                 # check that total renewable energy quantity has not been
                 # changed by computing the bill for the first time (this
                 # happened in bug #60548728)
-                ree = reebill2_doc.total_renewable_energy()
+                ree = reebill2.get_total_renewable_energy()
                 self.assertEqual(ree1, ree)
 
                 # save other values that will be checked repeatedly
@@ -2092,7 +2083,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
-                            reebill2_doc.total_renewable_energy())
+                            reebill2.get_total_renewable_energy())
                     # self.assertAlmostEqual(actual, reebill2.actual_total)
                     # self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)

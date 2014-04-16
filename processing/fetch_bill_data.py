@@ -4,22 +4,11 @@ Code for accumulating Skyline-generated energy into "shadow" registers in
 meters of reebills.
 '''
 import sys
-import os  
-from pprint import pprint, pformat
-from types import NoneType
 from datetime import date, datetime,timedelta, time
-import calendar
-import random
 import csv
-import operator
 from bisect import bisect_left
-from optparse import OptionParser
-from skyliner import sky_install
-from skyliner import sky_objects
-from skyliner.sky_errors import DataHandlerError
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
-from billing.util.dictutils import dict_merge
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
 from billing.processing.exceptions import MissingDataError
@@ -120,14 +109,16 @@ class RenewableEnergyGetter(object):
                 total += timeseries[index]
             return total
 
-        self._usage_data_to_virtual_register(reebill_doc, utilbill_doc,
-                energy_function)
-        self._reebill_dao.save_reebill(reebill_doc)
+        results = self._usage_data_to_virtual_register(reebill_doc,
+                utilbill_doc, energy_function)
+        for binding, quantity in results:
+            assert isinstance(binding, basestring)
+            assert isinstance(quantity, (float, int))
+            reebill.set_renewable_energy_reading(binding, quantity)
 
     def fetch_interval_meter_data(self, reebill, csv_file,
-                                  meter_identifier=None,
-            timestamp_column=0, energy_column=1, energy_unit='btu',
-            timestamp_format=dateutils.ISO_8601_DATETIME):
+            meter_identifier=None, timestamp_column=0, energy_column=1,
+            energy_unit='btu', timestamp_format=dateutils.ISO_8601_DATETIME):
         '''Update hypothetical quantities of registers in reebill with
         interval-meter energy values from csv_file. If meter_identifier is given,
         energy will only go in shadow registers of meters with that identifier.
@@ -139,8 +130,11 @@ class RenewableEnergyGetter(object):
                 reebill.sequence, reebill.version)
         utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
-        self._usage_data_to_virtual_register(reebill_doc, utilbill_doc,
-                energy_function)
+
+        results = self._usage_data_to_virtual_register(reebill_doc,
+                utilbill_doc, energy_function)
+        for binding, quantity in results:
+            reebill.set_renewable_energy_reading(binding, quantity)
 
     def get_interval_meter_data_source(self, csv_file, timestamp_column=0,
             energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
@@ -365,9 +359,10 @@ class RenewableEnergyGetter(object):
 
     def _usage_data_to_virtual_register(self, reebill_doc,
             utilbill_doc, energy_function, verbose=False):
-        '''Gets energy quantities from 'energy_function' and puts them in the
-        "quantity" fields of the register subdocuments in the given
-        MongoReebill.
+        '''Gets energy quantities from 'energy_function' and returns new
+        renewable energy register readings as a list of (register binding,
+        quantity) pairs. The caller should put these values in the
+        appropriate place.
 
         'energy_function' should be a function mapping a date and an hour
         range (pair of integers in [0,23]) to a float representing energy used
@@ -421,11 +416,12 @@ class RenewableEnergyGetter(object):
                     total_energy += float(energy_today)
             return total_energy
 
+        result = []
         for meter in utilbill_doc['meters']:
             for register in meter['registers']:
                 hypothetical_quantity = get_renewable_energy_for_register(
                         register, meter['prior_read_date'],
                         meter['present_read_date'])
-                reebill_doc.set_hypothetical_register_quantity(
-                        register['register_binding'], hypothetical_quantity)
-
+                result.append((register['register_binding'],
+                               hypothetical_quantity))
+        return result

@@ -1,9 +1,18 @@
 '''Replace "charge groups" with a list of charges, each having one "group".
 '''
+import argparse
 from itertools import chain
 from pymongo import Connection
 from billing.util.dictutils import dict_merge
-db = Connection('localhost', 27017)['skyline-dev']
+
+# command-line arguments
+parser = argparse.ArgumentParser(description='04_charge_groups')
+
+parser.add_argument('--billdbhost', required=True)
+parser.add_argument('--billdbname', required=True)
+args = parser.parse_args()
+
+db = Connection(args.billdbhost, 27017)[args.billdbname]
 
 total_utilbills, total_reebills = db.utilbills.count(), db.reebills.count()
 

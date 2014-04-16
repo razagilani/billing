@@ -185,14 +185,14 @@ _example_reebill = {
             u"ree_savings" : 118.42,
             u"ree_value" : 236.84,
 
-            'shadow_registers': [{
-                u"quantity_units" : u"therms",
-                u"quantity" : 188.20197727,
-                u"register_binding" : u"REG_TOTAL",
-                u"identifier" : u"M60324",
-                u"type" : u"total",
-                u"description" : u"Therms"
-            }],
+            # 'shadow_registers': [{
+            #     u"quantity_units" : u"therms",
+            #     u"quantity" : 188.20197727,
+            #     u"register_binding" : u"REG_TOTAL",
+            #     u"identifier" : u"M60324",
+            #     u"type" : u"total",
+            #     u"description" : u"Therms"
+            # }],
 
             u"hypothetical_total" : 980.33,
             # u"hypothetical_charges" : [

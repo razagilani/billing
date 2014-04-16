@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
-from billing.processing.state import StateDB, ReeBill, Payment, ReeBillCharge
+from billing.processing.state import (StateDB, ReeBill, Payment,
+        ReeBillCharge, Reading)
 from billing.processing.mongo import ReebillDAO
 from billing.processing.session_contextmanager import DBSession
 from datetime import date, datetime
@@ -28,12 +29,16 @@ def listAccounts():
 # def get_reebill(self, session, account, sequence, version):
 #     return MockStateReebill(None,1,0)
 
+def createMockUtilBill():
+    ub = mock.create_autospec(UtilBill)
+    return ub
+
 def createMockReebill():
     rb = mock.create_autospec(spec=ReeBill, instance=True)
     rb.issued = 1
     rb.sequence = 1
     rb.version = 0
-    rb.issue_date = date(2013,4,1)
+    rb.issue_date = date(2013, 4, 1)
     rb.balance_due = 5.01
     rb.balance_forward = 62.29
     rb.discount_rate = 0.1
@@ -155,6 +160,9 @@ def createMockReebill():
             u'group': 'All Charges',
         }
     ]]
+    rb.readings = [Reading('REG_TOTAL', 'Energy Sold', 561.9,
+                           188.20197727, 'therms')]
+    rb.get_total_renewable_energy.return_value = 188.20197727
     rb.get_total_hypothetical_charges.return_value = sum(c.total for c in rb
         .charges)
     return rb

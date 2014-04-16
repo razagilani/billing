@@ -54,10 +54,8 @@ class ReebillTest(TestCaseWithSetup):
             check()
 
             # change utilbill period
-            b._get_utilbill_for_service(b.services[0])['start'] = date(2100,
-                    1,1)
-            b._get_utilbill_for_service(b.services[0])['end'] = date(2100,
-                2,1)
+            b._utilbills[0]['start'] = date(2100,1,1)
+            b._utilbills[0]['start'] = date(2100,2,1)
             check()
             self.reebill_dao.save_reebill(b)
             self.reebill_dao.save_utilbill(b._utilbills[0])
@@ -90,129 +88,116 @@ class ReebillTest(TestCaseWithSetup):
         # self.assertEquals(0, reebill.prior_balance)
         # self.assertEquals(0, reebill.balance_forward)
 
-        self.assertEquals({
-            "city" : u"Silver Spring",
-            "state" : u"MD",
-            "addressee" : u"Managing Member Monroe Towers",
-            "postal_code" : u"20910",
-            "street" : u"3501 13TH ST NW LLC"
-        }, reebill.billing_address)
-        self.assertEquals({
-            "addressee" : u"Monroe Towers",
-            "state" : u"DC",
-            "city" : u"Washington",
-            "street" : u"3501 13TH ST NW #WH",
-            "postal_code" : u"20010"
-        }, reebill.service_address)
-
     def test_compute_charges(self):
-        # TODO make this a real unit test when possible (when utility bill
-        # charges are no longer in Mongo so Process.compute_reebill doesn't
-        # need to load and save utility bill documents and
-        # Process._compute_reebill_charges becomes state.ReeBill
-        # .compute_charges)
-        uprs = RateStructure(rates=[
-            RateStructureItem(
-                rsi_binding='A',
-                description='a',
-                quantity='REG_TOTAL.quantity',
-                rate='2',
-            )
-        ])
-        utilbill_doc = {
-            '_id': ObjectId(),
-            'account': '12345', 'service': 'gas', 'utility': 'washgas',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "won't be loaded from the db anyway",
-            'charges': [
-                {'rsi_binding': 'A', 'quantity': 0, 'group': 'All Charges'},
-            ],
-            'meters': [{
-                'present_read_date': date(2000,2,1),
-                'prior_read_date': date(2000,1,1),
-                'identifier': 'ABCDEF',
-                'registers': [{
-                    'identifier': 'GHIJKL',
-                    'register_binding': 'REG_TOTAL',
+        with DBSession(self.state_db) as session:
+            # TODO make this a real unit test when possible (when utility bill
+            # charges are no longer in Mongo so Process.compute_reebill doesn't
+            # need to load and save utility bill documents and
+            # Process._compute_reebill_charges becomes state.ReeBill
+            # .compute_charges)
+            uprs = RateStructure(rates=[
+                RateStructureItem(
+                    rsi_binding='A',
+                    description='a',
+                    quantity='REG_TOTAL.quantity',
+                    rate='2',
+                )
+            ])
+            utilbill_doc = {
+                '_id': ObjectId(),
+                'account': '12345', 'service': 'gas', 'utility': 'washgas',
+                'start': date(2000,1,1), 'end': date(2000,2,1),
+                'rate_class': "won't be loaded from the db anyway",
+                'charges': [
+                    {'rsi_binding': 'A', 'quantity': 0, 'group': 'All Charges'},
+                ],
+                'meters': [{
+                    'present_read_date': date(2000,2,1),
+                    'prior_read_date': date(2000,1,1),
+                    'identifier': 'ABCDEF',
+                    'registers': [{
+                        'identifier': 'GHIJKL',
+                        'register_binding': 'REG_TOTAL',
+                        'quantity': 100,
+                        'quantity_units': 'therms',
+                    }]
+                }],
+                "billing_address" : {
+                    "city" : "Columbia",
+                    "state" : "MD",
+                    "addressee" : "Equity Mgmt",
+                    "street" : "8975 Guilford Rd Ste 100",
+                    "postal_code" : "21046"
+                },
+                'service_address': {
+                    "city" : "Columbia",
+                    "state" : "MD",
+                    "addressee" : "Equity Mgmt",
+                    "street" : "8975 Guilford Rd Ste 100",
+                    "postal_code" : "21046"
+                },
+            }
+            mongo.compute_all_charges(utilbill_doc, uprs)
+            self.assertEqual([
+                {
+                    'rsi_binding': 'A',
+                    'description': 'a',
                     'quantity': 100,
-                    'quantity_units': 'therms',
-                }]
-            }],
-            "billing_address" : {
-                "city" : "Columbia",
-                "state" : "MD",
-                "addressee" : "Equity Mgmt",
-                "street" : "8975 Guilford Rd Ste 100",
-                "postal_code" : "21046"
-            },
-            'service_address': {
-                "city" : "Columbia",
-                "state" : "MD",
-                "addressee" : "Equity Mgmt",
-                "street" : "8975 Guilford Rd Ste 100",
-                "postal_code" : "21046"
-            },
-        }
-        mongo.compute_all_charges(utilbill_doc, uprs)
-        self.assertEqual([
-            {
+                    'rate': 2,
+                    'total': 200,
+                    'group': 'All Charges',
+                }
+            ], utilbill_doc['charges'])
+
+            customer = Customer('someone', '11111', 0.5, 0.1, None,
+                                'example@example.com')
+            utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                    period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
+                    uprs_id=uprs.id)
+            reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
+                    utilbills=[utilbill])
+            reebill.update_readings_from_document(utilbill_doc)
+            reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
+                    0, 0.5, 0.1, [utilbill_doc])
+            utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
+            assert all(register['quantity'] == 0 for register in
+                    utilbill_subdoc['shadow_registers'])
+
+            self.reebill_dao.save_utilbill(utilbill_doc)
+            self.reebill_dao.save_reebill(reebill_doc)
+            self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
+
+            #reebill_doc.compute_charges(uprs)
+            self.process._compute_reebill_charges(session, reebill, uprs)
+
+            # check that there are the same group names and rsi_bindings and only,
+            # by creating two dictionaries mapping group names to sets of
+            # rsi_bindings and comparing them
+            self.assertEqual(subdict(utilbill_doc['charges'],
+                    ['rsi_binding, description']),
+                    subdict(utilbill_subdoc['hypothetical_charges'],
+                    ['rsi_binding, description']))
+
+            self.assertEqual(200, reebill.get_total_hypothetical_charges())
+
+            # check reebill charges. since there is no renewable energy,
+            # hypothetical charges should be identical to actual charges:
+            self.assertEqual([{
                 'rsi_binding': 'A',
                 'description': 'a',
                 'quantity': 100,
                 'rate': 2,
                 'total': 200,
                 'group': 'All Charges',
-            }
-        ], utilbill_doc['charges'])
+            }], utilbill_subdoc['hypothetical_charges'])
 
-        customer = Customer('someone', '11111', 0.5, 0.1, None,
-                            'example@example.com')
-        utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-                'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
-                uprs_id=uprs.id)
-        reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
-                utilbills=[utilbill])
-        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
-                0, 0.5, 0.1, [utilbill_doc])
-        utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
-        assert all(register['quantity'] == 0 for register in
-                utilbill_subdoc['shadow_registers'])
+            self.assertEqual(subdict(utilbill_doc['charges'],
+                    ['rsi_binding, description', 'quantity', 'rate', 'total']),
+                    subdict(utilbill_subdoc['hypothetical_charges'],
+                    ['rsi_binding, description', 'quantity', 'rate', 'total']))
 
-        self.reebill_dao.save_utilbill(utilbill_doc)
-        self.reebill_dao.save_reebill(reebill_doc)
-        self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
-
-        #reebill_doc.compute_charges(uprs)
-        self.process._compute_reebill_charges(reebill, uprs)
-
-        # check that there are the same group names and rsi_bindings and only,
-        # by creating two dictionaries mapping group names to sets of
-        # rsi_bindings and comparing them
-        self.assertEqual(subdict(utilbill_doc['charges'],
-                ['rsi_binding, description']),
-                subdict(utilbill_subdoc['hypothetical_charges'],
-                ['rsi_binding, description']))
-
-        self.assertEqual(200, reebill.get_total_hypothetical_charges())
-
-        # check reebill charges. since there is no renewable energy,
-        # hypothetical charges should be identical to actual charges:
-        self.assertEqual([{
-            'rsi_binding': 'A',
-            'description': 'a',
-            'quantity': 100,
-            'rate': 2,
-            'total': 200,
-            'group': 'All Charges',
-        }], utilbill_subdoc['hypothetical_charges'])
-
-        self.assertEqual(subdict(utilbill_doc['charges'],
-                ['rsi_binding, description', 'quantity', 'rate', 'total']),
-                subdict(utilbill_subdoc['hypothetical_charges'],
-                ['rsi_binding, description', 'quantity', 'rate', 'total']))
-
-        self.assertEqual(200, reebill.get_total_hypothetical_charges())
+            self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
