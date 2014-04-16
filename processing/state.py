@@ -443,6 +443,38 @@ class ReeBill(Base):
     def get_total_renewable_energy(self):
         return sum(r.renewable_quantity for r in self.readings)
 
+        total_therms = 0
+        # TODO move the unit-conversion into a new method in Reading like
+        # 'convert_to_therms'
+        for reading in self.readings:
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if reading.unit == 'therms':
+                total_therms += reading.renewable_quantity
+            elif reading.unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += reading.renewable_quantity / 100000.0
+            elif reading.unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += reading.renewable_quantity / .0341214163
+            elif reading.unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += reading.renewable_quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                           "in ccf: energy value is wrong; time to implement "
+                           "https://www.pivotaltracker.com/story/show/28825375") \
+                          % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += reading.renewable_quantity
+            elif reading.unit =='kwd':
+                total_therms + reading.renewable_quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % reading.unit)
+
+        return total_therms
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''

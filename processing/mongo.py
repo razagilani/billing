@@ -787,52 +787,6 @@ class MongoReebill(object):
     #             if r['register_binding'] == register_binding)
     #     register_subdoc['quantity'] = new_quantity
 
-    def total_renewable_energy(self, ccf_conversion_factor=None):
-        # TODO eliminate duplicate code with set_hypothetical_register_quantity
-        assert ccf_conversion_factor is None or isinstance(
-                ccf_conversion_factor, float)
-        total_therms = 0
-        for utilbill_handle in self.reebill_dict['utilbills']:
-            for register_subdoc in utilbill_handle['shadow_registers']:
-                quantity = register_subdoc['quantity']
-
-                # look up corresponding utility bill register to get unit
-                utilbill = self._get_utilbill_for_handle(utilbill_handle)
-                utilbill_register = next(chain.from_iterable(
-                        (r for r in m.get('registers', [])
-                        if r.get('register_binding', None) == \
-                        register_subdoc.get('register_binding', ''))
-                        for m in utilbill.get('meters', [])))
-                unit = utilbill_register['quantity_units'].lower()
-
-                # convert quantity to therms according to unit, and add it to
-                # the total
-                if unit == 'therms':
-                    total_therms += quantity
-                elif unit == 'btu':
-                    # TODO physical constants must be global
-                    total_therms += quantity / 100000.0
-                elif unit == 'kwh':
-                    # TODO physical constants must be global
-                    total_therms += quantity / .0341214163
-                elif unit == 'ccf':
-                    if ccf_conversion_factor is not None:
-                        total_therms += quantity * ccf_conversion_factor
-                    else:
-                        # TODO: 28825375 - need the conversion factor for this
-                        print ("Register in reebill %s-%s-%s contains gas measured "
-                               "in ccf: energy value is wrong; time to implement "
-                               "https://www.pivotaltracker.com/story/show/28825375") \
-                              % (self.account, self.sequence, self.version)
-                        # assume conversion factor is 1
-                        total_therms += quantity
-                elif unit =='kwd':
-                    total_therms += quantity
-                else:
-                    raise ValueError('Unknown energy unit: "%s"' % unit)
-
-        return total_therms
-
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 

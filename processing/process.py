@@ -282,10 +282,12 @@ class Process(object):
         statement = '''select sequence, max(version) as max_version,
         period_start, period_end, issued, issue_date,
         ree_value, prior_balance, payment_received,
-        total_adjustment, balance_forward, ree_charge, balance_due
+        total_adjustment, balance_forward, ree_charge, balance_due,
+        sum(reading.renewable_quantity),
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
+        join reading on reebill.id = reading.reebill_id
         where account = %s
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
@@ -298,7 +300,8 @@ class Process(object):
         for (sequence, max_version, period_start, period_end, issued,
                 issue_date, ree_value,
                 prior_balance, payment_received, total_adjustment,
-                balance_forward, ree_charge, balance_due) in query:
+                balance_forward, ree_charge, balance_due,
+                total_renewable_energy) in query:
             document = self.reebill_dao.load_reebill(account,
                     sequence, version=max_version)
             # start with data from MySQL
@@ -332,9 +335,6 @@ class Process(object):
             else:
                 the_dict['corrections'] = '-' if issued else '(never issued)'
 
-            # update it with additional data from Mongo doc
-            doc = self.reebill_dao.load_reebill(account, sequence,
-                    version=max_version)
             the_dict.update({
                 # TODO: is this used at all? does it need to be populated?
                 'services': [],
@@ -343,7 +343,7 @@ class Process(object):
             # grid to not load; see
             # https://www.pivotaltracker.com/story/show/59594888
             try:
-                the_dict['ree_quantity'] = doc.total_renewable_energy()
+                the_dict['ree_quantity'] = total_renewable_energy
             except (ValueError, StopIteration) as e:
                 self.logger.error("Error when getting renewable energy "
                         "quantity for reebill %s-%s-%s:\n%s" % (
@@ -1524,47 +1524,52 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
-            for reebill in self.reebill_dao.load_reebills_for(account, 0):
+            for reebill_doc in self.reebill_dao.load_reebills_for(account, 0):
+                # TODO using the document to load the SQLAlchemy object is
+                # backwards. but ultimately the document should not be used
+                # at all.
+                reebill = self.reebill_dao.load_reebill(reebill_doc.account,
+                        reebill_doc.sequence, reebill_doc.version)
                 # Skip over unissued reebills
-                if not reebill.issue_date:
+                if not reebill_doc.issue_date:
                     continue
 
                 row = {}
 
                 row['account'] = account
-                row['sequence'] = reebill.sequence
-                row['billing_address'] = reebill.billing_address
-                row['service_address'] = reebill.service_address
-                row['issue_date'] = reebill.issue_date
-                row['period_begin'] = reebill.period_begin
-                row['period_end'] = reebill.period_end
-                row['actual_charges'] = reebill.actual_total
-                row['hypothetical_charges'] = reebill.hypothetical_total
-                total_ree = reebill.total_renewable_energy()
+                row['sequence'] = reebill_doc.sequence
+                row['billing_address'] = reebill_doc.billing_address
+                row['service_address'] = reebill_doc.service_address
+                row['issue_date'] = reebill_doc.issue_date
+                row['period_begin'] = reebill_doc.period_begin
+                row['period_end'] = reebill_doc.period_end
+                row['actual_charges'] = reebill_doc.actual_total
+                row['hypothetical_charges'] = reebill_doc.hypothetical_total
+                total_ree = reebill.get_total_renewable_energy()
                 row['total_ree'] = total_ree
                 if total_ree != 0:
-                    row['average_rate_unit_ree'] = (reebill.hypothetical_total -
-                            reebill.actual_total)/total_ree
+                    row['average_rate_unit_ree'] = (reebill_doc.hypothetical_total -
+                            reebill_doc.actual_total)/total_ree
                 else:
                     row['average_rate_unit_ree'] = 0
-                row['ree_value'] = reebill.ree_value
-                row['prior_balance'] = reebill.prior_balance
-                row['balance_forward'] = reebill.balance_forward
+                row['ree_value'] = reebill_doc.ree_value
+                row['prior_balance'] = reebill_doc.prior_balance
+                row['balance_forward'] = reebill_doc.balance_forward
                 try:
-                    row['total_adjustment'] = reebill.total_adjustment
+                    row['total_adjustment'] = reebill_doc.total_adjustment
                 except:
                     row['total_adjustment'] = None
-                row['payment_applied'] = reebill.payment_received
-                row['ree_charges'] = reebill.ree_charges
+                row['payment_applied'] = reebill_doc.payment_received
+                row['ree_charges'] = reebill_doc.ree_charges
                 try:
-                    row['late_charges'] = reebill.late_charges
+                    row['late_charges'] = reebill_doc.late_charges
                 except KeyError:
                     row['late_charges'] = None
 
-                row['balance_due'] = reebill.balance_due
-                row['discount_rate'] = reebill.discount_rate
+                row['balance_due'] = reebill_doc.balance_due
+                row['discount_rate'] = reebill_doc.discount_rate
 
-                savings = reebill.ree_value - reebill.ree_charges
+                savings = reebill_doc.ree_value - reebill_doc.ree_charges
                 cumulative_savings += savings
                 row['savings'] = savings
                 row['cumulative_savings'] = cumulative_savings

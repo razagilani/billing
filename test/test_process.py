@@ -2057,14 +2057,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 olap_id = 'MockSplinter ignores olap id'
                 self.process.ree_getter.fetch_oltp_data(olap_id,
                                            reebill2, use_olap=use_olap)
-                ree1 = reebill2_doc.total_renewable_energy()
+                ree1 = reebill2.get_total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
                 self.process.compute_reebill(session, acc, 2)
 
                 # check that total renewable energy quantity has not been
                 # changed by computing the bill for the first time (this
                 # happened in bug #60548728)
-                ree = reebill2_doc.total_renewable_energy()
+                ree = reebill2.get_total_renewable_energy()
                 self.assertEqual(ree1, ree)
 
                 # save other values that will be checked repeatedly
@@ -2083,7 +2083,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
                     # in approximate "causal" order
                     self.assertAlmostEqual(ree,
-                            reebill2_doc.total_renewable_energy())
+                            reebill2.get_total_renewable_energy())
                     # self.assertAlmostEqual(actual, reebill2.actual_total)
                     # self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
                     self.assertAlmostEqual(ree_value, reebill2.ree_value)
