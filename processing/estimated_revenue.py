@@ -235,7 +235,7 @@ class EstimatedRevenue(object):
         period must be after the end of the account's last issued reebill.'''
         # make sure (year, month) is not the approximate month of a real bill
         last_sequence = self.state_db.last_issued_sequence(session, account)
-        last_reebill = self._load_reebill(account, last_sequence)
+        last_reebill = self.state_db.get_reebill(session, account,  last_sequence)
         if start > end:
             raise ValueError('Start %s must precede end %s' % (start, end))
         if last_sequence > 0 and end < last_reebill.period_end:
@@ -302,8 +302,8 @@ class EstimatedRevenue(object):
 
 
     def _load_reebill(self, account, sequence):
-        '''Returns the reebill given by account, sequence, taken from cache if
-        possible.'''
+        '''Returns the reebill document given by account, sequence, taken from
+         cache if possible.'''
         # load from cache if present
         if (account, sequence) in self.reebill_cache:
             return self.reebill_cache[account, sequence]
@@ -331,14 +331,16 @@ class EstimatedRevenue(object):
 
         # if there's no cached rate for last_sequence, go back through the
         # sequences until a cached rate or a reebill with non-0 energy is found
-        while last_sequence > 0 and (account, last_sequence) not in \
-                self.rate_cache and last_reebill.total_renewable_energy(
-                ccf_conversion_factor=1) == 0:
+        while last_sequence > 0 \
+                and (account, last_sequence) not in self.rate_cache \
+                and last_reebill.get_total_renewable_energy() == 0:
             last_sequence -= 1
             if last_sequence == 0:
                 break
             last_reebill = self._load_reebill(account,
                     last_sequence)
+            last_reebill = self.state_db.get_reebill(session, account,
+                                                     last_sequence)
 
         if (account, last_sequence) in self.rate_cache:
             rate = self.rate_cache[account, last_sequence]
@@ -358,8 +360,8 @@ class EstimatedRevenue(object):
                 # customer, including the discount) / quantity of renewable energy
                 # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
                 ree_charges = float(last_reebill.ree_charges)
-                total_renewable_energy = float(last_reebill.total_renewable_energy(
-                        ccf_conversion_factor=1))
+                total_renewable_energy = float(last_reebill
+                        .get_total_renewable_energy())
                 rate = ree_charges / total_renewable_energy
 
         # store rate in cache for this sequence and all others that lack a
