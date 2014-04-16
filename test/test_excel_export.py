@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
-from billing.processing.state import StateDB, ReeBill, Payment, ReeBillCharge, UtilBill
+from billing.processing.state import (StateDB, ReeBill, Payment,
+        ReeBillCharge, Reading)
 from billing.processing.mongo import ReebillDAO
 from billing.processing.session_contextmanager import DBSession
 from datetime import date, datetime
@@ -159,6 +160,9 @@ def createMockReebill():
             u'group': 'All Charges',
         }
     ]]
+    rb.readings = [Reading('REG_TOTAL', 'Energy Sold', 561.9,
+                           188.20197727, 'therms')]
+    rb.get_total_renewable_energy.return_value = 188.20197727
     rb.get_total_hypothetical_charges.return_value = sum(c.total for c in rb
         .charges)
     return rb
@@ -198,19 +202,3 @@ class ExporterTest(unittest.TestCase):
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
-
-    def test_get_account_charges_sheet(self):
-        self.mock_StateDB.listSequences.return_value = [1]
-        self.mock_ReebillDAO.load_reebill.return_value = \
-            example_data.get_reebill('10003',1,version=0)
-        self.mock_StateDB.get_reebill.return_value = createMockReebill()
-        self.mock_ReebillDAO._load_utilbill_by_id.return_value =\
-            example_data.get_utilbill_dict('10003', start=date(2011,12,15),
-                                           end=date(2012,1,14))
-        with self.mock_session(self.mock_StateDB) as session:
-            dataset=self.exp.get_account_charges_sheet(session, '10003')
-        self.assertEqual(len(dataset), 1)
-        for row in dataset:
-            self.assertEqual(row, ('10003', 1, '2011-11-12', '2011-12-14', '2011-11', 'No', '58.34', '220.16', '4.50', '574.05', '23.14', '22.95', '55.49', '10.50', '11.20', '3.37', '17.19', '43.70', '164.92', '23.14', '430.02', '42.08', '7.87', '11.20', '743.49', '980.33', '236.84', '0.00'))
-        self.assertEqual(dataset.headers, ['Account', 'Sequence', 'Period Start', 'Period End', 'Billing Month', 'Estimated', u'All Charges: Delivery tax (hypothetical)', u'All Charges: Distribution charge for all therms (hypothetical)', u'All Charges: DC Energy Assistance Trust Fund (hypothetical)', u'All Charges: Purchased Gas Charge (hypothetical)', u'All Charges: Peak Usage Charge (hypothetical)', u'All Charges: DC Rights-of-Way Fee (hypothetical)', u'All Charges: Sales tax (hypothetical)', u'All Charges: Sustainable Energy Trust Fund (hypothetical)', u'All Charges: System Charge (hypothetical)', u'All Charges: DC Energy Assistance Trust Fund (actual)', u'All Charges: DC Rights-of-Way Fee (actual)', u'All Charges: Delivery tax (actual)', u'All Charges: Distribution charge for all therms (actual)', u'All Charges: Peak Usage Charge (actual)', u'All Charges: Purchased Gas Charge (actual)', u'All Charges: Sales tax (actual)', u'All Charges: Sustainable Energy Trust Fund (actual)', u'All Charges: System Charge (actual)', ': Actual Total', ': Hypothetical Total', ': Energy Offset Value (Hypothetical - Actual)', ': Skyline Late Charge'])
-        self.assertEqual(dataset.title, '10003')

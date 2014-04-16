@@ -402,10 +402,12 @@ class BillToolBridge:
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                self.reebill_dao)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.splinter, logger=self
+                self.bill_mailer, self.renderer, self.ree_getter, logger=self
                 .logger)
 
 
@@ -1597,14 +1599,15 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        if xaction == "read":
-            charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
-        else:
-            raise NotImplementedError('Cannot create, edit or destroy charges'+\
+        if not xaction == "read":
+            raise NotImplementedError('Cannot create, edit or destroy charges'+ \
                                       ' from this grid.')
+
+        with DBSession(self.state_db) as session:
+                charges=self.process.get_hypothetical_matched_charges(
+                    session, account, sequence)
+                return self.dumps({'success': True, 'rows': charges,
+                                   'total':len(charges)})
 
 
     @cherrypy.expose

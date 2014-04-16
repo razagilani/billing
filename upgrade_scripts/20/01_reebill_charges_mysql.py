@@ -1,9 +1,9 @@
 from sys import stderr
 from itertools import chain
 import pymongo
+import mongoengine
 import MySQLdb
-from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, \
-    Address
+from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Address
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 
@@ -84,6 +84,7 @@ for reebill in s.query(ReeBill).join(Customer)\
         print >> stderr, 'WARNING %s-%s-%s: default values substituted for missing keys' % (reebill.customer.account, reebill.sequence, reebill.version)
 
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
+    # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # corresponding to new table)
     reebill.charges = [ReeBillCharge(*[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
 
@@ -115,5 +116,6 @@ foreign key (billing_address_id) references address (id);
 cur.execute('''alter table reebill add constraint fk_service_address_address
 foreign key (service_address_id) references address (id);
 ''')
+
 
 
