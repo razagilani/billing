@@ -4,22 +4,11 @@ Code for accumulating Skyline-generated energy into "shadow" registers in
 meters of reebills.
 '''
 import sys
-import os  
-from pprint import pprint, pformat
-from types import NoneType
 from datetime import date, datetime,timedelta, time
-import calendar
-import random
 import csv
-import operator
 from bisect import bisect_left
-from optparse import OptionParser
-from skyliner import sky_install
-from skyliner import sky_objects
-from skyliner.sky_errors import DataHandlerError
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
-from billing.util.dictutils import dict_merge
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
 from billing.processing.exceptions import MissingDataError

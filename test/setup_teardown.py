@@ -93,8 +93,12 @@ port = 27017
 
         # set up logger, but ingore all log output
         logger = logging.getLogger('test')
+        # a logger is required to have >= 1 handler
         logger.addHandler(logging.NullHandler())
-
+        # this is how you prevent the logger from printing to
+        # stdout/stderr, according to
+        # http://stackoverflow.com/questions/2266646/how-to-i-disable-and-re-enable-console-logging-in-python
+        logger.propagate = False
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
