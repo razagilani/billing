@@ -110,6 +110,6 @@ for reebill in s.query(ReeBill).join(Customer)\
     for key in other_keys:
         set_key(key, key)
 
-    #rbd.save_reebill(doc)
+    #rbd.save_reebill_and_utilbill(doc)
 
 s.commit()

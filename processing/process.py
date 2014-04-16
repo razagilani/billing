@@ -21,6 +21,7 @@ from bson import ObjectId
 import uuid as UUID
 import re
 import errno
+import bson
 import skyliner
 from billing.processing import state
 from billing.processing import mongo
@@ -31,7 +32,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address
+    UtilBillLoader, ReeBillCharge, Reading, Address
 from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
 from billing.processing import fetch_bill_data, bill_mailer
@@ -65,7 +66,8 @@ class Process(object):
     config = None
 
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, splinter=None, logger=None):
+            nexus_util, bill_mailer, renderer, ree_getter,
+            splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -73,6 +75,7 @@ class Process(object):
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
+        self.ree_getter = ree_getter
         self.renderer = renderer
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
@@ -167,8 +170,7 @@ class Process(object):
         mongo.delete_charge(utilbill_doc, rsi_binding)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
-    def get_hypothetical_matched_charges(self, session, account, sequence,
-             service):
+    def get_hypothetical_matched_charges(self, session, account, sequence):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
         reebill = self.state_db.get_reebill(session, account, sequence)
@@ -176,7 +178,7 @@ class Process(object):
                 reebill.utilbills[0])
         actual_charges = mongo.get_charges_json(utilbill_doc)
         actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        result = {}
+        result = []
         for hypothetical_charge in reebill.charges:
             try:
                 matching = actual_charge_dict[hypothetical_charge.rsi_binding]
@@ -825,7 +827,7 @@ class Process(object):
                                                                .utilbills[0])
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill
                 .utilbills[0])
-        self._compute_reebill_charges(reebill, uprs)
+        self._compute_reebill_charges(session, reebill, uprs)
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
         actual_total = mongo.total_of_all_charges(utilbill_document)
@@ -915,7 +917,7 @@ class Process(object):
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
 
-    def _compute_reebill_charges(self, reebill, uprs):
+    def _compute_reebill_charges(self, session, reebill, uprs):
         '''Recomputes hypothetical versions of all charges based on the
         associated utility bill. This should be moved to state.ReeBill when
         utility bill documents are gone.
@@ -952,19 +954,18 @@ class Process(object):
             a_register = next(r for r in actual_registers
                               if r['register_binding'] ==
                                  h_register['register_binding'])
-            s_register = next(r for r in shadow_registers
-                              if r['register_binding'] ==
-                                 h_register['register_binding'])
+            s_quantity = reebill.get_renewable_energy_reading(
+                    h_register['register_binding'])
+
             h_register['quantity'] = a_register['quantity'] + \
-                                     s_register['quantity']
+                                     s_quantity
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
 
         # copy the charges from there into the reebill
-        reebill.charges = [ReeBillCharge(c['rsi_binding'], c['description'],
-                c['group'], c['quantity'], c['rate'], c['total']) for c in
-                hypothetical_utilbill['charges']]
+        reebill.update_charges_from_utilbill_doc(session,
+                hypothetical_utilbill)
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
@@ -1041,14 +1042,20 @@ class Process(object):
                 customer.get_late_charge_rate(), new_utilbill_docs)
 
         # create reebill row in state database
-        # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0,
                 utilbills=new_utilbills,
                 billing_address=Address(**new_utilbill_docs[0]
                         ['billing_address']),
                 service_address=Address(**new_utilbill_docs[0]
                         ['service_address']))
+
+        # assign Reading objects to the ReeBill based on registers from the
+        # utility bill document
+        assert len(new_utilbill_docs) == 1
+        new_reebill.update_readings_from_document(new_utilbill_docs[0])
+
         session.add(new_reebill)
+        session.add_all(new_reebill.readings)
 
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
@@ -1058,8 +1065,8 @@ class Process(object):
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
         if integrate_skyline_backend:
-            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
-                    new_mongo_reebill, use_olap=True)
+            self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                            new_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
 
         if not skip_compute:
@@ -1110,17 +1117,29 @@ class Process(object):
         # (note that utility bill subdocuments in the reebill also get updated
         # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
         # they are updated)
-        reebill_doc._utilbills = [self.reebill_dao.load_doc_for_utilbill(u)
-                for u in reebill.utilbills]
+        assert len(reebill.utilbills) == 1
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill_doc._utilbills = [utilbill_doc]
         reebill_doc.update_utilbill_subdocs(reebill.discount_rate)
+
+        # document must be saved before fetch_oltp_data is called.
+        # unfortunately, this can't be undone if an exception happens.
+        self.reebill_dao.save_reebill(reebill_doc)
+
+        # update readings to match utility bill document
+        reebill.update_readings_from_document(utilbill_doc)
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
         # prior balance. this is always version 0, because we want those values
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill_doc)
+        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                        reebill)
+
+        reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, version=reebill.version)
         try:
             # TODO replace with compute_reebill; this is hard because the
             # document has to be saved first and it can't be saved again
@@ -1140,7 +1159,7 @@ class Process(object):
                     reebill_doc.sequence, e, traceback.format_exc()))
 
         self.reebill_dao.save_reebill(reebill_doc)
-        return reebill_doc
+        self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
@@ -1422,20 +1441,21 @@ class Process(object):
         # TODO: should this be replaced with a call to compute_reebill to
         # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
-        reebill_document = self.reebill_dao.load_reebill(account, sequence,
-                version=reebill.version)
         reebill.late_charge = self.get_late_charge(session, reebill)
 
         # save in mongo, creating a new frozen utility bill document, and put
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        frozen_utilbill_id = self.reebill_dao.save_reebill(reebill_document,
-                freeze_utilbills=True)
-        reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
+        # reebill_document = self.reebill_dao.load_reebill(account, sequence,
+        #         version=reebill.version)
+        # frozen_utilbill_id = self.reebill_dao.save_reebill_and_utilbill(
+        #         reebill_document, freeze_utilbills=True)
+        # reebill._utilbill_reebills[0].document_id = frozen_utilbill_id
+        self._freeze_utilbill_document(session, reebill)
 
         # also duplicate UPRS, storing the new _ids in MySQL
-        # ('save_reebill' can't do it because ReeBillDAO deals only with bill
+        # ('save_reebill_and_utilbill' can't do it because ReeBillDAO deals only with bill
         # documents)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 reebill.utilbills[0])
@@ -1453,6 +1473,55 @@ class Process(object):
 
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
+
+    def _freeze_utilbill_document(self, session, reebill, force=False):
+        '''
+        Create and save a utility bill document representing the utility bill
+        of the given state.ReeBill, which is about to be issued. This document
+        is immutable and provides a permanent record of the utility bill
+        utility bill document as it was at the time of issuing. Its _id becomes
+        the "document_id" of the corresponding row in the  "utilbill_reebill"
+        table in MySQL.
+
+        Replacing an already-issued reebill (as determined by StateDB) or its
+        utility bills is forbidden unless 'force' is True (this should only be
+        used for testing).
+
+        Nore: this saves changes to the reebill document in Mongo, so that
+        document should be re-loaded if data are read from it after calling
+        this method.
+        '''
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill.")
+
+        # NOTE returning the _id of the new frozen utility bill can only work
+        # if there is only one utility bill; otherwise some system is needed to
+        # specify which _id goes with which utility bill in MySQL
+        if len(reebill.utilbills) > 1:
+            raise NotImplementedError('Multiple services not yet supported')
+
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+
+        # convert the utility bills into frozen copies by putting
+        # "sequence" and "version" keys in the utility bill, and
+        # changing its _id to a new one
+        new_id = bson.objectid.ObjectId()
+
+        # copy utility bill doc so changes to it do not persist if
+        # saving fails below
+        utilbill_doc = copy.deepcopy(utilbill_doc)
+        utilbill_doc['_id'] = new_id
+        self.reebill_dao.save_utilbill(utilbill_doc, force=force,
+                           sequence_and_version=(reebill.sequence,
+                                                 reebill.version))
+        # saving succeeded: set handle id to match the saved
+        # utility bill and replace the old utility bill document with the new one
+        reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
+                reebill.sequence, version=reebill.version)
+        reebill_doc.reebill_dict['utilbills'][0]['id'] = new_id
+        reebill._utilbill_reebills[0].document_id = new_id
+        self.reebill_dao.save_reebill(reebill_doc)
 
 
     def reebill_report_altitude(self, session):
@@ -1695,11 +1764,9 @@ class Process(object):
         return data, total_count
 
     def bind_renewable_energy(self, session, account, sequence):
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, use_olap=True)
-        self.reebill_dao.save_reebill(reebill)
-
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+                                        reebill, use_olap=True)
 
     def mail_reebills(self, session, account, sequences, recipient_list):
         all_reebills = [self.state_db.get_reebill(session, account, sequence)
@@ -1725,7 +1792,7 @@ class Process(object):
                 sequence in sequences]
         bill_dates = ', '.join(["%s" % (b.period_end) for b in all_documents])
         merge_fields = {
-            'street': most_recent_reebill.service_address,
+            'street': most_recent_reebill.service_address.street,
             'balance_due': round(most_recent_reebill.balance_due, 2),
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
@@ -1803,6 +1870,7 @@ class Process(object):
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
 
         self.reebill_dao.save_reebill(reebill)
+        # presumably utility bill does not need to be saved
 
         return reebill
 

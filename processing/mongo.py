@@ -688,7 +688,6 @@ class MongoReebill(object):
     @property
     def period_end(self):
         return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
-
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
@@ -750,7 +749,7 @@ class MongoReebill(object):
         return matching_utilbills[0]
 
     def _set_utilbill_for_id(self, id, new_utilbill_doc):
-        '''Used in save_reebill to replace an editable utility bill document
+        '''Used in save_reebill_and_utilbill to replace an editable utility bill document
         with a frozen one.'''
         # find all utility bill documents with the given id, and make sure
         # there's exactly 1
@@ -1231,73 +1230,22 @@ class ReebillDAO(object):
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
 
-    def save_reebill(self, reebill, freeze_utilbills=False, force=False):
-        '''Saves the MongoReebill 'reebill' into the database. If a document
-        with the same account, sequence, and version already exists, the existing
-        document is replaced.
+    def save_reebill(self, reebill, force=False):
+        '''Saves the given reebill document.
 
-        'freeze_utilbills' should be used when issuing a reebill for the first
-        time (an original or a correction). This creates "frozen" (immutable)
-        copies of the utility bill documents with new _ids and puts the
-        reebill's sequence and version in them. This document serves as a
-        permanent archive of the utility bill document as it was at the time of
-        issuing, and its _id should go in the "document_id" column of the
-        "utilbill_reebill" table in MySQL.
-        
         Replacing an already-issued reebill (as determined by StateDB) or its
         utility bills is forbidden unless 'force' is True (this should only be
         used for testing).
-        
-        Returns the _id of the frozen utility bill if 'freeze_utilbills' is
-        True, or None otherwise.'''
-        # TODO pass session into save_reebill instead of re-creating it
-        # https://www.pivotaltracker.com/story/show/36258193
-        # TODO 38459029
-        # NOTE not using context manager (see comment in load_reebill)
+        '''
         session = self.state_db.session()
         issued = self.state_db.is_issued(session, reebill.account,
-                reebill.sequence, version=reebill.version, nonexistent=False)
+                 reebill.sequence, version=reebill.version, nonexistent=False)
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
-        
-        # there will only be a return value if 'freeze_utilbills' is True
-        return_value = None
-
-        # NOTE returning the _id of the new frozen utility bill can only work
-        # if there is only one utility bill; otherwise some system is needed to
-        # specify which _id goes with which utility bill in MySQL
-        if len(reebill._utilbills) > 1:
-            raise NotImplementedError('Multiple services not yet supported')
-
-        for utilbill_handle in reebill.reebill_dict['utilbills']:
-            utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
-            if freeze_utilbills:
-                # convert the utility bills into frozen copies by putting
-                # "sequence" and "version" keys in the utility bill, and
-                # changing its _id to a new one
-                old_id = utilbill_doc['_id']
-                new_id = bson.objectid.ObjectId()
-
-                # copy utility bill doc so changes to it do not persist if
-                # saving fails below
-                utilbill_doc = copy.deepcopy(utilbill_doc)
-                utilbill_doc['_id'] = new_id
-                self.save_utilbill(utilbill_doc, force=force,
-                        sequence_and_version=(reebill.sequence,
-                        reebill.version))
-                # saving succeeded: set handle id to match the saved
-                # utility bill and replace the old utility bill document with the new one
-                utilbill_handle['id'] = new_id
-                reebill._set_utilbill_for_id(old_id, utilbill_doc)
-                return_value = new_id
-            else:
-                self.save_utilbill(utilbill_doc, force=force)
 
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
         self.reebills_collection.save(reebill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
-
-        return return_value
 
     def save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
@@ -1307,7 +1255,7 @@ class ReebillDAO(object):
 
         'sequence_and_version' should a (sequence, version) tuple, to be used
         when (and only when) issuing the containing reebill for the first time
-        (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
+        (i.e. calling save_reebill_and_utilbill(freeze_utilbills=True). This puts sequence
         and version keys into the utility bill. (If those keys are already in
         the utility bill, you won't be able to save it.)
         '''
