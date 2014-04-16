@@ -748,21 +748,6 @@ class MongoReebill(object):
                     'structure "%s"') % (utility, rate_class))
         return matching_utilbills[0]
 
-    def _set_utilbill_for_id(self, id, new_utilbill_doc):
-        '''Used in save_reebill_and_utilbill to replace an editable utility bill document
-        with a frozen one.'''
-        # find all utility bill documents with the given id, and make sure
-        # there's exactly 1
-        matching_indices = [index for (index, doc) in
-                enumerate(self._utilbills) if doc['_id'] == id]
-        if len(matching_indices) == 0:
-            raise ValueError('No utilbill found for id "%s"' % id)
-        if len(matching_indices) > 1:
-            raise ValueError('Multiple utilbills found for id "%s"' % id)
-
-        # replace that one with 'new_utilbill_doc'
-        self._utilbills[matching_indices[0]] = new_utilbill_doc
-
     def get_all_shadow_registers_json(self):
         '''Given a utility bill document, returns a list of dictionaries describing
         registers of all meters.'''
