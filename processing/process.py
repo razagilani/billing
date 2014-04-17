@@ -1121,8 +1121,6 @@ class Process(object):
         assert len(reebill.utilbills) == 1
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
-        reebill_doc._utilbills = [utilbill_doc]
-        reebill_doc.update_utilbill_subdocs(reebill.discount_rate)
 
         # document must be saved before update_renewable_readings is called.
         # unfortunately, this can't be undone if an exception happens.

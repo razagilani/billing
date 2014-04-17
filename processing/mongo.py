@@ -565,70 +565,12 @@ class MongoReebill(object):
             },
             "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
         }
-        return MongoReebill(reebill_doc, utilbill_docs)
+        return MongoReebill(reebill_doc)
 
-    def __init__(self, reebill_data, utilbill_dicts):
+    def __init__(self, reebill_data):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
-        self._utilbills = copy.deepcopy(utilbill_dicts)
-
-    def update_utilbill_subdocs(self, discount_rate):
-        '''Refreshes the "utilbills" sub-documents of the reebill document to
-        match the utility bill documents in _utilbills. (These represent the
-        "hypothetical" version of each utility bill.)
-        '''
-        # TODO maybe this should be done in compute_bill or a method called by
-        # it; see https://www.pivotaltracker.com/story/show/51581067
-        # also might want to merge this with compute_charges below.
-        self.reebill_dict['utilbills'] = \
-                [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
-                utilbill_doc in self._utilbills]
-
-    def compute_charges(self, uprs):
-        '''Recomputes hypothetical versions of all charges based on the
-        associated utility bill.
-        '''
-        # process rate structures for all services
-        utilbill_doc = self._utilbills[0]
-        compute_all_charges(utilbill_doc, uprs)
-
-        # TODO temporary hack: duplicate the utility bill, set its register
-        # quantities to the hypothetical values, recompute it, and then
-        # copy all the charges back into the reebill
-        hypothetical_utilbill = deepcopy(self._utilbills[0])
-
-        # these three generators iterate through "actual registers" of the
-        # real utility bill (describing conventional energy usage), "shadow
-        # registers" of the reebill (describing renewable energy usage
-        # offsetting conventional energy), and "hypothetical registers" in
-        # the copy of the utility bill (which will be set to the sum of the
-        # other two).
-        actual_registers = chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])
-        shadow_registers = chain.from_iterable(u['shadow_registers']
-                for u in self.reebill_dict['utilbills'])
-        hypothetical_registers = chain.from_iterable(m['registers'] for m
-                in hypothetical_utilbill['meters'])
-
-        # set the quantity of each "hypothetical register" to the sum of
-        # the corresponding "actual" and "shadow" registers.
-        for h_register in hypothetical_registers:
-            a_register = next(r for r in actual_registers
-                    if r['register_binding'] ==
-                    h_register['register_binding'])
-            s_register = next(r for r in shadow_registers
-                    if r['register_binding'] ==
-                    h_register['register_binding'])
-            h_register['quantity'] = a_register['quantity'] + \
-                    s_register['quantity']
-
-        # compute the charges of the hypothetical utility bill
-        compute_all_charges(hypothetical_utilbill, uprs)
-
-        # copy the charges from there into the reebill
-        self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
-                hypothetical_utilbill['charges']
 
     # TODO should _id fields even have setters? they're never supposed to
     # change.
@@ -665,11 +607,6 @@ class MongoReebill(object):
                     'quantity': register['quantity']
                 })
         return result
-
-    @property
-    def services(self):
-        '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
 
     @property
     def suspended_services(self):
@@ -1006,10 +943,7 @@ class ReebillDAO(object):
         # convert types in reebill document
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-        # load utility bills
-        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
-
-        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
+        mongo_reebill = MongoReebill(mongo_doc)
         return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
@@ -1062,8 +996,7 @@ class ReebillDAO(object):
             docs = self.reebills_collection.find(query).sort('sequence')
             for mongo_doc in self.reebills_collection.find(query):
                 mongo_doc = convert_datetimes(mongo_doc)
-                utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
-                result.append(MongoReebill(mongo_doc, utilbill_docs))
+                result.append(MongoReebill(mongo_doc))
             return result
 
     def save_reebill(self, reebill, force=False):

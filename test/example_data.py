@@ -448,7 +448,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'end': end
     })
 
-    return MongoReebill(reebill_dict, [deepcopy(u)])
+    return MongoReebill(reebill_dict)
 
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):
