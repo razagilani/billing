@@ -143,6 +143,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(0.2, reebill.late_charge_rate)
             self.assertEqual([utilbill_doc['_id']], [ObjectId(u['id']) for u in
                     reebill_doc.reebill_dict['utilbills']])
+            self.assertEqual([utilbill_doc], reebill_doc._utilbills)
             self.assertEqual(0, reebill.payment_received)
             self.assertEqual(0, reebill.total_adjustment)
             self.assertEqual(0, reebill.manual_adjustment)
@@ -241,9 +242,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf', total=100)
+            utilbill = self.process.upload_utility_bill(session, '99999',
+                    'gas', date(2013,1,1), date(2013,2,1),
+                    StringIO('January 2013'), 'january.pdf', total=100)
 
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             assert utilbill.period_start == doc['start'] == date(2013,1,1)
@@ -924,7 +925,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     version=1)
             other_utility_bill_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill)
+            new_version_reebill_doc._utilbills[0]['_id'] = other_utility_bill_doc['_id']
             self.reebill_dao.save_reebill(new_version_reebill_doc)
+            self.reebill_dao.save_utilbill(new_version_reebill_doc
+                    ._utilbills[0])
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill)
             session.commit()
@@ -1013,9 +1017,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
             self.assertEquals(None,
                     utilbill._utilbill_reebills[0].uprs_document_id)
-            reebill = self.state_db.get_reebill(session, acc, 1)
-            reebill_doc = self.reebill_dao.load_reebill(acc, 1)
-            self.assertEqual(1, len(reebill_doc.reebill_dict['utilbills']))
+            reebill = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEqual(1, len(reebill._utilbills))
+            self.assertEqual(1, len(reebill.reebill_dict['utilbills']))
+            self.assertEqual(ObjectId(utilbill.document_id),
+                    reebill._utilbills[0]['_id'])
+            self.assertEqual(reebill._utilbills[0]['_id'],
+                    reebill.reebill_dict['utilbills'][0]['id'])
 
             # update the meter like the user normally would
             # "This is required for process.new_version =>
@@ -1023,13 +1031,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             #meter = reebill.meters_for_service('gas')[0]
             #reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
             #        date(2012,1,1))
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                    reebill.utilbills[0])
-            mongo.set_meter_read_period(utilbill_doc, date(2012,1,1),
+            mongo.set_meter_read_period(reebill._utilbills[0], date(2012,1,1),
                     date(2012,2,1))
-            self.reebill_dao.save_utilbill(utilbill_doc)
             self.process.compute_reebill(session, acc, 1)
-            self.reebill_dao.save_reebill(reebill_doc)
+            self.reebill_dao.save_reebill(reebill)
 
             # issue reebill
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
@@ -1050,10 +1055,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             reebill = session.query(ReeBill).one()
             reebill_doc = self.reebill_dao.load_reebill(acc, 1)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
-                    .utilbills[0])
-            self.assertEqual(1, len(reebill.utilbills))
+            self.assertEqual(1, len(reebill_doc._utilbills))
             self.assertEqual(1, len(reebill_doc.reebill_dict['utilbills']))
+            self.assertEqual(
+                    ObjectId(utilbill._utilbill_reebills[0].document_id),
+                    reebill_doc._utilbills[0]['_id'])
             self.assertEqual(
                     ObjectId(utilbill._utilbill_reebills[0].document_id),
                     reebill_doc.reebill_dict['utilbills'][0]['id'])
@@ -1097,10 +1103,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the editable utility bill with the new meter read period should be used
             #self.assertEqual((date(2012,1,15), date(2012,3,15)),
             #        new_reebill_doc.meter_read_dates_for_service('gas'))
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                    new_reebill.utilbills[0])
             self.assertEqual((date(2012,1,15), date(2012,3,15)),
-                mongo.meter_read_period(utilbill_doc))
+                mongo.meter_read_period(new_reebill_doc._utilbills[0]))
 
             for utilbill in new_reebill.utilbills:
                 # utility bill document, UPRS document, and
@@ -1313,6 +1317,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
             one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            self.reebill_dao.save_utilbill(one_doc._utilbills[0])
             self.process.compute_reebill(session, acc, 1)
             assert one.ree_charge == 50
             assert one.balance_due == 50
@@ -2108,9 +2113,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # put it in an un-computable state by adding a charge without an RSI
             reebill_correction_doc = self.reebill_dao.load_reebill(account, 1,
                     version=1)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
-                    .utilbills[0])
-            utilbill_doc['charges'].append({
+            reebill_correction_doc._utilbills[0]['charges'].append({
                 'rsi_binding': 'NO_RSI',
                 "description" : "Can't compute this",
                 "quantity" : 1,
@@ -2121,7 +2124,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'group': 'All Charges'
             })
             self.reebill_dao.save_reebill(reebill_correction_doc)
-            self.reebill_dao.save_utilbill(utilbill_doc)
+            self.reebill_dao.save_utilbill(
+                    reebill_correction_doc._utilbills[0])
             with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, account, 1, version=1)
 
