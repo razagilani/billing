@@ -18,13 +18,9 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
-import uuid as UUID
 import re
 import errno
 import bson
-import skyliner
-from billing.processing import state
-from billing.processing import mongo
 from billing.processing import journal
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
@@ -33,16 +29,12 @@ from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Reading, Address
-from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
-from billing.processing import fetch_bill_data, bill_mailer
-from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
-from billing.util.monthmath import Month, approximate_month
+from billing.util.monthmath import Month
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, \
-    NotAttachable, BillStateError, NoSuchBillException, NotUniqueException, \
-    RSIError, NoSuchRSIError
+    NoSuchBillException, NotUniqueException, NoSuchRSIError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -1260,9 +1252,6 @@ class Process(object):
         # chosen is not 0).
         max_predecessor_version = self.state_db.max_version(session, acc,
                 seq - 1)
-        # min_balance_due = min((self.reebill_dao.load_reebill(acc, seq - 1,
-        #         version=v) for v in range(max_predecessor_version + 1)),
-        #         key=operator.attrgetter('balance_due')).balance_due
         customer = self.state_db.get_customer(session, acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
@@ -1294,7 +1283,6 @@ class Process(object):
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
-
     def delete_reebill(self, session, account, sequence):
         '''Deletes the the given reebill: removes the ReeBill object/row and
         its utility bill associations from MySQL, and its document from Mongo.
@@ -1322,21 +1310,15 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            # path = self.config.get('billdb', 'billpath')+'%s' %(account)
-            # file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
-            # full_path = os.path.join(path, file_name)
             full_path = self.billupload.get_reebill_file_path(account,
                     sequence)
-
             # If the file exists, delete it, otherwise don't worry.
             try:
                 os.remove(full_path)
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
-
         return version
-
 
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, billing_address, service_address,
@@ -1352,9 +1334,6 @@ class Process(object):
         Returns the new state.Customer.'''
         if self.state_db.account_exists(session, account):
             raise ValueError("Account %s already exists" % account)
-
-        template_last_sequence = self.state_db.last_sequence(session,
-                template_account)
 
         # load document of last utility bill from template account (or its own
         # template utility bill document if there are no real ones) to become
@@ -1533,7 +1512,6 @@ class Process(object):
                     continue
 
                 row = {}
-
                 row['account'] = account
                 row['sequence'] = reebill_doc.sequence
                 row['billing_address'] = reebill_doc.billing_address
@@ -1574,7 +1552,6 @@ class Process(object):
 
                 rows.append(row)
                 totalCount += 1
-
         return rows, totalCount
 
     def sequences_for_approximate_month(self, session, account, year, month):
