@@ -1066,7 +1066,7 @@ class Process(object):
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
         if integrate_skyline_backend:
-            self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+            self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
                                             new_reebill, use_olap=True)
             self.reebill_dao.save_reebill(new_mongo_reebill)
 
@@ -1116,13 +1116,13 @@ class Process(object):
         # replace utility bill documents with the "current" ones, and update
         # "hypothetical" utility bill data in the reebill document to match
         # (note that utility bill subdocuments in the reebill also get updated
-        # in 'compute_reebill' below, but 'fetch_oltp_data' won't work unless
+        # in 'compute_reebill' below, but 'update_renewable_readings' won't work unless
         # they are updated)
         assert len(reebill.utilbills) == 1
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
 
-        # document must be saved before fetch_oltp_data is called.
+        # document must be saved before update_renewable_readings is called.
         # unfortunately, this can't be undone if an exception happens.
         self.reebill_dao.save_reebill(reebill_doc)
 
@@ -1134,7 +1134,7 @@ class Process(object):
         # prior balance. this is always version 0, because we want those values
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
-        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+        self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
                                         reebill)
 
         reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
@@ -1761,7 +1761,7 @@ class Process(object):
 
     def bind_renewable_energy(self, session, account, sequence):
         reebill = self.state_db.get_reebill(session, account, sequence)
-        self.ree_getter.fetch_oltp_data(self.nexus_util.olap_id(account),
+        self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
                                         reebill, use_olap=True)
 
     def mail_reebills(self, session, account, sequences, recipient_list):
