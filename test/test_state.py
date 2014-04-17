@@ -64,41 +64,6 @@ class StateTest(utils.TestCase):
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         self._clear_tables(mysql_connection)
 
-    @unittest.skip("TODO re-enable. creation of another StateDB instance breaks the test even though it's a different DB and clear_mappers is run in setUp")
-    def test_guess_next_reebill_end_date(self):
-        '''Compare real end date to the one that would have been prediected.'''
-        # use the real dev database
-        state_db = state.StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'skyline_dev'
-        })
-        total = 0
-        count = 0
-        correct_count = 0
-        session = state_db.session()
-        for account in state_db.listAccounts(session):
-            for sequence in state_db.listSequences(session, account):
-                try:
-                    reebill = self.reebill_dao.load_reebill(account, sequence)
-                    guessed_end_date = state.guess_next_reebill_end_date(session,
-                            account, reebill.period_begin)
-                    difference = abs(reebill.period_end - guessed_end_date).days
-                    total += difference
-                    count += 1
-                    if difference == 0:
-                        correct_count += 1
-                except Exception as e:
-                    # TODO don't bury this error
-                    print '%s-%s ERROR' % (account, sequence)
-        print 'average difference: %s days' % (total / float(count))
-        print 'guessed correctly: %s%%' % (100 * correct_count / float(count))
-        
-        # if we're right 95% of the time, guess_next_reebill_end_date() works
-        self.assertTrue(correct_count / float(count) > .95)
-        session.commit()
-        
     def test_trim_hypothetical_utilbills(self):
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
@@ -330,46 +295,6 @@ class StateTest(utils.TestCase):
             self.state_db.issue(session, '99999', 1)
             self.assertEquals([],
                     self.state_db.get_unissued_corrections(session, '99999'))
-
-            session.commit()
-
-    @unittest.skip('StateDB.delete_reebill no longer exists; move elsewhere?')
-    def test_delete_reebill(self):
-        account = '99999'
-        with DBSession(self.state_db) as session:
-            # un-issued bill version 0: row is actually deleted from the table
-            self.state_db.new_reebill(session, account, 1)
-            assert self.state_db.max_version(session, account, 1) == 0
-            assert not self.state_db.is_issued(session, account, 1)
-            customer = session.query(Customer).filter_by(account=account).one()
-            reebill = session.query(ReeBill).filter_by(customer=customer, sequence=1, version=0)
-            self.state_db.delete_reebill(session, reebill)
-            self.assertEqual([], self.state_db.listSequences(session, account))
-
-            # issued bill can't be deleted
-            self.state_db.new_reebill(session, account, 1)
-            self.state_db.issue(session, account, 1)
-            assert reebill.issued
-            # TODO check for a more specific exception
-            self.assertRaises(Exception, self.state_db.delete_reebill, session,
-                    reebill)
-
-            # make a new version, which is not issued; that can be deleted by
-            # decrementing max_version
-            self.state_db.increment_version(session, account, 1)
-            assert self.state_db.max_version(session, account, 1) == 1
-            assert not self.state_db.is_issued(session, account, 1)
-            reebill_correction = session.query(ReeBill).filter_by(
-                    account=account, sequence=1, version=1)
-            assert not reebill_correction.issued
-            self.state_db.delete_reebill(session, account, 1)
-            self.assertEqual([1], self.state_db.listSequences(session, account))
-            self.assertEqual(0, self.state_db.max_version(session, account, 1))
-
-            # remaining version 0 can't be deleted
-            # TODO check for a more specific exception
-            self.assertRaises(Exception, self.state_db.delete_reebill, session,
-                    account, 1)
 
             session.commit()
 
