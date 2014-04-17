@@ -61,7 +61,7 @@ for reebill in s.query(ReeBill).join(Customer)\
     document = rbd.load_reebill(reebill.customer.account,
             reebill.sequence, version=reebill.version) # TODO what about multiple utility bills? should charges actually be
     # associated with utilbill_reebill instead of reebill?
-    if len(document.reebill_dict['utilbills']) > 1:
+    if len(document._utilbills) > 1:
         print >> stderr, 'ERROR skipped %s due to multiple utility bills' % reebill
 
     # charge subdocument key names to default values to be substituted when the keys are missing
@@ -86,8 +86,7 @@ for reebill in s.query(ReeBill).join(Customer)\
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # corresponding to new table)
-    reebill.charges = [ReeBillCharge(reebill,*[c.get(key, default)
-            for (key,  default) in keys_defaults]) for c in charges]
+    reebill.charges = [ReeBillCharge(*[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
 
     # copy addresses to MySQL
     ba = document.reebill_dict['billing_address']

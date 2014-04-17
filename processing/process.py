@@ -18,9 +18,13 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
+import uuid as UUID
 import re
 import errno
 import bson
+import skyliner
+from billing.processing import state
+from billing.processing import mongo
 from billing.processing import journal
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.mongo import MongoReebill
@@ -29,12 +33,16 @@ from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing import state, fetch_bill_data
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Reading, Address
+from billing.processing.mongo import ReebillDAO
 from billing.processing.billupload import ACCOUNT_NAME_REGEX
+from billing.processing import fetch_bill_data, bill_mailer
+from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
-from billing.util.monthmath import Month
+from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NoSuchRSIError
+    NotAttachable, BillStateError, NoSuchBillException, NotUniqueException, \
+    RSIError, NoSuchRSIError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -275,14 +283,10 @@ class Process(object):
         period_start, period_end, issued, issue_date,
         ree_value, prior_balance, payment_received,
         total_adjustment, balance_forward, ree_charge, balance_due,
-        sum(reading.renewable_quantity) as total_energy,
-        sum(reebill_charge.total) as total_charge,
-        utilbill_reebill.document_id as frozen_doc_id,
-        utilbill.document_id as current_doc_id
+        sum(reading.renewable_quantity),
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
-        join reebill_charge on reebill.id = reebill_charge.reebill_id
         join reading on reebill.id = reading.reebill_id
         where account = %s
         group by reebill.customer_id, sequence''' % account
@@ -290,28 +294,14 @@ class Process(object):
                 'period_end', 'issued', 'issue_date',
                 'ree_value', 'prior_balance', 'payment_received',
                 'total_adjustment', 'balance_forward', 'ree_charge',
-                'balance_due', 'total_charge', 'total_energy',
-                'frozen_doc_id', 'current_doc_id'
+                'balance_due'
         ).from_statement(statement)
 
         for (sequence, max_version, period_start, period_end, issued,
                 issue_date, ree_value,
                 prior_balance, payment_received, total_adjustment,
                 balance_forward, ree_charge, balance_due,
-                total_charge, total_renewable_energy,
-                frozen_doc_id, current_doc_id) in query:
-
-            # load utility bill document for this reebill:
-            # use "frozen" document's id in utilbill_reebill table if present,
-            # otherwise "current" id in utility bill table
-            # TODO loading utility bill document from Mongo should be
-            # unnecessary when "actual" versions of each reebill charge are
-            # moved to MySQL
-            if frozen_doc_id is None:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(current_doc_id)
-            else:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(frozen_doc_id)
-
+                total_renewable_energy) in query:
             document = self.reebill_dao.load_reebill(account,
                     sequence, version=max_version)
             # start with data from MySQL
@@ -321,19 +311,20 @@ class Process(object):
                 'issue_date': issue_date,
                 'period_start': period_start,
                 'period_end': period_end,
+                # invisible columns
                 'max_version': max_version,
                 'issued': self.state_db.is_issued(session, account, sequence),
-                'hypothetical_total': total_charge,
-                'actual_total': mongo.total_of_all_charges(utilbill_doc),
+                'hypothetical_total': document.get_total_hypothetical_charges(),
+                'actual_total': document.get_total_utility_charges(),
                 'ree_value': ree_value,
-                'ree_charges': ree_charge,
-                # invisible columns
                 'prior_balance': prior_balance,
-                'total_error': self.get_total_error(session, account, sequence),
-                'balance_due': balance_due,
                 'payment_received': payment_received,
                 'total_adjustment': total_adjustment,
                 'balance_forward': balance_forward,
+                'ree_charges': ree_charge,
+                'balance_due': balance_due,
+                'total_error': self.get_total_error(session, account,
+                        sequence),
             }
             issued = self.state_db.is_issued(session, account, sequence)
             if max_version > 0:
@@ -1130,6 +1121,8 @@ class Process(object):
         assert len(reebill.utilbills) == 1
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
+        reebill_doc._utilbills = [utilbill_doc]
+        reebill_doc.update_utilbill_subdocs(reebill.discount_rate)
 
         # document must be saved before update_renewable_readings is called.
         # unfortunately, this can't be undone if an exception happens.
@@ -1269,6 +1262,9 @@ class Process(object):
         # chosen is not 0).
         max_predecessor_version = self.state_db.max_version(session, acc,
                 seq - 1)
+        # min_balance_due = min((self.reebill_dao.load_reebill(acc, seq - 1,
+        #         version=v) for v in range(max_predecessor_version + 1)),
+        #         key=operator.attrgetter('balance_due')).balance_due
         customer = self.state_db.get_customer(session, acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
@@ -1300,6 +1296,7 @@ class Process(object):
                 self.state_db.get_total_payment_since(session, account,
                 reebill.issue_date))
 
+
     def delete_reebill(self, session, account, sequence):
         '''Deletes the the given reebill: removes the ReeBill object/row and
         its utility bill associations from MySQL, and its document from Mongo.
@@ -1327,15 +1324,21 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
+            # path = self.config.get('billdb', 'billpath')+'%s' %(account)
+            # file_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
+            # full_path = os.path.join(path, file_name)
             full_path = self.billupload.get_reebill_file_path(account,
                     sequence)
+
             # If the file exists, delete it, otherwise don't worry.
             try:
                 os.remove(full_path)
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
+
         return version
+
 
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, billing_address, service_address,
@@ -1351,6 +1354,9 @@ class Process(object):
         Returns the new state.Customer.'''
         if self.state_db.account_exists(session, account):
             raise ValueError("Account %s already exists" % account)
+
+        template_last_sequence = self.state_db.last_sequence(session,
+                template_account)
 
         # load document of last utility bill from template account (or its own
         # template utility bill document if there are no real ones) to become
@@ -1529,6 +1535,7 @@ class Process(object):
                     continue
 
                 row = {}
+
                 row['account'] = account
                 row['sequence'] = reebill_doc.sequence
                 row['billing_address'] = reebill_doc.billing_address
@@ -1569,6 +1576,7 @@ class Process(object):
 
                 rows.append(row)
                 totalCount += 1
+
         return rows, totalCount
 
     def sequences_for_approximate_month(self, session, account, year, month):
