@@ -59,7 +59,7 @@ def createMockReebill():
         result.total = d['total']
         return result
         return ReeBillCharge
-    rb.charges = [ReeBillCharge(**subdict(d, ['rsi_binding', 'description',
+    rb.charges = [ReeBillCharge(rb, **subdict(d, ['rsi_binding', 'description',
             'group', 'quantity', 'rate', 'total'])) for d in [
         {
             u"rsi_binding" : u"SYSTEM_CHARGE",
@@ -165,6 +165,8 @@ def createMockReebill():
     rb.get_total_renewable_energy.return_value = 188.20197727
     rb.get_total_hypothetical_charges.return_value = sum(c.total for c in rb
         .charges)
+    rb.period_begin = date(2011,11,12)
+    rb.period_end = date(2011,12,14)
     return rb
 
 
