@@ -1149,7 +1149,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # update the meter like the user normally would
             # "This is required for process.new_version =>
-            # fetch_bill_data.fetch_oltp_data" (???)
+            # fetch_bill_data.update_renewable_readings" (???)
             #meter = reebill.meters_for_service('gas')[0]
             #reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
             #        date(2012,1,1))
@@ -1454,7 +1454,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # energy in it as the original version; only the late charge will
             # differ)
             two_doc = self.reebill_dao.load_reebill(acc, 2)
-            self.process.ree_getter.fetch_oltp_data(
+            self.process.ree_getter.update_renewable_readings(
                                         self.nexus_util.olap_id(acc), two)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late
@@ -1606,7 +1606,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_utilbill(template_a)
             self.reebill_dao.save_utilbill(template_b)
             self.reebill_dao.save_utilbill(template_c)
-            # new customers also need to be in nexus for 'fetch_oltp_data' to
+            # new customers also need to be in nexus for 'update_renewable_readings' to
             # work (using mock Skyliner)
             self.nexus_util._customers.extend([
                 {
@@ -2055,7 +2055,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # bind & compute once to start. this change should be
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                                            reebill2, use_olap=use_olap)
                 ree1 = reebill2.get_total_renewable_energy()
                 self.process.compute_utility_bill(session, utilbill_feb.id)
@@ -2098,7 +2098,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                         reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 check()
@@ -2107,22 +2107,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                         reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                         reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                         reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
                 reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.fetch_oltp_data(olap_id,
+                self.process.ree_getter.update_renewable_readings(olap_id,
                         reebill2, use_olap=use_olap)
                 self.reebill_dao.save_reebill(reebill2_doc)
                 check()
@@ -2266,7 +2266,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_doc = self.reebill_dao.load_reebill(account, 1)
 
             # bind, compute, issue
-            self.process.ree_getter.fetch_oltp_data(
+            self.process.ree_getter.update_renewable_readings(
                     self.nexus_util.olap_id(account), reebill,
                     use_olap=True)
             self.process.compute_reebill(session, account, 1)
@@ -2444,7 +2444,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                       skip_compute=True)
             doc1 = self.reebill_dao.load_reebill(account, 1)
             bill1.discount_rate = 0.5
-            self.process.ree_getter.fetch_oltp_data(
+            self.process.ree_getter.update_renewable_readings(
                     self.nexus_util.olap_id(account), bill1, use_olap=True)
             # TODO utilbill subdocument has 0 for its charge (also 0 quantity)
             self.process.compute_reebill(session, account, 1)

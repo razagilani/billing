@@ -201,7 +201,7 @@ class FetchTest(unittest.TestCase):
         install = self.splinter.get_install_obj_for('99999')
 
         # gather REE data into the reebill
-        self.ree_getter.fetch_oltp_data(install.name, self.reebill)
+        self.ree_getter.update_renewable_readings(install.name, self.reebill)
 
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'

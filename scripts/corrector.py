@@ -125,7 +125,7 @@ class BillCorrector(object):
                             # TODO this duplicates the bind & compute process
                             # above, but avoids code duplication; new_version()
                             # could be refactored to prevent this, or we could make
-                            # fetch_oltp_data() fast enough that it won't matter
+                            # update_renewable_readings() fast enough that it won't matter
                             new_reebill = self.process.new_version(session,
                                     account, sequence)
 
