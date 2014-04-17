@@ -124,9 +124,15 @@ port = 27017
             {
                 'billing': '99999',
                 'olap': 'example-1',
-                'casualname': 'Example',
+                'casualname': 'Example 1',
                 'primus': '1785 Massachusetts Ave.',
             },
+            {
+                'billing': '88888',
+                'olap': 'example-2',
+                'casualname': 'Example 2',
+                'primus': '1786 Massachusetts Ave.',
+                },
         ])
 
         bill_mailer = Mailer({
