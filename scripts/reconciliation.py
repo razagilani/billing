@@ -62,7 +62,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
         install = splinter.get_install_obj_for(NexusUtil(nexushost).olap_id(account))
         sequences = state_db.listSequences(session, account)
         for sequence in sequences:
-            reebill = reebill_dao.load_reebill(account, sequence)
+            reebill = state_db.get_reebill(session, account, sequence)
 
             result_dict = {
                 'account': account,
@@ -76,7 +76,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
 
             try:
                 # get energy from the bill
-                bill_therms = reebill.total_renewable_energy()
+                bill_therms = reebill.get_total_renewable_energy()
                 result_dict.update({ 'bill_therms': bill_therms })
 
                 # find the date to start getting data from OLAP: in some cases

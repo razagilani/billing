@@ -108,7 +108,7 @@ class Exporter(object):
             try:
                 actual_charges = sorted(mongo.get_charges_json(utilbill_doc),
                                         key=itemgetter('description'))
-                hypothetical_charges = reebill_doc.get_all_hypothetical_charges()
+                hypothetical_charges = reebill.charges
             except KeyError as e:
                 print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
                         sequence, e.message, traceback.format_exc()))
@@ -117,10 +117,12 @@ class Exporter(object):
             for charge in actual_charges:
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
-                charge['description'] += ' (hypothetical)'
+                charge.description += ' (hypothetical)'
                 # extra charges: actual and hypothetical totals, difference between
                 # them, Skyline's late fee from the reebill
-            actual_total = reebill_doc.get_total_utility_charges()
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
+                    .utilbills[0])
+            actual_total = sum(mongo.total_of_all_charges(utilbill_doc))
             hypothetical_total = reebill_doc.get_total_hypothetical_charges()
             extra_charges = [
                 {'description': 'Actual Total', 'total': actual_total},
@@ -142,7 +144,7 @@ class Exporter(object):
             for charge in hypothetical_charges + actual_charges + extra_charges:
                 column_name = '%s: %s' % (charge.get('group',''),
                                           charge.get('description','Error: No Description Found!'))
-                total = charge.get('total', 0)
+                total = charge.total
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
@@ -359,10 +361,10 @@ class Exporter(object):
                 if have_period_dates and not reebill_in_this_period: continue
 
                 # iterate the payments and find the ones that apply.
-                if (reebill_doc.period_begin is not None and reebill_doc.period_end is not None):
+                if (reebill.period_begin is not None and reebill.period_end is not None):
                     applicable_payments = filter(lambda x: x.date_applied >
-                            reebill_doc.period_begin and x.date_applied <
-                            reebill_doc.period_end, payments)
+                            reebill.period_begin and x.date_applied <
+                            reebill.period_end, payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
                     # where a payment may be applicable more than ones)
@@ -384,14 +386,16 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
-                actual_total=reebill_doc.get_total_utility_charges()
+                utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                        reebill.utilbills[0])
+                actual_total = mongo.total_of_all_charges(utilbill_doc)
 
                 try:
-                    hypothetical_total=reebill_doc.get_total_hypothetical_charges()
+                    hypothetical_total=reebill.get_total_hypothetical_charges()
                 except KeyError:
                     hypothetical_total="Error!"
                 try:
-                    total_ree = reebill_doc.total_renewable_energy()
+                    total_ree = reebill.get_total_renewable_energy()
                     if total_ree != 0:
                         average_rate_unit_ree = (hypothetical_total-actual_total)/total_ree
                 except StopIteration:
@@ -408,8 +412,8 @@ class Exporter(object):
                 row = [account,
                        reebill.sequence,
                        reebill.version,
-                       format_addr(reebill_doc.billing_address),
-                       format_addr(reebill_doc.service_address),
+                       format_addr(reebill.billing_address),
+                       format_addr(reebill.service_address),
                        reebill.issue_date.isoformat(),
                        reebill_doc.period_begin.isoformat(),
                        reebill_doc.period_end.isoformat(),

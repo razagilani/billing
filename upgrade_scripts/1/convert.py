@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 reebill = reebill_dao.load_reebill(account, sequence)
                 # convert rate structure
                 #process.bind_rate_structure(reebill)
-                reebill_dao.save_reebill(reebill)
+                reebill_dao.save_reebill_and_utilbill(reebill)
                 success_count += 1
                 print 'Success: %s %s' % (account, sequence,)
             except NoRateStructureError as e:

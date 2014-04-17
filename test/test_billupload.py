@@ -52,53 +52,6 @@ port = 27017
         # remove test directory
         shutil.rmtree('/tmp/test')
 
-    @unittest.skip("soon these files won't be moved anymore")
-    def test_move_utilbill_file(self):
-        # 3 utility bills with different dates, extensions, and states
-        situations = [
-            ('.pdf', date(2012,1,1), date(2012,2,1)),
-            ('.abcdef', date(2012,2,1), date(2012,3,1)),
-            ('', date(2012,3,1), date(2012,4,1))
-        ]
-
-        for extension, start, end in situations:
-            # bill dates will be moved forward 1 day
-            new_start, new_end = start + timedelta(1), end + timedelta(1)
-
-            path = self.billupload.get_utilbill_file_path(self.utilbill,
-                    extension=extension)
-            new_path = self.billupload.get_utilbill_file_path(self.utilbill,
-                    new_end, extension=extension)
-
-            # neither old path nor new path should exist yet
-            assert not any([os.access(path, os.F_OK), os.access(new_path, os.F_OK)])
-
-            # ensure that parent directories of bill file exist, then create
-            # bill file itself with some text in it
-            try:
-                os.makedirs(os.path.split(path)[0])
-            except OSError as e:
-                if e.errno == errno.EEXIST:
-                    pass
-            with open(path, 'w') as bill_file:
-                bill_file.write('this is a test')
-
-            # move the file
-            self.billupload.move_utilbill_file(self.utilbill, new_start,
-                    new_end)
-
-            # new file should exist and be readable and old should not
-            self.assertTrue(os.access(new_path, os.R_OK))
-            self.assertFalse(os.access(path, os.F_OK))
-
-            # new file should also be findable with extension and without
-            self.assertEqual(new_path,
-                    self.billupload.get_utilbill_file_path(self.utilbill,
-                                                           new_start, new_end))
-            self.assertEqual(new_path,
-                    self.billupload.get_utilbill_file_path(self.utilbill,
-                                       new_start, new_end, extension=extension))
-
     def test_delete_utilbill_file(self):
         start, end = date(2012,1,1), date(2012,2,1)
         path = self.billupload.get_utilbill_file_path(self.utilbill,

@@ -402,10 +402,12 @@ class BillToolBridge:
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
+                self.reebill_dao)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.splinter, logger=self
+                self.bill_mailer, self.renderer, self.ree_getter, logger=self
                 .logger)
 
 
@@ -1529,6 +1531,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def get_reebill_services(self, account, sequence, **args):
+        # TODO: delete this? is it ever used?
         '''Returns the utililty services associated with the reebill given by
         account and sequence, and a list of which services are suspended
         (usually empty). Used to show service suspension checkboxes in
@@ -1539,7 +1542,7 @@ class BillToolBridge:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
         # TODO: 40161259 must return success field
         return self.dumps({
-            'services': reebill.services,
+            'services': [],
             'suspended_services': reebill.suspended_services
         })
 
@@ -1597,14 +1600,15 @@ class BillToolBridge:
         service = service.lower()
         sequence = int(sequence)
 
-        if xaction == "read":
-            charges=self.process.get_hypothetical_matched_charges(account, sequence,
-                                                                  service)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
-        else:
-            raise NotImplementedError('Cannot create, edit or destroy charges'+\
+        if not xaction == "read":
+            raise NotImplementedError('Cannot create, edit or destroy charges'+ \
                                       ' from this grid.')
+
+        with DBSession(self.state_db) as session:
+                charges=self.process.get_hypothetical_matched_charges(
+                    session, account, sequence)
+                return self.dumps({'success': True, 'rows': charges,
+                                   'total':len(charges)})
 
 
     @cherrypy.expose

@@ -6,7 +6,7 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from itertools import groupby
+from itertools import groupby, chain
 from operator import attrgetter, itemgetter
 import sqlalchemy
 from sqlalchemy import Table, Column, MetaData, ForeignKey
@@ -34,6 +34,58 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 # this base class should be extended by all objects representing SQLAlchemy
 # tables
 Base = declarative_base()
+
+class Address(Base):
+    '''Table representing both "billing addresses" and "service addresses" in
+    reebills.
+    '''
+    __tablename__ = 'address'
+
+    id = Column(Integer, primary_key=True)
+    addressee = Column(String, nullable=False)
+    street = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    postal_code = Column(String, nullable=False)
+
+    def __init__(self, addressee='', street='', city='', state='',
+                 postal_code=''):
+        self.addressee = addressee
+        self.street = street
+        self.city = city
+        self.state = state
+        self.postal_code = postal_code
+
+    def __hash__(self):
+        return hash(self.addressee + self.street + self.city +
+                    self.postal_code)
+
+    def __eq__(self, other):
+        return all([
+            self.addressee == other.addressee,
+            self.street == other.street,
+            self.city == other.city,
+            self.state == other.state,
+            self.postal_code == other.postal_code
+        ])
+
+    def __repr__(self):
+        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+                                         self.city, self.state, self.postal_code)
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.street, self.city, self.state)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'addressee': self.addressee,
+            'street': self.street,
+            'city': self.city,
+            'state': self.state,
+            'postalcode': self.postal_code,
+        }
+
 
 class Customer(Base):
     __tablename__ = 'customer'
@@ -99,8 +151,23 @@ class ReeBill(Base):
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
 
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+                                nullable=False)
+
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
+
+    # i think SQLAlchemy does not automatically know which keys to use to
+    # determine billing and service addresses of a ReeBill because there are
+    # two foreign keys to Address; this can be fixed by using "primaryjoin"
+    billing_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False,
+            cascade='all',
+            primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
             # 'cascade' controls how all insert/delete operations are
@@ -170,8 +237,14 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
+    # see the following documentation fot delete cascade behavior
+    #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
+    charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
+    readings = relationship('Reading', backref='reebill', cascade='all')
+
     def __init__(self, customer, sequence, version=0, discount_rate=None,
-                    late_charge_rate=None, utilbills=[]):
+                    late_charge_rate=None, billing_address=None,
+                    service_address=None, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.version = version
@@ -198,6 +271,15 @@ class ReeBill(Base):
         self.ree_savings = 0
         self.email_recipient = None
 
+        # NOTE: billing/service_address arguments can't be given default value
+        # 'Address()' because that causes the same Address instance to be
+        # assigned every time. ('Address()' is evaluated once, at the time
+        # the module is imported.)
+        self.billing_address = Address() if billing_address is None \
+                else  billing_address
+        self.service_address = Address() if service_address is None \
+                else service_address
+
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
         # 'utilbills' is set before the other attributes above, SQLAlchemy
@@ -212,6 +294,118 @@ class ReeBill(Base):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
                 self.customer.account, self.sequence, self.version, 'issued' if
                 self.issued else 'unissued', len(self.utilbills))
+
+    def get_period(self):
+        '''Returns period of the first (only) utility bill for this reebill
+        as tuple of dates.
+        '''
+        assert len(self.utilbills) == 1
+        return self.utilbills[0].period_start, self.utilbills[0].period_end
+
+    def update_readings_from_document(self, utilbill_doc):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given utility bill document. Renewable
+        energy quantities are all set to 0.
+        '''
+        # NOTE mongo.get_all_actual_registers_json can't be used here due to
+        # circular dependency
+        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
+                reg_dict['quantity'], 0, reg_dict['quantity_units'])
+                for reg_dict in chain.from_iterable(
+                (r for r in m['registers']) for m in utilbill_doc['meters'])]
+
+    def get_renewable_energy_reading(self, register_binding):
+        assert isinstance(register_binding, basestring)
+        try:
+            reading = next(r for r in self.readings
+                           if r.register_binding == register_binding)
+        except StopIteration:
+            raise ValueError('Unknown register binding "%s"' % register_binding)
+        return reading.renewable_quantity
+
+    def set_renewable_energy_reading(self, register_binding, new_quantity):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(new_quantity, (float, int))
+        reading = next(r for r in self.readings
+                       if r.register_binding == register_binding)
+        unit = reading.unit
+
+        # Thermal: convert quantity to therms according to unit, and add it to
+        # the total
+        if unit == 'therms':
+            new_quantity /= 1e5
+        elif unit == 'btu':
+            # TODO physical constants must be global
+            pass
+        elif unit == 'kwh':
+            # TODO physical constants must be global
+            new_quantity /= 1e5
+            new_quantity /= .0341214163
+        elif unit == 'ccf':
+            # deal with non-energy unit "CCF" by converting to therms with
+            # conversion factor 1
+            # TODO: 28825375 - need the conversion factor for this
+            print ("Register in reebill %s-%s-%s contains gas measured "
+                   "in ccf: energy value is wrong; time to implement "
+                   "https://www.pivotaltracker.com/story/show/28825375") \
+                  % (self.account, self.sequence, self.version)
+            new_quantity /= 1e5
+        # PV: Unit is kilowatt; no conversion needs to happen
+        elif unit == 'kwd':
+            pass
+        else:
+            raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        reading.renewable_quantity = new_quantity
+
+
+    def get_total_renewable_energy(self, ccf_conversion_factor=None):
+        total_therms = 0
+        for reading in self.readings:
+            quantity = reading.renewable_quantity
+            unit = reading.unit
+            assert isinstance(quantity, (float, int))
+            assert isinstance(unit, basestring)
+
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if unit == 'therms':
+                total_therms += quantity
+            elif unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += quantity / 100000.0
+            elif unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += quantity / .0341214163
+            elif unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                           "in ccf: energy value is wrong; time to implement "
+                           "https://www.pivotaltracker.com/story/show/28825375") \
+                          % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
+            elif unit =='kwd':
+                total_therms += quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % unit)
+
+        return total_therms
+
+    def update_charges_from_utilbill_doc(self, session, utilbill_doc):
+        '''Updates the set of Charges belonging to this reebill to match the
+        given utility bill document. All new Charge objects are created,
+        and old ones are delted, so references to existing charges should not
+        be used after this method is called.
+        '''
+        for charge in self.charges:
+            session.delete(charge)
+        self.charges = [ReeBillCharge(self, c['rsi_binding'],  c['description'],
+                c['group'], c['quantity'], c['rate'], c['total']) for c in
+                utilbill_doc['charges']]
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -236,6 +430,51 @@ class ReeBill(Base):
         appears.) This total is what should be used to calculate the adjustment
         produced by the difference between two versions of a bill.'''
         return self.ree_charge + self.late_charge
+
+    def get_total_hypothetical_charges(self):
+        '''Returns sum of "hypothetical" versions of all charges.
+        '''
+        assert len(self.utilbills) == 1
+        return sum(charge.total for charge in self.charges)
+
+    def get_service_address_formatted(self):
+        return str(self.service_address)
+
+    def get_total_renewable_energy(self):
+        return sum(r.renewable_quantity for r in self.readings)
+
+        total_therms = 0
+        # TODO move the unit-conversion into a new method in Reading like
+        # 'convert_to_therms'
+        for reading in self.readings:
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if reading.unit == 'therms':
+                total_therms += reading.renewable_quantity
+            elif reading.unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += reading.renewable_quantity / 100000.0
+            elif reading.unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += reading.renewable_quantity / .0341214163
+            elif reading.unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += reading.renewable_quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    print ("Register in reebill %s-%s-%s contains gas measured "
+                           "in ccf: energy value is wrong; time to implement "
+                           "https://www.pivotaltracker.com/story/show/28825375") \
+                          % (self.account, self.sequence, self.version)
+                    # assume conversion factor is 1
+                    total_therms += reading.renewable_quantity
+            elif reading.unit =='kwd':
+                total_therms + reading.renewable_quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % reading.unit)
+
+        return total_therms
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -271,6 +510,76 @@ class UtilbillReebill(Base):
                 self.uprs_document_id[-4:]))
 
 
+class ReeBillCharge(Base):
+    '''Table representing "hypothetical" versions of charges in reebills (so
+    named because these may not have the same schema as utility bill charges).
+    Note that, in the past, a set of "hypothetical charges" was associated
+    with each utility bill subdocument of a reebill Mongo document, of which
+    there was always 1 in practice. Now these charges are associated directly
+    with a reebill, so there would be no way to distinguish between charges
+    from different utility bills, if there mere multiple utility bills.
+    '''
+    __tablename__ = 'reebill_charge'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
+    rsi_binding = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    # NOTE alternate name is required because you can't have a column called
+    # "group" in MySQL
+    group = Column(String, name='group_name', nullable=False)
+    quantity = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
+    total = Column(Float, nullable=False)
+
+    def __init__(self, reebill, rsi_binding, description, group, quantity,
+                 rate, total):
+        # TODO: should this be necessary? look at SQLAlchemy docs
+        self.reebill_id = reebill.id
+        self.rsi_binding = rsi_binding
+        self.description = description
+        self.group = group
+        self.quantity = quantity
+        self.rate = rate
+        self.total = total
+
+class Reading(Base):
+    '''Stores utility register readings and renewable energy offseting the
+    value of each register.
+    '''
+    __tablename__ = 'reading'
+
+    id = Column(Integer, primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'))
+
+    # identifies which utility bill register this corresponds to
+    register_binding = Column(String, nullable=False)
+
+    # name of measure in OLAP database to use for getting renewable energy
+    # quantity
+    measure = Column(String, nullable=False)
+
+    # actual reading from utility bill
+    conventional_quantity = Column(Float, nullable=False)
+
+    # renewable energy offsetting the above
+    renewable_quantity = Column(Float, nullable=False)
+
+    unit = Column(String, nullable=False)
+
+    def __init__(self, register_binding, measure, conventional_quantity,
+                 renewable_quantity, unit):
+        assert isinstance(register_binding, basestring)
+        assert isinstance(measure, basestring)
+        assert isinstance(conventional_quantity, (float, int))
+        assert isinstance(renewable_quantity, (float, int))
+        assert isinstance(unit, basestring)
+        self.register_binding = register_binding
+        self.measure = measure
+        self.conventional_quantity = conventional_quantity
+        self.renewable_quantity = renewable_quantity
+        self.unit = unit
+
 class UtilBill(Base):
     __tablename__ = 'utilbill'
 
@@ -284,6 +593,7 @@ class UtilBill(Base):
     period_end = Column(Date, nullable=False)
     total_charges = Column(Float)
     date_received = Column(DateTime)
+    account_number = Column(String, nullable=False)
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -331,8 +641,9 @@ class UtilBill(Base):
     }
 
     def __init__(self, customer, state, service, utility, rate_class,
-            period_start=None, period_end=None, doc_id=None, uprs_id=None,
-            total_charges=0, date_received=None, processed=False, reebill=None):
+            account_number='', period_start=None, period_end=None, doc_id=None,
+            uprs_id=None, total_charges=0, date_received=None,  processed=False,
+            reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -346,6 +657,7 @@ class UtilBill(Base):
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
+        self.account_number = account_number
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
