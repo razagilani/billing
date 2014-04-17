@@ -72,8 +72,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # no utility bills or reebills exist in MySQL for the new account yet
             self.assertEquals([], self.state_db.listSequences(session, '88888'))
-            self.assertEquals([],
-                    session.query(UtilBill).filter_by(customer=customer).all())
+            self.assertEquals(([], 0), self.process.get_all_utilbills_json(
+                    session, '88888', 0, 30))
 
             # create first utility bill and reebill
             self.process.upload_utility_bill(session, '88888', 'gas',
@@ -81,35 +81,41 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).filter_by(customer=customer)\
                     .one()
-            reebill = self.process.roll_reebill(session, '88888', start_date=date(2013,1,1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
+
+            utilbills_data = self.process.get_all_utilbills_json(session,
+                    '88888', 0, 30)[0]
+            self.assertEqual(1, len(utilbills_data))
+            utilbill_data = utilbills_data[0]
+
             # check utility bill and its document
-            self.assertEqual(UtilBill.Complete, utilbill.state)
-            self.assertEqual('gas', utilbill.service)
-            self.assertEqual('washgas', utilbill.utility)
-            self.assertEqual('DC Non Residential Non Heat',
-                    utilbill.rate_class)
-            self.assertEqual(date(2013,1,1), utilbill.period_start)
-            self.assertEqual(date(2013,2,1), utilbill.period_end)
-            self.assertEqual(0, utilbill.total_charges)
-            self.assertEqual(date_to_datetime(datetime.utcnow().date()),
-                    utilbill.date_received)
-            self.assertEqual(False, utilbill.processed) # what does 'processed' mean anyway?
-            self.assertIsNotNone(utilbill.document_id)
-            self.assertIsNotNone(utilbill.uprs_document_id)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.assertNotEqual(template_account_template_utilbill['_id'],
-                    utilbill_doc['_id'])
-            self.assertEqual('88888', utilbill_doc['account'])
-            self.assertEqual('gas', utilbill_doc['service'])
-            self.assertEqual('washgas', utilbill_doc['utility'])
-            self.assertEqual(date(2013,1,1), utilbill_doc['start'])
-            self.assertEqual(date(2013,2,1), utilbill_doc['end'])
-            self.assertEqual([], utilbill_doc['charges'])
-            self.assertEqual(0, utilbill_doc['total'])
-            self.assertEqual(billing_address, utilbill_doc['billing_address'])
-            self.assertEqual(service_address, utilbill_doc['service_address'])
+            self.assertDocumentsEqualExceptKeys({
+                'state': 'Final',
+                'service': 'Gas',
+                'utility': 'washgas',
+                'rate_class':  'DC Non Residential Non Heat',
+                'period_start': date(2013,1,1),
+                'period_end': date(2013,2,1),
+                'total_charges': 0.,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '88888',
+                'editable': True,
+                'name': '88888 - Example 2/1786 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
+                'id': None,
+                'reebills': [],
+            }, utilbill_data, 'id', 'charges', 'reebills')
+
+            self.process.roll_reebill(session, '88888', start_date=date(2013,1,1),
+                    integrate_skyline_backend=False, skip_compute=True)
+            reebill_data = self.process.get_reebill_metadata_json(session, '88888')
+            self.assertEqual([{
+                'sequence': 1,
+                'version': 0,
+                'issued': 0,
+                'issue_date': datetime.utcnow().date(),
+                'email_recpient': None,
+            }], reebill_data)
 
             # check reebill and its document
             self.assertEqual(1, reebill.sequence)
@@ -150,15 +156,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     reebill.billing_address)
             self.assertEqual(Address(**service_address),
                     reebill.service_address)
-
-            # TODO check Mongo rate structure documents
-
-            # check that template account's utility bill and reebill was not
-            # modified
-            template_account_template_utilbill_again = self.reebill_dao\
-                    .load_utilbill_template(session, '99999')
-            self.assertEquals(template_account_template_utilbill,
-                    template_account_template_utilbill_again)
 
             # it should not be possible to create an account that already
             # exists
@@ -247,7 +244,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, '99999', 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf', total=100)
-            utilbill = session.query(UtilBill).one()
+
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             assert utilbill.period_start == doc['start'] == date(2013,1,1)
             assert utilbill.period_end == doc['end'] == date(2013,2,1)
