@@ -82,6 +82,8 @@ mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_m
 # Scrub Mongo of customer data
 cd $current_dir
 mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod_data.js
+echo -e "Scrubbing bill_email_recipient from customer"
+mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < scrub_mysql_data.sql
 
 if [ "$SKIPBILLS" = "false" ]
 then
