@@ -275,10 +275,14 @@ class Process(object):
         period_start, period_end, issued, issue_date,
         ree_value, prior_balance, payment_received,
         total_adjustment, balance_forward, ree_charge, balance_due,
-        sum(reading.renewable_quantity),
+        sum(reading.renewable_quantity) as total_energy,
+        sum(reebill_charge.total) as total_charge,
+        utilbill_reebill.document_id as frozen_doc_id,
+        utilbill.document_id as current_doc_id
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
+        join reebill_charge on reebill.id = reebill_charge.reebill_id
         join reading on reebill.id = reading.reebill_id
         where account = %s
         group by reebill.customer_id, sequence''' % account
@@ -286,14 +290,28 @@ class Process(object):
                 'period_end', 'issued', 'issue_date',
                 'ree_value', 'prior_balance', 'payment_received',
                 'total_adjustment', 'balance_forward', 'ree_charge',
-                'balance_due'
+                'balance_due', 'total_charge', 'total_energy',
+                'frozen_doc_id', 'current_doc_id'
         ).from_statement(statement)
 
         for (sequence, max_version, period_start, period_end, issued,
                 issue_date, ree_value,
                 prior_balance, payment_received, total_adjustment,
                 balance_forward, ree_charge, balance_due,
-                total_renewable_energy) in query:
+                total_charge, total_renewable_energy,
+                frozen_doc_id, current_doc_id) in query:
+
+            # load utility bill document for this reebill:
+            # use "frozen" document's id in utilbill_reebill table if present,
+            # otherwise "current" id in utility bill table
+            # TODO loading utility bill document from Mongo should be
+            # unnecessary when "actual" versions of each reebill charge are
+            # moved to MySQL
+            if frozen_doc_id is None:
+                utilbill_doc = self.reebill_dao._load_utilbill_by_id(current_doc_id)
+            else:
+                utilbill_doc = self.reebill_dao._load_utilbill_by_id(frozen_doc_id)
+
             document = self.reebill_dao.load_reebill(account,
                     sequence, version=max_version)
             # start with data from MySQL
@@ -303,20 +321,19 @@ class Process(object):
                 'issue_date': issue_date,
                 'period_start': period_start,
                 'period_end': period_end,
-                # invisible columns
                 'max_version': max_version,
                 'issued': self.state_db.is_issued(session, account, sequence),
-                'hypothetical_total': document.get_total_hypothetical_charges(),
-                'actual_total': document.get_total_utility_charges(),
+                'hypothetical_total': total_charge,
+                'actual_total': mongo.total_of_all_charges(utilbill_doc),
                 'ree_value': ree_value,
+                'ree_charges': ree_charge,
+                # invisible columns
                 'prior_balance': prior_balance,
+                'total_error': self.get_total_error(session, account, sequence),
+                'balance_due': balance_due,
                 'payment_received': payment_received,
                 'total_adjustment': total_adjustment,
                 'balance_forward': balance_forward,
-                'ree_charges': ree_charge,
-                'balance_due': balance_due,
-                'total_error': self.get_total_error(session, account,
-                        sequence),
             }
             issued = self.state_db.is_issued(session, account, sequence)
             if max_version > 0:
