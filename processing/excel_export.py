@@ -361,10 +361,10 @@ class Exporter(object):
                 if have_period_dates and not reebill_in_this_period: continue
 
                 # iterate the payments and find the ones that apply.
-                if (reebill_doc.period_begin is not None and reebill_doc.period_end is not None):
+                if (reebill.period_begin is not None and reebill.period_end is not None):
                     applicable_payments = filter(lambda x: x.date_applied >
-                            reebill_doc.period_begin and x.date_applied <
-                            reebill_doc.period_end, payments)
+                            reebill.period_begin and x.date_applied <
+                            reebill.period_end, payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
                     # where a payment may be applicable more than ones)
@@ -386,7 +386,9 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
-                actual_total=reebill_doc.get_total_utility_charges()
+                utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                        reebill.utilbills[0])
+                actual_total = mongo.total_of_all_charges(utilbill_doc)
 
                 try:
                     hypothetical_total=reebill.get_total_hypothetical_charges()
