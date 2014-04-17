@@ -475,7 +475,6 @@ class ReeBill(Base):
 
         return total_therms
 
-
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".'''
