@@ -1180,7 +1180,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     ObjectId(utilbill._utilbill_reebills[0].document_id),
                     reebill_doc.reebill_dict['utilbills'][0]['id'])
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill,
-                    reebill=reebill_doc)
+                    reebill=reebill)
             self.assertNotEqual(ObjectId(utilbill.uprs_document_id),
                     uprs.id)
             self.assertEqual(
@@ -1219,8 +1219,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the editable utility bill with the new meter read period should be used
             #self.assertEqual((date(2012,1,15), date(2012,3,15)),
             #        new_reebill_doc.meter_read_dates_for_service('gas'))
+            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                    new_reebill.utilbills[0])
             self.assertEqual((date(2012,1,15), date(2012,3,15)),
-                mongo.meter_read_period(new_reebill_doc._utilbills[0]))
+                mongo.meter_read_period(utilbill_doc))
 
             for utilbill in new_reebill.utilbills:
                 # utility bill document, UPRS document, and
