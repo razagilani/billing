@@ -242,9 +242,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf', total=100)
+            utilbill = self.process.upload_utility_bill(session, '99999',
+                    'gas', date(2013,1,1), date(2013,2,1),
+                    StringIO('January 2013'), 'january.pdf', total=100)
 
             doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
             assert utilbill.period_start == doc['start'] == date(2013,1,1)
