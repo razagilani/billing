@@ -282,8 +282,8 @@ class Process(object):
         from customer join reebill on customer.id = reebill.customer_id
         join utilbill_reebill on reebill.id = reebill_id
         join utilbill on utilbill_id = utilbill.id
-        join reebill_charge on reebill.id = reebill_charge.reebill_id
-        join reading on reebill.id = reading.reebill_id
+        left outer join reebill_charge on reebill.id = reebill_charge.reebill_id
+        left outer join reading on reebill.id = reading.reebill_id
         where account = %s
         group by reebill.customer_id, sequence''' % account
         query = session.query('sequence', 'max_version', 'period_start',
