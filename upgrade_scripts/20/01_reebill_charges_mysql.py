@@ -86,7 +86,7 @@ for reebill in s.query(ReeBill).join(Customer)\
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # copy charges to MySQL (using SQLAlchemy object ReeBillCharge
     # corresponding to new table)
-    reebill.charges = [ReeBillCharge(*[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
+    reebill.charges = [ReeBillCharge(reebill, *[c.get(key, default) for (key, default) in keys_defaults]) for c in charges]
 
     # copy addresses to MySQL
     ba = document.reebill_dict['billing_address']
