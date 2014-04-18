@@ -1035,12 +1035,6 @@ class Process(object):
 
             new_sequence = last_reebill_row.sequence + 1
 
-             # copy 'suspended_services' list from predecessor reebill's document
-            last_reebill_doc = self.reebill_dao.load_reebill(account,
-                    last_reebill_row.sequence, last_reebill_row.version)
-            assert all(new_mongo_reebill.suspend_service(s) for s in
-                    last_reebill_doc.suspended_services)
-
         # currently only one service is supported
         assert len(new_utilbills) == 1
 
