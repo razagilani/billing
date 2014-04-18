@@ -323,6 +323,7 @@ class Process(object):
                 'period_end': period_end,
                 'max_version': max_version,
                 'issued': self.state_db.is_issued(session, account, sequence),
+                # NOTE SQL sum() over no rows returns NULL
                 'hypothetical_total': total_charge or 0,
                 'actual_total': mongo.total_of_all_charges(utilbill_doc),
                 'ree_value': ree_value,
