@@ -110,52 +110,42 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     integrate_skyline_backend=False, skip_compute=True)
             reebill_data = self.process.get_reebill_metadata_json(session, '88888')
             self.assertEqual([{
+                'id': 1,
                 'sequence': 1,
-                'version': 0,
-                'issued': 0,
-                'issue_date': datetime.utcnow().date(),
-                'email_recpient': None,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0.,
+                'hypothetical_total': 0,
+                'payment_received': 0.,
+                'period_start': date(2013,1,1),
+                'period_end': date(2013,2,1),
+                'prior_balance': 0.,
+                'ree_charges': 0.,
+                'ree_value': 0.,
+                'services': [],
+                'total_adjustment': 0.,
+                'total_error': 0.,
+                'ree_quantity': 0.,
+                'balance_due': 0.,
+                'balance_forward': 0.,
+                'corrections': '(never issued)',
             }], reebill_data)
 
-            # check reebill and its document
-            self.assertEqual(1, reebill.sequence)
-            self.assertEqual(0, reebill.version)
-            self.assertEqual(False, reebill.issued)
-            self.assertEqual(None, reebill.issue_date)
-            self.assertEqual(None, reebill.email_recipient)
-            self.assertEqual([utilbill], reebill.utilbills)
-            reebill_doc = self.reebill_dao.load_reebill('88888', 1)
-            self.assertEqual('88888', reebill_doc.account)
-            self.assertEqual(1, reebill_doc.sequence)
-            self.assertEqual(0, reebill_doc.version)
-            self.assertEqual(0, reebill.ree_value)
-            self.assertEqual(0, reebill.ree_savings)
-            self.assertEqual(0, reebill.ree_charge)
-            # some bills lack late_charges key, which is supposed to be
-            # distinct from late_charges: None, and late_charges: 0
-            try:
-                self.assertEquals(0, reebill.late_charge)
-            except KeyError as ke:
-                if ke.message != 'late_charges':
-                    raise
-            self.assertEqual(0, reebill.ree_value)
-            self.assertEqual(0.6, reebill.discount_rate)
-            self.assertEqual(0.2, reebill.late_charge_rate)
-            self.assertEqual([utilbill_doc['_id']], [ObjectId(u['id']) for u in
-                    reebill_doc.reebill_dict['utilbills']])
-            self.assertEqual(0, reebill.payment_received)
-            self.assertEqual(0, reebill.total_adjustment)
-            self.assertEqual(0, reebill.manual_adjustment)
-            self.assertEqual(0, reebill.ree_savings)
-            # NOTE ignoring statistics because that will go away
-            self.assertEqual(0, reebill.balance_due)
-            self.assertEqual(0, reebill.prior_balance)
-            # self.assertEqual(0, reebill.hypothetical_total)
-            self.assertEqual(0, reebill.balance_forward)
-            self.assertEqual(Address(**billing_address),
-                    reebill.billing_address)
-            self.assertEqual(Address(**service_address),
-                    reebill.service_address)
+            # TODO: fields not checked above that should be checked some other
+            # way:
+            # email recipient
+            # utilbills
+            # ree_charge
+            # ree_savings
+            # late_charges
+            # ree_value
+            # late_charge_rate
+            # discount_rate
+            # payment_received
+            # total_adjustment
+            # billing_address
+            # service_address
 
             # it should not be possible to create an account that already
             # exists
