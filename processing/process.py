@@ -353,6 +353,11 @@ class Process(object):
             # grid to not load; see
             # https://www.pivotaltracker.com/story/show/59594888
             try:
+                # NOTE this is wrong due to unit conversion; the method
+                # ReeBill.total_renewable_energy can be used to handle it,
+                # but then the query has to be modified/replaced to get
+                # SQLAlchemy objects instead of raw column values.
+                # see Pivotal story 69791992
                 the_dict['ree_quantity'] = total_renewable_energy
             except (ValueError, StopIteration) as e:
                 self.logger.error("Error when getting renewable energy "
