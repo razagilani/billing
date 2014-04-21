@@ -258,9 +258,9 @@ class Process(object):
         '''
         result = []
 
-        # this subquery gets all the reebills whose version is the maximum
-        # in their (customer, sequence, version) group. 'aliased' is necessary
-        # for SQLAlchemy to query within the subquery's results.
+        # this subquery gets (customer_id, sequence, version) for all the
+        # reebills whose version is the maximum in their (customer, sequence,
+        # version) group.
         latest_versions_sq = session.query(ReeBill.customer_id,
                 ReeBill.sequence,
                 functions.max(ReeBill.version).label('max_version')
@@ -271,9 +271,10 @@ class Process(object):
         # maximum-version bills, and also outer join to ReeBillCharge to get
         # sum of 0 or more charges associated with each reebill
         q = session.query(ReeBill,
-                # NOTE functions.sum(Reading.renewable_quantity) can't be used here to
-                # get total energy, because of unit conversion. instead the method
-                # ReeBill.get_total_renewable_energy must be used to calculate it.
+                # NOTE functions.sum(Reading.renewable_quantity) can't be used
+                # here to get total energy, because of unit conversion. instead
+                # the method ReeBill.get_total_renewable_energy must be used to
+                # calculate it.
                 functions.sum(ReeBillCharge.total).label('total_charge')
                 ).join(latest_versions_sq, and_(
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
