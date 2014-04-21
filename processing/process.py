@@ -10,11 +10,11 @@ from datetime import date, datetime, timedelta
 from operator import itemgetter
 import traceback
 from itertools import chain
-from sqlalchemy.sql import desc
-from sqlalchemy import not_
-from sqlalchemy.sql.functions import max as sql_max
+from sqlalchemy.sql import desc, functions
+from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm import aliased
 from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
@@ -256,92 +256,73 @@ class Process(object):
         '''Returns data from both MySQL and Mongo describing all reebills for
         the given account, as list of JSON-ready dictionaries.
         '''
-        customer = self.state_db.get_customer(session, account)
         result = []
 
-        # NOTE i can't figure out how to make SQLAlchemy do this query properly,
-        # so i gave up and used raw SQL. this is unnecessarily complicated, and
-        # bad for security. i would like to make it work like the commented-out
-        # code below, but the ReeBill object returned is not the one whose
-        # version matches the version returned by the query.
-        #for reebill, max_version in session.query(ReeBill,
-           #sql_max(ReeBill.version)).filter_by(customer=customer)\
-           #.group_by(ReeBill.sequence).all():
-        # if this is impossible in SQLAlchemy (unlikely) an alternative would be
-        # to create a view in the DB with a corresponding SQLAlchemy class and
-        # query that with SQLAlchemy.
-        assert re.match(ACCOUNT_NAME_REGEX, account)
-        statement = '''select sequence, max(version) as max_version,
-        period_start, period_end, issued, issue_date,
-        ree_value, prior_balance, payment_received,
-        total_adjustment, balance_forward, ree_charge, balance_due,
-        sum(reading.renewable_quantity) as total_energy,
-        sum(reebill_charge.total) as total_charge,
-        utilbill_reebill.document_id as frozen_doc_id,
-        utilbill.document_id as current_doc_id
-        from customer join reebill on customer.id = reebill.customer_id
-        join utilbill_reebill on reebill.id = reebill_id
-        join utilbill on utilbill_id = utilbill.id
-        left outer join reebill_charge on reebill.id = reebill_charge.reebill_id
-        left outer join reading on reebill.id = reading.reebill_id
-        where account = %s
-        group by reebill.customer_id, sequence''' % account
-        query = session.query('sequence', 'max_version', 'period_start',
-                'period_end', 'issued', 'issue_date',
-                'ree_value', 'prior_balance', 'payment_received',
-                'total_adjustment', 'balance_forward', 'ree_charge',
-                'balance_due', 'total_charge', 'total_energy',
-                'frozen_doc_id', 'current_doc_id'
-        ).from_statement(statement)
+        # this subquery gets all the reebills whose version is the maximum
+        # in their (customer, sequence, version) group. 'aliased' is necessary
+        # for SQLAlchemy to query within the subquery's results.
+        latest_versions_sq = session.query(ReeBill.customer_id,
+                ReeBill.sequence,
+                functions.max(ReeBill.version).label('max_version')
+                ).order_by(ReeBill.customer_id, ReeBill.sequence).group_by(
+                ReeBill.customer, ReeBill.sequence).subquery()
 
-        for (sequence, max_version, period_start, period_end, issued,
-                issue_date, ree_value,
-                prior_balance, payment_received, total_adjustment,
-                balance_forward, ree_charge, balance_due,
-                total_charge, total_renewable_energy,
-                frozen_doc_id, current_doc_id) in query:
+        # query ReeBill joined to the above subquery to get only
+        # maximum-version bills, and also outer join to ReeBillCharge to get
+        # sum of 0 or more charges associated with each reebill
+        q = session.query(ReeBill,
+                # NOTE functions.sum(Reading.renewable_quantity) can't be used here to
+                # get total energy, because of unit conversion. instead the method
+                # ReeBill.get_total_renewable_energy must be used to calculate it.
+                functions.sum(ReeBillCharge.total).label('total_charge')
+                ).join(latest_versions_sq, and_(
+                ReeBill.customer_id == latest_versions_sq.c.customer_id,
+                ReeBill.sequence == latest_versions_sq.c.sequence,
+                ReeBill.version == latest_versions_sq.c.max_version)
+        ).outerjoin(ReeBillCharge).group_by(ReeBill.id)
 
+        for reebill, total_charge in q:
             # load utility bill document for this reebill:
             # use "frozen" document's id in utilbill_reebill table if present,
             # otherwise "current" id in utility bill table
             # TODO loading utility bill document from Mongo should be
             # unnecessary when "actual" versions of each reebill charge are
             # moved to MySQL
+            frozen_doc_id = reebill._utilbill_reebills[0].document_id
+            current_doc_id = reebill.utilbills[0].document_id
             if frozen_doc_id is None:
                 utilbill_doc = self.reebill_dao._load_utilbill_by_id(current_doc_id)
             else:
                 utilbill_doc = self.reebill_dao._load_utilbill_by_id(frozen_doc_id)
 
-            document = self.reebill_dao.load_reebill(account,
-                    sequence, version=max_version)
-            # start with data from MySQL
             the_dict = {
-                'id': sequence,
-                'sequence': sequence,
-                'issue_date': issue_date,
-                'period_start': period_start,
-                'period_end': period_end,
-                'max_version': max_version,
-                'issued': self.state_db.is_issued(session, account, sequence),
-                # NOTE SQL sum() over no rows returns NULL
+                'id': reebill.sequence,
+                'sequence': reebill.sequence,
+                'issue_date': reebill.issue_date,
+                'period_start': reebill.utilbills[0].period_start,
+                'period_end': reebill.utilbills[0].period_end,
+                'max_version': reebill.version,
+                'issued': bool(reebill.issued),
+                # NOTE SQL sum() over no rows returns NULL, must substitute 0
                 'hypothetical_total': total_charge or 0,
                 'actual_total': mongo.total_of_all_charges(utilbill_doc),
-                'ree_value': ree_value,
-                'ree_charges': ree_charge,
+                'ree_value': reebill.ree_value,
+                'ree_charges': reebill.ree_charge,
                 # invisible columns
-                'prior_balance': prior_balance,
-                'total_error': self.get_total_error(session, account, sequence),
-                'balance_due': balance_due,
-                'payment_received': payment_received,
-                'total_adjustment': total_adjustment,
-                'balance_forward': balance_forward,
+                'prior_balance': reebill.prior_balance,
+                'total_error': self.get_total_error(session, account,
+                                                    reebill.sequence),
+                'balance_due': reebill.balance_due,
+                'payment_received': reebill.payment_received,
+                'total_adjustment': reebill.total_adjustment,
+                'balance_forward': reebill.balance_forward,
             }
-            issued = self.state_db.is_issued(session, account, sequence)
-            if max_version > 0:
+            issued = self.state_db.is_issued(session, account, reebill.sequence)
+            if reebill.version > 0:
                 if issued:
-                    the_dict['corrections'] = str(max_version)
+                    the_dict['corrections'] = str(reebill.version)
                 else:
-                    the_dict['corrections'] = '#%s not issued' % max_version
+                    the_dict['corrections'] = '#%s not issued' % reebill.version
             else:
                 the_dict['corrections'] = '-' if issued else '(never issued)'
 
@@ -353,20 +334,15 @@ class Process(object):
             # grid to not load; see
             # https://www.pivotaltracker.com/story/show/59594888
             try:
-                # NOTE this is wrong due to unit conversion; the method
-                # ReeBill.total_renewable_energy can be used to handle it,
-                # but then the query has to be modified/replaced to get
-                # SQLAlchemy objects instead of raw column values.
-                # see Pivotal story 69791992
-                the_dict['ree_quantity'] = total_renewable_energy
+                the_dict['ree_quantity'] = reebill.get_total_renewable_energy()
             except (ValueError, StopIteration) as e:
                 self.logger.error("Error when getting renewable energy "
                         "quantity for reebill %s-%s-%s:\n%s" % (
-                        account, sequence, max_version, traceback.format_exc()))
+                        account, reebill.sequence, reebill.max_version,
+                        traceback.format_exc()))
                 the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
             result.append(the_dict)
-
         return result
 
     def update_sequential_account_info(self, session, account, sequence,
