@@ -1978,21 +1978,56 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         (in MySQL and Mongo) attached to a particular utility bill, using the
         account's utility bill document template.'''
         with DBSession(self.state_db) as session:
+            # at first, there are no utility bills
+            self.assertEqual(([], 0), self.process.get_all_utilbills_json(
+                    session, '99999', 0, 30))
+
+            # upload a utility bill
             self.process.upload_utility_bill(session, '99999', 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
-            utilbill = session.query(UtilBill).one()
+
+            utilbill_data = self.process.get_all_utilbills_json(session,
+                    '99999', 0, 30)[0][0]
+            self.assertDocumentsEqualExceptKeys({
+                'account': '99999',
+                'computed_total': 0,
+                'editable': True,
+                'id': 6469L,
+                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
+                'period_end': date(2013, 2, 1),
+                'period_start': date(2013, 1, 1),
+                'processed': 0,
+                'rate_class': 'DC Non Residential Non Heat',
+                'reebills': [],
+                'service': 'Gas',
+                'state': 'Final',
+                'total_charges': 0.0,
+                'utility': 'washgas',
+                }, utilbill_data, 'id', 'charges')
+
+            # create a reebill
             self.process.roll_reebill(session, '99999', start_date=date(2013,1,1))
-            
-            session.query(UtilBill).one() # verify there's only one
-            reebill = session.query(ReeBill).one()
-            self.assertEqual([utilbill], reebill.utilbills)
-            self.assertTrue(utilbill.is_attached())
-            # since there's no UtilBill.reebills, can't directly see what
-            # reebills this utility bill has, but can check which reebills have
-            # this utility bill, and there should be only one
-            self.assertEqual([reebill], session.query(ReeBill)
-                    .filter(ReeBill.utilbills.contains(utilbill)).all())
+
+            utilbill_data = self.process.get_all_utilbills_json(session,
+                    '99999', 0, 30)[0][0]
+            self.assertDocumentsEqualExceptKeys({
+                'account': '99999',
+                'computed_total': 0,
+                'editable': True,
+                'id': 6469L,
+                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
+                'period_end': date(2013, 2, 1),
+                'period_start': date(2013, 1, 1),
+                'processed': 0,
+                'rate_class': 'DC Non Residential Non Heat',
+                'reebills': [{'issue_date': None, 'sequence': 1L,
+                        'version': 0L}],
+                'service': 'Gas',
+                'state': 'Final',
+                'total_charges': 0.0,
+                'utility': 'washgas',
+            }, utilbill_data, 'id', 'charges')
 
             # TODO check reebill document contents
             # (this is already partially handled by
