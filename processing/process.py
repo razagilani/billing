@@ -926,18 +926,11 @@ class Process(object):
         # copy all the charges back into the reebill
         hypothetical_utilbill = copy.deepcopy(utilbill_doc)
 
-        # these three generators iterate through "actual registers" of the
-        # real utility bill (describing conventional energy usage), "shadow
-        # registers" of the reebill (describing renewable energy usage
-        # offsetting conventional energy), and "hypothetical registers" in
-        # the copy of the utility bill (which will be set to the sum of the
-        # other two).
-        reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
-                                            reebill.sequence, reebill.version)
+        # these two generators iterate through "actual registers" of the
+        # real utility bill (describing conventional energy usage) and
+        # "hypothetical registers" in the copy of the utility bill.
         actual_registers = chain.from_iterable(m['registers']
                 for m in utilbill_doc['meters'])
-        shadow_registers = chain.from_iterable(u['shadow_registers']
-                for u in reebill_doc.reebill_dict['utilbills'])
         hypothetical_registers = chain.from_iterable(m['registers'] for m
                  in hypothetical_utilbill['meters'])
 
@@ -945,20 +938,16 @@ class Process(object):
         # the corresponding "actual" and "shadow" registers.
         for h_register in hypothetical_registers:
             a_register = next(r for r in actual_registers
-                              if r['register_binding'] ==
-                                 h_register['register_binding'])
+                    if r['register_binding'] == h_register['register_binding'])
             s_quantity = reebill.get_renewable_energy_reading(
                     h_register['register_binding'])
-
-            h_register['quantity'] = a_register['quantity'] + \
-                                     s_quantity
+            h_register['quantity'] = a_register['quantity'] + s_quantity
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
 
         # copy the charges from there into the reebill
-        reebill.update_charges_from_utilbill_doc(session,
-                hypothetical_utilbill)
+        reebill.update_charges_from_utilbill_doc(session, hypothetical_utilbill)
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):
