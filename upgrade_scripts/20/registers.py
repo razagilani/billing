@@ -46,7 +46,7 @@ for reebill in s.query(ReeBill).join(Customer) \
                                 reebill.sequence, version=reebill.version)
     # TODO what about multiple utility bills? should charges actually be
     # associated with utilbill_reebill instead of reebill?
-    if len(document.reebill_dict['utilbills']) > 1:
+    if len(document._utilbills) > 1:
         print >> stderr, 'ERROR skipped %s due to multiple utility bills' % reebill
 
     utilbill_doc = rbd.load_doc_for_utilbill(reebill.utilbills[0])

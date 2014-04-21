@@ -565,12 +565,70 @@ class MongoReebill(object):
             },
             "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
         }
-        return MongoReebill(reebill_doc)
+        return MongoReebill(reebill_doc, utilbill_docs)
 
-    def __init__(self, reebill_data):
+    def __init__(self, reebill_data, utilbill_dicts):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
+        self._utilbills = copy.deepcopy(utilbill_dicts)
+
+    def update_utilbill_subdocs(self, discount_rate):
+        '''Refreshes the "utilbills" sub-documents of the reebill document to
+        match the utility bill documents in _utilbills. (These represent the
+        "hypothetical" version of each utility bill.)
+        '''
+        # TODO maybe this should be done in compute_bill or a method called by
+        # it; see https://www.pivotaltracker.com/story/show/51581067
+        # also might want to merge this with compute_charges below.
+        self.reebill_dict['utilbills'] = \
+                [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
+                utilbill_doc in self._utilbills]
+
+    def compute_charges(self, uprs):
+        '''Recomputes hypothetical versions of all charges based on the
+        associated utility bill.
+        '''
+        # process rate structures for all services
+        utilbill_doc = self._utilbills[0]
+        compute_all_charges(utilbill_doc, uprs)
+
+        # TODO temporary hack: duplicate the utility bill, set its register
+        # quantities to the hypothetical values, recompute it, and then
+        # copy all the charges back into the reebill
+        hypothetical_utilbill = deepcopy(self._utilbills[0])
+
+        # these three generators iterate through "actual registers" of the
+        # real utility bill (describing conventional energy usage), "shadow
+        # registers" of the reebill (describing renewable energy usage
+        # offsetting conventional energy), and "hypothetical registers" in
+        # the copy of the utility bill (which will be set to the sum of the
+        # other two).
+        actual_registers = chain.from_iterable(m['registers']
+                for m in utilbill_doc['meters'])
+        shadow_registers = chain.from_iterable(u['shadow_registers']
+                for u in self.reebill_dict['utilbills'])
+        hypothetical_registers = chain.from_iterable(m['registers'] for m
+                in hypothetical_utilbill['meters'])
+
+        # set the quantity of each "hypothetical register" to the sum of
+        # the corresponding "actual" and "shadow" registers.
+        for h_register in hypothetical_registers:
+            a_register = next(r for r in actual_registers
+                    if r['register_binding'] ==
+                    h_register['register_binding'])
+            s_register = next(r for r in shadow_registers
+                    if r['register_binding'] ==
+                    h_register['register_binding'])
+            h_register['quantity'] = a_register['quantity'] + \
+                    s_register['quantity']
+
+        # compute the charges of the hypothetical utility bill
+        compute_all_charges(hypothetical_utilbill, uprs)
+
+        # copy the charges from there into the reebill
+        self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
+                hypothetical_utilbill['charges']
 
     # TODO should _id fields even have setters? they're never supposed to
     # change.
@@ -608,6 +666,97 @@ class MongoReebill(object):
                 })
         return result
 
+    @property
+    def services(self):
+        '''Returns a list of all services for which there are utilbills.'''
+        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
+
+    @property
+    def suspended_services(self):
+        '''Returns list of services for which billing is suspended (e.g.
+        because the customer has switched to a different fuel for part of the
+        year). Utility bills for this service should be ignored in the attach
+        operation.'''
+        return self.reebill_dict.get('suspended_services', [])
+
+    # # TODO remove, since this feature is dead
+    # def suspend_service(self, service):
+    #     '''Adds 'service' to the list of suspended services. Returns True iff
+    #     it was added, False if it already present.'''
+    #     service = service.lower()
+    #     if service not in [s.lower() for s in self.services]:
+    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+    #
+    #     if 'suspended_services' not in self.reebill_dict:
+    #         self.reebill_dict['suspended_services'] = []
+    #     if service not in self.reebill_dict['suspended_services']:
+    #         self.reebill_dict['suspended_services'].append(service)
+
+    # # TODO remove, since this feature is dead
+    # def resume_service(self, service):
+    #     '''Removes 'service' from the list of suspended services. Returns True
+    #     iff it was removed, False if it was not present.'''
+    #     service = service.lower()
+    #     if service not in [s.lower() for s in self.services]:
+    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+    #
+    #     if service in self.reebill_dict.get('suspended_services', {}):
+    #         self.reebill_dict['suspended_services'].remove(service)
+    #         # might as well take out the key if the list is empty
+    #         if self.reebill_dict['suspended_services'] == []:
+    #             del self.reebill_dict['suspended_services']
+
+    # def set_hypothetical_register_quantity(self, register_binding,
+    #                 new_quantity):
+    #     ''' Sets the "quantity" field of the given register subdocument to the
+    #     given value, assumed to be in BTU for thermal and kW for PV.
+    #     When stored, this quantity is converted to the same unit as the
+    #     corresponding utility bill register.
+    #     '''
+    #     assert isinstance(new_quantity, float)
+    #
+    #     # NOTE this may choose the wrong utility bill register if there are
+    #     # multiple utility bills
+    #     assert len(self.reebill_dict['utilbills']) == 1
+    #
+    #     # look up corresponding utility bill register to get unit
+    #     utilbill = self._utilbills[0]
+    #     utilbill_register = next(chain.from_iterable((r for r in m['registers']
+    #             if r['register_binding'] == register_binding)
+    #             for m in utilbill['meters']))
+    #     unit = utilbill_register['quantity_units'].lower()
+    #
+    #     # Thermal: convert quantity to therms according to unit, and add it to
+    #     # the total
+    #     if unit == 'therms':
+    #         new_quantity /= 1e5
+    #     elif unit == 'btu':
+    #         # TODO physical constants must be global
+    #         pass
+    #     elif unit == 'kwh':
+    #         # TODO physical constants must be global
+    #         new_quantity /= 1e5
+    #         new_quantity /= .0341214163
+    #     elif unit == 'ccf':
+    #         # deal with non-energy unit "CCF" by converting to therms with
+    #         # conversion factor 1
+    #         # TODO: 28825375 - need the conversion factor for this
+    #         print ("Register in reebill %s-%s-%s contains gas measured "
+    #                "in ccf: energy value is wrong; time to implement "
+    #                "https://www.pivotaltracker.com/story/show/28825375") \
+    #               % (self.account, self.sequence, self.version)
+    #         new_quantity /= 1e5
+    #     # PV: Unit is kilowatt; no conversion needs to happen
+    #     elif unit == 'kwd':
+    #         pass
+    #     else:
+    #         raise ValueError('Unknown energy unit: "%s"' % unit)
+    #
+    #     all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
+    #             in self.reebill_dict['utilbills'])
+    #     register_subdoc = next(r for r in all_hypo_registers
+    #             if r['register_binding'] == register_binding)
+    #     register_subdoc['quantity'] = new_quantity
 
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
@@ -857,7 +1006,10 @@ class ReebillDAO(object):
         # convert types in reebill document
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-        mongo_reebill = MongoReebill(mongo_doc)
+        # load utility bills
+        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+
+        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
         return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
@@ -910,7 +1062,8 @@ class ReebillDAO(object):
             docs = self.reebills_collection.find(query).sort('sequence')
             for mongo_doc in self.reebills_collection.find(query):
                 mongo_doc = convert_datetimes(mongo_doc)
-                result.append(MongoReebill(mongo_doc))
+                utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+                result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
 
     def save_reebill(self, reebill, force=False):
