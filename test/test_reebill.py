@@ -34,7 +34,7 @@ class ReebillTest(TestCaseWithSetup):
                     'january.pdf', utility='washgas',
                     rate_class='DC Non Residential Non Heat')
             self.process.roll_reebill(session, acc, start_date=date(2013,1,1))
-            b = self.state_db.get_reebill(session, acc, 1)
+            b = self.reebill_dao.load_reebill(acc, 1)
 
             # function to check that the utility bill matches the reebill's
             # reference to it
@@ -45,13 +45,20 @@ class ReebillTest(TestCaseWithSetup):
                 # template and new one
                 all_utilbills = self.reebill_dao.load_utilbills()
                 self.assertEquals(2, len(all_utilbills))
-
+                # all its _id fields dates should match the reebill's reference
+                # to it
+                self.assertEquals(reebill._utilbills[0]['_id'],
+                        reebill.reebill_dict['utilbills'][0]['id'])
+                
             # this must work because nothing has been changed yet
             check()
 
             # change utilbill period
-            b.utilbills[0].period_start =  date(2100,1,1)
-            b.utilbills[0].period_end = date(2100,2,1)
+            b._utilbills[0]['start'] = date(2100,1,1)
+            b._utilbills[0]['start'] = date(2100,2,1)
+            check()
+            self.reebill_dao.save_reebill(b)
+            self.reebill_dao.save_utilbill(b._utilbills[0])
             check()
 
             # NOTE account, utility name, service can't be changed, but if they
@@ -71,6 +78,7 @@ class ReebillTest(TestCaseWithSetup):
         # self.assertEquals(0.5, reebill.discount_rate)
         # self.assertEquals(0.1, reebill.late_charge_rate)
         # self.assertEquals(0, reebill.late_charge)
+        self.assertEquals(1, len(reebill._utilbills))
         # TODO test utility bill document contents
         # self.assertEquals(0, reebill.payment_received)
         # self.assertEquals(None, reebill.due_date)
@@ -158,6 +166,7 @@ class ReebillTest(TestCaseWithSetup):
 
             self.reebill_dao.save_utilbill(utilbill_doc)
             self.reebill_dao.save_reebill(reebill_doc)
+            self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
 
             #reebill_doc.compute_charges(uprs)
             self.process._compute_reebill_charges(session, reebill, uprs)
