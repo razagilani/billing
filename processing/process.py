@@ -317,20 +317,18 @@ class Process(object):
                 'payment_received': reebill.payment_received,
                 'total_adjustment': reebill.total_adjustment,
                 'balance_forward': reebill.balance_forward,
+                # TODO: is this used at all? does it need to be populated?
+                'services': [],
             }
-            issued = self.state_db.is_issued(session, account, reebill.sequence)
             if reebill.version > 0:
-                if issued:
+                if reebill.issued:
                     the_dict['corrections'] = str(reebill.version)
                 else:
                     the_dict['corrections'] = '#%s not issued' % reebill.version
             else:
-                the_dict['corrections'] = '-' if issued else '(never issued)'
+                the_dict['corrections'] = '-' if reebill.issued else '(never ' \
+                                                                     'issued)'
 
-            the_dict.update({
-                # TODO: is this used at all? does it need to be populated?
-                'services': [],
-            })
             # wrong energy unit can make this method fail causing the reebill
             # grid to not load; see
             # https://www.pivotaltracker.com/story/show/59594888
