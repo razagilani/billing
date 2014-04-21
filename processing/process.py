@@ -1820,14 +1820,13 @@ class Process(object):
         reebill.customer.bill_email_recipient = recepients
 
     def upload_interval_meter_csv(self, account, sequence, csv_file,
-                                  timestamp_column, timestamp_format,
-                                  energy_column, energy_unit,
-                                  register_identifier, **args):
-        """Takes an upload of an interval meter CSV file (cherrypy file upload
+        timestamp_column, timestamp_format, energy_column, energy_unit,
+        register_identifier, **args):
+        '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
-        reebill given by account, sequence. Returns the reebill"""
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        reebill given by account, sequence. Returns reebill version number.
+        '''
+        reebill = self.state_db.get_reebill(account, sequence)
 
         # convert column letters into 0-based indices
         if not re.match('[A-Za-z]', timestamp_column):
@@ -1839,16 +1838,12 @@ class Process(object):
 
         # extract data from the file (assuming the format of AtSite's
         # example files)
-        fbd.fetch_interval_meter_data(reebill, csv_file.file,
+        self.ree_getter.fetch_interval_meter_data(reebill, csv_file.file,
                 meter_identifier=register_identifier,
                 timestamp_column=timestamp_column,
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
-
-        self.reebill_dao.save_reebill(reebill)
-        # presumably utility bill does not need to be saved
-
-        return reebill
+        return reebill.version
 
     def get_utilbill_image_path(self, session, utilbill_id, resolution):
         utilbill=self.state_db.get_utilbill_by_id(session,utilbill_id)

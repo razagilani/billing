@@ -795,11 +795,11 @@ class BillToolBridge:
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
-        reebill = self.process.upload_interval_meter_csv(account, sequence,
+        version = self.process.upload_interval_meter_csv(account, sequence,
                         csv_file,timestamp_column, timestamp_format,
                         energy_column, energy_unit, register_identifier, args)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence, reebill.version)
+                account, sequence, version)
         return self.dumps({'success': True})
 
     @cherrypy.expose
