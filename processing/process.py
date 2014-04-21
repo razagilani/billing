@@ -1273,7 +1273,7 @@ class Process(object):
             sequence = self.state_db.last_issued_sequence(session, account)
         if sequence == 0:
             return 0
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
 
         if reebill.issue_date == None:
             return 0
