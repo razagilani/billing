@@ -1564,9 +1564,10 @@ class Process(object):
         # get all reebills whose periods contain any days in this month (there
         # should be at most 3)
         next_month_year, next_month = month_offset(year, month, 1)
-        reebills = self.reebill_dao.load_reebills_in_period(account,
-                start_date=date(year, month, 1),
-                end_date=date(next_month_year, next_month, 1))
+        reebills = session.query(ReeBill).join(UtilBill).filter(
+                UtilBill.period_start >= date(year, month, 1),
+                UtilBill.period_end <= date(next_month_year, next_month, 1)
+                ).all()
 
         # sequences for this month are those of the bills whose approximate
         # month is this month
@@ -1609,9 +1610,9 @@ class Process(object):
         # get all reebills whose periods contain any days in this month, and
         # their sequences (there should be at most 3)
         query_month = Month(year, month)
-        sequences_for_month = [r.sequence for r in
-                self.reebill_dao.load_reebills_in_period(account,
-                start_date=query_month.first, end_date=query_month.last)]
+        sequences_for_month = session.query(ReeBill.sequence).join(UtilBill)\
+                .filter(UtilBill.period_start >= query_month.first,
+                UtilBill.period_end <= query_month.last).all()
 
         # get sequence of last reebill and the month in which its period ends,
         # which will be useful below
