@@ -1583,9 +1583,9 @@ class Process(object):
         last_sequence = self.state_db.last_sequence(session, account)
         if last_sequence == 0:
             return []
-        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+        last_reebill = self.state_db.get_reebill(account, last_sequence)
         last_reebill_year, last_reebill_month = estimate_month(
-                last_reebill.period_begin, last_reebill.period_end)
+                *last_reebill.get_period())
 
         # if this month isn't after the last bill month, there are no bill
         # sequences
