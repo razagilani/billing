@@ -1019,53 +1019,6 @@ class ReebillDAO(object):
         sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
-    def load_reebills_in_period(self, account=None, version=0, start_date=None,
-            end_date=None, include_0=False):
-        '''Returns a list of MongoReebills whose period began on or before
-        'end_date' and ended on or after 'start_date' (i.e. all bills between
-        those dates and all bills whose period includes either endpoint). The
-        results are ordered by sequence. If 'start_date' and 'end_date' are not
-        given or are None, the time period extends to the begining or end of
-        time, respectively. Sequence 0 is never included.
-        
-        'version' may be a specific version number, or 'any' to get all
-        versions.'''
-        with DBSession(self.state_db) as session:
-            query = {}
-            if account is not None:
-                query['_id.account'] = account
-            if isinstance(version, int):
-                query.update({'_id.version': version})
-            elif version == 'any':
-                pass
-            elif version == 'max':
-                # TODO max version (it's harder than it looks because you don't
-                # have the account or sequence of a specific reebill to query
-                # MySQL for here)
-                raise NotImplementedError
-            else:
-                raise ValueError('Unknown version specifier "%s"' % version)
-            if not include_0:
-                query['_id.sequence'] = {'$gt': 0}
-
-            # add dates to query if present (converting dates into datetimes
-            # because mongo only allows datetimes)
-            if start_date is not None:
-                start_datetime = datetime(start_date.year, start_date.month,
-                        start_date.day)
-                query['period_end'] = {'$gte': start_datetime}
-            if end_date is not None:
-                end_datetime = datetime(end_date.year, end_date.month,
-                        end_date.day)
-                query['period_begin'] = {'$lte': end_datetime}
-            result = []
-            docs = self.reebills_collection.find(query).sort('sequence')
-            for mongo_doc in self.reebills_collection.find(query):
-                mongo_doc = convert_datetimes(mongo_doc)
-                utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
-                result.append(MongoReebill(mongo_doc, utilbill_docs))
-            return result
-
     def save_reebill(self, reebill, force=False):
         '''Saves the given reebill document.
 
