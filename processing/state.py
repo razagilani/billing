@@ -364,7 +364,6 @@ class ReeBill(Base):
 
         reading.renewable_quantity = new_quantity
 
-
     def get_total_renewable_energy(self, ccf_conversion_factor=None):
         total_therms = 0
         for reading in self.readings:
@@ -481,6 +480,11 @@ class ReeBill(Base):
 
         return total_therms
 
+    def get_charge_by_rsi_binding(self, binding):
+        '''Returns the first ReeBillCharge object found belonging to this
+        ReeBill whose 'rsi_binding' matches 'binding'.
+        '''
+        return next(c for c in self.charges if c.rsi_binding == binding)
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
