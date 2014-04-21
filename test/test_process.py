@@ -370,10 +370,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create first reebill
             bill1 = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
-            bill1_doc = self.reebill_dao.load_reebill(acc, 1)
             bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             self.process.compute_reebill(session, acc, 1)
-            self.reebill_dao.save_reebill(bill1_doc)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
@@ -400,15 +398,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.update_utilbill_metadata(session, u2.id,
                     processed=True)
             bill2 = self.process.roll_reebill(session, acc)
-            bill2_doc = self.reebill_dao.load_reebill(acc, 2)
-            bill2_doc.reebill_dict['utilbills'][0]['shadow_registers'][0]\
-                    ['quantity'] = 200
             bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
-            self.reebill_dao.save_reebill(bill2_doc)
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charge == 100
-            self.reebill_dao.save_reebill(bill2_doc)
 
             # bill2's late charge should be 0 before bill1's due date; on/after
             # the due date, it's balance * late charge rate, i.e.
@@ -456,7 +449,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # replace the renewable energy quantity that came from
             # mock_skyliner with a known value (TODO: the energy values from
             # mock_skyliner should be controllable)
-            bill1_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
             bill1_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
@@ -610,61 +602,59 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # check that each hypothetical charge was computed correctly:
             self.process.compute_reebill(session, account, 1)
             reebill = self.state_db.get_reebill(session, account, 1)
-            reebill_doc = self.reebill_dao.load_reebill(account, 1)
-            hypothetical_charges = reebill.charges
-            shadow_registers = reebill_doc.reebill_dict['utilbills'][0]\
-                     ['shadow_registers']
-            total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
-            hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
+            reg_total_reading = reebill.get_reading_by_register_binding(
+                    'REG_TOTAL')
+            hypothetical_quantity = reg_total_reading.conventional_quantity + \
+                    reg_total_reading.renewable_quantity
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
-            system_charge = [c for c in hypothetical_charges if
+            system_charge = [c for c in reebill.charges if
                     c.rsi_binding == 'SYSTEM_CHARGE'][0]
             self.assertDecimalAlmostEqual(11.2, system_charge.total)
 
             # right-of-way fee
-            row_charge = [c for c in hypothetical_charges if c.rsi_binding
+            row_charge = [c for c in reebill.charges if c.rsi_binding
                     == 'RIGHT_OF_WAY'][0]
             self.assertDecimalAlmostEqual(0.03059 * hypothetical_quantity,
                     row_charge.total, places=2) # TODO OK to be so inaccurate?
             
             # sustainable energy trust fund
-            setf_charge = [c for c in hypothetical_charges if c.rsi_binding
+            setf_charge = [c for c in reebill.charges if c.rsi_binding
                     == 'SETF'][0]
             self.assertDecimalAlmostEqual(0.01399 * hypothetical_quantity,
                     setf_charge.total, places=1) # TODO OK to be so inaccurate?
 
             # energy assistance trust fund
-            eatf_charge = [c for c in hypothetical_charges if c.rsi_binding
+            eatf_charge = [c for c in reebill.charges if c.rsi_binding
                     == 'EATF'][0]
             self.assertDecimalAlmostEqual(0.006 * hypothetical_quantity,
                     eatf_charge.total, places=2)
 
             # delivery tax
-            delivery_tax = [c for c in hypothetical_charges if c.rsi_binding
+            delivery_tax = [c for c in reebill.charges if c.rsi_binding
                     == 'DELIVERY_TAX'][0]
             self.assertDecimalAlmostEqual(0.07777 * hypothetical_quantity,
                     delivery_tax.total, places=2)
 
             # peak usage charge
-            peak_usage_charge = [c for c in hypothetical_charges if
+            peak_usage_charge = [c for c in reebill.charges if
                     c.rsi_binding == 'PUC'][0]
             self.assertDecimalAlmostEqual(23.14, peak_usage_charge.total)
 
             # distribution charge
-            distribution_charge = [c for c in hypothetical_charges if
+            distribution_charge = [c for c in reebill.charges if
                     c.rsi_binding == 'DISTRIBUTION_CHARGE'][0]
             self.assertDecimalAlmostEqual(.2935 * hypothetical_quantity,
                     distribution_charge.total, places=1)
             
             # purchased gas charge
-            purchased_gas_charge = [c for c in hypothetical_charges if
+            purchased_gas_charge = [c for c in reebill.charges if
                     c.rsi_binding == 'PGC'][0]
             self.assertDecimalAlmostEqual(.7653 * hypothetical_quantity,
                     purchased_gas_charge.total, places=2)
 
             # sales tax: depends on all of the above
-            sales_tax = [c for c in hypothetical_charges if c.rsi_binding ==
+            sales_tax = [c for c in reebill.charges if c.rsi_binding ==
                     'SALES_TAX'][0]
             self.assertDecimalAlmostEqual(0.06 * (system_charge.total +
                 distribution_charge.total + purchased_gas_charge.total +
