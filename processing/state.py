@@ -323,6 +323,12 @@ class ReeBill(Base):
             raise ValueError('Unknown register binding "%s"' % register_binding)
         return reading.renewable_quantity
 
+    def get_reading_by_register_binding(self, binding):
+        '''Returns the first Reading object found belonging to this ReeBill
+        whose 'register_binding' matches 'binding'.
+        '''
+        return next(r for r in self.readings if r.register_binding == binding)
+
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
         assert isinstance(new_quantity, (float, int))
