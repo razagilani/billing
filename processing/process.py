@@ -1742,26 +1742,24 @@ class Process(object):
     def mail_reebills(self, session, account, sequences, recipient_list):
         all_reebills = [self.state_db.get_reebill(session, account, sequence)
                 for sequence in sequences]
-        all_documents = [self.reebill_dao.load_reebill(account, sequence) for
-                sequence in sequences]
 
         # render all the bills
-        for document in all_documents:
+        for reebill in all_reebills:
             the_path = self.billupload.get_reebill_file_path(account,
-                    document.sequence)
+                    reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(session, document.account,
-                    document.sequence,
+            self.renderer.render_max_version(session, reebill.customer.account,
+                    reebill.sequence,
                     # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
                     # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
                     dirname, basename, True)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]
-        most_recent_document = all_documents[-1]
         bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for
                 sequence in sequences]
-        bill_dates = ', '.join(["%s" % (b.period_end) for b in all_documents])
+        bill_dates = ', '.join(["%s" % (b.get_period()[0])
+                for b in all_reebills])
         merge_fields = {
             'street': most_recent_reebill.service_address.street,
             'balance_due': round(most_recent_reebill.balance_due, 2),
@@ -1769,9 +1767,9 @@ class Process(object):
             'last_bill': bill_file_names[-1],
         }
         bill_file_paths = [self.billupload.get_reebill_file_path(account,
-                s) for s in sequences]
+                    s) for s in sequences]
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
-            bill_file_paths)
+                bill_file_paths)
 
     def get_issuable_reebills_dict(self, session):
         """ Returns a list of issuable reebill dictionaries containing
@@ -1779,7 +1777,6 @@ class Process(object):
             charges and the associated customer email address
             of the earliest unissued version-0 reebill account
         """
-
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
         min_sequence = session.query(
