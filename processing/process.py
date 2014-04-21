@@ -1142,11 +1142,6 @@ class Process(object):
                 account):
             # adjustment is difference between latest version's
             # charges and the previous version's
-            # latest_version = self.reebill_dao.load_reebill(account, seq,
-            #         version=max_version)
-            # prev_version = self.reebill_dao.load_reebill(account, seq,
-            #         max_version-1)
-            # adjustment = latest_version.total - prev_version.total
             assert max_version > 0
             latest_version = self.state_db.get_reebill(session, account, seq,
                     version=max_version)
@@ -1613,8 +1608,8 @@ class Process(object):
         # also include the sequence of an additional hypothetical reebill whose
         # period would cover the end of the month.
         if sequences_for_month != []:
-            last_end = self.reebill_dao.load_reebill(account,
-                    last_sequence).period_end
+            last_end = self.state_db.get_reebill(account, last_sequence
+                    ).period_end
             if Month(last_end) == query_month and last_end \
                     < (Month(last_end) + 1).first:
                 sequences_for_month.append(last_sequence + 1)
@@ -1624,15 +1619,15 @@ class Process(object):
         # precedes the first reebill's start, or there were never any reebills
         # at all, return []
         if last_sequence == 0 or query_month.last < \
-                self.reebill_dao.load_reebill(account, 1).period_begin:
+                self.state_db.get_reebill(account, 1).get_period()[0]:
             return []
 
         # now query_month must exceed the month in which the account's last
         # reebill ends. return the sequence determined by counting real months
         # after the approximate month of the last bill (there is only one
         # sequence in this case)
-        last_reebill_end = self.reebill_dao.load_reebill(account,
-                last_sequence).period_end
+        last_reebill_end = self.state_db.get_reebill(account,
+                last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
 
