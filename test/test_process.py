@@ -909,11 +909,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO this may not accurately reflect the way reebills get
             # attached to different utility bills; see
             # https://www.pivotaltracker.com/story/show/51935657
-            new_version_reebill._utilbills = [other_utility_bill]
             new_version_reebill_doc = self.reebill_dao.load_reebill(account, 1,
                     version=1)
-            other_utility_bill_doc = self.reebill_dao.load_doc_for_utilbill(
-                    utilbill)
             self.reebill_dao.save_reebill(new_version_reebill_doc)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill)
