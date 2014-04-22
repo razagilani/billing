@@ -1597,16 +1597,13 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def hypotheticalCharges(self, xaction, service, account, sequence, **kwargs):
-        service = service.lower()
         sequence = int(sequence)
-
         if not xaction == "read":
-            raise NotImplementedError('Cannot create, edit or destroy charges'+ \
+            raise NotImplementedError('Cannot create, edit or destroy charges'
                                       ' from this grid.')
-
         with DBSession(self.state_db) as session:
                 charges=self.process.get_hypothetical_matched_charges(
-                    session, account, sequence)
+                        session, account, sequence)
                 return self.dumps({'success': True, 'rows': charges,
                                    'total':len(charges)})
 
