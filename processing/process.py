@@ -271,8 +271,10 @@ class Process(object):
         # version) group.
         latest_versions_sq = session.query(ReeBill.customer_id,
                 ReeBill.sequence,
-                functions.max(ReeBill.version).label('max_version')
-                ).order_by(ReeBill.customer_id, ReeBill.sequence).group_by(
+                functions.max(ReeBill.version).label('max_version'))\
+                .join(Customer)\
+                .filter(Customer.account==account)\
+                .order_by(ReeBill.customer_id, ReeBill.sequence).group_by(
                 ReeBill.customer, ReeBill.sequence).subquery()
 
         # query ReeBill joined to the above subquery to get only
