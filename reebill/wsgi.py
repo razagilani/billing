@@ -1246,9 +1246,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'sequences':
                     [new_reebill.sequence]})
 
-    ################
-    # Handle addresses
-
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -1259,34 +1256,13 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             sequence = int(sequence)
             reebill = self.state_db.get_reebill(session, account, sequence)
-            reebill_document = self.reebill_dao.load_reebill(account, sequence)
-
-            def format_address(address):
-                # TODO: 64765002
-                # This function exists multiple times in here and in exporter
-                # code. Time to move it somewhere else!
-                return {
-                'addressee': address['addressee'] if 'addressee' in address else '',
-                'street': address['street'] if 'street' in address else '',
-                'city': address['city'] if 'city' in address else '',
-                'state': address['state'] if 'state' in address else '',
-                'postal_code': address['postal_code'] if 'postal_code' in address else '',
-            }
-
-            account_info = {'success': True,
-                    'billing_address': format_address(reebill_document
-                    .billing_address),
-                    'service_address': format_address(reebill_document.service_address),
-                    'discount_rate': reebill.discount_rate}
-
-            try:
-                account_info['late_charge_rate'] = reebill.late_charge_rate
-            except KeyError:
-                # ignore late charge rate when absent
-                pass
-
-            return self.dumps(account_info)
-
+            return self.dumps({
+                'success': True,
+                'billing_address': reebill.billing_address.to_dict(),
+                'service_address': reebill.service_address.to_dict(),
+                'discount_rate': reebill.discount_rate,
+                'late_charge_rate': reebill.late_charge_rate,
+            })
 
     @cherrypy.expose
     @random_wait
