@@ -50,16 +50,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         }
 
         with DBSession(self.state_db) as session:
-            # NOTE template account "99999" already exists.
-            # store its template utility bill to check whether it was modified later
-            template_account_template_utilbill = self.reebill_dao.\
-                    load_utilbill_template(session, '99999')
-
-            # create new account "88888" based on template account "99999"
+            # create new account "88888" based on template account "99999",
+            # which was created in setUp
             self.process.create_new_account(session, '88888', 'New Account',
                     0.6, 0.2, billing_address, service_address, '99999')
 
-            # check MySQL customer
+            # check customer
             customer = self.state_db.get_customer(session, '88888')
             self.assertEquals('88888', customer.account)
             self.assertEquals(0.6, customer.get_discount_rate())
@@ -67,27 +63,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             template_customer = self.state_db.get_customer(session, '99999')
             self.assertNotEqual(template_customer.utilbill_template_id,
                     customer.utilbill_template_id)
-            utilbill_template = self.reebill_dao.load_utilbill_template(
-                    session, '88888')
 
             # no utility bills or reebills exist in MySQL for the new account yet
             self.assertEquals([], self.state_db.listSequences(session, '88888'))
             self.assertEquals(([], 0), self.process.get_all_utilbills_json(
                     session, '88888', 0, 30))
 
-            # create first utility bill and reebill
+            # create first utility bill
             self.process.upload_utility_bill(session, '88888', 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
-            utilbill = session.query(UtilBill).filter_by(customer=customer)\
-                    .one()
 
+            # check utility bill
             utilbills_data = self.process.get_all_utilbills_json(session,
                     '88888', 0, 30)[0]
             self.assertEqual(1, len(utilbills_data))
             utilbill_data = utilbills_data[0]
-
-            # check utility bill and its document
             self.assertDocumentsEqualExceptKeys({
                 'state': 'Final',
                 'service': 'Gas',
@@ -106,6 +97,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'reebills': [],
             }, utilbill_data, 'id', 'charges', 'reebills')
 
+            # create reebill
             self.process.roll_reebill(session, '88888', start_date=date(2013,1,1),
                     integrate_skyline_backend=False, skip_compute=True)
             reebill_data = self.process.get_reebill_metadata_json(session, '88888')
