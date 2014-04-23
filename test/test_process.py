@@ -147,6 +147,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # billing_address
             # service_address
 
+            # nothing should exist for account 99999
+            # (this checks for bug #70032354 in which query for
+            # get_reebill_metadata_json includes bills from all accounts)
+            self.assertEqual(([], 0), self.process.get_all_utilbills_json(
+                    session, '99999', 0, 30))
+            self.assertEqual([], self.process.get_reebill_metadata_json(
+                    session, '99999'))
+
             # it should not be possible to create an account that already
             # exists
             self.assertRaises(ValueError, self.process.create_new_account,
