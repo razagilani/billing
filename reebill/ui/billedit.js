@@ -2859,6 +2859,7 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit:true,
+            scrollOffset: 35,
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
         plugins: aChargesSummary,
