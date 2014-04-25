@@ -2,19 +2,12 @@
 import os
 import sys
 import errno
-import logging
-import time
 import datetime
-import random
-import string
 from uuid import uuid1
 import re
 import subprocess
 from glob import glob
 import shutil
-import ConfigParser
-from billing.processing.state import Customer, UtilBill
-from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 

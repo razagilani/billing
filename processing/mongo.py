@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
-import datetime
-from datetime import date, time, datetime
+from datetime import date, datetime
 import pymongo
 import bson # part of pymongo package
 from operator import itemgetter
@@ -11,15 +10,13 @@ from copy import deepcopy
 from itertools import chain
 from collections import defaultdict
 import tsort
-from billing.util.mongo_utils import bson_convert, python_convert, format_query, check_error
-from billing.util.dictutils import deep_map, subdict, dict_merge
+from billing.util.mongo_utils import bson_convert, format_query, check_error
+from billing.util.dictutils import dict_merge
 from billing.util.dateutils import date_to_datetime
-from billing.processing.session_contextmanager import DBSession
 from billing.processing.state import Customer, UtilBill
 from billing.processing.exceptions import NoSuchBillException, \
     NotUniqueException, IssuedBillError, MongoError, FormulaError, RSIError, \
     NoRSIError
-from billing.processing.rate_structure2 import RateStructure
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
