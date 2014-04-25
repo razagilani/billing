@@ -9,17 +9,15 @@ from skyliner.sky_handlers import cross_range
 from datetime import date, datetime, timedelta
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
-from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill, \
     Address
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
+from skyliner.mock_skyliner import MockSplinter, hour_of_energy
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError, NoRSIError
-from billing.processing import fetch_bill_data as fbd
 from billing.test import utils
 
 import pprint

@@ -9,10 +9,8 @@ from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
-from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
-    NotUniqueException, NoSuchBillException
-from billing.processing.state import UtilBill
+    NoSuchBillException
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)

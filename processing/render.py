@@ -14,7 +14,6 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont  
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
-
 from billing.processing import mongo
 
 # TODO render should not depend on BillUpload--move this function out to its
