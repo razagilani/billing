@@ -1,12 +1,9 @@
 #!/usr/bin/env python2
-import os
 import sys
-from itertools import chain
 from operator import itemgetter
 import pymongo
 import tablib
 import traceback
-
 from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
@@ -15,7 +12,6 @@ from billing.processing.state import UtilBill, ReeBill, Customer
 from billing.processing.exceptions import *
 
 import pprint
-
 pformat = pprint.PrettyPrinter().pformat
 
 LOG_FILE_NAME = 'xls_export.log'

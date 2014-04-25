@@ -17,25 +17,16 @@ pprint.pprint(sys.prefix)
 import traceback
 import json
 import cherrypy
-import jinja2, os
-import string, re
+import os
 import ConfigParser
 from datetime import datetime, date, timedelta
-import itertools as it
-import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
-import csv
-import random
 import time
-import copy
 import functools
-import re
 import md5
 from operator import itemgetter
-import errno
 from StringIO import StringIO
-from itertools import chain
 import pymongo
 import mongoengine
 from skyliner.splinter import Splinter
@@ -47,15 +38,14 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
-from billing.processing.state import UtilBill, Customer
+from billing.processing.state import UtilBill
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
-from billing.processing.users import UserDAO, User
+from billing.processing.users import UserDAO
 from billing.processing import calendar_reports
-from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated, IssuedBillError, NoSuchBillException
+from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 

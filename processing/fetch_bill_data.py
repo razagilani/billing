@@ -4,7 +4,7 @@ Code for accumulating Skyline-generated energy into "shadow" registers in
 meters of reebills.
 '''
 import sys
-from datetime import date, datetime,timedelta, time
+from datetime import date, datetime,timedelta
 import csv
 from bisect import bisect_left
 from skyliner.sky_handlers import cross_range
