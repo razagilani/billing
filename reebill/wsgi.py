@@ -37,13 +37,13 @@ from nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
-from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
+from billing.processing import process, state, fetch_bill_data as fbd,\
+        rate_structure2 as rs
 from billing.processing.state import UtilBill
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing import calendar_reports
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
@@ -984,24 +984,6 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    @authenticate
-    @json_exception
-    def daily_average_energy_xls(self, account, **kwargs):
-        '''Responds with an excel spreadsheet containing daily average energy
-        over all time for the given account.'''
-        with DBSession(self.state_db) as session:
-            buf = StringIO()
-            # TODO: include all services
-            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='gas')
-
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = ('attachment;'
-                    ' filename=%s_daily_average_energy.xls') % (account)
-            return buf.getvalue()
-
-    @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def rsi(self, utilbill_id, xaction, reebill_sequence=None,
@@ -1284,7 +1266,6 @@ class BillToolBridge:
                     sa_city=sa_city, sa_state=sa_state,
                     sa_postal_code=sa_postal_code)
             return self.dumps({'success': True})
-
 
     @cherrypy.expose
     @random_wait
