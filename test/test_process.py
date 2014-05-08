@@ -1835,8 +1835,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                     'january.pdf')
             utilbill_jan = session.query(UtilBill).one()
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                    utilbill_jan)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill_jan)
             uprs.rates = example_data.get_uprs().rates
             utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill_jan)
