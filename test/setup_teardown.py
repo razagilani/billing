@@ -3,6 +3,7 @@ import unittest
 from StringIO import StringIO
 import ConfigParser
 import logging
+from mock import Mock
 import pymongo
 from bson import ObjectId
 import mongoengine
@@ -20,7 +21,7 @@ from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.util.dictutils import deep_map
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
-from skyliner.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -54,7 +55,10 @@ port = 27017
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.splinter = MockSplinter(deterministic=True)
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
