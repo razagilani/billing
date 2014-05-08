@@ -1,19 +1,13 @@
 '''Tests for rate_structure.py'''
 from datetime import date
-from StringIO import StringIO
 import unittest
 from mock import Mock
 from bson import ObjectId
 from mongoengine import DoesNotExist
 from billing.processing.rate_structure2 import RateStructure, \
     RateStructureItem, RateStructureDAO
-from billing.processing.state import StateDB, Customer, UtilBill
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.util.dictutils import deep_map, subdict
-from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
-
 
 class RSITest(unittest.TestCase):
 

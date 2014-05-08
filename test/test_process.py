@@ -1884,8 +1884,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # save other values that will be checked repeatedly
                 # (more fields could be added here)
-                # hypo = reebill2_doc.hypothetical_total
-                # actual = reebill2_doc.actual_total
                 ree_value = reebill2.ree_value
                 ree_charge = reebill2.ree_charge
                 total = reebill2.total
