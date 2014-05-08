@@ -16,8 +16,32 @@ from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
 
 
 class RSITest(unittest.TestCase):
-    def setUp(self):
-        pass
+
+    def test_update(self):
+        a = RateStructureItem(
+            rsi_binding='A',
+            quantity='1',
+            quantity_units='dollars',
+            rate='1',
+        )
+
+        a.update()
+        self.assertEqual(RateStructureItem(
+            rsi_binding='A',
+            quantity='1',
+            quantity_units='dollars',
+            rate='1',
+        ), a)
+
+        a.update(quantity='10', rate='11')
+        self.assertEqual(RateStructureItem(
+            rsi_binding='A',
+            quantity='10',
+            quantity_units='dollars',
+            rate='11',
+        ), a)
+
+        self.assertRaises(TypeError, a.update, 'A', nonexistent_field=1)
 
     def test_load_malformed_document(self):
         '''Test creating RateStructureItem object from malformed Mongo
@@ -84,7 +108,6 @@ class RSITest(unittest.TestCase):
 
 class RateStructureTest(unittest.TestCase):
 
-
     def setUp(self):
         self.a = RateStructureItem(
             rsi_binding='A',
@@ -124,7 +147,7 @@ class RateStructureTest(unittest.TestCase):
         result = RateStructure.combine(self.cprs, self.uprs)
         self.assertEqual(set([self.a, self.b_1, self.c]), set(result.rates))
 
-    def test_add_rsi(self):
+    def test_add_update_rsi(self):
         new_rsi_1 = RateStructureItem(
             rsi_binding='New RSI #1',
             description='Insert description here',
@@ -142,11 +165,10 @@ class RateStructureTest(unittest.TestCase):
             round_rule='',
         )
         self.uprs.add_rsi()
-        self.assertEqual(set([self.a, self.b_1, new_rsi_1]),
-                set(self.uprs.rates))
+        self.assertEqual([self.a, self.b_1, new_rsi_1], self.uprs.rates)
         self.uprs.add_rsi()
-        self.assertEqual(set([self.a, self.b_1, new_rsi_1, new_rsi_2]),
-                set(self.uprs.rates))
+        self.assertEqual([self.a, self.b_1, new_rsi_1, new_rsi_2],
+                self.uprs.rates)
 
     def test_validate(self):
         self.uprs.rates.append(self.a)
