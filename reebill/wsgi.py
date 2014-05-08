@@ -342,13 +342,11 @@ class BillToolBridge:
         return ju.dumps(data)
     
     @cherrypy.expose
-    @random_wait
     @authenticate
     def index(self, **kwargs):
         raise cherrypy.HTTPRedirect('/billentry.html')
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_reconciliation_data(self, start, limit, **kwargs):
@@ -368,7 +366,6 @@ class BillToolBridge:
             })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_estimated_revenue_data(self, start, limit, **kwargs):
@@ -384,7 +381,6 @@ class BillToolBridge:
             })
     
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def estimated_revenue_xls(self, **kwargs):
@@ -404,7 +400,6 @@ class BillToolBridge:
     # authentication functions
 
     @cherrypy.expose
-    @random_wait
     def login(self, username, password, rememberme='off', **kwargs):
         user = self.user_dao.load_user(username, password)
         if user is None:
@@ -515,7 +510,6 @@ class BillToolBridge:
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getUsername(self, **kwargs):
@@ -527,7 +521,6 @@ class BillToolBridge:
                     'username': cherrypy.session['user'].username})
 
     @cherrypy.expose
-    @random_wait
     def logout(self):
 
         # delete remember me
@@ -549,7 +542,6 @@ class BillToolBridge:
     # UI configuration
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def ui_configuration(self, **kwargs):
@@ -578,7 +570,6 @@ class BillToolBridge:
     # bill processing
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_next_account_number(self, **kwargs):
@@ -591,7 +582,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def new_account(self, name, account, discount_rate, late_charge_rate,
@@ -629,7 +619,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'nextAccount': next_account})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def roll(self, account, **kwargs):
@@ -655,7 +644,6 @@ class BillToolBridge:
                            'sequence': reebill.sequence})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def bindree(self, account, sequence, **kwargs):
@@ -676,7 +664,6 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def upload_interval_meter_csv(self, account, sequence, csv_file,
@@ -692,7 +679,6 @@ class BillToolBridge:
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     # TODO clean this up and move it out of BillToolBridge
@@ -706,7 +692,6 @@ class BillToolBridge:
     
         
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def mark_utilbill_processed(self, utilbill, processed, **kwargs):
@@ -718,7 +703,6 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def compute_utility_bill(self, utilbill_id, **args):
@@ -727,7 +711,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
     
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def has_utilbill_predecessor(self, utilbill_id, **args):
@@ -736,7 +719,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'has_predecessor':predecessor})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def refresh_charges(self, utilbill_id, **args):
@@ -745,7 +727,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def regenerate_rs(self, utilbill_id, **args):
@@ -756,7 +737,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def render(self, account, sequence, **args):
@@ -780,7 +760,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def issue_and_mail(self, account, sequence, recipients, apply_corrections,
@@ -825,7 +804,6 @@ class BillToolBridge:
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
@@ -851,7 +829,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def listAccounts(self, **kwargs):
@@ -863,7 +840,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def retrieve_account_status(self, start, limit ,**kwargs):
@@ -899,7 +875,6 @@ class BillToolBridge:
             return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
@@ -925,7 +900,6 @@ class BillToolBridge:
             return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
@@ -955,7 +929,6 @@ class BillToolBridge:
             return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def excel_energy_export(self, account=None, **kwargs):
@@ -983,7 +956,6 @@ class BillToolBridge:
             return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def rsi(self, utilbill_id, xaction, reebill_sequence=None,
@@ -1054,7 +1026,6 @@ class BillToolBridge:
                     'total':len(rsis_json)})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def payment(self, xaction, account, **kwargs):
@@ -1094,7 +1065,6 @@ class BillToolBridge:
                 return self.dumps({'success':True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def reebill(self, xaction, start, limit, account, sort = u'sequence',
@@ -1129,7 +1099,6 @@ class BillToolBridge:
                 raise ValueError("Use delete_reebill instead!")
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def issuable(self, xaction, **kwargs):
@@ -1166,7 +1135,6 @@ class BillToolBridge:
                 return self.dumps({'success':True})
             
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def delete_reebill(self, account, sequences, **kwargs):
@@ -1188,7 +1156,6 @@ class BillToolBridge:
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def new_reebill_version(self, account, sequence, **args):
@@ -1210,7 +1177,6 @@ class BillToolBridge:
                     [new_reebill.sequence]})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def account_info(self, account, sequence, **args):
@@ -1228,7 +1194,6 @@ class BillToolBridge:
             })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def set_account_info(self, account, sequence,
@@ -1259,7 +1224,6 @@ class BillToolBridge:
             return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_reebill_services(self, account, sequence, **args):
@@ -1279,7 +1243,6 @@ class BillToolBridge:
         })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
@@ -1325,7 +1288,6 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def hypotheticalCharges(self, xaction, service, account, sequence, **kwargs):
@@ -1341,7 +1303,6 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def utilbill_registers(self, utilbill_id, xaction, reebill_sequence=None,
@@ -1404,7 +1365,7 @@ class BillToolBridge:
                     # create the new register (ignoring return value)
                     mongo.new_register(utilbill_doc, row.get('meter_id', None),
                             row.get('register_id', None))
-                   
+
                 # get dictionaries describing all registers in all utility bills
                 registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
 
@@ -1485,7 +1446,6 @@ class BillToolBridge:
     # Handle utility bill upload
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def upload_utility_bill(self, account, service, begin_date, end_date,
@@ -1524,7 +1484,6 @@ class BillToolBridge:
     ################
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
@@ -1536,7 +1495,6 @@ class BillToolBridge:
         return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def save_journal_entry(self, account, sequence, entry, **kwargs):
@@ -1554,7 +1512,6 @@ class BillToolBridge:
 
  
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def last_utilbill_end_date(self, account, **kwargs):
@@ -1573,7 +1530,6 @@ class BillToolBridge:
             return self.dumps({'success':True, 'date': the_datetime})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     # TODO: 25650643 explicit params - security risk and other 
@@ -1643,7 +1599,6 @@ class BillToolBridge:
                 return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getUtilBillImage(self, utilbill_id):
@@ -1655,7 +1610,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'imageName':result})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
@@ -1668,7 +1622,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'imageName':result})
     
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getBillImageResolution(self, **kwargs):
@@ -1676,7 +1629,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'resolution': resolution})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def setBillImageResolution(self, resolution, **kwargs):
@@ -1685,7 +1637,6 @@ class BillToolBridge:
         return self.dumps({'success':True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getDifferenceThreshold(self, **kwargs):
@@ -1693,7 +1644,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'threshold': threshold})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def setDifferenceThreshold(self, threshold, **kwargs):
@@ -1705,7 +1655,6 @@ class BillToolBridge:
         return self.dumps({'success':True})
     
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getFilterPreference(self, **kwargs):
@@ -1713,7 +1662,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'filtername': filtername})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def setFilterPreference(self, filtername, **kwargs):
