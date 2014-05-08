@@ -11,13 +11,26 @@ from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
 
 class RSITest(unittest.TestCase):
 
-    def test_update(self):
+    def test_basic(self):
         a = RateStructureItem(
             rsi_binding='A',
             quantity='1',
             quantity_units='dollars',
             rate='1',
         )
+
+        self.assertEqual({
+             'id': 'A',
+             'rsi_binding':'A',
+             'description': '',
+             'quantity':'1',
+             'quantity_units':'dollars',
+             'rate':'1',
+             'has_charge': True,
+             'group': '',
+             'round_rule': None,
+             'shared': True,
+         }, a.to_dict())
 
         a.update()
         self.assertEqual(RateStructureItem(
