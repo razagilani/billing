@@ -289,7 +289,7 @@ class RateStructure(Document):
         and returns the new RateStructureItem object.
         '''
         # generate a number to go in a unique "rsi_binding" string
-        all_rsi_bindings = set(rsi.rsi_binding for rsi in self.rates)
+        all_rsi_bindings = self.get_all_rsi_bindings()
         n = 1
         while ('New RSI #%s' % n) in all_rsi_bindings:
             n += 1
@@ -304,7 +304,6 @@ class RateStructure(Document):
             round_rule='',
         )
         self.rates.append(new_rsi)
-
         return new_rsi
 
     def get_rsi(self, rsi_binding):
@@ -314,6 +313,9 @@ class RateStructure(Document):
         self.validate()
         return next(rsi for rsi in self.rates if rsi.rsi_binding ==
                                                  rsi_binding)
+
+    def get_all_rsi_bindings(self):
+        return set(rsi.rsi_binding for rsi in self.rates)
 
 class RateStructureDAO(object):
     '''Loads and saves RateStructure objects. Also responsible for generating
