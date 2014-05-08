@@ -161,6 +161,16 @@ class Process(object):
         mongo.delete_charge(utilbill_doc, rsi_binding)
         self.reebill_dao.save_utilbill(utilbill_doc)
 
+    def update_rsi(self, session, utilbill_id, rsi_binding, fields):
+        '''Modify the charge given by 'rsi_binding' in the given utility
+        bill by setting key-value pairs to match the dictionary 'fields'.
+        '''
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        rsi = rs_doc.get_rsi(rsi_binding)
+        rsi.update(**fields)
+        rs_doc.save()
+
     def get_hypothetical_matched_charges(self, session, account, sequence):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
