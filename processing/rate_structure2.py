@@ -179,71 +179,26 @@ class RateStructureItem(EmbeddedDocument):
         '''String representation of this RateStructureItem to send as JSON to
         the browser.
         '''
-        return {
-            'id': self.rsi_binding,
-            'rsi_binding': self.rsi_binding,
-            'quantity': self.quantity,
-            'quantity_units': self.quantity_units,
-            'rate': self.rate,
-            'round_rule': self.round_rule,
-            'description': self.description,
-            'shared': self.shared,
-            'has_charge': self.has_charge,
-            'group': self.group,
-        }
+        result = {name: getattr(self, name) for name in self._fields}
+        result['id'] = self.rsi_binding
+        return result
 
-    def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-                    rate=None, round_rule=None, description=None,
-                    has_charge=None, group=None, shared=None):
-        if rsi_binding is not None:
-            self.rsi_binding = rsi_binding
-        if quantity is not None:
-            self.quantity = quantity
-        if quantity_units is not None:
-            self.quantity_units = quantity_units
-        if rate is not None:
-            self.rate = rate
-        if round_rule is not None:
-            self.roundrule = round_rule
-        if description is not None:
-            self.description = description
-        if has_charge is not None:
-            self.has_charge = has_charge
-        if group is not None:
-            self.group = group
-        if shared is not None:
-            self.shared = shared
+    def update(self, **fields):
+        for name, value in fields.iteritems():
+            # only set attributes that are names of valid fields
+            if name not in self._fields:
+                raise ValueError('Unknown field "%s"' % name)
+            setattr(self, name, value)
 
     def __repr__(self):
         return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
                 self.rate)
 
     def __eq__(self, other):
-        return (
-                   self.rsi_binding,
-                   self.description,
-                   self.quantity,
-                   self.quantity_units,
-                   self.rate,
-                   self.round_rule
-               ) == (
-                   other.rsi_binding,
-                   other.description,
-                   other.quantity,
-                   other.quantity_units,
-                   other.rate,
-                   other.round_rule
-               )
+        return self._fields == other._fields
 
     def __hash__(self):
-        return sum([
-            hash(self.rsi_binding),
-            hash(self.description),
-            hash(self.quantity),
-            hash(self.quantity_units),
-            hash(self.rate),
-            hash(self.round_rule),
-        ])
+        return sum(hash(value) for value in self._fields.values())
 
 
 class RateStructure(Document):
