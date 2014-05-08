@@ -193,7 +193,8 @@ class RateStructureItem(EmbeddedDocument):
         }
 
     def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-                    rate=None, round_rule=None, description=None):
+                    rate=None, round_rule=None, description=None,
+                    has_charge=None, group=None, shared=None):
         if rsi_binding is not None:
             self.rsi_binding = rsi_binding
         if quantity is not None:
@@ -206,6 +207,12 @@ class RateStructureItem(EmbeddedDocument):
             self.roundrule = round_rule
         if description is not None:
             self.description = description
+        if has_charge is not None:
+            self.has_charge = has_charge
+        if group is not None:
+            self.group = group
+        if shared is not None:
+            self.shared = shared
 
     def __repr__(self):
         return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
@@ -313,7 +320,6 @@ class RateStructure(Document):
         self.validate()
         return next(rsi for rsi in self.rates if rsi.rsi_binding ==
                                                  rsi_binding)
-
     def get_all_rsi_bindings(self):
         return set(rsi.rsi_binding for rsi in self.rates)
 
