@@ -1869,7 +1869,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # bind & compute once to start. this change should be
                 # idempotent.
-                olap_id = 'MockSplinter ignores olap id'
+                olap_id = 'example-1'
                 self.process.ree_getter.update_renewable_readings(olap_id,
                                            reebill2, use_olap=use_olap)
                 ree1 = reebill2.get_total_renewable_energy()
