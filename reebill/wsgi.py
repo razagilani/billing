@@ -997,15 +997,11 @@ class BillToolBridge:
         '''
         rows = kwargs.get('rows')
         with DBSession(self.state_db) as session:
-            rate_structure = self.process.get_rs_doc(session, utilbill_id,
-                    'uprs', reebill_sequence=reebill_sequence,
-                    reebill_version=reebill_version)
-            rates = rate_structure.rates
-
             if xaction == "read":
-                #return self.dumps({'success': True, 'rows':rates})
-                return json.dumps({'success': True, 'rows':[rsi.to_dict()
-                        for rsi in rates]})
+                return json.dumps({
+                    'success': True,
+                    'rows': self.process.get_rsis_json(session, utilbill_id),
+                })
 
             # only xaction "read" is allowed when reebill_sequence/version
             # arguments are given
@@ -1020,7 +1016,6 @@ class BillToolBridge:
             if xaction == "update":
                 # single edit comes in not in a list
                 if type(rows) is dict: rows = [rows]
-
 
                 # process list of edits
                 for row in rows:
@@ -1038,29 +1033,25 @@ class BillToolBridge:
                     # "id" field contains the old rsi_binding, which is used
                     # to look up the RSI; "rsi_binding" field contains the
                     # new one that will replace it (if there is one)
-                    rsi = rate_structure.get_rsi(id)
-                    for key, value in row.iteritems():
-                        assert hasattr(rsi, key)
-                        setattr(rsi, key, value)
+                    rsi_binding = self.process.update_rsi(session,
+                            utilbill_id, id, row)
 
                     # re-add "id" field which was removed above (using new
                     # rsi_binding)
                     # TODO this is ugly; find a better way
-                    row['id'] = rsi.rsi_binding
+                    row['id'] = rsi_binding
 
             if xaction == "create":
-                new_rsi = rate_structure.add_rsi()
+                self.process.add_rsi(session, utilbill_id)
 
             if xaction == "destroy":
                 if type(rows) is unicode: rows = [rows]
-                # process list of removals
                 for row in rows:
-                    rsi = rate_structure.get_rsi(row)
-                    rates.remove(rsi)
+                    self.process.delete_rsi(session, utilbill_id, row)
 
-            rate_structure.save()
-            rows = [rsi.to_dict() for rsi in rate_structure.rates]
-            return json.dumps({'success': True, 'rows':rows, 'total':len(rows) })
+            rsis_json = self.process.get_rsis_json(session, utilbill_id)
+            return json.dumps({'success': True, 'rows': rsis_json,
+                    'total':len(rsis_json)})
 
     @cherrypy.expose
     @random_wait
