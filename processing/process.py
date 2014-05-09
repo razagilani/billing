@@ -305,7 +305,7 @@ class Process(object):
                 # here to get total energy, because of unit conversion. instead
                 # the method ReeBill.get_total_renewable_energy must be used to
                 # calculate it.
-                functions.sum(ReeBillCharge.total).label('total_charge')
+                functions.sum(ReeBillCharge.h_total).label('total_charge')
                 ).join(latest_versions_sq, and_(
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
@@ -964,12 +964,15 @@ class Process(object):
             s_quantity = reebill.get_renewable_energy_reading(
                     h_register['register_binding'])
             h_register['quantity'] = a_register['quantity'] + s_quantity
+            print '**** %s + %s = %s'  %(a_register['quantity'],
+                    s_quantity, h_register['quantity'])
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
 
         # copy the charges from there into the reebill
-        reebill.update_charges_from_utilbill_doc(session, hypothetical_utilbill)
+        reebill.update_charges_from_utilbill_doc(session,
+                utilbill_doc, hypothetical_utilbill)
 
     def roll_reebill(self, session, account, integrate_skyline_backend=True,
                      start_date=None, skip_compute=False):

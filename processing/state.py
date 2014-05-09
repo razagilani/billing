@@ -400,17 +400,28 @@ class ReeBill(Base):
 
         return total_therms
 
-    def update_charges_from_utilbill_doc(self, session, utilbill_doc):
+    def update_charges_from_utilbill_doc(self, session, actual_utilbill_doc,
+                hypothetical_utilbill_doc):
         '''Updates the set of Charges belonging to this reebill to match the
         given utility bill document. All new Charge objects are created,
-        and old ones are delted, so references to existing charges should not
+        and old ones are deleted, so references to existing charges should not
         be used after this method is called.
         '''
         for charge in self.charges:
             session.delete(charge)
-        self.charges = [ReeBillCharge(self, c['rsi_binding'],  c['description'],
-                c['group'], c['quantity'], c['rate'], c['total']) for c in
-                utilbill_doc['charges']]
+        # self.charges = [ReeBillCharge(self, c['rsi_binding'], c['description'],
+        #         c['group'], c['quantity'], c['rate'], c['total']) for c in
+        #         utilbill_doc['charges']]
+        for ac in actual_utilbill_doc['charges']:
+            # assume 'hypothetical_utilbill_doc' and 'actual_utilbill_doc'
+            # have identical sets of RSI bindings
+            rsi_binding = ac['rsi_binding']
+            hc = next(c for c in hypothetical_utilbill_doc['charges']
+                    if ac['rsi_binding'] == rsi_binding)
+            self.charges.append(ReeBillCharge(self, rsi_binding,
+                    ac['description'], ac['group'], ac['quantity'],
+                    hc['quantity'], ac['rate'], hc['rate'], ac['total'],
+                    hc['total']))
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -440,7 +451,7 @@ class ReeBill(Base):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
         assert len(self.utilbills) == 1
-        return sum(charge.total for charge in self.charges)
+        return sum(charge.h_total for charge in self.charges)
 
     def get_service_address_formatted(self):
         return str(self.service_address)
@@ -535,26 +546,30 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
+
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
     group = Column(String, name='group_name', nullable=False)
-    quantity = Column(Float, nullable=False)
-    rate = Column(Float, nullable=False)
-    total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group, quantity,
-                 rate, total):
-        # TODO: should this be necessary? look at SQLAlchemy docs
+    a_quantity = Column(Float, nullable=False)
+    h_quantity = Column(Float, nullable=False)
+    a_rate = Column(Float, nullable=False)
+    h_rate = Column(Float, nullable=False)
+    a_total = Column(Float, nullable=False)
+    h_total = Column(Float, nullable=False)
+
+    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+                 h_quantity, a_rate, h_rate, a_total, h_total):
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
-        self.quantity = quantity
-        self.rate = rate
-        self.total = total
+        self.a_quantity, self.h_quantity = a_quantity, h_quantity
+        self.a_rate, self.h_rate = a_rate, h_rate
+        self.a_total, self.h_total = a_total, h_total
 
 class Reading(Base):
-    '''Stores utility register readings and renewable energy offseting the
+    '''Stores utility register readings and renewable energy offsetting the
     value of each register.
     '''
     __tablename__ = 'reading'

@@ -607,50 +607,50 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = reebill.get_charge_by_rsi_binding('SYSTEM_CHARGE')
-            self.assertDecimalAlmostEqual(11.2, system_charge.total)
+            self.assertDecimalAlmostEqual(11.2, system_charge.h_total)
 
             # right-of-way fee
             row_charge = reebill.get_charge_by_rsi_binding('RIGHT_OF_WAY')
             self.assertDecimalAlmostEqual(0.03059 * hypothetical_quantity,
-                    row_charge.total, places=2) # TODO OK to be so inaccurate?
-            
+                    row_charge.h_total, places=2)
+
             # sustainable energy trust fund
             setf_charge = reebill.get_charge_by_rsi_binding('SETF')
             self.assertDecimalAlmostEqual(0.01399 * hypothetical_quantity,
-                    setf_charge.total, places=1) # TODO OK to be so inaccurate?
+                    setf_charge.h_total, places=1)
 
             # energy assistance trust fund
             eatf_charge = reebill.get_charge_by_rsi_binding('EATF')
             self.assertDecimalAlmostEqual(0.006 * hypothetical_quantity,
-                    eatf_charge.total, places=2)
+                    eatf_charge.h_total, places=2)
 
             # delivery tax
             delivery_tax = reebill.get_charge_by_rsi_binding('DELIVERY_TAX')
             self.assertDecimalAlmostEqual(0.07777 * hypothetical_quantity,
-                    delivery_tax.total, places=2)
+                    delivery_tax.h_total, places=2)
 
             # peak usage charge
             peak_usage_charge = reebill.get_charge_by_rsi_binding('PUC')
-            self.assertDecimalAlmostEqual(23.14, peak_usage_charge.total)
+            self.assertDecimalAlmostEqual(23.14, peak_usage_charge.h_total)
 
             # distribution charge
             distribution_charge = reebill.get_charge_by_rsi_binding(
                     'DISTRIBUTION_CHARGE')
             self.assertDecimalAlmostEqual(.2935 * hypothetical_quantity,
-                    distribution_charge.total, places=1)
+                    distribution_charge.h_total, places=1)
             
             # purchased gas charge
             purchased_gas_charge = reebill.get_charge_by_rsi_binding('PGC')
             self.assertDecimalAlmostEqual(.7653 * hypothetical_quantity,
-                    purchased_gas_charge.total, places=2)
+                    purchased_gas_charge.h_total, places=2)
 
             # sales tax: depends on all of the above
             sales_tax = reebill.get_charge_by_rsi_binding('SALES_TAX')
-            self.assertDecimalAlmostEqual(0.06 * (system_charge.total +
-                    distribution_charge.total + purchased_gas_charge.total +
-                    row_charge.total + peak_usage_charge.total +
-                    setf_charge.total + eatf_charge.total +
-                    delivery_tax.total), sales_tax.total, places=2)
+            self.assertDecimalAlmostEqual(0.06 * (system_charge.h_total +
+                    distribution_charge.h_total + purchased_gas_charge.h_total +
+                    row_charge.h_total + peak_usage_charge.h_total +
+                    setf_charge.h_total + eatf_charge.h_total +
+                    delivery_tax.h_total), sales_tax.h_total, places=2)
 
 
     def test_upload_utility_bill(self):
