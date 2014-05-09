@@ -1835,8 +1835,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                     'january.pdf')
             utilbill_jan = session.query(UtilBill).one()
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                    utilbill_jan)
+            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill_jan)
             uprs.rates = example_data.get_uprs().rates
             utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
                     utilbill_jan)
@@ -1870,7 +1869,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # bind & compute once to start. this change should be
                 # idempotent.
-                olap_id = 'MockSplinter ignores olap id'
+                olap_id = 'example-1'
                 self.process.ree_getter.update_renewable_readings(olap_id,
                                            reebill2, use_olap=use_olap)
                 ree1 = reebill2.get_total_renewable_energy()
@@ -1885,8 +1884,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
                 # save other values that will be checked repeatedly
                 # (more fields could be added here)
-                # hypo = reebill2_doc.hypothetical_total
-                # actual = reebill2_doc.actual_total
                 ree_value = reebill2.ree_value
                 ree_charge = reebill2.ree_charge
                 total = reebill2.total
