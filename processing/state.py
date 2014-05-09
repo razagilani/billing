@@ -30,9 +30,8 @@ sys.stdout = sys.stderr
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
+Session = scoped_session(sessionmaker())
 
-# this base class should be extended by all objects representing SQLAlchemy
-# tables
 Base = declarative_base()
 
 class Address(Base):
@@ -494,8 +493,8 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
-    uprs_document_id = Column(String)
-    cprs_document_id = Column(String)
+    uprs_document_id = Column(String) #indicates the rate structure data
+    cprs_document_id = Column(String) 
 
     # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill.
     # there is no delete cascade in this 'relationship' because a UtilBill
@@ -821,26 +820,16 @@ class StateDB(object):
 
     config = None
 
-    def __init__(self, host, database, user, password, db_connections=5, logger=None):
-        # put "echo=True" in the call to create_engine to print the SQL
-        # statements that are executed
-        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
-                host, database), pool_recycle=3600, pool_size=db_connections)
-
-        # To turn logging on
+    def __init__(self, session, logger=None):
+        """Construct a new :class:`.StateDB`.
+        
+        :param session: a ``scoped_session`` instance
+        :param logger: a logger object
+        """
         import logging
         logging.basicConfig()
-        #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-        #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
-        # global variable for the database session: SQLAlchemy will give an
-        # error if this is created more than once, so don't call _getSession()
-        # anywhere else wrapped by scoped_session for thread contextualization
-        # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
-        self.session = scoped_session(sessionmaker(bind=engine,
-                autoflush=True))
-
-        # TODO don't default to None
+        self.session = scoped_session
         self.logger = logger
 
     def get_customer(self, session, account):

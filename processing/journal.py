@@ -193,7 +193,7 @@ class UtilBillDeletedEvent(Event):
 ###############################################################################
 # reebill events
 
-# TODO rename to ReeBillEvent (requires db upgrade because of MongoEngine
+# TODO rename to ReeBillEvent (requires db upgrade_cli because of MongoEngine
 # "_cls" and "_types" keys)
 class SequenceEvent(Event):
     meta = {'db_alias': 'journal'}
