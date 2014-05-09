@@ -38,7 +38,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
-from billing.processing.state import UtilBill
+from billing.processing.state import UtilBill, Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
@@ -156,10 +156,10 @@ class BillToolBridge:
       initialized, then rollback.
     """
 
-    config = None
 
-    # TODO: refactor config and share it between btb and bt 15413411
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
+        """
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
@@ -170,7 +170,9 @@ class BillToolBridge:
             sys.exit(1)
 
         self.config.read(config_file_path)
+        """
 
+        """
         # logging:
         # get log file name and format from config file
         # TODO: if logging section of config file is malformed, choose default
@@ -187,7 +189,11 @@ class BillToolBridge:
                     % log_file_path
             raise
         # create logger
+        """
+        
         self.logger = logging.getLogger('reebill')
+        
+        """
         formatter = logging.Formatter(log_format)
         handler = logging.FileHandler(log_file_path)
         handler.setFormatter(formatter)
@@ -197,6 +203,7 @@ class BillToolBridge:
         # messages like the initialization message at the end of this function,
         # the level has to be changed.
         self.logger.setLevel(logging.DEBUG)
+        """
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
@@ -207,10 +214,11 @@ class BillToolBridge:
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(
-            host=self.statedb_config['host'],
-            password=self.statedb_config['password'],
-            database=self.statedb_config['database'],
-            user=self.statedb_config['user'],
+            #host=self.statedb_config['host'],
+            #password=self.statedb_config['password'],
+            #database=self.statedb_config['database'],
+            #user=self.statedb_config['user'],
+            Session,
             logger=self.logger,
         )
 
