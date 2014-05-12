@@ -154,7 +154,9 @@ for i, d in enumerate(loads(open(INPUT_FILE, 'r').read())):
             
         
     pdf_file = open(join(PDFDIR, file_name), 'r')
-    total = float("".join([c for c in d['balance'] if c.isdigit()]))
+    total = float("".join([c for c in d['balance'] if c.isdigit() or c == "."]))
+    
+    
     bridge.process.upload_utility_bill(s, 
                                        account, 
                                        'gas',             #service
@@ -167,7 +169,7 @@ for i, d in enumerate(loads(open(INPUT_FILE, 'r').read())):
                                        utility=UTILITY,
                                        rate_class=rate_class + '_DC_DC_SOS')
     
-    print " uploaded utility bill for account %s" % account
+    print " uploaded utility bill for account %s with total %s" % (account, total)
 
 s.commit()
 print "Transaction Committed."
