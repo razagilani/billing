@@ -53,10 +53,8 @@ class billdb(Schema):
     utility_bill_trash_directory = String()
     
 class statedb(Schema):
-    host = String()
-    database = String()
-    user = String()
-    password = String()
+    uri = String()
+    echo = StringBool()
     
 class usersdb(Schema):
     host = String()
