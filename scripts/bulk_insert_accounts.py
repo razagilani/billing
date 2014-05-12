@@ -18,9 +18,19 @@ from StringIO import StringIO
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfdocument import PDFDocument
 import re
+import argparse
 
-INPUT_FILE = "accounts.json"
-PDFDIR = "/Users/mnaber/Dropbox/skyline-etl/Acquisitor/sanford"
+
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('accounts_json_file', help='The accounts.json data file')
+parser.add_argument('pdf_directory', help='The data directory containing the bill pdf files')
+
+parsed = parser.parse_args()
+
+INPUT_FILE = parsed.accounts_json_file
+PDFDIR = parsed.pdf_directory
 
 TEMPLATE_ACCOUNT = "10009" #the rebill template account number
 
