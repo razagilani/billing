@@ -26,6 +26,7 @@ def init_config(path='settings.cfg'):
     
     global config
     config = ValidatedConfigParser(vns)
+    log.debug('Reading configuration file %s' % path)
     config.read(path)
     if not config.has_section('main'):
         config.add_section('main')
