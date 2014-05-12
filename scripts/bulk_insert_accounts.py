@@ -75,7 +75,6 @@ rate_classes = ["Residential-R", "Residential-AE", "Non-Residential-GS ND"]
 initial_id = int(bridge.state_db.get_next_account_number(s))
 
 for i, d in enumerate(loads(open(INPUT_FILE, 'r').read())):
-    if i < 10: continue
     account = str(i + initial_id)
     print account
     street, rem = d['service_address'].split('\n')
