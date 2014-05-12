@@ -33,14 +33,17 @@ def init_config(path='settings.cfg'):
     config.set('main', 'appdir', "/".join(dirname(__file__).split("/")[:-1]))
     log.debug('Initialized configuration')
     
-def init_model():
+def init_model(uri=None):
     """Initializes the data model
     """
     from billing.processing.state import Session, Base
     from sqlalchemy import create_engine
-    engine = create_engine(config.get('statedb', 'uri'))
+    uri = uri if uri else config.get('statedb', 'uri')
+    log.debug('Intializing model with uri %s' % uri)
+    engine = create_engine(uri)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
+    log.debug('Initialized model')
 
 def initialize():
     init_logging()

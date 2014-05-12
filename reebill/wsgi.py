@@ -1,6 +1,10 @@
 '''
 File: wsgi.py
 '''
+from billing import initialize
+initialize()
+from billing import config
+
 import sys
 import os
 import pprint
@@ -256,7 +260,7 @@ class BillToolBridge:
             self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
-        if self.config.getboolean('runtime', 'mock_skyliner'):
+        if self.config.get('runtime', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
@@ -289,7 +293,7 @@ class BillToolBridge:
                 },
             )
 
-        self.integrate_skyline_backend = self.config.getboolean('runtime',
+        self.integrate_skyline_backend = self.config.get('runtime',
                 'integrate_skyline_backend')
 
         # create a ReebillRenderer
@@ -309,7 +313,7 @@ class BillToolBridge:
 
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.getboolean('authentication', 'authenticate')
+        self.authentication_on = self.config.get('authentication', 'authenticate')
 
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
@@ -657,9 +661,9 @@ class BillToolBridge:
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
+        if self.config.get('runtime', 'integrate_skyline_backend') is False:
             raise ValueError("OLTP is not integrated")
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+        if self.config.get('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
 
@@ -749,7 +753,7 @@ class BillToolBridge:
     @json_exception
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
@@ -1621,7 +1625,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
@@ -1680,7 +1684,7 @@ class BillToolBridge:
         return self.dumps({'success':True})
 
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
-bridge = BillToolBridge()
+bridge = BillToolBridge(config)
 
 if __name__ == '__main__':
     # configure CherryPy
@@ -1706,7 +1710,7 @@ if __name__ == '__main__':
             # corresponding to the method 'index' above and prefixed to the
             # URLs corresponding to the other methods
             # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
-            "/",
+            "/reebill",
             config = local_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
