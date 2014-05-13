@@ -799,7 +799,6 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
-
         # update Mongo document to match "metadata" columns in MySQL:
         document.update({
             'account': utilbill.customer.account,
@@ -960,19 +959,14 @@ class Process(object):
         # copy all the charges back into the reebill
         hypothetical_utilbill = copy.deepcopy(utilbill_doc)
 
-        # these two generators iterate through "actual registers" of the
-        # real utility bill (describing conventional energy usage) and
-        # "hypothetical registers" in the copy of the utility bill.
-        actual_registers = chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])
+        # set register quantity in 'hypothetical_utilbill' to hypothetical
+        # quantity (conventional + renewable) in each reebill reading
         hypothetical_registers = chain.from_iterable(m['registers'] for m
                  in hypothetical_utilbill['meters'])
-
         for reading in reebill.readings:
             h_register = next(r for r in hypothetical_registers if r[
                     'register_binding'] == reading.register_binding)
-            h_register['quantity'] = reading.conventional_quantity + \
-                                     reading.renewable_quantity
+            h_register['quantity'] = reading.hypothetical_quantity
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
