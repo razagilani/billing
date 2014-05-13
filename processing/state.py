@@ -302,17 +302,20 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
-    def update_readings_from_document(self, utilbill_doc):
+    def update_readings_from_document(self, session, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given utility bill document. Renewable
         energy quantities are all set to 0.
         '''
         # NOTE mongo.get_all_actual_registers_json can't be used here due to
         # circular dependency
+        for r in self.readings:
+            session.delete(r)
         self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
                 reg_dict['quantity'], 0, reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
+        return None
 
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
@@ -409,15 +412,12 @@ class ReeBill(Base):
         '''
         for charge in self.charges:
             session.delete(charge)
-        # self.charges = [ReeBillCharge(self, c['rsi_binding'], c['description'],
-        #         c['group'], c['quantity'], c['rate'], c['total']) for c in
-        #         utilbill_doc['charges']]
         for ac in actual_utilbill_doc['charges']:
             # assume 'hypothetical_utilbill_doc' and 'actual_utilbill_doc'
             # have identical sets of RSI bindings
             rsi_binding = ac['rsi_binding']
             hc = next(c for c in hypothetical_utilbill_doc['charges']
-                    if ac['rsi_binding'] == rsi_binding)
+                    if c['rsi_binding'] == rsi_binding)
             self.charges.append(ReeBillCharge(self, rsi_binding,
                     ac['description'], ac['group'], ac['quantity'],
                     hc['quantity'], ac['rate'], hc['rate'], ac['total'],
