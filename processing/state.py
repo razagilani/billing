@@ -606,6 +606,10 @@ class Reading(Base):
         self.renewable_quantity = renewable_quantity
         self.unit = unit
 
+    @property
+    def hypothetical_quantity(self):
+        return self.conventional_quantity + self.renewable_quantity
+
 class UtilBill(Base):
     __tablename__ = 'utilbill'
 
