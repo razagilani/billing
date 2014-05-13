@@ -926,7 +926,7 @@ class StateDB(object):
         if current_max_version_reebill.issued != 1:
             raise ValueError(("Can't increment version of reebill %s-%s "
                     "because version %s is not issued yet") % (account,
-                    sequence, max_version))
+                    sequence, current_max_version_reebill.version))
 
         new_reebill = ReeBill(current_max_version_reebill.customer, sequence,
                 current_max_version_reebill.version + 1,
