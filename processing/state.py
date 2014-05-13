@@ -412,6 +412,7 @@ class ReeBill(Base):
         '''
         for charge in self.charges:
             session.delete(charge)
+        self.charges = []
         for ac in actual_utilbill_doc['charges']:
             # assume 'hypothetical_utilbill_doc' and 'actual_utilbill_doc'
             # have identical sets of RSI bindings
