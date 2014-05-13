@@ -2017,32 +2017,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.process.compute_reebill(session, acc, 2)
                 check()
 
-    def test_choose_next_utilbills_bug(self):
-        '''Regression test for
-        https://www.pivotaltracker.com/story/show/48430769.
-        (I'm not sure if this test has any value now that choose_next_utilbills
-        is not used and first reebill is created by specifying a particular
-        utility bill rather than a date.--DK)'''
-        account = '99999'
-        with DBSession(self.state_db) as session:
-            # add 2 utility bills
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf')
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
-                    'february.pdf')
-            u1, u2 = session.query(UtilBill).order_by(UtilBill.period_start)\
-                    .all()
-
-            self.process.roll_reebill(session, account, start_date=date(2013,1,1))
-
-        # only u1 should be attached to the reebill
-        reebill = session.query(ReeBill).one()
-        self.assertEqual([u1], reebill.utilbills)
-        self.assertEqual([reebill], [ur.reebill for ur in u1._utilbill_reebills])
-        self.assertEqual([], [ur.reebill for ur in u2._utilbill_reebills])
-
     def test_create_first_reebill(self):
         '''Tests Process.create_first_reebill which creates the first reebill
         (in MySQL and Mongo) attached to a particular utility bill, using the
