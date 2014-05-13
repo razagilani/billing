@@ -838,8 +838,9 @@ class Process(object):
         # update "hypothetical charges" in reebill document to match actual
         # charges in utility bill document. note that hypothetical charges are
         # just replaced, so they will be wrong until computed below.
-        utilbill_document = self.reebill_dao.load_doc_for_utilbill(reebill
-                                                               .utilbills[0])
+        utilbill_document = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill.update_readings_from_document(session, utilbill_document)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill
                 .utilbills[0])
         self._compute_reebill_charges(session, reebill, uprs)
@@ -956,16 +957,11 @@ class Process(object):
         hypothetical_registers = chain.from_iterable(m['registers'] for m
                  in hypothetical_utilbill['meters'])
 
-        # set the quantity of each "hypothetical register" to the sum of
-        # the corresponding "actual" and "shadow" registers.
-        for h_register in hypothetical_registers:
-            a_register = next(r for r in actual_registers
-                    if r['register_binding'] == h_register['register_binding'])
-            s_quantity = reebill.get_renewable_energy_reading(
-                    h_register['register_binding'])
-            h_register['quantity'] = a_register['quantity'] + s_quantity
-            print '**** %s + %s = %s'  %(a_register['quantity'],
-                    s_quantity, h_register['quantity'])
+        for reading in reebill.readings:
+            h_register = next(r for r in hypothetical_registers if r[
+                    'register_binding'] == reading.register_binding)
+            h_register['quantity'] = reading.conventional_quantity + \
+                                     reading.renewable_quantity
 
         # compute the charges of the hypothetical utility bill
         mongo.compute_all_charges(hypothetical_utilbill, uprs)
@@ -1053,7 +1049,8 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         assert len(new_utilbill_docs) == 1
-        new_reebill.update_readings_from_document(new_utilbill_docs[0])
+        new_reebill.update_readings_from_document(session,
+                new_utilbill_docs[0])
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
@@ -1127,7 +1124,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # update readings to match utility bill document
-        reebill.update_readings_from_document(utilbill_doc)
+        reebill.update_readings_from_document(session, utilbill_doc)
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
