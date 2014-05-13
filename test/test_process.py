@@ -1746,42 +1746,117 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
         earliest unissued bill.'''
+        # replace process.ree_getter with one that always sets the renewable
+        # energy readings to a known value
+        # TODO: move this into TestProcess.setUp and use it in every test
+        class MockReeGetter(object):
+            def __init__(self, quantity):
+                self.quantity = quantity
+            def update_renewable_readings(self, olap_id, reebill,
+                                          use_olap=True, verbose=False):
+                for reading in reebill.readings:
+                    reading.renewable_quantity = self.quantity
+        self.process.ree_getter = MockReeGetter(10)
+
         acc = '99999'
 
         with DBSession(self.state_db) as session:
             # create 3 utility bills: Jan, Feb, Mar
-            utilbill_ids, uprs_ids, cprs_ids = [], [], []
             for i in range(3):
-                self.process.upload_utility_bill(session, acc, 'gas',
-                        date(2012, i+1, 1), date(2012, i+2, 1),
+                utilbill = self.process.upload_utility_bill(session, acc,
+                        'gas', date(2012, i+1, 1), date(2012, i+2, 1),
                         StringIO('a utility bill'), 'filename.pdf')
-            
+                self.process.add_rsi(session, utilbill.id)
+                self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
+                    'rsi_binding': 'A',
+                    'quantity': 'REG_TOTAL.quantity',
+                    'rate': 1
+                })
+                self.process.compute_utility_bill(session, utilbill.id)
+                self.process.refresh_charges(session, utilbill.id)
+
             # create 1st reebill and issue it
-            one = self.process.roll_reebill(session, acc,
-                                            start_date=date(2012,1,1),
-                                            integrate_skyline_backend=False)
+            self.process.roll_reebill(session, acc,
+                    start_date=date(2012,1,1), integrate_skyline_backend=False)
+            self.process.bind_renewable_energy(session, acc, 1)
+            self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
+            self.assertEqual([{
+              'id': 1,
+              'sequence': 1,
+              'max_version': 0,
+              'issued': True,
+              'issue_date': datetime.utcnow().date(),
+              'actual_total': 0.,
+              'hypothetical_total': 10,
+              'payment_received': 0.,
+              'period_start': date(2012,1,1),
+              'period_end': date(2012,2,1),
+              'prior_balance': 0.,
+              'ree_charges': 8.8,
+              'ree_value': 10,
+              'services': [],
+              'total_adjustment': 0.,
+              'total_error': 0.,
+              'ree_quantity': 10,
+              'balance_due': 8.8,
+              'balance_forward': 0,
+              'corrections': '-',
+            }], self.process.get_reebill_metadata_json(session, '99999'))
 
             # create 2nd reebill, leaving it unissued
-            two = self.process.roll_reebill(session, acc,
-                                            integrate_skyline_backend=False)
+            self.process.roll_reebill(session, acc,
+                    integrate_skyline_backend=False)
 
-            # make a correction on reebill #1, producing an adjustment of 100
-            # TODO: frozen utility bill document of the reebill does not
-            # exist, causing failure when the document is looked up here.
-            # something about freezing the document or setting its id in MySQL
-            # went wrong when it was issued.
+            # make a correction on reebill #1. this time 20 therms of renewable
+            # energy instead of 10 were consumed.
+            self.process.ree_getter.quantity = 20
             self.process.new_version(session, acc, 1)
-            one_corrected = session.query(ReeBill).filter_by(
-                        sequence=1, version=1).one()
-            one_corrected.ree_charge = one.ree_charge + 100
-
             self.process.compute_reebill(session, acc, 2)
 
-            # only 'two' should get an adjustment; 'one' is a correction, so it
-            # can't have adjustments
-            self.assertEquals(0, one.total_adjustment)
-            self.assertEquals(100, two.total_adjustment)
+            self.assertEqual([{
+                'actual_total': 0,
+                  'balance_due': 17.6,
+                  'balance_forward': 17.6,
+                  'corrections': '(never issued)',
+                  'hypothetical_total': 0,
+                  'id': 2,
+                  'issue_date': None,
+                  'issued': False,
+                  'max_version': 0,
+                  'payment_received': 0.0,
+                  'period_end': date(2012, 3, 1),
+                  'period_start': date(2012, 2, 1),
+                  'prior_balance': 8.8,
+                  'ree_charges': 0.0,
+                  'ree_quantity': 0,
+                  'ree_value': 0,
+                  'sequence': 2,
+                  'services': [],
+                  'total_adjustment': 8.8,
+                  'total_error': 0.0
+            },{
+                 'actual_total': 0,
+                  'balance_due': 17.6,
+                  'balance_forward': 0,
+                  'corrections': '#1 not issued',
+                  'hypothetical_total': 20,
+                  'id': 1,
+                  'issue_date': None,
+                  'issued': False,
+                  'max_version': 1,
+                  'payment_received': 0.0,
+                  'period_end': date(2012, 2, 1),
+                  'period_start': date(2012, 1, 1),
+                  'prior_balance': 0,
+                  'ree_charges': 17.6,
+                  'ree_quantity': 20,
+                  'ree_value': 20,
+                  'sequence': 1,
+                  'services': [],
+                  'total_adjustment': 0,
+                  'total_error': 8.8,
+            }], self.process.get_reebill_metadata_json(session, '99999'))
 
 
     def test_payment_application(self):
