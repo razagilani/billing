@@ -12,7 +12,7 @@ from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing import state
 from billing.test import example_data
-from skyliner.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
 
@@ -75,14 +75,18 @@ class FetchTest(unittest.TestCase):
                 start=date(2000,1,1), end=date(2000,2,1), utility='washgas',
                 service='gas')
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
-        self.reebill.update_readings_from_document(session, utilbill_doc)
+        self.reebill.update_readings_from_document(self.state_db.session(),
+                utilbill_doc)
         self.reebill_doc = example_data.get_reebill('12345', 1,
                 start=date(2000,1,1), end=date(2000,1,1))
         reebill_dao = Mock()
         reebill_dao.load_reebill.return_value = self.reebill_doc
         reebill_dao.load_doc_for_utilbill.return_value = utilbill_doc
 
-        self.splinter = MockSplinter(deterministic=True)
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
                                                     reebill_dao)
         
@@ -198,7 +202,7 @@ class FetchTest(unittest.TestCase):
         register contains the right amount of energy.'''
         # create mock skyliner objects
         monguru = self.splinter.get_monguru()
-        install = self.splinter.get_install_obj_for('99999')
+        install = self.splinter.get_install_obj_for('example-1')
 
         # gather REE data into the reebill
         self.ree_getter.update_renewable_readings(install.name, self.reebill)
