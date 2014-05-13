@@ -835,14 +835,25 @@ class Process(object):
                 version)
         assert len(reebill.utilbills) == 1
 
-        # update "hypothetical charges" in reebill document to match actual
-        # charges in utility bill document. note that hypothetical charges are
-        # just replaced, so they will be wrong until computed below.
         utilbill_document = self.reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
-        reebill.update_readings_from_document(session, utilbill_document)
-        uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill
-                .utilbills[0])
+
+        # NOTE: reebill.update_readings_from_document should not be called
+        # here. only the "conventional_quantity" of each reading should be
+        # updated, but the "renewable_quantity" should not be modified,
+        # nor should the set of readings themselves (because a specific
+        # subset of the utility's registers are being used for renewable energy
+        # billing).
+        # TODO: this could be moved to a method of ReeBill
+        utilbill_registers = chain.from_iterable(r for r in
+                (m['registers'] for m in utilbill_document['meters']))
+        for reading in reebill.readings:
+            register = next(r for r in utilbill_registers if r[
+                    'register_binding'] == reading.register_binding)
+            reading.conventional_quantity = register['quantity']
+
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(
+                reebill.utilbills[0])
         self._compute_reebill_charges(session, reebill, uprs)
 
         # calculate "ree_value", "ree_charges" and "ree_savings" from charges
