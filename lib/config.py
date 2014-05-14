@@ -7,7 +7,7 @@ class ValidatedConfigParser(RawConfigParser):
     def __init__(self, vns, **kwargs):
         """Construct a new :class:`.ValidatedConfigParser`.
         
-        :param vns: a namespace containing formencode Schemas for each
+        :param vns: A namespace containing formencode Schemas for each
          config file section. If a schema does not exist for a given section, 
          the section values are read as strings without validation/conversion.
         """
@@ -15,8 +15,8 @@ class ValidatedConfigParser(RawConfigParser):
         RawConfigParser.__init__(self, **kwargs)
     
     def read(self, filenames):
-        """Calls :meth:`ConfigParser.read` to read the file(s) and then 
-        runs the validation conversion. 
+        """Reads the configuration file using :meth:`ConfigParser.read` and 
+        runs formencode validators on each configuration section. 
         """
         RawConfigParser.read(self, filenames)
         for section in self.sections():

@@ -1,7 +1,7 @@
-#!/usr/bin/python)
 """
 Utility functions to interact with state database
 """
+
 import os, sys
 import itertools
 import datetime
@@ -23,16 +23,38 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
-sys.stdout = sys.stderr
+from exc import DatabaseError
+from alembic.script import ScriptDirectory
+from alembic.config import Config
+from billing import config
+from alembic.migration import MigrationContext
+import logging
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
-Session = scoped_session(sessionmaker())
+log = logging.getLogger(__name__)
 
+Session = scoped_session(sessionmaker())
 Base = declarative_base()
+
+_schema_revision = '55e7e5ebdd29'
+
+def check_schema_revision(schema_revision=_schema_revision):
+    """Checks to see whether the database schema revision matches the 
+    revision expected by the model metadata.
+    """
+    s = Session()
+    conn = s.connection()
+    context = MigrationContext.configure(conn)
+    current_revision = context.get_current_revision()
+    if current_revision != schema_revision:
+        raise DatabaseError("Database schema revision mismatch."
+                            " Require revision %s; current revision %s"
+                            % (schema_revision, current_revision))
+    log.debug('Verified database at schema revision %s' % current_revision)
 
 class Address(Base):
     '''Table representing both "billing addresses" and "service addresses" in
@@ -487,7 +509,7 @@ class ReeBill(Base):
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
-    many-to-many relationship between "utilbill" and "reebill".'''
+    many-to-many relationship between "utilbill" and "reebill".''' 
     __tablename__ = 'utilbill_reebill'
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
@@ -712,6 +734,41 @@ class UtilBill(Base):
                 ','.join(str(ur.reebill.version) for ur in group))
                 for (sequence, group) in groups)
 
+class Charge(Base):
+    """Represents a specific charge item on a utility bill.
+    """
+    
+    __tablename__ = 'charge'
+    
+    id = Column(Integer, primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
+    
+    quantity = Column(String(255))
+    quantity_units = Column(String(255))
+    rate = Column(Float)
+    rsi_binding = Column(String(255))
+    total = Column(Float)
+    
+    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
+    
+    def __init__(self, utilbill, quantity, quantity_units, rate, rsi_binding,
+                 total):
+        """Construct a new :class:`.Charge`.
+        
+        :param utilbill: A :class:`.UtilBill` instance.
+        :param quantity: 
+        :param quantity_unites:
+        :param rate:
+        :param rsi_binding:
+        :param total: 
+        """
+        self.utilbill = utilbill
+        self.quantity = quantity
+        self.quantity_units = quantity_units
+        self.rate = rate
+        self.rsi_binding = rsi_binding
+        self.total = total
+
 class Payment(Base):
     __tablename__ = 'payment'
 
@@ -817,8 +874,7 @@ def guess_utilbill_periods(start_date, end_date):
 
 
 class StateDB(object):
-
-    config = None
+    """A Data Access Class"""
 
     def __init__(self, session, logger=None):
         """Construct a new :class:`.StateDB`.
@@ -826,10 +882,7 @@ class StateDB(object):
         :param session: a ``scoped_session`` instance
         :param logger: a logger object
         """
-        import logging
-        logging.basicConfig()
-
-        self.session = scoped_session
+        self.session = session
         self.logger = logger
 
     def get_customer(self, session, account):
