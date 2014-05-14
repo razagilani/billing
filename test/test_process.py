@@ -665,132 +665,159 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             file1 = StringIO("Let's pretend this is a PDF")
             self.process.upload_utility_bill(session, account, service,
                     date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            self.assertEqual(1, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertFalse(bills[0].processed)
 
-            # check that "metadata" of the document in Mongo match MySQL
-            doc1 = self.reebill_dao.load_doc_for_utilbill(bills[0])
-            self.assertEqual(account, doc1['account'])
-            self.assertEqual('gas', doc1['service'])
-            self.assertEqual('washgas', doc1['utility'])
-            self.assertEqual('DC Non Residential Non Heat', doc1['rate_class'])
-            self.assertEqual({
-                "postal_code" : u"20910",
-                "city" : u"Silver Spring",
-                "state" : u"MD",
-                "addressee" : u"Managing Member Monroe Towers",
-                "street" : u"3501 13TH ST NW LLC"
-            }, doc1['billing_address'])
-            self.assertEqual({
-                u"postal_code" : u"20010",
-                u"city" : u"Washington",
-                u"state" : u"DC",
-                u"addressee" : u"Monroe Towers",
-                u"street" : u"3501 13TH ST NW #WH"
-            }, doc1['service_address'])
-            self.assertEqual(date(2012,1,1), doc1['start'])
-            self.assertEqual(date(2012,2,1), doc1['end'])
-            self.assertEqual(1, len(doc1['meters']))
-            self.assertEqual(date(2012,1,1),
-                    doc1['meters'][0]['prior_read_date'])
-            self.assertEqual(date(2012,2,1),
-                    doc1['meters'][0]['present_read_date'])
-            self.assertEqual([0], [r['quantity'] for r in
-                    doc1['meters'][0]['registers']])
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                'state': 'Final',
+                'service': 'Gas',
+                'utility': 'washgas',
+                'rate_class':  'DC Non Residential Non Heat',
+                'period_start': date(2012,1,1),
+                'period_end': date(2012,2,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                        'DC Non Residential Non Heat',
+                'id': None,
+                'reebills': [],
+            }], utilbills_data, 'id')
+
+            # TODO check "meters and registers" data here
+            # TODO check "charges" data here
+
+            # check charges
+            charges = self.process.get_utilbill_charges_json(session,
+                    utilbills_data[0]['id'])
+            self.assertEqual([], charges)
 
             # second contiguous bill (explicitly specifying utility/rate class)
             file2 = StringIO("Let's pretend this is a PDF")
             self.process.upload_utility_bill(session, account, service,
-                    date(2012,2,1), date(2012,3,1), file2, 'february.pdf',
-                    utility='washgas',
-                    rate_class='DC Non Residential Non Heat')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(2, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            doc2 = self.reebill_dao.load_doc_for_utilbill(bills[1])
-            self.assertEquals(doc1['billing_address'],
-                    doc2['billing_address'])
-            self.assertEquals(doc1['service_address'],
-                    doc2['service_address'])
+                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf',
+                     utility='washgas',
+                     rate_class='DC Non Residential Non Heat')
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                 'state': 'Final',
+                 'service': 'Gas',
+                 'utility': 'washgas',
+                 'rate_class':  'DC Non Residential Non Heat',
+                 'period_start': date(2012,2,1),
+                 'period_end': date(2012,3,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                         'DC Non Residential Non Heat',
+                 'reebills': [],
+            },{
+                'state': 'Final',
+                'service': 'Gas',
+                'utility': 'washgas',
+                'rate_class':  'DC Non Residential Non Heat',
+                'period_start': date(2012,1,1),
+                'period_end': date(2012,2,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                        'DC Non Residential Non Heat',
+                'reebills': [],
+            }], utilbills_data, 'id')
 
             # 3rd bill "Skyline estimated", without a file
             self.process.upload_utility_bill(session, account, service,
                     date(2012,3,1), date(2012,4,1), None, None,
                     state=UtilBill.SkylineEstimated)
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(3, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
-            self.assertEqual(date(2012,3,1), bills[2].period_start)
-            self.assertEqual(date(2012,4,1), bills[2].period_end)
-
-            # 4th bill without a gap between it and the 3rd bill: hypothetical
-            # bills should be inserted
-            file4 = StringIO("File of the July bill.")
-            self.process.upload_utility_bill(session, account, service,
-                     date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
-            self.assertEqual(date(2012,3,1), bills[2].period_start)
-            self.assertEqual(date(2012,4,1), bills[2].period_end)
-
-            # there should be at least 5 bills (it doesn't matter how many).
-            # the hypothetical ones should be contiguous from the start of the
-            # gap to the end.
-            self.assertGreater(len(bills), 4)
-            i = 3
-            while bills[i].period_end <= date(2012,7,1):
-                self.assertEqual(bills[i-1].period_end, bills[i].period_start)
-                self.assertEqual(UtilBill.Hypothetical, bills[i].state)
-                i += 1
-            # Complete bill for July should be the last one
-            self.assertEqual(len(bills)-1, i)
-            self.assertEqual(date(2012,7,1), bills[i].period_start)
-            self.assertEqual(date(2012,8,1), bills[i].period_end)
-            self.assertEqual(UtilBill.Complete, bills[i].state)
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                 'state': 'Skyline Estimated',
+                 'service': 'Gas',
+                 'utility': 'washgas',
+                 'rate_class':  'DC Non Residential Non Heat',
+                 'period_start': date(2012,3,1),
+                 'period_end': date(2012,4,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                         'DC Non Residential Non Heat',
+                 'reebills': [],
+             },{
+                 'state': 'Final',
+                 'service': 'Gas',
+                 'utility': 'washgas',
+                 'rate_class':  'DC Non Residential Non Heat',
+                 'period_start': date(2012,2,1),
+                 'period_end': date(2012,3,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                         'DC Non Residential Non Heat',
+                 'reebills': [],
+             },{
+                 'state': 'Final',
+                 'service': 'Gas',
+                 'utility': 'washgas',
+                 'rate_class':  'DC Non Residential Non Heat',
+                 'period_start': date(2012,1,1),
+                 'period_end': date(2012,2,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                         'DC Non Residential Non Heat',
+                 'reebills': [],
+             }], utilbills_data, 'id')
 
             # change the utility and rate structure name of the last bill, to
             # ensure that that one is used as the "predecessor" to determine
             # these keys in the next bill
-            last_bill = bills[-1]
-            assert last_bill.period_start == date(2012,7,1)
-            assert last_bill.period_end == date(2012,8,1)
-            last_bill.utility = 'New Utility'
-            last_bill.rate_class = 'New Rate Class'
+            last_bill_id = utilbills_data[0]['id']
+            self.process.update_utilbill_metadata(session, last_bill_id,
+                    utility='New Utility', rate_class='New Rate Class')
             self.process.upload_utility_bill(session, account, service,
-                    date(2012,8,1), date(2012,9,1), StringIO('whatever'),
+                    date(2012,5,10), date(2012,6,1), StringIO('whatever'),
                     'august.pdf')
-            new_bill = session.query(UtilBill)\
-                    .filter_by(period_start=date(2012,8,1)).one()
-            self.assertEqual('New Utility', new_bill.utility)
-            self.assertEqual('New Rate Class', new_bill.rate_class)
+
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertEqual(5, len(utilbills_data))
+            last_utilbill = utilbills_data[0]
+            self.assertDocumentsEqualExceptKeys({
+                 'state': 'Final',
+                 'service': 'Gas',
+                 'utility': 'New Utility',
+                 'rate_class':  'New Rate Class',
+                 'period_start': date(2012,5,10),
+                 'period_end': date(2012,6,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
+                         'DC Non Residential Non Heat',
+                 'reebills': [],
+             }, last_utilbill, 'id')
 
     def test_upload_new_service(self):
         '''Tests uploading first utility bill with different service, utility,
