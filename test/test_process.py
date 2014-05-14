@@ -664,10 +664,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # one utility bill
             # service, utility, rate_class are different from the template
             # account
-            file1 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, 'electric',
-                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
-                    utility='pepco', rate_class='Residential-R')
+            with open('data/utility_bill.pdf') as file1:
+                self.process.upload_utility_bill(session, account, 'electric',
+                        date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
+                        utility='pepco', rate_class='Residential-R')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
@@ -697,9 +697,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # second bill: default utility and rate class are chosen
             # when those arguments are not given
-            file2 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, 'electric',
-                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
+            with open('data/utility_bill.pdf') as file2:
+                self.process.upload_utility_bill(session, account, 'electric',
+                         date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
@@ -789,9 +789,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 4th bill: utility and rate_class will be taken from the last bill
             # with the same service.
             last_bill_id = utilbills_data[0]['id']
-            self.process.upload_utility_bill(session, account, 'electric',
-                    date(2012,5,10), date(2012,6,1), StringIO('whatever'),
-                    'august.pdf')
+            with open('data/utility_bill.pdf') as file4:
+                self.process.upload_utility_bill(session, account, 'electric',
+                        date(2012,5,10), date(2012,6,1), file4, 'august.pdf')
 
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
@@ -811,6 +811,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'editable': True,
                  'reebills': [],
              }, last_utilbill, 'id', 'name')
+
+        # make sure images can be accessed for these bills (except the
+        # estimated one)
+        for obj in utilbills_data:
+            id, state = obj['id'], obj['state']
+            if state == 'Final':
+                self.process.get_utilbill_image_path(session, obj['id'], 50)
+            else:
+                self.assertRaises(IOError,
+                        self.process.get_utilbill_image_path, session, id, 50)
 
     def test_delete_utility_bill(self):
         account = '99999'
