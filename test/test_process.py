@@ -791,22 +791,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             last_bill_id = utilbills_data[0]['id']
             with open('data/utility_bill.pdf') as file4:
                 self.process.upload_utility_bill(session, account, 'electric',
-                        date(2012,5,10), date(2012,6,1), file4, 'august.pdf')
+                        date(2012,4,1), date(2012,5,1), file4, 'august.pdf')
 
-            utilbills_data, _ = self.process.get_all_utilbills_json(session,
-                    account, 0, 30)
+            utilbills_data, count = self.process.get_all_utilbills_json(
+                    session, account, 0, 30)
             # NOTE: upload_utility bill is creating additional "missing"
             # utility bills, so there may be > 4 bills in the database now,
             # but this feature should not be tested because it's not used and
             # will probably go away.
+            self.assertEqual(4, count)
             last_utilbill = utilbills_data[0]
             self.assertDocumentsEqualExceptKeys({
                  'state': 'Final',
                  'service': 'Electric',
                  'utility': 'pepco',
                  'rate_class':  'Residential-R',
-                 'period_start': date(2012,5,10),
-                 'period_end': date(2012,6,1),
+                 'period_start': date(2012,4,1),
+                 'period_end': date(2012,5,1),
                  'total_charges': 0,
                  'computed_total': 0,
                  'processed': 0,
@@ -825,7 +826,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 self.assertRaises(IOError,
                         self.process.get_utilbill_image_path, session, id, 50)
 
-    def test_delete_utility_bill(self):
+        # delete utility bills
+        ids = [obj['id'] for obj in utilbills_data]
+
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[3])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(3, count)
+        self.assertTrue(os.access(new_path, os.F_OK))
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[2])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(2, count)
+        self.assertTrue(os.access(new_path, os.F_OK))
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[1])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(1, count)
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[0])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(0, count)
+
+    def test_delete_utility_bill_with_reebill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
 
