@@ -1683,7 +1683,7 @@ class Process(object):
             res += '/'.join(names)
             if len(names) > 0:
                 res += ' - '
-                #Append utility and rate_class from the last utilbill for the
+            #Append utility and rate_class from the last utilbill for the
             #account if one exists as per
             #https://www.pivotaltracker.com/story/show/58027082
             try:
@@ -1704,16 +1704,15 @@ class Process(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(session,
                 account, start, limit)
-        # NOTE does not support multiple reebills per utility bill
-        state_reebills = chain.from_iterable([ubrb.reebill for ubrb in
-                ub._utilbill_reebills] for ub in utilbills)
 
+        # this "name" is really not the name in nexus, but Stiles' creative
+        # way to get utilities and rate structures shown in the "Create New
+        # Account" form. luckily it's ignored by all other consumers of this
+        # data.
         full_names = self.full_names_of_accounts(session, [account])
         full_name = full_names[0] if full_names else account
 
         data = [{
-            # TODO: sending real database ids to the client is a security
-            # risk; these should be encrypted
             'id': ub.id,
             'account': ub.customer.account,
             'name': full_name,
