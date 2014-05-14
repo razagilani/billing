@@ -659,20 +659,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         to BillUpload).'''
         # TODO include test of saving of utility bill files here
         with DBSession(self.state_db) as session:
-            account, service = '99999', 'gas'
+            account = '99999'
 
             # one utility bill
+            # service, utility, rate_class are different from the template
+            # account
             file1 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, service,
-                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
-
+            self.process.upload_utility_bill(session, account, 'electric',
+                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
+                    utility='pepco', rate_class='Residential-R')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
                 'state': 'Final',
-                'service': 'Gas',
-                'utility': 'washgas',
-                'rate_class':  'DC Non Residential Non Heat',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
                 'period_start': date(2012,1,1),
                 'period_end': date(2012,2,1),
                 'total_charges': 0,
@@ -681,11 +683,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'processed': 0,
                 'account': '99999',
                 'editable': True,
-                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                        'DC Non Residential Non Heat',
                 'id': None,
                 'reebills': [],
-            }], utilbills_data, 'id')
+            }], utilbills_data, 'id', 'name')
 
             # TODO check "meters and registers" data here
             # TODO check "charges" data here
@@ -695,50 +695,50 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     utilbills_data[0]['id'])
             self.assertEqual([], charges)
 
-            # second contiguous bill (explicitly specifying utility/rate class)
+            # second bill: default utility and rate class are chosen
+            # when those arguments are not given
             file2 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, service,
-                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf',
-                     utility='washgas',
-                     rate_class='DC Non Residential Non Heat')
+            self.process.upload_utility_bill(session, account, 'electric',
+                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
                  'state': 'Final',
-                 'service': 'Gas',
-                 'utility': 'washgas',
-                 'rate_class':  'DC Non Residential Non Heat',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
                  'period_start': date(2012,2,1),
                  'period_end': date(2012,3,1),
                  'total_charges': 0,
                  'computed_total': 0,
+                 # 'date_received': datetime.utcnow().date(),
                  'processed': 0,
                  'account': '99999',
                  'editable': True,
-                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                         'DC Non Residential Non Heat',
+                 'id': None,
                  'reebills': [],
             },{
                 'state': 'Final',
-                'service': 'Gas',
-                'utility': 'washgas',
-                'rate_class':  'DC Non Residential Non Heat',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
                 'period_start': date(2012,1,1),
                 'period_end': date(2012,2,1),
                 'total_charges': 0,
                 'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
                 'processed': 0,
                 'account': '99999',
                 'editable': True,
-                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                        'DC Non Residential Non Heat',
+                'id': None,
                 'reebills': [],
-            }], utilbills_data, 'id')
+            }], utilbills_data, 'id', 'name')
 
             # 3rd bill "Skyline estimated", without a file
-            self.process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, 'gas',
                     date(2012,3,1), date(2012,4,1), None, None,
-                    state=UtilBill.SkylineEstimated)
+                    state=UtilBill.SkylineEstimated, utility='washgas',
+                    rate_class='DC Non Residential Non Heat')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
@@ -753,48 +753,43 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'processed': 0,
                  'account': '99999',
                  'editable': True,
-                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                         'DC Non Residential Non Heat',
                  'reebills': [],
              },{
+                'state': 'Final',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
+                'period_start': date(2012,2,1),
+                'period_end': date(2012,3,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'id': None,
+                'reebills': [],
+                },{
                  'state': 'Final',
-                 'service': 'Gas',
-                 'utility': 'washgas',
-                 'rate_class':  'DC Non Residential Non Heat',
-                 'period_start': date(2012,2,1),
-                 'period_end': date(2012,3,1),
-                 'total_charges': 0,
-                 'computed_total': 0,
-                 'processed': 0,
-                 'account': '99999',
-                 'editable': True,
-                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                         'DC Non Residential Non Heat',
-                 'reebills': [],
-             },{
-                 'state': 'Final',
-                 'service': 'Gas',
-                 'utility': 'washgas',
-                 'rate_class':  'DC Non Residential Non Heat',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
                  'period_start': date(2012,1,1),
                  'period_end': date(2012,2,1),
                  'total_charges': 0,
                  'computed_total': 0,
+                 # 'date_received': datetime.utcnow().date(),
                  'processed': 0,
                  'account': '99999',
                  'editable': True,
-                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                         'DC Non Residential Non Heat',
+                 'id': None,
                  'reebills': [],
-             }], utilbills_data, 'id')
+             }], utilbills_data, 'id', 'name')
 
-            # change the utility and rate structure name of the last bill, to
-            # ensure that that one is used as the "predecessor" to determine
-            # these keys in the next bill
+            # 4th bill: utility and rate_class will be taken from the last bill
+            # with the same service.
             last_bill_id = utilbills_data[0]['id']
-            self.process.update_utilbill_metadata(session, last_bill_id,
-                    utility='New Utility', rate_class='New Rate Class')
-            self.process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, 'electric',
                     date(2012,5,10), date(2012,6,1), StringIO('whatever'),
                     'august.pdf')
 
@@ -804,9 +799,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             last_utilbill = utilbills_data[0]
             self.assertDocumentsEqualExceptKeys({
                  'state': 'Final',
-                 'service': 'Gas',
-                 'utility': 'New Utility',
-                 'rate_class':  'New Rate Class',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
                  'period_start': date(2012,5,10),
                  'period_end': date(2012,6,1),
                  'total_charges': 0,
@@ -814,35 +809,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'processed': 0,
                  'account': '99999',
                  'editable': True,
-                 'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: '
-                         'DC Non Residential Non Heat',
                  'reebills': [],
-             }, last_utilbill, 'id')
-
-    def test_upload_new_service(self):
-        '''Tests uploading first utility bill with different service, utility,
-        rate_class from the template document for the account.'''
-        with DBSession(self.state_db) as session:
-            # account was created with the following values
-            template_doc = self.reebill_dao.load_utilbill_template(session,
-                    '99999')
-            assert template_doc['service'] == 'gas'
-            assert template_doc['utility'] == 'washgas'
-            assert template_doc['rate_class'] == 'DC Non Residential Non Heat'
-
-            self.process.upload_utility_bill(session, '99999', 'electric',
-                    date(2013,1,1), date(2013,2,1), StringIO('a file'),
-                    'january.pdf', utility='Pepco',
-                    rate_class='Residential R Winter')
-
-            bill = session.query(UtilBill).one()
-            self.assertEqual('electric', bill.service)
-            self.assertEqual('Pepco', bill.utility)
-            self.assertEqual('Residential R Winter', bill.rate_class)
-            doc = self.reebill_dao.load_doc_for_utilbill(bill)
-            self.assertEqual('electric', doc['service'])
-            self.assertEqual('Pepco', doc['utility'])
-            self.assertEqual('Residential R Winter', doc['rate_class'])
+             }, last_utilbill, 'id', 'name')
 
     def test_delete_utility_bill(self):
         account = '99999'
