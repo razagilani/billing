@@ -660,165 +660,192 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         to BillUpload).'''
         # TODO include test of saving of utility bill files here
         with DBSession(self.state_db) as session:
-            account, service = '99999', 'gas'
+            account = '99999'
 
             # one utility bill
-            file1 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, service,
-                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            self.assertEqual(1, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertFalse(bills[0].processed)
+            # service, utility, rate_class are different from the template
+            # account
+            with open('data/utility_bill.pdf') as file1:
+                self.process.upload_utility_bill(session, account, 'electric',
+                        date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
+                        utility='pepco', rate_class='Residential-R')
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                'state': 'Final',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
+                'period_start': date(2012,1,1),
+                'period_end': date(2012,2,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'id': None,
+                'reebills': [],
+            }], utilbills_data, 'id', 'name')
 
-            # check that "metadata" of the document in Mongo match MySQL
-            doc1 = self.reebill_dao.load_doc_for_utilbill(bills[0])
-            self.assertEqual(account, doc1['account'])
-            self.assertEqual('gas', doc1['service'])
-            self.assertEqual('washgas', doc1['utility'])
-            self.assertEqual('DC Non Residential Non Heat', doc1['rate_class'])
-            self.assertEqual({
-                "postal_code" : u"20910",
-                "city" : u"Silver Spring",
-                "state" : u"MD",
-                "addressee" : u"Managing Member Monroe Towers",
-                "street" : u"3501 13TH ST NW LLC"
-            }, doc1['billing_address'])
-            self.assertEqual({
-                u"postal_code" : u"20010",
-                u"city" : u"Washington",
-                u"state" : u"DC",
-                u"addressee" : u"Monroe Towers",
-                u"street" : u"3501 13TH ST NW #WH"
-            }, doc1['service_address'])
-            self.assertEqual(date(2012,1,1), doc1['start'])
-            self.assertEqual(date(2012,2,1), doc1['end'])
-            self.assertEqual(1, len(doc1['meters']))
-            self.assertEqual(date(2012,1,1),
-                    doc1['meters'][0]['prior_read_date'])
-            self.assertEqual(date(2012,2,1),
-                    doc1['meters'][0]['present_read_date'])
-            self.assertEqual([0], [r['quantity'] for r in
-                    doc1['meters'][0]['registers']])
+            # TODO check "meters and registers" data here
+            # TODO check "charges" data here
 
-            # second contiguous bill (explicitly specifying utility/rate class)
-            file2 = StringIO("Let's pretend this is a PDF")
-            self.process.upload_utility_bill(session, account, service,
-                    date(2012,2,1), date(2012,3,1), file2, 'february.pdf',
-                    utility='washgas',
-                    rate_class='DC Non Residential Non Heat')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(2, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            doc2 = self.reebill_dao.load_doc_for_utilbill(bills[1])
-            self.assertEquals(doc1['billing_address'],
-                    doc2['billing_address'])
-            self.assertEquals(doc1['service_address'],
-                    doc2['service_address'])
+            # check charges
+            charges = self.process.get_utilbill_charges_json(session,
+                    utilbills_data[0]['id'])
+            self.assertEqual([], charges)
+
+            # second bill: default utility and rate class are chosen
+            # when those arguments are not given
+            with open('data/utility_bill.pdf') as file2:
+                self.process.upload_utility_bill(session, account, 'electric',
+                         date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                 'state': 'Final',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
+                 'period_start': date(2012,2,1),
+                 'period_end': date(2012,3,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 # 'date_received': datetime.utcnow().date(),
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'id': None,
+                 'reebills': [],
+            },{
+                'state': 'Final',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
+                'period_start': date(2012,1,1),
+                'period_end': date(2012,2,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'id': None,
+                'reebills': [],
+            }], utilbills_data, 'id', 'name')
 
             # 3rd bill "Skyline estimated", without a file
-            self.process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, 'gas',
                     date(2012,3,1), date(2012,4,1), None, None,
-                    state=UtilBill.SkylineEstimated)
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(3, len(bills))
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
-            self.assertEqual(date(2012,3,1), bills[2].period_start)
-            self.assertEqual(date(2012,4,1), bills[2].period_end)
+                    state=UtilBill.SkylineEstimated, utility='washgas',
+                    rate_class='DC Non Residential Non Heat')
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertDocumentsEqualExceptKeys([{
+                 'state': 'Skyline Estimated',
+                 'service': 'Gas',
+                 'utility': 'washgas',
+                 'rate_class':  'DC Non Residential Non Heat',
+                 'period_start': date(2012,3,1),
+                 'period_end': date(2012,4,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'reebills': [],
+             },{
+                'state': 'Final',
+                'service': 'Electric',
+                'utility': 'pepco',
+                'rate_class':  'Residential-R',
+                'period_start': date(2012,2,1),
+                'period_end': date(2012,3,1),
+                'total_charges': 0,
+                'computed_total': 0,
+                # 'date_received': datetime.utcnow().date(),
+                'processed': 0,
+                'account': '99999',
+                'editable': True,
+                'id': None,
+                'reebills': [],
+                },{
+                 'state': 'Final',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
+                 'period_start': date(2012,1,1),
+                 'period_end': date(2012,2,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 # 'date_received': datetime.utcnow().date(),
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'id': None,
+                 'reebills': [],
+             }], utilbills_data, 'id', 'name')
 
-            # 4th bill without a gap between it and the 3rd bill: hypothetical
-            # bills should be inserted
-            file4 = StringIO("File of the July bill.")
-            self.process.upload_utility_bill(session, account, service,
-                     date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
-            bills = self.state_db.list_utilbills(session,
-                    account)[0].filter(UtilBill.service==service).all()
-            bills = [a for a in reversed(bills)]
-            self.assertEqual(UtilBill.Complete, bills[0].state)
-            self.assertEqual(date(2012,1,1), bills[0].period_start)
-            self.assertEqual(date(2012,2,1), bills[0].period_end)
-            self.assertEqual(UtilBill.Complete, bills[1].state)
-            self.assertEqual(date(2012,2,1), bills[1].period_start)
-            self.assertEqual(date(2012,3,1), bills[1].period_end)
-            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
-            self.assertEqual(date(2012,3,1), bills[2].period_start)
-            self.assertEqual(date(2012,4,1), bills[2].period_end)
+            # 4th bill: utility and rate_class will be taken from the last bill
+            # with the same service.
+            last_bill_id = utilbills_data[0]['id']
+            with open('data/utility_bill.pdf') as file4:
+                self.process.upload_utility_bill(session, account, 'electric',
+                        date(2012,4,1), date(2012,5,1), file4, 'august.pdf')
 
-            # there should be at least 5 bills (it doesn't matter how many).
-            # the hypothetical ones should be contiguous from the start of the
-            # gap to the end.
-            self.assertGreater(len(bills), 4)
-            i = 3
-            while bills[i].period_end <= date(2012,7,1):
-                self.assertEqual(bills[i-1].period_end, bills[i].period_start)
-                self.assertEqual(UtilBill.Hypothetical, bills[i].state)
-                i += 1
-            # Complete bill for July should be the last one
-            self.assertEqual(len(bills)-1, i)
-            self.assertEqual(date(2012,7,1), bills[i].period_start)
-            self.assertEqual(date(2012,8,1), bills[i].period_end)
-            self.assertEqual(UtilBill.Complete, bills[i].state)
+            utilbills_data, count = self.process.get_all_utilbills_json(
+                    session, account, 0, 30)
+            # NOTE: upload_utility bill is creating additional "missing"
+            # utility bills, so there may be > 4 bills in the database now,
+            # but this feature should not be tested because it's not used and
+            # will probably go away.
+            self.assertEqual(4, count)
+            last_utilbill = utilbills_data[0]
+            self.assertDocumentsEqualExceptKeys({
+                 'state': 'Final',
+                 'service': 'Electric',
+                 'utility': 'pepco',
+                 'rate_class':  'Residential-R',
+                 'period_start': date(2012,4,1),
+                 'period_end': date(2012,5,1),
+                 'total_charges': 0,
+                 'computed_total': 0,
+                 'processed': 0,
+                 'account': '99999',
+                 'editable': True,
+                 'reebills': [],
+             }, last_utilbill, 'id', 'name')
 
-            # change the utility and rate structure name of the last bill, to
-            # ensure that that one is used as the "predecessor" to determine
-            # these keys in the next bill
-            last_bill = bills[-1]
-            assert last_bill.period_start == date(2012,7,1)
-            assert last_bill.period_end == date(2012,8,1)
-            last_bill.utility = 'New Utility'
-            last_bill.rate_class = 'New Rate Class'
-            self.process.upload_utility_bill(session, account, service,
-                    date(2012,8,1), date(2012,9,1), StringIO('whatever'),
-                    'august.pdf')
-            new_bill = session.query(UtilBill)\
-                    .filter_by(period_start=date(2012,8,1)).one()
-            self.assertEqual('New Utility', new_bill.utility)
-            self.assertEqual('New Rate Class', new_bill.rate_class)
+        # make sure images can be accessed for these bills (except the
+        # estimated one)
+        for obj in utilbills_data:
+            id, state = obj['id'], obj['state']
+            if state == 'Final':
+                self.process.get_utilbill_image_path(session, id, 50)
+            else:
+                self.assertRaises(IOError,
+                        self.process.get_utilbill_image_path, session, id, 50)
 
-    def test_upload_new_service(self):
-        '''Tests uploading first utility bill with different service, utility,
-        rate_class from the template document for the account.'''
-        with DBSession(self.state_db) as session:
-            # account was created with the following values
-            template_doc = self.reebill_dao.load_utilbill_template(session,
-                    '99999')
-            assert template_doc['service'] == 'gas'
-            assert template_doc['utility'] == 'washgas'
-            assert template_doc['rate_class'] == 'DC Non Residential Non Heat'
+        # delete utility bills
+        ids = [obj['id'] for obj in utilbills_data]
 
-            self.process.upload_utility_bill(session, '99999', 'electric',
-                    date(2013,1,1), date(2013,2,1), StringIO('a file'),
-                    'january.pdf', utility='Pepco',
-                    rate_class='Residential R Winter')
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[3])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(3, count)
+        self.assertTrue(os.access(new_path, os.F_OK))
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[2])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(2, count)
+        self.assertTrue(os.access(new_path, os.F_OK))
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[1])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(1, count)
+        _, new_path = self.process.delete_utility_bill_by_id(session, ids[0])
+        _, count = self.process.get_all_utilbills_json(session, account, 0, 30)
+        self.assertEqual(0, count)
 
-            bill = session.query(UtilBill).one()
-            self.assertEqual('electric', bill.service)
-            self.assertEqual('Pepco', bill.utility)
-            self.assertEqual('Residential R Winter', bill.rate_class)
-            doc = self.reebill_dao.load_doc_for_utilbill(bill)
-            self.assertEqual('electric', doc['service'])
-            self.assertEqual('Pepco', doc['utility'])
-            self.assertEqual('Residential R Winter', doc['rate_class'])
-
-    def test_delete_utility_bill(self):
+    def test_delete_utility_bill_with_reebill(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
 
@@ -944,151 +971,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(address['state'],'DC')
             self.assertEqual(address['addressee'],'Monroe Towers')
             self.assertEqual(address['street'],'3501 13TH ST NW #WH')
-
-    def test_new_version(self):
-        acc = '99999'
-        with DBSession(self.state_db) as session:
-            # create utility bill and reebill
-            self.process.upload_utility_bill(session, acc, 'gas',
-                     date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
-                     'january.pdf')
-            self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
-
-            # TODO creating new version of reebill should fail until it's
-            # issued
-
-            # there should be two utility bill documents: the account's
-            # template, an an editable utility bill attached to the current
-            # reebill
-            utilbill = session.query(UtilBill).one()
-            all_utilbill_docs = self.reebill_dao.load_utilbills()
-            self.assertEquals(2, len(all_utilbill_docs))
-            self.assertIn(ObjectId(utilbill.customer.utilbill_template_id),
-                    [d['_id'] for d in all_utilbill_docs])
-            editable_utilbill_doc = next(doc for doc in all_utilbill_docs
-                    if doc['_id'] == ObjectId(utilbill.document_id))
-            self.assertNotIn('sequence', editable_utilbill_doc)
-            self.assertNotIn('version', editable_utilbill_doc)
-            self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-
-            # reebill should be associated with the utility bill via
-            # utilbill_reebill, and there is no frozen document id in the
-            # utilbill_reebill table
-            self.assertEquals(1, len(utilbill._utilbill_reebills))
-            self.assertEquals(None, utilbill._utilbill_reebills[0].document_id)
-            self.assertEquals(None,
-                    utilbill._utilbill_reebills[0].uprs_document_id)
-            reebill = self.state_db.get_reebill(session, acc, 1)
-            reebill_doc = self.reebill_dao.load_reebill(acc, 1)
-            self.assertEqual(1, len(reebill_doc.reebill_dict['utilbills']))
-
-            # update the meter like the user normally would
-            # "This is required for process.new_version =>
-            # fetch_bill_data.update_renewable_readings" (???)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                    reebill.utilbills[0])
-            mongo.set_meter_read_period(utilbill_doc, date(2012,1,1),
-                    date(2012,2,1))
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            self.process.compute_reebill(session, acc, 1)
-            self.reebill_dao.save_reebill(reebill_doc)
-
-            # issue reebill
-            self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
-
-            # there should now be 3 utility bill documents: the template, an
-            # editable document whose _id is the document_id of the utility
-            # bill in MySQL, and a frozen one whose _id is the document_id in
-            # the utilbill_reebill row associating the utility bill with the
-            # reebill
-            all_ids = [doc['_id'] for doc in self.reebill_dao.load_utilbills()]
-            self.assertEquals(3, len(all_ids))
-            self.assertIn(ObjectId(utilbill.customer.utilbill_template_id),
-                    all_ids)
-            self.assertIn(ObjectId(utilbill.document_id), all_ids)
-            self.assertEquals(1, len(utilbill._utilbill_reebills))
-            self.assertIn(ObjectId(utilbill._utilbill_reebills[0].document_id),
-                    all_ids)
-
-            reebill = session.query(ReeBill).one()
-            reebill_doc = self.reebill_dao.load_reebill(acc, 1)
-            self.assertEqual(1, len(reebill.utilbills))
-            self.assertEqual(1, len(reebill_doc.reebill_dict['utilbills']))
-            self.assertEqual(
-                    ObjectId(utilbill._utilbill_reebills[0].document_id),
-                    reebill_doc.reebill_dict['utilbills'][0]['id'])
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill,
-                    reebill=reebill)
-            self.assertNotEqual(ObjectId(utilbill.uprs_document_id),
-                    uprs.id)
-            self.assertEqual(
-                    ObjectId(utilbill._utilbill_reebills[0].uprs_document_id),
-                    uprs.id)
-
-            # modify editable utility bill document so its meter read dates are
-            # different from both its period and the frozen document's meter read
-            # dates. this lets us test that the new meter read dates are used,
-            # rather than the period dates or the old meter read dates.
-            # (regression test for bug 46127315)
-            editable_utilbill = self.reebill_dao.load_utilbill(acc, 'gas',
-                    'washgas', date(2012,1,1), date(2012,2,1), sequence=False,
-                    version=False)
-            editable_utilbill['meters'][0]['prior_read_date'] = date(2012,1,15)
-            editable_utilbill['meters'][0]['present_read_date'] = date(2012,3,15)
-            self.reebill_dao.save_utilbill(editable_utilbill)
-            # find the expected total energy (produced by MockSplinter) if this
-            # period is used. it is extremely unlikely to exactly match the total
-            # energy that would be produced for a different period (especially
-            # because the length is different).
-            correct_energy_amount_therms = sum([hour_of_energy(h) for h in
-                    cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
-
-            # create new version of 1
-            self.process.new_version(session, acc, 1)
-            new_reebill_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            new_reebill = self.state_db.get_reebill(session, acc, 1, version=1)
-
-            # basic facts about new version
-            self.assertEqual(acc, new_reebill_doc.account)
-            self.assertEqual(1, new_reebill_doc.sequence)
-            self.assertEqual(1, new_reebill_doc.version)
-            self.assertEqual(1, self.state_db.max_version(session, acc, 1))
-
-            # the editable utility bill with the new meter read period should be used
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                    new_reebill.utilbills[0])
-            self.assertEqual((date(2012,1,15), date(2012,3,15)),
-                mongo.meter_read_period(utilbill_doc))
-
-            for utilbill in new_reebill.utilbills:
-                # utility bill document, UPRS document, and
-                # rate structure object should be the same as the "current" ones
-                # belonging to the utility bill itself...
-                current_utilbill = self.reebill_dao.load_doc_for_utilbill(
-                        utilbill)
-                current_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                        utilbill, reebill=new_reebill)
-                reebill_utilbill = self.reebill_dao.load_doc_for_utilbill(
-                        utilbill, reebill=new_reebill)
-                reebill_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                        utilbill, reebill=new_reebill)
-                self.assertEquals(current_uprs, reebill_uprs)
-
-                # ...and should not match the frozen ones that were in the previous
-                # version (at least _ids should be different)
-                original_reebill = self.state_db.get_reebill(session, acc, 1,
-                        version=0)
-                frozen_utilbill = self.reebill_dao.load_doc_for_utilbill(
-                        utilbill, reebill=original_reebill)
-                frozen_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                        utilbill, reebill=original_reebill)
-                self.assertNotEqual(frozen_utilbill, reebill_utilbill)
-                self.assertNotEqual(frozen_uprs, reebill_uprs)
-
-            # if the total REE is 'correct_energy_amount_therms' (within
-            # floating-point error), the correct meter read period was used.
-            self.assertAlmostEqual(correct_energy_amount_therms,
-                    float(new_reebill.get_total_renewable_energy()))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections(), get_total_adjustment(), and
@@ -1743,46 +1625,120 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual([utilbill], reebill.utilbills)
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
 
-
-    def test_adjustment(self):
+    def test_correction_adjustment(self):
         '''Tests that adjustment from a correction is applied to (only) the
         earliest unissued bill.'''
+        # replace process.ree_getter with one that always sets the renewable
+        # energy readings to a known value
+        # TODO: move this into TestProcess.setUp and use it in every test
+        class MockReeGetter(object):
+            def __init__(self, quantity):
+                self.quantity = quantity
+            def update_renewable_readings(self, olap_id, reebill,
+                                          use_olap=True, verbose=False):
+                for reading in reebill.readings:
+                    reading.renewable_quantity = self.quantity
+        self.process.ree_getter = MockReeGetter(10)
+
         acc = '99999'
 
         with DBSession(self.state_db) as session:
             # create 3 utility bills: Jan, Feb, Mar
-            utilbill_ids, uprs_ids, cprs_ids = [], [], []
             for i in range(3):
-                self.process.upload_utility_bill(session, acc, 'gas',
-                        date(2012, i+1, 1), date(2012, i+2, 1),
+                utilbill = self.process.upload_utility_bill(session, acc,
+                        'gas', date(2012, i+1, 1), date(2012, i+2, 1),
                         StringIO('a utility bill'), 'filename.pdf')
-            
+                self.process.add_rsi(session, utilbill.id)
+                self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
+                    'rsi_binding': 'A',
+                    'quantity': 'REG_TOTAL.quantity',
+                    'rate': 1
+                })
+                self.process.compute_utility_bill(session, utilbill.id)
+                self.process.refresh_charges(session, utilbill.id)
+
             # create 1st reebill and issue it
-            one = self.process.roll_reebill(session, acc,
-                                            start_date=date(2012,1,1),
-                                            integrate_skyline_backend=False)
+            self.process.roll_reebill(session, acc,
+                    start_date=date(2012,1,1), integrate_skyline_backend=False)
+            self.process.bind_renewable_energy(session, acc, 1)
+            self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
+            self.assertEqual([{
+              'id': 1,
+              'sequence': 1,
+              'max_version': 0,
+              'issued': True,
+              'issue_date': datetime.utcnow().date(),
+              'actual_total': 0.,
+              'hypothetical_total': 10,
+              'payment_received': 0.,
+              'period_start': date(2012,1,1),
+              'period_end': date(2012,2,1),
+              'prior_balance': 0.,
+              'ree_charges': 8.8,
+              'ree_value': 10,
+              'services': [],
+              'total_adjustment': 0.,
+              'total_error': 0.,
+              'ree_quantity': 10,
+              'balance_due': 8.8,
+              'balance_forward': 0,
+              'corrections': '-',
+            }], self.process.get_reebill_metadata_json(session, '99999'))
 
             # create 2nd reebill, leaving it unissued
-            two = self.process.roll_reebill(session, acc,
-                                            integrate_skyline_backend=False)
+            self.process.roll_reebill(session, acc,
+                    integrate_skyline_backend=False)
 
-            # make a correction on reebill #1, producing an adjustment of 100
-            # TODO: frozen utility bill document of the reebill does not
-            # exist, causing failure when the document is looked up here.
-            # something about freezing the document or setting its id in MySQL
-            # went wrong when it was issued.
+            # make a correction on reebill #1. this time 20 therms of renewable
+            # energy instead of 10 were consumed.
+            self.process.ree_getter.quantity = 20
             self.process.new_version(session, acc, 1)
-            one_corrected = session.query(ReeBill).filter_by(
-                        sequence=1, version=1).one()
-            one_corrected.ree_charge = one.ree_charge + 100
-
             self.process.compute_reebill(session, acc, 2)
 
-            # only 'two' should get an adjustment; 'one' is a correction, so it
-            # can't have adjustments
-            self.assertEquals(0, one.total_adjustment)
-            self.assertEquals(100, two.total_adjustment)
+            self.assertEqual([{
+                'actual_total': 0,
+                  'balance_due': 17.6,
+                  'balance_forward': 17.6,
+                  'corrections': '(never issued)',
+                  'hypothetical_total': 0,
+                  'id': 2,
+                  'issue_date': None,
+                  'issued': False,
+                  'max_version': 0,
+                  'payment_received': 0.0,
+                  'period_end': date(2012, 3, 1),
+                  'period_start': date(2012, 2, 1),
+                  'prior_balance': 8.8,
+                  'ree_charges': 0.0,
+                  'ree_quantity': 0,
+                  'ree_value': 0,
+                  'sequence': 2,
+                  'services': [],
+                  'total_adjustment': 8.8,
+                  'total_error': 0.0
+            },{
+                 'actual_total': 0,
+                  'balance_due': 17.6,
+                  'balance_forward': 0,
+                  'corrections': '#1 not issued',
+                  'hypothetical_total': 20,
+                  'id': 1,
+                  'issue_date': None,
+                  'issued': False,
+                  'max_version': 1,
+                  'payment_received': 0.0,
+                  'period_end': date(2012, 2, 1),
+                  'period_start': date(2012, 1, 1),
+                  'prior_balance': 0,
+                  'ree_charges': 17.6,
+                  'ree_quantity': 20,
+                  'ree_value': 20,
+                  'sequence': 1,
+                  'services': [],
+                  'total_adjustment': 0,
+                  'total_error': 8.8,
+            }], self.process.get_reebill_metadata_json(session, '99999'))
 
 
     def test_payment_application(self):
@@ -1942,32 +1898,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 check()
                 self.process.compute_reebill(session, acc, 2)
                 check()
-
-    def test_choose_next_utilbills_bug(self):
-        '''Regression test for
-        https://www.pivotaltracker.com/story/show/48430769.
-        (I'm not sure if this test has any value now that choose_next_utilbills
-        is not used and first reebill is created by specifying a particular
-        utility bill rather than a date.--DK)'''
-        account = '99999'
-        with DBSession(self.state_db) as session:
-            # add 2 utility bills
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf')
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
-                    'february.pdf')
-            u1, u2 = session.query(UtilBill).order_by(UtilBill.period_start)\
-                    .all()
-
-            self.process.roll_reebill(session, account, start_date=date(2013,1,1))
-
-        # only u1 should be attached to the reebill
-        reebill = session.query(ReeBill).one()
-        self.assertEqual([u1], reebill.utilbills)
-        self.assertEqual([reebill], [ur.reebill for ur in u1._utilbill_reebills])
-        self.assertEqual([], [ur.reebill for ur in u2._utilbill_reebills])
 
     def test_create_first_reebill(self):
         '''Tests Process.create_first_reebill which creates the first reebill
