@@ -22,6 +22,7 @@ from billing.processing.exceptions import BillStateError, NoRSIError
 from billing.test import utils
 
 import pprint
+from os.path import realpath, join, dirname
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
 
@@ -31,6 +32,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     #def __init__(self, methodName='runTest', param=None):
         #print '__init__'
         #super(ProcessTest, self).__init__(methodName)
+
+    def setup_dummy_utilbill_calc_charges(self, session, acc, begin_date, end_date):
+        """Upload a dummy-utilbill, add an RSI, and calculate charges
+        """
+        utilbill = self.process.upload_utility_bill(session, acc,
+                                                    'gas', begin_date, end_date,
+                                                    StringIO('a utility bill'), 
+                                                    'filename.pdf')
+        self.process.add_rsi(session, utilbill.id)
+        self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
+            'rsi_binding': 'A',
+            'quantity': 'REG_TOTAL.quantity',
+            'rate': '1'
+        })
+        self.process.refresh_charges(session, utilbill.id)      #creates charges
+        self.process.compute_utility_bill(session, utilbill.id) #updates charge values
+
+
+
 
     def test_create_new_account(self):
         billing_address = {
@@ -587,6 +607,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_upload_utility_bill(self):
+        #Good
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
@@ -597,7 +618,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # one utility bill
             # service, utility, rate_class are different from the template
             # account
-            with open('data/utility_bill.pdf') as file1:
+            utilbill_path = join(dirname(realpath(__file__)), 'data', 'utility_bill.pdf')
+            with open(utilbill_path) as file1:
                 self.process.upload_utility_bill(session, account, 'electric',
                         date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
                         utility='pepco', rate_class='Residential-R')
@@ -631,7 +653,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # second bill: default utility and rate class are chosen
             # when those arguments are not given, and non-standard file
             # extension is used
-            with open('data/utility_bill.pdf') as file2:
+            with open(utilbill_path) as file2:
                 self.process.upload_utility_bill(session, account, 'electric',
                          date(2012,2,1), date(2012,3,1), file2, 'february.abc')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
@@ -723,7 +745,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # 4th bill: utility and rate_class will be taken from the last bill
             # with the same service. the file has no extension.
             last_bill_id = utilbills_data[0]['id']
-            with open('data/utility_bill.pdf') as file4:
+            with open(utilbill_path) as file4:
                 self.process.upload_utility_bill(session, account, 'electric',
                         date(2012,4,1), date(2012,5,1), file4, 'august')
 
@@ -852,8 +874,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(address['street'],'3501 13TH ST NW #WH')
 
     def test_correction_issuing(self):
-        '''Tests get_unissued_corrections(), get_total_adjustment(), and
-        issue_corrections().'''
+        '''Test creating corrections on reebills, and issuing them to create
+        adjustments on other reebills.
+        '''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
@@ -1524,17 +1547,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create 3 utility bills: Jan, Feb, Mar
             for i in range(3):
-                utilbill = self.process.upload_utility_bill(session, acc,
-                        'gas', date(2012, i+1, 1), date(2012, i+2, 1),
-                        StringIO('a utility bill'), 'filename.pdf')
-                self.process.add_rsi(session, utilbill.id)
-                self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
-                    'rsi_binding': 'A',
-                    'quantity': 'REG_TOTAL.quantity',
-                    'rate': 1
-                })
-                self.process.compute_utility_bill(session, utilbill.id)
-                self.process.refresh_charges(session, utilbill.id)
+                self.setup_dummy_utilbill_calc_charges(session, acc, 
+                                    date(2012, i+1, 1), date(2012, i+2, 1))
 
             # create 1st reebill and issue it
             self.process.roll_reebill(session, acc,
