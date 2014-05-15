@@ -2012,6 +2012,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_compute_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
+            # upload 2 utility bills
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
@@ -2019,34 +2020,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
                     'february.pdf')
 
-            # create utility bill with a charge and a rate structure (so the
+            # "process" the 1st utility bill by adding 1 RSI, and propagate
+            # it to the 2nd utility bill
             # reebill can have real charges in it)
-            first_utilbill = session.query(UtilBill).filter_by(
-                    customer=self.state_db.get_customer(session, account))\
-                    .order_by(UtilBill.period_start).first()
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(first_utilbill)
-            utilbill_doc['charges'] = [{
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 10,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 10,
-                    'group': 'All Charges',
-            }]
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                    first_utilbill)
-            uprs.rates = [RateStructureItem(
-                rsi_binding='THE_CHARGE',
-                quantity='REG_TOTAL.quantity',
-                rate='1',
-            )]
-            uprs.save()
+            utilbills_data, count = self.process.get_all_utilbills_json(
+                    session, account, 0, 30)
+            id_2, id_1 = [obj['id'] for obj in utilbills_data]
+            self.process.add_rsi(session, id_1)
+            self.process.update_rsi(session, id_1, 'New RSI #1',
+                    {'rsi_binding':'THE_CHARGE', 'quantity':'10', 'rate':'10',
+                    'group':'All Charges', 'shared':False})
+            self.process.refresh_charges(session, id_1)
+            self.process.update_utilbill_metadata(session, id_1, processed=True)
+            self.process.regenerate_uprs(session, id_2)
+            self.process.refresh_charges(session, id_2)
+            self.process.update_utilbill_metadata(session, id_2, processed=True)
 
             # create reebill, bind, compute, issue
-            bill1 = self.process.roll_reebill(session, account, start_date=date(2013,1,1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
+            self.process.roll_reebill(session, account,
+                    start_date=date(2013,1,1), integrate_skyline_backend=False,
+                    skip_compute=True)
+            x = self.process.get_hypothetical_matched_charges(session, account,
+                                                            1)
             bill1.discount_rate = 0.5
             self.process.ree_getter.update_renewable_readings(
                     self.nexus_util.olap_id(account), bill1, use_olap=True)
