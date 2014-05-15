@@ -7,6 +7,7 @@ import sys
 from datetime import date, datetime,timedelta
 import csv
 from bisect import bisect_left
+import skyliner
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils, holidays
@@ -97,7 +98,7 @@ class RenewableEnergyGetter(object):
                 # TODO support die_fast=False: 35547299
                 timeseries = [pair[1] for pair in
                     install_obj.get_billable_energy_timeseries(
-                    date_to_datetime(start), date_to_datetime(end), measure=reading.measure)]
+                    date_to_datetime(start), date_to_datetime(end), reading.measure)]
 
             # this function takes an hour and returns energy sold during that hour
             def energy_function(day, hourrange):
