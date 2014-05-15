@@ -367,7 +367,7 @@ class Process(object):
             except (ValueError, StopIteration) as e:
                 self.logger.error("Error when getting renewable energy "
                         "quantity for reebill %s-%s-%s:\n%s" % (
-                        account, reebill.sequence, reebill.max_version,
+                        account, reebill.sequence, reebill.version,
                         traceback.format_exc()))
                 the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
