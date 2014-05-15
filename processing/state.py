@@ -743,24 +743,28 @@ class Charge(Base):
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
     
-    quantity = Column(String(255))
+    description = Column(String(255))
+    group = Column(String(255))
+    quantity = Column(Float)
     quantity_units = Column(String(255))
     rate = Column(Float)
     rsi_binding = Column(String(255))
     total = Column(Float)
     
-    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
+    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id)) 
     
-    def __init__(self, utilbill, quantity, quantity_units, rate, rsi_binding,
-                 total):
+    def __init__(self, utilbill, description, quantity, quantity_units, rate, 
+                 rsi_binding, total):
         """Construct a new :class:`.Charge`.
         
         :param utilbill: A :class:`.UtilBill` instance.
-        :param quantity: 
-        :param quantity_unites:
-        :param rate:
-        :param rsi_binding:
-        :param total: 
+        :param description: A description of the charge.
+        :param group: The charge group
+        :param quantity: The quantity consumed
+        :param quantity_units: The units of the quantity (i.e. Therms/kWh)
+        :param rate: The charge per unit of quantity
+        :param rsi_binding: The rate structure item corresponding to the charge
+        :param total: The total charge (equal to rate * quantity) 
         """
         self.utilbill = utilbill
         self.quantity = quantity
