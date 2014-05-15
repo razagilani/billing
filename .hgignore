@@ -1,0 +1,10 @@
+glob:*.pyc
+glob:*.swp
+reebill/reebill.cfg
+reebill/reebill.log
+reebill/reconciliation.log
+reebill/reconciliation_report.json
+reebill/ui/revision.txt
+revision.txt
+.directory
+.idea
