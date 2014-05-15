@@ -155,7 +155,7 @@ port = 27017
 
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
-        self.state_db.session.commit()
+        self.state_db.session.rollback()
 
         # clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
