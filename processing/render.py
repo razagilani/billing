@@ -602,25 +602,22 @@ class ReebillRenderer:
 
         # muliple services are not supported
         last_group=None
-        for charge in reebill_document.get_all_hypothetical_charges():
+        for charge in reebill.charges:
             # Only print the group if it changed
-            if last_group == charge['group']:
+            if last_group == charge.group:
                 group = None
             else:
-                last_group = charge['group']
+                last_group = charge.group
                 group = last_group
                 chargeDetails.append(['', None, None, None, None, None, None])
             chargeDetails.append([
                 group,
-                charge.get('description', "No description"),
-                format_for_display(charge['quantity'], places=3)
-                    if 'quantity' in charge else Decimal("1"),
-                charge.get('quantity_units', None),
-                format_for_display(charge['rate'], places=5)
-                    if 'rate' in charge else None,
-                charge.get('rate_units', None),
-                format_for_display(charge['total'], places=2)
-                    if 'total' in charge else None
+                charge.description,
+                format_for_display(charge.h_quantity),
+                '',
+                format_for_display(charge.h_rate, places=5),
+                '',
+                format_for_display(charge.h_total, places=2),
             ])
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None,
@@ -661,7 +658,7 @@ class ReebillRenderer:
         Elements.append(UseUpSpace())
 
         # render the document    
-        doc.setProgressCallBack(progress)
+        #doc.setProgressCallBack(progress)
         doc.build(Elements)
 
 # remove all calculations to helpers
