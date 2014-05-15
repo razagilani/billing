@@ -910,10 +910,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2012,2,1), date(2012,3,1), StringIO("test"),
                     'january-electric.pdf')
-            other_utility_bill = self.state_db.get_utilbill(session, account,
-                    'gas', date(2012,2,1), date(2012,3,1))
-            new_version_reebill = self.state_db.get_reebill(session, account,
-                    1, version=1)
             # TODO this may not accurately reflect the way reebills get
             # attached to different utility bills; see
             # https://www.pivotaltracker.com/story/show/51935657
