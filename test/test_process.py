@@ -4,6 +4,7 @@ import unittest
 from itertools import chain
 from StringIO import StringIO
 from bson import ObjectId
+import skyliner
 from sqlalchemy.sql import desc
 from skyliner.sky_handlers import cross_range
 from datetime import date, datetime, timedelta

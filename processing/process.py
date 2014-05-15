@@ -126,13 +126,47 @@ class Process(object):
         assert reebill.issued == True
         return load_method(utilbill, reebill=reebill)
 
-
     def get_utilbill_charges_json(self, session, utilbill_id,
                     reebill_sequence=None, reebill_version=None):
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
         return mongo.get_charges_json(utilbill_doc)
+
+    def get_registers_json(self, session, utilbill_id,
+                    reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        return mongo.get_all_actual_registers_json(utilbill_doc)
+
+    def new_register(self, session, utilbill_id, row,
+                    reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        mongo.new_register(utilbill_doc, row.get('meter_id', None),
+                            row.get('register_id', None))
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
+
+    def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id, rows,
+                reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc, orig_meter_id, orig_reg_id, rows)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+        return  new_meter_id, new_reg_id
+
+    def delete_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
+                    reebill_sequence=None,
+                    reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
+        self.reebill_dao.save_utilbill(utilbill_doc)
 
     def add_charge(self, session, utilbill_id, group_name):
         '''Add a new charge to the given utility bill with charge group
