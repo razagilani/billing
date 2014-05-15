@@ -697,10 +697,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual([], charges)
 
             # second bill: default utility and rate class are chosen
-            # when those arguments are not given
+            # when those arguments are not given, and non-standard file
+            # extension is used
             with open('data/utility_bill.pdf') as file2:
                 self.process.upload_utility_bill(session, account, 'electric',
-                         date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
+                         date(2012,2,1), date(2012,3,1), file2, 'february.abc')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
@@ -788,11 +789,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              }], utilbills_data, 'id', 'name')
 
             # 4th bill: utility and rate_class will be taken from the last bill
-            # with the same service.
+            # with the same service. the file has no extension.
             last_bill_id = utilbills_data[0]['id']
             with open('data/utility_bill.pdf') as file4:
                 self.process.upload_utility_bill(session, account, 'electric',
-                        date(2012,4,1), date(2012,5,1), file4, 'august.pdf')
+                        date(2012,4,1), date(2012,5,1), file4, 'august')
 
             utilbills_data, count = self.process.get_all_utilbills_json(
                     session, account, 0, 30)
@@ -854,52 +855,40 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # sure it exists all 3 places)
             self.process.upload_utility_bill(session, account, 'gas',
                     start, end, StringIO("test"), 'january.pdf')
-            customer = session.query(Customer) \
-                .filter(Customer.account == account).one()
-            utilbill = session.query(UtilBill) \
-                .filter(UtilBill.customer_id == customer.id) \
-                .filter(UtilBill.period_start == start) \
-                .filter(UtilBill.period_end == end).one()
-            assert self.state_db.list_utilbills(session, account)[1] == 1
-            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
-            assert os.access(bill_file_path, os.F_OK)
-            self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-
-            # with no reebills, deletion should succeed: row removed from
-            # MySQL, document removed from Mongo (only template should be
-            # left), UPRS document removed from Mongo, file moved to
-            # trash directory
-            deleted_bill, new_path = self.process.delete_utility_bill(session,
-                    utilbill)
-            self.assertEqual(utilbill, deleted_bill)
-            self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
-            self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
-            self.assertRaises(RateStructure.DoesNotExist,
-                    self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
-            self.assertFalse(os.access(bill_file_path, os.F_OK))
-            self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
-                    deleted_bill)
-            self.assertTrue(os.access(new_path, os.F_OK))
-
-            # re-upload the bill
-            self.process.upload_utility_bill(session, account, 'gas',
-                    start, end, StringIO("test"), 'january-gas.pdf')
-            utilbill = session.query(UtilBill) \
-                .filter(UtilBill.customer_id == customer.id) \
-                .filter(UtilBill.period_start == start) \
-                .filter(UtilBill.period_end == end).one()
-            assert self.state_db.list_utilbills(session, account)[1] == 1
-            self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
-            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
-            assert os.access(bill_file_path, os.F_OK)
+            utilbills_data, count = self.process.get_all_utilbills_json(
+                    session, account, 0, 30)
+            self.assertEqual(1, count)
 
             # when utilbill is attached to reebill, deletion should fail
-            first_reebill = self.process.roll_reebill(session, account, start_date=start)
-            assert first_reebill.utilbills == [utilbill]
-            assert utilbill.is_attached()
-            self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill)
+            first_reebill = self.process.roll_reebill(session, account,
+                                                      start_date=start)
+            reebills_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertEqual([{
+                'actual_total': 0,
+                 'balance_due': 0.0,
+                 'balance_forward': 0,
+                 'corrections': '(never issued)',
+                 'hypothetical_total': 0,
+                 'id': 1,
+                 'issue_date': None,
+                 'issued': False,
+                 'max_version': 0,
+                 'payment_received': 0.0,
+                 'period_end': date(2012, 2, 1),
+                 'period_start': date(2012, 1, 1),
+                 'prior_balance': 0,
+                 'ree_charges': 0.0,
+                 'ree_quantity': 22.602462036826545,
+                 'ree_value': 0,
+                 'sequence': 1,
+                 'services': [],
+                 'total_adjustment': 0,
+                 'total_error': 0.0
+            }], reebills_data)
+            self.assertRaises(ValueError,
+                    self.process.delete_utility_bill_by_id,
+                    session, utilbills_data[0]['id'])
 
             # deletion should fail if any version of a reebill has an
             # association with the utility bill. so issue the reebill, add
@@ -913,48 +902,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO this may not accurately reflect the way reebills get
             # attached to different utility bills; see
             # https://www.pivotaltracker.com/story/show/51935657
-            self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill)
+            self.assertRaises(ValueError,
+                    self.process.delete_utility_bill_by_id, session,
+                    utilbills_data[0]['id'])
             session.commit()
-
-            # test deletion of a Skyline-estimated utility bill (no file)
-            self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1), None, 'no file name',
-                    state=UtilBill.SkylineEstimated)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1)))
-
-            # test deletion of a Hypothetical utility bill (no file and no
-            # Mongo document)
-            self.process.upload_utility_bill(session, account, 'gas',
-                     date(2013,3,1), date(2013,4,1), None, 'no file name',
-                    state=UtilBill.Hypothetical)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1)))
-
-            # test deletion of utility bill with non-standard file extension
-            utilbill_apr = self.process.upload_utility_bill(session, account,
-                    'gas', date(2013,4,1), date(2013,5,1), StringIO("a bill"),
-                     'billfile.abcdef')
-            the_path = self.billupload.get_utilbill_file_path(utilbill_apr)
-            assert os.access(the_path, os.F_OK)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,4,1), date(2013,5,1)))
-            self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
-
-            # test deletion of utility bill with no file extension
-            utilbill_feb = self.process.upload_utility_bill(session, account,
-                    'gas', date(2013,2,1), date(2013,3,1), StringIO("a bill"),
-                    'billwithnoextension')
-            the_path = self.billupload.get_utilbill_file_path(utilbill_feb)
-            assert os.access(the_path, os.F_OK)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,2,1), date(2013,3,1)))
-            self.assertFalse(os.access(the_path, os.F_OK))
 
     def test_get_service_address(self):
         account = '99999'
