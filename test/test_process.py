@@ -58,7 +58,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         })
         self.process.refresh_charges(session, utilbill.id)      #creates charges
         self.process.compute_utility_bill(session, utilbill.id) #updates charge values
-
+        
 
 
 
@@ -885,139 +885,122 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(address['addressee'],'Monroe Towers')
             self.assertEqual(address['street'],'3501 13TH ST NW #WH')
 
-    def test_correction_issuing(self):
-        '''Test creating corrections on reebills, and issuing them to create
+    def total(self):
+        """Test creating corrections on reebills, and issuing them to create
         adjustments on other reebills.
-        '''
+        """
+        
         acc = '99999'
-        with DBSession(self.state_db) as session:
-            # reebills 1-4, 1-3 issued
-            base_date = date(2012,1,1)
-            dates = [base_date + timedelta(days=30*x) for x in xrange(5)]
-            for n in xrange(4):
-                u = self.process.upload_utility_bill(session, acc, 'gas',
-                        dates[n], dates[n+1], StringIO('a utility bill'),
-                        'file.pdf')
-                doc = self.reebill_dao.load_doc_for_utilbill(u)
-                uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-                doc['charges'] = [{
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 100,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 100,
-                    'group': 'All Charges',
-                }]
-                self.reebill_dao.save_utilbill(doc)
-                uprs.rates = [RateStructureItem(
-                    rsi_binding='THE_CHARGE',
-                    quantity='REG_TOTAL.quantity',
-                    rate='1',
-                )]
-                uprs.save()
+        p = self.process
+        base_date = date(2012,1,1)
+        with DBSession(self.state_db) as s:
+                   
+            for i in xrange(4):
+                ub = p.upload_utility_bill(s, acc, 'gas', 
+                        base_date+timedelta(days= 30*i), 
+                        base_date+timedelta(days= 30*(i + 1)),
+                        StringIO('a utility bill'), 
+                        'filename.pdf')
 
-            # first reebill: saved 100 therms, $50
-            one = self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
-            one_doc = self.reebill_dao.load_reebill(acc, 1)
-            one.discount_rate = 0.5
-            # NOTE register quantity must be set in BTU
-            one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            self.reebill_dao.save_reebill(one_doc)
-            self.process.compute_reebill(session, acc, 1)
-            self.process.issue(session, acc, 1)
-            # one = self.reebill_dao.load_reebill(acc, one.sequence)
-            assert one.ree_charge == 50
+                p.add_rsi(s, ub.id)    #creates an RSI with binding 'New RSI #1'
+                p.update_rsi(s, ub.id, #update the just-created RSI
+                             'New RSI #1', 
+                             {'rsi_binding': 'THE_CHARGE',
+                              'quantity': 'REG_TOTAL.quantity',
+                              'rate': '1',
+                              'group': 'All Charges' })
+                
+                p.update_register(s, ub.id, 'M60324', 'M60324', 
+                                  {'quantity': 100})
 
-            # 2nd reebill: saved 200 therms, $100
-            two = self.process.roll_reebill(session, acc)
-            two.discount_rate = 0.5
-            two_doc = self.reebill_dao.load_reebill(acc, 2)
-            # NOTE register quantity must be set in BTU
-            two.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
-            self.reebill_dao.save_reebill(two_doc)
-            self.process.compute_reebill(session, acc, 2)
-            self.process.issue(session, acc, two.sequence)
-            assert two.ree_charge == 100
+                p.refresh_charges(s, ub.id)      #creates charges
+                p.compute_utility_bill(s, ub.id) #updates charge values
 
-            # 3rd reebill: saved 300 therms, $150
-            three = self.process.roll_reebill(session, acc)
-            three_doc = self.reebill_dao.load_reebill(acc, 3)
-            three.discount_rate = 0.5
-            # NOTE register quantity must be set in BTU
-            three.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
-            self.reebill_dao.save_reebill(three_doc)
-            self.process.issue(session, acc, three.sequence)
-            assert three.ree_charge == 150
 
-            # 4th reebill
-            self.process.roll_reebill(session, acc)
+            for seq, reg_tot, strd in [(1, 100, base_date), (2, 200, None), 
+                                       (3, 300, None)]:
+                rb = p.roll_reebill(s, acc, start_date=strd)
+                p.update_sequential_account_info(s, acc, seq, discount_rate=0.5)
+                p.ree_getter = MockReeGetter(reg_tot)
+                p.bind_renewable_energy(s, acc, seq)
+                p.compute_reebill(s, acc, seq)
+                p.issue(s, acc, seq)
+                
+                self.assertEqual(rb.ree_charge, reg_tot/2, 
+                                 "Reebill %s recharge should equal %s; not %s" \
+                                 % (seq, reg_tot/2, rb.ree_charge))
 
-            # no unissued corrections yet
-            self.assertEquals([],
-                    self.process.get_unissued_corrections(session, acc))
-            self.assertEquals(0, self.process.get_total_adjustment(session, acc))
+            self.assertEquals([], p.get_unissued_corrections(s, acc),
+                              "There should be no unissued corrections.")
+            self.assertEquals(0, p.get_total_adjustment(s, acc),
+                              "There should be no total adjustments.")
 
+            p.roll_reebill(s, acc) #Fourth Reebill
+            
             # try to issue nonexistent corrections
-            self.assertRaises(ValueError, self.process.issue_corrections,
-                    session, acc, 4)
+            self.assertRaises(ValueError, p.issue_corrections, s, acc, 4) 
 
-            # make corrections on 1 and 3
-            # (new_version() changes the REE, but setting ree_charges,
-            # explicitly overrides that)
-            self.process.new_version(session, acc, 1)
-            self.process.new_version(session, acc, 3)
-            one_1 = self.state_db.get_reebill(session, acc, 1, version=1)
-            one_1_doc = self.reebill_dao.load_reebill(acc, 1, version=1)
-            three_1 = self.state_db.get_reebill(session, acc, 3, version=1)
-            three_1_doc = self.reebill_dao.load_reebill(acc, 3, version=1)
-            one_1.discount_rate = .75
-            three_1.discount_rate = .25
-            # re-update the register readings to undo the arbitary values
-            # inserted by new_version above (this should really be done by
-            # controlling the amount of energy reported by mock_skyliner
-            # NOTE register quantity must be set in BTU
-            one_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            three_1.set_renewable_energy_reading('REG_TOTAL', 300 * 1e5)
-            self.reebill_dao.save_reebill(one_1_doc)
-            self.reebill_dao.save_reebill(three_1_doc)
-            self.process.compute_reebill(session, acc, 1, version=1)
-            self.process.compute_reebill(session, acc, 3, version=1)
-            assert one_1.ree_charge == 25
-            assert three_1.ree_charge == 225
+            reebill_data = lambda seq: next(d for d in \
+                p.get_reebill_metadata_json(s, acc) if d['sequence'] == seq) 
+            
+            #Update the discount rate for reebill sequence 1
+            p.new_version(s, acc, 1)
+            p.update_sequential_account_info(s, acc, 1, discount_rate=0.75)
+            p.ree_getter = MockReeGetter(100)
+            p.bind_renewable_energy(s, acc, 1)
+            p.compute_reebill(s, acc, 1) #Why do I have to remove the version = 1 for this to work?
+            
+            d = reebill_data(1)
+            self.assertEqual(d['ree_charges'], 25.0,
+                        "Charges for reebill seq 1 should be updated to 25")
+            
+            #Update the discount rate for reebill sequence 3
+            p.new_version(s, acc, 3)
+            p.update_sequential_account_info(s, acc, 3, discount_rate=0.25)
+            p.ree_getter = MockReeGetter(300)
+            p.bind_renewable_energy(s, acc, 3)
+            p.compute_reebill(s, acc, 3)
+            d = reebill_data(3)
+            self.assertEqual(d['ree_charges'], 225.0,
+                        "Charges for reebill seq 3 should be updated to 225")
 
-            # there should be 2 adjustments: -50 for the first bill, and +75
+            # there should be 2 adjustments: -25 for the first bill, and +75
             # for the 3rd
             self.assertEqual([(1, 1, -25), (3, 1, 75)],
-                    self.process.get_unissued_corrections(session, acc))
-            self.assertEqual(50, self.process.get_total_adjustment(session,
-                    acc))
+                    p.get_unissued_corrections(s, acc))
+            self.assertEqual(50, p.get_total_adjustment(s, acc))
 
             # try to apply corrections to an issued bill
-            self.assertRaises(ValueError, self.process.issue_corrections,
-                    session, acc, 2)
+            self.assertRaises(ValueError, p.issue_corrections, s, acc, 2)
             # try to apply corrections to a correction
-            self.assertRaises(ValueError, self.process.issue_corrections,
-                    session, acc, 3)
+            self.assertRaises(ValueError, p.issue_corrections, s, acc, 3)
+
+            self.assertFalse(reebill_data(1)['issued'])
+            self.assertFalse(reebill_data(3)['issued'])
 
             # get original balance of reebill 4 before applying corrections
-            four = self.state_db.get_reebill(session, acc, 4)
-            self.process.compute_reebill(session, acc, 4)
+            #four = self.state_db.get_reebill(session, acc, 4)
+            p.compute_reebill(s, acc, 4)
 
             # apply corrections to un-issued reebill 4. reebill 4 should be
             # updated, and the corrections (1 & 3) should be issued
-            self.process.issue_corrections(session, acc, 4)
-            self.process.compute_reebill(session, acc, 4)
+            p.issue_corrections(s, acc, 4)
+            p.compute_reebill(s, acc, 4)
             # for some reason, adjustment is part of "balance forward"
             # https://www.pivotaltracker.com/story/show/32754231
-            self.assertEqual(four.prior_balance - four.payment_received +
-                    four.total_adjustment, four.balance_forward)
-            self.assertEquals(four.balance_forward + four.total, four.balance_due)
-            self.assertTrue(self.state_db.is_issued(session, acc, 1))
-            self.assertTrue(self.state_db.is_issued(session, acc, 3))
-            self.assertEqual([], self.process.get_unissued_corrections(session,
-                    acc))
+            
+            four = reebill_data(4)
+            self.assertEqual(four['prior_balance'] - four['payment_received'] +
+                             four['total_adjustment'], four['balance_forward'])
+            self.assertEquals(four['balance_forward'] + four['ree_charges'],
+                              four['balance_due'])
+            
+            self.assertTrue(reebill_data(1)['issued'])
+            self.assertTrue(reebill_data(3)['issued'])
 
-            session.commit()
+            self.assertEqual([], p.get_unissued_corrections(s, acc))
+
+            s.commit()
 
     def test_late_charge_correction(self):
         acc = '99999'
@@ -2036,96 +2019,130 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'description': 'not shared',
                     'group': 'All Charges',
                 },
-            ], charges);
+            ], charges)
 
 
     def test_compute_reebill(self):
         account = '99999'
+        energy_quantity = 100
+        payment_amount = 100
+        self.process.ree_getter = MockReeGetter(energy_quantity)
         with DBSession(self.state_db) as session:
+            # create 2 utility bills with 1 charge in them
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                     'january.pdf')
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,2,1), date(2013,3,1), StringIO('February 2013'),
                     'february.pdf')
+            utilbills_data, _ = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            id_1, id_2 = (obj['id'] for obj in utilbills_data)
+            self.process.add_rsi(session, id_1)
+            self.process.update_rsi(session, id_1, 'New RSI #1',
+                    {'rsi_binding': 'THE_CHARGE',
+                     'quantity': 'REG_TOTAL.quantity',
+                     'rate': '1', })
+            self.process.refresh_charges(session, id_1)
+            self.process.update_utilbill_metadata(session, id_1, processed=True)
+            self.process.regenerate_uprs(session, id_2)
+            self.process.refresh_charges(session, id_2)
+            self.process.update_utilbill_metadata(session, id_2, processed=True)
 
-            # create utility bill with a charge and a rate structure (so the
-            # reebill can have real charges in it)
-            first_utilbill = session.query(UtilBill).filter_by(
-                    customer=self.state_db.get_customer(session, account))\
-                    .order_by(UtilBill.period_start).first()
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(first_utilbill)
-            utilbill_doc['charges'] = [{
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 10,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 10,
-                    'group': 'All Charges',
-            }]
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                    first_utilbill)
-            uprs.rates = [RateStructureItem(
-                rsi_binding='THE_CHARGE',
-                quantity='REG_TOTAL.quantity',
-                rate='1',
-            )]
-            uprs.save()
-
-            # create reebill, bind, compute, issue
-            bill1 = self.process.roll_reebill(session, account, start_date=date(2013,1,1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
-            bill1.discount_rate = 0.5
-            self.process.ree_getter.update_renewable_readings(
-                    self.nexus_util.olap_id(account), bill1, use_olap=True)
-            # TODO utilbill subdocument has 0 for its charge (also 0 quantity)
+            # create, process, and issue reebill
+            self.process.roll_reebill(session, account,
+                    start_date=date(2013,1,1), integrate_skyline_backend=False,
+                    skip_compute=True)
+            self.process.update_sequential_account_info(session, account, 1,
+                    discount_rate=0.5)
+            self.process.bind_renewable_energy(session, account, 1)
             self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))
-            assert session.query(ReeBill).filter(ReeBill.sequence==1).one()\
-                    .issue_date == date(2013,2,15)
 
+            reebill_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertEqual(1, len(reebill_data))
             # this is how much energy should have come from mock skyliner
-            expected_energy_quantity = 22.6477327028
-
-            # check accounting numbers
-            expected_ree_charge = expected_energy_quantity * bill1\
-                    .discount_rate
-            self.assertEquals(0, bill1.prior_balance)
-            self.assertEquals(0, bill1.payment_received)
-            self.assertEquals(0, bill1.balance_forward)
-            self.assertAlmostEqual(expected_energy_quantity, bill1.ree_value)
-            self.assertAlmostEqual(expected_ree_charge,
-                    bill1.ree_charge)
-            self.assertAlmostEqual(expected_ree_charge,
-                    bill1.balance_due)
-            self.assertEqual(bill1.ree_value - bill1.ree_charge,
-                    bill1.ree_savings)
-            # TODO check everything else...
+            expected_energy_quantity = 100
+            self.assertDocumentsEqualExceptKeys([{
+                 'id': 1,
+                 'sequence': 1,
+                 'max_version': 0,
+                 'issued': True,
+                 'issue_date': date(2013,2,15),
+                 'actual_total': 0.,
+                 'hypothetical_total': expected_energy_quantity,
+                 'payment_received': 0.,
+                 'period_start': date(2013,1,1),
+                 'period_end': date(2013,2,1),
+                 'prior_balance': 0.,
+                 'ree_charges': expected_energy_quantity * .5,
+                 'ree_value': expected_energy_quantity,
+                 'services': [],
+                 'total_adjustment': 0.,
+                 'total_error': 0.,
+                 'ree_quantity': expected_energy_quantity,
+                 'balance_due': expected_energy_quantity * .5,
+                 'balance_forward': 0.,
+                 'corrections': '-',
+             }], reebill_data)
 
             # add a payment so payment_received is not 0
-            payment_amount = 100
             self.process.create_payment(session, account, date(2013,2,17),
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
-            reebill2 = self.process.roll_reebill(session, account,
+            self.process.roll_reebill(session, account,
                     integrate_skyline_backend=False, skip_compute=True)
+            self.process.bind_renewable_energy(session, account, 2)
+            self.process.update_sequential_account_info(session, account, 2,
+                    discount_rate=0.2)
             self.process.compute_reebill(session, account, 2)
-            # TODO this intermittently fails with a slight difference between
-            # bill1.balance_due and reebill2.prior_balance (bigger than the
-            # default tolerance of assertAlmostEqual):
-            # "AssertionError: 11.323866351411981 != 11.3239"
-            # this seems to happen only when all tests are run together, not
-            # when this test is run alone or with just ProcessTest.
-            self.assertEquals(bill1.balance_due, reebill2.prior_balance)
-            self.assertEquals(payment_amount, reebill2.payment_received)
-            self.assertEquals(bill1.balance_due - payment_amount,
-                    reebill2.balance_forward)
-            # TODO check everything else...
-
-
+            reebill_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertDocumentsEqualExceptKeys([{
+                'sequence': 1,
+                'max_version': 0,
+                'issued': True,
+                'issue_date': date(2013,2,15),
+                'actual_total': 0,
+                'hypothetical_total': expected_energy_quantity,
+                'payment_received': 0,
+                'period_start': date(2013,1,1),
+                'period_end': date(2013,2,1),
+                'prior_balance': 0,
+                'ree_charges': expected_energy_quantity * .5,
+                'ree_value': expected_energy_quantity,
+                'services': [],
+                'total_adjustment': 0,
+                'total_error': 0,
+                'ree_quantity': expected_energy_quantity,
+                'balance_due': expected_energy_quantity * .5,
+                'balance_forward': 0,
+                'corrections': '-',
+            },{
+                'sequence': 2,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0,
+                'hypothetical_total': expected_energy_quantity,
+                'payment_received': payment_amount,
+                'period_start': date(2013,2,1),
+                'period_end': date(2013,3,1),
+                'prior_balance': expected_energy_quantity * .5,
+                'ree_charges': expected_energy_quantity * .8,
+                'ree_value': expected_energy_quantity,
+                'services': [],
+                'total_adjustment': 0,
+                'total_error': 0,
+                'ree_quantity': expected_energy_quantity,
+                'balance_due': expected_energy_quantity * .5 +
+                               expected_energy_quantity * .8 - payment_amount,
+                'balance_forward': expected_energy_quantity * .5 -
+                                   payment_amount,
+                'corrections': '(never issued)',
+            }], reebill_data, 'id')
 
 
 if __name__ == '__main__':
