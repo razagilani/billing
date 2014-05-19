@@ -1992,6 +1992,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         energy_quantity = 100
         payment_amount = 100
         self.process.ree_getter = MockReeGetter(energy_quantity)
+
         with DBSession(self.state_db) as session:
             # create 2 utility bills with 1 charge in them
             self.process.upload_utility_bill(session, account, 'gas',
@@ -2004,10 +2005,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     account, 0, 30)
             id_1, id_2 = (obj['id'] for obj in utilbills_data)
             self.process.add_rsi(session, id_1)
-            self.process.update_rsi(session, id_1, 'New RSI #1',
-                    {'rsi_binding': 'THE_CHARGE',
-                     'quantity': 'REG_TOTAL.quantity',
-                     'rate': '1', })
+            self.process.update_rsi(session, id_1, 'New RSI #1', {
+                'rsi_binding': 'THE_CHARGE',
+                 'quantity': 'REG_TOTAL.quantity',
+                 'rate': '1',
+             })
             self.process.refresh_charges(session, id_1)
             self.process.update_utilbill_metadata(session, id_1, processed=True)
             self.process.regenerate_uprs(session, id_2)
@@ -2026,9 +2028,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             reebill_data = self.process.get_reebill_metadata_json(session,
                     account)
-            self.assertEqual(1, len(reebill_data))
-            # this is how much energy should have come from mock skyliner
-            expected_energy_quantity = 100
             self.assertDocumentsEqualExceptKeys([{
                  'id': 1,
                  'sequence': 1,
@@ -2036,18 +2035,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'issued': True,
                  'issue_date': date(2013,2,15),
                  'actual_total': 0.,
-                 'hypothetical_total': expected_energy_quantity,
+                 'hypothetical_total': energy_quantity,
                  'payment_received': 0.,
                  'period_start': date(2013,1,1),
                  'period_end': date(2013,2,1),
                  'prior_balance': 0.,
-                 'ree_charges': expected_energy_quantity * .5,
-                 'ree_value': expected_energy_quantity,
+                 'ree_charges': energy_quantity * .5,
+                 'ree_value': energy_quantity,
                  'services': [],
                  'total_adjustment': 0.,
                  'total_error': 0.,
-                 'ree_quantity': expected_energy_quantity,
-                 'balance_due': expected_energy_quantity * .5,
+                 'ree_quantity': energy_quantity,
+                 'balance_due': energy_quantity * .5,
                  'balance_forward': 0.,
                  'corrections': '-',
              }], reebill_data)
@@ -2071,18 +2070,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'issued': True,
                 'issue_date': date(2013,2,15),
                 'actual_total': 0,
-                'hypothetical_total': expected_energy_quantity,
+                'hypothetical_total': energy_quantity,
                 'payment_received': 0,
                 'period_start': date(2013,1,1),
                 'period_end': date(2013,2,1),
                 'prior_balance': 0,
-                'ree_charges': expected_energy_quantity * .5,
-                'ree_value': expected_energy_quantity,
+                'ree_charges': energy_quantity * .5,
+                'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
                 'total_error': 0,
-                'ree_quantity': expected_energy_quantity,
-                'balance_due': expected_energy_quantity * .5,
+                'ree_quantity': energy_quantity,
+                'balance_due': energy_quantity * .5,
                 'balance_forward': 0,
                 'corrections': '-',
             },{
@@ -2091,20 +2090,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'issued': False,
                 'issue_date': None,
                 'actual_total': 0,
-                'hypothetical_total': expected_energy_quantity,
+                'hypothetical_total': energy_quantity,
                 'payment_received': payment_amount,
                 'period_start': date(2013,2,1),
                 'period_end': date(2013,3,1),
-                'prior_balance': expected_energy_quantity * .5,
-                'ree_charges': expected_energy_quantity * .8,
-                'ree_value': expected_energy_quantity,
+                'prior_balance': energy_quantity * .5,
+                'ree_charges': energy_quantity * .8,
+                'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
                 'total_error': 0,
-                'ree_quantity': expected_energy_quantity,
-                'balance_due': expected_energy_quantity * .5 +
-                               expected_energy_quantity * .8 - payment_amount,
-                'balance_forward': expected_energy_quantity * .5 -
+                'ree_quantity': energy_quantity,
+                'balance_due': energy_quantity * .5 +
+                               energy_quantity * .8 - payment_amount,
+                'balance_forward': energy_quantity * .5 -
                                    payment_amount,
                 'corrections': '(never issued)',
             }], reebill_data, 'id')
@@ -2124,20 +2123,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'issued': False,
                 'issue_date': None,
                 'actual_total': 0,
-                'hypothetical_total': expected_energy_quantity,
+                'hypothetical_total': energy_quantity,
                 'payment_received': payment_amount,
                 'period_start': date(2013,2,1),
                 'period_end': date(2013,3,1),
-                'prior_balance': expected_energy_quantity * .5,
-                'ree_charges': expected_energy_quantity * .8,
-                'ree_value': expected_energy_quantity,
+                'prior_balance': energy_quantity * .5,
+                'ree_charges': energy_quantity * .8,
+                'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
                 'total_error': 0,
-                'ree_quantity': expected_energy_quantity,
-                'balance_due': expected_energy_quantity * .5 +
-                            expected_energy_quantity * .8 - payment_amount,
-                'balance_forward': expected_energy_quantity * .5 -
+                'ree_quantity': energy_quantity,
+                'balance_due': energy_quantity * .5 +
+                            energy_quantity * .8 - payment_amount,
+                'balance_forward': energy_quantity * .5 -
                                 payment_amount,
                 'corrections': '(never issued)',
             },{
@@ -2146,18 +2145,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'issued': False,
                 'issue_date': None,
                 'actual_total': 0,
-                'hypothetical_total': expected_energy_quantity,
+                'hypothetical_total': energy_quantity,
                 'payment_received': 0,
                 'period_start': date(2013,1,1),
                 'period_end': date(2013,2,1),
                 'prior_balance': 0,
-                'ree_charges': expected_energy_quantity * .5,
-                'ree_value': expected_energy_quantity,
+                'ree_charges': energy_quantity * .5,
+                'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
                 'total_error': 0,
-                'ree_quantity': expected_energy_quantity,
-                'balance_due': expected_energy_quantity * .5,
+                'ree_quantity': energy_quantity,
+                'balance_due': energy_quantity * .5,
                 'balance_forward': 0,
                 'corrections': '#1 not issued',
             }], reebill_data, 'id')
