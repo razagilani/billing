@@ -2046,13 +2046,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                      date(2013,5,6), date(2013,7,8), StringIO('A Water Bill'),
                      'waterbill.pdf', utility='washgas',
                      rate_class='some rate structure')
-            utilbill = session.query(UtilBill).filter_by(
-                    customer=self.state_db.get_customer(session,
-                    '99999')).one()
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.assertEquals('99999', doc['account'])
-            self.assertEquals(date(2013,5,6), doc['start'])
-            self.assertEquals(date(2013,7,8), doc['end'])
+            utilbill_data = self.process.get_all_utilbills_json(session,
+                    '99999', 0, 30)[0][0]
+            self.assertDocumentsEqualExceptKeys({
+                'account': '99999',
+                'computed_total': 0,
+                'editable': True,
+                'id': 6469L,
+                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: some rate structure',
+                'period_end': date(2013, 7, 8),
+                'period_start': date(2013, 5, 6),
+                'processed': 0,
+                'rate_class': 'some rate structure',
+                'reebills': [],
+                'service': 'Gas',
+                'state': 'Final',
+                'total_charges': 0.0,
+                'utility': 'washgas',
+            }, utilbill_data, 'id', 'charges')
+            #doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
             # TODO enable these assertions when upload_utility_bill stops
             # ignoring them; currently they are set to match the template's
             # values regardless of the arguments to upload_utility_bill, and
@@ -2063,48 +2075,47 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             #self.assertEquals('pepco', doc['rate_class'])
 
             # modify the MySQL utility bill
-            utilbill.period_start = date(2014,1,1)
-            utilbill.period_end = date(2014,2,1)
-            utilbill.service = 'electricity'
-            utilbill.utility = 'BGE'
-            utilbill.rate_class = 'General Service - Schedule C'
-
+            self.process.update_utilbill_metadata(session,utilbill_data['id'],
+                                                  period_start=date(2013,6,6),
+                                                  period_end=date(2013,8,8),
+                                                  service='electricity',
+                                                  utility='BGE',
+                                                  rate_class='General Service - Schedule C')
             # add some RSIs to the UPRS, and charges to match
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            uprs.rates = [
-                RateStructureItem(
-                    rsi_binding='A',
-                    description='UPRS only',
-                    quantity='2',
-                    rate='3',
-                    quantity_units='kWh',
-                ),
-                RateStructureItem(
-                    rsi_binding='B',
-                    description='not shared',
-                    quantity='6',
-                    rate='7',
-                    quantity_units='therms',
-                    shared=False,
-                )
-            ]
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            doc['charges'] = [{'rsi_binding': rsi_binding,
-                    'quantity': 0, 'rate': 0, 'total': 0,
-                    'group': 'All Charges'} for rsi_binding in ('AB')]
-            uprs.save()
-            self.reebill_dao.save_utilbill(doc)
+            new_rsi = self.process.add_rsi(session,utilbill_data['id'])
+            self.process.update_rsi(session, utilbill_data['id'],'New RSI #1', {
+                    'rsi_binding': 'A',
+                    'description':'UPRS only',
+                    'quantity': '2',
+                    'rate': '3',
+                    'group': 'All Charges',
+                    'quantity_units':'kWh'
+                })
+
+            new_rsi = self.process.add_rsi(session,utilbill_data['id'])
+            self.process.update_rsi(session, utilbill_data['id'],'New RSI #1', {
+                    'rsi_binding': 'B',
+                    'description':'not shared',
+                    'quantity': '6',
+                    'rate': '7',
+                    'quantity_units':'therms',
+                    'group': 'All Charges',
+                    'shared': False
+                })
+
 
             # compute_utility_bill should update the document to match
-            self.process.compute_utility_bill(session, utilbill.id)
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.assertEquals('99999', doc['account'])
-            self.assertEquals(date(2014,1,1), doc['start'])
-            self.assertEquals(date(2014,2,1), doc['end'])
+            self.process.compute_utility_bill(session, utilbill_data['id'])
+            self.process.refresh_charges(session, utilbill_data['id'])
+            charges = self.process.get_utilbill_charges_json(session, utilbill_data['id'])
+            print charges
+            '''self.assertEquals('99999', doc['account'])
+            self.assertEquals(date(2013,6,6), doc['start'])
+            self.assertEquals(date(2013,8,8), doc['end'])
             self.assertEquals('electricity', doc['service'])
             self.assertEquals('BGE', doc['utility'])
             self.assertEquals('General Service - Schedule C',
-                    doc['rate_class'])
+                    doc['rate_class'])'''
 
             # check charges
             # NOTE if the commented-out lines are added below the test will
@@ -2113,21 +2124,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 {
                     'rsi_binding': 'A',
                     'quantity': 2,
-                    #'quantity_units': 'kWh',
+                    'id': 'A',
+                    'quantity_units': 'kWh',
                     'rate': 3,
                     'total': 6,
                     'description': 'UPRS only',
                     'group': 'All Charges',
                 }, {
                     'rsi_binding': 'B',
+                    'id': 'B',
                     'quantity': 6,
-                    #'quantity_units': 'therms',
+                    'quantity_units': 'therms',
                     'rate': 7,
                     'total': 42,
                     'description': 'not shared',
                     'group': 'All Charges',
                 },
-            ], doc['charges']);
+            ], charges);
 
 
     def test_compute_reebill(self):

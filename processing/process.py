@@ -203,8 +203,9 @@ class Process(object):
     def add_rsi(self, session, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        rs_doc.add_rsi()
+        new_rsi = rs_doc.add_rsi()
         rs_doc.save()
+        return new_rsi
 
     def update_rsi(self, session, utilbill_id, rsi_binding, fields):
         '''Modify the charge given by 'rsi_binding' in the given utility
