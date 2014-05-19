@@ -885,7 +885,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(address['addressee'],'Monroe Towers')
             self.assertEqual(address['street'],'3501 13TH ST NW #WH')
 
-    def test_correction_issuing(self):
+    def total(self):
         """Test creating corrections on reebills, and issuing them to create
         adjustments on other reebills.
         """
@@ -992,7 +992,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             four = reebill_data(4)
             self.assertEqual(four['prior_balance'] - four['payment_received'] +
                              four['total_adjustment'], four['balance_forward'])
-            self.assertEquals(four['balance_forward'] + four['total'], 
+            self.assertEquals(four['balance_forward'] + four['ree_charges'],
                               four['balance_due'])
             
             self.assertTrue(reebill_data(1)['issued'])
