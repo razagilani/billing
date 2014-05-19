@@ -2001,7 +2001,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.compute_utility_bill(session, utilbill_data['id'])
             self.process.refresh_charges(session, utilbill_data['id'])
             charges = self.process.get_utilbill_charges_json(session, utilbill_data['id'])
-            print charges
             '''self.assertEquals('99999', doc['account'])
             self.assertEquals(date(2013,6,6), doc['start'])
             self.assertEquals(date(2013,8,8), doc['end'])
