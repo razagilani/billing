@@ -1519,7 +1519,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, reebill.issued)
             self.assertEqual([utilbill], reebill.utilbills)
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-            b = self.reebill_dao.load_reebill(account, 1, version=0)
+            b = self.process.compute_reebill(session,account,1,version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                     session, account, 1)
 
