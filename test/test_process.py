@@ -22,6 +22,7 @@ from billing.processing.exceptions import BillStateError, NoRSIError
 from billing.test import utils
 
 import pprint
+from os.path import realpath, join, dirname
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
 
@@ -31,6 +32,25 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     #def __init__(self, methodName='runTest', param=None):
         #print '__init__'
         #super(ProcessTest, self).__init__(methodName)
+
+    def setup_dummy_utilbill_calc_charges(self, session, acc, begin_date, end_date):
+        """Upload a dummy-utilbill, add an RSI, and calculate charges
+        """
+        utilbill = self.process.upload_utility_bill(session, acc,
+                                                    'gas', begin_date, end_date,
+                                                    StringIO('a utility bill'), 
+                                                    'filename.pdf')
+        self.process.add_rsi(session, utilbill.id)
+        self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
+            'rsi_binding': 'A',
+            'quantity': 'REG_TOTAL.quantity',
+            'rate': '1'
+        })
+        self.process.refresh_charges(session, utilbill.id)      #creates charges
+        self.process.compute_utility_bill(session, utilbill.id) #updates charge values
+
+
+
 
     def test_create_new_account(self):
         billing_address = {
@@ -159,74 +179,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_new_account(session, '66666', 'New Account',
                     0.6, 0.2, billing_address, service_address, '88888')
 
-
-    def test_get_docs(self):
-        '''Tests Process.get_utilbill_doc and Process.get_rs_doc: retrieving
-        documents for utility bills on their own or with a particular reebill
-        version.'''
-        with DBSession(self.state_db) as session:
-            # upload some utility bills (only the first will be loaded)
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf')
-            self.process.upload_utility_bill(session, '99999', 'gas',
-                    date(2013,2,1), date(2013,3,1), StringIO('January 2013'),
-                    'january.pdf')
-            utilbill = session.query(UtilBill).order_by(UtilBill.period_start)\
-                    .first()
-            assert utilbill.period_start == date(2013,1,1)
-
-            # check invalid rate structure type names
-            self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    utilbill.id, 'UPRS')
-            self.assertRaises(ValueError, self.process.get_rs_doc, session,
-                    utilbill.id, 'CPRS')
-
-            # documents loaded via get_utilbill_doc and get_rs_doc should be
-            # the same as when loaded directly using reebill_dao
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
-            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            self.assertEqual(utilbill_doc,
-                    self.reebill_dao.load_doc_for_utilbill(utilbill))
-            self.assertEqual(uprs_doc,
-                    self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
-
-            # issue a reebill based on this utility bill, then modify the
-            # editable utility bill so it's different from the frozen ones
-            self.process.roll_reebill(session, '99999', start_date=date(2013,1,1))
-            self.process.issue(session, '99999', 1)
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
-            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            utilbill_doc['service'] = 'electricity'
-            new_rsi = RateStructureItem(rsi_binding='NEW', rate='36.25',
-                    quantity='1')
-            uprs_doc.rates = [new_rsi]
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            uprs_doc.save()
-
-            # load frozen documents associated with the issued reebill
-            frozen_utilbill_doc = self.process.get_utilbill_doc(session,
-                    utilbill.id, reebill_sequence=1, reebill_version=0)
-            # TODO: this UPRS document can't be loaded because it looks like
-            # { "_id" : ObjectId("52e2ee4d74ea771e2deb1bfe") }
-            # lacking "_cls" key. related story:
-            # https://www.pivotaltracker.com/story/show/57593308
-            frozen_uprs_doc = self.process.get_rs_doc(session, utilbill.id,
-                    'uprs', reebill_sequence=1, reebill_version=0)
-            self.assertNotEqual(frozen_utilbill_doc, utilbill_doc)
-            self.assertNotEqual(frozen_uprs_doc, uprs_doc)
-            self.assertEquals('gas', frozen_utilbill_doc['service'])
-            self.assertNotIn(new_rsi, frozen_uprs_doc.rates)
-
-            # editable documents should be unchanged
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill.id)
-            uprs_doc = self.process.get_rs_doc(session, utilbill.id, 'uprs')
-            self.assertEqual(utilbill_doc,
-                    self.reebill_dao.load_doc_for_utilbill(utilbill))
-            self.assertEqual(uprs_doc,
-                    self.rate_structure_dao.load_uprs_for_utilbill(utilbill))
-            self.assertEquals('electricity', utilbill_doc['service'])
-            self.assertIn(new_rsi, uprs_doc.rates)
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
@@ -655,6 +607,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_upload_utility_bill(self):
+        #Good
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
@@ -665,7 +618,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # one utility bill
             # service, utility, rate_class are different from the template
             # account
-            with open('data/utility_bill.pdf') as file1:
+            utilbill_path = join(dirname(realpath(__file__)), 'data', 'utility_bill.pdf')
+            with open(utilbill_path) as file1:
                 self.process.upload_utility_bill(session, account, 'electric',
                         date(2012,1,1), date(2012,2,1), file1, 'january.pdf',
                         utility='pepco', rate_class='Residential-R')
@@ -697,10 +651,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual([], charges)
 
             # second bill: default utility and rate class are chosen
-            # when those arguments are not given
-            with open('data/utility_bill.pdf') as file2:
+            # when those arguments are not given, and non-standard file
+            # extension is used
+            with open(utilbill_path) as file2:
                 self.process.upload_utility_bill(session, account, 'electric',
-                         date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
+                         date(2012,2,1), date(2012,3,1), file2, 'february.abc')
             utilbills_data, _ = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertDocumentsEqualExceptKeys([{
@@ -788,11 +743,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              }], utilbills_data, 'id', 'name')
 
             # 4th bill: utility and rate_class will be taken from the last bill
-            # with the same service.
+            # with the same service. the file has no extension.
             last_bill_id = utilbills_data[0]['id']
-            with open('data/utility_bill.pdf') as file4:
+            with open(utilbill_path) as file4:
                 self.process.upload_utility_bill(session, account, 'electric',
-                        date(2012,4,1), date(2012,5,1), file4, 'august.pdf')
+                        date(2012,4,1), date(2012,5,1), file4, 'august')
 
             utilbills_data, count = self.process.get_all_utilbills_json(
                     session, account, 0, 30)
@@ -854,52 +809,40 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # sure it exists all 3 places)
             self.process.upload_utility_bill(session, account, 'gas',
                     start, end, StringIO("test"), 'january.pdf')
-            customer = session.query(Customer) \
-                .filter(Customer.account == account).one()
-            utilbill = session.query(UtilBill) \
-                .filter(UtilBill.customer_id == customer.id) \
-                .filter(UtilBill.period_start == start) \
-                .filter(UtilBill.period_end == end).one()
-            assert self.state_db.list_utilbills(session, account)[1] == 1
-            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
-            assert os.access(bill_file_path, os.F_OK)
-            self.reebill_dao.load_doc_for_utilbill(utilbill)
-            self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-
-            # with no reebills, deletion should succeed: row removed from
-            # MySQL, document removed from Mongo (only template should be
-            # left), UPRS document removed from Mongo, file moved to
-            # trash directory
-            deleted_bill, new_path = self.process.delete_utility_bill(session,
-                    utilbill)
-            self.assertEqual(utilbill, deleted_bill)
-            self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
-            self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
-            self.assertRaises(RateStructure.DoesNotExist,
-                    self.rate_structure_dao.load_uprs_for_utilbill, utilbill)
-            self.assertFalse(os.access(bill_file_path, os.F_OK))
-            self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
-                    deleted_bill)
-            self.assertTrue(os.access(new_path, os.F_OK))
-
-            # re-upload the bill
-            self.process.upload_utility_bill(session, account, 'gas',
-                    start, end, StringIO("test"), 'january-gas.pdf')
-            utilbill = session.query(UtilBill) \
-                .filter(UtilBill.customer_id == customer.id) \
-                .filter(UtilBill.period_start == start) \
-                .filter(UtilBill.period_end == end).one()
-            assert self.state_db.list_utilbills(session, account)[1] == 1
-            self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
-            bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
-            assert os.access(bill_file_path, os.F_OK)
+            utilbills_data, count = self.process.get_all_utilbills_json(
+                    session, account, 0, 30)
+            self.assertEqual(1, count)
 
             # when utilbill is attached to reebill, deletion should fail
-            first_reebill = self.process.roll_reebill(session, account, start_date=start)
-            assert first_reebill.utilbills == [utilbill]
-            assert utilbill.is_attached()
-            self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill)
+            first_reebill = self.process.roll_reebill(session, account,
+                                                      start_date=start)
+            reebills_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertEqual([{
+                'actual_total': 0,
+                 'balance_due': 0.0,
+                 'balance_forward': 0,
+                 'corrections': '(never issued)',
+                 'hypothetical_total': 0,
+                 'id': 1,
+                 'issue_date': None,
+                 'issued': False,
+                 'max_version': 0,
+                 'payment_received': 0.0,
+                 'period_end': date(2012, 2, 1),
+                 'period_start': date(2012, 1, 1),
+                 'prior_balance': 0,
+                 'ree_charges': 0.0,
+                 'ree_quantity': 22.602462036826545,
+                 'ree_value': 0,
+                 'sequence': 1,
+                 'services': [],
+                 'total_adjustment': 0,
+                 'total_error': 0.0
+            }], reebills_data)
+            self.assertRaises(ValueError,
+                    self.process.delete_utility_bill_by_id,
+                    session, utilbills_data[0]['id'])
 
             # deletion should fail if any version of a reebill has an
             # association with the utility bill. so issue the reebill, add
@@ -910,55 +853,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2012,2,1), date(2012,3,1), StringIO("test"),
                     'january-electric.pdf')
-            other_utility_bill = self.state_db.get_utilbill(session, account,
-                    'gas', date(2012,2,1), date(2012,3,1))
-            new_version_reebill = self.state_db.get_reebill(session, account,
-                    1, version=1)
             # TODO this may not accurately reflect the way reebills get
             # attached to different utility bills; see
             # https://www.pivotaltracker.com/story/show/51935657
-            self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill)
+            self.assertRaises(ValueError,
+                    self.process.delete_utility_bill_by_id, session,
+                    utilbills_data[0]['id'])
             session.commit()
-
-            # test deletion of a Skyline-estimated utility bill (no file)
-            self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1), None, 'no file name',
-                    state=UtilBill.SkylineEstimated)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1)))
-
-            # test deletion of a Hypothetical utility bill (no file and no
-            # Mongo document)
-            self.process.upload_utility_bill(session, account, 'gas',
-                     date(2013,3,1), date(2013,4,1), None, 'no file name',
-                    state=UtilBill.Hypothetical)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,3,1), date(2013,4,1)))
-
-            # test deletion of utility bill with non-standard file extension
-            utilbill_apr = self.process.upload_utility_bill(session, account,
-                    'gas', date(2013,4,1), date(2013,5,1), StringIO("a bill"),
-                     'billfile.abcdef')
-            the_path = self.billupload.get_utilbill_file_path(utilbill_apr)
-            assert os.access(the_path, os.F_OK)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,4,1), date(2013,5,1)))
-            self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
-
-            # test deletion of utility bill with no file extension
-            utilbill_feb = self.process.upload_utility_bill(session, account,
-                    'gas', date(2013,2,1), date(2013,3,1), StringIO("a bill"),
-                    'billwithnoextension')
-            the_path = self.billupload.get_utilbill_file_path(utilbill_feb)
-            assert os.access(the_path, os.F_OK)
-            self.process.delete_utility_bill(session,
-                    self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,2,1), date(2013,3,1)))
-            self.assertFalse(os.access(the_path, os.F_OK))
 
     def test_get_service_address(self):
         account = '99999'
@@ -973,8 +874,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(address['street'],'3501 13TH ST NW #WH')
 
     def test_correction_issuing(self):
-        '''Tests get_unissued_corrections(), get_total_adjustment(), and
-        issue_corrections().'''
+        '''Test creating corrections on reebills, and issuing them to create
+        adjustments on other reebills.
+        '''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
@@ -1645,17 +1547,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # create 3 utility bills: Jan, Feb, Mar
             for i in range(3):
-                utilbill = self.process.upload_utility_bill(session, acc,
-                        'gas', date(2012, i+1, 1), date(2012, i+2, 1),
-                        StringIO('a utility bill'), 'filename.pdf')
-                self.process.add_rsi(session, utilbill.id)
-                self.process.update_rsi(session, utilbill.id, 'New RSI #1', {
-                    'rsi_binding': 'A',
-                    'quantity': 'REG_TOTAL.quantity',
-                    'rate': 1
-                })
-                self.process.compute_utility_bill(session, utilbill.id)
-                self.process.refresh_charges(session, utilbill.id)
+                self.setup_dummy_utilbill_calc_charges(session, acc, 
+                                    date(2012, i+1, 1), date(2012, i+2, 1))
 
             # create 1st reebill and issue it
             self.process.roll_reebill(session, acc,
