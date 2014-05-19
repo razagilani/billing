@@ -2105,6 +2105,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              }], reebill_data)
 
             # add a payment so payment_received is not 0
+            # TODO call Process method
             self.state_db.create_payment(session, account, date(2013,2,17),
                     'a payment for the first reebill', payment_amount)
 
