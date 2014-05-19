@@ -193,13 +193,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
             utilbill = self.process.upload_utility_bill(session, '99999',
-                    'gas', date(2013,1,1), date(2013,2,1),
+                    'Gas', date(2013,1,1), date(2013,2,1),
                     StringIO('January 2013'), 'january.pdf', total=100)
 
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            assert utilbill.period_start == doc['start'] == date(2013,1,1)
-            assert utilbill.period_end == doc['end'] == date(2013,2,1)
-            assert utilbill.service == doc['service'] == 'gas'
+            doc = self.process.get_all_utilbills_json(session,
+                    '99999', 0, 30)[0][0]
+            assert utilbill.period_start == doc['period_start'] == date(2013,1,1)
+            assert utilbill.period_end == doc['period_end'] == date(2013,2,1)
+            assert utilbill.service == doc['service'] == 'Gas'
             assert utilbill.utility == doc['utility'] == 'washgas'
             assert utilbill.total_charges == 100
             assert utilbill.rate_class == doc['rate_class'] == 'DC Non Residential Non Heat'
@@ -223,7 +224,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # new it's path are the same.
             self.process.update_utilbill_metadata(session, utilbill.id,
                     period_start=date(2013,1,2))
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual(date(2013,1,2), utilbill.period_start)
             self.assertEqual(date(2013,1,2), doc['start'])
             for meter in doc['meters']:
@@ -235,7 +236,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # change end date
             self.process.update_utilbill_metadata(session, utilbill.id,
                     period_end=date(2013,2,2))
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual(date(2013,2,2), utilbill.period_end)
             self.assertEqual(date(2013,2,2), doc['end'])
             for meter in doc['meters']:
@@ -244,37 +245,37 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # change service
             self.process.update_utilbill_metadata(session, utilbill.id,
                     service='electricity')
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual('electricity', utilbill.service)
             self.assertEqual('electricity', doc['service'])
 
             # change "total" aka "total_charges"
             self.process.update_utilbill_metadata(session, utilbill.id,
                     total_charges=200)
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual(200, utilbill.total_charges)
             # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
             # change utility name
             self.process.update_utilbill_metadata(session, utilbill.id,
                     utility='BGE')
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual('BGE', utilbill.utility)
             self.assertEqual('BGE', doc['utility'])
 
             # change rate class
             self.process.update_utilbill_metadata(session, utilbill.id,
                     rate_class='something else')
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual('something else', utilbill.rate_class)
             self.assertEqual('something else', doc['rate_class'])
             
             # change processed state
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual(False, utilbill.processed)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     processed=True)
-            doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+            doc = self.process.get_utilbill_doc(session, utilbill.id)
             self.assertEqual(True, utilbill.processed)
             
             # even when the utility bill is attached to an issued reebill, only
@@ -283,9 +284,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, '99999', 1)
             self.process.update_utilbill_metadata(session, utilbill.id,
                     service='water')
-            editable_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            frozen_doc = self.reebill_dao.load_doc_for_utilbill(utilbill,
-                    reebill=reebill)
+            editable_doc = self.process.get_utilbill_doc(session, utilbill.id)
+            frozen_doc = self.process.get_utilbill_doc(session, utilbill.id,
+                    reebill_sequence=reebill.sequence,
+                    reebill_version=reebill.version)
             assert 'sequence' not in editable_doc and 'version' not in editable_doc
             assert frozen_doc['sequence'] == 1 and frozen_doc['version'] == 0
             self.assertNotEqual(editable_doc, frozen_doc)
