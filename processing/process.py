@@ -225,6 +225,20 @@ class Process(object):
         rs_doc.rates.remove(rsi)
         rs_doc.save()
 
+    def create_payment(self, session, account, date_applied, description,
+            credit, date_received=None):
+        '''Wrapper to create_payment method in state.py'''
+        return self.state_db.create_payment(session, account, date_applied, description,
+            credit, date_received)
+
+    def update_payment(self, session, oid, date_applied, description, credit):
+        '''Wrapper to update_payment method in state.py'''
+        self.state_db.update_payment(session, oid, date_applied, description, credit)
+
+    def delete_payment(self, session, oid):
+        '''Wrapper to delete_payment method in state.py'''
+        self.state_db.delete_payment(session, oid)
+
     def get_hypothetical_matched_charges(self, session, account, sequence):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""

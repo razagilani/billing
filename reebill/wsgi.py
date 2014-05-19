@@ -1040,7 +1040,7 @@ class BillToolBridge:
                 if type(rows) is dict: rows = [rows]
                 # process list of edits
                 for row in rows:
-                    self.state_db.update_payment(
+                    self.process.update_payment(
                         session,
                         row['id'],
                         row['date_applied'],
@@ -1051,7 +1051,7 @@ class BillToolBridge:
             elif xaction == "create":
                 # date applied is today by default (can be edited later)
                 today = datetime.utcnow().date()
-                new_payment = self.state_db.create_payment(session, account,
+                new_payment = self.process.create_payment(session, account,
                         today, "New Entry", 0)
                 # Payment object lacks "id" until row is inserted in database
                 session.flush()
@@ -1061,7 +1061,7 @@ class BillToolBridge:
                 # single delete comes in not in a list
                 if type(rows) is int: rows = [rows]
                 for oid in rows:
-                    self.state_db.delete_payment(session, oid)
+                    self.process.delete_payment(session, oid)
                 return self.dumps({'success':True})
 
     @cherrypy.expose

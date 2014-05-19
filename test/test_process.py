@@ -443,7 +443,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # add a payment between 2012-01-01 (when bill1 version 0 was
             # issued) and 2013-01-01 (the present), to make sure that payment
             # is deducted from the balance on which the late charge is based
-            self.state_db.create_payment(session, acc, date(2012,6,5),
+            self.process.create_payment(session, acc, date(2012,6,5),
                     'a $10 payment in june', 10)
             self.assertEqual((late_charge_source_amount - 10) *
                     bill2.late_charge_rate,
@@ -451,13 +451,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,1,1)))
 
             #Pay off the bill, make sure the late charge is 0
-            self.state_db.create_payment(session, acc, date(2012,6,6),
+            self.process.create_payment(session, acc, date(2012,6,6),
                     'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
 
             #Overpay the bill, make sure the late charge is still 0
-            self.state_db.create_payment(session, acc, date(2012,6,7),
+            self.process.create_payment(session, acc, date(2012,6,7),
                     'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
@@ -1093,7 +1093,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # add a payment of $30 30 days ago (10 days after 1st reebill was
             # issued). the late fee above is now wrong; it should be 50% of
             # the unpaid $20 instead of 50% of the entire $50.
-            self.state_db.create_payment(session, acc, datetime.utcnow().date()
+            self.process.create_payment(session, acc, datetime.utcnow().date()
                     - timedelta(30), 'backdated payment', 30)
 
             # now a new version of the 2nd reebill should have a different late
@@ -1462,7 +1462,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             three = self.process.roll_reebill(session, acc)
 
             # add a payment, shown on bill #2
-            self.state_db.create_payment(session, acc, date(2000,2,16),
+            self.process.create_payment(session, acc, date(2000,2,16),
                     'a payment', 100)
             # TODO bill shows 0 because bill has no energy in it and
             # payment_received is 0
@@ -1656,7 +1656,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             two = self.process.roll_reebill(session, acc)
 
             # payment on jan. 20 gets applied to #2
-            self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
+            self.process.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
             self.process.compute_reebill(session, acc, 2)
             self.assertEqual(123.45, two.payment_received)
 
@@ -2106,7 +2106,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # add a payment so payment_received is not 0
             payment_amount = 100
-            self.state_db.create_payment(session, account, date(2013,2,17),
+            self.process.create_payment(session, account, date(2013,2,17),
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
