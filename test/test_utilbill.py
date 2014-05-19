@@ -2,18 +2,24 @@
 document, when there finally is one.
 '''
 from datetime import date
+from StringIO import StringIO
 import dateutil
 from bson import ObjectId
 from decimal import Decimal
 from unittest import TestCase
+from processing.session_contextmanager import DBSession
 from billing.test import example_data
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.exceptions import NoRSIError
+
 import example_data
 
-class UtilBillTest(utils.TestCase):
+
+
+class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
     def test_compute(self):
         # make a utility bill document from scratch to ensure full control over
@@ -526,70 +532,89 @@ class UtilBillTest(utils.TestCase):
         self.assertEqual(address['street'],'3501 13TH ST NW #WH')
 
     def test_refresh_charges(self):
-        utilbill_doc = example_data.get_utilbill_dict('99999', start=date(
-                2000,1,1), end=date(2000,2,1))
-        utilbill_doc['charges'] = [{
-            'rsi_binding': 'OLD',
-            'description': 'this will get removed',
-            'quantity': 2,
-            'quantity_units': 'therms',
-            'rate': 3,
-            'total': 6,
-            'group': 'All Charges'
-        }],
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                'january.pdf')
 
-        uprs = RateStructure(
-            id=ObjectId(),
-            rates=[
-                RateStructureItem(
-                    rsi_binding='NEW_1',
-                    description='a charge for this will be added',
-                    quantity='1',
-                    quantity_units='dollars',
-                    rate='2',
-                    # NOTE no group
-                ),
-                RateStructureItem(
-                    rsi_binding='NEW_2',
-                    description='a charge for this will be added too',
-                    quantity='5',
-                    quantity_units='therms',
-                    rate='6',
-                    shared=False,
-                    group='New Group',
-                ),
-                RateStructureItem(
-                    rsi_binding='NO_CHARGE',
-                    description='this RSI should not have a charge',
-                    quantity='7',
-                    quantity_units='therms',
-                    rate='8',
-                    shared=True,
-                    has_charge=False,
-                )
-            ]
-        )
+            utilbill = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]
+            new_rsi = self.process.add_rsi(session, utilbill['id'])
+            self.process.update_rsi(session, utilbill['id'],'New RSI #1', {
+                    'rsi_binding': 'NEW_1',
+                    'description':'a charge for this will be added',
+                    'quantity': '1',
+                    'rate': '2',
+                    'quantity_units':'dollars'
+                })
+            new_rsi = self.process.add_rsi(session, utilbill['id'])
+            self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
+                    'rsi_binding': 'NEW_2',
+                    'description':'a charge for this will be added too',
+                    'quantity': '5',
+                    'rate': '6',
+                    'quantity_units':'therms',
+                    'shared': False
+                })
 
-        mongo.refresh_charges(utilbill_doc, uprs)
 
-        self.maxDiff = None
-        self.assertEqual([
-            {
-                'rsi_binding': 'NEW_1',
-                'description': 'a charge for this will be added',
-                'quantity': 0,
-                'quantity_units': 'dollars',
-                'rate': 0,
-                'total': 0,
-                'group': '',
-            },
-            {
-                'rsi_binding': 'NEW_2',
-                'description': 'a charge for this will be added too',
-                'quantity': 0,
-                'quantity_units': 'therms',
-                'rate': 0,
-                'total': 0,
-                'group': 'New Group',
-            },
-        ], utilbill_doc['charges'])
+            self.process.refresh_charges(session, utilbill['id'])
+            charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
+            self.assertEqual([
+                {
+                    'rsi_binding': 'NEW_1',
+                    'id': 'NEW_1',
+                    'description': 'a charge for this will be added',
+                    'quantity': 1,
+                    'quantity_units': 'dollars',
+                    'rate': 2,
+                    'total': 2,
+                    'group': '',
+                },
+                {
+                    'rsi_binding': 'NEW_2',
+                    'id': 'NEW_2',
+                    'description': 'a charge for this will be added too',
+                    'quantity': 5,
+                    'quantity_units': 'therms',
+                    'rate': 6,
+                    'total': 30,
+                    'group': '',
+                },
+            ], charges)
+
+        # TODO move the stuff below into a unit test (in test_utilbill.py)
+        # when there's any kind of exception in computing the bill, the new
+        # set of charges should still get saved, and the exception should be
+        # re-raised
+        new_rsi = self.process.add_rsi(session, utilbill['id'])
+        self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
+                    'rsi_binding': 'BAD',
+                    'description':"quantity formula can't be computed",
+                    'quantity': 'WTF',
+                    'rate': '1',
+                    'quantity_units':'whatever',
+                })
+
+        from billing.processing.exceptions import RSIError
+        with self.assertRaises(RSIError) as e:
+            self.process.refresh_charges(session, utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
+        self.assertEqual([{
+            'rsi_binding': 'BAD',
+            'id': 'BAD',
+            'description': "quantity formula can't be computed",
+            'quantity_units': 'whatever',
+            # quantity, rate, total are all 0 when not computable
+            'quantity': 0,
+            'rate': 0,
+            'total': 0,
+            'group': '',
+        }], [charges[0]])
+
+        # TODO test that document is still saved after any kind of Exception--
+        # i'm not sure how to do this because the code should be (and is)
+        # written so that there are no known ways to trigger unexpected
+        # exceptions. in a real unit test, mongo.compute_charges could be
+        # replaced with a mock that did this.
