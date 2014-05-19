@@ -889,7 +889,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         """Test creating corrections on reebills, and issuing them to create
         adjustments on other reebills.
         """
-        
         acc = '99999'
         p = self.process
         base_date = date(2012,1,1)
@@ -1621,40 +1620,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             }], self.process.get_reebill_metadata_json(session, '99999'))
 
 
-    def test_payment_application(self):
-        acc = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
-                    'january.pdf')
-            self.process.upload_utility_bill(session, acc, 'gas',
-                    date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
-                    'february.pdf')
-
-            # create and issue reebill #1
-            self.process.roll_reebill(session, acc, start_date=date(2012,1,1))
-            self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
-
-            # create reebill reebill #2
-            two = self.process.roll_reebill(session, acc)
-
-            # payment on jan. 20 gets applied to #2
-            self.process.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
-            self.process.compute_reebill(session, acc, 2)
-            self.assertEqual(123.45, two.payment_received)
-
-            # make a correction on reebill #1: payment does not get applied to
-            # #1, and does get applied to #2
-            # NOTE because #1-1 is unissued, its utility bill document should
-            # be "current", not frozen
-            self.process.new_version(session, acc, 1)
-            one_1 = self.state_db.get_reebill(session, acc, 1, version=1)
-            self.process.compute_reebill(session, acc, 1)
-            self.process.compute_reebill(session, acc, 2)
-            self.assertEqual(0, one_1.payment_received)
-            self.assertEqual(123.45, two.payment_received)
-
-
     def test_bind_and_compute_consistency(self):
         '''Tests that repeated binding and computing of a reebill do not
         cause it to change (a bug we have seen).'''
@@ -2144,6 +2109,58 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'corrections': '(never issued)',
             }], reebill_data, 'id')
 
+            # make a correction on reebill #1: payment does not get applied to
+            # #1, and does get applied to #2
+            # NOTE because #1-1 is unissued, its utility bill document should
+            # be "current", not frozen
+            self.process.new_version(session, account, 1)
+            self.process.compute_reebill(session, account, 1)
+            self.process.compute_reebill(session, account, 2)
+            reebill_data = self.process.get_reebill_metadata_json(session,
+                                                                  account)
+            self.assertDocumentsEqualExceptKeys([{
+                'sequence': 2,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0,
+                'hypothetical_total': expected_energy_quantity,
+                'payment_received': payment_amount,
+                'period_start': date(2013,2,1),
+                'period_end': date(2013,3,1),
+                'prior_balance': expected_energy_quantity * .5,
+                'ree_charges': expected_energy_quantity * .8,
+                'ree_value': expected_energy_quantity,
+                'services': [],
+                'total_adjustment': 0,
+                'total_error': 0,
+                'ree_quantity': expected_energy_quantity,
+                'balance_due': expected_energy_quantity * .5 +
+                            expected_energy_quantity * .8 - payment_amount,
+                'balance_forward': expected_energy_quantity * .5 -
+                                payment_amount,
+                'corrections': '(never issued)',
+            },{
+                'sequence': 1,
+                'max_version': 1,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0,
+                'hypothetical_total': expected_energy_quantity,
+                'payment_received': 0,
+                'period_start': date(2013,1,1),
+                'period_end': date(2013,2,1),
+                'prior_balance': 0,
+                'ree_charges': expected_energy_quantity * .5,
+                'ree_value': expected_energy_quantity,
+                'services': [],
+                'total_adjustment': 0,
+                'total_error': 0,
+                'ree_quantity': expected_energy_quantity,
+                'balance_due': expected_energy_quantity * .5,
+                'balance_forward': 0,
+                'corrections': '#1 not issued',
+            }], reebill_data, 'id')
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
