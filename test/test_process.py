@@ -1620,130 +1620,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             }], self.process.get_reebill_metadata_json(session, '99999'))
 
 
-    def test_bind_and_compute_consistency(self):
-        '''Tests that repeated binding and computing of a reebill do not
-        cause it to change (a bug we have seen).'''
-        acc = '99999'
-        with DBSession(self.state_db) as session:
-            # create utility bill for January
-            # the UPRS for this utility bill will be empty, because there are
-            # no other utility bills in the db, and the bill will have no
-            # charges; all the charges in the template bill get removed because
-            # the rate structure has no RSIs in it. so, add RSIs and charges
-            # corresponding to them from example_data. (this is the same way
-            # the user would manually add RSIs and charges when processing the
-            # first bill for a given rate structure.)
-            self.process.upload_utility_bill(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
-                    'january.pdf')
-            utilbill_jan = session.query(UtilBill).one()
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill_jan)
-            uprs.rates = example_data.get_uprs().rates
-            utilbill_jan_doc = self.reebill_dao.load_doc_for_utilbill(
-                    utilbill_jan)
-            utilbill_jan_doc['charges'] = example_data.get_utilbill_dict(
-                    '99999')['charges']
-            uprs.save()
-            self.reebill_dao.save_utilbill(utilbill_jan_doc)
-
-
-            # create utility bill for February. thie UPRS and charges will be
-            # the same as the one for January.
-            self.process.upload_utility_bill(session, acc, 'gas',
-                     date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
-                     'february.pdf')
-            utilbill_feb = session.query(UtilBill)\
-                    .order_by(desc(UtilBill.period_start)).first()
-
-            # create a reebill for each utility bill. #2 will be computed
-            # repeatedly and #1 will serve as its predecessor when computing
-            # below.
-            self.process.roll_reebill(session, acc, start_date=date(2012,1,1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
-            self.process.roll_reebill(session, acc,
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
-            for use_olap in True, False:
-                reebill2 = self.state_db.get_reebill(session, acc, 2)
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                # NOTE changes to 'reebill2' do not persist in db
-
-                # bind & compute once to start. this change should be
-                # idempotent.
-                olap_id = 'example-1'
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                                           reebill2, use_olap=use_olap)
-                ree1 = reebill2.get_total_renewable_energy()
-                self.process.compute_utility_bill(session, utilbill_feb.id)
-                self.process.compute_reebill(session, acc, 2)
-
-                # check that total renewable energy quantity has not been
-                # changed by computing the bill for the first time (this
-                # happened in bug #60548728)
-                ree = reebill2.get_total_renewable_energy()
-                self.assertEqual(ree1, ree)
-
-                # save other values that will be checked repeatedly
-                # (more fields could be added here)
-                ree_value = reebill2.ree_value
-                ree_charge = reebill2.ree_charge
-                total = reebill2.total
-                balance_due = reebill2.balance_due
-
-                self.reebill_dao.save_reebill(reebill2_doc)
-
-                # this function checks that current values match the orignals
-                def check():
-                    reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                    # in approximate "causal" order
-                    self.assertAlmostEqual(ree,
-                            reebill2.get_total_renewable_energy())
-                    # self.assertAlmostEqual(actual, reebill2.actual_total)
-                    # self.assertAlmostEqual(hypo, reebill2.hypothetical_total)
-                    self.assertAlmostEqual(ree_value, reebill2.ree_value)
-                    self.assertAlmostEqual(ree_charge, reebill2.ree_charge)
-                    self.assertAlmostEqual(total, reebill2.total)
-                    self.assertAlmostEqual(balance_due, reebill2.balance_due)
-
-                # this better succeed, since nothing was done
-                check()
-
-                # bind and compute repeatedly
-                self.process.compute_reebill(session, acc, 2)
-                check()
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                        reebill2, use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
-                check()
-                self.process.compute_reebill(session, acc, 2)
-                check()
-                self.process.compute_reebill(session, acc, 2)
-                check()
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                        reebill2, use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                        reebill2, use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                        reebill2, use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
-                check()
-                self.process.compute_reebill(session, acc, 2)
-                check()
-                reebill2_doc = self.reebill_dao.load_reebill(acc, 2)
-                self.process.ree_getter.update_renewable_readings(olap_id,
-                        reebill2, use_olap=use_olap)
-                self.reebill_dao.save_reebill(reebill2_doc)
-                check()
-                self.process.compute_reebill(session, acc, 2)
-                check()
-
     def test_create_first_reebill(self):
         '''Tests Process.create_first_reebill which creates the first reebill
         (in MySQL and Mongo) attached to a particular utility bill, using the
@@ -2022,8 +1898,36 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     skip_compute=True)
             self.process.update_sequential_account_info(session, account, 1,
                     discount_rate=0.5)
-            self.process.bind_renewable_energy(session, account, 1)
-            self.process.compute_reebill(session, account, 1)
+
+            # get renewable energy and compute the reebill. make sure this is
+            # idempotent because in the past there was a bug where it was not.
+            for i in range(2):
+                self.process.bind_renewable_energy(session, account, 1)
+                self.process.compute_reebill(session, account, 1)
+                reebill_data = self.process.get_reebill_metadata_json(session,
+                        account)
+                self.assertDocumentsEqualExceptKeys([{
+                     'sequence': 1,
+                     'max_version': 0,
+                     'issued': False,
+                     'issue_date': None,
+                     'actual_total': 0.,
+                     'hypothetical_total': energy_quantity,
+                     'payment_received': 0.,
+                     'period_start': date(2013,1,1),
+                     'period_end': date(2013,2,1),
+                     'prior_balance': 0.,
+                     'ree_charges': energy_quantity * .5,
+                     'ree_value': energy_quantity,
+                     'services': [],
+                     'total_adjustment': 0.,
+                     'total_error': 0.,
+                     'ree_quantity': energy_quantity,
+                     'balance_due': energy_quantity * .5,
+                     'balance_forward': 0.,
+                     'corrections': '(never issued)',
+                 }], reebill_data, 'id')
+
             self.process.issue(session, account, 1, issue_date=date(2013,2,15))
 
             reebill_data = self.process.get_reebill_metadata_json(session,
