@@ -155,7 +155,10 @@ class Process(object):
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
-        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc, orig_meter_id, orig_reg_id, rows)
+        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc, 
+                                                         orig_meter_id, 
+                                                         orig_reg_id, 
+                                                         **rows)
         self.reebill_dao.save_utilbill(utilbill_doc)
         return  new_meter_id, new_reg_id
 
