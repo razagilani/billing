@@ -1621,9 +1621,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_create_first_reebill(self):
-        '''Tests Process.create_first_reebill which creates the first reebill
-        (in MySQL and Mongo) attached to a particular utility bill, using the
-        account's utility bill document template.'''
+        '''Test creating the first utility bill and reebill for an account,
+        making sure the reebill is correct with respect to the utility bill.
+        '''
         with DBSession(self.state_db) as session:
             # at first, there are no utility bills
             self.assertEqual(([], 0), self.process.get_all_utilbills_json(
@@ -1670,8 +1670,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'rate_class': 'DC Non Residential Non Heat',
                 'reebills': [{'issue_date': None, 'sequence': 1L,
                         'version': 0L}],
-                'service': 'Gas',
-                'state': 'Final',
+                'service': 'Gas', 'state': 'Final',
                 'total_charges': 0.0,
                 'utility': 'washgas',
             }, utilbill_data, 'id', 'charges')
@@ -1797,45 +1796,37 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # modify the MySQL utility bill
             self.process.update_utilbill_metadata(session,utilbill_data['id'],
-                                                  period_start=date(2013,6,6),
-                                                  period_end=date(2013,8,8),
-                                                  service='electricity',
-                                                  utility='BGE',
-                                                  rate_class='General Service - Schedule C')
+                  period_start=date(2013,6,6),
+                  period_end=date(2013,8,8),
+                  service='electricity',
+                  utility='BGE',
+                  rate_class='General Service - Schedule C')
             # add some RSIs to the UPRS, and charges to match
-            new_rsi = self.process.add_rsi(session,utilbill_data['id'])
+            self.process.add_rsi(session,utilbill_data['id'])
             self.process.update_rsi(session, utilbill_data['id'],'New RSI #1', {
-                    'rsi_binding': 'A',
-                    'description':'UPRS only',
-                    'quantity': '2',
-                    'rate': '3',
-                    'group': 'All Charges',
-                    'quantity_units':'kWh'
-                })
+                'rsi_binding': 'A',
+                'description':'UPRS only',
+                'quantity': '2',
+                'rate': '3',
+                'group': 'All Charges',
+                'quantity_units':'kWh'
+            })
 
-            new_rsi = self.process.add_rsi(session,utilbill_data['id'])
+            self.process.add_rsi(session,utilbill_data['id'])
             self.process.update_rsi(session, utilbill_data['id'],'New RSI #1', {
-                    'rsi_binding': 'B',
-                    'description':'not shared',
-                    'quantity': '6',
-                    'rate': '7',
-                    'quantity_units':'therms',
-                    'group': 'All Charges',
-                    'shared': False
-                })
-
+                'rsi_binding': 'B',
+                'description':'not shared',
+                'quantity': '6',
+                'rate': '7',
+                'quantity_units':'therms',
+                'group': 'All Charges',
+                'shared': False
+            })
 
             # compute_utility_bill should update the document to match
             self.process.compute_utility_bill(session, utilbill_data['id'])
             self.process.refresh_charges(session, utilbill_data['id'])
             charges = self.process.get_utilbill_charges_json(session, utilbill_data['id'])
-            '''self.assertEquals('99999', doc['account'])
-            self.assertEquals(date(2013,6,6), doc['start'])
-            self.assertEquals(date(2013,8,8), doc['end'])
-            self.assertEquals('electricity', doc['service'])
-            self.assertEquals('BGE', doc['utility'])
-            self.assertEquals('General Service - Schedule C',
-                    doc['rate_class'])'''
 
             # check charges
             # NOTE if the commented-out lines are added below the test will
@@ -1864,6 +1855,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_compute_reebill(self):
+        '''Basic test of reebill processing with an emphasis on making sure
+        the accounting numbers in reebills are correct.
+        '''
         account = '99999'
         energy_quantity = 100
         payment_amount = 100
