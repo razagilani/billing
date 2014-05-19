@@ -26,6 +26,16 @@ from os.path import realpath, join, dirname
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
 
+# TODO: move this into TestProcess.setUp and use it in every test
+class MockReeGetter(object):
+    def __init__(self, quantity):
+        self.quantity = quantity
+
+    def update_renewable_readings(self, olap_id, reebill,
+                use_olap=True, verbose=False):
+        for reading in reebill.readings:
+            reading.renewable_quantity = self.quantity
+
 class ProcessTest(TestCaseWithSetup, utils.TestCase):
     # apparenty this is what you need to do if you override the __init__ method
     # of a TestCase
@@ -1532,14 +1542,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         earliest unissued bill.'''
         # replace process.ree_getter with one that always sets the renewable
         # energy readings to a known value
-        # TODO: move this into TestProcess.setUp and use it in every test
-        class MockReeGetter(object):
-            def __init__(self, quantity):
-                self.quantity = quantity
-            def update_renewable_readings(self, olap_id, reebill,
-                                          use_olap=True, verbose=False):
-                for reading in reebill.readings:
-                    reading.renewable_quantity = self.quantity
         self.process.ree_getter = MockReeGetter(10)
 
         acc = '99999'
