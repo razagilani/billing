@@ -362,7 +362,8 @@ class Process(object):
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
                 ReeBill.version == latest_versions_sq.c.max_version)
-        ).outerjoin(ReeBillCharge).group_by(ReeBill.id)
+        ).outerjoin(ReeBillCharge)\
+        .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
         for reebill, total_charge in q:
             # load utility bill document for this reebill:
