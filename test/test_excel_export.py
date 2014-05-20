@@ -163,7 +163,7 @@ def createMockReebill():
     rb.readings = [Reading('REG_TOTAL', 'Energy Sold', 561.9,
                            188.20197727, 'therms')]
     rb.get_total_renewable_energy.return_value = 188.20197727
-    rb.get_total_hypothetical_charges.return_value = sum(c.total for c in rb
+    rb.get_total_hypothetical_charges.return_value = sum(c.h_total for c in rb
         .charges)
     rb.period_begin = date(2011,11,12)
     rb.period_end = date(2011,12,14)
