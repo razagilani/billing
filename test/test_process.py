@@ -1963,6 +1963,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             reebill_data = self.process.get_reebill_metadata_json(session,
                     account)
             self.assertDocumentsEqualExceptKeys([{
+                'sequence': 2,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0,
+                'hypothetical_total': energy_quantity,
+                'payment_received': payment_amount,
+                'period_start': date(2013,2,1),
+                'period_end': date(2013,3,1),
+                'prior_balance': energy_quantity * .5,
+                'ree_charges': energy_quantity * .8,
+                'ree_value': energy_quantity,
+                'services': [],
+                'total_adjustment': 0,
+                'total_error': 0,
+                'ree_quantity': energy_quantity,
+                'balance_due': energy_quantity * .5 +
+                            energy_quantity * .8 - payment_amount,
+                'balance_forward': energy_quantity * .5 -
+                                payment_amount,
+                'corrections': '(never issued)',
+            },{
                 'sequence': 1,
                 'max_version': 0,
                 'issued': True,
@@ -1982,28 +2004,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'balance_due': energy_quantity * .5,
                 'balance_forward': 0,
                 'corrections': '-',
-            },{
-                'sequence': 2,
-                'max_version': 0,
-                'issued': False,
-                'issue_date': None,
-                'actual_total': 0,
-                'hypothetical_total': energy_quantity,
-                'payment_received': payment_amount,
-                'period_start': date(2013,2,1),
-                'period_end': date(2013,3,1),
-                'prior_balance': energy_quantity * .5,
-                'ree_charges': energy_quantity * .8,
-                'ree_value': energy_quantity,
-                'services': [],
-                'total_adjustment': 0,
-                'total_error': 0,
-                'ree_quantity': energy_quantity,
-                'balance_due': energy_quantity * .5 +
-                               energy_quantity * .8 - payment_amount,
-                'balance_forward': energy_quantity * .5 -
-                                   payment_amount,
-                'corrections': '(never issued)',
             }], reebill_data, 'id')
 
             # make a correction on reebill #1: payment does not get applied to
