@@ -323,17 +323,20 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
-    def update_readings_from_document(self, utilbill_doc):
+    def update_readings_from_document(self, session, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given utility bill document. Renewable
         energy quantities are all set to 0.
         '''
         # NOTE mongo.get_all_actual_registers_json can't be used here due to
         # circular dependency
+        for r in self.readings:
+            session.delete(r)
         self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
                 reg_dict['quantity'], 0, reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
+        return None
 
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
@@ -421,17 +424,26 @@ class ReeBill(Base):
 
         return total_therms
 
-    def update_charges_from_utilbill_doc(self, session, utilbill_doc):
+    def update_charges_from_utilbill_doc(self, session, actual_utilbill_doc,
+                hypothetical_utilbill_doc):
         '''Updates the set of Charges belonging to this reebill to match the
         given utility bill document. All new Charge objects are created,
-        and old ones are delted, so references to existing charges should not
+        and old ones are deleted, so references to existing charges should not
         be used after this method is called.
         '''
         for charge in self.charges:
             session.delete(charge)
-        self.charges = [ReeBillCharge(self, c['rsi_binding'],  c['description'],
-                c['group'], c['quantity'], c['rate'], c['total']) for c in
-                utilbill_doc['charges']]
+        self.charges = []
+        for ac in actual_utilbill_doc['charges']:
+            # assume 'hypothetical_utilbill_doc' and 'actual_utilbill_doc'
+            # have identical sets of RSI bindings
+            rsi_binding = ac['rsi_binding']
+            hc = next(c for c in hypothetical_utilbill_doc['charges']
+                    if c['rsi_binding'] == rsi_binding)
+            self.charges.append(ReeBillCharge(self, rsi_binding,
+                    ac['description'], ac['group'], ac['quantity'],
+                    hc['quantity'], ac['rate'], hc['rate'], ac['total'],
+                    hc['total']))
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -461,45 +473,10 @@ class ReeBill(Base):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
         assert len(self.utilbills) == 1
-        return sum(charge.total for charge in self.charges)
+        return sum(charge.h_total for charge in self.charges)
 
     def get_service_address_formatted(self):
         return str(self.service_address)
-
-    def get_total_renewable_energy(self):
-        return sum(r.renewable_quantity for r in self.readings)
-
-        total_therms = 0
-        # TODO move the unit-conversion into a new method in Reading like
-        # 'convert_to_therms'
-        for reading in self.readings:
-            # convert quantity to therms according to unit, and add it to
-            # the total
-            if reading.unit == 'therms':
-                total_therms += reading.renewable_quantity
-            elif reading.unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += reading.renewable_quantity / 100000.0
-            elif reading.unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += reading.renewable_quantity / .0341214163
-            elif reading.unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += reading.renewable_quantity * ccf_conversion_factor
-                else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    print ("Register in reebill %s-%s-%s contains gas measured "
-                           "in ccf: energy value is wrong; time to implement "
-                           "https://www.pivotaltracker.com/story/show/28825375") \
-                          % (self.account, self.sequence, self.version)
-                    # assume conversion factor is 1
-                    total_therms += reading.renewable_quantity
-            elif reading.unit =='kwd':
-                total_therms + reading.renewable_quantity
-            else:
-                raise ValueError('Unknown energy unit: "%s"' % reading.unit)
-
-        return total_therms
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first ReeBillCharge object found belonging to this
@@ -556,26 +533,30 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
+
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
     group = Column(String, name='group_name', nullable=False)
-    quantity = Column(Float, nullable=False)
-    rate = Column(Float, nullable=False)
-    total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group, quantity,
-                 rate, total):
-        # TODO: should this be necessary? look at SQLAlchemy docs
+    a_quantity = Column(Float, nullable=False)
+    h_quantity = Column(Float, nullable=False)
+    a_rate = Column(Float, nullable=False)
+    h_rate = Column(Float, nullable=False)
+    a_total = Column(Float, nullable=False)
+    h_total = Column(Float, nullable=False)
+
+    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+                 h_quantity, a_rate, h_rate, a_total, h_total):
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
-        self.quantity = quantity
-        self.rate = rate
-        self.total = total
+        self.a_quantity, self.h_quantity = a_quantity, h_quantity
+        self.a_rate, self.h_rate = a_rate, h_rate
+        self.a_total, self.h_total = a_total, h_total
 
 class Reading(Base):
-    '''Stores utility register readings and renewable energy offseting the
+    '''Stores utility register readings and renewable energy offsetting the
     value of each register.
     '''
     __tablename__ = 'reading'
@@ -610,6 +591,10 @@ class Reading(Base):
         self.conventional_quantity = conventional_quantity
         self.renewable_quantity = renewable_quantity
         self.unit = unit
+
+    @property
+    def hypothetical_quantity(self):
+        return self.conventional_quantity + self.renewable_quantity
 
 class UtilBill(Base):
     __tablename__ = 'utilbill'
@@ -987,7 +972,7 @@ class StateDB(object):
         if current_max_version_reebill.issued != 1:
             raise ValueError(("Can't increment version of reebill %s-%s "
                     "because version %s is not issued yet") % (account,
-                    sequence, max_version))
+                    sequence, current_max_version_reebill.version))
 
         new_reebill = ReeBill(current_max_version_reebill.customer, sequence,
                 current_max_version_reebill.version + 1,
