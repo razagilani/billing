@@ -36,6 +36,7 @@ create table if not exists reading (
     conventional_quantity float not null,
     renewable_quantity float not null,
     unit varchar(1000) not null,
+    aggregate_function varchar(15) default 'SUM',
     foreign key (reebill_id) references reebill (id) on delete cascade
 )''')
 
