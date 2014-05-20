@@ -226,6 +226,7 @@ class Process(object):
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         rsi = rs_doc.get_rsi(rsi_binding)
         rs_doc.rates.remove(rsi)
+        assert rsi not in rs_doc.rates
         rs_doc.save()
 
     def create_payment(self, session, account, date_applied, description,
