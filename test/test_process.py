@@ -1182,181 +1182,166 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO: Test multiple services
 
 
-    def test_roll_rs_prediction(self):
-        '''Basic test of rate structure prediction when rolling bills.'''
+    def test_rs_prediction(self):
+        '''Basic test of rate structure prediction when uploading utility
+        bills.
+        '''
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
-            # create customers A, B, and C, their utility bill template
-            # documents, and reebills #0 for each (which include utility bills)
-            customer_a = Customer('Customer A', acc_a, .12, .34,
-                    '00000000000000000000000a', 'example@example.com')
-            customer_b = Customer('Customer B', acc_b, .12, .34,
-                    '00000000000000000000000b', 'example@example.com')
-            customer_c = Customer('Customer C', acc_c, .12, .34,
-                    '00000000000000000000000c', 'example@example.com')
-            session.add_all([customer_a, customer_b, customer_c])
-            template_a = example_data.get_utilbill_dict(acc_a,
-                    start=date(1900,1,1,), end=date(1900,2,1))
-            template_b = example_data.get_utilbill_dict(acc_b,
-                    start=date(1900,1,1,), end=date(1900,2,1))
-            template_c = example_data.get_utilbill_dict(acc_c,
-                    start=date(1900,1,1,), end=date(1900,2,1))
-            template_a['_id'] = ObjectId('00000000000000000000000a')
-            template_b['_id'] = ObjectId('00000000000000000000000b')
-            template_c['_id'] = ObjectId('00000000000000000000000c')
-            self.reebill_dao.save_utilbill(template_a)
-            self.reebill_dao.save_utilbill(template_b)
-            self.reebill_dao.save_utilbill(template_c)
-            # new customers also need to be in nexus for 'update_renewable_readings' to
-            # work (using mock Skyliner)
-            self.nexus_util._customers.extend([
-                {
-                    'billing': 'aaaaa',
-                    'olap': 'a-1',
-                    'casualname': 'Customer A',
-                    'primus': '1 A St.',
-                },
-                {
-                    'billing': 'bbbbb',
-                    'olap': 'b-1',
-                    'casualname': 'Customer B',
-                    'primus': '1 B St.',
-                },
-                {
-                    'billing': 'ccccc',
-                    'olap': 'c-1',
-                    'casualname': 'Customer C',
-                    'primus': '1 C St.',
-                },
-            ])
+           # create customers A, B, and C, their utility bill template
+           # documents, and reebills #0 for each (which include utility bills)
+           customer_a = Customer('Customer A', acc_a, .12, .34,
+                   '00000000000000000000000a', 'example@example.com')
+           customer_b = Customer('Customer B', acc_b, .12, .34,
+                   '00000000000000000000000b', 'example@example.com')
+           customer_c = Customer('Customer C', acc_c, .12, .34,
+                   '00000000000000000000000c', 'example@example.com')
+           session.add_all([customer_a, customer_b, customer_c])
+           template_a = example_data.get_utilbill_dict(acc_a,
+                   start=date(1900,1,1,), end=date(1900,2,1))
+           template_b = example_data.get_utilbill_dict(acc_b,
+                   start=date(1900,1,1,), end=date(1900,2,1))
+           template_c = example_data.get_utilbill_dict(acc_c,
+                   start=date(1900,1,1,), end=date(1900,2,1))
+           template_a['_id'] = ObjectId('00000000000000000000000a')
+           template_b['_id'] = ObjectId('00000000000000000000000b')
+           template_c['_id'] = ObjectId('00000000000000000000000c')
+           self.reebill_dao.save_utilbill(template_a)
+           self.reebill_dao.save_utilbill(template_b)
+           self.reebill_dao.save_utilbill(template_c)
+           # new customers also need to be in nexus for 'update_renewable_readings' to
+           # work (using mock Skyliner)
+           self.nexus_util._customers.extend([
+               {
+                   'billing': 'aaaaa',
+                   'olap': 'a-1',
+                   'casualname': 'Customer A',
+                   'primus': '1 A St.',
+               },
+               {
+                   'billing': 'bbbbb',
+                   'olap': 'b-1',
+                   'casualname': 'Customer B',
+                   'primus': '1 B St.',
+               },
+               {
+                   'billing': 'ccccc',
+                   'olap': 'c-1',
+                   'casualname': 'Customer C',
+                   'primus': '1 C St.',
+               },
+           ])
 
-            # create utility bills and reebill #1 for all 3 accounts
-            # (note that period dates are not exactly aligned)
-            utilbill_a = self.process.upload_utility_bill(session, acc_a, 'gas',
+           # create utility bills and reebill #1 for all 3 accounts
+           # (note that period dates are not exactly aligned)
+           self.process.upload_utility_bill(session, acc_a, 'gas',
                     date(2000,1,1), date(2000,2,1), StringIO('January 2000 A'),
                     'january-a.pdf', total=0, state=UtilBill.Complete)
-            utilbill_b = self.process.upload_utility_bill(session, acc_b, 'gas',
+           self.process.upload_utility_bill(session, acc_b, 'gas',
                     date(2000,1,1), date(2000,2,1), StringIO('January 2000 B'),
                     'january-b.pdf', total=0, state=UtilBill.Complete)
-            utilbill_c = self.process.upload_utility_bill(session, acc_c, 'gas',
+           self.process.upload_utility_bill(session, acc_c, 'gas',
                     date(2000,1,1), date(2000,2,1), StringIO('January 2000 C'),
                     'january-c.pdf', total=0, state=UtilBill.Complete)
 
-            # UPRSs of all 3 reebills will be empty, because sequence-0
-            # rebills' utility bills' UPRSs are ignored when generating
-            # predicted UPRSs. so, insert some RSIs into them. A gets only one
-            # RSI, SYSTEM_CHARGE, while B and C get two others,
-            # DISTRIBUTION_CHARGE and PGC.
-            uprs_a = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_a)
-                    .one())
-            uprs_b = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_b)
-                    .one())
-            uprs_c = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_c)
-                    .one())
-            uprs_a.rates = [
-                RateStructureItem(
-                    rsi_binding='SYSTEM_CHARGE',
-                    description='System Charge',
-                    quantity='1',
-                    processingnote='',
-                    rate='11.2',
-                    uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
-                    shared=True,
-                ),
-                RateStructureItem(
-                    rsi_binding='NOT_SHARED',
-                    description='System Charge',
-                    quantity='2',
-                    processingnote='',
-                    rate='3',
-                    uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
-                    shared=False,
-                )
-            ]
-            uprs_b.rates = uprs_c.rates = [
-                RateStructureItem(
-                    rsi_binding='DISTRIBUTION_CHARGE',
-                    description='Distribution charge for all therms',
-                    quantity='750.10197727',
-                    processingnote='',
-                    rate='0.2935',
-                    quantity_units='therms',
-                    total='220.16',
-                    uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb',
-                    shared=True,
-                ),
-                RateStructureItem(
-                    rsi_binding='PGC',
-                    description='Purchased Gas Charge',
-                    quantity='750.10197727',
-                    processingnote='',
-                    rate='0.7653',
-                    quantity_units='therms',
-                    total='574.05',
-                    uuid='c97340da-2c16-11e1-8c7f-002421e88ffb',
-                    shared=True,
-                ),
-            ]
-            uprs_a.save(); uprs_b.save(); uprs_c.save()
+           id_a = next(obj['id'] for obj in self.process.get_all_utilbills_json(
+                   session, acc_a, 0, 30)[0])
+           id_b = next(obj['id'] for obj in self.process.get_all_utilbills_json(
+                   session, acc_b, 0, 30)[0])
+           id_c = next(obj['id'] for obj in self.process.get_all_utilbills_json(
+                   session, acc_c, 0, 30)[0])
 
-            # create utility bill and reebill #2 for A
-            utilbill_a_2 = self.process.upload_utility_bill(session, acc_a,
-                    'gas', date(2000,2,1), date(2000,3,1),
-                     StringIO('February 2000 A'), 'february-a.pdf', total=0,
-                     state=UtilBill.Complete)
+           # UPRSs of all 3 bills will be empty.
+           # insert some RSIs into them. A gets only one
+           # RSI, SYSTEM_CHARGE, while B and C get two others,
+           # DISTRIBUTION_CHARGE and PGC.
+           self.process.add_rsi(session, id_a)
+           self.process.add_rsi(session, id_a)
+           self.process.update_rsi(session, id_a, 'New RSI #1', {
+               'rsi_binding': 'SYSTEM_CHARGE',
+                'description': 'System Charge',
+                'quantity': '1',
+                'rate': '11.2',
+                'shared': True
+           })
+           self.process.update_rsi(session, id_a, 'New RSI #2', {
+               'rsi_binding': 'NOT_SHARED',
+               'description': 'System Charge',
+               'quantity': '1',
+               'rate': '3',
+               'shared': False
+           })
+           for i in (id_b, id_c):
+               self.process.add_rsi(session, i)
+               self.process.add_rsi(session, i)
+               self.process.update_rsi(session, i, 'New RSI #1', {
+                   'rsi_binding': 'DISTRIBUTION_CHARGE',
+                   'description': 'Distribution charge for all therms',
+                   'quantity': '750.10197727',
+                   'rate': '220.16',
+                   'shared': True
+               })
+               self.process.update_rsi(session, i, 'New RSI #2', {
+                   'rsi_binding': 'PGC',
+                   'description': 'Purchased Gas Charge',
+                   'quantity': '750.10197727',
+                   'rate': '0.7563',
+                   'shared': True
+               })
 
-            # initially there will be no RSIs in A's 2nd utility bill, because
-            # there are no "processed" utility bills yet.
-            uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2000,2,1)).one())
-            self.assertEqual([], uprs_a_2.rates)
+           # create utility bill and reebill #2 for A
+           self.process.upload_utility_bill(session, acc_a,
+                   'gas', date(2000,2,1), date(2000,3,1),
+                    StringIO('February 2000 A'), 'february-a.pdf', total=0,
+                    state=UtilBill.Complete)
+           id_a_2 = [obj for obj in self.process.get_all_utilbills_json(
+                    session, acc_a, 0, 30)][0][0]['id']
 
-            # when the other bills have been marked as "processed", they should
-            # affect the new one.
-            utilbill_a.processed = True
-            utilbill_b.processed = True
-            utilbill_c.processed = True
-            self.process.regenerate_uprs(session, utilbill_a_2.id)
-            # the UPRS of A's 2nd bill should now match B and C, i.e. it
-            # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
-            # because together the other two have greater weight than A's
-            # reebill #1. it should also contain the NOT_SHARED RSI because
-            # un-shared RSIs always get copied from each bill to its successor.
-            uprs_a_2 = self.rate_structure_dao.load_uprs_for_utilbill(
-                    session.query(UtilBill).filter_by(customer=customer_a,
-                    period_start=date(2000,2,1)).one())
-            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
-                    set(rsi.rsi_binding for rsi in uprs_a_2.rates))
+           # initially there will be no RSIs in A's 2nd utility bill, because
+           # there are no "processed" utility bills yet.
+           self.assertEqual([], self.process.get_rsis_json(session, id_a_2))
 
-            # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
-            # a new bill is rolled, the UPRS it gets depends on whether it's
-            # closer to B/C-1 or to A-2.
-            uprs_a_2.rates = [RateStructureItem(
-                rsi_binding='RIGHT_OF_WAY',
-                description='DC Rights-of-Way Fee',
-                quantity='750.10197727',
-                processingnote='',
-                rate='0.03059',
-                quantity_units='therms',
-                total='22.95',
-                uuid='c97344f4-2c16-11e1-8c7f-002421e88ffb'
-            )]
-            uprs_a_2.save()
+           # when the other bills have been marked as "processed", they should
+           # affect the new one.
+           self.process.update_utilbill_metadata(session, id_a, processed=True)
+           self.process.update_utilbill_metadata(session, id_b, processed=True)
+           self.process.update_utilbill_metadata(session, id_c, processed=True)
+           self.process.regenerate_uprs(session, id_a_2)
+           # the UPRS of A's 2nd bill should now match B and C, i.e. it
+           # should contain DISTRIBUTION and PGC and exclude SYSTEM_CHARGE,
+           # because together the other two have greater weight than A's
+           # reebill #1. it should also contain the NOT_SHARED RSI because
+           # un-shared RSIs always get copied from each bill to its successor.
+           self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
+                    set(r['rsi_binding'] for r in
+                    self.process.get_rsis_json(session, id_a_2)))
 
-            # roll B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
-            # the latter are more numerous, but A-1 should outweigh them
-            # because weight decreases quickly with distance.
-            self.process.upload_utility_bill(session, acc_b, 'gas',
-                     date(2000,2,5), date(2000,3,5),
-                     StringIO('February 2000 B'),
-                    'february-b.pdf', total=0, state=UtilBill.Complete)
-            self.assertEqual(set(['RIGHT_OF_WAY']),
-                    set(rsi.rsi_binding for rsi in uprs_a_2.rates))
+           # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
+           # a new bill is rolled, the UPRS it gets depends on whether it's
+           # closer to B/C-1 or to A-2.
+           self.process.delete_rsi(session, id_a_2, 'DISTRIBUTION_CHARGE')
+           x = self.process.get_rsis_json(session, id_a_2)
+           self.process.delete_rsi(session, id_a_2, 'PGC')
+           self.process.delete_rsi(session, id_a_2, 'NOT_SHARED')
+           self.process.add_rsi(session, id_a_2)
+           self.process.update_rsi(session, id_a_2, 'New RSI #1', {
+               'rsi_binding': 'RIGHT_OF_WAY',
+               'description': 'DC Rights-of-Way Fee',
+               'quantity': '750.10197727',
+               'rate': '0.03059',
+               'shared': True
+           })
+
+           # create B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
+           # the latter are more numerous, but A-1 should outweigh them
+           # because weight decreases quickly with distance.
+           self.process.upload_utility_bill(session, acc_b, 'gas',
+                    date(2000,2,5), date(2000,3,5),
+                    StringIO('February 2000 B'),
+                   'february-b.pdf', total=0, state=UtilBill.Complete)
+           self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
+                    self.process.get_rsis_json(session, id_a_2)))
 
 
 
