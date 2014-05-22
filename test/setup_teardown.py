@@ -43,8 +43,9 @@ class TestCaseWithSetup(unittest.TestCase):
         rootlogger.propagate = False
 
     @staticmethod
-    def insert_test_data():
+    def insert_data():
         session = Session()
+        session.execute("delete from charge")
         session.execute("delete from payment")
         session.execute("delete from reebill")
         session.execute("delete from utilbill")
@@ -132,7 +133,7 @@ class TestCaseWithSetup(unittest.TestCase):
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
-        TestCaseWithSetup.insert_test_data()
+        TestCaseWithSetup.insert_data()
 
     def tearDown(self):
         '''Clears out databases.'''

@@ -1,6 +1,8 @@
 """
 Utility functions to interact with state database
 """
+from collections import defaultdict
+from copy import deepcopy
 
 import os, sys
 import itertools
@@ -13,6 +15,7 @@ from sqlalchemy import Table, Column, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc, label
@@ -22,6 +25,7 @@ from sqlalchemy import func, not_
 from sqlalchemy.types import Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
+import tsort
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 from exc import DatabaseError
 from alembic.script import ScriptDirectory
@@ -33,12 +37,25 @@ import logging
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
+from processing.exceptions import NoRSIError, FormulaError, RSIError
+
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
 log = logging.getLogger(__name__)
 
 Session = scoped_session(sessionmaker())
-Base = declarative_base()
+
+class Base(object):
+
+    @classmethod
+    def column_names(cls):
+        return [prop.key for prop in class_mapper(cls).iterate_properties
+                if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base(cls=Base)
+
 
 _schema_revision = '55e7e5ebdd29'
 
@@ -258,6 +275,11 @@ class ReeBill(Base):
     # UtilBill.
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
+    @property
+    def utilbill(self):
+        assert len(self.utilbills) == 1
+        return self.utilbills[0]
+
     # see the following documentation fot delete cascade behavior
     #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
     charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
@@ -424,26 +446,137 @@ class ReeBill(Base):
 
         return total_therms
 
-    def update_charges_from_utilbill_doc(self, session, actual_utilbill_doc,
-                hypothetical_utilbill_doc):
-        '''Updates the set of Charges belonging to this reebill to match the
-        given utility bill document. All new Charge objects are created,
-        and old ones are deleted, so references to existing charges should not
-        be used after this method is called.
-        '''
+    def compute_charges(self, uprs, reebill_dao):
+        """Updates `quantity`, `rate`, and `total` attributes all charges in
+        the :class:`.Reebill` according to the formulas in the RSIs in the
+        given rate structures.
+        :param uprs: A uprs from MongoDB
+        :parm reebill_dao:
+        """
+        session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
         self.charges = []
-        for ac in actual_utilbill_doc['charges']:
-            # assume 'hypothetical_utilbill_doc' and 'actual_utilbill_doc'
-            # have identical sets of RSI bindings
-            rsi_binding = ac['rsi_binding']
-            hc = next(c for c in hypothetical_utilbill_doc['charges']
-                    if c['rsi_binding'] == rsi_binding)
-            self.charges.append(ReeBillCharge(self, rsi_binding,
-                    ac['description'], ac['group'], ac['quantity'],
-                    hc['quantity'], ac['rate'], hc['rate'], ac['total'],
-                    hc['total']))
+
+        uprs.validate()
+        rate_structure = uprs
+        rsis = rate_structure.rates
+
+        utilbill = self.utilbill
+
+        utilbill_doc = reebill_dao.load_doc_for_utilbill(utilbill)
+        utilbill.compute_charges(uprs, utilbill_doc)
+
+        #[MN]:This code temporary until utilbill_doc stops storing register data
+        # We duplicate the utilbill and update its register quantities,
+        # assigning them to the register readings from self.readings. Then, we
+        # run though the charge calculation logic for the duplicate utilbill,
+        # and then we copy back the charges onto the reebill
+        hypothetical_utilbill = deepcopy(utilbill_doc)
+        hypothetical_registers = chain.from_iterable(m['registers'] for m
+                 in hypothetical_utilbill['meters'])
+        for reading in self.readings:
+            h_register = next(r for r in hypothetical_registers if r[
+                    'register_binding'] == reading.register_binding)
+            h_register['quantity'] = reading.hypothetical_quantity
+
+
+        rsi_bindings = set(rsi['rsi_binding'] for rsi in uprs.rates)
+        for c in (x for x in self.charges if x.rsi_binding not in rsi_bindings):
+            raise NoRSIError('No rate structure item for "%s"' % c)
+
+        # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
+        # (where NAME can be a register or the RSI_BINDING of some other charge).
+        # these are not valid python identifiers, so they can't be parsed as
+        # individual names. this dictionary maps names to "quantity"/"rate"/"total"
+        # to float values; RateStructureItem.compute_charge uses it to get values
+        # for the identifiers in the RSI formulas. it is initially filled only with
+        # register names, and the inner dictionary corresponding to each register
+        # name contains only "quantity".
+        identifiers = defaultdict(lambda:{})
+        for meter in hypothetical_utilbill['meters']:
+            for register in meter['registers']:
+                identifiers[register['register_binding']]['quantity'] = \
+                        register['quantity']
+
+        # get dictionary mapping rsi_bindings names to the indices of the
+        # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number
+        # to each.
+        rsi_numbers = {rsi.rsi_binding: index for index, rsi in enumerate(rsis)}
+
+        # the dependencies of some RSIs' formulas on other RSIs form a
+        # DAG, which will be represented as a list of pairs of RSI numbers in
+        # 'rsi_numbers'. this list will be used to determine the order
+        # in which charges get computed. to build the list, find all identifiers
+        # in each RSI formula that is not a register name; every such identifier
+        # must be the name of an RSI, and its presence means the RSI whose
+        # formula contains that identifier depends on the RSI whose rsi_binding is
+        # the identifier.
+        dependency_graph = []
+        # the list 'independent_rsi_numbers' initially contains all RSI
+        # numbers, and by the end of the loop will contain only the numbers of
+        # RSIs that have no relationship to another one
+        independent_rsi_numbers = set(rsi_numbers.itervalues())
+
+        for rsi in rsis:
+            this_rsi_num = rsi_numbers[rsi.rsi_binding]
+
+            # for every node in the AST of the RSI's "quantity" and "rate"
+            # formulas, if the 'ast' module labels that node as an
+            # identifier, and its name does not occur in 'identifiers' above
+            # (which contains only register names), add the tuple (this
+            # charge's number, that charge's number) to 'dependency_graph'.
+            for identifier in rsi.get_identifiers():
+                if identifier in identifiers:
+                    continue
+                try:
+                    other_rsi_num = rsi_numbers[identifier]
+                except KeyError:
+                    # TODO might want to validate identifiers before computing
+                    # for clarity
+                    raise FormulaError(('Unknown variable in formula of RSI '
+                            '"%s": %s') % (rsi.rsi_binding, identifier))
+                # a pair (x,y) means x precedes y, i.e. y depends on x
+                dependency_graph.append((other_rsi_num, this_rsi_num))
+                independent_rsi_numbers.discard(other_rsi_num)
+                independent_rsi_numbers.discard(this_rsi_num)
+
+        # charges that don't depend on other charges can be evaluated before ones
+        # that do.
+        evaluation_order = list(independent_rsi_numbers)
+
+        # 'evaluation_order' now contains only the indices of charges that don't
+        # have dependencies. topological sort the dependency graph to find an
+        # evaluation order that works for the charges that do have dependencies.
+        try:
+            evaluation_order.extend(tsort.topological_sort(dependency_graph))
+        except tsort.GraphError as g:
+            # if the graph contains a cycle, provide a more comprehensible error
+            # message with the charge numbers converted back to names
+            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
+                    g.args[1])
+            raise RSIError('Circular dependency: %s' % names_in_cycle)
+
+        assert len(evaluation_order) == len(rsis)
+
+        all_charges = {charge.rsi_binding: charge for charge in self.charges}
+
+        assert len(evaluation_order) == len(rsis)
+
+        acs = {charge.rsi_binding: charge for charge in utilbill.charges}
+        for rsi_number in evaluation_order:
+            rsi = rsis[rsi_number]
+            quantity, rate = rsi.compute_charge(identifiers)
+            total = quantity * rate
+            ac = acs[rsi.rsi_binding]
+            self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
+                    ac.description, ac.group, ac.quantity,
+                    quantity, ac.rate, rate, ac.total,
+                    total))
+            identifiers[rsi.rsi_binding]['quantity'] = quantity
+            identifiers[rsi.rsi_binding]['rate'] = rate
+            identifiers[rsi.rsi_binding]['total'] = total
+
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -719,6 +852,139 @@ class UtilBill(Base):
                 ','.join(str(ur.reebill.version) for ur in group))
                 for (sequence, group) in groups)
 
+    def refresh_charges(self, rates):
+        """Replaces the `charges` list on the :class:`.UtilityBill` based
+        on the specified rates.
+        :param rates: A list of UPRS.rates objects
+        """
+        session = Session.object_session(self)
+        for charge in self.charges:
+            session.delete(charge)
+        for rsi in sorted(rates, key=itemgetter('rsi_binding')):
+            session.add(Charge(utilbill=self,
+                               description=rsi.description,
+                               group=rsi.group,
+                               quantity=0,
+                               quantity_units=rsi.quantity_units,
+                               rate=0,
+                               rsi_binding=rsi.rsi_binding,
+                               total=0))
+
+    def compute_charges(self, uprs, utilbill_doc):
+        """Updates `quantity`, `rate`, and `total` attributes all charges in
+        the :class:`.UtilityBill` according to the formulas in the RSIs in the
+        given rate structures.
+        :param uprs: A uprs from MongoDB
+        :parm utillbill_doc: The utilbill_doc from mongodb. Needed for meters
+        """
+        uprs.validate()
+        rate_structure = uprs
+        rsis = rate_structure.rates
+
+        rsi_bindings = set(rsi['rsi_binding'] for rsi in uprs.rates)
+        for c in (x for x in self.charges if x.rsi_binding not in rsi_bindings):
+            raise NoRSIError('No rate structure item for "%s"' % c)
+
+        # This code temporary until utilbill_doc stops holding RSIs
+        # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
+        # (where NAME can be a register or the RSI_BINDING of some other charge).
+        # these are not valid python identifiers, so they can't be parsed as
+        # individual names. this dictionary maps names to "quantity"/"rate"/"total"
+        # to float values; RateStructureItem.compute_charge uses it to get values
+        # for the identifiers in the RSI formulas. it is initially filled only with
+        # register names, and the inner dictionary corresponding to each register
+        # name contains only "quantity".
+        identifiers = defaultdict(lambda:{})
+        for meter in utilbill_doc['meters']:
+            for register in meter['registers']:
+                identifiers[register['register_binding']]['quantity'] = \
+                        register['quantity']
+
+        # get dictionary mapping rsi_bindings names to the indices of the
+        # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number
+        # to each.
+        rsi_numbers = {rsi.rsi_binding: index for index, rsi in enumerate(rsis)}
+
+        # the dependencies of some RSIs' formulas on other RSIs form a
+        # DAG, which will be represented as a list of pairs of RSI numbers in
+        # 'rsi_numbers'. this list will be used to determine the order
+        # in which charges get computed. to build the list, find all identifiers
+        # in each RSI formula that is not a register name; every such identifier
+        # must be the name of an RSI, and its presence means the RSI whose
+        # formula contains that identifier depends on the RSI whose rsi_binding is
+        # the identifier.
+        dependency_graph = []
+        # the list 'independent_rsi_numbers' initially contains all RSI
+        # numbers, and by the end of the loop will contain only the numbers of
+        # RSIs that have no relationship to another one
+        independent_rsi_numbers = set(rsi_numbers.itervalues())
+
+        for rsi in rsis:
+            this_rsi_num = rsi_numbers[rsi.rsi_binding]
+
+            # for every node in the AST of the RSI's "quantity" and "rate"
+            # formulas, if the 'ast' module labels that node as an
+            # identifier, and its name does not occur in 'identifiers' above
+            # (which contains only register names), add the tuple (this
+            # charge's number, that charge's number) to 'dependency_graph'.
+            for identifier in rsi.get_identifiers():
+                if identifier in identifiers:
+                    continue
+                try:
+                    other_rsi_num = rsi_numbers[identifier]
+                except KeyError:
+                    # TODO might want to validate identifiers before computing
+                    # for clarity
+                    raise FormulaError(('Unknown variable in formula of RSI '
+                            '"%s": %s') % (rsi.rsi_binding, identifier))
+                # a pair (x,y) means x precedes y, i.e. y depends on x
+                dependency_graph.append((other_rsi_num, this_rsi_num))
+                independent_rsi_numbers.discard(other_rsi_num)
+                independent_rsi_numbers.discard(this_rsi_num)
+
+        # charges that don't depend on other charges can be evaluated before ones
+        # that do.
+        evaluation_order = list(independent_rsi_numbers)
+
+        # 'evaluation_order' now contains only the indices of charges that don't
+        # have dependencies. topological sort the dependency graph to find an
+        # evaluation order that works for the charges that do have dependencies.
+        try:
+            evaluation_order.extend(tsort.topological_sort(dependency_graph))
+        except tsort.GraphError as g:
+            # if the graph contains a cycle, provide a more comprehensible error
+            # message with the charge numbers converted back to names
+            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
+                    g.args[1])
+            raise RSIError('Circular dependency: %s' % names_in_cycle)
+
+        assert len(evaluation_order) == len(rsis)
+
+        all_charges = {charge.rsi_binding: charge for charge in self.charges}
+
+        assert len(evaluation_order) == len(rsis)
+
+        for rsi_number in evaluation_order:
+            rsi = rsis[rsi_number]
+            quantity, rate = rsi.compute_charge(identifiers)
+            total = quantity * rate
+            try:
+                charge = all_charges[rsi.rsi_binding]
+            except KeyError:
+                pass
+            else:
+                charge.description = rsi['description']
+                charge.quantity = quantity
+                charge.rate = rate
+                charge.total = total
+
+            identifiers[rsi.rsi_binding]['quantity'] = quantity
+            identifiers[rsi.rsi_binding]['rate'] = rate
+            identifiers[rsi.rsi_binding]['total'] = total
+
+    def total_charge(self):
+        return sum(charge.total for charge in self.charges)
+
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
@@ -736,10 +1002,11 @@ class Charge(Base):
     rsi_binding = Column(String(255))
     total = Column(Float)
     
-    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id)) 
+    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id,
+                                                        cascade="all"))
     
-    def __init__(self, utilbill, description, quantity, quantity_units, rate, 
-                 rsi_binding, total):
+    def __init__(self, utilbill, description, group, quantity, quantity_units,
+                 rate, rsi_binding, total):
         """Construct a new :class:`.Charge`.
         
         :param utilbill: A :class:`.UtilBill` instance.
@@ -752,6 +1019,8 @@ class Charge(Base):
         :param total: The total charge (equal to rate * quantity) 
         """
         self.utilbill = utilbill
+        self.description = description
+        self.group = group
         self.quantity = quantity
         self.quantity_units = quantity_units
         self.rate = rate
