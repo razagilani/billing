@@ -517,7 +517,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                              date(2013, 1, 1)))
 
 
-    def test_bind_rate_structure(self):
+    def test_compute_realistic_charges(self):
+        '''Tests computing utility bill charges and reebill charge for a
+        reebill based on the utility bill, using a set of charge from an actual
+        bill.
+        '''
         account = '99999'
         with DBSession(self.state_db) as session:
             # create utility bill and reebill
@@ -543,33 +547,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                         fields)
             self.process.refresh_charges(session, utilbill_id)
 
-            # compute charges in the bill using the rate structure created from the
-            # above documents
-            actual_charges = self.process.get_utilbill_charges_json(session,
-                    utilbill_id)
-
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
-            register_quantity = self.process.get_registers_json(session,
+            quantity = self.process.get_registers_json(session,
                     utilbill_id)[0]['quantity']
-
-            # system charge: $11.2 in CPRS overrides $26.3 in URS
+            actual_charges = self.process.get_utilbill_charges_json(session,
+                    utilbill_id)
             def get_total(rsi_binding):
                 charge = next(c for c in actual_charges
                         if c['rsi_binding'] == rsi_binding)
                 return charge['total']
             self.assertEqual(11.2, get_total('SYSTEM_CHARGE'))
-            self.assertEqual(0.03059 * register_quantity,
-                    get_total('RIGHT_OF_WAY'))
-            self.assertEqual(0.01399 * register_quantity, get_total('SETF'))
-            self.assertEqual(0.006 * register_quantity, get_total('EATF'))
-            self.assertEqual(0.07777 * register_quantity,
-                    get_total('DELIVERY_TAX'))
+            self.assertEqual(0.03059 * quantity, get_total('RIGHT_OF_WAY'))
+            self.assertEqual(0.01399 * quantity, get_total('SETF'))
+            self.assertEqual(0.006 * quantity, get_total('EATF'))
+            self.assertEqual(0.07777 * quantity, get_total('DELIVERY_TAX'))
             self.assertEqual(23.14, get_total('PUC'))
-            self.assertEqual(.2935 * register_quantity,
-                    get_total('DISTRIBUTION_CHARGE'))
-            self.assertEqual(.7653 * register_quantity, get_total('PGC'))
-            all_rsi_bindings = [
+            self.assertEqual(.2935 * quantity, get_total('DISTRIBUTION_CHARGE'))
+            self.assertEqual(.7653 * quantity, get_total('PGC'))
+            # sales tax depends on all of the above
+            non_tax_rsi_bindings = [
                 'SYSTEM_CHARGE',
                 'DISTRIBUTION_CHARGE',
                 'PGC',
@@ -579,8 +576,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'EATF',
                 'DELIVERY_TAX'
             ]
-            sum_of_non_taxes = sum(map(get_total, all_rsi_bindings))
-            self.assertEqual(0.06 * sum_of_non_taxes, get_total('SALES_TAX'))
+            self.assertEqual(0.06 * sum(map(get_total, non_tax_rsi_bindings)),
+                    get_total('SALES_TAX'))
 
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
@@ -590,30 +587,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.compute_reebill(session, account, 1)
             reebill_charges = self.process.get_hypothetical_matched_charges(
                     session, account, 1)
-            def get_hyp_total(rsi_binding):
+            def get_h_total(rsi_binding):
                 charge = next(c for c in reebill_charges
                         if c['rsi_binding'] == rsi_binding)
                 return charge['hypothetical_total']
-            hyp_quantity = self.process.get_reebill_metadata_json(
+            h_quantity = self.process.get_reebill_metadata_json(
                     session, account)[0]['ree_quantity']
-
-            self.assertEqual(11.2, get_hyp_total('SYSTEM_CHARGE'))
-            self.assertEqual(0.03059 * hyp_quantity,
-                    get_hyp_total('RIGHT_OF_WAY'))
-            self.assertEqual(0.01399 * hyp_quantity, get_hyp_total('SETF'))
-            self.assertEqual(0.006 * hyp_quantity,
-                    get_hyp_total('EATF'))
-            self.assertEqual(0.07777 * hyp_quantity,
-                    get_hyp_total('DELIVERY_TAX'))
-            self.assertEqual(23.14, get_hyp_total('PUC'))
-            self.assertEqual(.2935 * hyp_quantity,
-                    get_hyp_total('DISTRIBUTION_CHARGE'))
-            self.assertEqual(.7653 * hyp_quantity, get_hyp_total('PGC'))
-
-            # sales tax: depends on all of the above
-            sum_of_non_taxes_hyp = sum(map(get_hyp_total, all_rsi_bindings))
-            self.assertDecimalAlmostEqual(0.06 * sum_of_non_taxes_hyp,
-                    get_hyp_total('SALES_TAX'))
+            self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
+            self.assertEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
+            self.assertEqual(0.01399 * h_quantity, get_h_total('SETF'))
+            self.assertEqual(0.006 * h_quantity, get_h_total('EATF'))
+            self.assertEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
+            self.assertEqual(23.14, get_h_total('PUC'))
+            self.assertEqual(.2935 * h_quantity,
+                    get_h_total('DISTRIBUTION_CHARGE'))
+            self.assertEqual(.7653 * h_quantity, get_h_total('PGC'))
+            self.assertEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
+                    get_h_total('SALES_TAX'))
 
 
     def test_upload_utility_bill(self):
