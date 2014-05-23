@@ -525,10 +525,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              date(2012, 1, 1), date(2012, 2, 1),
                                              StringIO('January 2012'),
                                              'january.pdf')
-            utilbill = session.query(UtilBill).one()
-            self.process.roll_reebill(session, account,
-                                      start_date=date(2012, 1, 1),
-                                      integrate_skyline_backend=False)
+            utilbill_id = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
 
             # the UPRS for this utility bill will be empty, because there are
             # no other utility bills in the db, and the bill will have no
@@ -537,160 +535,85 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # corresponding to them from example_data. (this is the same way
             # the user would manually add RSIs and charges when processing the
             # first bill for a given rate structure.)
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-            uprs.rates = example_data.get_uprs().rates
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
-            utilbill_doc['charges'] = example_data.get_utilbill_dict(
-                '99999')['charges']
-            uprs.save()
-            self.reebill_dao.save_utilbill(utilbill_doc)
+            for rsi in example_data.get_uprs().rates:
+                fields = rsi.to_dict()
+                del fields['id']
+                self.process.add_rsi(session, utilbill_id)
+                self.process.update_rsi(session, utilbill_id, "New RSI #1",
+                        fields)
+            self.process.refresh_charges(session, utilbill_id)
 
             # compute charges in the bill using the rate structure created from the
             # above documents
-            self.process.compute_reebill(session, account, 1)
-            reebill1 = self.state_db.get_reebill(session, account, 1)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill1
-                .utilbills[0])
+            actual_charges = self.process.get_utilbill_charges_json(session,
+                    utilbill_id)
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
-            actual_charges = utilbill_doc['charges']
-            total_regster = [r for r in chain.from_iterable(m['registers']
-                                                            for m in
-                                                            utilbill_doc[
-                                                                'meters'])
-                             if r['register_binding'] == 'REG_TOTAL'][0]
+            register_quantity = self.process.get_registers_json(session,
+                    utilbill_id)[0]['quantity']
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
-            system_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                                                          'SYSTEM_CHARGE'][0]
-            self.assertDecimalAlmostEqual(11.2, system_charge['total'])
-
-            # right-of-way fee
-            row_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                                                       'RIGHT_OF_WAY'][0]
-            self.assertDecimalAlmostEqual(
-                0.03059 * float(total_regster['quantity']),
-                row_charge['total'], places=2)  # TODO OK to be so inaccurate?
-
-            # sustainable energy trust fund
-            setf_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                                                        'SETF'][0]
-            self.assertDecimalAlmostEqual(
-                0.01399 * float(total_regster['quantity']),
-                setf_charge['total'], places=1)  # TODO OK to be so inaccurate?
-
-            # energy assistance trust fund
-            eatf_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                                                        'EATF'][0]
-            self.assertDecimalAlmostEqual(
-                0.006 * float(total_regster['quantity']),
-                eatf_charge['total'], places=2)
-
-            # delivery tax
-            delivery_tax = [c for c in actual_charges if c['rsi_binding'] ==
-                                                         'DELIVERY_TAX'][0]
-            self.assertDecimalAlmostEqual(
-                0.07777 * float(total_regster['quantity']),
-                delivery_tax['total'], places=2)
-
-            # peak usage charge
-            peak_usage_charge = \
-                [c for c in actual_charges if c['rsi_binding'] ==
-                                              'PUC'][0]
-            self.assertDecimalAlmostEqual(23.14, peak_usage_charge['total'])
-
-            # distribution charge
-            distribution_charge = \
-                [c for c in actual_charges if c['rsi_binding'] ==
-                                              'DISTRIBUTION_CHARGE'][0]
-            self.assertDecimalAlmostEqual(
-                .2935 * float(total_regster['quantity']),
-                distribution_charge['total'], places=2)
-
-            # purchased gas charge
-            purchased_gas_charge = \
-                [c for c in actual_charges if c['rsi_binding'] ==
-                                              'PGC'][0]
-            self.assertDecimalAlmostEqual(
-                .7653 * float(total_regster['quantity']),
-                purchased_gas_charge['total'], places=2)
-
-            # sales tax: depends on all of the above
-            sales_tax = [c for c in actual_charges if c['rsi_binding'] ==
-                                                      'SALES_TAX'][0]
-            self.assertDecimalAlmostEqual(0.06 * float(system_charge['total'] +
-                                                       distribution_charge[
-                                                           'total'] +
-                                                       purchased_gas_charge[
-                                                           'total'] +
-                                                       row_charge['total'] +
-                                                       peak_usage_charge[
-                                                           'total'] +
-                                                       setf_charge['total'] +
-                                                       eatf_charge['total'] +
-                                                       delivery_tax['total']),
-                                          sales_tax['total'],
-                                          places=2)
-
+            def get_total(rsi_binding):
+                charge = next(c for c in actual_charges
+                        if c['rsi_binding'] == rsi_binding)
+                return charge['total']
+            self.assertEqual(11.2, get_total('SYSTEM_CHARGE'))
+            self.assertEqual(0.03059 * register_quantity,
+                    get_total('RIGHT_OF_WAY'))
+            self.assertEqual(0.01399 * register_quantity, get_total('SETF'))
+            self.assertEqual(0.006 * register_quantity, get_total('EATF'))
+            self.assertEqual(0.07777 * register_quantity,
+                    get_total('DELIVERY_TAX'))
+            self.assertEqual(23.14, get_total('PUC'))
+            self.assertEqual(.2935 * register_quantity,
+                    get_total('DISTRIBUTION_CHARGE'))
+            self.assertEqual(.7653 * register_quantity, get_total('PGC'))
+            all_rsi_bindings = [
+                'SYSTEM_CHARGE',
+                'DISTRIBUTION_CHARGE',
+                'PGC',
+                'RIGHT_OF_WAY',
+                'PUC',
+                'SETF',
+                'EATF',
+                'DELIVERY_TAX'
+            ]
+            sum_of_non_taxes = sum(map(get_total, all_rsi_bindings))
+            self.assertEqual(0.06 * sum_of_non_taxes, get_total('SALES_TAX'))
 
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
+            self.process.roll_reebill(session, account,
+                                      start_date=date(2012, 1, 1),
+                                      integrate_skyline_backend=False)
             self.process.compute_reebill(session, account, 1)
-            reebill = self.state_db.get_reebill(session, account, 1)
-            reg_total_reading = reebill.get_reading_by_register_binding(
-                'REG_TOTAL')
-            hypothetical_quantity = reg_total_reading.conventional_quantity + \
-                                    reg_total_reading.renewable_quantity
+            reebill_charges = self.process.get_hypothetical_matched_charges(
+                    session, account, 1)
+            def get_hyp_total(rsi_binding):
+                charge = next(c for c in reebill_charges
+                        if c['rsi_binding'] == rsi_binding)
+                return charge['hypothetical_total']
+            hyp_quantity = self.process.get_reebill_metadata_json(
+                    session, account)[0]['ree_quantity']
 
-            # system charge: $11.2 in CPRS overrides $26.3 in URS
-            system_charge = reebill.get_charge_by_rsi_binding('SYSTEM_CHARGE')
-            self.assertDecimalAlmostEqual(11.2, system_charge.h_total)
-
-            # right-of-way fee
-            row_charge = reebill.get_charge_by_rsi_binding('RIGHT_OF_WAY')
-            self.assertDecimalAlmostEqual(0.03059 * hypothetical_quantity,
-                                          row_charge.h_total, places=2)
-
-            # sustainable energy trust fund
-            setf_charge = reebill.get_charge_by_rsi_binding('SETF')
-            self.assertDecimalAlmostEqual(0.01399 * hypothetical_quantity,
-                                          setf_charge.h_total, places=1)
-
-            # energy assistance trust fund
-            eatf_charge = reebill.get_charge_by_rsi_binding('EATF')
-            self.assertDecimalAlmostEqual(0.006 * hypothetical_quantity,
-                                          eatf_charge.h_total, places=2)
-
-            # delivery tax
-            delivery_tax = reebill.get_charge_by_rsi_binding('DELIVERY_TAX')
-            self.assertDecimalAlmostEqual(0.07777 * hypothetical_quantity,
-                                          delivery_tax.h_total, places=2)
-
-            # peak usage charge
-            peak_usage_charge = reebill.get_charge_by_rsi_binding('PUC')
-            self.assertDecimalAlmostEqual(23.14, peak_usage_charge.h_total)
-
-            # distribution charge
-            distribution_charge = reebill.get_charge_by_rsi_binding(
-                'DISTRIBUTION_CHARGE')
-            self.assertDecimalAlmostEqual(.2935 * hypothetical_quantity,
-                                          distribution_charge.h_total, places=1)
-
-            # purchased gas charge
-            purchased_gas_charge = reebill.get_charge_by_rsi_binding('PGC')
-            self.assertDecimalAlmostEqual(.7653 * hypothetical_quantity,
-                                          purchased_gas_charge.h_total,
-                                          places=2)
+            self.assertEqual(11.2, get_hyp_total('SYSTEM_CHARGE'))
+            self.assertEqual(0.03059 * hyp_quantity,
+                    get_hyp_total('RIGHT_OF_WAY'))
+            self.assertEqual(0.01399 * hyp_quantity, get_hyp_total('SETF'))
+            self.assertEqual(0.006 * hyp_quantity,
+                    get_hyp_total('EATF'))
+            self.assertEqual(0.07777 * hyp_quantity,
+                    get_hyp_total('DELIVERY_TAX'))
+            self.assertEqual(23.14, get_hyp_total('PUC'))
+            self.assertEqual(.2935 * hyp_quantity,
+                    get_hyp_total('DISTRIBUTION_CHARGE'))
+            self.assertEqual(.7653 * hyp_quantity, get_hyp_total('PGC'))
 
             # sales tax: depends on all of the above
-            sales_tax = reebill.get_charge_by_rsi_binding('SALES_TAX')
-            self.assertDecimalAlmostEqual(0.06 * (system_charge.h_total +
-                                                  distribution_charge.h_total + purchased_gas_charge.h_total +
-                                                  row_charge.h_total + peak_usage_charge.h_total +
-                                                  setf_charge.h_total + eatf_charge.h_total +
-                                                  delivery_tax.h_total),
-                                          sales_tax.h_total, places=2)
+            sum_of_non_taxes_hyp = sum(map(get_hyp_total, all_rsi_bindings))
+            self.assertDecimalAlmostEqual(0.06 * sum_of_non_taxes_hyp,
+                    get_hyp_total('SALES_TAX'))
 
 
     def test_upload_utility_bill(self):

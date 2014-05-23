@@ -212,7 +212,7 @@ class Process(object):
 
     def update_rsi(self, session, utilbill_id, rsi_binding, fields):
         '''Modify the charge given by 'rsi_binding' in the given utility
-        bill by setting key-value pairs to match the dictionary 'fields'.
+        bill by setti)ng key-value pairs to match the dictionary 'fields'.
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
@@ -261,9 +261,15 @@ class Process(object):
                                      ' utility bill. Please recompute the'
                                      ' ReeBill.')
             result.append({
-                'actual_rate': matching['rate'],
+                'rsi_binding': matching['rsi_binding'],
+                'description': matching['description'],
                 'actual_quantity': matching['quantity'],
+                'actual_rate': matching['rate'],
                 'actual_total': matching['total'],
+                'quantity_units': matching['quantity_units'],
+                'hypothetical_quantity': matching['quantity'],
+                'hypothetical_rate': matching['rate'],
+                'hypothetical_total': matching['total'],
             })
         return result
 
