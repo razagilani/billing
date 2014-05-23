@@ -78,7 +78,7 @@ class Address(Base):
 
     def to_dict(self):
         return {
-            'id': self.id,
+            #'id': self.id,
             'addressee': self.addressee,
             'street': self.street,
             'city': self.city,
