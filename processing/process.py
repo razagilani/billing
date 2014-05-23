@@ -434,6 +434,15 @@ class Process(object):
             result.append(the_dict)
         return result
 
+    def get_sequential_account_info(self, session, account, sequence):
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        return {
+            'billing_address': reebill.billing_address.to_dict(),
+            'service_address': reebill.service_address.to_dict(),
+            'discount_rate': reebill.discount_rate,
+            'late_charge_rate': reebill.late_charge_rate,
+        }
+
     def update_sequential_account_info(self, session, account, sequence,
             discount_rate=None, late_charge_rate=None,
             ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
