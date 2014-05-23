@@ -1154,19 +1154,44 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # another reebill
             self.process.roll_reebill(session, account)
-            reebill_1, reebill_2 = session.query(ReeBill) \
-                .order_by(ReeBill.id).all()
-            utilbills = session.query(UtilBill) \
-                .order_by(UtilBill.period_start).all()
-            self.assertEquals([utilbills[0]], reebill_1.utilbills)
-            self.assertEquals([utilbills[1]], reebill_2.utilbills)
+            utilbill_data, count = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertEqual(2, count)
+            self.assertEqual([{
+                'sequence': 1,
+                'version': 0,
+                'issue_date': datetime.utcnow().date()
+            }], utilbill_data[1]['reebills'])
+            self.assertEqual([{
+                'sequence': 2,
+                'version': 0,
+                'issue_date': None,
+            }], utilbill_data[0]['reebills'])
 
             # addresses should be preserved from one reebill document to the
             # next
-            self.assertEquals(reebill_1.billing_address,
-                              reebill_2.billing_address)
-            self.assertEquals(reebill_1.service_address,
-                              reebill_2.service_address)
+            billing_address = {
+                u"postalcode" : u"20910",
+                u"city" : u"Silver Spring",
+                u"state" : u"MD",
+                u"addressee" : u"Managing Member Monroe Towers",
+                u"street" : u"3501 13TH ST NW LLC"
+            }
+            service_address = {
+                 u"postalcode" : u"20010",
+                 u"city" : u"Washington",
+                 u"state" : u"DC",
+                 u"addressee" : u"Monroe Towers",
+                 u"street" : u"3501 13TH ST NW #WH"
+            }
+            account_info = self.process.get_sequential_account_info(session,
+                    account, 1)
+            self.assertEqual({
+                'discount_rate': 0.12,
+                'late_charge_rate': 0.34,
+                'billing_address': billing_address,
+                'service_address': service_address,
+            }, account_info)
 
             # add two more utility bills: a Hypothetical one, then a Complete one
             self.process.upload_utility_bill(session, account, 'gas',
@@ -1178,27 +1203,30 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              date(2013, 7, 30),
                                              StringIO('July 2013'),
                                              'july.pdf')
-            hypo_utilbill, later_utilbill = session.query(UtilBill) \
-                                                .order_by(
-                UtilBill.period_start).all()[2:4]
-            assert hypo_utilbill.state == UtilBill.Hypothetical
-            assert later_utilbill.state == UtilBill.Complete
+            utilbill_data, count = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertEqual(4, count)
+            self.assertEqual(['Final', 'Missing', 'Final', 'Final'],
+                    [u['state'] for u in utilbill_data])
 
             # The next utility bill isn't estimated or final, so
             # create_next_reebill should fail
             self.assertRaises(NoSuchBillException,
-                              self.process.roll_reebill, session, account)
+                    self.process.roll_reebill, session, account)
 
-            # replace 'hypo_utilbill' with a UtilityEstimated one, so it has a
-            # document and a reebill can be attached to it
+            # replace Hypothetical bill with a UtilityEstimated one.
             self.process.upload_utility_bill(session, account, 'gas',
                                              date(2013, 6, 3), date(2013, 7, 1),
                                              StringIO('June 2013'),
                                              'june.pdf',
                                              state=UtilBill.UtilityEstimated)
-            formerly_hypo_utilbill = session.query(UtilBill) \
-                .order_by(UtilBill.period_start).all()[2]
-            assert formerly_hypo_utilbill.state == UtilBill.UtilityEstimated
+            utilbill_data, count = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)
+            self.assertEqual(4, count)
+            self.assertEqual(['Final', 'Utility Estimated', 'Final', 'Final'],
+                             [u['state'] for u in utilbill_data])
+            last_utilbill_id, formerly_hyp_utilbill_id = (u['id'] for u in
+                    utilbill_data[:2])
 
             self.process.roll_reebill(session, account)
             self.process.roll_reebill(session, account)
@@ -1208,16 +1236,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # Shift later_utilbill a few days into the future so that there is
             # a time gap after the last attached utilbill
-            later_utilbill.period_start += timedelta(days=5)
-            later_utilbill.period_end += timedelta(days=5)
-            later_utilbill = session.merge(later_utilbill)
+            self.process.update_utilbill_metadata(session,
+                    formerly_hyp_utilbill_id, period_start=date(2013,6,8))
+            self.process.update_utilbill_metadata(session, last_utilbill_id,
+                    period_end=date(2013,7,6))
 
             # can't create another reebill because there are no more utility
             # bills
             with self.assertRaises(NoSuchBillException) as context:
                 self.process.roll_reebill(session, account)
-
-                # TODO: Test multiple services
 
 
     def test_rs_prediction(self):
@@ -1749,14 +1776,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              date(2013, 1, 1), date(2013, 2, 1),
                                              StringIO('January 2013'),
                                              'january.pdf')
+            utilbill_id = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
             self.process.roll_reebill(session, account,
                                       start_date=date(2013, 1, 1))
-            reebill = self.state_db.get_reebill(session, account, 1)
-
             # bind, compute, issue
-            self.process.ree_getter.update_renewable_readings(
-                self.nexus_util.olap_id(account), reebill,
-                use_olap=True)
+            self.process.bind_renewable_energy(session, account, 1)
             self.process.compute_reebill(session, account, 1)
             self.process.issue(session, account, 1)
 
@@ -1764,38 +1789,29 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.new_version(session, account, 1)
             self.assertEquals(1, self.state_db.max_version(session, account,
                                                            1))
-            reebill_correction = session.query(ReeBill) \
-                .filter_by(version=1).one()
 
-            # put it in an un-computable state by adding a charge without an RSI
-            reebill_correction_doc = self.reebill_dao.load_reebill(account, 1,
-                                                                   version=1)
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
-                .utilbills[0])
-            utilbill_doc['charges'].append({
-                'rsi_binding': 'NO_RSI',
-                "description": "Can't compute this",
-                "quantity": 1,
-                "quantity_units": "",
-                "rate": 11.2,
-                "total": 11.2,
-                "uuid": "c96fc8b0-2c16-11e1-8c7f-002421e88ffc",
-                'group': 'All Charges'
-            })
-            self.reebill_dao.save_reebill(reebill_correction_doc)
-            self.reebill_dao.save_utilbill(utilbill_doc)
+            # initially, reebill version 1 can be computed without an error
+            self.process.compute_reebill(session, account, 1, version=1)
+
+            # put it in an un-computable state by adding a charge without an
+            # RSI. it should now raise an RSIError
+            self.process.add_charge(session, utilbill_id, '')
             with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, account, 1, version=1)
 
             # delete the new version
             self.process.delete_reebill(session, account, 1)
-            self.assertEquals(0, self.state_db.max_version(session, account, 1))
+            reebill_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertEquals(0, reebill_data[0]['max_version'])
 
         # try to create a new version again: it should succeed, even though
         # there was a KeyError due to a missing RSI when computing the bill
         with DBSession(self.state_db) as session:
             self.process.new_version(session, account, 1)
-        self.assertEquals(1, self.state_db.max_version(session, account, 1))
+            reebill_data = self.process.get_reebill_metadata_json(session,
+                    account)
+            self.assertEquals(1, reebill_data[0]['max_version'])
 
     def test_compute_utility_bill(self):
         '''Tests creation of a utility bill and updating the Mongo document
