@@ -195,7 +195,8 @@ class RateStructureItem(EmbeddedDocument):
                 self.rate)
 
     def __eq__(self, other):
-        return self._fields == other._fields
+        return all(getattr(self, name) == getattr(other, name) for name in
+                self._fields)
 
     def __hash__(self):
         return sum(hash(value) for value in self._fields.values())

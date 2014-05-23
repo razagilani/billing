@@ -38,7 +38,7 @@ from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, dict_merge
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
@@ -1410,9 +1410,11 @@ class BillToolBridge:
 
             return self.dumps(result)
 
+#
+    ################
+
     ################
     # Handle utility bill upload
-    ################
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1582,7 +1584,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.get('billimages', 'show_reebill_images'):
+        if not self.config.getboolean('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
