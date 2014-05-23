@@ -36,11 +36,6 @@ class MockReeGetter(object):
 
 
 class ProcessTest(TestCaseWithSetup, utils.TestCase):
-    # apparenty this is what you need to do if you override the __init__ method
-    # of a TestCase
-    #def __init__(self, methodName='runTest', param=None):
-    #print '__init__'
-    #super(ProcessTest, self).__init__(methodName)
 
     def setup_dummy_utilbill_calc_charges(self, session, acc, begin_date,
                                           end_date):

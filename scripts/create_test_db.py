@@ -56,4 +56,12 @@ for view in dev_views:
     create_command = create_command.replace('`%s`' % DEV_DB, '`%s`' % TEST_DB)
     cur.execute(create_command)
 
+# copy almebic version from dev database to test database
+cur.execute("use %s" % DEV_DB)
+cur.execute("select * from alembic_version")
+alembic_version = cur.fetchone()[0]
+cur.execute("use %s" % TEST_DB)
+cur.execute("insert into alembic_version (version_num) values ('%s')" %
+        alembic_version)
+
 con.commit()
