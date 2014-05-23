@@ -234,6 +234,7 @@ class Process(object):
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         rsi = rs_doc.get_rsi(rsi_binding)
         rs_doc.rates.remove(rsi)
+        assert rsi not in rs_doc.rates
         rs_doc.save()
 
     def create_payment(self, session, account, date_applied, description,
@@ -265,9 +266,17 @@ class Process(object):
                                      ' match the charges on the associated'
                                      ' utility bill. Please recompute the'
                                      ' ReeBill.')
-            result.append({'actual_rate': matching.rate,
-                           'actual_quantity': matching.quantity,
-                           'actual_total': matching.total})
+            result.append({
+                'rsi_binding': matching.rsi_binding,
+                'description': matching.description,
+                'actual_quantity': matching.quantity,
+                'actual_rate': matching.rate,
+                'actual_total': matching.total,
+                'quantity_units': matching.quantity_units,
+                'hypothetical_quantity': hypothetical_charge.h_quantity,
+                'hypothetical_rate': hypothetical_charge.h_rate,
+                'hypothetical_total': hypothetical_charge.h_total
+            })
         return result
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
@@ -430,6 +439,15 @@ class Process(object):
 
             result.append(the_dict)
         return result
+
+    def get_sequential_account_info(self, session, account, sequence):
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        return {
+            'billing_address': reebill.billing_address.to_dict(),
+            'service_address': reebill.service_address.to_dict(),
+            'discount_rate': reebill.discount_rate,
+            'late_charge_rate': reebill.late_charge_rate,
+        }
 
     def update_sequential_account_info(self, session, account, sequence,
             discount_rate=None, late_charge_rate=None,
