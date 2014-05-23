@@ -74,7 +74,7 @@ class authentication(Schema):
     authenticate = StringBool()
     
 class billimages(Schema):
-    bill_image_directory = Directory()
+    bill_image_directory = String()
     show_reebill_images = StringBool()
     
 class reebillrendering(Schema):
