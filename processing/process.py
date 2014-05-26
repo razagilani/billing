@@ -1324,8 +1324,6 @@ class Process(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        max_predecessor_version = self.state_db.max_version(session, acc,
-                seq - 1)
         customer = self.state_db.get_customer(session, acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
