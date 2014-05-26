@@ -37,7 +37,7 @@ import logging
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
-from processing.exceptions import NoRSIError, FormulaError, RSIError
+from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
 
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
@@ -562,7 +562,6 @@ class ReeBill(Base):
         all_charges = {charge.rsi_binding: charge for charge in self.charges}
 
         assert len(evaluation_order) == len(rsis)
-
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
