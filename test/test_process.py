@@ -341,7 +341,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_get_late_charge(self):
-        '''Tests computation of late charges (without rolling bills).'''
+        '''Tests computation of late charges.
+        '''
+        # TODO: when possible, convert this into a unit test that checks the
+        # get_late_charge method, whatever class it may belong to by then
+        # (ReeBill?). See 69883814.
         acc = '99999'
         with DBSession(self.state_db) as session:
             # create utility bill with a charge in it
