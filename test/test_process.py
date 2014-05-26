@@ -364,7 +364,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               start_date=date(2000, 1, 1))
             self.process.update_sequential_account_info(session, acc, 1,
                     discount_rate=.5, late_charge_rate=.34)
-            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            self.process.ree_getter=MockReeGetter(100)
+            self.process.bind_renewable_energy(session, acc, 1)
             self.process.compute_reebill(session, acc, 1)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                     date(1999, 12, 31)))
@@ -382,7 +383,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # i.e. 30 days after the issue date.
             self.process.issue(session, acc, bill1.sequence,
                     issue_date=date(2000, 4, 1))
-            assert bill1.due_date == date(2000, 5, 1)
+            self.assertEqual(date(2000, 5, 1), bill1.due_date)
             self.assertEqual(50, bill1.balance_due)
 
             # create 2nd utility bill and reebill
@@ -394,7 +395,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill2 = self.process.roll_reebill(session, acc)
             self.process.update_sequential_account_info(session, acc, 2,
                     discount_rate=.5, late_charge_rate=.34)
-            bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
+            self.process.ree_getter = MockReeGetter(200)
+            self.process.bind_renewable_energy(session, acc, 2)
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charge == 100
@@ -442,27 +444,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # version 1. 
             self.process.new_version(session, acc, 1)
             bill1_1 = self.state_db.get_reebill(session, acc, 1, version=1)
-            # replace the renewable energy quantity that came from
-            # mock_skyliner with a known value (TODO: the energy values from
-            # mock_skyliner should be controllable)
-            bill1_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            self.process.ree_getter = MockReeGetter(100)
+            self.process.bind_renewable_energy(session, acc, 1)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
-            assert bill1_1.ree_charge == 25
-            assert bill1_1.balance_due == 25
+            self.assertEqual(25, bill1_1.ree_charge)
+            self.assertEqual(25, bill1_1.balance_due)
             self.process.issue(session, acc, 1, issue_date=date(2013, 3, 15))
             late_charge_source_amount = bill1_1.balance_due
 
             self.process.new_version(session, acc, 1)
+            self.process.bind_renewable_energy(session, acc, 2)
+            self.process.update_sequential_account_info(session, acc, 1,
+                    discount_rate=.25)
             bill1_2 = self.state_db.get_reebill(session, acc, 1, version=2)
-            # replace the renewable energy quantity that came from
-            # mock_skyliner with a known value (TODO: the energy values from
-            # mock_skyliner should be controllable)
-            bill1_2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            bill1_2.discount_rate = 0.25
             self.process.compute_reebill(session, acc, 1, version=2)
-            assert bill1_2.ree_charge == 75
-            assert bill1_2.balance_due == 75
+            self.assertEqual(75, bill1_2.ree_charge)
+            self.assertEqual(75, bill1_2.balance_due)
             self.process.issue(session, acc, 1)
 
             # note that the issue date on which the late charge in bill2 is
@@ -479,21 +477,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.state_db.create_payment(session, acc, date(2000, 6, 5),
                                          'a $10 payment in june', 10)
             self.assertEqual((late_charge_source_amount - 10) *
-                             bill2.late_charge_rate,
-                             self.process.get_late_charge(session, bill2,
-                                                          date(2013, 1, 1)))
+                    bill2.late_charge_rate,
+                    self.process.get_late_charge(session, bill2,
+                    date(2013, 1, 1)))
 
             #Pay off the bill, make sure the late charge is 0
-            self.state_db.create_payment(session, acc, date(2000, 6, 6),
-                                         'a $40 payment in june', 40)
+            self.process.create_payment(session, acc, date(2000, 6, 6),
+                    'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
                                                              date(2013, 1, 1)))
 
             #Overpay the bill, make sure the late charge is still 0
-            self.state_db.create_payment(session, acc, date(2000, 6, 7),
-                                         'a $40 payment in june', 40)
+            self.process.create_payment(session, acc, date(2000, 6, 7),
+                    'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2013, 1, 1)))
+                    date(2013, 1, 1)))
 
 
     def test_compute_realistic_charges(self):
