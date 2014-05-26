@@ -18,7 +18,7 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError
+from billing.processing.exceptions import BillStateError, NoRSIError, RSIError
 from billing.test import utils
 
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -352,16 +352,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'january.pdf')
             utilbill_doc = self.reebill_dao.load_doc_for_utilbill(u)
             uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-            utilbill_doc['charges'] = [
-                {
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 100,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 100,
-                    'group': 'All Charges',
-                }
-            ]
+            self.process.add_charge(session, u.id, "All Charges")
+            self.process.update_charge(session, u.id, "",
+                                       dict(rsi_binding='THE_CHARGE',
+                                            quantity=100,
+                                            quantity_units='therms', rate=1,
+                                            total=100, group='All Charges'))
+
             self.process.update_utilbill_metadata(session, u.id,
                                                   processed=True)
             self.reebill_dao.save_utilbill(utilbill_doc)
@@ -407,6 +404,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                   processed=True)
             bill2 = self.process.roll_reebill(session, acc)
             bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
+
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charge == 100
@@ -1035,16 +1033,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                   date(2012, 2, 1),
                                                   StringIO('January 2012'),
                                                   'january.pdf')
-            u1_doc = self.reebill_dao.load_doc_for_utilbill(u1)
-            u1_doc['charges'] = [{
-                                     'rsi_binding': 'THE_CHARGE',
-                                     'group': '',
-                                     'quantity': 100,
-                                     'quantity_units': 'therms',
-                                     'rate': 1,
-                                     'total': 100,
-                                 }]
-            self.reebill_dao.save_utilbill(u1_doc)
+
+            self.process.add_charge(session, u1.id, "")
+            self.process.update_charge(session, u1.id, "",
+                                       dict(rsi_binding='THE_CHARGE',
+                                            quantity=100,
+                                            quantity_units='therms', rate=1,
+                                            total=100, group='All Charges'))
+
             u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
             u1_uprs.rates = [RateStructureItem(
                 rsi_binding='THE_CHARGE',

@@ -192,8 +192,8 @@ class Process(object):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
         charge = session.query(Charge).join(UtilBill).\
-            filter_by(UtilBill.id == utilbill_id).\
-            filter_by(Charge.rsi_binding == rsi_binding).one()
+            filter(UtilBill.id == utilbill_id).\
+            filter(Charge.rsi_binding == rsi_binding).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
 
@@ -202,8 +202,8 @@ class Process(object):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         charge = session.query(Charge).join(UtilBill).\
-            filter_by(UtilBill.id == utilbill_id).\
-            filter_by(Charge.rsi_binding == rsi_binding).one()
+            filter(UtilBill.id == utilbill_id).\
+            filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
 
     def get_rsis_json(self, session, utilbill_id):
@@ -534,6 +534,7 @@ class Process(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
+        predecessor = None
         try:
             predecessor = self.state_db.get_last_real_utilbill(session,
                     account, begin_date, service=service)
@@ -541,6 +542,7 @@ class Process(object):
                 utility = predecessor.utility
             if rate_class is None:
                 rate_class = predecessor.rate_class
+
         except NoSuchBillException:
             template = self.reebill_dao.load_utilbill_template(session,
                     account)
@@ -583,6 +585,7 @@ class Process(object):
         # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
         # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
         # which has no documents)
+
         if state < UtilBill.Hypothetical:
             doc, uprs = self._generate_docs_for_new_utility_bill(session,
                 new_utilbill)
@@ -590,6 +593,21 @@ class Process(object):
             new_utilbill.uprs_document_id = str(uprs.id)
             self.reebill_dao.save_utilbill(doc)
             uprs.save()
+
+            if predecessor:
+                valid_bindings = set([rsi['rsi_binding'] for rsi in uprs.rates])
+                new_utilbill.charges = []
+                for charge in predecessor.charges:
+                    if charge.rsi_binding not in valid_bindings:
+                        continue
+                    new_utilbill.charges.append(Charge(new_utilbill,
+                                                       charge.description,
+                                                       charge.group,
+                                                       charge.quantity,
+                                                       charge.quantity_units,
+                                                       charge.rate,
+                                                       charge.rsi_binding,
+                                                       charge.total))
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
