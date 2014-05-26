@@ -348,26 +348,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             u = self.process.upload_utility_bill(session, acc, 'gas',
                     date(2000, 1, 1), date(2000, 2, 1),
                     StringIO('January 2000'), 'january.pdf')
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(u)
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-            utilbill_doc['charges'] = [
-                {
-                    'rsi_binding': 'THE_CHARGE',
-                    'quantity': 100,
-                    'quantity_units': 'therms',
-                    'rate': 1,
-                    'total': 100,
-                    'group': 'All Charges',
-                }
-            ]
+            self.process.add_rsi(session, u.id)
+            self.process.update_rsi(session, u.id, 'New RSI #1', {
+                'rsi_binding': 'THE_CHARGE',
+                'quantity': 'REG_TOTAL.quantity',
+                'quantity_units': 'therms',
+                'rate': '1',
+                'group': 'All Charges',
+            })
+            self.process.refresh_charges(session, u.id)
             self.process.update_utilbill_metadata(session, u.id, processed=True)
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            uprs.rates = [RateStructureItem(
-                rsi_binding='THE_CHARGE',
-                quantity='REG_TOTAL.quantity',
-                rate='1',
-            )]
-            uprs.save()
 
             # create first reebill
             bill1 = self.process.roll_reebill(session, acc,
@@ -393,7 +383,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, bill1.sequence,
                     issue_date=date(2000, 4, 1))
             assert bill1.due_date == date(2000, 5, 1)
-            assert bill1.balance_due == 50
+            self.assertEqual(50, bill1.balance_due)
 
             # create 2nd utility bill and reebill
             u2 = self.process.upload_utility_bill(session, acc, 'gas',
