@@ -581,7 +581,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             def get_h_total(rsi_binding):
                 charge = next(c for c in reebill_charges
                         if c['rsi_binding'] == rsi_binding)
-                return charge['hypothetical_total']
+                return charge['total']
             h_quantity = self.process.get_reebill_metadata_json(
                     session, account)[0]['ree_quantity']
             self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
