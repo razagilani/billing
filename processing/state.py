@@ -311,10 +311,19 @@ class ReeBill(Base):
         # circular dependency
         for r in self.readings:
             session.delete(r)
-        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, reg_dict['quantity_units'])
+        self.readings = [Reading(reg_dict['register_binding'], '',
+                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
+        return None
+
+    def update_readings_from_reebill(self, session, reebill_readings):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given reebill_readings.
+        '''
+        for r in self.readings:
+            session.delete(r)
+        self.readings = reebill_readings
         return None
 
     def get_renewable_energy_reading(self, register_binding):
@@ -556,10 +565,12 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
+    aggregate_function = Column(String, nullable=False)
+
     unit = Column(String, nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
-                 renewable_quantity, unit):
+                 renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
         assert isinstance(measure, basestring)
         assert isinstance(conventional_quantity, (float, int))
@@ -569,7 +580,22 @@ class Reading(Base):
         self.measure = measure
         self.conventional_quantity = conventional_quantity
         self.renewable_quantity = renewable_quantity
+        self.aggregate_function = aggregate_function
         self.unit = unit
+
+    def __hash__(self):
+        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
+                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+
+    def __eq__(self, other):
+        return all([
+            self.register_binding == other.register_binding,
+            self.measure == other.measure,
+            self.conventional_quantity == other.conventional_quantity,
+            self.renewable_quantity == other.renewable_quantity,
+            self.aggregate_function == other.aggregate_function,
+            self.unit == other.unit
+        ])
 
     @property
     def hypothetical_quantity(self):

@@ -14,7 +14,7 @@ from billing.processing.session_contextmanager import DBSession
 
 from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Reading
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
@@ -128,9 +128,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'reebills': [],
                                                 }, utilbill_data, 'id',
                                                 'charges', 'reebills')
+            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
 
             # Create a Reebill and check it persists and fetches
-            self.process.roll_reebill(session, '88888',
+
+            reebill = self.process.roll_reebill(session, '88888',
                                       start_date=date(2013, 1, 1),
                                       integrate_skyline_backend=False,
                                       skip_compute=True)
@@ -184,6 +186,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   'balance_forward': 0.,
                                   'corrections': '(never issued)',
                               }], reebill_data)
+
+            readings = [Reading(reg_dict['register_binding'], '',
+                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
+                for reg_dict in chain.from_iterable(
+                (r for r in m['registers']) for m in utilbill_doc['meters'])]
+            readings[0].id = reebill.id
+
+            self.assertEqual(reebill.readings, readings)
 
             # TODO: fields not checked above that should be checked some other
             # way:
@@ -1125,7 +1135,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              'may.pdf')
 
             # create reebill based on first utility bill
-            self.process.roll_reebill(session, account,
+            reebill1 = self.process.roll_reebill(session, account,
                                       start_date=date(2013, 4, 4))
 
             # reebill should be computable
@@ -1134,10 +1144,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, account, 1)
 
             # another reebill
-            self.process.roll_reebill(session, account)
+            reebill2 = self.process.roll_reebill(session, account)
             utilbill_data, count = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertEqual(2, count)
+            self.assertEqual(reebill1.readings, reebill2.readings)
             self.assertEqual([{
                 'sequence': 1,
                 'version': 0,

@@ -27,7 +27,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address
+    UtilBillLoader, ReeBillCharge, Address, Reading
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -1123,8 +1123,14 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         assert len(new_utilbill_docs) == 1
-        new_reebill.update_readings_from_document(session,
+        if last_reebill_row is None:
+            new_reebill.update_readings_from_document(session,
                 new_utilbill_docs[0])
+        else:
+            readings = session.query(Reading)\
+                    .filter(Reading.reebill_id == last_reebill_row.id)\
+                    .all()
+            new_reebill.update_readings_from_reebill(session, readings)
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
