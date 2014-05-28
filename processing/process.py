@@ -247,31 +247,17 @@ class Process(object):
         """ Gets all hypothetical charges from a reebill for a service and
             matches the actual charge to each hypotheitical charge"""
         reebill = self.state_db.get_reebill(session, account, sequence)
-        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-        actual_charges = mongo.get_charges_json(utilbill_doc)
-        actual_charge_dict = {c['rsi_binding']:c for c in actual_charges}
-        result = []
-        for hypothetical_charge in reebill.charges:
-            try:
-                matching = actual_charge_dict[hypothetical_charge.rsi_binding]
-            except KeyError:
-                raise NoSuchRSIError('The set of charges on the Reebill do not'
-                                     ' match the charges on the associated'
-                                     ' utility bill. Please recompute the'
-                                     ' ReeBill.')
-            result.append({
-                'rsi_binding': matching['rsi_binding'],
-                'description': matching['description'],
-                'actual_quantity': matching['quantity'],
-                'actual_rate': matching['rate'],
-                'actual_total': matching['total'],
-                'quantity_units': matching['quantity_units'],
-                'hypothetical_quantity': matching['quantity'],
-                'hypothetical_rate': matching['rate'],
-                'hypothetical_total': matching['total'],
-            })
-        return result
+        return [{
+            'rsi_binding': reebill_charge.rsi_binding,
+            'description': reebill_charge.description,
+            'actual_quantity': reebill_charge.a_quantity,
+            'actual_rate': reebill_charge.a_rate,
+            'actual_total': reebill_charge.a_total,
+            'quantity_units': '',
+            'quantity': reebill_charge.h_quantity,
+            'rate': reebill_charge.h_rate,
+            'total': reebill_charge.h_total,
+        } for reebill_charge in reebill.charges]
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
