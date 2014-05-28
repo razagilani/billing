@@ -253,7 +253,7 @@ class Process(object):
             'actual_quantity': reebill_charge.a_quantity,
             'actual_rate': reebill_charge.a_rate,
             'actual_total': reebill_charge.a_total,
-            'quantity_units': '',
+            'quantity_units': reebill_charge.quantity_unit,
             'quantity': reebill_charge.h_quantity,
             'rate': reebill_charge.h_rate,
             'total': reebill_charge.h_total,
