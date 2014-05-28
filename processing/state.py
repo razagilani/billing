@@ -430,8 +430,9 @@ class ReeBill(Base):
                     if c['rsi_binding'] == rsi_binding)
             self.charges.append(ReeBillCharge(self, rsi_binding,
                     ac['description'], ac['group'], ac['quantity'],
-                    hc['quantity'], ac['rate'], hc['rate'], ac['total'],
-                    hc['total']))
+                    hc['quantity'],
+                    ac.get('quantity_units', '') or '',
+                    ac['rate'], hc['rate'], ac['total'], hc['total']))
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -528,18 +529,21 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
+    quantity_unit = Column(String, nullable=False)
     a_rate = Column(Float, nullable=False)
     h_rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, a_rate, h_rate, a_total, h_total):
+    def __init__(self, reebill, rsi_binding, description, group,
+                a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
+                a_total, h_total):
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
+        self.quantity_unit = quantity_unit
         self.a_rate, self.h_rate = a_rate, h_rate
         self.a_total, self.h_total = a_total, h_total
 
