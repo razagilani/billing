@@ -187,7 +187,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   'corrections': '(never issued)',
                               }], reebill_data)
 
-            readings = [Reading(reg_dict['register_binding'], '',
+            readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
                 reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
@@ -1148,7 +1148,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill_data, count = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertEqual(2, count)
-            self.assertEqual(reebill1.readings, reebill2.readings)
+            self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
+            self.assertEqual(reebill1.readings[0].aggregate_function, reebill2.readings[0].aggregate_function)
             self.assertEqual([{
                 'sequence': 1,
                 'version': 0,
