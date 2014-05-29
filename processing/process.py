@@ -27,7 +27,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
 from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge
+    UtilBillLoader, ReeBillCharge, Address, Charge, Reading
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -256,28 +256,17 @@ class Process(object):
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
         reebill = self.state_db.get_reebill(session, account, sequence)
-        charge_map = {c.rsi_binding : c for c in reebill.utilbill.charges}
-        result = []
-        for hypothetical_charge in reebill.charges:
-            try:
-                matching = charge_map[hypothetical_charge.rsi_binding]
-            except KeyError:
-                raise NoSuchRSIError('The set of charges on the Reebill do not'
-                                     ' match the charges on the associated'
-                                     ' utility bill. Please recompute the'
-                                     ' ReeBill.')
-            result.append({
-                'rsi_binding': matching.rsi_binding,
-                'description': matching.description,
-                'actual_quantity': matching.quantity,
-                'actual_rate': matching.rate,
-                'actual_total': matching.total,
-                'quantity_units': matching.quantity_units,
-                'hypothetical_quantity': hypothetical_charge.h_quantity,
-                'hypothetical_rate': hypothetical_charge.h_rate,
-                'hypothetical_total': hypothetical_charge.h_total
-            })
-        return result
+        return [{
+            'rsi_binding': reebill_charge.rsi_binding,
+            'description': reebill_charge.description,
+            'actual_quantity': reebill_charge.a_quantity,
+            'actual_rate': reebill_charge.a_rate,
+            'actual_total': reebill_charge.a_total,
+            'quantity_units': reebill_charge.quantity_unit,
+            'quantity': reebill_charge.h_quantity,
+            'rate': reebill_charge.h_rate,
+            'total': reebill_charge.h_total,
+        } for reebill_charge in reebill.charges]
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
@@ -1101,8 +1090,14 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         assert len(new_utilbill_docs) == 1
-        new_reebill.update_readings_from_document(session,
+        if last_reebill_row is None:
+            new_reebill.update_readings_from_document(session,
                 new_utilbill_docs[0])
+        else:
+            readings = session.query(Reading)\
+                    .filter(Reading.reebill_id == last_reebill_row.id)\
+                    .all()
+            new_reebill.update_readings_from_reebill(session, readings)
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
@@ -1302,8 +1297,6 @@ class Process(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        max_predecessor_version = self.state_db.max_version(session, acc,
-                seq - 1)
         customer = self.state_db.get_customer(session, acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
