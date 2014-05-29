@@ -127,7 +127,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # Create a Reebill and check it persists and fetches
 
-            self.process.roll_reebill(session, '88888',
+            reebill = self.process.roll_reebill(session, '88888',
                                       start_date=date(2013, 1, 1),
                                       integrate_skyline_backend=False,
                                       skip_compute=True)
