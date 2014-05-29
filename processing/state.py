@@ -367,7 +367,8 @@ class ReeBill(Base):
         '''
         for r in self.readings:
             session.delete(r)
-        self.readings = reebill_readings
+        self.readings = [Reading(r.register_binding, r.measure, r.conventional_quantity,
+                         r.renewable_quantity, r.aggregate_function, r.unit) for r in reebill_readings]
         return None
 
     def get_renewable_energy_reading(self, register_binding):
