@@ -22,7 +22,7 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
-from sqlalchemy.types import Integer, String, Float, Date, DateTime
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
@@ -188,6 +188,7 @@ class ReeBill(Base):
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
+    processed = Column(Boolean, default=False)
 
     billing_address_id = Column(Integer, ForeignKey('address.id'),
                                 nullable=False)
