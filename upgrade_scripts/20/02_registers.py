@@ -1,20 +1,21 @@
 '''Move data from "shadow_registers" subdocuments in Mongo to new "reading"
 table in MySQL.
 '''
+from billing import init_model
+init_model("mysql://root:root@localhost:3306/skyline_dev")
+
+
 from sys import stderr
 import pymongo
 import MySQLdb
-from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge
+from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Session
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 from itertools import chain
 
-sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
-})
+
+sdb = StateDB(Session)
+
 db = pymongo.Connection(host='localhost')['skyline-dev']
 rbd = ReebillDAO(sdb, db)
 rsd = RateStructureDAO()
