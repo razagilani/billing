@@ -355,7 +355,7 @@ class ReeBill(Base):
         # circular dependency
         for r in self.readings:
             session.delete(r)
-        self.readings = [Reading(reg_dict['register_binding'], '',
+        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
                 reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
