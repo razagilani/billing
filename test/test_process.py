@@ -1658,7 +1658,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   'balance_due': 17.6,
                                   'balance_forward': 0,
                                   'corrections': '#1 not issued',
-                                  'hypothetical_total': 20,
+                                  'hypothetical_total': 20.0,
                                   'id': 1,
                                   'issue_date': None,
                                   'issued': False,
