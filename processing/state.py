@@ -57,7 +57,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '55e7e5ebdd29'
+_schema_revision = '4f2f8e2f7cd'
 
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
@@ -355,10 +355,19 @@ class ReeBill(Base):
         # circular dependency
         for r in self.readings:
             session.delete(r)
-        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, reg_dict['quantity_units'])
+        self.readings = [Reading(reg_dict['register_binding'], '',
+                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
                 for reg_dict in chain.from_iterable(
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
+        return None
+
+    def update_readings_from_reebill(self, session, reebill_readings):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given reebill_readings.
+        '''
+        for r in self.readings:
+            session.delete(r)
+        self.readings = reebill_readings
         return None
 
     def get_renewable_energy_reading(self, register_binding):
@@ -569,9 +578,10 @@ class ReeBill(Base):
             quantity, rate = rsi.compute_charge(identifiers)
             total = quantity * rate
             ac = acs[rsi.rsi_binding]
+            quantity_units = ac.quantity_units if ac.quantity_units is not None else ''
             self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
                     ac.description, ac.group, ac.quantity,
-                    quantity, ac.rate, rate, ac.total,
+                    quantity, quantity_units, ac.rate, rate, ac.total,
                     total))
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate
@@ -673,18 +683,21 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
+    quantity_unit = Column(String, nullable=False)
     a_rate = Column(Float, nullable=False)
     h_rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
     def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, a_rate, h_rate, a_total, h_total):
+                h_quantity, quantity_unit, a_rate, h_rate,
+                a_total, h_total):
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
+        self.quantity_unit = quantity_unit
         self.a_rate, self.h_rate = a_rate, h_rate
         self.a_total, self.h_total = a_total, h_total
 
@@ -710,10 +723,12 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
+    aggregate_function = Column(String, nullable=False)
+
     unit = Column(String, nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
-                 renewable_quantity, unit):
+                 renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
         assert isinstance(measure, basestring)
         assert isinstance(conventional_quantity, (float, int))
@@ -723,7 +738,22 @@ class Reading(Base):
         self.measure = measure
         self.conventional_quantity = conventional_quantity
         self.renewable_quantity = renewable_quantity
+        self.aggregate_function = aggregate_function
         self.unit = unit
+
+    def __hash__(self):
+        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
+                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+
+    def __eq__(self, other):
+        return all([
+            self.register_binding == other.register_binding,
+            self.measure == other.measure,
+            self.conventional_quantity == other.conventional_quantity,
+            self.renewable_quantity == other.renewable_quantity,
+            self.aggregate_function == other.aggregate_function,
+            self.unit == other.unit
+        ])
 
     @property
     def hypothetical_quantity(self):
