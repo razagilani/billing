@@ -1164,17 +1164,16 @@ class BillToolBridge:
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
+            version = self.process.new_version(session, account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence, new_reebill.version)
+                    account, sequence, version)
             # NOTE ReebillBoundEvent is no longer saved in the journal because
             # new energy data are not retrieved unless the user explicitly
             # chooses to do it by clicking "Bind RE&E"
 
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences':
-                    [new_reebill.sequence]})
+            return self.dumps({'success': True, 'sequences': [sequence]})
 
     @cherrypy.expose
     @authenticate_ajax
