@@ -145,52 +145,48 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             ubdata = self.process.get_all_utilbills_json(session,
                                                          '88888', 0, 30)[0][0]
             self.assertDocumentsEqualExceptKeys({
-                                                    'account': '88888',
-                                                    'computed_total': 0,
-                                                    'editable': True,
-                                                    'id': 6469L,
-                                                    'name': '88888 - Example 2/1786 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
-                                                    'period_end': date(2013, 2,
-                                                                       1),
-                                                    'period_start': date(2013,
-                                                                         1, 1),
-                                                    'processed': 0,
-                                                    'rate_class': 'DC Non Residential Non Heat',
-                                                    'reebills': [
-                                                        {'issue_date': None,
-                                                         'sequence': 1,
-                                                         'version': 0L}],
-                                                    'service': 'Gas',
-                                                    'state': 'Final',
-                                                    'total_charges': 0.0,
-                                                    'utility': 'washgas',
-                                                }, ubdata, 'id',
-                                                'charges')
+                'account': '88888',
+                'computed_total': 0,
+                'editable': True,
+                'id': 6469L,
+                'name': ('88888 - Example 2/1786 Massachusetts Ave. - '
+                         'washgas: DC Non Residential Non Heat'),
+                'period_end': date(2013, 2, 1),
+                'period_start': date(2013, 1, 1),
+                'processed': 0,
+                'rate_class': 'DC Non Residential Non Heat',
+                'reebills': [{'issue_date': None, 'sequence': 1,
+                        'version': 0L}],
+                'service': 'Gas',
+                'state': 'Final',
+                'total_charges': 0.0,
+                'utility': 'washgas',
+            }, ubdata, 'id', 'charges')
 
             reebill_data = self.process.get_reebill_metadata_json(session,
-                                                                  '88888')
+                    '88888')
             self.assertEqual([{
-                                  'id': 1,
-                                  'sequence': 1,
-                                  'max_version': 0,
-                                  'issued': False,
-                                  'issue_date': None,
-                                  'actual_total': 0.,
-                                  'hypothetical_total': 10,
-                                  'payment_received': 0.,
-                                  'period_start': date(2013, 1, 1),
-                                  'period_end': date(2013, 2, 1),
-                                  'prior_balance': 0.,
-                                  'ree_charges': 4.,
-                                  'ree_value': 10.,
-                                  'services': [],
-                                  'total_adjustment': 0.,
-                                  'total_error': 0.,
-                                  'ree_quantity': 10.,
-                                  'balance_due': 4.,
-                                  'balance_forward': 0.,
-                                  'corrections': '(never issued)',
-                              }], reebill_data)
+                'id': 1,
+                'sequence': 1,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0.,
+                'hypothetical_total': 10,
+                'payment_received': 0.,
+                'period_start': date(2013, 1, 1),
+                'period_end': date(2013, 2, 1),
+                'prior_balance': 0.,
+                'ree_charges': 4.,
+                'ree_value': 10.,
+                'services': [],
+                'total_adjustment': 0.,
+                'total_error': 0.,
+                'ree_quantity': 10.,
+                'balance_due': 4.,
+                'balance_forward': 0.,
+                'corrections': '(never issued)',
+            }], reebill_data)
 
             reebill_charges = self.process.get_hypothetical_matched_charges(
                     session, '88888', 1)
@@ -225,28 +221,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # (this checks for bug #70032354 in which query for
             # get_reebill_metadata_json includes bills from all accounts)
             self.assertEqual(([], 0), self.process.get_all_utilbills_json(
-                session, '99999', 0, 30))
+                    session, '99999', 0, 30))
             self.assertEqual([], self.process.get_reebill_metadata_json(
-                session, '99999'))
+                    session, '99999'))
 
             # it should not be possible to create an account that already
             # exists
             self.assertRaises(ValueError, self.process.create_new_account,
-                              session, '88888', 'New Account', 0.6, 0.2,
-                              billing_address, service_address, '99999')
+                    session, '88888', 'New Account', 0.6, 0.2,
+                    billing_address, service_address, '99999')
 
             # try creating another account when the template account has no
             # utility bills yet
             self.process.create_new_account(session, '77777', 'New Account',
-                                            0.6, 0.2, billing_address,
-                                            service_address, '88888')
+                    0.6, 0.2, billing_address, service_address, '88888')
             self.process.create_new_account(session, '66666', 'New Account',
-                                            0.6, 0.2, billing_address,
-                                            service_address, '88888')
+                    0.6, 0.2, billing_address, service_address, '88888')
 
             # Try rolling a reebill for a new account that has no utility bills uploaded yet
             self.assertRaises(NoResultFound, self.process.roll_reebill,
-                              session, '777777', False, date(2013, 2, 1), True)
+                    session, '777777', False, date(2013, 2, 1), True)
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
