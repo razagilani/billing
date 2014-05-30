@@ -124,18 +124,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'account': '88888',
                                                  'editable': True,
                                                  'name': '88888 - Example 2/1786 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
-                                                 'id': None,
                                                  'reebills': [],
                                                 }, utilbill_data, 'id',
                                                 'charges', 'reebills')
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
 
-            # Create a Reebill and check it persists and fetches
+            self.process.add_rsi(session, utilbill_data['id'])
+            self.process.update_rsi(session, utilbill_data['id'],
+                    'New RSI #1', {'quantity': 'REG_TOTAL.quantity',
+                    'rate': '1', 'rsi_binding': 'A', 'description':'a'})
+            self.process.refresh_charges(session, utilbill_data['id'])
 
-            reebill = self.process.roll_reebill(session, '88888',
+            self.process.roll_reebill(session, '88888',
                                       start_date=date(2013, 1, 1),
                                       integrate_skyline_backend=False,
                                       skip_compute=True)
+            self.process.ree_getter = MockReeGetter(10)
+            self.process.bind_renewable_energy(session, '88888', 1)
+            self.process.compute_reebill(session, '88888', 1)
 
             ubdata = self.process.get_all_utilbills_json(session,
                                                          '88888', 0, 30)[0][0]
@@ -171,29 +176,35 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   'issued': False,
                                   'issue_date': None,
                                   'actual_total': 0.,
-                                  'hypothetical_total': 0,
+                                  'hypothetical_total': 10,
                                   'payment_received': 0.,
                                   'period_start': date(2013, 1, 1),
                                   'period_end': date(2013, 2, 1),
                                   'prior_balance': 0.,
-                                  'ree_charges': 0.,
-                                  'ree_value': 0.,
+                                  'ree_charges': 4.,
+                                  'ree_value': 10.,
                                   'services': [],
                                   'total_adjustment': 0.,
                                   'total_error': 0.,
-                                  'ree_quantity': 0.,
-                                  'balance_due': 0.,
+                                  'ree_quantity': 10.,
+                                  'balance_due': 4.,
                                   'balance_forward': 0.,
                                   'corrections': '(never issued)',
                               }], reebill_data)
 
-            readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
-                for reg_dict in chain.from_iterable(
-                (r for r in m['registers']) for m in utilbill_doc['meters'])]
-            readings[0].id = reebill.id
-
-            self.assertEqual(reebill.readings, readings)
+            reebill_charges = self.process.get_hypothetical_matched_charges(
+                    session, '88888', 1)
+            self.assertEqual([{
+                'actual_quantity': 0,
+                'actual_rate': 1,
+                'actual_total': 0,
+                'description': 'a',
+                'quantity': 10,
+                'quantity_units': '',
+                'rate': 1,
+                'rsi_binding': 'A',
+                'total': 10,
+            }], reebill_charges)
 
             # TODO: fields not checked above that should be checked some other
             # way:
