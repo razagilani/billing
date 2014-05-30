@@ -173,7 +173,7 @@ class Exporter(object):
         '''
         book = tablib.Databook()
         if account == None:
-            #Only export XBill accounts (id>20000)
+            #Only export brokerage accounts (id>20000)
             for acc in [x for x in
                         sorted(self.state_db.listAccounts(statedb_session)) if
                         (int(x) >= 20000)]:
