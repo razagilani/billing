@@ -3957,8 +3957,8 @@ function reeBillReady() {
         id: 0,
         fields: ['abbr','name'],
         data: [ ['', 'No filter'],
-                ['reebillcustomers', 'All ReeBill Customers'],
-                ['xbillcustomers', 'All XBill Customers'],
+                ['reebillcustomers', 'All Solar Customers'],
+                ['brokeragecustomers', 'All Brokerage Customers'],
         ]
     });
     
