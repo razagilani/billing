@@ -1919,7 +1919,7 @@ class Process(object):
         #Various filter functions used below to filter the resulting rows
         def filter_reebillcustomers(row):
             return int(row['account'])<20000
-        def filter_xbillcustomers(row):
+        def filter_brokeragecustomers(row):
             return int(row['account'])>=20000
         # Function to format the "Utility Service Address" grid column
         def format_service_address(service_address, account):
@@ -1968,8 +1968,8 @@ class Process(object):
         #Apply filters
         if filtername=="reebillcustomers":
             rows=filter(filter_reebillcustomers, rows)
-        elif filtername=="xbillcustomers":
-            rows=filter(filter_xbillcustomers, rows)
+        elif filtername=="brokeragecustomers":
+            rows=filter(filter_brokeragecustomers, rows)
         rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
         total_length=len(rows)
         rows = rows[start:start+limit]

@@ -941,7 +941,7 @@ class BillToolBridge:
             if account is not None:
                 spreadsheet_name = account + '.xls'
             else:
-                spreadsheet_name = 'xbill_accounts.xls'
+                spreadsheet_name = 'brokerage_accounts.xls'
 
             exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
