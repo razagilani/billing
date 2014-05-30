@@ -1153,7 +1153,9 @@ class Process(object):
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
-        max_version number in MySQL. Returns the new MongoReebill object.'''
+        max_version number in MySQL. Returns the new MongoReebill object.
+        Returns version of the new reebill.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
 
@@ -1221,6 +1223,7 @@ class Process(object):
                     reebill_doc.sequence, e, traceback.format_exc()))
 
         self.reebill_dao.save_reebill(reebill_doc)
+        return reebill.version
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
