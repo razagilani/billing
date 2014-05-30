@@ -1405,7 +1405,8 @@ class BillToolBridge:
                     # should be selected)
                     del row['id']
                     new_meter_id, new_reg_id = self.process.update_register(
-                            session, utilbill_id, orig_meter_id, orig_reg_id, **row)
+                            session, utilbill_id, orig_meter_id, orig_reg_id,
+                            row)
 
                     # if this row was selected before, tell the client it should
                     # still be selected, specifying the row by its new "id"
