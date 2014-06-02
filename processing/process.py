@@ -399,6 +399,7 @@ class Process(object):
                 'total_error': self.get_total_error(session, account,
                                                     reebill.sequence),
                 'balance_due': reebill.balance_due,
+                'processed': reebill.processed,
                 'payment_received': reebill.payment_received,
                 'total_adjustment': reebill.total_adjustment,
                 'balance_forward': reebill.balance_forward,
@@ -439,7 +440,7 @@ class Process(object):
         }
 
     def update_sequential_account_info(self, session, account, sequence,
-            discount_rate=None, late_charge_rate=None,
+            discount_rate=None, late_charge_rate=None, processed=None,
             ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
             ba_postal_code=None,
             sa_addressee=None, sa_street=None, sa_city=None, sa_state=None,
@@ -455,6 +456,8 @@ class Process(object):
             reebill.discount_rate = discount_rate
         if late_charge_rate is not None:
             reebill.late_charge_rate = late_charge_rate
+        if processed is not None:
+            reebill.processed = processed
 
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
