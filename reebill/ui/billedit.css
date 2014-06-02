@@ -142,6 +142,7 @@ pre.code{
 
 /* styles for reebill grid rows */
 .reebill-grid-issued {
+    font-style: italic; 
     color: black;
 }
 .reebill-grid-unissued {
@@ -152,6 +153,10 @@ pre.code{
     font-style: italic;
     color: red;
 }
+.reebill-grid-processed {
+    color: green;
+}
+
 
 /* styles for utilbill grid rows */
 .utilbill-grid-processed {

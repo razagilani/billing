@@ -985,6 +985,7 @@ function reeBillReady() {
             {name: 'balance_forward'},
             {name: 'ree_charges'},
             {name: 'balance_due'},
+            {name: 'processed'},
             {name: 'total_error'},
             {name: 'issued'},
             {name: 'services'},
@@ -1068,7 +1069,10 @@ function reeBillReady() {
         if (record.data.issued) {
             // issued bill
             metaData.css = 'reebill-grid-issued';
-        } else if (record.data.max_version == 0) {
+         } else if(record.data.processed) {
+            // processed bill
+            metaData.css = 'reebill-grid-processed';
+         } else if (record.data.max_version == 0) {
             // unissued version-0 bill
             metaData.css = 'reebill-grid-unissued';
         } else {
@@ -1076,7 +1080,7 @@ function reeBillReady() {
             metaData.css = 'reebill-grid-unissued-correction';
         }
         //Format number columns
-        if([5,6,8,9].indexOf(colIndex)>=0){
+        if([5,6,9,10].indexOf(colIndex)>=0){
             value=Ext.util.Format.usMoney(value);
         }
         else if(colIndex == 7){
@@ -1147,6 +1151,18 @@ function reeBillReady() {
                 width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
+            },{
+                header: 'Processed',
+                sortable: false,
+                dataIndex: 'processed',
+                width: 80,
+                align: 'right',
+                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value = reeBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    var str = value ? 'Yes' : 'No'
+                    return str;
+                },
             },{
                 header: 'RE&E',
                 sortable: false,
@@ -1247,6 +1263,28 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'rbRenderPDFButton', text: 'Render PDF', handler:
                 renderOperation, disabled: true},
+            {xtype: 'tbseparator'},
+            {
+                xtype: 'button',
+                id: 'rbToggleProcessed',
+                text: 'Mark as Processed',
+                disabled: true,
+                handler: function() {
+                    var selection = reeBillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/mark_reebill_processed',
+                        params: { account: +selected_account, sequence: +selection.data.sequence, processed: +(!selection.data.processed) },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                reeBillStore.reload();
+                                // Toggle Button text
+                                !selection.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+                            }
+                        },
+                    });
+                }
+            },
         ]
     });
 
@@ -6023,6 +6061,7 @@ function reeBillReady() {
         //Update the buttons on the reebill tab
         deleteButton.setDisabled(true)
         versionButton.setDisabled(true);
+
         if (account == null) {
             /* no account selected */
             updateStatusbar(null, null, null)
@@ -6146,6 +6185,8 @@ function reeBillReady() {
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
+            record.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+            Ext.getCmp('rbToggleProcessed').setDisabled(false);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
