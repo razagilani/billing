@@ -6,6 +6,7 @@ var DEFAULT_DIFFERENCE_THRESHOLD = 10;
 var ERROR_MESSAGE_BOX_WIDTH = 630;
 var DEFAULT_ACCOUNT_FILTER = "No filter";
 
+
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
 */
@@ -211,6 +212,7 @@ function reeBillReady() {
         collapsible: true,
         floatable: false,
         titleCollapse: true,
+        id: 'utilBillImagePanel',
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_UTILBILL_SELECTED_MESSAGE,
@@ -218,6 +220,10 @@ function reeBillReady() {
         autoScroll: true,
         region: 'west',
         width: 300,
+    });
+    utilBillImageBox.on('resize', function(panel, adjWidth, adjHeight,
+                                           rawWidth, rawHeight){
+        UTILBILLPDF.renderPages();
     });
     var reeBillImageBox = new Ext.Panel({
         collapsible: true,
@@ -733,10 +739,14 @@ function reeBillReady() {
                                         imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                                     }
                                     // TODO handle failure if needed
+
+                                    var elem = {tag: 'div', style:'width:100%;height:100%;', children:[
+                                        {tag: 'canvas', id: 'utilbill-canvas'},
+                                        {tag: 'div', id: 'utilbill-canvas-text-layer'}]};
                                     Ext.DomHelper.overwrite('utilbillimagebox',
-                                        getImageBoxHTML(imageUrl, 'Utility bill',
-                                        'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
+                                        elem,
                                         true);
+                                    UTILBILLPDF.fetch(selected_account, selected_utilbill.id);
                                 } catch (err) {
                                     Ext.MessageBox.alert('getutilbillimage ERROR', err);
                                 }
@@ -6405,6 +6415,100 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
             id: 'utilbillimage'}] };
     }
 }
+
+var UTILBILLPDF = function(){
+    var pdf;
+    var pageData;
+    var totalCanvasHeight;
+    var pageStarts;
+    var canvas;
+    var textlayerelem;
+    var context;
+    var panelWidth;
+    var tmp_canvas = document.createElement('canvas');
+    var tmp_context = tmp_canvas.getContext('2d');
+
+    var fetch = function(accountno, billid) {
+        canvas = document.getElementById('utilbill-canvas');
+        textlayerelem = document.getElementById('utilbill-canvas-text-layer');
+        context = canvas.getContext('2d');
+        PDFJS.getDocument('utilitybills/' + accountno + '/' + billid + '.pdf').then(
+            function (pdfdoc) {
+                pdf = pdfdoc;
+                renderPages();
+        });
+    };
+    var renderPages = function(){
+        currentPage = 1;
+        totalCanvasHeight = 0;
+        pageData = [];
+        pageStarts =  [0];
+
+        var getPage = function(p){
+            pdf.getPage(p).then(function(page){
+                var scale = (panelWidth) / page.getViewport(1.0).width;
+                var viewport = page.getViewport(scale);
+                tmp_canvas.height = viewport.height;
+                tmp_canvas.width = panelWidth;
+
+                // Create the TextLayer
+                var textLayerDiv = document.createElement('div');
+                    textLayerDiv.setAttribute('class', 'textLayer');
+                    textLayerDiv.setAttribute('style', 'height:'+ viewport.height +'px;' +
+                        'width:'+ viewport.width +'px;' +
+                        'top:'+ ((page.pageNumber-1)*viewport.height) +'px');
+                console.log(textLayerDiv);
+                textlayerelem.appendChild(textLayerDiv);
+
+                page.getTextContent().then(function (textContent) {
+                    var textLayer = new TextLayerBuilder({textLayerDiv:textLayerDiv, pageIndex:page.pageNumber-1, viewport:viewport, isViewerInPresentationMode: false});
+                    console.log(textLayer);
+
+                    textLayer.setTextContent(textContent);
+                    console.log(textContent);
+
+
+                    page.render({
+                        canvasContext: tmp_context,
+                        viewport: viewport,
+                    }).then(function(){
+
+                        totalCanvasHeight += tmp_canvas.height;
+                        pageData[page.pageNumber-1] = tmp_context.getImageData(0, 0, tmp_canvas.width, tmp_canvas.height);
+                        pageStarts[page.pageNumber] = pageStarts[page.pageNumber-1]+ tmp_canvas.height;
+
+                        if (page.pageNumber < pdf.numPages) {
+                            getPage(page.pageNumber+1);
+                        }
+                        else{
+                            display();
+                        }
+                    });
+                });
+            })
+        }
+
+        if(pdf) {
+            // Remove the text layer
+            while (textlayerelem.firstChild) {
+                textlayerelem.removeChild(textlayerelem.firstChild);
+            }
+
+            panelWidth =  Ext.getCmp('utilBillImagePanel').getWidth() - 20;
+            getPage(currentPage);
+        }
+    };
+
+    var display = function(){
+        canvas.width= panelWidth;
+        canvas.height = totalCanvasHeight;
+        for(var i = 0; i < pageData.length; i++){
+            context.putImageData(pageData[i], 0, pageStarts[i]);
+        }
+    };
+
+    return {fetch: fetch, renderPages: renderPages, display: display, pdf: pdf};
+}();
 
 function loadDashboard()
 {
