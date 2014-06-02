@@ -2,19 +2,12 @@
 import os
 import sys
 import errno
-import logging
-import time
 import datetime
-import random
-import string
 from uuid import uuid1
 import re
 import subprocess
 from glob import glob
 import shutil
-import ConfigParser
-from billing.processing.state import Customer, UtilBill
-from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 
@@ -146,38 +139,6 @@ class BillUpload(object):
         # if extension is provided, this is the path of a file that may not
         # (yet) exist
         return path_without_extension + extension
-
-    # DEPRECTATED: It is believed that this code is not used anymore.
-    #              It should no longer be neccessary to move utility
-    #              bill files
-    # def move_utilbill_file(self, utilbill, old_period_start, old_period_end):
-    #     '''Moves the file corresponding to the given state.UtilBill formerly
-    #     havint the period dates 'old_period_start' and 'old_period_end' to
-    #     its current correct path. This method assumes that the file
-    #     exists and raises an IOError if it doesn't.
-    #
-    #     Note: the old dates must be used because it is better for file-moving to
-    #     occur last in a series of updates because it can't always be undone,
-    #     which means the UtilBill's period_start and period_end attributes are
-    #     updated first.
-    #     '''
-    #     # TODO this only works when there's one file with the given account and
-    #     # dates: see
-    #     # https://www.pivotaltracker.com/story/show/24866603
-    #
-    #     # here's a hack to get the old path
-    #     # (this file must actually exist)
-    #     from copy import deepcopy
-    #     duplicate = deepcopy(utilbill)
-    #     duplicate.period_start = old_period_start
-    #     duplicate.period_end = old_period_end
-    #     old_path = self.get_utilbill_file_path(duplicate)
-    #
-    #     # get new path (this must not be a file that exists)
-    #     new_path = self.get_utilbill_file_path(utilbill)
-    #
-    #     # move
-    #     shutil.move(old_path, new_path)
 
     def delete_utilbill_file(self, utilbill):
         '''Deletes the utility bill file given by account and period, by moving
@@ -324,7 +285,7 @@ class BillUpload(object):
         # stderr
         if convert_result.returncode != 0:
             error_text = convert_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(convert_command), \
+            raise IOError('"%s" failed: %s' % (' '.join(convert_command), \
                     error_text))
 
         # if the original was a multi-page PDF, 'convert' may have produced
@@ -351,7 +312,7 @@ class BillUpload(object):
         # it printed to stderr
         if montage_result.returncode != 0:
             error_text = montage_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(montage_command),
+            raise IOError('"%s" failed: %s' % (' '.join(montage_command),
                 error_text))
     
         # delete the individual page images now that they've been joined

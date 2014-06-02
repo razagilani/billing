@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-import datetime as dt
 import os
-import time, argparse, jinja2
-import pdb
 from billing.util.email_util import send_email
 
 TEMPLATE_FILE_NAME = 'issue_email_template.html'
