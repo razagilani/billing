@@ -347,7 +347,7 @@ class ReeBill(Base):
         assert isinstance(new_quantity, (float, int))
         reading = next(r for r in self.readings
                        if r.register_binding == register_binding)
-        unit = reading.unit
+        unit = reading.unit.lower()
 
         # Thermal: convert quantity to therms according to unit, and add it to
         # the total
