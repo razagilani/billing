@@ -899,15 +899,9 @@ class Process(object):
         # TODO: this could be moved to a method of ReeBill
         utilbill_registers = chain.from_iterable(r for r in
                 (m['registers'] for m in utilbill_document['meters']))
-        for reading in reebill.readings:
-            try:
-                register = next(r for r in utilbill_registers if r[
-                        'register_binding'] == reading.register_binding)
-            except StopIteration:
-                raise ValueError(('No utility bill register with ID "%s": if '
-                                 'you edited the utility bill registers after '
-                                 'creating the reebill, delete and re-create '
-                                 'the reebill') % reading.register_binding)
+        for register in utilbill_registers:
+            reading = reebill.get_reading_by_register_binding(
+                    register['register_binding'])
             reading.conventional_quantity = register['quantity']
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
