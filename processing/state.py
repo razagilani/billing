@@ -22,7 +22,8 @@ from sqlalchemy import func, not_
 from sqlalchemy.types import Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
-from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
+from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException, RegisterError
+
 sys.stdout = sys.stderr
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
@@ -340,13 +341,16 @@ class ReeBill(Base):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
         '''
-        return next(r for r in self.readings if r.register_binding == binding)
+        try:
+            result = next(r for r in self.readings if r.register_binding == binding)
+        except StopIteration:
+            raise RegisterError('Unknown register binding "%s"' % binding)
+        return result
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
         assert isinstance(new_quantity, (float, int))
-        reading = next(r for r in self.readings
-                       if r.register_binding == register_binding)
+        reading = self.get_reading_by_register_binding(register_binding)
         unit = reading.unit.lower()
 
         # Thermal: convert quantity to therms according to unit, and add it to
