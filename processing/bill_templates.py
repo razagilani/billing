@@ -37,10 +37,6 @@ import locale
 locale.setlocale(locale.LC_ALL, '')
 
 
-# TODO render should not depend on BillUpload--move this function out to its
-# own file
-from billing.processing.billupload import create_directory_if_necessary
-
 sys.stdout = sys.stderr
 
 def round_for_display(x, places=2):
@@ -87,47 +83,40 @@ def concat_pdfs(in_paths, out_path):
     for in_file in in_files:
         in_file.close()
 
-# TODO make PV and Thermal, TEVA Subclasses
-class BillDocTemplate(BaseDocTemplate):
+class BillDoc(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
     #
     # Globals
     #
-    defaultPageSize = letter
-    PAGE_HEIGHT=letter[1]; PAGE_WIDTH=letter[0]
-    Title = "Skyline Bill"
-    pageinfo = "Skyline Bill"
+    #defaultPageSize = letter
+    #PAGE_HEIGHT=letter[1]; PAGE_WIDTH=letter[0]
+    #Title = "Skyline Bill"
+    #pageinfo = "Skyline Bill"
     page_names = []
 
-    def __init__(self, logger, output_directory, output_name, template_directory, template_name):
+    def __init__(self, logger):
         """
         Config should be a dict of configuration keys and values.
         """
-        # TODO filesep
         # TODO Reportlab base class is old-style class
-        #super(BillDocTemplate, self).__init__("%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
-        BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
+        #super(BillDoc, self).__init__("./basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
+        # TODO poor design of base class requires filename on __init__
+        # Here, the filename is passed in on render()
+        # TODO filesep
+        #BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
+        BaseDocTemplate.__init__(self, "./basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
 
-        self.setProgressCallBack(BillDocTemplate.progress)
-
-        self.template_directory = template_directory
-        self.template = template_name
+        self.setProgressCallBack(BillDoc.progress)
 
         # logger for reporting errors
         self.logger = logger
 
-        self.load_fonts()
-        self.set_styles()
 
     def load_fonts(self):
-        #
-        #  Load Fonts
-        #
-        # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
-        # TODO make the font directory relocatable
-        rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
 
-        our_fonts = os.path.join(os.path.join(self.template_directory, 'fonts/'))
+        # TODO make font directories relocatable
+        rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
+        our_fonts = os.path.join(os.path.join(self.skin_directory, 'fonts/'))
 
         # register Vera (Included in reportlab)
         pdfmetrics.registerFont(TTFont('Vera', os.path.join(rptlab_folder, 'Vera.ttf')))
@@ -148,7 +137,6 @@ class BillDocTemplate(BaseDocTemplate):
         pdfmetrics.registerFont(TTFont("CourieI", os.path.join(our_fonts, 'couri.ttf')))
         pdfmetrics.registerFont(TTFont("CourieBI", os.path.join(our_fonts, 'courbi.ttf')))
         registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI')
-
 
         #register Inconsolata (TODO address here)
         pdfmetrics.registerFont(TTFont("Inconsolata", os.path.join(our_fonts,'Inconsolata.ttf')))
@@ -182,14 +170,13 @@ class BillDocTemplate(BaseDocTemplate):
         self.styles.add(ParagraphStyle(name='BillFieldSmRight', fontName='Inconsolata', fontSize=8, leading=8, alignment=TA_RIGHT))
         self.styles.add(ParagraphStyle(name='BillFieldMicroRight', fontName='Inconsolata', fontSize=5, leading=8, alignment=TA_RIGHT))
         self.styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
-        #self.style = self.styles['BillLabel']
 
         
-    #def beforePage(self):
-        #print "Before Page: ", self.pageTemplate.id
+    def beforePage(self):
+        logger.debug("Before Page: %s" % self.pageTemplate.id)
         
     def afterPage(self):
-        #print "After Page"
+        logger.debug("After Page: %s" % self.pageTemplate.id)
         if self.pageTemplate.id == self.page_names[0]:
             self.canv.saveState()
             #self.canv.setStrokeColorRGB(32,32,32)
@@ -207,15 +194,13 @@ class BillDocTemplate(BaseDocTemplate):
             self.canv.restoreState()
         
     def handle_pageBegin(self):
-        #print "handle_pageBegin"
+        logger.debug("handle_pageBegin")
         BaseDocTemplate.handle_pageBegin(self)
 
     @classmethod
     def progress(self, type, value):
-        # TODO fix module to support verbose flag passed in from cmd arg parser 
-        #if (options.verbose):
         # TODO 37460179: log to logger
-        print "%s %s" %(type, value)
+        logger.debug("%s %s" % (type, value))
 
     def flowables(self):
         return []
@@ -260,13 +245,20 @@ class BillDocTemplate(BaseDocTemplate):
     def build(self, flowables):
         """build the document using the flowables while drawing lines and figures on top of them."""
 
+        # TODO: 17377331 - find out why the failure is silent
         BaseDocTemplate.build(self, flowables, canvasmaker=canvas.Canvas)
 
-    def render(self, data):
+    def render(self, data, output_directory, output_name, skin_directory, skin_name):
+        # TODO filesep
+        self.filename = "%s/%s" % (output_directory, output_name)
+        self.skin_directory = skin_directory
+        self.skin = skin_name
+        self.load_fonts()
+        self.set_styles()
         self.assemble_pages()
         self.build(self.flowables(data))
 
-class ThermalBillDocTemplate(BillDocTemplate):
+class ThermalBillDoc(BillDoc):
 
     page_names = ['First Page', 'Second Page']
 
@@ -374,8 +366,7 @@ class ThermalBillDocTemplate(BillDocTemplate):
         #
 
         # populate backgroundF1
-        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, self.template), "page_one.png"),letter[0], letter[1])
-        print os.path.join(self.template_directory, self.template) + "page_one.png"
+        pageOneBackground = Image(os.path.join(os.path.join(self.skin_directory, self.skin), "page_one.png"),letter[0], letter[1])
 
         fl.append(pageOneBackground)
 
@@ -430,7 +421,7 @@ class ThermalBillDocTemplate(BillDocTemplate):
         fl.append(UseUpSpace())
 
         # populate summary background
-        fl.append(Image(os.path.join(self.template_directory,'images','SummaryBackground.png'), 443, 151))
+        fl.append(Image(os.path.join(self.skin_directory,'images','SummaryBackground.png'), 443, 151))
         fl.append(UseUpSpace())
 
         # populate billPeriodTableF
@@ -555,7 +546,7 @@ class ThermalBillDocTemplate(BillDocTemplate):
         fl.append(PageBreak());
 
 
-        pageTwoBackground = Image(os.path.join(self.template_directory, self.template, "page_two.png"), letter[0], letter[1])
+        pageTwoBackground = Image(os.path.join(self.skin_directory, self.skin, "page_two.png"), letter[0], letter[1])
         fl.append(pageTwoBackground)
 
         #populate measured usage header frame
@@ -568,6 +559,16 @@ class ThermalBillDocTemplate(BillDocTemplate):
             [None, None, "Renewable", "Utility", "Total", None],
             [None, None, None, None,  None, None,]
         ]
+        for meter in b["utility_meters"]:
+            for register in meter["registers"]:
+                measuredUsage.append([
+                   "%s %s" % (meter["meter_id"], register["register_id"]),
+                   register["description"],
+                   register["shadow_total"],
+                   register["utility_total"],
+                   register["total"],
+                   register["quantity_units"]
+                ])
 
         # Load registers and match up shadow registers to actual registers
 #        assert len(reebill.utilbills)==1
@@ -636,41 +637,26 @@ class ThermalBillDocTemplate(BillDocTemplate):
 
         # list of the rows
         chargeDetails = [
-            ["Service", "Charge Description", "Quantity","", "Rate","", "Total"],
-            [None, None, None, None, None, None, None],
+            [None, "Charge Description", "Quantity","", "Rate","", "Total"],
             [None, None, None, None, None, None, None]
         ]
 
-        # muliple services are not supported
-#        assert len(reebill_document.services) == 1
-        last_group=None
-#        for charge in reebill_document.get_all_hypothetical_charges():
-#            # Only print the group if it changed
-#            if last_group == charge['group']:
-#                group = None
-#            else:
-#                last_group = charge['group']
-#                group = last_group
-#                chargeDetails.append([reebill_document.services[0],
-#                              None, None, None, None, None, None])
-#            chargeDetails.append([
-#                group,
-#                charge.get('description', "No description"),
-#                format_for_display(charge['quantity'], places=3)
-#                    if 'quantity' in charge else Decimal("1"),
-#                charge.get('quantity_units', None),
-#                format_for_display(charge['rate'], places=5)
-#                    if 'rate' in charge else None,
-#                charge.get('rate_units', None),
-#                format_for_display(charge['total'], places=2)
-#                    if 'total' in charge else None
-#            ])
-        chargeDetails.append([None, None, None, None, None, None, None])
+        for group, charges in b["hypothetical_chargegroups"].iteritems():
+            for i, charge in enumerate(charges):
+                if not i: chargeDetails.append([group, None, None, None, None, None, None])
+                chargeDetails.append([
+                    None,
+                    charge["description"],
+                    charge["quantity"],
+                    charge["rate"],
+                    charge["total"],
+                ])
         chargeDetails.append([None, None, None, None, None, None,
             format_for_display(
-                b["total_hypothetical_charges"],
+                b["hypothetical_charges"],
                 places=2)
         ])
+
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
@@ -706,7 +692,7 @@ class ThermalBillDocTemplate(BillDocTemplate):
         return fl
 
 
-class PVBillDocTemplate(BillDocTemplate):
+class PVBillDoc(BillDoc):
 
     page_names = ['first', 'second']
 
@@ -801,33 +787,34 @@ class PVBillDocTemplate(BillDocTemplate):
 
         # end page one frames
 
-        #
-        # build page container to be populated by flowables
-        #
-        #firstPage = PageTemplate(id=firstPageName,frames=fr1)
-
 
         # page two frames
         fr2 = []
 
         # page two background frame
-        backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
-
+        fr2.append(
+            Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
+        )
 
         # Measured Usage header frame
-        measuredUsageHeaderF = Frame(30, 500, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='measuredUsageHeader', showBoundary=_showBoundaries)
+        fr2.append(
+            Frame(30, 500, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='measuredUsageHeader', showBoundary=_showBoundaries)
+        )
 
         # measured usage meter summaries
-        measuredUsageF = Frame(30, 400, 550, 105, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billableUsage', showBoundary=_showBoundaries)
+        fr2.append(
+            Frame(30, 400, 550, 105, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billableUsage', showBoundary=_showBoundaries)
+        )
 
         # Charge details header frame
-        chargeDetailsHeaderF = Frame(30, 350, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
+        fr2.append(
+            Frame(30, 350, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
+        )
 
         # charge details frame
-        chargeDetailsF = Frame(30, 1, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
-
-        # build page container for flowables to populate
-        #secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
+        fr2.append(
+            Frame(30, 1, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
+        )
 
         return [fr1, fr2]
 
@@ -844,7 +831,7 @@ class PVBillDocTemplate(BillDocTemplate):
         fl = []
 
         fl.append(
-           Image(os.path.join(os.path.join(self.template_directory, self.template), "page_one.png"),letter[0], letter[1])
+           Image(os.path.join(os.path.join(self.skin_directory, self.skin), "page_one.png"),letter[0], letter[1])
         )
 
         # 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
@@ -887,6 +874,7 @@ class PVBillDocTemplate(BillDocTemplate):
 
         # bill summary
 
+        # TODO manual adjustment
         bill_summary_table_data = [
             [Paragraph('Prior Balance', s['BillLabel']), Paragraph(locale.currency(b['prior_balance'],grouping=True), s['BillFieldRight'])],
             [Paragraph('Payments', s['BillLabel']), Paragraph(locale.currency(b['payment_received'],grouping=True), s['BillFieldRight'])],
@@ -1051,22 +1039,137 @@ class PVBillDocTemplate(BillDocTemplate):
         fl.append(UseUpSpace())
 
         #
-        # build page container to be populated by flowables
+        # Second Page
         #
-        #firstPage = PageTemplate(id=firstPageName,frames=fr1)
+        fl.append(NextPageTemplate(self.page_names[1]));
+        fl.append(PageBreak());
+
+
+        pageTwoBackground = Image(os.path.join(self.skin_directory, self.skin, "page_two.png"), letter[0], letter[1])
+        fl.append(pageTwoBackground)
+
+        #populate measured usage header frame
+        fl.append(Paragraph("Measured renewable and conventional energy.", s['BillLabel']))
+        fl.append(UseUpSpace())
+
+        # list of the rows
+        measuredUsage = [
+            ["Utility Register", "Description", "Quantity", "", "",""],
+            [None, None, "Renewable", "Utility", "Total", None],
+            [None, None, None, None,  None, None,]
+        ]
+        for meter in b["utility_meters"]:
+            for register in meter["registers"]:
+                measuredUsage.append([
+                   "%s %s" % (meter["meter_id"], register["register_id"]),
+                   register["description"],
+                   register["shadow_total"],
+                   register["utility_total"],
+                   register["total"],
+                   register["quantity_units"]
+                ])
+
+        measuredUsage.append([None, None, None, None, None, None])
+
+        # total width 550
+        t = Table(measuredUsage, [100, 250, 55, 55, 55, 35])
+
+        t.setStyle(TableStyle([
+            ('SPAN',(2,0),(5,0)),
+            ('SPAN',(4,1),(5,1)),
+            ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+            ('BOX', (0,2), (0,-1), 0.25, colors.black),
+            ('BOX', (1,2), (1,-1), 0.25, colors.black),
+            ('BOX', (2,2), (2,-1), 0.25, colors.black),
+            ('BOX', (3,2), (3,-1), 0.25, colors.black),
+            ('BOX', (4,2), (5,-1), 0.25, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (4,2), (4,-1), 2), 
+            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('FONT', (0,1),(-1,-1), 'Inconsolata'),
+            ('FONTSIZE', (0,1), (-1,-1), 7),
+            ('LEADING', (0,1), (-1,-1), 9),
+            ('ALIGN',(0,0),(0,0),'LEFT'),
+            ('ALIGN',(1,0),(5,0),'CENTER'),
+            ('ALIGN',(2,1),(3,1),'CENTER'),
+            ('ALIGN',(4,1),(5,1),'CENTER'),
+            ('ALIGN',(2,2),(2,-1),'RIGHT'),
+            ('ALIGN',(3,2),(3,-1),'RIGHT'),
+            ('ALIGN',(4,2),(4,-1),'RIGHT'),
+            ('ALIGN',(4,2),(4,-1),'RIGHT'),
+            ('ALIGN',(5,2),(5,-1),'LEFT'),
+        ]))
+
+        fl.append(t)
+        fl.append(UseUpSpace())
+
+
+        fl.append(Paragraph("Original utility charges prior to renewable energy.", s['BillLabel']))
+        fl.append(UseUpSpace())
+
+        # list of the rows
+        chargeDetails = [
+            [None, "Charge Description", "Quantity","", "Rate","", "Total"],
+            [None, None, None, None, None, None, None]
+        ]
+
+        for group, charges in b["hypothetical_chargegroups"].iteritems():
+            for i, charge in enumerate(charges):
+                if not i: chargeDetails.append([group, None, None, None, None, None, None])
+                chargeDetails.append([
+                    None,
+                    charge["description"],
+                    charge["quantity"],
+                    charge["rate"],
+                    charge["total"],
+                ])
+        chargeDetails.append([None, None, None, None, None, None,
+            format_for_display(
+                b["hypothetical_charges"],
+                places=2)
+        ])
+
+        t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
+
+        #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
+        t.setStyle(TableStyle([
+            #('INNERGRID', (1,0), (-1,1), 0.25, colors.black), 
+            ('BOX', (0,2), (0,-1), 0.25, colors.black),
+            ('BOX', (1,2), (1,-1), 0.25, colors.black),
+            ('BOX', (2,2), (3,-1), 0.25, colors.black),
+            ('BOX', (4,2), (5,-1), 0.25, colors.black),
+            ('BOX', (6,2), (6,-1), 0.25, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (2,2), (2,-1), 2), 
+            ('LEFTPADDING', (3,2), (3,-1), 1), 
+            ('RIGHTPADDING', (4,2), (4,-1), 2), 
+            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('FONT', (0,1),(-1,-1), 'Inconsolata'),
+            ('FONTSIZE', (0,1), (-1,-1), 7),
+            ('LEADING', (0,1), (-1,-1), 9),
+            ('ALIGN',(0,0),(0,0),'LEFT'),
+            ('ALIGN',(1,0),(1,0),'CENTER'),
+            ('ALIGN',(2,0),(2,-1),'RIGHT'),
+            ('ALIGN',(4,0),(4,-1),'RIGHT'),
+            ('ALIGN',(6,0),(6,-1),'RIGHT'),
+        ]))
+
+        fl.append(t)
+        fl.append(UseUpSpace())
 
         return fl
-
-
-
-
-
 
 
 def init_logging(args):
     '''Return initialized logger.'''
     #globals & logger init
-    LOGGER_NAME = "PV Renderer"
+    LOGGER_NAME = "Bill Renderer"
     std_formatter = logging.Formatter('%(asctime)s - %(funcName)s : '
                                       '%(levelname)-8s %(message)s')
     _logger = logging.getLogger(LOGGER_NAME)
@@ -1093,13 +1196,13 @@ def build_parsers():
                         default=False,  action='store_true',
                         help="Maximum output to stdout.  Default: %(default)r")
 
-    parser.add_argument("--templatedirectory", dest="template_directory", 
+    parser.add_argument("--skindirectory", dest="skin_directory", 
                         default=False,  nargs="?", required=True,
-                        help="Specify template bundle directory.  Default: %(default)r")
+                        help="Specify skin bundle directory.  Default: %(default)r")
 
-    parser.add_argument("--templatename", dest="template_name", 
+    parser.add_argument("--skinname", dest="skin_name", 
                         default=False,  nargs="?", required=True,
-                        help="Specify template name.  Default: %(default)r")
+                        help="Specify skin name.  Default: %(default)r")
 
     parser.add_argument("--outputdirectory", dest="output_directory", 
                         default=False,  nargs="?", required=True,
@@ -1109,14 +1212,14 @@ def build_parsers():
                         default=False,  nargs="?", required=True,
                         help="Specify output file.  Default: %(default)r")
 
-    parser.add_argument("--inputfile", dest="input_file", 
-                        default=False,  nargs="?", required=True,
-                        help="Specify input file.  Default: %(default)r")
+    parser.add_argument("--datafile", dest="data_file", 
+                        default=False,  nargs="?", required=False,
+                        help="Specify input data file. Omit for one bill.  Default: %(default)r")
     return parser
 
 if __name__ == '__main__':
 
-    # python processing/render_pv.py --templatename skyline_pv --templatedirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf --inputfile /tmp/pv_data.csv
+    # python processing/bill_templates.py --templatename skyline_pv --templatedirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf --datafile test/bill_templates.csv
 
     parser = build_parsers()
     args = parser.parse_args()
@@ -1126,33 +1229,209 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_directory):
         os.mkdir(args.output_directory)
 
-    reader = csv.reader(open(args.input_file))
+    fake_bill_fields = {
+        "account": "38291",
+        "sequence": "1",
+        "begin_period": datetime.strptime("2013-01-01", "%Y-%m-%d"),
+        "manual_adjustment": float("0"),
+        "balance_forward": float("0"),
+        "payment_received": float("0"),
+        "balance_due": float("12471.62"),
+        "total_energy_consumed": float("159756.09"),
+        "total_re_consumed": float("127914"),
+        "total_ce_consumed": float("31842.09"),
+        "total_re_delivered_grid": float("0"),
+        "total_re_generated": float("127914"),
+        "due_date": datetime.strptime("2013-03-01", "%Y-%m-%d"),
+        "end_period": datetime.strptime("2013-02-01", "%Y-%m-%d"),
+        "hypothetical_charges": float("18371.95"),
+        "actual_charges": float("3661.84"),
+        "discount_rate": float("0.99"),
+        "issue_date": datetime.strptime("2013-02-01", "%Y-%m-%d"),
+        "late_charge": float("0"),
+        "prior_balance": float("0"),
+        "ree_charge": float("12471.62"),
+        "neg_credit_applied": float("0"),
+        "neg_ree_charge": float("0"),
+        "neg_credit_balance": float("0"),
+        "ree_savings": float("2238.5"),
+        "neg_ree_savings": float("0"),
+        "neg_ree_potential_savings": float("0"),
+        "ree_value": float("14710.11"),
+        "service_addressee": "Service Location",
+        "service_city": "Washington",
+        "service_postal_code": "20009",
+        "service_state": "DC",
+        "service_street": "2020 K Street",
+        "total_adjustment": float("0"),
+        "total_hypothetical_charges": float("0"),
+        "total_utility_charges": float("0"),
+        "payment_addressee": "Skyline Innovations",
+        "payment_city": "Washington",
+        "payment_postal_code": "20009",
+        "payment_state": "DC",
+        "payment_street": "1606 20th St NW",
+        "billing_addressee": "Example Billee",
+        "billing_street": "1313 Elm Street",
+        "billing_city": "Washington",
+        "billing_postal_code": "20009",
+        "billing_state": "DC"
+    }
 
-    for row, record in enumerate(reader):
-        if row == 0:
-            # the first column is the name of the variable
-            # create a dictionary whose keys are date column headers
-            by_date_dict = dict((datetime.strptime(col, '%Y-%m-%d'), dict()) for col in record[1:])
+    fake_utility_meters = [
+        {
+            'meter_id':'meter 1',
+            'registers':[
+                {
+                    'register_id':'register 1',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 2',
+                    'description':'description ',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 3',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }
+            ],
+            'total':0
+        }, {
+            'meter_id':'meter 2',
+            'registers':[
+                {
+                    'register_id':'register 1',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 2',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }, {
+                    'register_id':'register 3',
+                    'description':'description',
+                    'utility_total':0,
+                    'shadow_total':0,
+                    'total':0,
+                    'quantity_units':'Therms'
+                }
+            ],
+            'total':0
+        }
+    ]
 
-            # keep track of the dates in column order
-            col_hdrs = [datetime.strptime(r, '%Y-%m-%d') for r in record[1:]]
-        else:
-            for col_index, value in enumerate(record[1:]):
-                the_date = col_hdrs[col_index]
-                #print col_index, the_date, record[0]
-                if record[0] in ['begin_period', 'end_period', 'due_date', 'issue_date']:
-                    value = datetime.strptime(value, '%Y-%m-%d')
-                elif record[0] in ['manual_adjustment', 'balance_due', 'balance_forward', 'hypothetical_charges', 
-                    'late_charge', 'payment_received','prior_balance', 'ree_charge', 'ree_savings', 'ree_value',
-                    'total_adjustment', 'total_hypothetical_charges', 'total_utility_charges', 'actual_charges',
-                    'discount_rate', 'neg_credit_applied', 'neg_ree_savings', 'neg_ree_charge', 'neg_credit_balance', 
-                    'neg_ree_potential_savings', 'total_re_generated', 'total_re_consumed', 'total_ce_consumed',
-                    'total_energy_consumed', 'total_re_delivered_grid']:
-                    value = float(value)
+    fake_hypo_chargegroups = {
+        "group 1": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+        "group 2": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+        "group3": [
+            {
+                "description":"description 1",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 2",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }, {
+                "description":"description 3",
+                "quantity":0,
+                "rate":0,
+                "total":0
+            }
+        ],
+    } 
 
-                by_date_dict[the_date][record[0]] = value
+    if args.data_file:
 
-    #renderer = BillRenderer(logger, args.template_directory, args.template_name)
+        # read in lots of simulated data
+        reader = csv.reader(open(args.data_file))
+
+        for row, record in enumerate(reader):
+            if row == 0:
+                # the first column is the name of the variable
+                # create a dictionary whose keys are date column headers
+                by_date_dict = dict((datetime.strptime(col, '%Y-%m-%d'), dict()) for col in record[1:])
+
+                # keep track of the dates in column order
+                col_hdrs = [datetime.strptime(r, '%Y-%m-%d') for r in record[1:]]
+            else:
+                for col_index, value in enumerate(record[1:]):
+                    the_date = col_hdrs[col_index]
+                    if record[0] in ['begin_period', 'end_period', 'due_date', 'issue_date']:
+                        value = datetime.strptime(value, '%Y-%m-%d')
+                    elif record[0] in ['manual_adjustment', 'balance_due', 'balance_forward', 'hypothetical_charges', 
+                        'late_charge', 'payment_received','prior_balance', 'ree_charge', 'ree_savings', 'ree_value',
+                        'total_adjustment', 'total_hypothetical_charges', 'total_utility_charges', 'actual_charges',
+                        'discount_rate', 'neg_credit_applied', 'neg_ree_savings', 'neg_ree_charge', 'neg_credit_balance', 
+                        'neg_ree_potential_savings', 'total_re_generated', 'total_re_consumed', 'total_ce_consumed',
+                        'total_energy_consumed', 'total_re_delivered_grid']:
+                        value = float(value)
+
+                    by_date_dict[the_date][record[0]] = value
+
+                    # tack on fake meters 
+                    by_date_dict[the_date]['utility_meters'] = fake_utility_meters
+
+                    by_date_dict[the_date]['hypothetical_chargegroups'] = fake_hypo_chargegroups
+    else:
+        logger.info("No datafile supplied, generating one bill")
+        # implemented here so all necessary fields can be seen
+        by_date_dict = {'2014-01-01': fake_bill_fields}
+        by_date_dict['2014-01-01']['utility_meters'] = fake_utility_meters
+        by_date_dict['2014-01-01']['hypothetical_chargegroups'] = fake_hypo_chargegroups
+    
 
     bill_data = deque([],13)
 
@@ -1161,9 +1440,9 @@ if __name__ == '__main__':
 
         # pass in all cycles data (for historical lookback)
 
-        # TODO: 17377331 - find out why the failure is silent
-        # for some reasons, if the file path passed in does not exist, BillDocTemplate fails silently 
-        #doc = PVBillDocTemplate(logger, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.template_directory, args.template_name)
+        # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
+        #doc = PVBillDoc(logger, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.template_directory, args.template_name)
         # TODO: doesn't expect a sequence of bills
-        doc = ThermalBillDocTemplate(logger, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.template_directory, args.template_name)
-        doc.render(bill_data)
+        #doc = ThermalBillDoc(logger)
+        doc = PVBillDoc(logger)
+        doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
