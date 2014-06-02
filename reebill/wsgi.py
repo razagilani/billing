@@ -666,6 +666,16 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        with DBSession(self.state_db) as session:
+            self.process.update_sequential_account_info(session, account, sequence, processed=processed)
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def compute_utility_bill(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.compute_utility_bill(session, utilbill_id)
