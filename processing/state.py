@@ -318,15 +318,20 @@ class ReeBill(Base):
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
         return None
 
-    def update_readings_from_reebill(self, session, reebill_readings):
+    def update_readings_from_reebill(self, session, reebill_readings, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
-        the list of registers in the given reebill_readings.
+        the list of registers in the given reebill_readings. Readings that do not
+        have a register binding that matches a register in 'utilbill_doc' are
+        ignored.
         '''
         for r in self.readings:
             session.delete(r)
+        utilbill_register_bindings = {r['register_binding']
+                for r in chain.from_iterable(m['registers']
+                for m in utilbill_doc['meters'])}
         self.readings = [Reading(r.register_binding, r.measure, 0,
-                         0, r.aggregate_function, r.unit) for r in reebill_readings]
-        return None
+                0, r.aggregate_function, r.unit) for r in reebill_readings
+                if r.register_binding in utilbill_register_bindings]
 
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
