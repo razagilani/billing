@@ -646,6 +646,14 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def update_readings(self, account, sequence, **kwargs):
+        with DBSession(self.state_db) as session:
+            self.process.update_reebill_readings(session, account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
