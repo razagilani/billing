@@ -5416,6 +5416,7 @@ function reeBillReady() {
             {name: 'id', mapping: 'id'},
             {name: 'account', mapping: 'account'},
             {name: 'sequence', mapping: 'sequence'},
+            {name: 'processed', mapping: 'processed'},
             {name: 'mailto', mapping: 'mailto'},
             {name: 'util_total', mapping: 'util_total'},
             {name: 'reebill_total', mapping: 'reebill_total'},
@@ -5486,6 +5487,27 @@ function reeBillReady() {
                 dataIndex: 'sequence',
                 editable: false,
                 editor: new Ext.form.TextField(),
+            },{
+                id: 'processed',
+                header: 'Processed',
+                width: 75,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'processed',
+                editable: false,
+                editor: new Ext.form.TextField(),
+                renderer: function(v, params, record)
+                {
+                    if (Ext.isEmpty(record.data.processed))
+                    {
+                        return "No";
+                    }
+                    else if (record.data.mailto)
+                    {
+                        return "Yes";
+                    }
+                    return "No";
+                }
             },{
                 id: 'mailto',
                 header: 'Recipients',
@@ -5636,10 +5658,108 @@ function reeBillReady() {
             });
         },
     });
-    
+
+    var issueProcessedReebillButton = new Ext.Button({
+        xtype: 'button',
+        id: 'issueProcessedReebillBtn',
+        iconCls: 'icon-mail-go',
+        text: 'Issue Processed Reebills',
+        disabled: false,
+        handler: function()
+        {
+            var all_rows = issuableGrid.getStore().getRange();
+            var processed_rows = []
+            Ext.each(all_rows, function(r, index)
+            {
+                if (Ext.isEmpty(r.data.processed))
+                {
+                    return true;
+                }
+                else if(r.data.processed)
+                {
+                    processed_rows.push(r);
+                }
+            });
+            Ext.each(all_rows, function(r, index)
+            {
+                issuableGrid.setDisabled(true);
+                issueDataConn.request({
+                    params: {
+                        account: r.data.account,
+                        sequence: r.data.sequence,
+                        recipients: r.data.mailto,
+                        apply_corrections: false
+                    },
+                    success: function (response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);
+                        }
+                        catch(e) {
+                            Ext.Msg.alert("Data Error", "Could not decode response from server");
+                            return;
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert("Success", "Mail successfully sent");
+                            issuableGrid.getSelectionModel().clearSelections();
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                            utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                        }
+                        else if (o.success !== true && o.corrections != undefined) {
+                            var result = Ext.Msg.confirm('Corrections must be applied',
+                                                     'Corrections from reebills ' + o.corrections +
+                                                     ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        issueDataConn.request({
+                                            params: {
+                                                account: r.data.account,
+                                                sequence: r.data.sequence,
+                                                recipients: r.data.mailto,
+                                                apply_corrections: true
+                                            },
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true) {
+                                                    Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                                            },
+                                            failure: function() {
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            }
+                                        });
+                                    }
+                                    else{
+                                        issuableGrid.setDisabled(false);
+                                    }
+                                });
+                        }
+                        else {
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                    },
+                    failure: function () {
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                });
+            });
+        },
+    });
+
     var issueReebillToolbar = new Ext.Toolbar({
         items: [
             issueReebillButton,
+            issueProcessedReebillButton,
         ],
     });
     
@@ -5669,7 +5789,8 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            //groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            groupTextTpl: '{[Math.round(Math.random() * 3)]}',
             showGroupName: false,
         }),
         frame: true,

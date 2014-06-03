@@ -1841,6 +1841,7 @@ class Process(object):
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
         issuable_reebills = sorted([{'account': r.customer.account,
+                         'processed': r.processed,
                          'sequence':r.sequence,
                          'util_total': sum(u.total_charges for u in r.utilbills),
                          'mailto':r.customer.bill_email_recipient,
