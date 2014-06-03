@@ -77,7 +77,6 @@ var TextLayerBuilder = function textLayerBuilder(options) {
   }
 
   this.renderLayer = function textLayerBuilderRenderLayer() {
-      console.log('textLayerBuilderRenderLayer');
     var textDivs = this.textDivs;
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
@@ -114,7 +113,6 @@ var TextLayerBuilder = function textLayerBuilder(options) {
   };
 
   this.setupRenderLayoutTimer = function textLayerSetupRenderLayoutTimer() {
-      console.log('textLayerSetupRenderLayoutTimer');
     // Schedule renderLayout() if user has been scrolling, otherwise
     // run it right away
     var RENDER_DELAY = 200; // in ms
@@ -170,7 +168,6 @@ var TextLayerBuilder = function textLayerBuilder(options) {
   };
 
   this.setTextContent = function textLayerBuilderSetTextContent(textContent) {
-    console.log('textLayerBuilderSetTextContent', textContent);
     this.textContent = textContent;
 
     var textItems = textContent.items;
