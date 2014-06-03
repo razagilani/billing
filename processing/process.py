@@ -1840,19 +1840,16 @@ class Process(object):
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
-        issuable_reebills = sorted([{'account': r.customer.account,
-                         'sequence':r.sequence,
-                         'util_total': sum(u.total_charges for u in r.utilbills),
-                         'mailto':r.customer.bill_email_recipient,
-                         'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                                            for ub_doc in(
-                                                self.reebill_dao._load_utilbill_by_id(ub_id)
-                                                    for ub_id in(
-                                                        u.document_id for u in r.utilbills
-                                                    )
-                                                )
-                                          )
-                         } for r in reebills.all()], key=itemgetter('account'))
+        issuable_reebills = sorted([{
+            'account': r.customer.account,
+            'sequence':r.sequence,
+            'util_total': sum(u.total_charges for u in r.utilbills),
+            'mailto':r.customer.bill_email_recipient,
+            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
+                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
+                    for ub_id in(u.document_id for u in r.utilbills))),
+            'processed': r.processed,
+         } for r in reebills.all()], key=itemgetter('account'))
 
         return issuable_reebills
 

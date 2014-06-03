@@ -1091,10 +1091,15 @@ class BillToolBridge:
                 for reebill_info in issuable_reebills:
                     reebill_info['id'] = reebill_info['account'],
                     reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
-                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+                    if reebill_info['processed'] == True:
+                        reebill_info['group'] = 'processed'
+                    elif reebill_info['difference'] < allowable_diff:
+                        reebill_info['group'] = 'matching'
+                    else:
+                        reebill_info['group'] = 'nonmatching'
 
                 issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
+                issuable_reebills.sort(key=lambda d: d['group'], reverse = True)
                 return self.dumps({'success': True,
                                    'rows': issuable_reebills[start:start+limit],
                                    'total': len(issuable_reebills)})

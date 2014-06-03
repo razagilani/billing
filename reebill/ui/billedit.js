@@ -5419,7 +5419,7 @@ function reeBillReady() {
             {name: 'mailto', mapping: 'mailto'},
             {name: 'util_total', mapping: 'util_total'},
             {name: 'reebill_total', mapping: 'reebill_total'},
-            {name: 'matching', mapping: 'matching'},
+            {name: 'group', mapping: 'group'},
             {name: 'difference', mapping: 'difference'},
         ],
     });
@@ -5444,7 +5444,7 @@ function reeBillReady() {
         autoSave: true,
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
-        groupField: 'matching',
+        groupField: 'group',
         sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
@@ -5462,11 +5462,11 @@ function reeBillReady() {
     var issuableColModel = new Ext.grid.ColumnModel({
         columns: [
             {
-                id: 'matching',
+                id: 'group',
                 header: '',
                 width: 160,
                 sortable: true,
-                dataIndex: 'matching',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 id: 'account',
@@ -5669,7 +5669,8 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            //groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            groupTextTpl: '{[values.gvalue]}',
             showGroupName: false,
         }),
         frame: true,
