@@ -1098,8 +1098,17 @@ class BillToolBridge:
                     else:
                         reebill_info['group'] = 'nonmatching'
 
-                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                issuable_reebills.sort(key=lambda d: d['group'], reverse = True)
+                # sort by 'sort' column, then by 'group' to
+                # get rows sorted by 'sort' column within groups
+                issuable_reebills.sort(key=itemgetter(sort),
+                        reverse = (direction == 'DESC'))
+                def group_order(row):
+                    result = ['processed', 'matching', 'nonmatching'].index(
+                            row['group'])
+                    assert result >= 0
+                    return result
+                issuable_reebills.sort(key=group_order)
+
                 return self.dumps({'success': True,
                                    'rows': issuable_reebills[start:start+limit],
                                    'total': len(issuable_reebills)})
