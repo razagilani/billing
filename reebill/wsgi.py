@@ -760,10 +760,11 @@ class BillToolBridge:
                         self.state_db.max_version(session, account, cor),
                         applied_sequence=sequences[0])
             self.process.compute_reebill(session, account, sequence)
+            #mark issued bills as processed
+            self.process.update_sequential_account_info(session, account, sequence, processed=True)
             self.process.issue(session, account, sequence)
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                                                      account, sequence, 0)
-
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in recipients.split(',')]
