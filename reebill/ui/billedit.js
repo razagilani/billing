@@ -6446,12 +6446,13 @@ var BILLPDF = function(){
 
         var getPage = function(p) {
             ptr.pdf.getPage(p).then(function (page) {
-                ptr.pdf.pages[page.pageNumber-1] = page;
+                ptr.pages[page.pageNumber-1] = page;
                 page.getTextContent().then(function (textContent) {
-                    ptr.pdf.content[page.pageNumber-1] = textContent;
+                    ptr.content[page.pageNumber-1] = textContent;
                     if (page.pageNumber < ptr.pdf.numPages) {
                         getPage(page.pageNumber+1);
                     }else{
+                      ptr.pdf = {}
                       renderPages(prefix);
                     }
                 });
@@ -6463,9 +6464,8 @@ var BILLPDF = function(){
             PDFJS.getDocument(url).then(
                 function (pdfdoc) {
                     ptr.pdf = pdfdoc;
-                    ptr.pdf.pages = []
-                    ptr.pdf.content = []
-                    console.log(pdfdoc);
+                    ptr.pages = []
+                    ptr.content = []
                     getPage(1);
                 });
         }else{
@@ -6505,7 +6505,6 @@ var BILLPDF = function(){
 
     var renderText = function(prefix, page, viewport, content){
         var textlayerelem = document.getElementById(prefix + '-canvas-text-layer');
-        console.log('render text ',page.pageNumber);
         var textLayerDiv = document.createElement('div');
         textLayerDiv.style.height = viewport.height;
         textLayerDiv.style.width = viewport.width;
@@ -6526,7 +6525,6 @@ var BILLPDF = function(){
     };
 
     var renderPage = function(prefix, page, content){
-        console.log('render page ',page.pageNumber);
         var canvaslayer = document.getElementById(prefix + '-canvas-layer');
 
         var canvas = document.createElement('canvas');
@@ -6555,7 +6553,6 @@ var BILLPDF = function(){
 
     var renderPages = function(prefix){
         var ptr = prefix === 'utilbill' ? ub : rb;
-        console.log(ptr);
         if(!ptr.pdf) {
             return;
         }
@@ -6576,9 +6573,9 @@ var BILLPDF = function(){
                 textlayerelem.removeChild(textlayerelem.lastChild);
             }
 
-            for(var i = 0; i < ptr.pdf.pages.length; i++) {
-                var page = ptr.pdf.pages[i];
-                var content  = ptr.pdf.content[i];
+            for(var i = 0; i < ptr.pages.length; i++) {
+                var page = ptr.pages[i];
+                var content  = ptr.content[i];
                 createRenderTimeout(prefix, page, content)();
             }
         }
