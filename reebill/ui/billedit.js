@@ -608,15 +608,6 @@ function reeBillReady() {
         ],
     });
 
-
-    // put this by the other dataconnection instantiations
-    var utilbillImageDataConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/getUtilBillImage',
-        timeout: 60000, // 1 minute
-    });
-    utilbillImageDataConn.autoAbort = true;
-    utilbillImageDataConn.disableCaching = true;
-
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
         tbar: new Ext.Toolbar({
@@ -730,40 +721,9 @@ function reeBillReady() {
                     // Then Enable the button
                     record.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
                     Ext.getCmp('utilbillToggleProcessed').setDisabled(false);
-                    // ajax call to generate image, get the name of it, and display it in a
-                    // new window
+
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
                         BILLPDF.fetchUtilbill(selected_account, selected_utilbill.id);
-//                        utilbillImageDataConn.request({
-//                            params: {utilbill_id: selected_utilbill.id},
-//                            success: function(result, request) {
-//                                var jsonData = null;
-//                                try {
-//                                    jsonData = Ext.util.JSON.decode(result.responseText);
-//                                    var imageUrl = '';
-//                                    if (jsonData.success == true) {
-//                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
-//                                    }
-//                                    // TODO handle failure if needed
-//
-//                                    var elem = {tag: 'div', style:'width:100%;height:100%;', children:[
-//                                        {tag: 'canvas', id: 'utilbill-canvas'},
-//                                        {tag: 'div', id: 'utilbill-canvas-text-layer'}]};
-//                                    Ext.DomHelper.overwrite('utilbillimagebox',
-//                                        elem,
-//                                        true);
-//                                    UTILBILLPDF.fetch(selected_account, selected_utilbill.id);
-//                                } catch (err) {
-//                                    Ext.MessageBox.alert('getutilbillimage ERROR', err);
-//                                }
-//                            },
-//                            // this is called when the server returns 500 as well as when there's no response
-//                        });
-
-                        // while waiting for the ajax request to finish, show a
-                        // loading message in the utilbill image box
-                        //Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                        //        html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
                     }
                     else {
                         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
@@ -1674,34 +1634,6 @@ function reeBillReady() {
     function renderOperation()
     {
         BILLPDF.fetchReebill(selected_account, selected_sequence);
-/*        // while waiting for the next ajax request to finish, show a loading message
-        // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-        renderDataConn.request({
-            params: { 
-                account: selected_account,
-                sequence: selected_sequence
-            },
-            success: function(response, options) {
-                var response_obj = {};
-                try {
-                    response_obj = Ext.decode(response.responseText);
-                } catch (e) {
-                    Ext.Msg.alert("Fatal: Could not decode JSON data");
-                }
-                if (response_obj.success !== true) {
-                    // handle failure if needed
-                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-                } else {
-                    loadReeBillUIForSequence(selected_account, selected_sequence);
-                }
-            },
-            failure: function () {
-                // handle failure if needed
-                Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-            }
-        });*/
-
     }
 
     /*var attachDataConn = new Ext.data.Connection({
@@ -4534,75 +4466,6 @@ function reeBillReady() {
     // bill image resolution field in preferences tab (needs a name so its
     // value can be gotten)
 
-    var billImageResolutionField = new Ext.ux.form.SpinnerField({
-      id: 'billresolutionmenu',
-      fieldLabel: 'Bill image resolution',
-      name: 'billresolution',
-      value: DEFAULT_RESOLUTION,
-      minValue: 50,
-      maxValue: 200,
-      allowDecimals: false,
-      decimalPrecision: 10,
-      incrementValue: 10,
-      alternateIncrementValue: 2.1,
-      accelerate: true
-    });
-
-    var setPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/setBillImageResolution',
-    });
-    setPreferencesDataConn.autoAbort = true;
-    setPreferencesDataConn.disableCaching = true;
-    var preferencesFormPanel = new Ext.FormPanel({
-      labelWidth: 240, // label settings here cascade unless overridden
-      frame: true,
-      title: 'Image Resolution Preferences',
-      bodyStyle: 'padding:5px 5px 0',
-      //width: 610,
-      defaults: {width: 435},
-      layout: 'fit', 
-      defaultType: 'textfield',
-      items: [
-        billImageResolutionField,
-      ],
-      buttons: [
-        new Ext.Button({
-            text: 'Save',
-            handler: function() {
-                setPreferencesDataConn.request({
-                    params: { 'resolution': billImageResolutionField.getValue() },
-                });
-            }
-        }),
-      ],
-    });
-
-    // get initial value of this field from the server
-    var getPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getBillImageResolution',
-    });
-    getPreferencesDataConn.autoAbort = true;
-    getPreferencesDataConn.disableCaching = true;
-    // TODO: 22360193 populating a form from Ajax creates a race condition.  
-    // What if the network doesn't return and user enters a value nefore the callback is fired?
-    var resolution = null;
-    getPreferencesDataConn.request({
-        success: function(result, request) {
-            var jsonData = null;
-            try {
-                jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    resolution = jsonData['resolution'];
-                    billImageResolutionField.setValue(resolution);
-                } else {
-                    // handle success:false here if needed
-                }
-            } catch (err) {
-                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-            }
-        },
-    });
-
     var differenceThresholdField = new Ext.ux.form.SpinnerField({
       id: 'differencethresholdmenu',
       fieldLabel: '$ Difference Allowed between Utility Bill and ReeBill',
@@ -4682,7 +4545,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, thresholdFormPanel],
+        items: [thresholdFormPanel],
     });
 
     ///////////////////////////////////////
@@ -6120,13 +5983,6 @@ function reeBillReady() {
     ubMeasuredUsagesDataConn.disableCaching = true;
 
 
-
-    var reeBillImageDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getReeBillImage',
-    });
-    reeBillImageDataConn.autoAbort = true;
-    reeBillImageDataConn.disableCaching = true;
-
     function loadReeBillUIForSequence(account, sequence, loadReebillImage) {
         /* null argument means no sequence is selected */
         // Load the ReebillImage by default
@@ -6205,51 +6061,6 @@ function reeBillReady() {
 
         if(loadReebillImage){
             BILLPDF.fetchReebill(selected_account, selected_sequence);
-//            // image rendering resolution
-//            var menu = document.getElementById('reebillresolutionmenu');
-//            if (menu) {
-//                resolution = menu.value;
-//            } else {
-//                resolution = DEFAULT_RESOLUTION;
-//            }
-//
-//            // while waiting for the next ajax request to finish, show a loading message
-//            // in the utilbill image box
-//            Ext.DomHelper.overwrite('reebillimagebox',
-//                {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-//
-//            // ajax call to generate image, get the name of it, and display it in a
-//            // new window
-//            // abort previous transaction
-//            reeBillImageDataConn.request({
-//                disablecaching: true,
-//                params: {account: selected_account, sequence: selected_sequence,
-//                            resolution: resolution},
-//                success: function(result, request) {
-//                    var jsonData = null;
-//                    try {
-//                        jsonData = Ext.util.JSON.decode(result.responseText);
-//                        var imageUrl = '';
-//                        if (jsonData.success == true) {
-//                            imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
-//                        }
-//                        // handle failure if needed
-//                        console.log(selected_account, selected_sequence);
-//                        Ext.DomHelper.overwrite('reebillimagebox',
-//                            getImageBoxHTML(imageUrl, 'Reebill', 'reebill',
-//                                NO_REEBILL_SELECTED_MESSAGE), true);
-//
-//                    } catch (err) {
-//                        Ext.MessageBox.alert('error', err);
-//                    }
-//                },
-//                // this is called when the server returns 500 as well as when there's no response
-//                failure: function() {
-//                    // replace reebill image with a missing graphic
-//                    Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-//                        html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-//                },
-//            });
         }
 
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
