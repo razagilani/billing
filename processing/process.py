@@ -142,6 +142,9 @@ class Process(object):
 
     def new_register(self, session, utilbill_id, row,
                     reebill_sequence=None, reebill_version=None):
+        '''"row" argument is a dictionary but keys other than
+        "meter_id" and "register_id" are ignored.
+        '''
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
@@ -151,7 +154,7 @@ class Process(object):
 
 
     def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
-            fields, reebill_sequence=None, reebill_version=None):
+                fields, reebill_sequence=None, reebill_version=None):
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
@@ -1109,12 +1112,13 @@ class Process(object):
         assert len(new_utilbill_docs) == 1
         if last_reebill_row is None:
             new_reebill.update_readings_from_document(session,
-                new_utilbill_docs[0])
+                    new_utilbill_docs[0])
         else:
             readings = session.query(Reading)\
                     .filter(Reading.reebill_id == last_reebill_row.id)\
                     .all()
-            new_reebill.update_readings_from_reebill(session, readings)
+            new_reebill.update_readings_from_reebill(session, readings,
+                    new_utilbill_docs[0])
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
