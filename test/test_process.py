@@ -1129,32 +1129,46 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         predecessor.'''
         account = '99999'
         with DBSession(self.state_db) as session:
-            # create 2 utility bills
+            self.process.ree_getter = MockReeGetter(100)
+
             self.process.upload_utility_bill(session, account, 'gas',
-                                             date(2013, 4, 4), date(2013, 5, 2),
-                                             StringIO('April 2013'),
-                                             'april.pdf')
+                    date(2013, 4, 4), date(2013, 5, 2), StringIO('April 2013'),
+                    'april.pdf')
+            # add a register to the first utility bill so there are 2,
+            # REG_TOTAL and OTHER
+            id_1 = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
+            self.process.new_register(session, id_1,
+                    {'meter_id': 'M60324', 'register_id': 'R',})
+            self.process.update_register(session, id_1,
+                    'M60324', 'R', {'binding': 'OTHER'})
+
+            # 2nd utility bill should have the same registers as the first
             self.process.upload_utility_bill(session, account, 'gas',
-                                             date(2013, 5, 2), date(2013, 6, 3),
-                                             StringIO('May 2013'),
-                                             'may.pdf')
+                    date(2013, 5, 2), date(2013, 6, 3), StringIO('May 2013'),
+                    'may.pdf')
 
             # create reebill based on first utility bill
             reebill1 = self.process.roll_reebill(session, account,
                                       start_date=date(2013, 4, 4))
 
-            # reebill should be computable
             self.process.compute_reebill(session, account, 1)
-
             self.process.issue(session, account, 1)
 
-            # another reebill
+            # delete register from the 2nd utility bill
+            id_2 = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
+            self.process.delete_register(session, id_2, 'M60324', 'R')
+
+            # 2nd reebill should NOT have a reading corresponding to the
+            # additional register, which was removed
             reebill2 = self.process.roll_reebill(session, account)
             utilbill_data, count = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertEqual(2, count)
             self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
-            self.assertEqual(reebill1.readings[0].aggregate_function, reebill2.readings[0].aggregate_function)
+            self.assertEqual(reebill1.readings[0].aggregate_function,
+                    reebill2.readings[0].aggregate_function)
             self.assertEqual([{
                 'sequence': 1,
                 'version': 0,
@@ -1165,6 +1179,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'version': 0,
                 'issue_date': None,
             }], utilbill_data[0]['reebills'])
+
+            # the 1st reebill has a reading for both the "REG_TOTAL" register
+            # and the "OTHER" register, for a total of 200 therms of renewable
+            # energy. since the 2nd utility bill no longer has the "OTHER" register,
+            # the 2nd reebill does not have a reading fot it, even though the 1st
+            # reebill has it.
+            reebill_2_data, reebill_1_data = self.process\
+                    .get_reebill_metadata_json(session, account)
+            self.assertEqual(200, reebill_1_data['ree_quantity'])
+            self.assertEqual(100, reebill_2_data['ree_quantity'])
 
             # addresses should be preserved from one reebill document to the
             # next
