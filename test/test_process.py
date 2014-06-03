@@ -1276,27 +1276,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
-           # create customers A, B, and C, their utility bill template
-           # documents, and reebills #0 for each (which include utility bills)
-           customer_a = Customer('Customer A', acc_a, .12, .34,
-                   '00000000000000000000000a', 'example@example.com')
-           customer_b = Customer('Customer B', acc_b, .12, .34,
-                   '00000000000000000000000b', 'example@example.com')
-           customer_c = Customer('Customer C', acc_c, .12, .34,
-                   '00000000000000000000000c', 'example@example.com')
-           session.add_all([customer_a, customer_b, customer_c])
-           template_a = example_data.get_utilbill_dict(acc_a,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-           template_b = example_data.get_utilbill_dict(acc_b,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-           template_c = example_data.get_utilbill_dict(acc_c,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-           template_a['_id'] = ObjectId('00000000000000000000000a')
-           template_b['_id'] = ObjectId('00000000000000000000000b')
-           template_c['_id'] = ObjectId('00000000000000000000000c')
-           self.reebill_dao.save_utilbill(template_a)
-           self.reebill_dao.save_utilbill(template_b)
-           self.reebill_dao.save_utilbill(template_c)
+           # create customers A, B, and C
+           billing_address = {
+               'addressee': 'Andrew Mellon',
+               'street': '1785 Massachusetts Ave. NW',
+               'city': 'Washington',
+               'state': 'DC',
+               'postal_code': '20036',
+           }
+           service_address = {
+               'addressee': 'Skyline Innovations',
+               'street': '1606 20th St. NW',
+               'city': 'Washington',
+               'state': 'DC',
+               'postal_code': '20009',
+           }
+           self.process.create_new_account(session, acc_a, 'Customer A',
+                    .12, .34, billing_address, service_address, '99999')
+           self.process.create_new_account(session, acc_b, 'Customer B',
+                   .12, .34, billing_address, service_address, '99999')
+           self.process.create_new_account(session, acc_c, 'Customer C',
+                   .12, .34, billing_address, service_address, '99999')
+
            # new customers also need to be in nexus for 'update_renewable_readings' to
            # work (using mock Skyliner)
            self.nexus_util._customers.extend([
@@ -1408,7 +1409,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
            # a new bill is rolled, the UPRS it gets depends on whether it's
            # closer to B/C-1 or to A-2.
            self.process.delete_rsi(session, id_a_2, 'DISTRIBUTION_CHARGE')
-           x = self.process.get_rsis_json(session, id_a_2)
            self.process.delete_rsi(session, id_a_2, 'PGC')
            self.process.delete_rsi(session, id_a_2, 'NOT_SHARED')
            self.process.add_rsi(session, id_a_2)
@@ -1429,8 +1429,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                    'february-b.pdf', total=0, state=UtilBill.Complete)
            self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
                     self.process.get_rsis_json(session, id_a_2)))
-
-
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
