@@ -14,7 +14,7 @@ from billing.processing.session_contextmanager import DBSession
 
 from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Reading
+from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
@@ -140,8 +140,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'computed_total': 0,
                 'editable': True,
                 'id': 6469L,
-                                                    'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
-                         'washgas: DC Non Residential Non Heat'),
+                'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
                 'period_end': date(2013, 2, 1),
                 'period_start': date(2013, 1, 1),
                 'processed': 0,
@@ -582,16 +581,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             h_quantity = self.process.get_reebill_metadata_json(
                     session, account)[0]['ree_quantity']
             self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
-            self.assertEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'))
-            self.assertEqual(0.01399 * h_quantity, get_h_total('SETF'))
-            self.assertEqual(0.006 * h_quantity, get_h_total('EATF'))
-            self.assertEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'))
-            self.assertEqual(23.14, get_h_total('PUC'))
-            self.assertEqual(.2935 * h_quantity,
-                    get_h_total('DISTRIBUTION_CHARGE'))
-            self.assertEqual(.7653 * h_quantity, get_h_total('PGC'))
-            self.assertEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
-                    get_h_total('SALES_TAX'))
+            self.assertAlmostEqual(0.03059 * h_quantity, get_h_total('RIGHT_OF_WAY'), places=4)
+            self.assertAlmostEqual(0.01399 * h_quantity, get_h_total('SETF'), places=4)
+            self.assertAlmostEqual(0.006 * h_quantity, get_h_total('EATF'), places=4)
+            self.assertAlmostEqual(0.07777 * h_quantity, get_h_total('DELIVERY_TAX'), places=4)
+            self.assertAlmostEqual(23.14, get_h_total('PUC'), places=4)
+            self.assertAlmostEqual(.2935 * h_quantity,
+                    get_h_total('DISTRIBUTION_CHARGE'), places=4)
+            self.assertAlmostEqual(.7653 * h_quantity, get_h_total('PGC'), places=4)
+            self.assertAlmostEqual(0.06 * sum(map(get_h_total, non_tax_rsi_bindings)),
+                    get_h_total('SALES_TAX'), places=4)
 
 
     def test_upload_utility_bill(self):
@@ -1265,50 +1264,52 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         '''
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
+        billing_address = {
+            'addressee': 'Andrew Mellon',
+            'street': '1785 Massachusetts Ave. NW',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20036',
+        }
+        service_address = {
+            'addressee': 'Skyline Innovations',
+            'street': '1606 20th St. NW',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20009',
+        }
+
 
         with DBSession(self.state_db) as session:
+
            # create customers A, B, and C
-           billing_address = {
-               'addressee': 'Andrew Mellon',
-               'street': '1785 Massachusetts Ave. NW',
-               'city': 'Washington',
-               'state': 'DC',
-               'postal_code': '20036',
-           }
-           service_address = {
-               'addressee': 'Skyline Innovations',
-               'street': '1606 20th St. NW',
-               'city': 'Washington',
-               'state': 'DC',
-               'postal_code': '20009',
-           }
-           self.process.create_new_account(session, acc_a, 'Customer A',
-                    .12, .34, billing_address, service_address, '99999')
-           self.process.create_new_account(session, acc_b, 'Customer B',
-                   .12, .34, billing_address, service_address, '99999')
-           self.process.create_new_account(session, acc_c, 'Customer C',
-                   .12, .34, billing_address, service_address, '99999')
+            self.process.create_new_account(session, acc_a, 'Customer A',
+                .12, .34, billing_address, service_address, '100001')
+            self.process.create_new_account(session, acc_b, 'Customer B',
+                .12, .34, billing_address, service_address, '100001')
+            self.process.create_new_account(session, acc_c, 'Customer C',
+                .12, .34, billing_address, service_address, '100001')
 
             # new customers also need to be in nexus for 'update_renewable_readings' to
             # work (using mock Skyliner)
             self.nexus_util._customers.extend([
                 {
-                   'billing': 'aaaaa',
-                   'olap': 'a-1',
-                   'casualname': 'Customer A',
-                   'primus': '1 A St.',
+                    'billing': 'aaaaa',
+                    'olap': 'a-1',
+                    'casualname': 'Customer A',
+                    'primus': '1 A St.',
                 },
                 {
-                   'billing': 'bbbbb',
-                   'olap': 'b-1',
-                   'casualname': 'Customer B',
-                   'primus': '1 B St.',
+                    'billing': 'bbbbb',
+                    'olap': 'b-1',
+                    'casualname': 'Customer B',
+                    'primus': '1 B St.',
                 },
                 {
-                   'billing': 'ccccc',
-                   'olap': 'c-1',
-                   'casualname': 'Customer C',
-                   'primus': '1 C St.',
+                    'billing': 'ccccc',
+                    'olap': 'c-1',
+                    'casualname': 'Customer C',
+                    'primus': '1 C St.',
                 },
             ])
 
