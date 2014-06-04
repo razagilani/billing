@@ -3222,7 +3222,7 @@ function reeBillReady() {
                 sortable: true,
                 on: true,
                 off: false,
-                width: 60
+                width: 80
             },{
                 header: 'Group',
                 dataIndex: 'group',
@@ -3460,6 +3460,7 @@ function reeBillReady() {
                 header: 'Date Applied',
                 sortable: true,
                 dataIndex: 'date_applied',
+                format: 'Y-m-d',
                 editor: new Ext.form.DateField({
                     allowBlank: false,
                     format: 'Y-m-d',
@@ -3476,7 +3477,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'credit',
                 renderer: paymentColRenderer,
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.NumberField({allowBlank: true})
             },
         ]
     });
