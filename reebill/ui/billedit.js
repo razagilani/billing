@@ -1030,7 +1030,7 @@ function reeBillReady() {
         // options appears to override baseParams.  Furthermore, start and limit appear
         // to be treated differently.  Need to scour the Ext source to figure this out.
 
-        // account changed, reset the paging 
+        // account changed, reset the paging
         if (store.baseParams.account && store.baseParams.account != selected_account) {
             // TODO: 26143175 start new account selection on the last page
             // reset pagination since it is a new account being loaded.
@@ -5403,6 +5403,7 @@ function reeBillReady() {
     //Issuable Reebills Tab
     //Show all unissued reebills, show the reebills whose totals match their
     //  utilbills first
+
     
     var initialIssuable = {
         rows: [
@@ -5658,6 +5659,17 @@ function reeBillReady() {
             });
         },
     });
+
+
+
+    var issueProcessedDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issue_processed_and_mail',
+    });
+    issueProcessedDataConn.autoAbort = false;
+    issueProcessedDataConn.disableCaching = true;
+    issueProcessedDataConn.timeout = 600000
+
+    var issuableProcessedCurrentlyEditing = false;
     
     var issueProcessedReebillButton = new Ext.Button({
         xtype: 'button',
@@ -5667,28 +5679,11 @@ function reeBillReady() {
         disabled: false,
         handler: function()
         {
-            var all_rows = issuableGrid.getStore().getRange();
-            var processed_rows = []
-            Ext.each(all_rows, function(r, index)
-            {
-                if (Ext.isEmpty(r.data.processed))
-                {
-                    return true;
-                }
-                else if(r.data.processed)
-                {
-                    processed_rows.push(r);
-                }
-            });
-            Ext.each(all_rows, function(r, index)
-            {
+
                 issuableGrid.setDisabled(true);
-                issueDataConn.request({
+                issueProcessedDataConn.request({
                     params: {
-                        account: r.data.account,
-                        sequence: r.data.sequence,
-                        recipients: r.data.mailto,
-                        apply_corrections: false
+                        apply_corrections: true
                     },
                     success: function (response, options) {
                         var o = {};
@@ -5708,40 +5703,6 @@ function reeBillReady() {
                             issuableGrid.setDisabled(false);
                             utilbillGridStore.reload({callback: refreshUBVersionMenus});
                         }
-                        else if (o.success !== true && o.corrections != undefined) {
-                            var result = Ext.Msg.confirm('Corrections must be applied',
-                                                     'Corrections from reebills ' + o.corrections +
-                                                     ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
-                                    if (answer == 'yes') {
-                                        issueDataConn.request({
-                                            params: {
-                                                account: r.data.account,
-                                                sequence: r.data.sequence,
-                                                recipients: r.data.mailto,
-                                                apply_corrections: true
-                                            },
-                                            success: function(response, options) {
-                                                var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true) {
-                                                    Ext.Msg.alert("Success", "Mail successfully sent");
-                                                    issuableGrid.getSelectionModel().clearSelections();
-                                                }
-                                                issuableStore.reload();
-                                                issuableGrid.setDisabled(false);
-                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
-                                            },
-                                            failure: function() {
-                                                issuableStore.reload();
-                                                issuableGrid.setDisabled(false);
-                                            }
-                                        });
-                                    }
-                                    else{
-                                        issuableGrid.setDisabled(false);
-                                    }
-                                });
-                        }
                         else {
                             issuableStore.reload();
                             issuableGrid.setDisabled(false);
@@ -5752,9 +5713,8 @@ function reeBillReady() {
                         issuableGrid.setDisabled(false);
                     }
                 });
-            });
-        },
-    });
+            },
+        });
 
     var issueReebillToolbar = new Ext.Toolbar({
         items: [
@@ -5762,7 +5722,8 @@ function reeBillReady() {
             issueProcessedReebillButton,
         ],
     });
-    
+
+
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
         selModel: new Ext.grid.RowSelectionModel({
@@ -5790,7 +5751,7 @@ function reeBillReady() {
         view: new Ext.grid.GroupingView({
             forceFit: false,
             //groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
-            groupTextTpl: '{[values.gvalue]}',
+            groupTextTpl: '{text}',
             showGroupName: false,
         }),
         frame: true,
@@ -5802,6 +5763,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         forceValidation: true,
     });
+
     
     issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
         oldAllowed = issuableMailListRegex.test(e.originalValue)
