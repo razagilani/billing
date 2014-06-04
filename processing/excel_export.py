@@ -70,7 +70,6 @@ class Exporter(object):
                            'Billing Month', 'Estimated']
 
         for sequence in sorted(self.state_db.listSequences(session, account)):
-            reebill_doc = self.reebill_dao.load_reebill(account, sequence)
             reebill = self.state_db.get_reebill(session, account, sequence)
 
             # load utilbill from mysql to find out if the bill was
@@ -89,12 +88,12 @@ class Exporter(object):
             row = [
                 account,
                 sequence,
-                reebill_doc.period_begin.strftime(dateutils.ISO_8601_DATE),
-                reebill_doc.period_end.strftime(dateutils.ISO_8601_DATE),
+                utilbill.period_start.strftime(dateutils.ISO_8601_DATE),
+                utilbill.period_end.strftime(dateutils.ISO_8601_DATE),
                 # TODO rich hypothesizes that for utilities, the fuzzy "billing
                 # month" is the month in which the billing period ends
-                approximate_month(reebill_doc.period_begin,
-                                  reebill_doc.period_end).strftime('%Y-%m'),
+                approximate_month(utilbill.period_start,
+                                  utilbill.period_end).strftime('%Y-%m'),
                 'Yes' if estimated else 'No'
             ]
             # pad row with blank cells to match dataset width
@@ -104,43 +103,17 @@ class Exporter(object):
             try:
                 actual_charges = sorted(mongo.get_charges_json(utilbill_doc),
                                         key=itemgetter('description'))
-                hypothetical_charges = reebill.charges
             except KeyError as e:
                 print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
                         sequence, e.message, traceback.format_exc()))
                 continue
 
-            for charge in actual_charges:
-                charge['description'] += ' (actual)'
-            for charge in hypothetical_charges:
-                charge.description += ' (hypothetical)'
-                # extra charges: actual and hypothetical totals, difference between
-                # them, Skyline's late fee from the reebill
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
-                    .utilbills[0])
-            actual_total = sum(mongo.total_of_all_charges(utilbill_doc))
-            hypothetical_total = reebill_doc.get_total_hypothetical_charges()
-            extra_charges = [
-                {'description': 'Actual Total', 'total': actual_total},
-                {'description': 'Hypothetical Total',
-                 'total': hypothetical_total},
-                {
-                    'description': 'Energy Offset Value (Hypothetical - Actual)',
-                    'total': hypothetical_total - actual_total,
-                },
-                {
-                    'description': 'Skyline Late Charge',
-                    'total': reebill_doc.late_charges \
-                        if hasattr(reebill_doc, 'late_charges') else 0
-                },
-            ]
-
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
-            for charge in hypothetical_charges + actual_charges + extra_charges:
-                column_name = '%s: %s' % (charge.get('group',''),
-                                          charge.get('description','Error: No Description Found!'))
-                total = charge.total
+            for charge in actual_charges:
+                column_name = '%s: %s' % (charge['group'],
+                        charge.get('description', 'Error: No Description Found!'))
+                total = charge.get('total', 0)
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
