@@ -253,7 +253,7 @@ class BillToolBridge:
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao)
+                self.reebill_dao, self.logger)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
@@ -607,6 +607,14 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def update_readings(self, account, sequence, **kwargs):
+        with DBSession(self.state_db) as session:
+            self.process.update_reebill_readings(session, account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
@@ -902,7 +910,7 @@ class BillToolBridge:
             if account is not None:
                 spreadsheet_name = account + '.xls'
             else:
-                spreadsheet_name = 'xbill_accounts.xls'
+                spreadsheet_name = 'brokerage_accounts.xls'
 
             exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
@@ -1125,17 +1133,16 @@ class BillToolBridge:
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
+            version = self.process.new_version(session, account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence, new_reebill.version)
+                    account, sequence, version)
             # NOTE ReebillBoundEvent is no longer saved in the journal because
             # new energy data are not retrieved unless the user explicitly
             # chooses to do it by clicking "Bind RE&E"
 
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences':
-                    [new_reebill.sequence]})
+            return self.dumps({'success': True, 'sequences': [sequence]})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1372,7 +1379,8 @@ class BillToolBridge:
                     # should be selected)
                     del row['id']
                     new_meter_id, new_reg_id = self.process.update_register(
-                            session, utilbill_id, orig_meter_id, orig_reg_id, **row)
+                            session, utilbill_id, orig_meter_id, orig_reg_id,
+                            row)
 
                     # if this row was selected before, tell the client it should
                     # still be selected, specifying the row by its new "id"

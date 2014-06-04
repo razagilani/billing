@@ -25,6 +25,7 @@ create table if not exists reebill_charge (
     group_name varchar(1000) not null,
     a_quantity float not null,
     h_quantity float not null,
+    quantity_unit varchar(1000) not null,
     a_rate float not null,
     h_rate float not null,
     a_total float not null,
@@ -95,6 +96,8 @@ for reebill in s.query(ReeBill).join(Customer)\
         ac.get('description', ''),
         ac.get('group', ''),
         ac.get('quantity', 0), hc.get('quantity', 0),
+        # substitute '' for None in quantity_unit field
+        ac.get('quantity_units', '') or '',
         ac.get('rate', 0), hc.get('rate', 0),
         ac.get('total', 0), hc.get('total', 0),
     ) for ac, hc in zip(utilbill_doc['charges'], h_charges)]
