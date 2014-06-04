@@ -191,6 +191,54 @@ class TestCaseWithSetup(unittest.TestCase):
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
 
+
+
+        #Utility BIll with no Rate structures
+        c4ba = Address('Test Customer 1 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        c4sa = Address('Test Customer 1 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
+                             'example2@example.com', 'Other Utility',
+                             'Other Rate Class', c4ba, c4sa)
+        rs = example_data.get_empty_uprs()
+        rs.save()
+
+        ub_sa = Address('Test Customer 3 UB 1 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        ub_ba = Address('Test Customer 3 UB 1 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        u = UtilBill(c4, UtilBill.Complete, 'gas', 'Other Utility',
+                         'Other Rate Class',  ub_ba, ub_sa,
+                         account_number='Acct123456',
+                         period_start=date(2012, 1, 1),
+                         period_end=date(2012, 1, 31),
+                         total_charges=50.00,
+                         date_received=date(2011, 2, 3),
+                         processed=True,
+                         doc_id="000000000000000000000004",
+                         uprs_id=str(rs.id))
+        session.add(u)
+        udoc = example_data.get_utilbill_dict('100001', start=u.period_start,
+                end=u.period_end, utility=u.utility, service=u.service)
+        udoc['_id'] = ObjectId('000000000000000000000004')
+        db.utilbills.save(udoc)
+
+
+
+
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.
         """

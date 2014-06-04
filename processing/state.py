@@ -37,7 +37,7 @@ import logging
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
+from billing.processing.exceptions import NoRSIError, FormulaError, RSIError, NoSuchBillException
 
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
@@ -57,6 +57,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base(cls=Base)
 
 
+#_schema_revision = '55e7e5ebdd29'
 _schema_revision = '2a89489227e'
 
 def check_schema_revision(schema_revision=_schema_revision):
@@ -405,19 +406,19 @@ class ReeBill(Base):
                                          "Energy Sold",
                                          register.quantity,
                                          0,
+                                         "SUM",
                                          register.quantity_units))
 
-    def update_readings_from_reebill(self, session, reebill_readings, utilbill_doc):
+    def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given reebill_readings. Readings that do not
-        have a register binding that matches a register in 'utilbill_doc' are
+        have a register binding that matches a register in the utility bill are
         ignored.
         '''
+        session = Session.object_session(self)
         for r in self.readings:
             session.delete(r)
-        utilbill_register_bindings = {r['register_binding']
-                for r in chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])}
+        utilbill_register_bindings = [r.register_binding for r in self.utilbill.registers]
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
@@ -605,7 +606,7 @@ class ReeBill(Base):
             ac = acs[rsi.rsi_binding]
             self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
                     ac.description, ac.group, ac.quantity,
-                    quantity, ac.rate, rate, ac.total,
+                    quantity, ac.quantity_units, ac.rate, rate, ac.total,
                     total))
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate
@@ -716,6 +717,7 @@ class ReeBillCharge(Base):
     def __init__(self, reebill, rsi_binding, description, group,
                 a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
                 a_total, h_total):
+        assert quantity_unit is not None
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
@@ -1107,13 +1109,13 @@ class Charge(Base):
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
     
-    description = Column(String(255))
-    group = Column(String(255))
-    quantity = Column(Float)
-    quantity_units = Column(String(255))
-    rate = Column(Float)
-    rsi_binding = Column(String(255))
-    total = Column(Float)
+    description = Column(String(255), nullable=False)
+    group = Column(String(255), nullable=False)
+    quantity = Column(Float, nullable=False)
+    quantity_units = Column(String(255), nullable=False)
+    rate = Column(Float, nullable=False)
+    rsi_binding = Column(String(255), nullable=False)
+    total = Column(Float, nullable=False)
     
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id,
                                                         cascade="all"))
@@ -1131,6 +1133,7 @@ class Charge(Base):
         :param rsi_binding: The rate structure item corresponding to the charge
         :param total: The total charge (equal to rate * quantity) 
         """
+        assert quantity_units is not None
         self.utilbill = utilbill
         self.description = description
         self.group = group

@@ -1102,18 +1102,15 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         assert len(new_utilbill_docs) == 1
-        
+
+
         if last_reebill_row is None:
             new_reebill.replace_readings_from_utility_bill_registers(utilbill)
         else:
-            readings = session.query(Reading)\
-                    .filter(Reading.reebill_id == last_reebill_row.id)\
-                    .all()
-            new_reebill.update_readings_from_reebill(session, readings,
-                    new_utilbill_docs[0])
+            new_reebill.update_readings_from_reebill(last_reebill_row.readings)
+
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
-
         # save reebill document in Mongo
         self.reebill_dao.save_reebill(new_mongo_reebill)
 
