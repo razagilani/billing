@@ -26,7 +26,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
-from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
+
 from exc import DatabaseError
 from alembic.script import ScriptDirectory
 from alembic.config import Config
@@ -407,6 +407,21 @@ class ReeBill(Base):
                                          0,
                                          register.quantity_units))
 
+    def update_readings_from_reebill(self, session, reebill_readings, utilbill_doc):
+        '''Updates the set of Readings associated with this ReeBill to match
+        the list of registers in the given reebill_readings. Readings that do not
+        have a register binding that matches a register in 'utilbill_doc' are
+        ignored.
+        '''
+        for r in self.readings:
+            session.delete(r)
+        utilbill_register_bindings = {r['register_binding']
+                for r in chain.from_iterable(m['registers']
+                for m in utilbill_doc['meters'])}
+        self.readings = [Reading(r.register_binding, r.measure, 0,
+                0, r.aggregate_function, r.unit) for r in reebill_readings
+                if r.register_binding in utilbill_register_bindings]
+
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
         try:
@@ -420,14 +435,17 @@ class ReeBill(Base):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
         '''
-        return next(r for r in self.readings if r.register_binding == binding)
+        try:
+            result = next(r for r in self.readings if r.register_binding == binding)
+        except StopIteration:
+            raise RegisterError('Unknown register binding "%s"' % binding)
+        return result
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
         assert isinstance(new_quantity, (float, int))
-        reading = next(r for r in self.readings
-                       if r.register_binding == register_binding)
-        unit = reading.unit
+        reading = self.get_reading_by_register_binding(register_binding)
+        unit = reading.unit.lower()
 
         # Thermal: convert quantity to therms according to unit, and add it to
         # the total
@@ -461,7 +479,7 @@ class ReeBill(Base):
         total_therms = 0
         for reading in self.readings:
             quantity = reading.renewable_quantity
-            unit = reading.unit
+            unit = reading.unit.lower()
             assert isinstance(quantity, (float, int))
             assert isinstance(unit, basestring)
 
@@ -482,8 +500,9 @@ class ReeBill(Base):
                     # TODO: 28825375 - need the conversion factor for this
                     print ("Register in reebill %s-%s-%s contains gas measured "
                            "in ccf: energy value is wrong; time to implement "
-                           "https://www.pivotaltracker.com/story/show/28825375") \
-                          % (self.account, self.sequence, self.version)
+                           "https://www.pivotaltracker.com/story/show/28825375"
+                          ) % (self.customer.account, self.sequence,
+                          self.version)
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit =='kwd':
@@ -688,18 +707,21 @@ class ReeBillCharge(Base):
 
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
+    quantity_unit = Column(String, nullable=False)
     a_rate = Column(Float, nullable=False)
     h_rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, a_rate, h_rate, a_total, h_total):
+    def __init__(self, reebill, rsi_binding, description, group,
+                a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
+                a_total, h_total):
         self.reebill_id = reebill.id
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
+        self.quantity_unit = quantity_unit
         self.a_rate, self.h_rate = a_rate, h_rate
         self.a_total, self.h_total = a_total, h_total
 
@@ -725,10 +747,12 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
+    aggregate_function = Column(String, nullable=False)
+
     unit = Column(String, nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
-                 renewable_quantity, unit):
+                 renewable_quantity, aggregate_function, unit):
         assert isinstance(register_binding, basestring)
         assert isinstance(measure, basestring)
         assert isinstance(conventional_quantity, (float, int))
@@ -738,7 +762,22 @@ class Reading(Base):
         self.measure = measure
         self.conventional_quantity = conventional_quantity
         self.renewable_quantity = renewable_quantity
+        self.aggregate_function = aggregate_function
         self.unit = unit
+
+    def __hash__(self):
+        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
+                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+
+    def __eq__(self, other):
+        return all([
+            self.register_binding == other.register_binding,
+            self.measure == other.measure,
+            self.conventional_quantity == other.conventional_quantity,
+            self.renewable_quantity == other.renewable_quantity,
+            self.aggregate_function == other.aggregate_function,
+            self.unit == other.unit
+        ])
 
     @property
     def hypothetical_quantity(self):

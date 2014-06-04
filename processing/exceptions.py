@@ -19,6 +19,9 @@ class NoRateStructureError(Exception):
 class NoUtilityNameError(Exception):
     pass
 
+class RegisterError(Exception):
+    pass
+
 # NOTE keep this distinct from BillStateError, because it often means an
 # attempt to save changes to an issued reebill document in mongo, not failure
 # of a bill-processing operation due to a business rule 
