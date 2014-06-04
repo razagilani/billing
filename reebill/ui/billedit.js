@@ -1251,7 +1251,7 @@ function reeBillReady() {
                                 });
                             }}
                         );
-                    }},
+                    },disabled: true},
             {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
             {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
@@ -6160,6 +6160,7 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(record.data.issued == true);
+            Ext.getCmp('updateReadingsButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
