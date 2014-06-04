@@ -1237,14 +1237,21 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'updateReadingsButton', text: 'Update Readings', handler:
                 function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/update_readings',
-                        params: {account: selected_account, sequence: selected_sequence},
-                        success: function(result, request) {
-                            var jsonData = Ext.util.JSON.decode(result.responseText);
-                        },
-                    });
-                }},
+                    Ext.Msg.confirm('Confirm deletion',
+                        'Are you sure you want to update the Readings?',
+                        function(answer) {
+                            if (answer == 'yes')
+                            {
+                                Ext.Ajax.request({
+                                url: 'http://'+location.host+'/reebill/update_readings',
+                                params: {account: selected_account, sequence: selected_sequence},
+                                success: function(result, request) {
+                                    var jsonData = Ext.util.JSON.decode(result.responseText);
+                                    },
+                                });
+                            }}
+                        );
+                    }},
             {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
             {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
