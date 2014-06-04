@@ -31,9 +31,21 @@ class TestCase(unittest.TestCase):
         '''Asserts that two Mongo documents (dictionaries) are the same except
         for keys in 'keys_to_exclude' (which don't necessarily have to be
         present in the documents.'''
+        # compare lists elementwise
+        if isinstance(d1, list) and isinstance(d2, list) \
+                and len(d1) == len(d2):
+            for a, b in zip(d1, d2):
+                self.assertDocumentsEqualExceptKeys(a, b, *keys_to_exclude)
+            return
+
+        # regular dictionaries
         d1, d2 = deepcopy(d1), deepcopy(d2)
         for key in keys_to_exclude:
             for d in (d1, d2):
-                if key in d:
+                if isinstance(key, list):
+                    k = tuple(key)
+                else:
+                    k = key
+                if k in d:
                     del d[key]
         self.assertEqual(d1, d2)

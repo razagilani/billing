@@ -1,11 +1,13 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
-from billing.processing.state import StateDB, ReeBill, Payment, UtilBill
+from billing.processing.state import (StateDB, ReeBill, Payment,
+        ReeBillCharge, Reading, UtilBill, Address)
 from billing.processing.mongo import ReebillDAO
 from billing.processing.session_contextmanager import DBSession
 from datetime import date, datetime
 from billing.test import example_data
-import unittest, mock
+import unittest
+import mock
 
 def load_reebills_for():
     return [example_data.get_reebill('10003',1,version=0)]
@@ -33,7 +35,7 @@ def createMockUtilBill():
     return ub
 
 def createMockReebill():
-    rb = mock.create_autospec(spec=ReeBill)
+    rb = mock.create_autospec(spec=ReeBill, instance=True)
     rb.issued = 1
     rb.sequence = 1
     rb.version = 0
@@ -49,6 +51,44 @@ def createMockReebill():
     rb.ree_savings = 2.22
     rb.late_charge = 32.20
     rb.ree_charge = 122.20
+    rb.total = 743.49
+    rb.charges = [ReeBillCharge(rb, *args) for args in [
+        (u"SYSTEM_CHARGE", u"System Charge", u'All Charges', 1, 1, u'dollars',
+         11.2, 11.2, 11.2, 11.2),
+        (u"DISTRIBUTION_CHARGE", u"Distribution charge for all therms",
+         u'All Charges', 750.10197727, 750.10197727, u'dollars', 0.2935, 0.2935,
+         220.16, 220.16),
+        (u"PGC", u"Purchased Gas Charge",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.7653, 0.7653,
+         574.05, 574.05),
+        (u"PUC", u"Peak Usage Charge",
+         u'All Charges', 1, 1, u'kWh', 23.14, 23.14,
+         23.14, 23.14),
+        (u"RIGHT_OF_WAY", u"DC Rights-of-Way Fee",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.03059, 0.03059,
+         22.95, 22.95),
+        (u"SETF", u"Sustainable Energy Trust Fund",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.01399, 0.01399,
+         10.5, 10.5),
+        (u"EATF", u"DC Energy Assistance Trust Fund",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.006, 0.006,
+         4.5, 4.5),
+        (u"SALES_TAX", u"Sales tax",
+         u'All Charges', 924.84, 924.84, u'dollars', 0.06, 0.06,
+         55.49, 55.49),
+        (u"DELIVERY_TAX", u"Delivery tax",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.07777, 0.07777,
+         58.34, 58.34)]]
+    rb.readings = [Reading('REG_TOTAL', 'Energy Sold', 561.9,
+                           188.20197727, '', 'therms')]
+    rb.service_address = Address('Managing Member', 'Monroe Towers',
+                                 'Silver Spring', 'MD', 'Silver Spring')
+    rb.billing_address = Address('Managing Member', 'Monroe Towers',
+                                 'Silver Spring', 'MD', 'Silver Spring')
+    rb.get_total_renewable_energy.return_value = 188.20197727
+    rb.get_total_hypothetical_charges.return_value = sum(c.h_total for c in rb
+        .charges)
+    rb.get_period.return_value = date(2011,11,12), date(2011,12,14)
     rb.utilbills = [createMockUtilBill()]
     return rb
 
@@ -66,14 +106,14 @@ class ExporterTest(unittest.TestCase):
         #Set up the mock
         self.mock_StateDB.listAccounts.return_value = listAccounts()
         self.mock_StateDB.payments.return_value = payments()
-        self.mock_StateDB.get_reebill.return_value = createMockReebill()
-        self.mock_ReebillDAO.load_reebills_for.return_value = load_reebills_for()
+        self.mock_StateDB.listReebills.return_value = [[createMockReebill()] ,1]
 
         with self.mock_session(self.mock_StateDB) as session:
-            dataset=self.exp.get_export_reebill_details_dataset(session, None, None)
-        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
+            dataset = self.exp.get_export_reebill_details_dataset(session,
+                                                                 None, None)
+        correct_data=[('10003', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
                       ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', '13.37', None, None, None, None, None, None, None, None, None, None),
-                      ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
+                      ('10004', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
@@ -87,19 +127,3 @@ class ExporterTest(unittest.TestCase):
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
-
-    def test_get_account_charges_sheet(self):
-        self.mock_StateDB.listSequences.return_value = [1]
-        self.mock_ReebillDAO.load_reebill.return_value = \
-            example_data.get_reebill('10003',1,version=0)
-        self.mock_StateDB.get_reebill.return_value = createMockReebill()
-        self.mock_ReebillDAO._load_utilbill_by_id.return_value =\
-            example_data.get_utilbill_dict('10003', start=date(2011,12,15),
-                                           end=date(2012,1,14))
-        with self.mock_session(self.mock_StateDB) as session:
-            dataset=self.exp.get_account_charges_sheet(session, '10003')
-        self.assertEqual(len(dataset), 1)
-        for row in dataset:
-            self.assertEqual(row, ('10003', 1, '2011-11-12', '2011-12-14', '2011-11', 'No', '58.34', '220.16', '4.50', '574.05', '23.14', '22.95', '55.49', '10.50', '11.20', '3.37', '17.19', '43.70', '164.92', '23.14', '430.02', '42.08', '7.87', '11.20', '743.49', '980.33', '236.84', '0.00'))
-        self.assertEqual(dataset.headers, ['Account', 'Sequence', 'Period Start', 'Period End', 'Billing Month', 'Estimated', u'All Charges: Delivery tax (hypothetical)', u'All Charges: Distribution charge for all therms (hypothetical)', u'All Charges: DC Energy Assistance Trust Fund (hypothetical)', u'All Charges: Purchased Gas Charge (hypothetical)', u'All Charges: Peak Usage Charge (hypothetical)', u'All Charges: DC Rights-of-Way Fee (hypothetical)', u'All Charges: Sales tax (hypothetical)', u'All Charges: Sustainable Energy Trust Fund (hypothetical)', u'All Charges: System Charge (hypothetical)', u'All Charges: DC Energy Assistance Trust Fund (actual)', u'All Charges: DC Rights-of-Way Fee (actual)', u'All Charges: Delivery tax (actual)', u'All Charges: Distribution charge for all therms (actual)', u'All Charges: Peak Usage Charge (actual)', u'All Charges: Purchased Gas Charge (actual)', u'All Charges: Sales tax (actual)', u'All Charges: Sustainable Energy Trust Fund (actual)', u'All Charges: System Charge (actual)', ': Actual Total', ': Hypothetical Total', ': Energy Offset Value (Hypothetical - Actual)', ': Skyline Late Charge'])
-        self.assertEqual(dataset.title, '10003')

@@ -8,18 +8,17 @@ from bson import ObjectId
 import mongoengine
 import MySQLdb
 from datetime import date, datetime, timedelta
-from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing import rate_structure2
-from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
+from billing.processing.process import Process
+from billing.processing.state import StateDB, Customer
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
-from billing.util.dictutils import deep_map
+from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
-from skyliner.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -31,9 +30,6 @@ class TestCaseWithSetup(unittest.TestCase):
         NexusUtil.'''
         # show long diffs for failed dict equality assertions
         self.maxDiff = None
-
-        # clear SQLAlchemy mappers so StateDB can be instantiated again
-        #sqlalchemy.orm.clear_mappers()
 
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]
@@ -53,13 +49,10 @@ port = 27017
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.splinter = MockSplinter(deterministic=True)
-        
-        # temporary hack to get a bill that's always the same
-        # this bill came straight out of mongo (except for .date() applied to
-        # datetimes)
-        ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
-        true, false = True, False
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
 
         # customer database ("test" database has already been created with
         # empty customer table)
@@ -92,8 +85,12 @@ port = 27017
 
         # set up logger, but ingore all log output
         logger = logging.getLogger('test')
+        # a logger is required to have >= 1 handler
         logger.addHandler(logging.NullHandler())
-
+        # this is how you prevent the logger from printing to
+        # stdout/stderr, according to
+        # http://stackoverflow.com/questions/2266646/how-to-i-disable-and-re-enable-console-logging-in-python
+        logger.propagate = False
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
@@ -119,8 +116,14 @@ port = 27017
             {
                 'billing': '99999',
                 'olap': 'example-1',
-                'casualname': 'Example',
+                'casualname': 'Example 1',
                 'primus': '1785 Massachusetts Ave.',
+            },
+            {
+                'billing': '88888',
+                'olap': 'example-2',
+                'casualname': 'Example 2',
+                'primus': '1786 Massachusetts Ave.',
             },
         ])
 
@@ -136,9 +139,12 @@ port = 27017
             'teva_accounts': '',
         }, self.state_db, self.reebill_dao,
                 logger)
+
+        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao, logger)
+
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
-                bill_mailer, renderer,
+                bill_mailer, renderer, ree_getter,
                 self.splinter, logger=logger)
 
     def tearDown(self):
@@ -146,6 +152,10 @@ port = 27017
         # clear out mongo test database
         mongo_connection = pymongo.Connection('localhost', 27017)
         mongo_connection.drop_database('test')
+
+        # this helps avoid a "lock wait timeout exceeded" error when a test
+        # fails to commit the SQLAlchemy session
+        self.state_db.session.commit()
 
         # clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')

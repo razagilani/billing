@@ -33,7 +33,7 @@ for sequence in [0] + state_db.listSequences(session, account):
     reebill = dao.load_reebill(account, sequence)
     for service in reebill.services:
         reebill.set_meter_identifier(service, 'P87210', 'Z42421')
-    dao.save_reebill(reebill)
+    dao.save_reebill_and_utilbill(reebill)
 
 session.commit()
 

@@ -1235,9 +1235,18 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', text: 'Create Next', handler: rollOperation},
             {xtype: 'tbseparator'},
+            {xtype: 'button', id: 'updateReadingsButton', text: 'Update Readings', handler:
+                function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/update_readings',
+                        params: {account: selected_account, sequence: selected_sequence},
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                        },
+                    });
+                }},
             {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
-            {xtype: 'tbseparator'},
             {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
                 computeBillOperation},
             {xtype: 'tbseparator'},
@@ -2021,7 +2030,7 @@ function reeBillReady() {
                             'displayText'
                         ],
                         // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                        data: [['dollars'], ['kWh'], ['ccf'], ['therms'], ['kWD'], ['KQH'], ['rkVA']]
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
@@ -2651,7 +2660,7 @@ function reeBillReady() {
                             'displayText'
                         ],
                         // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                        data: [['dollars'], ['kWh'], ['ccf'], ['therms'], ['kWD'], ['KQH'], ['rkVA']]
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
@@ -3958,8 +3967,8 @@ function reeBillReady() {
         id: 0,
         fields: ['abbr','name'],
         data: [ ['', 'No filter'],
-                ['reebillcustomers', 'All ReeBill Customers'],
-                ['xbillcustomers', 'All XBill Customers'],
+                ['reebillcustomers', 'All Solar Customers'],
+                ['brokeragecustomers', 'All Brokerage Customers'],
         ]
     });
     

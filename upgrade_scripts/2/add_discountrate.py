@@ -37,6 +37,6 @@ for account in accounts:
         try:
             reebill = reebill_dao.load_reebill(account, sequence)
             reebill.discount_rate = Decimal(str(discount_rate))
-            reebill_dao.save_reebill(reebill)
+            reebill_dao.save_reebill_and_utilbill(reebill)
         except Exception as e:
             print e, traceback.format_exc()
