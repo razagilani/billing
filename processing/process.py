@@ -163,7 +163,10 @@ class Process(object):
         return l
 
     def new_register(self, session, utilbill_id, row):
-        """Creates a new register for the utility bill having the specified id"""
+        """Creates a new register for the utility bill having the specified id
+        "row" argument is a dictionary but keys other than
+        "meter_id" and "register_id" are ignored.
+        """
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         session.add(Register(utility_bill,
                              "Insert description",
@@ -293,28 +296,17 @@ class Process(object):
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
         reebill = self.state_db.get_reebill(session, account, sequence)
-        charge_map = {c.rsi_binding : c for c in reebill.utilbill.charges}
-        result = []
-        for hypothetical_charge in reebill.charges:
-            try:
-                matching = charge_map[hypothetical_charge.rsi_binding]
-            except KeyError:
-                raise NoSuchRSIError('The set of charges on the Reebill do not'
-                                     ' match the charges on the associated'
-                                     ' utility bill. Please recompute the'
-                                     ' ReeBill.')
-            result.append({
-                'rsi_binding': matching.rsi_binding,
-                'description': matching.description,
-                'actual_quantity': matching.quantity,
-                'actual_rate': matching.rate,
-                'actual_total': matching.total,
-                'quantity_units': matching.quantity_units,
-                'hypothetical_quantity': hypothetical_charge.h_quantity,
-                'hypothetical_rate': hypothetical_charge.h_rate,
-                'hypothetical_total': hypothetical_charge.h_total
-            })
-        return result
+        return [{
+            'rsi_binding': reebill_charge.rsi_binding,
+            'description': reebill_charge.description,
+            'actual_quantity': reebill_charge.a_quantity,
+            'actual_rate': reebill_charge.a_rate,
+            'actual_total': reebill_charge.a_total,
+            'quantity_units': reebill_charge.quantity_unit,
+            'quantity': reebill_charge.h_quantity,
+            'rate': reebill_charge.h_rate,
+            'total': reebill_charge.h_total,
+        } for reebill_charge in reebill.charges]
 
     def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
@@ -1110,7 +1102,15 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         assert len(new_utilbill_docs) == 1
-        new_reebill.replace_readings_from_utility_bill_registers(utilbill)
+        
+        if last_reebill_row is None:
+            new_reebill.replace_readings_from_utility_bill_registers(utilbill)
+        else:
+            readings = session.query(Reading)\
+                    .filter(Reading.reebill_id == last_reebill_row.id)\
+                    .all()
+            new_reebill.update_readings_from_reebill(session, readings,
+                    new_utilbill_docs[0])
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
@@ -1146,7 +1146,9 @@ class Process(object):
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
-        max_version number in MySQL. Returns the new MongoReebill object.'''
+        max_version number in MySQL. Returns the new MongoReebill object.
+        Returns version of the new reebill.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
 
@@ -1214,6 +1216,7 @@ class Process(object):
                     reebill_doc.sequence, e, traceback.format_exc()))
 
         self.reebill_dao.save_reebill(reebill_doc)
+        return reebill.version
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
@@ -1309,8 +1312,6 @@ class Process(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        max_predecessor_version = self.state_db.max_version(session, acc,
-                seq - 1)
         customer = self.state_db.get_customer(session, acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
@@ -1769,6 +1770,15 @@ class Process(object):
 
         return data, total_count
 
+    def update_reebill_readings(self, session, account, sequence):
+        '''Replace the readings of the reebill given by account, sequence
+        with a new set of readings that matches the reebill's utility bill.
+        '''
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill.update_readings_from_document(session, utilbill_doc)
+
     def bind_renewable_energy(self, session, account, sequence):
         reebill = self.state_db.get_reebill(session, account, sequence)
         self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
@@ -1885,7 +1895,7 @@ class Process(object):
         #Various filter functions used below to filter the resulting rows
         def filter_reebillcustomers(row):
             return int(row['account'])<20000
-        def filter_xbillcustomers(row):
+        def filter_brokeragecustomers(row):
             return int(row['account'])>=20000
         # Function to format the "Utility Service Address" grid column
         def format_service_address(service_address, account):
@@ -1934,8 +1944,8 @@ class Process(object):
         #Apply filters
         if filtername=="reebillcustomers":
             rows=filter(filter_reebillcustomers, rows)
-        elif filtername=="xbillcustomers":
-            rows=filter(filter_xbillcustomers, rows)
+        elif filtername=="brokeragecustomers":
+            rows=filter(filter_brokeragecustomers, rows)
         rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
         total_length=len(rows)
         rows = rows[start:start+limit]

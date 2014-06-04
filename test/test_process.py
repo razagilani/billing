@@ -14,7 +14,7 @@ from billing.processing.session_contextmanager import DBSession
 
 from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Reading
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
@@ -119,66 +119,79 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'account': '88888',
                                                  'editable': True,
                                                  'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
-                                                 'id': None,
                                                  'reebills': [],
                                                 }, utilbill_data, 'id',
                                                 'charges', 'reebills')
 
-            # Create a Reebill and check it persists and fetches
+            self.process.add_rsi(session, utilbill_data['id'])
+            self.process.update_rsi(session, utilbill_data['id'],
+                    'New RSI #1', {'quantity': 'REG_TOTAL.quantity',
+                    'rate': '1', 'rsi_binding': 'A', 'description':'a'})
+            self.process.refresh_charges(session, utilbill_data['id'])
+
+            self.process.ree_getter = MockReeGetter(10)
             self.process.roll_reebill(session, '88888',
-                                      start_date=date(2013, 1, 1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
+                    start_date=date(2013, 1, 1))
 
             ubdata = self.process.get_all_utilbills_json(session,
                                                          '88888', 0, 30)[0][0]
             self.assertDocumentsEqualExceptKeys({
-                                                    'account': '88888',
-                                                    'computed_total': 0,
-                                                    'editable': True,
-                                                    'id': 6469L,
+                'account': '88888',
+                'computed_total': 0,
+                'editable': True,
+                'id': 6469L,
                                                     'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
-                                                    'period_end': date(2013, 2,
-                                                                       1),
-                                                    'period_start': date(2013,
-                                                                         1, 1),
-                                                    'processed': 0,
+                         'washgas: DC Non Residential Non Heat'),
+                'period_end': date(2013, 2, 1),
+                'period_start': date(2013, 1, 1),
+                'processed': 0,
                                                     'rate_class': 'Test Rate Class Template',
-                                                    'reebills': [
-                                                        {'issue_date': None,
-                                                         'sequence': 1,
-                                                         'version': 0L}],
-                                                    'service': 'Gas',
-                                                    'state': 'Final',
-                                                    'total_charges': 0.0,
+                'reebills': [{'issue_date': None, 'sequence': 1,
+                        'version': 0L}],
+                'service': 'Gas',
+                'state': 'Final',
+                'total_charges': 0.0,
                                                     'utility': 'Test Utility Company Template',
-                                                }, ubdata, 'id',
-                                                'charges')
+            }, ubdata, 'id', 'charges')
 
             reebill_data = self.process.get_reebill_metadata_json(session,
-                                                                  '88888')
+                    '88888')
             self.assertEqual([{
-                                  'id': 1,
-                                  'sequence': 1,
-                                  'max_version': 0,
-                                  'issued': False,
-                                  'issue_date': None,
-                                  'actual_total': 0.,
-                                  'hypothetical_total': 0,
-                                  'payment_received': 0.,
-                                  'period_start': date(2013, 1, 1),
-                                  'period_end': date(2013, 2, 1),
-                                  'prior_balance': 0.,
-                                  'ree_charges': 0.,
-                                  'ree_value': 0.,
-                                  'services': [],
-                                  'total_adjustment': 0.,
-                                  'total_error': 0.,
-                                  'ree_quantity': 0.,
-                                  'balance_due': 0.,
-                                  'balance_forward': 0.,
-                                  'corrections': '(never issued)',
-                              }], reebill_data)
+                'id': 1,
+                'sequence': 1,
+                'max_version': 0,
+                'issued': False,
+                'issue_date': None,
+                'actual_total': 0.,
+                'hypothetical_total': 10,
+                'payment_received': 0.,
+                'period_start': date(2013, 1, 1),
+                'period_end': date(2013, 2, 1),
+                'prior_balance': 0.,
+                'ree_charges': 4.,
+                'ree_value': 10.,
+                'services': [],
+                'total_adjustment': 0.,
+                'total_error': 0.,
+                'ree_quantity': 10.,
+                'balance_due': 4.,
+                'balance_forward': 0.,
+                'corrections': '(never issued)',
+            }], reebill_data)
+
+            reebill_charges = self.process.get_hypothetical_matched_charges(
+                    session, '88888', 1)
+            self.assertEqual([{
+                'actual_quantity': 0,
+                'actual_rate': 1,
+                'actual_total': 0,
+                'description': 'a',
+                'quantity': 10,
+                'quantity_units': '',
+                'rate': 1,
+                'rsi_binding': 'A',
+                'total': 10,
+            }], reebill_charges)
 
             # TODO: fields not checked above that should be checked some other
             # way:
@@ -199,28 +212,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # (this checks for bug #70032354 in which query for
             # get_reebill_metadata_json includes bills from all accounts)
             self.assertEqual(([], 0), self.process.get_all_utilbills_json(
-                session, '99999', 0, 30))
+                    session, '99999', 0, 30))
             self.assertEqual([], self.process.get_reebill_metadata_json(
-                session, '99999'))
+                    session, '99999'))
 
             # it should not be possible to create an account that already
             # exists
             self.assertRaises(ValueError, self.process.create_new_account,
-                              session, '88888', 'New Account', 0.6, 0.2,
-                              billing_address, service_address, '99999')
+                    session, '88888', 'New Account', 0.6, 0.2,
+                    billing_address, service_address, '99999')
 
             # try creating another account when the template account has no
             # utility bills yet
             self.process.create_new_account(session, '77777', 'New Account',
-                                            0.6, 0.2, billing_address,
-                                            service_address, '88888')
+                    0.6, 0.2, billing_address, service_address, '88888')
             self.process.create_new_account(session, '66666', 'New Account',
-                                            0.6, 0.2, billing_address,
-                                            service_address, '88888')
+                    0.6, 0.2, billing_address, service_address, '88888')
 
             # Try rolling a reebill for a new account that has no utility bills uploaded yet
             self.assertRaises(NoResultFound, self.process.roll_reebill,
-                              session, '777777', False, date(2013, 2, 1), True)
+                    session, '777777', start_date=date(2013, 2, 1))
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
@@ -336,75 +347,66 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_get_late_charge(self):
-        '''Tests computation of late charges (without rolling bills).'''
+        '''Tests computation of late charges.
+        '''
+        # TODO: when possible, convert this into a unit test that checks the
+        # get_late_charge method, whatever class it may belong to by then
+        # (ReeBill?). See 69883814.
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # set customer late charge rate
-            customer = self.state_db.get_customer(session, acc)
-            customer.set_discountrate(.5)
-            customer.set_late_charge_rate(.34)
-
             # create utility bill with a charge in it
             u = self.process.upload_utility_bill(session, acc, 'gas',
-                                                 date(2012, 1, 1),
-                                                 date(2012, 2, 1),
-                                                 StringIO('January 2012'),
-                                                 'january.pdf')
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(u)
-            uprs = self.rate_structure_dao.load_uprs_for_utilbill(u)
-            self.process.add_charge(session, u.id, "All Charges")
-            self.process.update_charge(session, u.id, "",
-                                       dict(rsi_binding='THE_CHARGE',
-                                            quantity=100,
-                                            quantity_units='therms', rate=1,
-                                            total=100, group='All Charges'))
-
-            self.process.update_utilbill_metadata(session, u.id,
-                                                  processed=True)
-            self.reebill_dao.save_utilbill(utilbill_doc)
-            uprs.rates = [RateStructureItem(
-                rsi_binding='THE_CHARGE',
-                quantity='REG_TOTAL.quantity',
-                rate='1',
-            )]
-            uprs.save()
+                    date(2000, 1, 1), date(2000, 2, 1),
+                    StringIO('January 2000'), 'january.pdf')
+            self.process.add_rsi(session, u.id)
+            self.process.update_rsi(session, u.id, 'New RSI #1', {
+                'rsi_binding': 'THE_CHARGE',
+                'quantity': 'REG_TOTAL.quantity',
+                'quantity_units': 'therms',
+                'rate': '1',
+                'group': 'All Charges',
+            })
+            self.process.refresh_charges(session, u.id)
+            self.process.update_utilbill_metadata(session, u.id, processed=True)
 
             # create first reebill
             bill1 = self.process.roll_reebill(session, acc,
-                                              start_date=date(2012, 1, 1))
-            bill1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+                                              start_date=date(2000, 1, 1))
+            self.process.update_sequential_account_info(session, acc, 1,
+                    discount_rate=.5, late_charge_rate=.34)
+            self.process.ree_getter=MockReeGetter(100)
+            self.process.bind_renewable_energy(session, acc, 1)
             self.process.compute_reebill(session, acc, 1)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                                                             date(2011, 12,
-                                                                  31)))
+                    date(1999, 12, 31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                                                             date(2012, 1, 1)))
+                    date(2000, 1, 1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                                                             date(2012, 1, 2)))
+                    date(2000, 1, 2)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                                                             date(2012, 2, 1)))
+                    date(2000, 2, 1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                                                             date(2012, 2, 2)))
+                    date(2000, 2, 2)))
 
             # issue first reebill, so a later bill can have a late charge
             # based on the customer's failure to pay bill1 by its due date,
             # i.e. 30 days after the issue date.
             self.process.issue(session, acc, bill1.sequence,
-                               issue_date=date(2012, 4, 1))
-            assert bill1.due_date == date(2012, 5, 1)
-            assert bill1.balance_due == 50
+                    issue_date=date(2000, 4, 1))
+            self.assertEqual(date(2000, 5, 1), bill1.due_date)
+            self.assertEqual(50, bill1.balance_due)
 
             # create 2nd utility bill and reebill
             u2 = self.process.upload_utility_bill(session, acc, 'gas',
-                                                  date(2012, 2, 1),
-                                                  date(2012, 3, 1),
-                                                  StringIO('February 2012'),
-                                                  'february.pdf')
+                    date(2000, 2, 1), date(2000, 3, 1),
+                    StringIO('February 2000'), 'february.pdf')
             self.process.update_utilbill_metadata(session, u2.id,
                                                   processed=True)
             bill2 = self.process.roll_reebill(session, acc)
-            bill2.set_renewable_energy_reading('REG_TOTAL', 200 * 1e5)
-
+            self.process.update_sequential_account_info(session, acc, 2,
+                    discount_rate=.5, late_charge_rate=.34)
+            self.process.ree_getter = MockReeGetter(200)
+            self.process.bind_renewable_energy(session, acc, 2)
             self.process.compute_reebill(session, acc, 2)
             assert bill2.discount_rate == 0.5
             assert bill2.ree_charge == 100
@@ -413,24 +415,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the due date, it's balance * late charge rate, i.e.
             # 50 * .34 = 17
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2011, 12,
-                                                                  31)))
+                    date(1999, 12, 31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 1, 2)))
+                    date(2000, 1, 2)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 3, 31)))
+                    date(2000, 3, 31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 4, 1)))
+                    date(2000, 4, 1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 4, 2)))
+                    date(2000, 4, 2)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 4, 30)))
+                    date(2000, 4, 30)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2012, 5, 1)))
+                    date(2000, 5, 1)))
             self.assertEqual(17, self.process.get_late_charge(session, bill2,
-                                                              date(2012, 5, 2)))
+                    date(2000, 5, 2)))
             self.assertEqual(17, self.process.get_late_charge(session, bill2,
-                                                              date(2013, 1, 1)))
+                    date(2013, 1, 1)))
 
             # in order to get late charge of a 3rd bill, bill2 must be computed
             self.process.compute_reebill(session, acc, 2)
@@ -438,16 +439,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
             self.process.upload_utility_bill(session, acc, 'gas',
-                                             date(2012, 3, 1), date(2012, 4, 1),
-                                             StringIO('March 2012'),
-                                             'march.pdf')
+                    date(2000, 3, 1), date(2000, 4, 1), StringIO('March 2000'),
+                    'march.pdf')
             bill3 = self.process.roll_reebill(session, acc)
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
-                                                                date(2011, 12,
-                                                                     31)))
+                    date(1999, 12, 31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
-                                                                date(2013, 1,
-                                                                     1)))
+                    date(2013, 1, 1)))
 
             # late charge should be based on the version with the least total
             # of the bill from which it derives. on 2013-01-15, make a version
@@ -456,58 +454,54 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # version 1. 
             self.process.new_version(session, acc, 1)
             bill1_1 = self.state_db.get_reebill(session, acc, 1, version=1)
-            # replace the renewable energy quantity that came from
-            # mock_skyliner with a known value (TODO: the energy values from
-            # mock_skyliner should be controllable)
-            bill1_1.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
+            self.process.ree_getter = MockReeGetter(100)
+            self.process.bind_renewable_energy(session, acc, 1)
             bill1_1.discount_rate = 0.75
             self.process.compute_reebill(session, acc, 1, version=1)
-            assert bill1_1.ree_charge == 25
-            assert bill1_1.balance_due == 25
+            self.assertEqual(25, bill1_1.ree_charge)
+            self.assertEqual(25, bill1_1.balance_due)
             self.process.issue(session, acc, 1, issue_date=date(2013, 3, 15))
             late_charge_source_amount = bill1_1.balance_due
 
             self.process.new_version(session, acc, 1)
+            self.process.bind_renewable_energy(session, acc, 2)
+            self.process.update_sequential_account_info(session, acc, 1,
+                    discount_rate=.25)
             bill1_2 = self.state_db.get_reebill(session, acc, 1, version=2)
-            # replace the renewable energy quantity that came from
-            # mock_skyliner with a known value (TODO: the energy values from
-            # mock_skyliner should be controllable)
-            bill1_2.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
-            bill1_2.discount_rate = 0.25
             self.process.compute_reebill(session, acc, 1, version=2)
-            assert bill1_2.ree_charge == 75
-            assert bill1_2.balance_due == 75
+            self.assertEqual(75, bill1_2.ree_charge)
+            self.assertEqual(75, bill1_2.balance_due)
             self.process.issue(session, acc, 1)
 
             # note that the issue date on which the late charge in bill2 is
             # based is the issue date of version 0--it doesn't matter when the
             # corrections were issued.
             late_charge = self.process.get_late_charge(session, bill2,
-                                                       date(2013, 4, 18))
+                    date(2013, 4, 18))
             self.assertEqual(late_charge_source_amount * bill2.late_charge_rate,
                              late_charge)
 
-            # add a payment between 2012-01-01 (when bill1 version 0 was
+            # add a payment between 2000-01-01 (when bill1 version 0 was
             # issued) and 2013-01-01 (the present), to make sure that payment
             # is deducted from the balance on which the late charge is based
-            self.state_db.create_payment(session, acc, date(2012, 6, 5),
+            self.state_db.create_payment(session, acc, date(2000, 6, 5),
                                          'a $10 payment in june', 10)
             self.assertEqual((late_charge_source_amount - 10) *
-                             bill2.late_charge_rate,
-                             self.process.get_late_charge(session, bill2,
-                                                          date(2013, 1, 1)))
+                    bill2.late_charge_rate,
+                    self.process.get_late_charge(session, bill2,
+                    date(2013, 1, 1)))
 
             #Pay off the bill, make sure the late charge is 0
-            self.state_db.create_payment(session, acc, date(2012, 6, 6),
-                                         'a $40 payment in june', 40)
+            self.process.create_payment(session, acc, date(2000, 6, 6),
+                    'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
                                                              date(2013, 1, 1)))
 
             #Overpay the bill, make sure the late charge is still 0
-            self.state_db.create_payment(session, acc, date(2012, 6, 7),
-                                         'a $40 payment in june', 40)
+            self.process.create_payment(session, acc, date(2000, 6, 7),
+                    'a $40 payment in june', 40)
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                                                             date(2013, 1, 1)))
+                    date(2013, 1, 1)))
 
 
     def test_compute_realistic_charges(self):
@@ -577,15 +571,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
             self.process.roll_reebill(session, account,
-                                      start_date=date(2012, 1, 1),
-                                      integrate_skyline_backend=False)
+                                      start_date=date(2012, 1, 1))
             self.process.compute_reebill(session, account, 1)
             reebill_charges = self.process.get_hypothetical_matched_charges(
                     session, account, 1)
             def get_h_total(rsi_binding):
                 charge = next(c for c in reebill_charges
                         if c['rsi_binding'] == rsi_binding)
-                return charge['hypothetical_total']
+                return charge['total']
             h_quantity = self.process.get_reebill_metadata_json(
                     session, account)[0]['ree_quantity']
             self.assertEqual(11.2, get_h_total('SYSTEM_CHARGE'))
@@ -842,10 +835,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, count)
 
             # when utilbill is attached to reebill, deletion should fail
-            first_reebill = self.process.roll_reebill(session, account,
-                                                      start_date=start)
-            reebills_data = self.process.get_reebill_metadata_json(session,
-                                                                   account)
+            self.process.roll_reebill(session, account,
+                    start_date=start)
+            reebills_data = self.process.get_reebill_metadata_json(
+                    session, account)
             self.assertEqual([{
                                   'actual_total': 0,
                                   'balance_due': 0.0,
@@ -1126,30 +1119,46 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         predecessor.'''
         account = '99999'
         with DBSession(self.state_db) as session:
-            # create 2 utility bills
+            self.process.ree_getter = MockReeGetter(100)
+
             self.process.upload_utility_bill(session, account, 'gas',
-                                             date(2013, 4, 4), date(2013, 5, 2),
-                                             StringIO('April 2013'),
-                                             'april.pdf')
+                    date(2013, 4, 4), date(2013, 5, 2), StringIO('April 2013'),
+                    'april.pdf')
+            # add a register to the first utility bill so there are 2,
+            # REG_TOTAL and OTHER
+            id_1 = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
+            self.process.new_register(session, id_1,
+                    {'meter_id': 'M60324', 'register_id': 'R',})
+            self.process.update_register(session, id_1,
+                    'M60324', 'R', {'binding': 'OTHER'})
+
+            # 2nd utility bill should have the same registers as the first
             self.process.upload_utility_bill(session, account, 'gas',
-                                             date(2013, 5, 2), date(2013, 6, 3),
-                                             StringIO('May 2013'),
-                                             'may.pdf')
+                    date(2013, 5, 2), date(2013, 6, 3), StringIO('May 2013'),
+                    'may.pdf')
 
             # create reebill based on first utility bill
-            self.process.roll_reebill(session, account,
+            reebill1 = self.process.roll_reebill(session, account,
                                       start_date=date(2013, 4, 4))
 
-            # reebill should be computable
             self.process.compute_reebill(session, account, 1)
-
             self.process.issue(session, account, 1)
 
-            # another reebill
-            self.process.roll_reebill(session, account)
+            # delete register from the 2nd utility bill
+            id_2 = self.process.get_all_utilbills_json(session,
+                    account, 0, 30)[0][0]['id']
+            self.process.delete_register(session, id_2, 'M60324', 'R')
+
+            # 2nd reebill should NOT have a reading corresponding to the
+            # additional register, which was removed
+            reebill2 = self.process.roll_reebill(session, account)
             utilbill_data, count = self.process.get_all_utilbills_json(session,
                     account, 0, 30)
             self.assertEqual(2, count)
+            self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
+            self.assertEqual(reebill1.readings[0].aggregate_function,
+                    reebill2.readings[0].aggregate_function)
             self.assertEqual([{
                 'sequence': 1,
                 'version': 0,
@@ -1160,6 +1169,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'version': 0,
                 'issue_date': None,
             }], utilbill_data[0]['reebills'])
+
+            # the 1st reebill has a reading for both the "REG_TOTAL" register
+            # and the "OTHER" register, for a total of 200 therms of renewable
+            # energy. since the 2nd utility bill no longer has the "OTHER" register,
+            # the 2nd reebill does not have a reading fot it, even though the 1st
+            # reebill has it.
+            reebill_2_data, reebill_1_data = self.process\
+                    .get_reebill_metadata_json(session, account)
+            self.assertEqual(200, reebill_1_data['ree_quantity'])
+            self.assertEqual(100, reebill_2_data['ree_quantity'])
 
             # addresses should be preserved from one reebill document to the
             # next
@@ -1248,30 +1267,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
         with DBSession(self.state_db) as session:
-            # create customers A, B, and C, their utility bill template
-            # documents, and reebills #0 for each (which include utility bills)
+           # create customers A, B, and C
+           billing_address = {
+               'addressee': 'Andrew Mellon',
+               'street': '1785 Massachusetts Ave. NW',
+               'city': 'Washington',
+               'state': 'DC',
+               'postal_code': '20036',
+           }
+           service_address = {
+               'addressee': 'Skyline Innovations',
+               'street': '1606 20th St. NW',
+               'city': 'Washington',
+               'state': 'DC',
+               'postal_code': '20009',
+           }
+           self.process.create_new_account(session, acc_a, 'Customer A',
+                    .12, .34, billing_address, service_address, '99999')
+           self.process.create_new_account(session, acc_b, 'Customer B',
+                   .12, .34, billing_address, service_address, '99999')
+           self.process.create_new_account(session, acc_c, 'Customer C',
+                   .12, .34, billing_address, service_address, '99999')
 
-            customer_a = Customer('Customer A', acc_a, .12, .34,
-                   '00000000000000000000000a', 'example@example.com',
-                   'Test Utility Company Template', 'Test Rate Class Template',
-                   )
-            customer_b = Customer('Customer B', acc_b, .12, .34,
-                   '00000000000000000000000b', 'example@example.com')
-            customer_c = Customer('Customer C', acc_c, .12, .34,
-                   '00000000000000000000000c', 'example@example.com')
-            session.add_all([customer_a, customer_b, customer_c])
-            template_a = example_data.get_utilbill_dict(acc_a,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-            template_b = example_data.get_utilbill_dict(acc_b,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-            template_c = example_data.get_utilbill_dict(acc_c,
-                   start=date(1900,1,1,), end=date(1900,2,1))
-            template_a['_id'] = ObjectId('00000000000000000000000a')
-            template_b['_id'] = ObjectId('00000000000000000000000b')
-            template_c['_id'] = ObjectId('00000000000000000000000c')
-            self.reebill_dao.save_utilbill(template_a)
-            self.reebill_dao.save_utilbill(template_b)
-            self.reebill_dao.save_utilbill(template_c)
             # new customers also need to be in nexus for 'update_renewable_readings' to
             # work (using mock Skyliner)
             self.nexus_util._customers.extend([
@@ -1383,7 +1400,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # a new bill is rolled, the UPRS it gets depends on whether it's
             # closer to B/C-1 or to A-2.
             self.process.delete_rsi(session, id_a_2, 'DISTRIBUTION_CHARGE')
-            x = self.process.get_rsis_json(session, id_a_2)
             self.process.delete_rsi(session, id_a_2, 'PGC')
             self.process.delete_rsi(session, id_a_2, 'NOT_SHARED')
             self.process.add_rsi(session, id_a_2)
@@ -1404,8 +1420,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
                     self.process.get_rsis_json(session, id_a_2)))
-
-
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -1563,7 +1577,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, reebill.issued)
             self.assertEqual([utilbill], reebill.utilbills)
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-            b = self.process.compute_reebill(session, account, 1, version=0)
+            self.process.compute_reebill(session, account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                               session, account, 1)
 
@@ -1601,8 +1615,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create 1st reebill and issue it
             self.process.roll_reebill(session, acc,
-                                      start_date=date(2012, 1, 1),
-                                      integrate_skyline_backend=False)
+                                      start_date=date(2012, 1, 1))
             self.process.bind_renewable_energy(session, acc, 1)
             self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
@@ -1632,8 +1645,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                                     '99999'))
 
             # create 2nd reebill, leaving it unissued
-            self.process.roll_reebill(session, acc,
-                                      integrate_skyline_backend=False)
+            self.process.ree_getter.quantity = 0
+            self.process.roll_reebill(session, acc)
 
             # make a correction on reebill #1. this time 20 therms of renewable
             # energy instead of 10 were consumed.
@@ -1667,7 +1680,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   'balance_due': 17.6,
                                   'balance_forward': 0,
                                   'corrections': '#1 not issued',
-                                  'hypothetical_total': 20,
+                                  'hypothetical_total': 20.0,
                                   'id': 1,
                                   'issue_date': None,
                                   'issued': False,
@@ -1764,7 +1777,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_new_account(session, '55555', 'Another New Account',
                     0.6, 0.2, billing_address, service_address, '99999')
             self.assertRaises(ValueError, self.process.roll_reebill,
-                    session, '55555', False, date(2013,2,1), True)
+                    session, '55555', start_date=date(2013,2,1))
 
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for
@@ -1957,9 +1970,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create, process, and issue reebill
             self.process.roll_reebill(session, account,
-                                      start_date=date(2013, 1, 1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
+                    start_date=date(2013, 1, 1))
             self.process.update_sequential_account_info(session, account, 1,
                     discount_rate=0.5)
 
@@ -2024,10 +2035,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
-            self.process.roll_reebill(session, account,
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
-            self.process.bind_renewable_energy(session, account, 2)
+            self.process.roll_reebill(session, account)
             self.process.update_sequential_account_info(session, account, 2,
                                                         discount_rate=0.2)
             self.process.compute_reebill(session, account, 2)
