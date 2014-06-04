@@ -3213,7 +3213,7 @@ function reeBillReady() {
                 sortable: true,
                 on: true,
                 off: false,
-                width: 60
+                width: 80
             },{
                 header: 'Group',
                 dataIndex: 'group',
