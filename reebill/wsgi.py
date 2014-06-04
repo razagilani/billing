@@ -741,7 +741,6 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             result = self.process.issue_and_mail(cherrypy.session['user'], session, account,
                 sequence, recipients, apply_corrections)
-            print result
             return self.dumps(result)
 
     @cherrypy.expose
