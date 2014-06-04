@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 import sys
 import os  
-from pprint import pprint
-from types import NoneType
-import math
 from decimal import *
-from itertools import groupby
 from datetime import datetime
-import subprocess
-import reportlab  
+from argparse import ArgumentParser
+import logging
+from collections import deque
+
 from pyPdf import PdfFileWriter, PdfFileReader
+
+import reportlab  
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
@@ -26,18 +26,11 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas  
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
-import logging
-from argparse import ArgumentParser
-
-from collections import deque
-
 import csv
 
+# Important for currency formatting
 import locale
 locale.setlocale(locale.LC_ALL, '')
-
-
-sys.stdout = sys.stderr
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
@@ -104,7 +97,7 @@ class BillDoc(BaseDocTemplate):
         # Here, the filename is passed in on render()
         # TODO filesep
         #BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
-        BaseDocTemplate.__init__(self, "./basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
+        BaseDocTemplate.__init__(self, "basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
 
         self.setProgressCallBack(BillDoc.progress)
 
@@ -138,7 +131,7 @@ class BillDoc(BaseDocTemplate):
         pdfmetrics.registerFont(TTFont("CourieBI", os.path.join(our_fonts, 'courbi.ttf')))
         registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI')
 
-        #register Inconsolata (TODO address here)
+        #register Inconsolata
         pdfmetrics.registerFont(TTFont("Inconsolata", os.path.join(our_fonts,'Inconsolata.ttf')))
         pdfmetrics.registerFont(TTFont("Inconsolata-Bold", os.path.join(our_fonts,'Inconsolata-Bold.ttf')))
         registerFontFamily('Inconsolata', 
@@ -199,7 +192,6 @@ class BillDoc(BaseDocTemplate):
 
     @classmethod
     def progress(self, type, value):
-        # TODO 37460179: log to logger
         logger.debug("%s %s" % (type, value))
 
     def flowables(self):
@@ -249,8 +241,7 @@ class BillDoc(BaseDocTemplate):
         BaseDocTemplate.build(self, flowables, canvasmaker=canvas.Canvas)
 
     def render(self, data, output_directory, output_name, skin_directory, skin_name):
-        # TODO filesep
-        self.filename = "%s/%s" % (output_directory, output_name)
+        self.filename = os.path.join("%s", "%s") % (output_directory, output_name)
         self.skin_directory = skin_directory
         self.skin = skin_name
         self.load_fonts()
@@ -742,7 +733,6 @@ class PVBillDoc(BillDoc):
             Frame(350, 550, 237, 45, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
         )
        
-        # TODO: dollar value
         # How you are Saving
 
         fr1.append(
@@ -1219,7 +1209,11 @@ def build_parsers():
 
 if __name__ == '__main__':
 
-    # python processing/bill_templates.py --templatename skyline_pv --templatedirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf --datafile test/bill_templates.csv
+    # run pv bill with input data 
+    # python processing/bill_templates.py --skinname skyline_pv --skindirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf --datafile test/bill_templates.csv
+
+    # run one bill with teva template 
+    # python processing/bill_templates.py --skinname skyline_pv --skindirectory reebill_templates --outputdirectory /tmp --outputfile pv.pdf 
 
     parser = build_parsers()
     args = parser.parse_args()
@@ -1442,7 +1436,6 @@ if __name__ == '__main__':
 
         # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
         #doc = PVBillDoc(logger, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.template_directory, args.template_name)
-        # TODO: doesn't expect a sequence of bills
         #doc = ThermalBillDoc(logger)
         doc = PVBillDoc(logger)
         doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
