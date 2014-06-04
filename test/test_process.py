@@ -134,13 +134,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'rate': '1', 'rsi_binding': 'A', 'description':'a'})
             self.process.refresh_charges(session, utilbill_data['id'])
 
-            self.process.roll_reebill(session, '88888',
-                                      start_date=date(2013, 1, 1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
             self.process.ree_getter = MockReeGetter(10)
-            self.process.bind_renewable_energy(session, '88888', 1)
-            self.process.compute_reebill(session, '88888', 1)
+            self.process.roll_reebill(session, '88888',
+                    start_date=date(2013, 1, 1))
 
             ubdata = self.process.get_all_utilbills_json(session,
                                                          '88888', 0, 30)[0][0]
@@ -240,7 +236,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # Try rolling a reebill for a new account that has no utility bills uploaded yet
             self.assertRaises(NoResultFound, self.process.roll_reebill,
-                    session, '777777', False, date(2013, 2, 1), True)
+                    session, '777777', start_date=date(2013, 2, 1))
 
     def test_update_utilbill_metadata(self):
         with DBSession(self.state_db) as session:
@@ -578,8 +574,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
             self.process.roll_reebill(session, account,
-                                      start_date=date(2012, 1, 1),
-                                      integrate_skyline_backend=False)
+                                      start_date=date(2012, 1, 1))
             self.process.compute_reebill(session, account, 1)
             reebill_charges = self.process.get_hypothetical_matched_charges(
                     session, account, 1)
@@ -843,10 +838,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, count)
 
             # when utilbill is attached to reebill, deletion should fail
-            first_reebill = self.process.roll_reebill(session, account,
-                                                      start_date=start)
-            reebills_data = self.process.get_reebill_metadata_json(session,
-                                                                   account)
+            self.process.roll_reebill(session, account,
+                    start_date=start)
+            reebills_data = self.process.get_reebill_metadata_json(
+                    session, account)
             self.assertEqual([{
                                   'actual_total': 0,
                                   'balance_due': 0.0,
@@ -1582,7 +1577,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(1, reebill.issued)
             self.assertEqual([utilbill], reebill.utilbills)
             self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-            b = self.process.compute_reebill(session, account, 1, version=0)
+            self.process.compute_reebill(session, account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                               session, account, 1)
 
@@ -1620,8 +1615,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create 1st reebill and issue it
             self.process.roll_reebill(session, acc,
-                                      start_date=date(2012, 1, 1),
-                                      integrate_skyline_backend=False)
+                                      start_date=date(2012, 1, 1))
             self.process.bind_renewable_energy(session, acc, 1)
             self.process.compute_reebill(session, acc, 1)
             self.process.issue(session, acc, 1)
@@ -1651,8 +1645,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                                     '99999'))
 
             # create 2nd reebill, leaving it unissued
-            self.process.roll_reebill(session, acc,
-                                      integrate_skyline_backend=False)
+            self.process.ree_getter.quantity = 0
+            self.process.roll_reebill(session, acc)
 
             # make a correction on reebill #1. this time 20 therms of renewable
             # energy instead of 10 were consumed.
@@ -1783,7 +1777,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.create_new_account(session, '55555', 'Another New Account',
                     0.6, 0.2, billing_address, service_address, '99999')
             self.assertRaises(ValueError, self.process.roll_reebill,
-                    session, '55555', False, date(2013,2,1), True)
+                    session, '55555', start_date=date(2013,2,1))
 
     def test_uncomputable_correction_bug(self):
         '''Regresssion test for
@@ -1975,9 +1969,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # create, process, and issue reebill
             self.process.roll_reebill(session, account,
-                                      start_date=date(2013, 1, 1),
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
+                    start_date=date(2013, 1, 1))
             self.process.update_sequential_account_info(session, account, 1,
                     discount_rate=0.5)
 
@@ -2042,10 +2034,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'a payment for the first reebill', payment_amount)
 
             # 2nd reebill
-            self.process.roll_reebill(session, account,
-                                      integrate_skyline_backend=False,
-                                      skip_compute=True)
-            self.process.bind_renewable_energy(session, account, 2)
+            self.process.roll_reebill(session, account)
             self.process.update_sequential_account_info(session, account, 2,
                                                         discount_rate=0.2)
             self.process.compute_reebill(session, account, 2)
