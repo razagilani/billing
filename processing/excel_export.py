@@ -325,7 +325,6 @@ class Exporter(object):
             reebills = self.state_db.listReebills(session, 0, 10000,
                                                   account, u'sequence',
                                                   u'ASC')[0]
-            print reebills
             for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
