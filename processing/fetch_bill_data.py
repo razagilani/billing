@@ -81,8 +81,6 @@ class RenewableEnergyGetter(object):
         energy-sold values; use use_olap=False to get them directly from OLTP.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
-        reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
-                                                     reebill.sequence, reebill.version)
         utilbill = reebill.utilbill
         start, end = utilbill.period_start, utilbill.period_end
 
@@ -112,8 +110,8 @@ class RenewableEnergyGetter(object):
                     total += timeseries[index]
                 return total
 
-            results = self._usage_data_to_virtual_register(reebill_doc,
-                utilbill, energy_function)
+            results = self._usage_data_to_virtual_register(utilbill,
+                energy_function)
 
             for binding, quantity in results:
                 assert isinstance(binding, basestring)
@@ -367,8 +365,7 @@ class RenewableEnergyGetter(object):
     #         reebill.set_hypothetical(register['identifier'], total_energy)
 
 
-    def _usage_data_to_virtual_register(self, reebill_doc,
-            utilbill, energy_function, verbose=False):
+    def _usage_data_to_virtual_register(self, utilbill, energy_function, verbose=False):
         '''Gets energy quantities from 'energy_function' and returns new
         renewable energy register readings as a list of (register binding,
         quantity) pairs. The caller should put these values in the

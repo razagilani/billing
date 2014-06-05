@@ -37,7 +37,8 @@ import logging
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError, NoSuchBillException
+from billing.processing.exceptions import NoRSIError, FormulaError, RSIError, \
+    NoSuchBillException
 
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
@@ -51,6 +52,13 @@ class Base(object):
     def column_names(cls):
         return [prop.key for prop in class_mapper(cls).iterate_properties
                 if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+
+    def __eq__(self, other):
+        return all([getattr(self, x) == getattr(other, x) for x in
+                    self.column_names()])
+
+    def column_dict(self):
+        return {c: getattr(self, c) for c in self.column_names()}
 
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -113,15 +121,6 @@ class Address(Base):
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
                     self.postal_code)
-
-    def __eq__(self, other):
-        return all([
-            self.addressee == other.addressee,
-            self.street == other.street,
-            self.city == other.city,
-            self.state == other.state,
-            self.postal_code == other.postal_code
-        ])
 
     def __repr__(self):
         return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
@@ -382,8 +381,8 @@ class ReeBill(Base):
         '''Returns period of the first (only) utility bill for this reebill
         as tuple of dates.
         '''
-        assert len(self.utilbills) == 1
-        return self.utilbills[0].period_start, self.utilbills[0].period_end
+        return self.utilbill.period_start, self.utilbill.period_end
+
 
     def copy_reading_conventional_quantities_from_utility_bill(self):
         """Sets the conventional_quantity of each reading to match the
@@ -411,9 +410,9 @@ class ReeBill(Base):
 
     def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
-        the list of registers in the given reebill_readings. Readings that do not
-        have a register binding that matches a register in the utility bill are
-        ignored.
+        the list of registers in the given reebill_readings. Readings that do
+        not have a register binding that matches a register in the utility bill
+        are ignored.
         '''
         session = Session.object_session(self)
         for r in self.readings:
@@ -513,7 +512,7 @@ class ReeBill(Base):
 
         return total_therms
 
-    def compute_charges(self, uprs, reebill_dao):
+    def compute_charges(self, uprs):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
         the :class:`.Reebill` according to the formulas in the RSIs in the
         given rate structures.
@@ -531,8 +530,7 @@ class ReeBill(Base):
 
         utilbill = self.utilbill
 
-        utilbill_doc = reebill_dao.load_doc_for_utilbill(utilbill)
-        utilbill.compute_charges(uprs, utilbill_doc)
+        utilbill.compute_charges(uprs)
 
         identifiers = defaultdict(lambda:{})
         for reading in self.readings:
@@ -938,7 +936,7 @@ class UtilBill(Base):
                                rsi_binding=rsi.rsi_binding,
                                total=0))
 
-    def compute_charges(self, uprs, utilbill_doc):
+    def compute_charges(self, uprs):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
         the :class:`.UtilityBill` according to the formulas in the RSIs in the
         given rate structures.
@@ -1697,7 +1695,6 @@ class StateDB(object):
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
-        session.query(UtilBill).all()
         return UtilBillLoader(session).get_last_real_utilbill(account, end,
                 service=service, utility=utility, rate_class=rate_class,
                 processed=processed)

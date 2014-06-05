@@ -889,11 +889,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              date(2012, 1, 1), date(2012, 2, 1),
                                              StringIO("A PDF"), 'january.pdf')
             address = self.process.get_service_address(session, account)
-            self.assertEqual(address['postal_code'], '20010')
-            self.assertEqual(address['city'], 'Washington')
-            self.assertEqual(address['state'], 'DC')
-            self.assertEqual(address['addressee'], 'Monroe Towers')
-            self.assertEqual(address['street'], '3501 13TH ST NW #WH')
+            self.assertEqual('12345', address['postal_code'])
+            self.assertEqual('Test City', address['city'])
+            self.assertEqual('XX', address['state'])
+            self.assertEqual('Test Customer 1 Service', address['addressee'])
+            self.assertEqual('123 Test Street', address['street'])
 
     def test_correction_issuing(self):
         """Test creating corrections on reebills, and issuing them to create
@@ -1056,7 +1056,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # TODO don't use current date in a test!
             one = self.process.roll_reebill(session, acc,
                                             start_date=date(2012, 1, 1))
-            one_doc = self.reebill_dao.load_reebill(acc, 1)
             # TODO control amount of renewable energy given by mock_skyliner
             # so there's no need to replace that value with a known one here
             one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
@@ -1182,18 +1181,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # addresses should be preserved from one reebill document to the
             # next
             billing_address = {
-                u"postalcode" : u"20910",
-                u"city" : u"Silver Spring",
-                u"state" : u"MD",
-                u"addressee" : u"Managing Member Monroe Towers",
-                u"street" : u"3501 13TH ST NW LLC"
+                u"postalcode" : u"12345",
+                u"city" : u"Test City",
+                u"state" : u"XX",
+                u"addressee" : u"Test Customer 1 Billing",
+                u"street" : u"123 Test Street"
             }
+
             service_address = {
-                 u"postalcode" : u"20010",
-                 u"city" : u"Washington",
-                 u"state" : u"DC",
-                 u"addressee" : u"Monroe Towers",
-                 u"street" : u"3501 13TH ST NW #WH"
+                u"postalcode" : u"12345",
+                u"city" : u"Test City",
+                u"state" : u"XX",
+                u"addressee" : u"Test Customer 1 Service",
+                u"street" : u"123 Test Street"
             }
             account_info = self.process.get_sequential_account_info(session,
                     account, 1)
@@ -1477,7 +1477,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.issue(session, acc, 2)
 
             # re-load from mongo to see updated issue date and due date
-            two_doc = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
