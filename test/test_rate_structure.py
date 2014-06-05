@@ -159,24 +159,32 @@ class RateStructureDAOTest(unittest.TestCase):
             quantity='1',
             rate='1',
             shared=True,
+            group='a',
+            has_charge=True,
         )
         self.rsi_b_shared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=True,
+            group='b',
+            has_charge=True,
         )
         self.rsi_b_unshared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=False,
+            group='c',
+            has_charge=False,
         )
         self.rsi_c_unshared = RateStructureItem(
             rsi_binding='C',
             quantity='3',
             rate='3',
             shared=False,
+            group='d',
+            has_charge=False,
         )
 
         # 3 rate structures, two containing B shared and one containing B

@@ -1666,6 +1666,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate='11.2',
                     uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
                     shared=True,
+                    group='A',
                 ),
                 RateStructureItem(
                     rsi_binding='NOT_SHARED',
@@ -1675,6 +1676,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     rate='3',
                     uuid="c9733cca-2c16-11e1-8c7f-002421e88ffb",
                     shared=False,
+                    group='B',
                 )
             ]
             uprs_b.rates = uprs_c.rates = [
@@ -1688,6 +1690,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     total='220.16',
                     uuid='c9733ed2-2c16-11e1-8c7f-002421e88ffb',
                     shared=True,
+                    group='C',
                 ),
                 RateStructureItem(
                     rsi_binding='PGC',
@@ -1699,6 +1702,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     total='574.05',
                     uuid='c97340da-2c16-11e1-8c7f-002421e88ffb',
                     shared=True,
+                    group='D',
                 ),
             ]
             uprs_a.save(); uprs_b.save(); uprs_c.save()
@@ -1757,7 +1761,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'february-b.pdf', total=0, state=UtilBill.Complete)
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi.rsi_binding for rsi in uprs_a_2.rates))
-
 
 
     def test_rs_prediction_processed(self):
