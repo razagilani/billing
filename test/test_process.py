@@ -2137,6 +2137,41 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'corrections': '#1 not issued',
             }], reebill_data, 'id')
 
+    def test_tou_metering(self):
+        # TODO: possibly move to test_fetch_bill_data
+        account = '99999'
+        from skyliner.sky_handlers import cross_range
+        def f(install, start, end, measure, ignore_misisng=True, verbose=False):
+            return [hour.hour for hour in cross_range(start, end)]
+
+        self.process.ree_getter.get_billable_energy_timeseries = f
+
+        with DBSession(self.state_db) as session:
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2000, 1, 1), date(2000, 2, 1),
+                    StringIO('January'), 'january.pdf')
+            # TODO: modify registers of this utility bill so they are TOU
+            # (have active_periods_..., and set "type")
+            u = session.query(UtilBill).join(Customer).\
+                    filter_by(account='99999').one()
+            doc = self.reebill_dao.load_doc_for_utilbill(u)
+            doc['meters'][0]['registers'][0].update({
+                'active_periods_weekday': [(9, 10)],
+                'active_periods_weekend': [(10, 11)],
+                'active_periods_holiday': [(12,13)],
+            })
+
+            self.process.roll_reebill(session, account,
+                    start_date=date(2000,1,1))
+
+            readings = session.query(ReeBill).one().readings
+            pass
+
+            # TODO: check readings of reebill corresponding to those registers
+
+            # TODO: would be a good idea to check propagation of readings between reebills,
+            # and "update readings" feature too; this would be a good place to do it.
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()
