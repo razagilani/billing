@@ -1237,14 +1237,21 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'updateReadingsButton', text: 'Update Readings', handler:
                 function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/update_readings',
-                        params: {account: selected_account, sequence: selected_sequence},
-                        success: function(result, request) {
-                            var jsonData = Ext.util.JSON.decode(result.responseText);
-                        },
-                    });
-                }},
+                    Ext.Msg.confirm('Confirm deletion',
+                        'Are you sure you want to update the Readings?',
+                        function(answer) {
+                            if (answer == 'yes')
+                            {
+                                Ext.Ajax.request({
+                                url: 'http://'+location.host+'/reebill/update_readings',
+                                params: {account: selected_account, sequence: selected_sequence},
+                                success: function(result, request) {
+                                    var jsonData = Ext.util.JSON.decode(result.responseText);
+                                    },
+                                });
+                            }}
+                        );
+                    },disabled: true},
             {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
             {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
@@ -3222,7 +3229,7 @@ function reeBillReady() {
                 sortable: true,
                 on: true,
                 off: false,
-                width: 60
+                width: 80
             },{
                 header: 'Group',
                 dataIndex: 'group',
@@ -3460,6 +3467,7 @@ function reeBillReady() {
                 header: 'Date Applied',
                 sortable: true,
                 dataIndex: 'date_applied',
+                format: 'Y-m-d',
                 editor: new Ext.form.DateField({
                     allowBlank: false,
                     format: 'Y-m-d',
@@ -3476,7 +3484,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'credit',
                 renderer: paymentColRenderer,
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.NumberField({allowBlank: true})
             },
         ]
     });
@@ -6152,6 +6160,7 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(record.data.issued == true);
+            Ext.getCmp('updateReadingsButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
