@@ -10,8 +10,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import desc
 from os.path import realpath, join, dirname
 
+from skyliner.sky_handlers import cross_range
 from billing.processing.session_contextmanager import DBSession
-
 from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
 from billing.processing.state import ReeBill, Customer, UtilBill, Reading
@@ -456,7 +456,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # of the bill from which it derives. on 2013-01-15, make a version
             # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
             # 2 with a higher total, and check that the late charge comes from
-            # version 1. 
+            # version 1.
             self.process.new_version(session, acc, 1)
             bill1_1 = self.state_db.get_reebill(session, acc, 1, version=1)
             self.process.ree_getter = MockReeGetter(100)
@@ -2144,37 +2144,56 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data
         account = '99999'
-        from skyliner.sky_handlers import cross_range
-        def f(install, start, end, measure, ignore_misisng=True, verbose=False):
-            return [hour.hour for hour in cross_range(start, end)]
 
-        self.process.ree_getter.get_billable_energy_timeseries = f
+        def get_mock_energy_consumption(install, start, end, measure,
+                    ignore_misisng=True, verbose=False):
+            result = []
+            for hourly_period in cross_range(start, end):
+                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
+                # (Sat Jan 15), return number of BTU equal to the hour of
+                # the day. no energy is consumed on other days.
+                if hourly_period.day in (1, 14, 15):
+                    result.append(hourly_period.hour)
+                else:
+                    result.append(0)
+            assert len(result) == 31 * 24 # hours in January
+            return result
+
+        self.process.ree_getter.get_billable_energy_timeseries = \
+                get_mock_energy_consumption
 
         with DBSession(self.state_db) as session:
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2000, 1, 1), date(2000, 2, 1),
                     StringIO('January'), 'january.pdf')
-            # TODO: modify registers of this utility bill so they are TOU
-            # (have active_periods_..., and set "type")
+
+            # modify registers of this utility bill so they are TOU
             u = session.query(UtilBill).join(Customer).\
                     filter_by(account='99999').one()
             doc = self.reebill_dao.load_doc_for_utilbill(u)
             doc['meters'][0]['registers'][0].update({
-                'active_periods_weekday': [(9, 10)],
-                'active_periods_weekend': [(10, 11)],
-                'active_periods_holiday': [(12,13)],
+                # use BTU to avoid unit conversion
+                'quantity_units': 'btu',
+                # NOTE these hour ranges are inclusive at both ends
+                'active_periods_weekday': [[9, 9]],
+                'active_periods_weekend': [[11, 11]],
+                'active_periods_holiday': [[13, 13]],
+                # this appears to be unused (though "type" values include
+                # "total", "tou", "demand", and "")
+                'type': 'tou',
             })
+            self.reebill_dao.save_utilbill(doc)
 
             self.process.roll_reebill(session, account,
                     start_date=date(2000,1,1))
 
+            # check reading of the reebill corresponding to the utility register
             readings = session.query(ReeBill).one().readings
-            pass
-
-            # TODO: check readings of reebill corresponding to those registers
-
-            # TODO: would be a good idea to check propagation of readings between reebills,
-            # and "update readings" feature too; this would be a good place to do it.
+            self.assertEqual(1, len(readings))
+            reading = readings[0]
+            expected_renewable_btu = 9 + 11 + 13
+            self.assertEqual('btu', reading.unit)
+            self.assertEqual(expected_renewable_btu, reading.renewable_quantity)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
