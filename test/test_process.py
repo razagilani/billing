@@ -1,25 +1,23 @@
 import unittest
-from itertools import chain
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
-
 import os
-from bson import ObjectId
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql import desc
 from os.path import realpath, join, dirname
+
+from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Reading
+from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError, NoRSIError
 from billing.test import utils
+
 
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
