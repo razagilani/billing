@@ -1346,14 +1346,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'description': 'System Charge',
                 'quantity': '1',
                 'rate': '11.2',
-                'shared': True
+                'shared': True,
+                'group': 'A',
            })
            self.process.update_rsi(session, id_a, 'New RSI #2', {
                'rsi_binding': 'NOT_SHARED',
                'description': 'System Charge',
                'quantity': '1',
                'rate': '3',
-               'shared': False
+               'shared': False,
+               'group': 'B',
            })
            for i in (id_b, id_c):
                self.process.add_rsi(session, i)
@@ -1363,14 +1365,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                    'description': 'Distribution charge for all therms',
                    'quantity': '750.10197727',
                    'rate': '220.16',
-                   'shared': True
+                   'shared': True,
+                   'group': 'C',
                })
                self.process.update_rsi(session, i, 'New RSI #2', {
                    'rsi_binding': 'PGC',
                    'description': 'Purchased Gas Charge',
                    'quantity': '750.10197727',
                    'rate': '0.7563',
-                   'shared': True
+                   'shared': True,
+                   'group': 'D',
                })
 
            # create utility bill and reebill #2 for A
