@@ -2147,6 +2147,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         def get_mock_energy_consumption(install, start, end, measure,
                     ignore_misisng=True, verbose=False):
+            assert start, end == (date(2000,1,1), date(2000,2,1))
             result = []
             for hourly_period in cross_range(start, end):
                 # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
@@ -2171,29 +2172,47 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             u = session.query(UtilBill).join(Customer).\
                     filter_by(account='99999').one()
             doc = self.reebill_dao.load_doc_for_utilbill(u)
-            doc['meters'][0]['registers'][0].update({
+            doc['meters'][0]['registers'] = [{
+                'register_binding': 'REG_TOTAL',
+                'description': 'normal register',
+                'identifier': 'test1',
+                'quantity': 0,
                 # use BTU to avoid unit conversion
+                'quantity_units': 'btu',
+                # this appears to be unused (though "type" values include
+                # "total", "tou", "demand", and "")
+                'type': 'total',
+            },{
+                'register_binding': 'TOU',
+                'description': 'time-of-use register',
+                'identifier': 'test2',
+                'quantity': 0,
                 'quantity_units': 'btu',
                 # NOTE these hour ranges are inclusive at both ends
                 'active_periods_weekday': [[9, 9]],
                 'active_periods_weekend': [[11, 11]],
                 'active_periods_holiday': [[13, 13]],
-                # this appears to be unused (though "type" values include
-                # "total", "tou", "demand", and "")
                 'type': 'tou',
-            })
+            }]
             self.reebill_dao.save_utilbill(doc)
 
             self.process.roll_reebill(session, account,
                     start_date=date(2000,1,1))
 
+            # the total energy consumed over the 3 non-0 days is
+            # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
+            # when only the hours 9, 11, and 13 are included, the total is just
+            # 9 + 11 + 13 = 33.
+            total_renewable_btu = 23 * 24 / 2. * 3
+            tou_renewable_btu = 9 + 11 + 13
+
             # check reading of the reebill corresponding to the utility register
-            readings = session.query(ReeBill).one().readings
-            self.assertEqual(1, len(readings))
-            reading = readings[0]
-            expected_renewable_btu = 9 + 11 + 13
-            self.assertEqual('btu', reading.unit)
-            self.assertEqual(expected_renewable_btu, reading.renewable_quantity)
+            total_reading, tou_reading = session.query(ReeBill).one().readings
+            self.assertEqual('btu', total_reading.unit)
+            self.assertEqual(total_renewable_btu,
+                    total_reading.renewable_quantity)
+            self.assertEqual('btu', tou_reading.unit)
+            self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
