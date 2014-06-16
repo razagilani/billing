@@ -21,7 +21,6 @@ def init_logging():
 
 init_logging()
 
-from processing.rate_structure2 import RateStructureItem, RateStructure
 from os.path import realpath, join, dirname
 import unittest
 from StringIO import StringIO
@@ -122,17 +121,6 @@ class TestCaseWithSetup(unittest.TestCase):
                              'Test Rate Class Template', fa_ba2, fa_sa2)
         session.add(c2)
 
-
-        uprs1 = RateStructure(
-            rates=[
-                RateStructureItem(
-                    rate='0.06',
-                    rsi_binding='THE_CHARGE',
-                    quantity= '0',
-                    shared=False)
-            ]
-        )
-        uprs1.save()
         u1 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
                              'Test Rate Class Template',  ub_ba1, ub_sa1,
                              account_number='Acct123456',
@@ -140,25 +128,8 @@ class TestCaseWithSetup(unittest.TestCase):
                              period_end=date(2012, 1, 31),
                              total_charges=50.00,
                              date_received=date(2011, 2, 3),
-                             processed=True,
-                             doc_id="000000000000000000000002",
-                             uprs_id=str(uprs1.id))
-        u1_doc = example_data.get_utilbill_dict('100000',
-            start=date(2012,01,01), end=date(2012,1,31),
-            utility='Test Utility Company Template', service='gas')
-        u1_doc['_id'] = ObjectId('000000000000000000000002')
-        db.utilbills.save(u1_doc)
+                             processed=True)
 
-        uprs2 = RateStructure(
-            rates=[
-                RateStructureItem(
-                    rate='0.06',
-                    rsi_binding='THE_CHARGE',
-                    quantity= '0',
-                    shared=False)
-            ]
-        )
-        uprs2.save()
         u2 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
                              'Test Rate Class Template', ub_ba2, ub_sa2,
                              account_number='Acct123456',
@@ -166,15 +137,7 @@ class TestCaseWithSetup(unittest.TestCase):
                              period_end=date(2012, 2, 28),
                              total_charges=65.00,
                              date_received=date(2011, 3, 3),
-                             processed=True,
-                             doc_id="000000000000000000000003",
-                             uprs_id=str(uprs2.id))
-        u2_doc = example_data.get_utilbill_dict('100000', start=date(2012, 2, 1),
-            end=date(2012, 2, 28), utility='Test Utility Company Template',
-            service='gas')
-        u2_doc['_id'] = ObjectId('000000000000000000000003')
-        db.utilbills.save(u2_doc)
-        session.add_all([u1, u2])
+                             processed=True)
 
         u1r1 = Register(u1, "test description", 123.45, "therms", "M60324",
                       False, "total", "REG_TOTAL", None, "M60324")
@@ -183,15 +146,6 @@ class TestCaseWithSetup(unittest.TestCase):
 
         session.add_all([u1r1, u2r1])
         session.commit()
-
-        #Insert template utilbill document for the customer in Mongo
-        utilbill = example_data.get_utilbill_dict('99999',
-                start=date(1900, 1, 1), end=date(1900, 2, 1),
-                utility='washgas', service='gas')
-        utilbill['_id'] = ObjectId('000000000000000000000001')
-        db.utilbills.save(utilbill)
-
-
 
         #Utility BIll with no Rate structures
         c4ba = Address('Test Customer 1 Billing',
@@ -207,8 +161,6 @@ class TestCaseWithSetup(unittest.TestCase):
         c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
                              'example2@example.com', 'Other Utility',
                              'Other Rate Class', c4ba, c4sa)
-        rs = example_data.get_empty_uprs()
-        rs.save()
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
                      '123 Test Street',
@@ -227,17 +179,8 @@ class TestCaseWithSetup(unittest.TestCase):
                          period_end=date(2012, 1, 31),
                          total_charges=50.00,
                          date_received=date(2011, 2, 3),
-                         processed=True,
-                         doc_id="000000000000000000000004",
-                         uprs_id=str(rs.id))
+                         processed=True)
         session.add(u)
-        udoc = example_data.get_utilbill_dict('100001', start=u.period_start,
-                end=u.period_end, utility=u.utility, service=u.service)
-        udoc['_id'] = ObjectId('000000000000000000000004')
-        db.utilbills.save(udoc)
-
-
-
 
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.

@@ -75,41 +75,19 @@ class Process(object):
 
     def get_utilbill_doc(self, session, utilbill_id, reebill_sequence=None,
             reebill_version=None):
-        '''Loads and returns the Mongo document for the utility bill given by
-        'utilbill_id' (MySQL id). If the sequence and version of an issued
-        reebill are given, the document returned will be the frozen version for
-        the issued reebill.
-        '''
         raise DeprecationWarning
 
     def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
             reebill_version=None):
-        '''Loads and returns a rate structure document of type 'rs_type'
-        ("uprs" only) for the utility bill given by 'utilbill_id'.
-        If the sequence and version of an issued reebill are given, the
-        document returned will be the frozen version for the issued reebill.
-        '''
-        if rs_type != 'uprs':
-            raise ValueError(('Unknown "rs_type": expected "uprs", '
-                    'got "%s"') % rs_type)
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        reebill = None
-        if reebill_sequence is None:
-            assert reebill_version is None
-        else:
-            reebill = self.state_db.get_reebill(session,
-                utilbill.customer.account, reebill_sequence,
-                version=reebill_version)
-            assert reebill.issued is True
-        return self.rate_structure_dao.load_uprs_for_utilbill(utilbill,
-            reebill=reebill)
+        raise DeprecationWarning
 
     def get_utilbill_charges_json(self, session, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        return [dict([(col, getattr(charge, col)) for col in
-                     set(charge.column_names()) - set(['utilbill_id'])
+        columns = ['id', 'description', 'group', 'quantity', 'quantity_units',
+                   'rate', 'rsi_binding', 'total']
+        return [dict([(col, getattr(charge, col)) for col in columns
                      if hasattr(charge, col)] + [('id', charge.rsi_binding)])
                 for charge in utilbill.charges]
 
@@ -149,7 +127,6 @@ class Process(object):
                              "Insert register binding here",
                              None,
                              row.get('meter_id', "")))
-        session.commit()
 
     def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
                         rows):
@@ -183,7 +160,6 @@ class Process(object):
                               (k, register.id, val))
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
-        session.commit()
 
     def delete_register(self, session, utilbill_id, orig_meter_id, orig_reg_id):
         self.logger.info("Running Process.delete_register %s %s %s" %
@@ -197,8 +173,8 @@ class Process(object):
     def add_charge(self, session, utilbill_id, group_name):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
-        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+        ub = session.query(UtilBill).filter_by(id=utilbill_id).one()
+        ub.charges.append(Charge(ub, "", group_name, 0, "", 0, "", 0))
 
     def update_charge(self, session, utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
@@ -219,34 +195,50 @@ class Process(object):
 
     def get_rsis_json(self, session, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        return [rsi.to_dict() for rsi in rs_doc.rates]
+        return [{'rsi_binding': c.rsi_binding,
+                 'quantity_formula': c.quantity_formula,
+                 'rate_formula': c.rate_formula,
+                 'has_charge': c.has_charge,
+                 'shared': c.shared,
+                 'roundrule': c.roundrule} for c in utilbill.charges]
 
     def add_rsi(self, session, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        new_rsi = rs_doc.add_rsi()
-        rs_doc.save()
-        return new_rsi
+        all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+        session.add(Charge(utilbill = utilbill,
+                            description = "Insert description here",
+                            group = "",
+                            quantity = 0.0,
+                            quantity_units = "",
+                            rate = 0.0,
+                            rsi_binding = "New RSI #%s" % n,
+                            total = 0.0))
+
 
     def update_rsi(self, session, utilbill_id, rsi_binding, fields):
-        '''Modify the charge given by 'rsi_binding' in the given utility
-        bill by setting key-value pairs to match the dictionary 'fields'.
-        '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        rsi = rs_doc.get_rsi(rsi_binding)
-        rsi.update(**fields)
-        rs_doc.save()
-        return rsi.rsi_binding
+        """Modify the charge given by `rsi_binding` in the given utility
+        bill by setting attributes to match the dictionary `fields`.
+        """
+        charge = session.query(Charge).join(UtilBill).\
+            filter(UtilBill.id == utilbill_id).\
+            filter(Charge.rsi_binding == rsi_binding).one()
+
+        for k, v in fields.iteritems():
+            if k in ['quantity', 'rate']:
+                k = '%s_formula' % k  # we renamed these
+            setattr(charge, k, v)
 
     def delete_rsi(self, session, utilbill_id, rsi_binding):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        rsi = rs_doc.get_rsi(rsi_binding)
-        rs_doc.rates.remove(rsi)
-        assert rsi not in rs_doc.rates
-        rs_doc.save()
+        charge = session.query(Charge).join(UtilBill).\
+            filter(UtilBill.id == utilbill_id).\
+            filter(Charge.rsi_binding == rsi_binding).one()
+        session.delete(charge)
+        session.commit()
+        #test_rs_prediction fails without this commit; I believe the commit
+        #should be moved to inside test_rs_prediction
 
     def create_payment(self, session, account, date_applied, description,
             credit, date_received=None):
@@ -552,34 +544,17 @@ class Process(object):
                     new_utilbill.id, file_name))
 
         if state < UtilBill.Hypothetical:
-            uprs = self._generate_docs_for_new_utility_bill(session,
-                new_utilbill, predecessor)
-            new_utilbill.document_id = ""
-            new_utilbill.uprs_document_id = str(uprs.id)
-            uprs.save()
+            new_utilbill.charges = self.rate_structure_dao.\
+                get_predicted_charges(new_utilbill, UtilBillLoader(session))
 
-            if predecessor is not None:
-
-                valid_bindings = set([rsi['rsi_binding'] for rsi in uprs.rates])
-                for charge in predecessor.charges:
-                    if charge.rsi_binding not in valid_bindings:
-                        continue
-                    new_utilbill.charges.append(Charge(new_utilbill,
-                                                       charge.description,
-                                                       charge.group,
-                                                       charge.quantity,
-                                                       charge.quantity_units,
-                                                       charge.rate,
-                                                       charge.rsi_binding,
-                                                       charge.total))
-                for register in predecessor.registers:
-                    session.add(Register(new_utilbill, register.description,
-                                         0, register.quantity_units,
-                                         register.identifier, False,
-                                         register.reg_type,
-                                         register.register_binding,
-                                         register.active_periods,
-                                         register.meter_identifier))
+            for register in predecessor.registers if predecessor else []:
+                session.add(Register(new_utilbill, register.description,
+                                     0, register.quantity_units,
+                                     register.identifier, False,
+                                     register.reg_type,
+                                     register.register_binding,
+                                     register.active_periods,
+                                     register.meter_identifier))
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -641,25 +616,6 @@ class Process(object):
 
         return existing_bill
 
-
-    def _generate_docs_for_new_utility_bill(self, session, utilbill,
-                                            predecessor):
-        """Returns utility bill doc, UPRS doc for the given
-        StateDB.UtilBill which is about to be added to the database, using the
-        last utility bill with the same account, service, and rate class, or
-        the account's template if no such bill exists. `utilbill` must be at
-        most 'SkylineEstimated', 'Hypothetical' because 'Hypothetical' utility
-        bills have no documents. No database changes are made."""
-        assert utilbill.state < UtilBill.Hypothetical
-        predecessor_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                predecessor)
-        predecessor_uprs.validate()
-        uprs = self.rate_structure_dao.get_predicted_rate_structure(utilbill,
-                UtilBillLoader(session))
-        uprs.id = ObjectId()
-        return uprs
-
-
     def delete_utility_bill_by_id(self, session, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
         it's not attached to a reebill) and returns the deleted state
@@ -668,71 +624,42 @@ class Process(object):
         it could not be found. Raises a ValueError if the
         utility bill cannot be deleted.
         """
-        # load utilbill to get its dates and service
-        utilbill = session.query(state.UtilBill) \
-                .filter(state.UtilBill.id == utilbill_id).one()
-        # delete it & get new path (will be None if there was never
-        # a utility bill file or the file could not be found)
-        _, deleted_path = self.delete_utility_bill(session,
-                utilbill)
-        return utilbill, deleted_path
+        utility_bill = session.query(state.UtilBill).\
+            filter(state.UtilBill.id == utilbill_id).one()
 
-    # TODO merge with delete_utility_bill_by_id
-    def delete_utility_bill(self, session, utilbill):
-        '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
-        it's not attached to a reebill) and returns the path where the file was
-        moved (it never really gets deleted). This path will be None if there
-        was no file or it could not be found. Raises a ValueError if the
-        utility bill cannot be deleted.'''
-        if utilbill.is_attached():
+        if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 
-        # OK to delete now.
-        # first try to delete the file on disk
         try:
-            new_path = self.billupload.delete_utilbill_file(utilbill)
+            path = self.billupload.delete_utilbill_file(utility_bill)
         except IOError:
             # file never existed or could not be found
-            new_path = None
+            path = None
 
-        # delete from MySQL
-        # TODO move to StateDB?
-        session.delete(utilbill)
-
+        for charge in utility_bill.charges:
+            session.delete(charge)
+        for register in utility_bill.registers:
+            session.delete(register)
         self.state_db.trim_hypothetical_utilbills(session,
-                utilbill.customer.account, utilbill.service)
+                utility_bill.customer.account, utility_bill.service)
+        session.delete(utility_bill)
 
-        # UPRS documents from Mongo should exist iff the utility bill is not
-        # "Hypothetical"
-        if utilbill.state < UtilBill.Hypothetical:
-            self.rate_structure_dao.delete_rs_docs_for_utilbill(utilbill)
-        else:
-            assert utilbill.state == UtilBill.Hypothetical
-            assert utilbill.document_id is None
-            assert utilbill.uprs_document_id is None
-
-        # delete any estimated utility bills that were created to
-        # cover gaps that no longer exist
-        self.state_db.trim_hypothetical_utilbills(session,
-            utilbill.customer.account, utilbill.service)
-
-        return utilbill, new_path
+        return utility_bill, path
 
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                utilbill)
-        new_rs = self.rate_structure_dao.get_predicted_rate_structure(utilbill,
-                UtilBillLoader(session))
-        existing_uprs.rates = new_rs.rates
-        existing_uprs.save()
+        for charge in utilbill.charges:
+            session.delete(charge)
+        utilbill.charges = []
+        utilbill.charges = self.rate_structure_dao.\
+            get_predicted_charges(utilbill, UtilBillLoader(session))
 
     def has_utilbill_predecessor(self, session, utilbill_id):
         try:
             utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            predecessor = self.state_db.get_last_real_utilbill(session,
+            _ = self.state_db.get_last_real_utilbill(session,
                     utilbill.customer.account, utilbill.period_start,
                     utility=utilbill.utility, service=utilbill.service)
             return True
@@ -745,14 +672,7 @@ class Process(object):
         Structure Item in the UPRS. The charges are computed according to the
         rate structure.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        utilbill.refresh_charges(uprs.rates)
-        try:
-            utilbill.compute_charges(uprs) #document for meter info
-        except Exception as e:
-            session.commit()
-            raise
+        self.state_db.get_utilbill_by_id(session, utilbill_id).compute_charges()
 
     def compute_utility_bill(self, session, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
@@ -761,8 +681,7 @@ class Process(object):
         '''
 
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        utilbill.compute_charges(uprs)
+        utilbill.compute_charges()
 
         # also try to compute documents of any unissued reebills associated
         # with this utility bill
@@ -782,8 +701,7 @@ class Process(object):
         reebill = self.state_db.get_reebill(session, account, sequence,
                 version)
         reebill.copy_reading_conventional_quantities_from_utility_bill()
-        uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill.utilbill)
-        reebill.compute_charges(uprs)
+        reebill.compute_charges()
 
         actual_total = reebill.utilbill.total_charge()
         hypothetical_total = reebill.get_total_hypothetical_charges()
@@ -980,9 +898,8 @@ class Process(object):
         assert len(reebill.utilbills) == 1
 
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
-        self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
-                                        reebill)
-
+        self.ree_getter.\
+            update_renewable_readings(self.nexus_util.olap_id(account), reebill)
         try:
             self.compute_reebill(session, account, sequence,
                         version=max_version+1)
@@ -1218,18 +1135,6 @@ class Process(object):
 
         assert len(reebill._utilbill_reebills) == 1
 
-        # also duplicate UPRS, storing the new _ids in MySQL
-        uprs = self.rate_structure_dao.load_uprs_for_utilbill(
-                reebill.utilbills[0])
-        uprs.id = ObjectId()
-        # NOTE this is a temporary workaround for a bug in MongoEngine
-        # 0.8.4 described here:
-        # https://www.pivotaltracker.com/story/show/57593308
-        uprs._created = True;
-
-        uprs.save()
-        reebill._utilbill_reebills[0].uprs_document_id = str(uprs.id)
-
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence, issue_date=issue_date)
 
@@ -1387,7 +1292,6 @@ class Process(object):
         # get list of customer name dictionaries sorted by their billing account
         all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
         name_dicts = sorted(all_accounts_all_names.iteritems())
-
         return name_dicts
 
     def full_names_of_accounts(self, session, accounts):
@@ -1397,7 +1301,6 @@ class Process(object):
         account). Names that do not exist for a given account are skipped.'''
         # get list of customer name dictionaries sorted by their billing account
         name_dicts = self.all_names_of_accounts(accounts)
-
         result = []
         for account, all_names in name_dicts:
             res = account + ' - '
