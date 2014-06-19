@@ -274,15 +274,28 @@ class Process(object):
         # to create a view in the DB with a corresponding SQLAlchemy class and
         # query that with SQLAlchemy.
         assert re.match(ACCOUNT_NAME_REGEX, account)
-        statement = '''select sequence, max(version) as max_version,
-        period_start, period_end, issued, issue_date,
-        ree_value, prior_balance, payment_received,
-        total_adjustment, balance_forward, ree_charge, balance_due
-        from customer join reebill on customer.id = reebill.customer_id
-        join utilbill_reebill on reebill.id = reebill_id
-        join utilbill on utilbill_id = utilbill.id
-        where account = %s
-        group by reebill.customer_id, sequence''' % account
+        statement = '''
+            select
+                r1.sequence, r3.max_version, ub.period_start,
+                ub.period_end, r1.issued, r1.issue_date,
+                r1.ree_value, r1.prior_balance, r1.payment_received,
+                r1.total_adjustment, r1.balance_forward, r1.ree_charge,
+                r1.balance_due
+            from reebill as r1
+            right join (
+                select  sequence, max(version) as max_version,
+                        customer.id as customer_id
+                from reebill as r2
+                join customer on r2.customer_id = customer.id
+                where customer.account="%s"
+                group by sequence
+            ) as r3
+            on r3.sequence = r1.sequence
+                and r3.max_version = r1.version
+                and r3.customer_id = r1.customer_id
+            join utilbill_reebill as ubrb on r1.id = ubrb.reebill_id
+            join utilbill as ub on ubrb.utilbill_id = ub.id;
+        ''' % account
         query = session.query('sequence', 'max_version', 'period_start',
                 'period_end', 'issued', 'issue_date',
                 'ree_value', 'prior_balance', 'payment_received',
