@@ -1808,6 +1808,17 @@ class Process(object):
 
         return data, total_count
 
+    def update_reebill_readings(self, session, account, sequence):
+        '''Replace the readings of the reebill given by account, sequence
+        with a new set of readings that matches the reebill's utility bill.
+        '''
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill.update_readings_from_document(session, utilbill_doc)
+
     def bind_renewable_energy(self, session, account, sequence):
         reebill = self.state_db.get_reebill(session, account, sequence)
         self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),

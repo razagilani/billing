@@ -68,6 +68,15 @@ for reebill in s.query(ReeBill).join(Customer) \
             conventional_quantity = the_register['quantity']
             unit = the_register['quantity_units']
 
+        # for 10004, an account that has multiple meters that all measure
+        # total energy, only the first meter should  be used.
+        # see https://www.pivotaltracker.com/story/show/72656436
+        if reebill.customer.account == '10004' and \
+                sr['register_binding'] not in (None, 'REG_TOTAL'):
+            print 'INFO %s-%s-%s skipped register %s' % (
+                    reebill.customer.account, reebill.sequence, reebill.version,
+                    sr['register_binding'])
+            continue
         cur.execute('''insert into reading (reebill_id, register_binding,
                 measure, conventional_quantity, renewable_quantity, unit)
                 values (%s, '%s', '%s', %s, %s, '%s')''' % (

@@ -88,7 +88,7 @@ class FetchTest(unittest.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    reebill_dao)
+                reebill_dao, None)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
