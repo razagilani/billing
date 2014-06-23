@@ -11,7 +11,8 @@ from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
-from billing.processing.state import Session
+#from billing.processing.state import Session
+from data.model.orm import Session
 from processing.state import Charge, UtilBill
 from bson.objectid import ObjectId
 
@@ -34,6 +35,8 @@ def copy_charges_from_mongo():
             continue
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
+            if mongo_charge.get('quantity_units', "") is None:
+                continue
             s.add(Charge(ub,
                          mongo_charge.get('description', ""),
                          mongo_charge.get('group', ""),
@@ -47,7 +50,7 @@ def copy_charges_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 21')
-    alembic_upgrade('55e7e5ebdd29')
+    #alembic_upgrade('55e7e5ebdd29')
     init_model()
     copy_charges_from_mongo()
     log.info('Upgrade to version 21 complete')

@@ -7,11 +7,13 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+from pprint import pprint
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
-from billing.processing.state import Session
+#from billing.processing.state import Session
+from billing.data.model.orm import Session
 from processing.state import Register, UtilBill
 from bson.objectid import ObjectId
 
@@ -34,7 +36,7 @@ def copy_registers_from_mongo():
                       "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
         for mongo_meter in mongo_ub['meters']:
-            for mongo_register in mongo_ub['registers']:
+            for mongo_register in mongo_meter['registers']:
                 log.debug('Adding register for utilbill id %s' % ub.id)
                 s.add(Register(ub,
                                mongo_register.get('description', ""),
@@ -51,7 +53,7 @@ def copy_registers_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
-    alembic_upgrade('1df716f63a8b')
+    #alembic_upgrade('1df716f63a8b')
     log.info('Alembic Upgrade Complete')
     init_model()
     copy_registers_from_mongo()

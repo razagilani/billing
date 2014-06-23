@@ -48,7 +48,8 @@ def init_logging(path='settings.cfg'):
 def init_model(uri=None):
     """Initializes the sqlalchemy data model. 
     """
-    from billing.processing.state import Session, Base, check_schema_revision
+    #from billing.processing.state import Session, Base, check_schema_revision
+    from billing.data.model import Session, Base, check_schema_revision
     from sqlalchemy import create_engine
     import logging
     log = logging.getLogger(__name__)

@@ -8,30 +8,20 @@ import os, sys
 import itertools
 import datetime
 from datetime import timedelta, datetime, date
-from itertools import groupby, chain
+from itertools import groupby
 from operator import attrgetter, itemgetter
 import sqlalchemy
-from sqlalchemy import Table, Column, MetaData, ForeignKey
-from sqlalchemy import create_engine
-from sqlalchemy.orm import mapper, sessionmaker, scoped_session
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc, asc, label
-from sqlalchemy.sql.functions import max as sql_max
-from sqlalchemy.sql.functions import min as sql_min
-from sqlalchemy import func, not_
+from sqlalchemy.sql.expression import desc, asc
+from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
 
-from exc import DatabaseError
-from alembic.script import ScriptDirectory
-from alembic.config import Config
-from billing import config
-from alembic.migration import MigrationContext
+from billing.data.model.orm import Base, Session
 import logging
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
@@ -44,43 +34,9 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
 log = logging.getLogger(__name__)
 
-Session = scoped_session(sessionmaker())
-
-class Base(object):
-
-    @classmethod
-    def column_names(cls):
-        return [prop.key for prop in class_mapper(cls).iterate_properties
-                if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
-
-    def __eq__(self, other):
-        return all([getattr(self, x) == getattr(other, x) for x in
-                    self.column_names()])
-
-    def column_dict(self):
-        return {c: getattr(self, c) for c in self.column_names()}
-
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base(cls=Base)
-
-
-#_schema_revision = '55e7e5ebdd29'
-_schema_revision = '2a89489227e'
-
-def check_schema_revision(schema_revision=_schema_revision):
-    """Checks to see whether the database schema revision matches the 
-    revision expected by the model metadata.
-    """
-    s = Session()
-    conn = s.connection()
-    context = MigrationContext.configure(conn)
-    current_revision = context.get_current_revision()
-    if current_revision != schema_revision:
-        raise DatabaseError("Database schema revision mismatch."
-                            " Require revision %s; current revision %s"
-                            % (schema_revision, current_revision))
-    log.debug('Verified database at schema revision %s' % current_revision)
+__all__ = ["Address", "Charge", "Customer", "Payment", "Reading", "ReeBill",
+           "ReeBillCharge", "Register", "StateDB", "StatusDaysSince",
+           "UtilBill", "UtilBillLoader"]
 
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
