@@ -66,7 +66,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var store = this.getIssuableReebillsStore();
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/issue_and_mail',
+            url: 'http://'+window.location.host+'/rest/issue_and_mail',
             method: 'POST',
             params: {
                 account: selected.get('account'),

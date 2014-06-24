@@ -43,7 +43,7 @@ Ext.define('ReeBill.controller.Journal', {
         var selectedAccount = scope.getAccountsGrid().getSelectionModel().getSelection()[0];
 
         this.getNoteForm().getForm().submit({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/save_journal_entry',
+            url: 'http://'+window.location.host+'/rest/save_journal_entry',
             params: {
                 account: selectedAccount.get('account'),
                 sequence: null

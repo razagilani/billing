@@ -23,7 +23,7 @@ Ext.define('ReeBill.store.JournalEntries', {
 
         simpleSortMode: true,
 
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/journal',
+        url: 'http://'+window.location.host+'/rest/journal',
 		reader: {
 			type: 'json',
 			root: 'rows',

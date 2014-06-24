@@ -48,7 +48,7 @@ class RESTResource(object):
          raise cherrypy.HTTPError(405, "Method not implemented.")
       return method(*vpath, **params);
 
-class FooResource(RESTResource):
+class Accounts(RESTResource):
     def handle_GET(self, *vpath, **params):
         retval = "Path Elements:<br/>" + '<br/>'.join(vpath)
         query = ['%s=>%s' % (k,v) for k,v in params.items()]
@@ -57,7 +57,7 @@ class FooResource(RESTResource):
         return retval
 
 class BillToolBridge(object):
-    foo = FooResource()
+    accounts = Accounts()
 
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
@@ -226,7 +226,7 @@ class BillToolBridge(object):
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
 
-        raise cherrypy.HTTPRedirect('/login.html')
+        raise cherrypy.HTTPRedirect('/index.html')
 
     @cherrypy.expose
     def login(username, password, rememberme='off', **kwargs):
@@ -237,28 +237,53 @@ class BillToolBridge(object):
             return self.dumps({'success': False, 'errors':
                 {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def ui_configuration(self, **kwargs):
+        '''Returns the UI javascript file.'''
+        ui_config_file_path = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), 'ui', 'ui.cfg')
+        ui_config = ConfigParser.RawConfigParser()
+        # NB: read() takes a list of file paths, not a file.
+        # also note that ConfigParser converts all keys to lowercase
+        ui_config.read([ui_config_file_path])
 
-USERS = {'jon': 'secret'}
+        # currently we have only one section
+        config_dict = dict(ui_config.items('tabs'))
 
-def check_auth(username, password):
-    if username in USERS and USERS[username] == password:
-       return True
-    return False
+        # convert "true"/"false" strings to booleans
+        config_dict = deep_map(
+                lambda x: {'true':True, 'false':False}.get(x,x),
+                config_dict)
+        #config_dict['default_account_sort_field'] = cherrypy.session[
+        # 'user'].preferences.get(
+        #    'default_account_sort_field','account')
+        #config_dict['default_account_sort_dir'] = cherrypy.session[
+        # 'user'].preferences.get(
+        #    'default_account_sort_direction','DESC')
+        return config_dict
 
 cherrypy_config = {
     '/': {
-        'tools.sessions.on': True
+        'tools.sessions.on': True,
+        'tools.staticdir.root': os.path.dirname(
+            os.path.realpath(__file__))+'/ui'
     },
     '/login.html': {
         'tools.staticfile.on': True,
         'tools.staticfile.filename': os.path.dirname(
             os.path.realpath(__file__))+"/ui/login.html"
     },
-    'static/':{
+    '/index.html': {
+        'tools.staticfile.on': True,
+        'tools.staticfile.filename': os.path.dirname(
+            os.path.realpath(__file__))+"/ui/index.html"
+    },
+    '/static': {
         'tools.staticdir.on': True,
-        'tools.staticdir.dir': os.path.dirname(
-            os.path.realpath(__file__))+"/static/"
+        'tools.staticdir.dir': 'static'
     }
+
 }
 
 if __name__ == '__main__':

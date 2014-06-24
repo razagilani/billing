@@ -9,7 +9,7 @@ Ext.define('ReeBill.store.Payments', {
 
 	proxy: {
 		type: 'ajax',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/payment',
+        url: 'http://'+window.location.host+'/rest/payment',
 
         pageParam: false,
         

@@ -76,7 +76,7 @@ Ext.define('ReeBill.controller.Accounts', {
         var newAccountField = this.getAccountForm().down('textfield[name=account]');
 
         Ext.Ajax.request({
-            url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/get_next_account_number',
+            url: 'http://' + window.location.host + '/reebill/get_next_account_number',
             success: function(response){
                 var jsonData = Ext.JSON.decode(response.responseText);
                 newAccountField.setValue(jsonData['account']);
@@ -96,7 +96,7 @@ Ext.define('ReeBill.controller.Accounts', {
             var values = accountForm.getForm().getValues();
 
             accountForm.getForm().submit({
-                url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/new_account',
+                url: 'http://' + window.location.host + '/reebill/new_account',
                 success: function(form, action) {
                     Ext.Msg.alert('Success', 'New account created.');
 

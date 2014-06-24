@@ -124,7 +124,7 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+            url: 'http://'+window.location.host+'/rest/actualCharges',
             method: 'POST',
             params: {
                 xaction: 'create',
@@ -166,7 +166,7 @@ Ext.define('ReeBill.controller.Charges', {
         };
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+            url: 'http://'+window.location.host+'/rest/actualCharges',
             method: 'POST',
             params: params,
             success: function(response, request) {
@@ -192,7 +192,7 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+            url: 'http://'+window.location.host+'/rest/actualCharges',
             method: 'POST',
             params: {
                 xaction: 'destroy',
@@ -216,7 +216,7 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_utility_bill',
+            url: 'http://'+window.location.host+'/rest/compute_utility_bill',
             params: { utilbill_id: selectedBill[0].get('id') },
             success: function(result, request) {
                 store.reload();
@@ -236,7 +236,7 @@ Ext.define('ReeBill.controller.Charges', {
                 return;
 
             Ext.Ajax.request({
-                url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+                url: 'http://'+window.location.host+'/rest/actualCharges',
                 method: 'POST',
                 params: {
                     utilbill_id: selectedBill[0].get('id'),
@@ -275,7 +275,7 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/refresh_charges',
+            url: 'http://'+window.location.host+'/rest/refresh_charges',
             params: { utilbill_id: selectedBill[0].get('id') },
             success: function(result, request) {
                 store.reload();

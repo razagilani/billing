@@ -108,7 +108,7 @@ Ext.define('ReeBill.controller.RateStructures', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/rsi',
+            url: 'http://'+window.location.host+'/rest/rsi',
             method: 'POST',
             params: {
                 xaction: 'create',
@@ -146,7 +146,7 @@ Ext.define('ReeBill.controller.RateStructures', {
         };
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/rsi',
+            url: 'http://'+window.location.host+'/rest/rsi',
             method: 'POST',
             params: params,
             success: function(response, request) {
@@ -176,7 +176,7 @@ Ext.define('ReeBill.controller.RateStructures', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/rsi',
+            url: 'http://'+window.location.host+'/rest/rsi',
             method: 'POST',
             params: {
                 xaction: 'destroy',
@@ -203,7 +203,7 @@ Ext.define('ReeBill.controller.RateStructures', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/regenerate_rs',
+            url: 'http://'+window.location.host+'/rest/regenerate_rs',
             params: {
                 utilbill_id: selectedBill[0].get('id')
             },
