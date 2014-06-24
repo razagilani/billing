@@ -1,5 +1,5 @@
 Ext.Ajax.request({
-    url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/ui_configuration',
+    url: 'http://' + window.location.host + '/ui_configuration',
     dataType: 'json',
     success: function(response) {
         var data = Ext.JSON.decode(response.responseText);

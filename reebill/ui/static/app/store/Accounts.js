@@ -16,7 +16,7 @@ Ext.define('ReeBill.store.Accounts', {
         simpleSortMode: true,		
         pageParam: false,
 
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/retrieve_account_status',
+        url: 'http://' + window.location.host + '/reebill/retrieve_account_status',
 
         reader: {
 			type: 'json',

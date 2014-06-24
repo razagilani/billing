@@ -15,7 +15,7 @@ Ext.define('ReeBill.store.RateStructures', {
             xaction: 'read'
         },
 
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/rsi',
+        url: 'http://'+window.location.host+'/rest/rsi',
 		reader: {
 			type: 'json',
 			root: 'rows',

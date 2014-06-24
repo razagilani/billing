@@ -17,7 +17,7 @@ Ext.define('ReeBill.store.Reebills', {
             xaction: 'read'
         },
 
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/reebill',
+        url: 'http://'+window.location.host+'/rest/reebill',
 		reader: {
 			type: 'json',
 			root: 'rows',

@@ -10,7 +10,7 @@ Ext.define('ReeBill.store.AccountsReeValue', {
 	proxy: {
 		type: 'ajax',
         
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/summary_ree_charges',
+        url: 'http://' + window.location.host + '/reebill/summary_ree_charges',
 		
         simpleSortMode: true,       
         pageParam: false,

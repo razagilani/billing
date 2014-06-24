@@ -130,7 +130,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         accountField.setValue(selected[0].get('account'));
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/last_utilbill_end_date',
+            url: 'http://'+window.location.host+'/rest/last_utilbill_end_date',
             params: { 
                 account: selected[0].get('account')
             },
@@ -156,7 +156,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var scope = this;
 
         this.getUploadUtilityBillForm().getForm().submit({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/upload_utility_bill',
+            url: 'http://'+window.location.host+'/rest/upload_utility_bill',
             success: function() {
                 scope.initalizeUploadForm();
             },
@@ -177,7 +177,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_utility_bill',
+            url: 'http://'+window.location.host+'/rest/compute_utility_bill',
             params: { 
                 utilbill_id: selected[0].get('id')
             },
@@ -206,7 +206,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             function(answer) {
                 if (answer == 'yes') {
                     Ext.Ajax.request({
-                        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_grid',
+                        url: 'http://'+window.location.host+'/rest/utilbill_grid',
                         params: { 
                             account: selectedAccount[0].get('account'),
                             rows: selected[0].get('id'),
@@ -237,7 +237,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         rec.set('processed', !rec.get('processed'));
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/mark_utilbill_processed',
+            url: 'http://'+window.location.host+'/rest/mark_utilbill_processed',
             params: { 
                 utilbill: rec.get('id'),
                 processed: +(rec.get('processed')) 
@@ -263,7 +263,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/addImagetoDLA',
+            url: 'http://'+window.location.host+'/rest/addImagetoDLA',
 
             params: { 
                 utilbill_id: selected[0].get('id')
@@ -289,7 +289,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/dlasliceimage',
+            url: 'http://'+window.location.host+'/rest/dlasliceimage',
             params: { 
                 utilbill_id: selected[0].get('id')
             },
@@ -317,7 +317,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/dlagetresults',
+            url: 'http://'+window.location.host+'/rest/dlagetresults',
             params: { 
                 utilbill_id: selected[0].get('id')
             },

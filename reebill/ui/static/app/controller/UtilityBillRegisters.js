@@ -129,7 +129,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         };
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_registers',
+            url: 'http://'+window.location.host+'/rest/utilbill_registers',
             method: 'POST',
             params: params,
             success: function(response, request) {
@@ -155,7 +155,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_registers',
+            url: 'http://'+window.location.host+'/rest/utilbill_registers',
             method: 'POST',
             params: {
                 xaction: 'create',
@@ -188,7 +188,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_registers',
+            url: 'http://'+window.location.host+'/rest/utilbill_registers',
             method: 'POST',
             params: {
                 xaction: 'destroy',
@@ -251,7 +251,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             params.sequence = '';
 
         form.submit({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/upload_interval_meter_csv',
+            url: 'http://'+window.location.host+'/rest/upload_interval_meter_csv',
             params: params, 
             waitMsg:'Saving...',
             failure: function(form, action) {

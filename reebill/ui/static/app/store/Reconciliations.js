@@ -17,7 +17,7 @@ Ext.define('ReeBill.store.Reconciliations', {
             xaction: 'read'
         },
 
-        url: 'http://' + 'reebill-demo.skylineinnovations.net' + '/reebill/get_reconciliation_data',
+        url: 'http://' + window.location.host + '/reebill/get_reconciliation_data',
 		reader: {
 			type: 'json',
 			root: 'rows',

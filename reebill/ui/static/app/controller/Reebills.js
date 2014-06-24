@@ -121,7 +121,7 @@ Ext.define('ReeBill.controller.Reebills', {
         waitMask.show();
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/bindree',
+            url: 'http://'+window.location.host+'/rest/bindree',
             method: 'POST',
             params: {
                 account: selectedAccount.get('account'),
@@ -160,7 +160,7 @@ Ext.define('ReeBill.controller.Reebills', {
         var selectedAccount = selectedAccounts[0];
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/compute_bill',
+            url: 'http://'+window.location.host+'/rest/compute_bill',
             method: 'POST',
             params: {
                 account: selectedAccount.get('account'),
@@ -201,7 +201,7 @@ Ext.define('ReeBill.controller.Reebills', {
         Ext.Msg.confirm('Confirm deletion', msg, function(answer) {
             if (answer == 'yes') {
                 Ext.Ajax.request({
-                    url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/delete_reebill',
+                    url: 'http://'+window.location.host+'/rest/delete_reebill',
                     method: 'POST',
                     params: {
                         account: selectedAccount.get('account'),
@@ -238,7 +238,7 @@ Ext.define('ReeBill.controller.Reebills', {
         var selectedAccount = selectedAccounts[0];
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/render',
+            url: 'http://'+window.location.host+'/rest/render',
             method: 'POST',
             params: {
                 account: selectedAccount.get('account'),
@@ -271,7 +271,7 @@ Ext.define('ReeBill.controller.Reebills', {
         waitMask.show();
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/new_reebill_version',
+            url: 'http://'+window.location.host+'/rest/new_reebill_version',
             method: 'POST',
             params: {
                 account: selectedAccount.get('account'),

@@ -76,7 +76,7 @@ Ext.define('ReeBill.controller.Payments', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/payment',
+            url: 'http://'+window.location.host+'/rest/payment',
             method: 'POST',
             params: {
                 xaction: 'create',
@@ -124,7 +124,7 @@ Ext.define('ReeBill.controller.Payments', {
         };
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/payment',
+            url: 'http://'+window.location.host+'/rest/payment',
             method: 'POST',
             params: params,
             success: function(response, request) {
@@ -150,7 +150,7 @@ Ext.define('ReeBill.controller.Payments', {
             return;
 
         Ext.Ajax.request({
-            url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/payment',
+            url: 'http://'+window.location.host+'/rest/payment',
             method: 'POST',
             params: {
                 xaction: 'destroy',

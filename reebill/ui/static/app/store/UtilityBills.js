@@ -17,7 +17,7 @@ Ext.define('ReeBill.store.UtilityBills', {
 
         simpleSortMode: true,
 
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/utilbill_grid',
+        url: 'http://'+window.location.host+'/rest/utilbill_grid',
 		reader: {
 			type: 'json',
 			root: 'rows',

@@ -11,7 +11,7 @@ Ext.define('ReeBill.store.ReebillCharges', {
 
 	proxy: {
 		type: 'ajax',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/hypotheticalCharges',
+        url: 'http://'+window.location.host+'/rest/hypotheticalCharges',
 
         pageParam: false,
         

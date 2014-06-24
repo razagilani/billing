@@ -12,7 +12,7 @@ Ext.define('ReeBill.store.IssuableReebills', {
 
 	proxy: {
         type: 'ajax',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/issuable',
+        url: 'http://'+window.location.host+'/rest/issuable',
 
         pageParam: false,        
 

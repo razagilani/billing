@@ -10,7 +10,7 @@ Ext.define('ReeBill.store.Charges', {
 
 	proxy: {
 		type: 'ajax',
-        url: 'http://'+'reebill-demo.skylineinnovations.net'+'/reebill/actualCharges',
+        url: 'http://'+window.location.host+'/rest/actualCharges',
 
         extraParams: {
             xaction: 'read'
