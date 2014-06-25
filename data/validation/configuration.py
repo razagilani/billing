@@ -15,7 +15,8 @@ class Directory(FancyValidator):
         if isdir(value): return value
         raise Invalid("Please specify a valid directory", value, state)        
 
-
+class alembic(Schema):
+    script_location = Directory()
 
 class runtime(Schema):
     integrate_skyline_backend = StringBool()
@@ -73,7 +74,7 @@ class authentication(Schema):
     authenticate = StringBool()
     
 class billimages(Schema):
-    bill_image_directory = Directory()
+    bill_image_directory = String()
     show_reebill_images = StringBool()
     
 class reebillrendering(Schema):

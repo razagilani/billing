@@ -3,7 +3,7 @@ Ext.define('ReeBill.store.Reebills', {
 
     model: 'ReeBill.model.Reebill',
 
-    autoLoad: true,
+    autoLoad: false,
     remoteSort: true,
 
 	proxy: {
@@ -17,7 +17,7 @@ Ext.define('ReeBill.store.Reebills', {
             xaction: 'read'
         },
 
-        url: 'http://'+window.location.host+'/rest/reebill',
+        url: 'http://'+window.location.host+'/reebill/reebills/',
 		reader: {
 			type: 'json',
 			root: 'rows',
