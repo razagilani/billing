@@ -140,7 +140,7 @@ port = 27017
         }, self.state_db, self.reebill_dao,
                 logger)
 
-        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao)
+        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao, logger)
 
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
@@ -152,6 +152,10 @@ port = 27017
         # clear out mongo test database
         mongo_connection = pymongo.Connection('localhost', 27017)
         mongo_connection.drop_database('test')
+
+        # this helps avoid a "lock wait timeout exceeded" error when a test
+        # fails to commit the SQLAlchemy session
+        self.state_db.session.commit()
 
         # clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')

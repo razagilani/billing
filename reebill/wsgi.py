@@ -304,7 +304,7 @@ class BillToolBridge:
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao)
+                self.reebill_dao, self.logger)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
@@ -321,7 +321,6 @@ class BillToolBridge:
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -658,6 +657,14 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def update_readings(self, account, sequence, **kwargs):
+        with DBSession(self.state_db) as session:
+            self.process.update_reebill_readings(session, account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
@@ -953,7 +960,7 @@ class BillToolBridge:
             if account is not None:
                 spreadsheet_name = account + '.xls'
             else:
-                spreadsheet_name = 'xbill_accounts.xls'
+                spreadsheet_name = 'brokerage_accounts.xls'
 
             exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
@@ -1052,7 +1059,7 @@ class BillToolBridge:
                 if type(rows) is dict: rows = [rows]
                 # process list of edits
                 for row in rows:
-                    self.state_db.update_payment(
+                    self.process.update_payment(
                         session,
                         row['id'],
                         row['date_applied'],
@@ -1063,7 +1070,7 @@ class BillToolBridge:
             elif xaction == "create":
                 # date applied is today by default (can be edited later)
                 today = datetime.utcnow().date()
-                new_payment = self.state_db.create_payment(session, account,
+                new_payment = self.process.create_payment(session, account,
                         today, "New Entry", 0)
                 # Payment object lacks "id" until row is inserted in database
                 session.flush()
@@ -1073,7 +1080,7 @@ class BillToolBridge:
                 # single delete comes in not in a list
                 if type(rows) is int: rows = [rows]
                 for oid in rows:
-                    self.state_db.delete_payment(session, oid)
+                    self.process.delete_payment(session, oid)
                 return self.dumps({'success':True})
 
     @cherrypy.expose
@@ -1176,17 +1183,16 @@ class BillToolBridge:
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
+            version = self.process.new_version(session, account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence, new_reebill.version)
+                    account, sequence, version)
             # NOTE ReebillBoundEvent is no longer saved in the journal because
             # new energy data are not retrieved unless the user explicitly
             # chooses to do it by clicking "Bind RE&E"
 
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences':
-                    [new_reebill.sequence]})
+            return self.dumps({'success': True, 'sequences': [sequence]})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1196,14 +1202,9 @@ class BillToolBridge:
         '''
         with DBSession(self.state_db) as session:
             sequence = int(sequence)
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            return self.dumps({
-                'success': True,
-                'billing_address': reebill.billing_address.to_dict(),
-                'service_address': reebill.service_address.to_dict(),
-                'discount_rate': reebill.discount_rate,
-                'late_charge_rate': reebill.late_charge_rate,
-            })
+            return self.dumps(dict_merge({'success': True},
+                    self.process.get_sequential_account_info(session, account,
+                    sequence)))
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1336,13 +1337,15 @@ class BillToolBridge:
             raise ValueError('Unknown xaction "%s"' % xaction)
 
         with DBSession(self.state_db) as session:
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
+            '''utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
                     reebill_sequence=reebill_sequence,
-                    reebill_version=reebill_version)
+                    reebill_version=reebill_version)'''
 
             if xaction == 'read':
                 # get dictionaries describing all registers in all utility bills
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
+                registers_json = self.process.get_registers_json(session, utilbill_id,
+                                                reebill_sequence=reebill_sequence,
+                                                reebill_version=reebill_version)
 
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
@@ -1375,11 +1378,15 @@ class BillToolBridge:
                             row.get('register_id',''))
 
                     # create the new register (ignoring return value)
-                    mongo.new_register(utilbill_doc, row.get('meter_id', None),
-                            row.get('register_id', None))
+                    self.process.new_register(session, utilbill_id, row,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
+
 
                 # get dictionaries describing all registers in all utility bills
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
+                registers_json = self.process.get_registers_json(session, utilbill_id,
+                                                reebill_sequence=reebill_sequence,
+                                                reebill_version=reebill_version)
 
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
@@ -1416,8 +1423,9 @@ class BillToolBridge:
                     # (getting back values necessary to tell the client which row
                     # should be selected)
                     del row['id']
-                    new_meter_id, new_reg_id = mongo.update_register(
-                            utilbill_doc, orig_meter_id, orig_reg_id, **row)
+                    new_meter_id, new_reg_id = self.process.update_register(
+                            session, utilbill_id, orig_meter_id, orig_reg_id,
+                            row)
 
                     # if this row was selected before, tell the client it should
                     # still be selected, specifying the row by its new "id"
@@ -1426,7 +1434,9 @@ class BillToolBridge:
                         result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
                                 new_meter_id, new_reg_id)
 
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
+                registers_json = self.process.get_registers_json(session, utilbill_id,
+                                                reebill_sequence=reebill_sequence,
+                                                reebill_version=reebill_version)
                 result.update({
                     'rows': registers_json,
                     'total': len(registers_json)
@@ -1439,16 +1449,18 @@ class BillToolBridge:
                 # extract keys needed to identify the register being updated
                 _, orig_meter_id, orig_reg_id = id_of_row_to_delete\
                         .split('/')
-                mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
+                self.process.delete_register(session, utilbill_id, orig_meter_id, orig_reg_id,
+                                                reebill_sequence=reebill_sequence,
+                                                reebill_version=reebill_version)
 
                 # NOTE there is no "current_selected_id" because the formerly
                 # selected row was deleted
-                registers_json = mongo.get_all_actual_registers_json(
-                        utilbill_doc)
+                registers_json = self.process.get_registers_json(session, utilbill_id,
+                                                reebill_sequence=reebill_sequence,
+                                                reebill_version=reebill_version)
                 result = {'success': True, "rows": registers_json,
                         'total': len(registers_json)}
 
-            self.reebill_dao.save_utilbill(utilbill_doc)
             return self.dumps(result)
 
     #
@@ -1698,6 +1710,10 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
             'tools.sessions.timeout': 240
         },
+        '/utilitybillimages' : {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': '/tmp/billimages'
+        }
     }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),

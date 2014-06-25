@@ -285,7 +285,7 @@ class BillUpload(object):
         # stderr
         if convert_result.returncode != 0:
             error_text = convert_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(convert_command), \
+            raise IOError('"%s" failed: %s' % (' '.join(convert_command), \
                     error_text))
 
         # if the original was a multi-page PDF, 'convert' may have produced
@@ -312,7 +312,7 @@ class BillUpload(object):
         # it printed to stderr
         if montage_result.returncode != 0:
             error_text = montage_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(montage_command),
+            raise IOError('"%s" failed: %s' % (' '.join(montage_command),
                 error_text))
     
         # delete the individual page images now that they've been joined
