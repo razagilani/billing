@@ -7,7 +7,7 @@ Ext.define('ReeBill.store.AccountTemplates', {
         
 	proxy: {
 		type: 'ajax',
-        url: 'http://'+window.location.host+'/rest/listAccounts',
+        url: 'http://'+window.location.host+'/accounts/list',
 
         pageParam: false,
         
