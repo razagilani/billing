@@ -1,3 +1,10 @@
+Ext.Ajax.on('requestexception', function (conn, response, options) {
+    if (response.status === 401) {
+        Ext.Msg.alert('Error', 'Please log in!');
+        window.location = 'login';
+    }
+});
+
 Ext.Ajax.request({
     url: 'http://' + window.location.host + '/reebill/ui_configuration',
     dataType: 'json',
@@ -39,8 +46,8 @@ Ext.Ajax.request({
             ],
 
             models: [
-                'Account', 'AccountReeValue', 'AccountTemplate', 'Charge', 
-                'IssuableReebill', 'JournalEntry', 'Payment', 'RateStructure', 'Reconciliation', 
+                'Account', 'AccountReeValue', 'AccountTemplate', 'Charge',
+                'IssuableReebill', 'JournalEntry', 'Payment', 'RateStructure', 'Reconciliation',
                 'Reebill', 'ReebillCharge', 'UtilityBill', 'UtilityBillRegister'
             ],
             
@@ -48,8 +55,5 @@ Ext.Ajax.request({
 
             }
         });
-    },
-    failure: function() {
-        Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');
     }
 });

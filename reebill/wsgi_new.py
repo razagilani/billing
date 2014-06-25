@@ -54,6 +54,19 @@ from billing.processing.exceptions import Unauthenticated, IssuedBillError
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 
+def authenticate():
+    user = cherrypy.session.get('user', None)
+    if not user:
+        raise cherrypy.HTTPRedirect('login.html')
+cherrypy.tools.authenticate = cherrypy.Tool('before_handler', authenticate)
+
+def authenticate_ajax():
+    user = cherrypy.session.get('user', None)
+    if not user:
+        raise cherrypy.HTTPError(401, "Unauthorized")
+cherrypy.tools.authenticate_ajax = cherrypy.Tool('before_handler',
+                                                 authenticate_ajax)
+
 class WebResource(object):
 
     def __init__(self):
@@ -179,8 +192,8 @@ class RESTResource(WebResource):
     handle_POST
     handle_DELETE
     """
-
     @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
     def default(self, *vpath, **params):
         print "\n", vpath, "\n", params, "\n"
         method = getattr(self, "handle_" + cherrypy.request.method, None)
@@ -220,6 +233,7 @@ class AccountsListResource(RESTResource):
                 self.process.full_names_of_accounts(self.session, accounts))]
         return True, {'rows': rows, 'results': len(rows)}
 
+
 class AccountsResource(RESTResource):
     list = AccountsListResource()
 
@@ -244,6 +258,9 @@ class AccountsResource(RESTResource):
         #if sortdir is None:
         #    sortdir = cherrypy.session['user'].preferences.get(
         # 'default_account_sort_direction',None)
+
+        sortcol = 'account'
+        sortdir = 'ASC'
 
         if sortdir == 'ASC':
             sortreverse = False
@@ -287,6 +304,7 @@ class IssuableReebills(RESTResource):
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
 
+
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
 
@@ -313,10 +331,52 @@ class BillToolBridge(WebResource):
     reebills = ReebillsResource()
 
     @cherrypy.expose
+    @cherrypy.tools.authenticate()
     def index(self):
-        # delete remember me
-        # This is how cookies are deleted? the key in the response cookie must
-        # be set before expires can be set
+        raise cherrypy.HTTPRedirect('index.html')
+
+    @cherrypy.expose
+    def login(self, username=None, password=None, rememberme='off', **kwargs):
+        if cherrypy.request.method == "GET":
+            raise cherrypy.HTTPRedirect('login.html')
+
+        if cherrypy.request.method != "POST":
+            raise cherrypy.HTTPError(403, "Forbidden")
+
+        user = self.user_dao.load_user(username, password)
+        if user is None:
+            self.logger.info(('login attempt failed: username "%s"'
+                ', remember me: %s') % (username, rememberme))
+            return json.dumps(
+                {'success': False,
+                 'error': 'Incorrect username or password'
+                })
+
+        cherrypy.session['user'] = user
+
+        if rememberme == 'on':
+            credentials = "%s-%s-%s" % (
+                username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
+            m = md5.new()
+            m.update(credentials)
+            digest = m.hexdigest()
+
+            user.session_token = digest
+            self.user_dao.save_user(user)
+
+            # this cookie has no expiration, so lasts as long as the browser is open
+            cherrypy.response.cookie['username'] = user.username
+            cherrypy.response.cookie['c'] = digest
+
+        self.logger.info(('user "%s" logged in: remember '
+            'me: "%s" type is %s') % (username, rememberme,
+            type(rememberme)))
+        return json.dumps({'success': True})
+
+    @cherrypy.expose
+    def logout(self):
+       # delete remember me
+        # The key in the response cookie must be set before expires can be set
         cherrypy.response.cookie['username'] = ""
         cherrypy.response.cookie['username'].expires = 0
         cherrypy.response.cookie['c'] = ""
@@ -327,18 +387,11 @@ class BillToolBridge(WebResource):
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
 
-        raise cherrypy.HTTPRedirect('/index.html')
+        raise cherrypy.HTTPRedirect('login')
+
 
     @cherrypy.expose
-    def login(username, password, rememberme='off', **kwargs):
-        user = self.user_dao.load_user(username, password)
-        if user is None:
-            self.logger.info(('login attempt failed: username "%s"'
-                ', remember me: %s') % (username, rememberme))
-            return self.dumps({'success': False, 'errors':
-                {'username':'Incorrect username or password', 'reason': 'No Session'}})
-
-    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
     @cherrypy.tools.json_out()
     def ui_configuration(self, **kwargs):
         '''Returns the UI javascript file.'''
