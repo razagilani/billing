@@ -1,6 +1,10 @@
 '''
 File: wsgi.py
 '''
+from billing import initialize
+initialize()
+from billing import config
+
 import sys
 import os
 import pprint
@@ -29,17 +33,17 @@ from operator import itemgetter
 from StringIO import StringIO
 import pymongo
 import mongoengine
-from skyliner.splinter import Splinter
-from skyliner import mock_skyliner
+from billing.skyliner.splinter import Splinter
+from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map, dict_merge
+from billing.nexusapi.nexus_util import NexusUtil
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
         rate_structure2 as rs
-from billing.processing.state import UtilBill
+from billing.processing.state import UtilBill, Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
@@ -156,10 +160,10 @@ class BillToolBridge:
       initialized, then rollback.
     """
 
-    config = None
 
-    # TODO: refactor config and share it between btb and bt 15413411
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
+        """
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
@@ -170,7 +174,9 @@ class BillToolBridge:
             sys.exit(1)
 
         self.config.read(config_file_path)
+        """
 
+        """
         # logging:
         # get log file name and format from config file
         # TODO: if logging section of config file is malformed, choose default
@@ -187,7 +193,11 @@ class BillToolBridge:
                     % log_file_path
             raise
         # create logger
+        """
+        
         self.logger = logging.getLogger('reebill')
+        
+        """
         formatter = logging.Formatter(log_format)
         handler = logging.FileHandler(log_file_path)
         handler.setFormatter(formatter)
@@ -197,6 +207,7 @@ class BillToolBridge:
         # messages like the initialization message at the end of this function,
         # the level has to be changed.
         self.logger.setLevel(logging.DEBUG)
+        """
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
@@ -207,10 +218,11 @@ class BillToolBridge:
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(
-            host=self.statedb_config['host'],
-            password=self.statedb_config['password'],
-            database=self.statedb_config['database'],
-            user=self.statedb_config['user'],
+            #host=self.statedb_config['host'],
+            #password=self.statedb_config['password'],
+            #database=self.statedb_config['database'],
+            #user=self.statedb_config['user'],
+            Session,
             logger=self.logger,
         )
 
@@ -248,7 +260,7 @@ class BillToolBridge:
             self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
-        if self.config.getboolean('runtime', 'mock_skyliner'):
+        if self.config.get('runtime', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
@@ -281,7 +293,7 @@ class BillToolBridge:
                 },
             )
 
-        self.integrate_skyline_backend = self.config.getboolean('runtime',
+        self.integrate_skyline_backend = self.config.get('runtime',
                 'integrate_skyline_backend')
 
         # create a ReebillRenderer
@@ -301,7 +313,7 @@ class BillToolBridge:
 
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.getboolean('authentication', 'authenticate')
+        self.authentication_on = self.config.get('authentication', 'authenticate')
 
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
@@ -656,9 +668,9 @@ class BillToolBridge:
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
+        if self.config.get('runtime', 'integrate_skyline_backend') is False:
             raise ValueError("OLTP is not integrated")
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+        if self.config.get('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
 
@@ -748,7 +760,7 @@ class BillToolBridge:
     @json_exception
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
@@ -1625,7 +1637,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
@@ -1684,7 +1696,7 @@ class BillToolBridge:
         return self.dumps({'success':True})
 
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
-bridge = BillToolBridge()
+bridge = BillToolBridge(config)
 
 if __name__ == '__main__':
     # configure CherryPy

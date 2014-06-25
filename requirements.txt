@@ -3,7 +3,7 @@ Jinja2==2.6
 MySQL-python==1.2.3
 PIL==1.1.7
 PyYAML==3.10
-SQLAlchemy==0.7.8
+SQLAlchemy==0.9.4
 argparse==1.2.1
 certifi==0.0.8
 chardet==1.1
@@ -29,3 +29,4 @@ tablib==0.9.11
 tsort==0.0.1
 wsgiref==0.1.2
 xlwt==0.7.4
+formencode==1.3
