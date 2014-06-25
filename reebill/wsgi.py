@@ -161,53 +161,9 @@ class BillToolBridge:
     """
 
 
-    def __init__(self, config):
-        self.config = config
-        """
-        self.config = ConfigParser.RawConfigParser()
-        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
-        if not self.config.read(config_file_path):
-            # TODO: 64958246
-            # can't log this because logger hasn't been created yet (log file
-            # name & associated info comes from config file)
-            print >> sys.stderr, 'Config file "%s" not found'%config_file_path
-            sys.exit(1)
-
-        self.config.read(config_file_path)
-        """
-
-        """
-        # logging:
-        # get log file name and format from config file
-        # TODO: if logging section of config file is malformed, choose default
-        # values and report the error to stderr
-        log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                self.config.get('log', 'log_file_name'))
-        log_format = self.config.get('log', 'log_format')
-        # make sure log file is writable
-        try:
-            open(log_file_path, 'a').close() # 'a' for append
-        except Exception as e:
-            # logging this error is impossible, so print to stderr
-            print >> sys.stderr, 'Log file path "%s" is not writable.' \
-                    % log_file_path
-            raise
-        # create logger
-        """
-        
+    def __init__(self, config, Session):
+        self.config = config        
         self.logger = logging.getLogger('reebill')
-        
-        """
-        formatter = logging.Formatter(log_format)
-        handler = logging.FileHandler(log_file_path)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler) 
-        # loggers are created with level 'NOTSET' by default, except the root
-        # logger (this one), which is created with level 'WARNING'. to include
-        # messages like the initialization message at the end of this function,
-        # the level has to be changed.
-        self.logger.setLevel(logging.DEBUG)
-        """
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
@@ -217,14 +173,7 @@ class BillToolBridge:
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
-        self.state_db = state.StateDB(
-            #host=self.statedb_config['host'],
-            #password=self.statedb_config['password'],
-            #database=self.statedb_config['database'],
-            #user=self.statedb_config['user'],
-            Session,
-            logger=self.logger,
-        )
+        self.state_db = state.StateDB(Session, logger=self.logger)
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
@@ -1463,11 +1412,9 @@ class BillToolBridge:
 
             return self.dumps(result)
 
-    #
-    ################
-
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1695,11 +1642,9 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
-# TODO: place instantiation in main, so this module can be loaded without btb being instantiated
-bridge = BillToolBridge(config)
 
 if __name__ == '__main__':
-    # configure CherryPy
+    bridge = BillToolBridge(config, Session)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1717,17 +1662,8 @@ if __name__ == '__main__':
     }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
-        'server.socket_port': int(bridge.config.get("http", "socket_port")),
-    })
-    #cherrypy.quickstart(bridge, "/", config = local_conf)
-    cherrypy.quickstart(bridge,
-            # cherrypy doc refers to this as 'script_name': "a string
-            # containing the 'mount point' of the application'", i.e. the URL
-            # corresponding to the method 'index' above and prefixed to the
-            # URLs corresponding to the other methods
-            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
-            "/reebill",
-            config = local_conf)
+        'server.socket_port': bridge.config.get("http", "socket_port")})
+    cherrypy.quickstart(bridge, "/reebill", config = local_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
@@ -1742,5 +1678,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start(blocking=False)
         atexit.register(cherrypy.engine.stop)
-
+    bridge = BillToolBridge(config, Session)
     application = cherrypy.Application(bridge, script_name=None, config=None)

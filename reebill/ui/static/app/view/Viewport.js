@@ -17,7 +17,7 @@ Ext.define('ReeBill.view.Viewport', {
                 height: 80,
                 split: false,
                 border: false,
-                html: '<div id="header" style="background-image:url(\'images/green_stripe.jpg\');"><table style="border-collapse: collapse;"><tr><td><img src="images/skyline_logo.png"/></td><td><img src="images/reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="images/money_chaser.png"/></td></tr></table></div>'
+                html: '<div id="header" style="background-image:url(\'static/images/green_stripe.jpg\');"><table style="border-collapse: collapse;"><tr><td><img src="static/images/skyline_logo.png"/></td><td><img src="static/images/reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="static/images/money_chaser.png"/></td></tr></table></div>'
             },{
                 region: 'west',
                 xtype: 'pdfpanel',

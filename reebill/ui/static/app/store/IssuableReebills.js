@@ -12,7 +12,7 @@ Ext.define('ReeBill.store.IssuableReebills', {
 
 	proxy: {
         type: 'ajax',
-        url: 'http://'+window.location.host+'/rest/issuable',
+        url: 'http://'+window.location.host+'/reebill/reebills/issuable',
 
         pageParam: false,        
 

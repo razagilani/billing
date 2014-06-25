@@ -16,7 +16,7 @@ Ext.define('ReeBill.store.Accounts', {
         simpleSortMode: true,		
         pageParam: false,
 
-        url: 'http://' + window.location.host + '/reebill/accounts',
+        url: 'http://' + window.location.host + '/reebill/accounts/',
 
         reader: {
 			type: 'json',
