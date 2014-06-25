@@ -29,10 +29,10 @@ class RateClass(Base):
         self.active = active
 
 
-class OfferEstimator(Base):
+class Estimator(Base):
     """Estimates supplier offers"""
 
-    __tablename__ = 'offer_estimator'
+    __tablename__ = 'estimator'
 
     id = Column(Integer, primary_key=True)
     name = Column(String(128))
@@ -52,14 +52,14 @@ class OfferEstimator(Base):
         raise NotImplementedError()
 
 
-class CommitmentPeriodEstimator(OfferEstimator):
+class CommitmentPeriodEstimator(Estimator):
 
     def estimate_offers(self, rate_class, use_periods):
         """Returns offers from use periods"""
         raise NotImplementedError()
 
 
-class TimeRangeEstimator(OfferEstimator):
+class TimeBlockQuoteEstimator(Estimator):
 
     def estimate_offers(self, rate_class, use_periods):
         """Returns offers from use periods"""
@@ -67,6 +67,7 @@ class TimeRangeEstimator(OfferEstimator):
 
 
 class Quote(Base):
+    """Represents a quote for an energy supplier."""
 
     __tablename__ = 'quote'
     discriminator = Column(String(50))
@@ -74,53 +75,78 @@ class Quote(Base):
 
     id = Column(Integer, primary_key=True)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
-    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
+    supplier_id = Column(Integer, ForeignKey('company.id'), nullable=False)
 
-    activation_period_mean = Column(Interval)
-    activation_period_sigma = Column(Interval)
-    charge = Column(String(50))  # generation, transmission, etc.
-    quote = Column(Float)
-    time_inserted = Column(DateTime, server_default=func.now())
+    charge = Column(Enum('generation', 'transmission', 'supply',
+        name='supplier_offer_source'), nullable=False)  # generation, transmission, etc.
+    quote = Column(Float, nullable=False)
+    time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
     time_issued = Column(DateTime, nullable=False)
     time_expires = Column(DateTime)
-    standard_offer = Column(Boolean)
-    units = Column(String(50))  # therms or kWh
+    units = Enum('therms', 'kWh', name='supplier_offer_source',
+        nullable=False)  # therms or kWh
+    supplier_ref = Column(String)
 
     rate_class = relationship('RateClass')
     supplier = relationship('Supplier')
 
-    def __init__(self, supplier, rate_class, quote, sos=False,
-                 time_issued=None):
+    def __init__(self, supplier, rate_class, quote, charge, time_issued,
+                 supplier_ref, time_expires=None, standard_offer=None,
+                 units=None):
+
+        standard_offer = standard_offer if standard_offer is not None else \
+            rate_class.utility == supplier
+
+        units = units if units is not None else \
+            'therms' if supplier.service is 'gas' else \
+            'kWh' if supplier.service is 'electric' else None
+
         self.supplier = supplier
         self.rate_class = rate_class
         self.quote = quote
-        self.sos = sos
+        self.charge = charge
         self.time_issued = time_issued
+        self.supplier_ref = supplier_ref
+        self.time_expires = time_expires
+        self.standard_offer = standard_offer
+        self.units = units
 
 
-class TimeRangeQuote(Quote):
+class TimeBlockQuote(Quote):
+    """Represents a quote known to be fixed over a specific time range bounded
+    by `start_time` and `end_time`."""
 
     start_time = Column(Date)
     end_time = Column(Date)
+    block_min = Column(Float)
+    block_max = Column(Float)
 
-    def __init__(self,  supplier, rate_class, quote, standard_offer=False,
-                 time_issued=None, start_time=None, end_time=None):
+    def __init__(self, start_time, end_time, block_min, block_max,
+                 supplier, rate_class, quote, charge, time_issued, supplier_ref,
+                 time_expires=None, standard_offer=None, units=None):
         self.start_time = start_time
         self.end_time = end_time
-        super(TimeRangeQuote, self).__init__(supplier, rate_class, quote, sos,
-                                             time_issued)
+        self.block_min = block_min
+        self.block_max = block_max
+        super(TimeBlockQuote, self).__init__(supplier, rate_class, quote,
+            charge, time_issued, supplier_ref, time_expires, standard_offer,
+            units)
 
 
 class CommitmentPeriodQuote(Quote):
+    """Represents a quote known to be fixed over a specific time range starting
+    on the activation_time and ending after an interval of length
+    commitment_period."""
 
-    commitment_period = Column(Interval)
+    commitment_months = Column(Float)
 
-    def __init__(self, supplier, rate_class, quote, sos=False, time_issued=None,
-                 start_time=None, end_time=None):
-        self.start_time = start_time
-        self.end_time = end_time
+    def __init__(self, commitment_months, supplier, rate_class, quote, charge,
+                 time_issued, supplier_ref, time_expires=None,
+                 standard_offer=None, units=None):
+        self.commitment_months = commitment_months
         super(CommitmentPeriodQuote, self).__init__(supplier, rate_class, quote,
-                                                    sos, time_issued)
+            charge, time_issued, supplier_ref, time_expires, standard_offer,
+            units)
 
 
 supplier_offer_quote = Table('supplier_offer_quote', Base.metadata,
@@ -129,16 +155,15 @@ supplier_offer_quote = Table('supplier_offer_quote', Base.metadata,
     Column('quote_id', Integer, ForeignKey('quote.id'), nullable=False)
 )
 
-class SupplierOffer(Base):
-    """An offer from an energy supplier company to a customer, at a specific
-    address."""
-    __tablename__ = 'supplier_offer'
+class Offer(Base):
+    """An offer from an energy company to a customer"""
+    __tablename__ = 'offer'
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
-    supplier_id = Column(Integer, ForeignKey('supplier.id'))
+    supplier_id = Column(Integer, ForeignKey('supplier.id'), nullable=False)
 
     issuer = Column(Enum('broker', 'supplier', name='supplier_offer_source'))
     time_created = Column(DateTime)
@@ -147,17 +172,22 @@ class SupplierOffer(Base):
     address = relationship("Address", backref="offers")
     rate_class = relationship("RateClass", backref='offers')
     customer = relationship("Customer", backref="offers")
+    supplier = relationship("Supplier", backref="offers")
 
     service_start_date = Column(Date)
     duration = Column(Integer)
     total_cost = Column(Float)
     est_monthly_cost = Column(Float)
+    #projected_monthly_costs
     average_rate = Column(Float)
 
     commitment_period = Column(Interval)
     relevant_quotes = relationship("Quote", secondary=supplier_offer_quote)
 
-    def __init__(self, address, company, customer, rate_class):
+    def __init__(self, address, supplier, customer, rate_class):
         self.address = address
+        self.suppiler = supplier
+        self.customer = customer
+        self.rate_class = rate_class
         raise NotImplementedError()
 
