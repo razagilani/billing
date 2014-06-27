@@ -7,15 +7,12 @@ Ext.define('ReeBill.store.Reebills', {
     remoteSort: true,
 
 	proxy: {
-		type: 'ajax',
+		type: 'rest',
 
         simpleSortMode: true,
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
+
 
         url: 'http://'+window.location.host+'/reebill/reebills/',
 		reader: {

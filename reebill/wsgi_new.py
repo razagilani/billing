@@ -1,6 +1,6 @@
-'''
+"""
 File: wsgi.py
-'''
+"""
 from billing import initialize
 initialize()
 from billing import config
@@ -28,7 +28,6 @@ import inspect
 import logging
 import time
 import functools
-import md5
 from operator import itemgetter
 from StringIO import StringIO
 import pymongo
@@ -42,7 +41,7 @@ from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
-        rate_structure2 as rs
+    rate_structure2 as rs
 from billing.processing.state import UtilBill, Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
@@ -52,6 +51,7 @@ from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
+user_dao = UserDAO(**dict(config.items('usersdb')))
 
 
 def authenticate():
@@ -73,9 +73,7 @@ cherrypy.tools.authenticate_ajax = cherrypy.Tool(
 
 def check_authentication():
     logger = logging.getLogger('reebill')
-    print '\n\n\n'
-    print config.get('authentication','authenticate')
-    if not config.get('authentication','authenticate'):
+    if not config.get('authentication', 'authenticate'):
         if 'user' not in cherrypy.session:
             cherrypy.session['user'] = UserDAO.default_user
     if 'user' not in cherrypy.session:
@@ -87,15 +85,18 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        user = self.user_dao.load_by_session_token(credentials)
+        user = user_dao.load_by_session_token(credentials)
         if user is None:
-            logger.info(('Remember Me login attempt failed: username "%s"') % (username))
+            logger.info('Remember Me login attempt failed:'
+                        ' username "%s"' % username)
         else:
-            logger.info(('Remember Me login attempt success: username "%s"') % (username))
+            logger.info('Remember Me login attempt'
+                        ' success: username "%s"' % username)
             cherrypy.session['user'] = user
             return True
         raise Unauthenticated("No Session")
     return True
+
 
 class WebResource(object):
 
@@ -106,7 +107,8 @@ class WebResource(object):
         self.session = Session
 
         # create a NexusUtil
-        self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
+        self.nexus_util = NexusUtil(self.config.get('skyline_backend',
+                                                    'nexus_web_host'))
 
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
@@ -120,16 +122,20 @@ class WebResource(object):
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(self.billdb_config['host'],
-                int(self.billdb_config['port']))[self.billdb_config['database']])
+        self.reebill_dao = mongo.ReebillDAO(
+            self.state_db,
+            pymongo.Connection(
+                self.billdb_config['host'],
+                int(self.billdb_config['port'])
+            )[self.billdb_config['database']])
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
-        mongoengine.connect(rsdb_config_section['database'],
-                host=rsdb_config_section['host'],
-                port=int(rsdb_config_section['port']),
-                alias='ratestructure')
+        mongoengine.connect(
+            rsdb_config_section['database'],
+            host=rsdb_config_section['host'],
+            port=int(rsdb_config_section['port']),
+            alias='ratestructure')
         self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
 
         # configure journal:
@@ -137,11 +143,11 @@ class WebResource(object):
         # journal.Event subclasses (in journal.py) can associate themselves by
         # setting meta = {'db_alias': 'journal'}.
         journal_config = dict(self.config.items('journaldb'))
-        mongoengine.connect(journal_config['database'],
-                host=journal_config['host'], port=int(journal_config['port']),
-                alias='journal')
+        mongoengine.connect(
+            journal_config['database'],
+            host=journal_config['host'], port=int(journal_config['port']),
+            alias='journal')
         self.journal_dao = journal.JournalDAO()
-
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
@@ -157,33 +163,43 @@ class WebResource(object):
                 skykit_host=self.config.get('skyline_backend', 'olap_host'),
                 skykit_db=self.config.get('skyline_backend', 'olap_database'),
                 olap_cache_host=self.config.get('skyline_backend', 'olap_host'),
-                olap_cache_db=self.config.get('skyline_backend', 'olap_database'),
+                olap_cache_db=self.config.get('skyline_backend',
+                                              'olap_database'),
                 monguru_options={
-                    'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                    'olap_cache_host': self.config.get('skyline_backend',
+                                                       'olap_host'),
+                    'olap_cache_db': self.config.get('skyline_backend',
+                                                     'olap_database'),
                     'cartographer_options': {
-                        'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
-                        'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                        'olap_cache_host': self.config.get('skyline_backend',
+                                                           'olap_host'),
+                        'olap_cache_db': self.config.get('skyline_backend',
+                                                         'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        'nexus_host': self.config.get('skyline_backend', 'nexus_db_host'),
+                        'nexus_host': self.config.get('skyline_backend',
+                                                      'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
                 },
                 cartographer_options={
-                    'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                    'olap_cache_host': self.config.get('skyline_backend',
+                                                       'olap_host'),
+                    'olap_cache_db': self.config.get('skyline_backend',
+                                                     'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
-                    'nexus_host': self.config.get('skyline_backend', 'nexus_db_host'),
+                    'nexus_host': self.config.get('skyline_backend',
+                                                  'nexus_db_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
             )
 
-        self.integrate_skyline_backend = self.config.get('runtime',
-                'integrate_skyline_backend')
+        self.integrate_skyline_backend = self.config.get(
+            'runtime',
+            'integrate_skyline_backend')
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
@@ -193,22 +209,58 @@ class WebResource(object):
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao, self.logger)
-        # create one Process object to use for all related bill processing
-        self.process = process.Process(self.state_db, self.reebill_dao,
-                self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.ree_getter, logger=self
-                .logger)
+                                                    self.reebill_dao,
+                                                    self.logger)
 
+        # create one Process object to use for all related bill processing
+        self.process = process.Process(
+            self.state_db, self.reebill_dao, self.ratestructure_dao,
+            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
+            self.ree_getter, logger=self.logger)
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.get('authentication', 'authenticate')
+        self.authentication_on = self.config.get('authentication',
+                                                 'authenticate')
 
-        self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
-        self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+        self.reconciliation_log_dir = self.config.get(
+            'reebillreconciliation', 'log_directory')
+        self.reconciliation_report_dir = self.config.get(
+            'reebillreconciliation', 'report_directory')
 
-        self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
-        self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
+        self.estimated_revenue_log_dir = self.config.get(
+            'reebillestimatedrevenue', 'log_directory')
+        self.estimated_revenue_report_dir = self.config.get(
+            'reebillestimatedrevenue', 'report_directory')
+
+    def dumps(self, data):
+
+        # accept only dictionaries so that additional keys may be added
+        if type(data) is not dict:
+            raise ValueError("Dictionary required.")
+
+        if 'success' in data:
+            if data['success']:
+                # nothing else required
+                pass
+            else:
+                if 'errors' not in data:
+                    self.logger.warning('JSON response require errors key.')
+        else:
+            self.logger.warning('JSON response require success key.')
+
+        # diagnostic information for client side troubleshooting
+        data['server_url'] = cherrypy.url()
+        data['server_time'] = datetime.now()
+
+        # round datetimes to nearest second so Ext-JS JsonReader can parse them
+        def round_datetime(x):
+            if isinstance(x, datetime):
+                return datetime(x.year, x.month, x.day, x.hour, x.minute,
+                                x.second)
+            return x
+        data = deep_map(round_datetime, data)
+
+        return ju.dumps(data)
 
 
 class RESTResource(WebResource):
@@ -217,16 +269,18 @@ class RESTResource(WebResource):
 
     To use this class, simply derive a class from it and implement the methods
     you want to support.  The list of possible methods are:
-    handle_GET
-    handle_PUT
-    handle_POST
-    handle_DELETE
+    handle_get
+    handle_put
+    handle_post
+    handle_delete
     """
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     def default(self, *vpath, **params):
         print "\n", vpath, "\n", params, "\n"
-        method = getattr(self, "handle_" + cherrypy.request.method, None)
+        method = getattr(self,
+                         "handle_" + cherrypy.request.method.lower(),
+                         None)
 
         if not method:
             methods = [x.replace("handle_", "")
@@ -249,12 +303,12 @@ class RESTResource(WebResource):
         if cherrypy.request.method == 'GET' and not response:
             cherrypy.response.status = "204 No Content"
 
-        return json.dumps(response)
+        return self.dumps(response)
 
 
 class AccountsListResource(RESTResource):
 
-    def handle_GET(self, *vpath, **params):
+    def handle_get(self, *vpath, **params):
         accounts = self.state_db.listAccounts(self.session)
         rows = [{'account': account, 'name': full_name} for account,
                 full_name in zip(accounts,
@@ -265,31 +319,31 @@ class AccountsListResource(RESTResource):
 class AccountsResource(RESTResource):
     list = AccountsListResource()
 
-    def handle_GET(self, *vpath, **params):
+    def handle_get(self, *vpath, **params):
 
-        '''Handles AJAX request for "Account Processing Status" grid in
-        "Accounts" tab.'''
+        """Handles AJAX request for "Account Processing Status" grid in
+        "Accounts" tab."""
 
         start, limit = int(params.get('start')), int(params.get('limit'))
 
         filtername = params.get('filtername', None)
-        #if filtername is None:
-        #    filtername = cherrypy.session['user'].preferences.get(
-        # 'filtername','')
+        if not filtername:
+            filtername = cherrypy.session['user'].preferences.get(
+                'filtername', '')
 
         sortcol = params.get('sort', None)
-        #if sortcol is None:
-        #    sortcol = cherrypy.session['user'].preferences.get(
-        # 'default_account_sort_field',None)
+        if not sortcol:
+            sortcol = cherrypy.session['user'].preferences.get(
+                'default_account_sort_field', None)
+        if not sortcol:
+            sortcol = 'account'
 
         sortdir = params.get('dir', None)
-        #if sortdir is None:
-        #    sortdir = cherrypy.session['user'].preferences.get(
-        # 'default_account_sort_direction',None)
-
-        sortcol = 'account'
-        sortdir = 'ASC'
-
+        if not sortdir:
+            sortdir = cherrypy.session['user'].preferences.get(
+                'default_account_sort_direction', None)
+        if not sortdir:
+            sortdir = "DESC"
         if sortdir == 'ASC':
             sortreverse = False
         else:
@@ -298,33 +352,39 @@ class AccountsResource(RESTResource):
         count, rows = self.process.list_account_status(
             self.session, start, limit, filtername, sortcol, sortreverse)
 
-        #cherrypy.session['user'].preferences[
-        #    'default_account_sort_field'] = sortcol
-        #cherrypy.session['user'].preferences[
-        # 'default_account_sort_direction'] = sortdir
-        #self.user_dao.save_user(cherrypy.session['user'])
+        cherrypy.session['user'].preferences[
+            'default_account_sort_field'] = sortcol
+        cherrypy.session['user'].preferences[
+            'default_account_sort_direction'] = sortdir
+        cherrypy.session['user'].preferences[
+            'filtername'] = filtername
+        self.user_dao.save_user(cherrypy.session['user'])
 
         return True, {'rows': rows, 'results': count}
 
 
 class IssuableReebills(RESTResource):
 
-    def handle_GET(self, *vpath, **params):
-        '''Return a list of the issuable reebills'''
+    def handle_get(self, *vpath, **params):
+        """Return a list of the issuable reebills"""
         start, limit = int(params['start']), int(params['limit'])
         sort = params.get('sort', 'account')
         direction = params.get('dir', 'DESC')
         try:
-            allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
-        except:
-            allowable_diff = UserDAO.default_user.preferences['difference_threshold']
+            allowable_diff = cherrypy.session['user'].preferences[
+                'difference_threshold']
+        except KeyError:
+            allowable_diff = UserDAO.default_user.preferences[
+                'difference_threshold']
 
         issuable_reebills = self.process.get_issuable_reebills_dict(
             self.session)
         for reebill_info in issuable_reebills:
             reebill_info['id'] = reebill_info['account'],
-            reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
-            reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+            reebill_info['difference'] = abs(
+                reebill_info['reebill_total'] - reebill_info['util_total'])
+            reebill_info['matching'] = (reebill_info['difference'] <
+                                        allowable_diff)
 
         issuable_reebills.sort(key=lambda d: d[sort],
                                reverse=(direction == 'DESC'))
@@ -336,7 +396,8 @@ class IssuableReebills(RESTResource):
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
 
-    def handle_GET(self, *vpath, **params):
+    def handle_get(self, *vpath, **params):
+        account = params.get('account')
         start, limit = int(params['start']), int(params['limit'])
         sort = params.get('sort', 'account')
         direction = params.get('dir', 'DESC')
@@ -351,12 +412,97 @@ class ReebillsResource(RESTResource):
         # "limit" means number of rows to return, so the real limit is
         # start + limit
         result = rows[start: start + limit]
-        return True, {'rows': result, 'results':len(rows)}
+        return True, {'rows': result, 'results': len(rows)}
+
+
+class UtilBillResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        account = params['account']
+        start, limit = int(params['start']), int(params['limit'])
+        rows, total_count = self.process.get_all_utilbills_json(
+            self.session, account, start, limit)
+        return True, {'rows': rows, 'results': total_count}
+
+    def handle_put(self, *vpath, **params):
+        # ext sends a JSON object if there is one row, a list of
+        # objects if there are more than one. but in this case only one
+        # row can be edited at a time
+        row = ju.loads(params['rows'])
+
+        # convert JSON key/value pairs into arguments for
+        # Process.update_utilbill_metadata below
+        update_args = {}
+        for k, v in row.iteritems():
+            # NOTE Ext-JS uses '' (empty string) to represent not
+            # changing a value. yes, that means you can never set a
+            # value to ''.
+            if v == '':
+                pass
+            elif k in ('period_start', 'period_end'):
+                update_args[k] = datetime.strptime(v,
+                        ISO_8601_DATETIME_WITHOUT_ZONE).date()
+            elif k == 'service':
+                update_args[k] = v.lower()
+            elif k != 'id':
+                update_args[k] = v
+
+        self.process.update_utilbill_metadata(self.session, row['id'],
+                                              **update_args)
+
+        return True, {}
+
+    def handle_delete(self, *vpath, **params):
+        # "rows" is either a single id or a list of ids
+        account = params["account"]
+        rows = ju.loads(params['rows'])
+        if type(rows) is int:
+            ids = [rows]
+        else:
+            ids = rows
+
+        # delete each utility bill, and log the deletion in the journal
+        # with the path where the utility bill file was moved
+        for utilbill_id in ids:
+            utilbill, deleted_path = self.process\
+                .delete_utility_bill_by_id(self.session, utilbill_id)
+            journal.UtilBillDeletedEvent.save_instance(
+                cherrypy.session['user'], account,
+                utilbill.period_start, utilbill.period_end,
+                utilbill.service, deleted_path)
+        return True, {}
+
+
+class ChargesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        charges_json = self.process.get_utilbill_charges_json(
+            self.session, params.get('utilbill_id'),
+            reebill_sequence=params.get('reebill_sequence', None),
+            reebill_version=params.get('reebill_version', None))
+
+        return True, {'rows': charges_json, 'total': len(charges_json)}
+
+
+class RegistersResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        pass
+
+
+class RateStructureResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        pass
 
 
 class BillToolBridge(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
+    utilitybills = UtilBillResource()
+    charges = ChargesResource()
+    registers = RegistersResource()
+    RateStructure = RateStructureResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
@@ -374,11 +520,11 @@ class BillToolBridge(WebResource):
         user = self.user_dao.load_user(username, password)
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
-                ', remember me: %s') % (username, rememberme))
-            return json.dumps(
-                {'success': False,
-                 'error': 'Incorrect username or password'
-                })
+                              ', remember me: %s') % (username, rememberme))
+            return json.dumps({
+                'success': False,
+                'error': 'Incorrect username or password'
+            })
 
         cherrypy.session['user'] = user
 
@@ -389,13 +535,13 @@ class BillToolBridge(WebResource):
             user.session_token = credentials
             self.user_dao.save_user(user)
 
-            # this cookie has no expiration, so lasts as long as the browser is open
+            # this cookie has no expiration,
+            # so lasts as long as the browser is open
             cherrypy.response.cookie['username'] = user.username
             cherrypy.response.cookie['c'] = credentials
 
-        self.logger.info(('user "%s" logged in: remember '
-            'me: "%s" type is %s') % (username, rememberme,
-            type(rememberme)))
+        self.logger.info(
+            'user "%s" logged in: remember me: "%s"' % (username, rememberme))
         return json.dumps({'success': True})
 
     @cherrypy.expose
@@ -409,17 +555,17 @@ class BillToolBridge(WebResource):
 
         # delete the current server session
         if 'user' in cherrypy.session:
-            self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
+            self.logger.info(
+                'user "%s" logged out' % cherrypy.session['user'].username)
             del cherrypy.session['user']
 
         raise cherrypy.HTTPRedirect('login')
-
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @cherrypy.tools.json_out()
     def ui_configuration(self, **kwargs):
-        '''Returns the UI javascript file.'''
+        """Returns the UI javascript file."""
         ui_config_file_path = os.path.join(os.path.dirname(
             os.path.realpath(__file__)), 'ui', 'ui.cfg')
         ui_config = ConfigParser.RawConfigParser()
@@ -433,12 +579,7 @@ class BillToolBridge(WebResource):
         # convert "true"/"false" strings to booleans
         config_dict = deep_map(
             lambda x: {'true': True, 'false': False}.get(x, x), config_dict)
-        #config_dict['default_account_sort_field'] = cherrypy.session[
-        # 'user'].preferences.get(
-        #    'default_account_sort_field','account')
-        #config_dict['default_account_sort_dir'] = cherrypy.session[
-        # 'user'].preferences.get(
-        #    'default_account_sort_direction','DESC')
+
         return config_dict
 
 
@@ -469,10 +610,10 @@ if __name__ == '__main__':
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
         'server.socket_port': bridge.config.get("http", "socket_port")})
-    cherrypy.quickstart(bridge, "/reebill", config = local_conf)
+    cherrypy.quickstart(bridge, "/reebill", config=local_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
-            stream=sys.stdout)
+                                     stream=sys.stdout)
 else:
     # WSGI Mode
     cherrypy.config.update({
@@ -482,8 +623,7 @@ else:
     })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
-        cherrypy.engine.start(blocking=False)
+        cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
     bridge = BillToolBridge()
     application = cherrypy.Application(bridge, script_name=None, config=None)
-
