@@ -55,17 +55,47 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 
 def authenticate():
-    user = cherrypy.session.get('user', None)
-    if not user:
+    try:
+        check_authentication()
+    except Unauthenticated:
         raise cherrypy.HTTPRedirect('login.html')
 cherrypy.tools.authenticate = cherrypy.Tool('before_handler', authenticate)
 
+
 def authenticate_ajax():
-    user = cherrypy.session.get('user', None)
-    if not user:
+    try:
+        check_authentication()
+    except Unauthenticated:
         raise cherrypy.HTTPError(401, "Unauthorized")
-cherrypy.tools.authenticate_ajax = cherrypy.Tool('before_handler',
-                                                 authenticate_ajax)
+cherrypy.tools.authenticate_ajax = cherrypy.Tool(
+    'before_handler', authenticate_ajax)
+
+
+def check_authentication():
+    logger = logging.getLogger('reebill')
+    print '\n\n\n'
+    print config.get('authentication','authenticate')
+    if not config.get('authentication','authenticate'):
+        if 'user' not in cherrypy.session:
+            cherrypy.session['user'] = UserDAO.default_user
+    if 'user' not in cherrypy.session:
+        # the server did not have the user in session
+        # log that user back in automatically based on
+        # the credentials value found in the cookie
+        # if this user is remembered?
+        cookie = cherrypy.request.cookie
+        credentials = cookie['c'].value if 'c' in cookie else None
+        username = cookie['username'].value if 'username' in cookie else None
+
+        user = self.user_dao.load_by_session_token(credentials)
+        if user is None:
+            logger.info(('Remember Me login attempt failed: username "%s"') % (username))
+        else:
+            logger.info(('Remember Me login attempt success: username "%s"') % (username))
+            cherrypy.session['user'] = user
+            return True
+        raise Unauthenticated("No Session")
+    return True
 
 class WebResource(object):
 
@@ -198,8 +228,6 @@ class RESTResource(WebResource):
         print "\n", vpath, "\n", params, "\n"
         method = getattr(self, "handle_" + cherrypy.request.method, None)
 
-
-        ## Set proper REST status codes
         if not method:
             methods = [x.replace("handle_", "")
                        for x in dir(self) if x.startswith("handle_")]
@@ -355,18 +383,15 @@ class BillToolBridge(WebResource):
         cherrypy.session['user'] = user
 
         if rememberme == 'on':
-            credentials = "%s-%s-%s" % (
-                username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
-            m = md5.new()
-            m.update(credentials)
-            digest = m.hexdigest()
+            # Create a random session string
+            credentials = ''.join('%02x' % ord(x) for x in os.urandom(16))
 
-            user.session_token = digest
+            user.session_token = credentials
             self.user_dao.save_user(user)
 
             # this cookie has no expiration, so lasts as long as the browser is open
             cherrypy.response.cookie['username'] = user.username
-            cherrypy.response.cookie['c'] = digest
+            cherrypy.response.cookie['c'] = credentials
 
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
