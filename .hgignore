@@ -1,5 +1,6 @@
 glob:*.pyc
 glob:*.swp
+glob:*.log
 reebill/reebill.cfg
 reebill/reebill.log
 reebill/reconciliation.log
