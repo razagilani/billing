@@ -7,17 +7,13 @@ Ext.define('ReeBill.store.UtilityBills', {
     remoteSort: true,
       
 	proxy: {
-		type: 'ajax',
+		type: 'rest',
 
         pageParam: false,
-  
-        extraParams: {
-            xaction: 'read'
-        },
 
         simpleSortMode: true,
 
-        url: 'http://'+window.location.host+'/rest/utilbill_grid',
+        url: 'http://'+window.location.host+'/reebill/utilitybills',
 		reader: {
 			type: 'json',
 			root: 'rows',

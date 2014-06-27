@@ -11,7 +11,7 @@ Ext.define('ReeBill.store.Accounts', {
     sorters: [],
 
 	proxy: {
-		type: 'ajax',
+		type: 'rest',
 
         simpleSortMode: true,		
         pageParam: false,
