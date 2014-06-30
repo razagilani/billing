@@ -19,7 +19,8 @@ Ext.define('ReeBill.store.Reebills', {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
 	},
 
     sorters: [{
