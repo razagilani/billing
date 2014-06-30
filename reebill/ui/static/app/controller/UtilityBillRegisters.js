@@ -64,6 +64,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     handleActivate: function() {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var selectedVersion = this.getUtilityBillVersions().getValue();
+        var store = this.getUtilityBillRegistersStore();
 
         if (!selectedBill.length)
             return;
@@ -79,10 +80,8 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             params.reebill_version = versionRec.get('version');
         }
 
-
-        this.getUtilityBillRegistersStore().load({
-            params: params
-        });
+        store.getProxy().extraParams = params;
+        store.load();
     },
 
     /**
@@ -154,24 +153,27 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/utilbill_registers',
-            method: 'POST',
-            params: {
-                xaction: 'create',
-                account: selectedAccount[0].get('account'),
-                utilbill_id: selectedBill[0].get('id'),
-                rows: '[{}]'
-            },
-            success: function() {
-                store.load({
-                    params: {
-                        account: selectedBill[0].get('account'),
-                        utilbill_id: selectedBill[0].get('id')
-                    }
-                });
-            }
-        });
+        store.add({register_id:'new Register',
+                   meter_id:'new Meter'})
+
+//        Ext.Ajax.request({
+//            url: 'http://'+window.location.host+'/rest/utilbill_registers',
+//            method: 'POST',
+//            params: {
+//                xaction: 'create',
+//                account: selectedAccount[0].get('account'),
+//                utilbill_id: selectedBill[0].get('id'),
+//                rows: '[{}]'
+//            },
+//            success: function() {
+//                store.load({
+//                    params: {
+//                        account: selectedBill[0].get('account'),
+//                        utilbill_id: selectedBill[0].get('id')
+//                    }
+//                });
+//            }
+//        });
     },
 
     /**
