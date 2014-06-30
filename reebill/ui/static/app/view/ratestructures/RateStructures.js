@@ -3,6 +3,7 @@ Ext.define('ReeBill.view.RateStructures', {
 
     alias: 'widget.rateStructures',    
     store: 'RateStructures',
+    preventHeader: true,
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {

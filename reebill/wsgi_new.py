@@ -302,6 +302,9 @@ class RESTResource(WebResource):
 
         return self.dumps(return_value)
 
+    def check_modifiable(self, sequence, version):
+        if (sequence, version) != (None, None):
+            raise IssuedBillError('Issued reebills cannot be modified')
 
 class AccountsListResource(RESTResource):
 
@@ -482,10 +485,6 @@ class RegistersResource(RESTResource):
             raise ValueError(('Service names and meter/register ids must '
                               'not contain "/"'))
 
-    def check_modifiable(self, sequence, version):
-        if (sequence, version) != (None, None):
-            raise IssuedBillError('Issued reebills cannot be modified')
-
     def handle_get(self, utilbill_id, reebill_sequence=None,
                    reebill_version=None, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
@@ -593,11 +592,11 @@ class RegistersResource(RESTResource):
         return True, {}
 
 
-
 class RateStructureResource(RESTResource):
 
-    def handle_get(self, *vpath, **params):
-        pass
+    def handle_get(self, utilbill_id, *vpath, **params):
+        rsis = self.process.get_rsis_json(self.session, utilbill_id)
+        return True, {'rows': rsis, 'results': len(rsis)}
 
 
 class BillToolBridge(WebResource):
@@ -606,7 +605,7 @@ class BillToolBridge(WebResource):
     utilitybills = UtilBillResource()
     charges = ChargesResource()
     registers = RegistersResource()
-    RateStructure = RateStructureResource()
+    ratestructure = RateStructureResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

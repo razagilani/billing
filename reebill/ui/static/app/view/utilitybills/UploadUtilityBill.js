@@ -6,6 +6,8 @@ Ext.define('ReeBill.view.UploadUtilityBill', {
     alias: 'widget.uploadUtilityBill',    
 
     bodyPadding: 15,
+    titleCollapse: true,
+    floatable: false,
     
     defaults: {
         anchor: '100%'

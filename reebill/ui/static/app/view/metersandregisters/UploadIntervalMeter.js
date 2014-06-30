@@ -9,6 +9,7 @@ Ext.define('ReeBill.view.UploadIntervalMeter', {
     collapsible:true,
     collapsed:true,
     floatable: false,
+    titleCollapse: true,
     
     defaults: {
         anchor: '100%'
