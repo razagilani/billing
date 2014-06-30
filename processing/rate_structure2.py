@@ -410,7 +410,7 @@ class RateStructureDAO(object):
                 rates=self._get_probable_shared_rsis(utilbill_loader,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
-                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+                ignore=lambda rs:rs.id == ObjectId(utilbill.uprs_document_id)))
         result.id = ObjectId()
 
         # add any RSIs from the predecessor's UPRS that are not already there

@@ -308,6 +308,8 @@ class RateStructureDAOTest(unittest.TestCase):
         u.service = 'gas'
         u.utility = 'washgas'
         u.rate_class = 'whatever'
+        # arbitrary 24-digit string
+        u.uprs_document_id = ''.join(str(i % 10) for i in xrange(24))
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
