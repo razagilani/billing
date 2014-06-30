@@ -6,6 +6,9 @@ Ext.define('ReeBill.view.UploadIntervalMeter', {
     alias: 'widget.uploadIntervalMeter',    
 
     bodyPadding: 15,
+    collapsible:true,
+    collapsed:true,
+    floatable: false,
     
     defaults: {
         anchor: '100%'

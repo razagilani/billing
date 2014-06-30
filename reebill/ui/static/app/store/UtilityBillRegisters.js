@@ -10,10 +10,6 @@ Ext.define('ReeBill.store.UtilityBillRegisters', {
 		type: 'ajax',
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
 
         url: 'http://'+window.location.host+'/rest/utilbill_registers',
 		reader: {
