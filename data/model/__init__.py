@@ -8,7 +8,8 @@ from billing.exc import DatabaseError
 from billing.data.model.orm import Session, Base
 import logging
 
-_schema_revision = '2a89489227e'
+#_schema_revision = '2a89489227e'
+_schema_revision = None
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,6 @@ def check_schema_revision(schema_revision=_schema_revision):
                             % (schema_revision, current_revision))
     log.debug('Verified database at schema revision %s' % current_revision)
 
-from processing.state import *
+from billing.processing.state import *
 from .brokerage import *
 from .company import *

@@ -38,6 +38,7 @@ __all__ = ["Address", "Charge", "Customer", "Payment", "Reading", "ReeBill",
            "ReeBillCharge", "Register", "StateDB", "StatusDaysSince",
            "UtilBill", "UtilBillLoader"]
 
+
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
     reebills.
