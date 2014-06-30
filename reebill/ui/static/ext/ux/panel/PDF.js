@@ -9,6 +9,8 @@ Ext.define('Ext.ux.panel.PDF',{
 
     alias: 'widget.pdfpanel',
 
+    floatable: false,
+
     extraBaseCls: Ext.baseCSSPrefix + 'pdf',
     extraBodyCls: Ext.baseCSSPrefix + 'pdf-body',
 
