@@ -141,7 +141,10 @@ def get_all_actual_registers_json(utilbill_doc):
 def new_register(utilbill_doc, meter_identifier=None, identifier = None):
     if meter_identifier is None:
         meter_identifier = _new_meter(utilbill_doc)['identifier']
-    meter = _meter(utilbill_doc, meter_identifier)
+    try:
+        meter = _meter(utilbill_doc, meter_identifier)
+    except StopIteration:
+        meter = None
     if meter is None:
         meter = _new_meter(utilbill_doc, meter_identifier)
     if identifier is None:
