@@ -17,6 +17,10 @@ Ext.define('ReeBill.store.UtilityBillRegisters', {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+        writer:{
+            type: 'json',
+            writeAllFields: false
+        }
 	}
 });

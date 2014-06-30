@@ -105,41 +105,9 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
      * Handle the edit of a row.
      */
     handleEdit: function(editor, e) {
-        var updated = e.record,
-            store = this.getUtilityBillRegistersStore(),
-            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
-            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-
-        var updateProperties = Object.getOwnPropertyNames(updated.modified);
-
-        if (!updated || updateProperties.length === 0)
-            return;
-
-        var rows = {};
-        rows[updateProperties[0]] = updated.get(updateProperties[0]);
-        rows.id = updated.get('id');
-
-        var params =  {
-            xaction: 'update',
-            account: selectedAccount[0].get('account'),
-            utilbill_id: selectedBill[0].get('id'),
-            current_selected_id: updated.get('id'),
-            rows: JSON.stringify([rows])
-        };
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/utilbill_registers',
-            method: 'POST',
-            params: params,
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            }
-        });
+        // Reload the store to avoid the ext stale id issue
+        var store = this.getUtilityBillRegistersStore();
+        store.reload();
     },
 
     /**
@@ -156,24 +124,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         store.add({register_id:'new Register',
                    meter_id:'new Meter'})
 
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/utilbill_registers',
-//            method: 'POST',
-//            params: {
-//                xaction: 'create',
-//                account: selectedAccount[0].get('account'),
-//                utilbill_id: selectedBill[0].get('id'),
-//                rows: '[{}]'
-//            },
-//            success: function() {
-//                store.load({
-//                    params: {
-//                        account: selectedBill[0].get('account'),
-//                        utilbill_id: selectedBill[0].get('id')
-//                    }
-//                });
-//            }
-//        });
     },
 
     /**
