@@ -238,16 +238,6 @@ class WebResource(object):
         if type(data) is not dict:
             raise ValueError("Dictionary required.")
 
-        if 'success' in data:
-            if data['success']:
-                # nothing else required
-                pass
-            else:
-                if 'errors' not in data:
-                    self.logger.warning('JSON response require errors key.')
-        else:
-            self.logger.warning('JSON response require success key.')
-
         # diagnostic information for client side troubleshooting
         data['server_url'] = cherrypy.url()
         data['server_time'] = datetime.now()
@@ -276,8 +266,8 @@ class RESTResource(WebResource):
     """
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
+    @cherrypy.tools.json_in()
     def default(self, *vpath, **params):
-        print "\n", vpath, "\n", params, "\n"
         method = getattr(self,
                          "handle_" + cherrypy.request.method.lower(),
                          None)
@@ -288,22 +278,29 @@ class RESTResource(WebResource):
             cherrypy.response.headers["Allow"] = ",".join(methods)
             raise cherrypy.HTTPError(405, "Method not implemented.")
 
+        return_value = {}
         response = method(*vpath, **params)
-
-        try:
-            success, response = response
-        except TypeError:
-            if cherrypy.request.method:
-                raise cherrypy.HTTPError(404, "Not Found")
-            raise cherrypy.HTTPError(500, "Internal Server Error")
+        if type(response) != tuple:
+            raise ValueError("%s.handle_%s must return a tuple ("
+                             "True/False, {}) where True/False is a boolean "
+                             "indicating the success of the request and {} "
+                             "is a python dict containing the response to be "
+                             "sent back to the client."
+                             "" % (self.__class__.__name__,
+                                   cherrypy.request.method.lower()))
+        else:
+            success, return_value = response
 
         if cherrypy.request.method == 'POST' and success is True:
             cherrypy.response.status = "201 Created"
 
-        if cherrypy.request.method == 'GET' and not response:
-            cherrypy.response.status = "204 No Content"
+        if cherrypy.request.method == 'GET' and not return_value:
+            if success is True:
+                cherrypy.response.status = "204 No Content"
+            else:
+                raise cherrypy.HTTPError(404, "Not Found")
 
-        return self.dumps(response)
+        return self.dumps(return_value)
 
 
 class AccountsListResource(RESTResource):
@@ -319,14 +316,13 @@ class AccountsListResource(RESTResource):
 class AccountsResource(RESTResource):
     list = AccountsListResource()
 
-    def handle_get(self, *vpath, **params):
+    def handle_get(self, start, limit, filtername=None, *vpath, **params):
 
         """Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab."""
 
-        start, limit = int(params.get('start')), int(params.get('limit'))
+        start, limit = int(start), int(limit)
 
-        filtername = params.get('filtername', None)
         if not filtername:
             filtername = cherrypy.session['user'].preferences.get(
                 'filtername', '')
@@ -365,11 +361,9 @@ class AccountsResource(RESTResource):
 
 class IssuableReebills(RESTResource):
 
-    def handle_get(self, *vpath, **params):
-        """Return a list of the issuable reebills"""
-        start, limit = int(params['start']), int(params['limit'])
-        sort = params.get('sort', 'account')
-        direction = params.get('dir', 'DESC')
+    def handle_get(self, start, limit, sort='account', dir='DESC',
+                   *vpath, **params):
+        start, limit = int(start), int(limit)
         try:
             allowable_diff = cherrypy.session['user'].preferences[
                 'difference_threshold']
@@ -387,7 +381,7 @@ class IssuableReebills(RESTResource):
                                         allowable_diff)
 
         issuable_reebills.sort(key=lambda d: d[sort],
-                               reverse=(direction == 'DESC'))
+                               reverse=(dir == 'DESC'))
         issuable_reebills.sort(key=lambda d: d['matching'], reverse=True)
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
@@ -396,17 +390,15 @@ class IssuableReebills(RESTResource):
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
 
-    def handle_get(self, *vpath, **params):
-        account = params.get('account')
-        start, limit = int(params['start']), int(params['limit'])
-        sort = params.get('sort', 'account')
-        direction = params.get('dir', 'DESC')
+    def handle_get(self, account, start, limit, sort='account', dir='DESC',
+                   *vpath, **params):
+        start, limit = int(start), int(limit)
 
         '''Handles GET requests for reebill grid data.'''
         # this is inefficient but length is always <= 120 rows
         rows = sorted(self.process.get_reebill_metadata_json(
             self.session, account), key=itemgetter(sort))
-        if direction == 'DESC':
+        if dir == 'DESC':
             rows.reverse()
 
         # "limit" means number of rows to return, so the real limit is
@@ -417,18 +409,17 @@ class ReebillsResource(RESTResource):
 
 class UtilBillResource(RESTResource):
 
-    def handle_get(self, *vpath, **params):
-        account = params['account']
-        start, limit = int(params['start']), int(params['limit'])
+    def handle_get(self, account, start, limit, *vpath, **params):
+        start, limit = int(start), int(limit)
         rows, total_count = self.process.get_all_utilbills_json(
             self.session, account, start, limit)
         return True, {'rows': rows, 'results': total_count}
 
-    def handle_put(self, *vpath, **params):
+    def handle_put(self, rows, *vpath, **params):
         # ext sends a JSON object if there is one row, a list of
         # objects if there are more than one. but in this case only one
         # row can be edited at a time
-        row = ju.loads(params['rows'])
+        row = ju.loads(rows)
 
         # convert JSON key/value pairs into arguments for
         # Process.update_utilbill_metadata below
@@ -452,10 +443,9 @@ class UtilBillResource(RESTResource):
 
         return True, {}
 
-    def handle_delete(self, *vpath, **params):
+    def handle_delete(self, account, rows, *vpath, **params):
         # "rows" is either a single id or a list of ids
-        account = params["account"]
-        rows = ju.loads(params['rows'])
+        rows = ju.loads(rows)
         if type(rows) is int:
             ids = [rows]
         else:
@@ -475,19 +465,108 @@ class UtilBillResource(RESTResource):
 
 class ChargesResource(RESTResource):
 
-    def handle_get(self, *vpath, **params):
+    def handle_get(self, utilbill_id, reebill_sequence=None,
+                   reebill_version=None, *vpath, **params):
         charges_json = self.process.get_utilbill_charges_json(
-            self.session, params.get('utilbill_id'),
-            reebill_sequence=params.get('reebill_sequence', None),
-            reebill_version=params.get('reebill_version', None))
+            self.session, utilbill_id,
+            reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
 
         return True, {'rows': charges_json, 'total': len(charges_json)}
 
 
 class RegistersResource(RESTResource):
 
-    def handle_get(self, *vpath, **params):
-        pass
+    def validate_id_components(self, *components):
+        if any('/' in c for c in components):
+            raise ValueError(('Service names and meter/register ids must '
+                              'not contain "/"'))
+
+    def check_modifiable(self, sequence, version):
+        if (sequence, version) != (None, None):
+            raise IssuedBillError('Issued reebills cannot be modified')
+
+    def handle_get(self, utilbill_id, reebill_sequence=None,
+                   reebill_version=None, *vpath, **params):
+        # get dictionaries describing all registers in all utility bills
+        registers_json = self.process.get_registers_json(
+            self.session, utilbill_id, reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+        return True, {"rows": registers_json, 'results': len(registers_json)}
+
+    def handle_post(self, utilbill_id, reebill_sequence=None,
+                    reebill_version=None, *vpath, **params):
+        self.check_modifiable(reebill_sequence, reebill_version)
+        new_register = cherrypy.request.json
+
+        self.validate_id_components(new_register.get('meter_id', ''),
+                                    new_register.get('register_id', ''))
+
+        # create the new register (ignoring return value)
+        self.process.new_register(self.session, utilbill_id, new_register,
+                                  reebill_sequence=reebill_sequence,
+                                  reebill_version=reebill_version)
+
+        # get dictionaries describing all registers in all utility bills
+        registers_json = self.process.get_registers_json(
+            self.session, utilbill_id, reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+
+        return True, {"rows": registers_json, 'results': len(registers_json)}
+
+    def handle_put(self, utilbill_id, rows, reebill_sequence=None,
+                   reebill_version=None, *vpath, **params):
+        self.check_modifiable(reebill_sequence, reebill_version)
+        rows = json.loads(rows)
+
+        for row in rows:
+            # extract keys needed to identify the register being updated
+            # from the "id" field sent by the client
+            _, orig_meter_id, orig_reg_id = row['id'].split('/')
+
+            self.validate_id_components(row.get('meter_id',''),
+                                        row.get('register_id',''))
+
+            # all arguments should be strings, except "quantity",
+            # which should be a number
+            if 'quantity' in row:
+                assert isinstance(row['quantity'], (float, int))
+
+            # modify the register using every field in 'row' except "id"
+            # (getting back values necessary to tell the client which row
+            # should be selected)
+            del row['id']
+            new_meter_id, new_reg_id = self.process.update_register(
+                self.session, utilbill_id, orig_meter_id, orig_reg_id,
+                row)
+
+        registers_json = self.process.get_registers_json(
+            self.session, utilbill_id, reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+
+        return True, {"rows": registers_json, 'results': len(registers_json)}
+
+    def handle_delete(self, utilbill_id, rows, reebill_sequence=None,
+                   reebill_version=None, *vpath, **params):
+        self.check_modifiable(reebill_sequence, reebill_version)
+        rows = json.loads(rows)
+
+        assert len(rows) == 1
+        id_of_row_to_delete = rows[0]
+
+        # extract keys needed to identify the register being updated
+        _, orig_meter_id, orig_reg_id = id_of_row_to_delete.split('/')
+
+        self.process.delete_register(
+            self.session, utilbill_id, orig_meter_id, orig_reg_id,
+            reebill_sequence=reebill_sequence, reebill_version=reebill_version)
+
+        registers_json = self.process.get_registers_json(
+            self.session, utilbill_id, reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+
+        return True, {"rows": registers_json, 'results': len(registers_json)}
+
 
 
 class RateStructureResource(RESTResource):

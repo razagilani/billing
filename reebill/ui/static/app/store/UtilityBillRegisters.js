@@ -4,14 +4,15 @@ Ext.define('ReeBill.store.UtilityBillRegisters', {
     model: 'ReeBill.model.UtilityBillRegister',
 
     autoLoad: false,
+    autoSync: true,
     disableCaching: true,
       
 	proxy: {
-		type: 'ajax',
+		type: 'rest',
 
         pageParam: false,
 
-        url: 'http://'+window.location.host+'/rest/utilbill_registers',
+        url: 'http://'+window.location.host+'/reebill/registers',
 		reader: {
 			type: 'json',
 			root: 'rows',
