@@ -135,24 +135,11 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection(),
             selectedUtilityBillRegister = this.getUtilityBillRegistersGrid().getSelectionModel().getSelection();
 
-        if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length 
+        if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length
                 || !selectedUtilityBillRegister || !selectedUtilityBillRegister.length)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/utilbill_registers',
-            method: 'POST',
-            params: {
-                xaction: 'destroy',
-                account: selectedAccount[0].get('account'),
-                utilbill_id: selectedBill[0].get('id'),
-                current_selected_id: selectedUtilityBillRegister[0].get('id'),
-                rows: '["' + selectedUtilityBillRegister[0].get('id') + '"]'
-            },
-            success: function() {
-                store.reload();
-            }
-        });
+        store.remove(selectedUtilityBillRegister);
     },
 
     /**
