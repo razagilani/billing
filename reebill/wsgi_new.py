@@ -533,37 +533,46 @@ class RegistersResource(RESTResource):
 
         return True, {"rows": new_register, 'results': 1}
 
-    def handle_put(self, utilbill_id, rows, reebill_sequence=None,
-                   reebill_version=None, *vpath, **params):
+    def handle_put(self, service, orig_meter_id, orig_reg_id, utilbill_id,
+                   reebill_sequence=None, reebill_version=None, *vpath,
+                   **params):
+        # Unfortuantely register ids are a string of service, orig_meter_id,
+        # and orig_reg_id seperated by '/'
+        # ex: gas/new Meter/new Register
+        # This means they are passed as arguments in this function
+        # Todo: In the future register ids should correspond to the actual
+        # register ids in a table, then the id is the only thing that needs
+        # to be passed into this function
+
         self.check_modifiable(reebill_sequence, reebill_version)
-        rows = json.loads(rows)
+        updated_reg = cherrypy.request.json
 
-        for row in rows:
-            # extract keys needed to identify the register being updated
-            # from the "id" field sent by the client
-            _, orig_meter_id, orig_reg_id = row['id'].split('/')
+        self.validate_id_components(orig_meter_id,orig_reg_id)
 
-            self.validate_id_components(row.get('meter_id',''),
-                                        row.get('register_id',''))
+        # all arguments should be strings, except "quantity",
+        # which should be a number
+        if 'quantity' in updated_reg:
+            assert isinstance(updated_reg['quantity'], (float, int))
 
-            # all arguments should be strings, except "quantity",
-            # which should be a number
-            if 'quantity' in row:
-                assert isinstance(row['quantity'], (float, int))
-
-            # modify the register using every field in 'row' except "id"
-            # (getting back values necessary to tell the client which row
-            # should be selected)
-            del row['id']
-            new_meter_id, new_reg_id = self.process.update_register(
-                self.session, utilbill_id, orig_meter_id, orig_reg_id,
-                row)
+        # modify the register using every field in 'updated_reg' except "id"
+        del updated_reg['id']
+        new_meter_id, new_reg_id = self.process.update_register(
+            self.session, utilbill_id, orig_meter_id, orig_reg_id,
+            updated_reg)
 
         registers_json = self.process.get_registers_json(
             self.session, utilbill_id, reebill_sequence=reebill_sequence,
             reebill_version=reebill_version)
 
-        return True, {"rows": registers_json, 'results': len(registers_json)}
+        # Only return the updated register
+        updated_reg = {}
+        for register in registers_json:
+            if new_meter_id == register['meter_id'] and new_reg_id == \
+                    register['register_id']:
+                updated_reg = register
+                break
+
+        return True, {"rows": updated_reg, 'results': 1}
 
     def handle_delete(self, utilbill_id, rows, reebill_sequence=None,
                    reebill_version=None, *vpath, **params):
