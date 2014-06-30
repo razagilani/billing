@@ -502,17 +502,36 @@ class RegistersResource(RESTResource):
         self.validate_id_components(new_register.get('meter_id', ''),
                                     new_register.get('register_id', ''))
 
-        # create the new register (ignoring return value)
-        self.process.new_register(self.session, utilbill_id, new_register,
-                                  reebill_sequence=reebill_sequence,
-                                  reebill_version=reebill_version)
+        # Since the porper response to a REST-POST is only the newly created
+        # record, we will request all registers, create a new one, request all
+        # registers again and compare the two record register lists
+        # TODO: in the future process.new_register should return the newly
+        # created register
 
-        # get dictionaries describing all registers in all utility bills
+        # All registers before we create a new one
+        registers_json_inital = self.process.get_registers_json(
+            self.session, utilbill_id, reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+
+        # create the new register
+        self.process.new_register(
+            self.session, utilbill_id, new_register,
+            reebill_sequence=reebill_sequence,
+            reebill_version=reebill_version)
+
+        # All registers after we created a new one
         registers_json = self.process.get_registers_json(
             self.session, utilbill_id, reebill_sequence=reebill_sequence,
             reebill_version=reebill_version)
 
-        return True, {"rows": registers_json, 'results': len(registers_json)}
+        # Find the newly added register
+        new_register = {}
+        for register in registers_json:
+            if not register in registers_json_inital:
+                new_register = register
+                break
+
+        return True, {"rows": new_register, 'results': 1}
 
     def handle_put(self, utilbill_id, rows, reebill_sequence=None,
                    reebill_version=None, *vpath, **params):
