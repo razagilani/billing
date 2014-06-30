@@ -574,26 +574,23 @@ class RegistersResource(RESTResource):
 
         return True, {"rows": updated_reg, 'results': 1}
 
-    def handle_delete(self, utilbill_id, rows, reebill_sequence=None,
-                   reebill_version=None, *vpath, **params):
+    def handle_delete(self, service, orig_meter_id, orig_reg_id, utilbill_id,
+                      reebill_sequence=None, reebill_version=None, *vpath,
+                      **params):
+        # Unfortuantely register ids are a string of service, orig_meter_id,
+        # and orig_reg_id seperated by '/'
+        # ex: gas/new Meter/new Register
+        # This means they are passed as arguments in this function
+        # Todo: In the future register ids should correspond to the actual
+        # register ids in a table, then the id is the only thing that needs
+        # to be passed into this function
         self.check_modifiable(reebill_sequence, reebill_version)
-        rows = json.loads(rows)
-
-        assert len(rows) == 1
-        id_of_row_to_delete = rows[0]
-
-        # extract keys needed to identify the register being updated
-        _, orig_meter_id, orig_reg_id = id_of_row_to_delete.split('/')
 
         self.process.delete_register(
             self.session, utilbill_id, orig_meter_id, orig_reg_id,
             reebill_sequence=reebill_sequence, reebill_version=reebill_version)
 
-        registers_json = self.process.get_registers_json(
-            self.session, utilbill_id, reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
-
-        return True, {"rows": registers_json, 'results': len(registers_json)}
+        return True, {}
 
 
 
