@@ -67,6 +67,7 @@ Ext.define('ReeBill.controller.RateStructures', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
+        var store = this.getRateStructuresStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var selectedVersion = this.getUtilityBillVersions().getValue();
 
@@ -83,9 +84,8 @@ Ext.define('ReeBill.controller.RateStructures', {
             params.reebill_version = versionRec.get('version');
         }
 
-        this.getRateStructuresStore().load({
-            params: params
-        });
+        store.getProxy().extraParams = params;
+        store.load();
     },
 
     /**

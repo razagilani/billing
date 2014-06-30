@@ -4,7 +4,8 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
     title: 'Utility Bill Registers',
     alias: 'widget.utilityBillRegisters',    
     store: 'UtilityBillRegisters',
-    
+    preventHeader: true,
+
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
             clicksToEdit: 2

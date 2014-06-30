@@ -8,6 +8,8 @@ Ext.define('ReeBill.view.Charges', {
     title: 'Charges',
     alias: 'widget.charges',    
     store: 'Charges',
+    preventHeader: true,
+
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {

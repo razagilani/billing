@@ -10,12 +10,8 @@ Ext.define('ReeBill.store.RateStructures', {
 		type: 'ajax',
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
 
-        url: 'http://'+window.location.host+'/rest/rsi',
+        url: 'http://'+window.location.host+'/reebill/ratestructure',
 		reader: {
 			type: 'json',
 			root: 'rows',
