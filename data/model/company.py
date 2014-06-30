@@ -3,15 +3,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Enum
 from billing.data.model.orm import Base
-from data.model.brokerage import RateClass
-from data.model.orm import Session
-
+import billing.data.model.brokerage
 
 class Company(Base):
     __tablename__ = 'company'
 
     id = Column(Integer, primary_key=True)
-    address_id = Column(Integer)
+    address_id = Column(Integer, ForeignKey('address.id'))
 
     name = Column(Integer)
     discriminator = Column(String(50))
@@ -36,6 +34,7 @@ class Utility(Company):
     def __init__(self, name, address, service, rate_classes=[]):
         """Construct a :class:`Utility` instance"""
         for s in rate_classes:
-            self.rate_classes.append(RateClass(s))
+            self.rate_classes.append(\
+                billing.data.model.brokerage.RateClass(self, s))
         super(Utility, self).__init__(name, address, service)
 
