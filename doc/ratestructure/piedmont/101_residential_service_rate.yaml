@@ -1,0 +1,83 @@
+---
+!rate_structure
+name: 101 - Residential Service
+service: Gas
+effective: 2010-04-01
+expires: 2010-10-15
+registers: 
+    - !register
+      descriptor: REG_THERMS
+      description: Total therm register
+      quantity: 0
+      quantityunits: therm
+rates:
+    - !rate_structure_item
+      descriptor: CUSTOMER_CHARGE
+      description: Monthly flat charge
+      # daterange: [({month:11, day:1},{month:4, day:1}), ({month:4, day:1},{month:11, day:1})]
+      total: 10.00
+    - !rate_structure_item
+      descriptor: PER_THERM_RATE
+      description: Rate per Therm
+      # daterange: [({month:11, day:1},{month:4, day:1})]
+      quantity: REG_THERMS.quantity
+      quantityunits: therms
+      rate: 1.10377
+      total:
+    - !rate_structure_item
+      descriptor: PER_THERM_RATE
+      description: Rate per Therm
+      # daterange: [({month:4, day:1},{month:11, day:1})]
+      quantity: REG_THERMS.quantity
+      quantityunits: therms
+      rate: 1.05507
+      total:
+    - !rate_structure_item
+      descriptor: EXCISE_TAX
+      description: Declining block tax
+      quantity: REG_THERMS.quantity
+      quantityunits: Therms
+      rate: 0.047 if REG_THERMS.quantity < 200 else 0.035 if REG_THERMS.quantity >= 200 and REG_THERMS.quantity < 15000 else 0.024 if REG_THERMS.quantity >=15000 and REG_THERMS.quantity < 60000 else 0.015 if REG_THERMS.quantity >= 60000 and REG_THERMS.quantity < 500000 else 0.003
+      rateunits: dollars
+      total: 
+---
+!rate_structure
+name: 101 - Residential Service
+service: Gas
+effective: 2010-04-01
+expires: 2010-10-15
+registers: 
+    - !register
+      descriptor: REG_THERMS
+      description: Total therm register
+      quantity: 0
+      quantityunits: therm
+rates:
+    - !rate_structure_item
+      descriptor: CUSTOMER_CHARGE
+      description: Monthly flat charge
+      # daterange: [({month:11, day:1},{month:4, day:1}), ({month:4, day:1},{month:11, day:1})]
+      total: 10.00
+    - !rate_structure_item
+      descriptor: PER_THERM_RATE
+      description: Rate per Therm
+      # daterange: [({month:11, day:1},{month:4, day:1})]
+      quantity: REG_THERMS.quantity
+      quantityunits: therms
+      rate: 1.10377
+      total:
+    - !rate_structure_item
+      descriptor: PER_THERM_RATE
+      description: Rate per Therm
+      # daterange: [({month:4, day:1},{month:11, day:1})]
+      quantity: REG_THERMS.quantity
+      quantityunits: therms
+      rate: 1.05507
+    - !rate_structure_item
+      descriptor: EXCISE_TAX
+      description: Declining block tax
+      quantity: REG_THERMS.quantity
+      quantityunits: Therms
+      rate: 0.047 if REG_THERMS.quantity < 200 else 0.035 if REG_THERMS.quantity >= 200 and REG_THERMS.quantity < 15000 else 0.024 if REG_THERMS.quantity >=15000 and REG_THERMS.quantity < 60000 else 0.015 if REG_THERMS.quantity >= 60000 and REG_THERMS.quantity < 500000 else 0.003
+      rateunits: dollars
+      total: 
