@@ -1,6 +1,10 @@
 '''
 File: wsgi.py
 '''
+from billing import initialize
+initialize()
+from billing import config
+
 import sys
 import os
 import pprint
@@ -29,17 +33,17 @@ from operator import itemgetter
 from StringIO import StringIO
 import pymongo
 import mongoengine
-from skyliner.splinter import Splinter
-from skyliner import mock_skyliner
+from billing.skyliner.splinter import Splinter
+from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map, dict_merge
+from billing.nexusapi.nexus_util import NexusUtil
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
         rate_structure2 as rs
-from billing.processing.state import UtilBill
+from billing.processing.state import UtilBill, Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
@@ -156,47 +160,10 @@ class BillToolBridge:
       initialized, then rollback.
     """
 
-    config = None
 
-    # TODO: refactor config and share it between btb and bt 15413411
-    def __init__(self):
-        self.config = ConfigParser.RawConfigParser()
-        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
-        if not self.config.read(config_file_path):
-            # TODO: 64958246
-            # can't log this because logger hasn't been created yet (log file
-            # name & associated info comes from config file)
-            print >> sys.stderr, 'Config file "%s" not found'%config_file_path
-            sys.exit(1)
-
-        self.config.read(config_file_path)
-
-        # logging:
-        # get log file name and format from config file
-        # TODO: if logging section of config file is malformed, choose default
-        # values and report the error to stderr
-        log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                self.config.get('log', 'log_file_name'))
-        log_format = self.config.get('log', 'log_format')
-        # make sure log file is writable
-        try:
-            open(log_file_path, 'a').close() # 'a' for append
-        except Exception as e:
-            # logging this error is impossible, so print to stderr
-            print >> sys.stderr, 'Log file path "%s" is not writable.' \
-                    % log_file_path
-            raise
-        # create logger
+    def __init__(self, config, Session):
+        self.config = config        
         self.logger = logging.getLogger('reebill')
-        formatter = logging.Formatter(log_format)
-        handler = logging.FileHandler(log_file_path)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler) 
-        # loggers are created with level 'NOTSET' by default, except the root
-        # logger (this one), which is created with level 'WARNING'. to include
-        # messages like the initialization message at the end of this function,
-        # the level has to be changed.
-        self.logger.setLevel(logging.DEBUG)
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
@@ -206,13 +173,7 @@ class BillToolBridge:
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
-        self.state_db = state.StateDB(
-            host=self.statedb_config['host'],
-            password=self.statedb_config['password'],
-            database=self.statedb_config['database'],
-            user=self.statedb_config['user'],
-            logger=self.logger,
-        )
+        self.state_db = state.StateDB(Session, logger=self.logger)
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
@@ -248,7 +209,7 @@ class BillToolBridge:
             self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
-        if self.config.getboolean('runtime', 'mock_skyliner'):
+        if self.config.get('runtime', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
@@ -281,7 +242,7 @@ class BillToolBridge:
                 },
             )
 
-        self.integrate_skyline_backend = self.config.getboolean('runtime',
+        self.integrate_skyline_backend = self.config.get('runtime',
                 'integrate_skyline_backend')
 
         # create a ReebillRenderer
@@ -301,7 +262,7 @@ class BillToolBridge:
 
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.getboolean('authentication', 'authenticate')
+        self.authentication_on = self.config.get('authentication', 'authenticate')
 
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
@@ -309,7 +270,6 @@ class BillToolBridge:
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -657,9 +617,9 @@ class BillToolBridge:
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
+        if self.config.get('runtime', 'integrate_skyline_backend') is False:
             raise ValueError("OLTP is not integrated")
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+        if self.config.get('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
 
@@ -749,7 +709,7 @@ class BillToolBridge:
     @json_exception
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
@@ -1452,11 +1412,9 @@ class BillToolBridge:
 
             return self.dumps(result)
 
-    #
-    ################
-
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1626,7 +1584,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
@@ -1684,11 +1642,9 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
-# TODO: place instantiation in main, so this module can be loaded without btb being instantiated
-bridge = BillToolBridge()
 
 if __name__ == '__main__':
-    # configure CherryPy
+    bridge = BillToolBridge(config, Session)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1706,17 +1662,8 @@ if __name__ == '__main__':
     }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
-        'server.socket_port': int(bridge.config.get("http", "socket_port")),
-    })
-    #cherrypy.quickstart(bridge, "/", config = local_conf)
-    cherrypy.quickstart(bridge,
-            # cherrypy doc refers to this as 'script_name': "a string
-            # containing the 'mount point' of the application'", i.e. the URL
-            # corresponding to the method 'index' above and prefixed to the
-            # URLs corresponding to the other methods
-            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
-            "/reebill",
-            config = local_conf)
+        'server.socket_port': bridge.config.get("http", "socket_port")})
+    cherrypy.quickstart(bridge, "/reebill", config = local_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
@@ -1731,5 +1678,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start(blocking=False)
         atexit.register(cherrypy.engine.stop)
-
+    bridge = BillToolBridge(config, Session)
     application = cherrypy.Application(bridge, script_name=None, config=None)
