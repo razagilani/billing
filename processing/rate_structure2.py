@@ -68,6 +68,20 @@ class RateStructureItem(EmbeddedDocument):
 
     group = StringField(required=True, default='')
 
+    @classmethod
+    def duplicate(cls, other):
+        return RateStructureItem(
+            rsi_binding=other.rsi_binding,
+            description=other.description,
+            shared=other.shared,
+            has_charge=other.has_charge,
+            quantity=other.quantity,
+            quantity_units=other.quantity_units,
+            rate=other.rate,
+            round_rule=other.round_rule,
+            group=other.group,
+        )
+
     def __init__(self, *args, **kwargs):
         super(RateStructureItem, self).__init__(*args, **kwargs)
 
@@ -377,16 +391,7 @@ class RateStructureDAO(object):
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
-                rsi_dict = closest_occurrence[binding][1]
-                rate, quantity = 0, 0
-                try:
-                    rate = rsi_dict.rate
-                    quantity = closest_occurrence[binding][1].quantity
-                except KeyError:
-                    if self.logger:
-                        self.logger.error('malformed RSI: %s' % rsi_dict)
-                result.append(RateStructureItem(rsi_binding=binding, rate=rate,
-                    quantity=quantity))
+                result.append(RateStructureItem.duplicate(closest_occurrence[binding][1]))
         return result
 
     def get_predicted_rate_structure(self, utilbill, utilbill_loader):
@@ -405,7 +410,7 @@ class RateStructureDAO(object):
                 rates=self._get_probable_shared_rsis(utilbill_loader,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
-                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+                ignore=lambda rs:rs.id == ObjectId(utilbill.uprs_document_id)))
         result.id = ObjectId()
 
         # add any RSIs from the predecessor's UPRS that are not already there
