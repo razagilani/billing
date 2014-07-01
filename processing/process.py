@@ -1776,6 +1776,8 @@ class Process(object):
         with a new set of readings that matches the reebill's utility bill.
         '''
         reebill = self.state_db.get_reebill(session, account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
         utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
         reebill.update_readings_from_document(session, utilbill_doc)

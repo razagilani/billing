@@ -476,10 +476,10 @@ class ReeBill(Base):
             # deal with non-energy unit "CCF" by converting to therms with
             # conversion factor 1
             # TODO: 28825375 - need the conversion factor for this
-            print ("Register in reebill %s-%s-%s contains gas measured "
-                   "in ccf: energy value is wrong; time to implement "
-                   "https://www.pivotaltracker.com/story/show/28825375") \
-                  % (self.account, self.sequence, self.version)
+            # print ("Register in reebill %s-%s-%s contains gas measured "
+            #        "in ccf: energy value is wrong; time to implement "
+            #        "https://www.pivotaltracker.com/story/show/28825375") \
+            #       % (self.account, self.sequence, self.version)
             new_quantity /= 1e5
         # PV: Unit is kilowatt; no conversion needs to happen
         elif unit == 'kwd':
@@ -512,11 +512,11 @@ class ReeBill(Base):
                     total_therms += quantity * ccf_conversion_factor
                 else:
                     # TODO: 28825375 - need the conversion factor for this
-                    print ("Register in reebill %s-%s-%s contains gas measured "
-                           "in ccf: energy value is wrong; time to implement "
-                           "https://www.pivotaltracker.com/story/show/28825375"
-                          ) % (self.customer.account, self.sequence,
-                          self.version)
+                    # print ("Register in reebill %s-%s-%s contains gas measured "
+                    #        "in ccf: energy value is wrong; time to implement "
+                    #        "https://www.pivotaltracker.com/story/show/28825375"
+                    #       ) % (self.customer.account, self.sequence,
+                    #       self.version)
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit =='kwd':
