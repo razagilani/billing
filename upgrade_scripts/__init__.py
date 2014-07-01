@@ -1,18 +1,24 @@
-"""Contains scripts to be run at deployment time of new releases. 
+"""Contains scripts to be run at deployment time of new releases.
+
+This module contains a submodule for each software version upgrade. Every 
+submodule should define its own `upgrade` function, which will run schema 
+migration, data migration etc. for the version upgrade.
 """
 
 import logging
+from alembic.config import Config
+from alembic.command import upgrade
+import importlib
 
 log = logging.getLogger(__name__)
 
-class UpgradeRunner(object):
-    """Runs a software version upgrade."""
-    
-    def __init__(self):
-        pass
+def run_upgrade(version):
+    """Upgrade to a specified version
+    :param version: the version number of the upgrade
+    """
+    module = importlib.import_module('billing.upgrade_scripts.v%s' % version)
+    module.upgrade()
 
-    def run(self):
-        log.info('Running upgrade for version %s' % self.version)
-        for upgrade_fnc in self.upgrades:
-            log.info('Running upgrade function %s' % upgrade_fnc.__name__)
-        log.info('Upgrade to version %s complete' % self.version)
+def alembic_upgrade(revision_to):
+    config = Config("alembic.ini")
+    upgrade(config, revision_to)
