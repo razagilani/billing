@@ -5,6 +5,7 @@ Ext.define('ReeBill.store.Reebills', {
 
     autoLoad: false,
     remoteSort: true,
+    autoSync: true,
 
 	proxy: {
 		type: 'rest',
@@ -14,7 +15,7 @@ Ext.define('ReeBill.store.Reebills', {
         pageParam: false,
 
 
-        url: 'http://'+window.location.host+'/reebill/reebills/',
+        url: 'http://'+window.location.host+'/reebill/reebills',
 		reader: {
 			type: 'json',
 			root: 'rows',
