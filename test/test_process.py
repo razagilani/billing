@@ -120,8 +120,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'editable': True,
                                                  'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
                                                  'reebills': [],
-                                                }, utilbill_data, 'id',
-                                                'charges', 'reebills')
+                                                }, utilbill_data, 'id', 'charges', 'reebills')
+
 
             self.process.add_rsi(session, utilbill_data['id'])
             self.process.update_rsi(session, utilbill_data['id'],
@@ -1701,7 +1701,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                              self.process.get_reebill_metadata_json(session,
                                                                     '99999'))
 
-
     def test_create_first_reebill(self):
         '''Test creating the first utility bill and reebill for an account,
         making sure the reebill is correct with respect to the utility bill.
@@ -1938,8 +1937,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         the accounting numbers in reebills are correct.
         '''
         account = '99999'
-        energy_quantity = 100
-        payment_amount = 100
+        energy_quantity = 100.0
+        payment_amount = 100.0
 
         self.process.ree_getter = MockReeGetter(energy_quantity)
 
@@ -2027,7 +2026,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'total_error': 0.,
                  'ree_quantity': energy_quantity,
                  'balance_due': energy_quantity * .5,
-                 'balance_forward': 0.,
+                 'balance_forward': 0.0,
                  'corrections': '-',
              }], reebill_data)
 
@@ -2044,7 +2043,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                                   account)
             self.assertDocumentsEqualExceptKeys([{
                 'sequence': 2,
-                'max_version': 0,
+                'max_version': 0L,
                 'issued': False,
                 'issue_date': None,
                 'actual_total': 0,
@@ -2057,7 +2056,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
-                'total_error': 0,
+                'total_error': 0.0,
                 'ree_quantity': energy_quantity,
                 'balance_due': energy_quantity * .5 +
                             energy_quantity * .8 - payment_amount,
@@ -2065,13 +2064,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                 payment_amount,
                 'corrections': '(never issued)',
             },{
-                'sequence': 1,
-                'max_version': 0,
+                'sequence': 1L,
+                'max_version': 0L,
                 'issued': True,
                 'issue_date': date(2013,2,15),
                 'actual_total': 0,
                 'hypothetical_total': energy_quantity,
-                'payment_received': 0,
+                'payment_received': 0.0,
                 'period_start': date(2013,1,1),
                 'period_end': date(2013,2,1),
                 'prior_balance': 0,
@@ -2079,10 +2078,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
-                'total_error': 0,
+                'total_error': 0.0,
                 'ree_quantity': energy_quantity,
                 'balance_due': energy_quantity * .5,
-                'balance_forward': 0,
+                'balance_forward': 0.0,
                 'corrections': '-',
             }], reebill_data, 'id')
 

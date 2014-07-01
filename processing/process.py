@@ -223,13 +223,13 @@ class Process(object):
             filter(Register.identifier == orig_reg_id).one()
         session.delete(register)
 
-    def add_charge(self, session, utilbill_id, group_name):
+    @staticmethod
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
 
-    def update_charge(self, session, utilbill_id, rsi_binding, fields):
+    @staticmethod
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
         charge = session.query(Charge).join(UtilBill).\
@@ -237,8 +237,9 @@ class Process(object):
             filter(Charge.rsi_binding == rsi_binding).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
+            setattr(charge, k, v)
 
-    def delete_charge(self, session, utilbill_id, rsi_binding):
+    @staticmethod
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         charge = session.query(Charge).join(UtilBill).\
@@ -439,6 +440,7 @@ class Process(object):
                 'total_error': self.get_total_error(session, account,
                                                     reebill.sequence),
                 'balance_due': reebill.balance_due,
+                'processed': reebill.processed,
                 'payment_received': reebill.payment_received,
                 'total_adjustment': reebill.total_adjustment,
                 'balance_forward': reebill.balance_forward,
@@ -479,7 +481,7 @@ class Process(object):
         }
 
     def update_sequential_account_info(self, session, account, sequence,
-            discount_rate=None, late_charge_rate=None,
+            discount_rate=None, late_charge_rate=None, processed=None,
             ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
             ba_postal_code=None,
             sa_addressee=None, sa_street=None, sa_city=None, sa_state=None,
@@ -495,6 +497,8 @@ class Process(object):
             reebill.discount_rate = discount_rate
         if late_charge_rate is not None:
             reebill.late_charge_rate = late_charge_rate
+        if processed is not None:
+            reebill.processed = processed
 
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
@@ -1829,21 +1833,144 @@ class Process(object):
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
-        issuable_reebills = sorted([{'account': r.customer.account,
-                         'sequence':r.sequence,
-                         'util_total': sum(u.total_charges for u in r.utilbills),
-                         'mailto':r.customer.bill_email_recipient,
-                         'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                                            for ub_doc in(
-                                                self.reebill_dao._load_utilbill_by_id(ub_id)
-                                                    for ub_id in(
-                                                        u.document_id for u in r.utilbills
-                                                    )
-                                                )
-                                          )
-                         } for r in reebills.all()], key=itemgetter('account'))
+        issuable_reebills = sorted([{
+            'account': r.customer.account,
+            'sequence':r.sequence,
+            'util_total': sum(u.total_charges for u in r.utilbills),
+            'mailto':r.customer.bill_email_recipient,
+            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
+                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
+                    for ub_id in(u.document_id for u in r.utilbills))),
+            'processed': r.processed,
+         } for r in reebills.all()], key=itemgetter('account'))
 
         return issuable_reebills
+
+    def issue_and_mail(self, user, session, account, sequence, recipients, apply_corrections):
+        '''issues a reebill and sends out a confirmation email'''
+        # If there are unissued corrections and the user has not confirmed
+        # to issue them, we will return a list of those corrections and the
+        # sum of adjustments that have to be made so the client can create
+        # a confirmation message
+        unissued_corrections = self.get_unissued_corrections(session, account)
+        if len(unissued_corrections) > 0 and not apply_corrections:
+                return {'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+
+        # The user has confirmed to issue unissued corrections.
+        # Let's issue
+        if len(unissued_corrections) > 0:
+            assert apply_corrections is True
+            try:
+                self.issue_corrections(session, account, sequence)
+            except Exception, e:
+                e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            account, sequence, e.__class__.__name__),) + e.args
+                raise
+            for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    session['user'],account, sequence,
+                    self.state_db.max_version(session, account, cor),
+                    applied_sequence=cor[0])
+        try:
+            self.compute_reebill(session, account, sequence)
+            #mark issued bills as processed
+            self.update_sequential_account_info(session, account, sequence,
+                processed=True)
+            self.issue(session, account, sequence)
+        except Exception, e:
+            e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            account, sequence, e.__class__.__name__),) + e.args
+            raise
+        journal.ReeBillIssuedEvent.save_instance(user,
+                                                 account, sequence, 0)
+        # Let's mail!
+        # Recepients can be a comma seperated list of email addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
+        self.mail_reebills(session, account, [sequence],
+                                   recipient_list)
+        journal.ReeBillMailedEvent.save_instance(user, account, sequence,
+            recipients)
+
+    def issue_processed_and_mail(self, session, user, apply_corrections):
+        ''' issues all reebills that are marked as processeed and sends confirmation emails
+        for each one of the issued reebills
+        '''
+
+        unissued_processed = self.get_issuable_processed_reebills_dict(session)
+        for bill in unissued_processed:
+            # If there are unissued corrections and the user has not confirmed
+            # to issue them, we will return a list of those corrections and the
+            # sum of adjustments that have to be made so the client can create
+            # a confirmation message
+
+            unissued_corrections = self.get_unissued_corrections(session, bill['account'])
+            if len(unissued_corrections) > 0 and not apply_corrections:
+                return {'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+
+            # The user has confirmed to issue unissued corrections.
+            # Let's issue
+            if len(unissued_corrections) > 0:
+                assert apply_corrections is True
+                try:
+                    self.issue_corrections(session, bill['account'], bill['sequence'])
+                except Exception, e:
+                    e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            bill['account'], bill['sequence'],
+                            e.__class__.__name__),) + e.args
+                    raise
+                for cor in unissued_corrections:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        user, bill['account'], bill['sequence'],
+                        self.state_db.max_version(session, bill['account'], cor),
+                        applied_sequence=cor[0])
+            try:
+                self.compute_reebill(session, bill['account'], bill['sequence'])
+                self.issue(session, bill['account'], bill['sequence'])
+            except Exception, e:
+                e.args = ('Error when issuing reebill %s-%s: %s' %(
+                        bill['account'], bill['sequence'], e.__class__.__name__),) + e.args
+                raise
+            journal.ReeBillIssuedEvent.save_instance(user, bill['account'], bill['sequence'], 0)
+        # Let's mail!
+        # Recepients can be a comma seperated list of email addresses
+            recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
+            self.mail_reebills(session, bill['account'], [bill['sequence']],
+                                   recipient_list)
+            journal.ReeBillMailedEvent.save_instance(user, bill['account'],
+                                                bill['sequence'], bill['mailto'])
+
+    def get_issuable_processed_reebills_dict(self, session):
+        """ Returns a list of issuable reebill dictionaries containing
+            the account, sequence, total utility bill charges, total reebill
+            charges and the associated customer email address
+            of the earliest unissued version-0 reebill account
+        """
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.version == 0, ReeBill.processed==1).subquery()
+        min_sequence = session.query(
+                unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
+
+        issuable_processed_reebills = sorted([{
+            'account': r.customer.account,
+            'sequence':r.sequence,
+            'util_total': sum(u.total_charges for u in r.utilbills),
+            'mailto':r.customer.bill_email_recipient,
+            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
+                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
+                    for ub_id in(u.document_id for u in r.utilbills))),
+            'processed': r.processed,
+        } for r in reebills.all()], key=itemgetter('account'))
+
+        return issuable_processed_reebills
 
     def update_bill_email_recipient(self, session, account, sequence, recepients):
         """ Finds a particular reebill by account and sequence,

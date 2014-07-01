@@ -45,6 +45,9 @@ from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
+import logging
+
+
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -56,8 +59,7 @@ class TestCaseWithSetup(unittest.TestCase):
                   "utilbill", "customer", "address"]:
             print "deleting from %s" % t
             session.execute("delete from %s" % t)
-
-
+        testlogger.propagate = False
     @staticmethod
     def insert_data():
         session = Session()
@@ -111,11 +113,9 @@ class TestCaseWithSetup(unittest.TestCase):
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                          ub_sa2, ub_ba2])
         session.flush()
-
         session.add(Customer('Test Customer', '99999', .12, .34,
                              'example@example.com', 'Test Utility Company Template',
                              'Test Rate Class Template', fa_ba1, fa_sa1))
-
         #Template Customer aka "Template Account" in UI
         c2 = Customer('Test Customer 2', '100000', .12, .34,
                              'example2@example.com', 'Test Utility Company Template',
@@ -316,6 +316,7 @@ class TestCaseWithSetup(unittest.TestCase):
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
         TestCaseWithSetup.insert_data()
+
 
     def tearDown(self):
         '''Clears out databases.'''

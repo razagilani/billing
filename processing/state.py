@@ -73,6 +73,18 @@ def check_schema_revision(schema_revision=_schema_revision):
                             " Require revision %s; current revision %s"
                             % (schema_revision, current_revision))
     log.debug('Verified database at schema revision %s' % current_revision)
+    """Checks to see whether the database schema revision matches the 
+    revision expected by the model metadata.
+    """
+    s = Session()
+    conn = s.connection()
+    context = MigrationContext.configure(conn)
+    current_revision = context.get_current_revision()
+    if current_revision != schema_revision:
+        raise DatabaseError("Database schema revision mismatch."
+                            " Require revision %s; current revision %s"
+                            % (schema_revision, current_revision))
+    log.debug('Verified database at schema revision %s' % current_revision)
 
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
@@ -231,6 +243,7 @@ class ReeBill(Base):
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
     email_recipient = Column(String, nullable=True)
+    processed = Column(Boolean, default=False)
 
     billing_address_id = Column(Integer, ForeignKey('address.id'),
                                 nullable=False)
@@ -612,6 +625,38 @@ class ReeBill(Base):
             identifiers[rsi.rsi_binding]['rate'] = rate
             identifiers[rsi.rsi_binding]['total'] = total
 
+        # 'evaluation_order' now contains only the indices of charges that don't
+        # have dependencies. topological sort the dependency graph to find an
+        # evaluation order that works for the charges that do have dependencies.
+        try:
+            evaluation_order.extend(tsort.topological_sort(dependency_graph))
+        except tsort.GraphError as g:
+            # if the graph contains a cycle, provide a more comprehensible error
+            # message with the charge numbers converted back to names
+            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
+                    g.args[1])
+            raise RSIError('Circular dependency: %s' % names_in_cycle)
+
+        assert len(evaluation_order) == len(rsis)
+
+        all_charges = {charge.rsi_binding: charge for charge in self.charges}
+
+        assert len(evaluation_order) == len(rsis)
+        acs = {charge.rsi_binding: charge for charge in utilbill.charges}
+        for rsi_number in evaluation_order:
+            rsi = rsis[rsi_number]
+            quantity, rate = rsi.compute_charge(identifiers)
+            total = quantity * rate
+            ac = acs[rsi.rsi_binding]
+            quantity_units = ac.quantity_units if ac.quantity_units is not None else ''
+            self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
+                    ac.description, ac.group, ac.quantity,
+                    quantity, quantity_units, ac.rate, rate, ac.total,
+                    total))
+            identifiers[rsi.rsi_binding]['quantity'] = quantity
+            identifiers[rsi.rsi_binding]['rate'] = rate
+            identifiers[rsi.rsi_binding]['total'] = total
+
 
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
@@ -714,8 +759,8 @@ class ReeBillCharge(Base):
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group,
-                a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
+    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+                h_quantity, quantity_unit, a_rate, h_rate,
                 a_total, h_total):
         assert quantity_unit is not None
         self.reebill_id = reebill.id
