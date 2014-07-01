@@ -674,6 +674,16 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        with DBSession(self.state_db) as session:
+            self.process.update_sequential_account_info(session, account, sequence, processed=processed)
+            return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def compute_utility_bill(self, utilbill_id, **args):
         with DBSession(self.state_db) as session:
             self.process.compute_utility_bill(session, utilbill_id)
@@ -737,40 +747,21 @@ class BillToolBridge:
         apply_corrections = (apply_corrections == 'true')
 
         with DBSession(self.state_db) as session:
-            # If there are unissued corrections and the user has not confirmed
-            # to issue them, we will return a list of those corrections and the
-            # sum of adjustments that have to be made so the client can create
-            # a confirmation message
-            unissued_corrections = self.process.get_unissued_corrections(session, account)
-            if len(unissued_corrections) > 0 and not apply_corrections:
-                    return self.dumps({'success': False,
-                        'corrections': [c[0] for c in unissued_corrections],
-                        'adjustment': sum(c[2] for c in unissued_corrections)})
+            result = self.process.issue_and_mail(cherrypy.session['user'], session, account,
+                sequence, recipients, apply_corrections)
+            return self.dumps(result)
 
-            # The user has confirmed to issue unissued corrections.
-            # Let's issue
-            if len(unissued_corrections) > 0:
-                assert apply_corrections is True
-                self.process.issue_corrections(session, account, sequence)
-                for cor in unissued_corrections:
-                    journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'],account, sequence,
-                        self.state_db.max_version(session, account, cor),
-                        applied_sequence=sequences[0])
-            self.process.compute_reebill(session, account, sequence)
-            self.process.issue(session, account, sequence)
-            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                                                     account, sequence, 0)
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    def issue_processed_and_mail(self, apply_corrections,
+                       **kwargs):
+        apply_corrections = (apply_corrections == 'true')
 
-            # Let's mail!
-            # Recepients can be a comma seperated list of email addresses
-            recipient_list = [rec.strip() for rec in recipients.split(',')]
-            self.process.mail_reebills(session, account, [sequence],
-                                       recipient_list)
-            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                account, sequence, recipients)
-
-        return self.dumps({'success': True})
+        with DBSession(self.state_db) as session:
+            self.process.issue_processed_and_mail(session, cherrypy.session['user'],
+                    apply_corrections)
+            return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1088,10 +1079,25 @@ class BillToolBridge:
                 for reebill_info in issuable_reebills:
                     reebill_info['id'] = reebill_info['account'],
                     reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
-                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+                    if reebill_info['processed'] == True:
+                        reebill_info['group'] = 'Processed ReeBills'
+                    elif reebill_info['difference'] < allowable_diff:
+                        reebill_info['group'] = 'ReeBills with Matching Totals'
+                    else:
+                        reebill_info['group'] = 'ReeBills with Non Matching Totals'
 
-                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
+                # sort by 'sort' column, then by 'group' to
+                # get rows sorted by 'sort' column within groups
+                issuable_reebills.sort(key=itemgetter(sort),
+                        reverse = (direction == 'DESC'))
+                def group_order(row):
+                    result = ['Processed ReeBills', 'ReeBills with Matching Totals',
+                              'ReeBills with Non Matching Totals'].index(
+                            row['group'])
+                    assert result >= 0
+                    return result
+                issuable_reebills.sort(key=group_order)
+
                 return self.dumps({'success': True,
                                    'rows': issuable_reebills[start:start+limit],
                                    'total': len(issuable_reebills)})
@@ -1592,7 +1598,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     'Reebill images have been turned off.'}})
         resolution = cherrypy.session['user'].preferences['bill_image_resolution']
