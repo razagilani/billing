@@ -480,23 +480,13 @@ class UtilBillResource(RESTResource):
 
         return True, {}
 
-    def handle_delete(self, account, rows, *vpath, **params):
-        # "rows" is either a single id or a list of ids
-        rows = ju.loads(rows)
-        if type(rows) is int:
-            ids = [rows]
-        else:
-            ids = rows
-
-        # delete each utility bill, and log the deletion in the journal
-        # with the path where the utility bill file was moved
-        for utilbill_id in ids:
-            utilbill, deleted_path = self.process\
-                .delete_utility_bill_by_id(self.session, utilbill_id)
-            journal.UtilBillDeletedEvent.save_instance(
-                cherrypy.session['user'], account,
-                utilbill.period_start, utilbill.period_end,
-                utilbill.service, deleted_path)
+    def handle_delete(self, utilbill_id, account, *vpath, **params):
+        utilbill, deleted_path = self.process.delete_utility_bill_by_id(
+            self.session, utilbill_id)
+        journal.UtilBillDeletedEvent.save_instance(
+            cherrypy.session['user'], account,
+            utilbill.period_start, utilbill.period_end,
+            utilbill.service, deleted_path)
         return True, {}
 
 
