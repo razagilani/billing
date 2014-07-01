@@ -23,15 +23,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'utilbillToggleProcessed',
         selector: 'button[action=utilbillToggleProcessed]'
-    },{
-        ref: 'utilbillDla',
-        selector: 'button[action=utilbillDla]'
-    },{
-        ref: 'utilbillSlice',
-        selector: 'button[action=utilbillSlice]'
-    },{
-        ref: 'utilbillResults',
-        selector: 'button[action=utilbillResults]'
+//    },{
+//        ref: 'utilbillDla',
+//        selector: 'button[action=utilbillDla]'
+//    },{
+//        ref: 'utilbillSlice',
+//        selector: 'button[action=utilbillSlice]'
+//    },{
+//        ref: 'utilbillResults',
+//        selector: 'button[action=utilbillResults]'
     }],    
     
     init: function() {
@@ -120,7 +120,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var form = this.getUploadUtilityBillForm(),
             selected = this.getAccountsGrid().getSelectionModel().getSelection(),
             accountField = form.down('[name=account]'),
-            startDateField = form.down('[name=begin_date]');
+            startDateField = form.down('[name=begin_date]'),
+            endDateField = form.down('[name=end_date]');
 
         form.getForm().reset();
 
@@ -130,14 +131,16 @@ Ext.define('ReeBill.controller.UtilityBills', {
         accountField.setValue(selected[0].get('account'));
 
         Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/last_utilbill_end_date',
+            url: 'http://'+window.location.host+'/reebill/utilitybills/last_end_date',
+            method: 'GET',
             params: { 
                 account: selected[0].get('account')
             },
             success: function(response){
                 var jsonData = Ext.JSON.decode(response.responseText);
-         
-                startDateField.setValue(new Date(jsonData['date']));
+                var dt = new Date(jsonData['date'])
+                startDateField.setValue(dt);
+                endDateField.setValue(Ext.Date.add(dt, Ext.Date.MONTH, 1));
             }
         });
     },
@@ -156,7 +159,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var scope = this;
 
         this.getUploadUtilityBillForm().getForm().submit({
-            url: 'http://'+window.location.host+'/rest/upload_utility_bill',
+            url: 'http://'+window.location.host+'/reebill/utilitybills',
+            method: 'PUT',
             success: function() {
                 scope.initalizeUploadForm();
             },

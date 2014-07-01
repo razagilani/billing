@@ -410,13 +410,34 @@ class ReebillsResource(RESTResource):
         return True, {'rows': result, 'results': len(rows)}
 
 
+class UtilBillLastEndDateResource(RESTResource):
+
+    def handle_get(self, account,*vpath, **params):
+        the_date = self.state_db.last_utilbill_end_date(self.session, account)
+        # (https://www.pivotaltracker.com/story/show/23569087)
+        # Date is interpreted as a datetime in the client with 12AM UTC set as
+        # its time. This has the effect of the date displayed being off by
+        # one day. To fix this we convert to a date time and set it to the
+        # end of the dat
+        if the_date:
+            the_date = datetime(the_date.year, the_date.month, the_date.day,
+                                23, 59, 59)
+        return True, {'date': the_date}
+
+
 class UtilBillResource(RESTResource):
+    last_end_date = UtilBillLastEndDateResource()
 
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
         rows, total_count = self.process.get_all_utilbills_json(
             self.session, account, start, limit)
         return True, {'rows': rows, 'results': total_count}
+
+    def handle_post(self):
+        new_bill = cherrypy.request.json
+        print new_bill
+        return True, {}
 
     def handle_put(self, rows, *vpath, **params):
         # ext sends a JSON object if there is one row, a list of

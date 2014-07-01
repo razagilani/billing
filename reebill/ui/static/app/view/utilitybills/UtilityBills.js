@@ -151,21 +151,21 @@ Ext.define('ReeBill.view.UtilityBills', {
             action: 'utilbillToggleProcessed',
             text: 'Toggle Processed',
             disabled: true
-        },'-',{
-            xtype: 'button',
-            action: 'utilbillDla',
-            text: 'Layout',
-            disabled: true
-        },{
-            xtype: 'button',
-            action: 'utilbillSlice',
-            text: 'Identify',
-            disabled: true
-        },{
-            xtype: 'button',
-            action: 'utilbillResults',
-            text: 'Review',
-            disabled: true
+//        },'-',{
+//            xtype: 'button',
+//            action: 'utilbillDla',
+//            text: 'Layout',
+//            disabled: true
+//        },{
+//            xtype: 'button',
+//            action: 'utilbillSlice',
+//            text: 'Identify',
+//            disabled: true
+//        },{
+//            xtype: 'button',
+//            action: 'utilbillResults',
+//            text: 'Review',
+//            disabled: true
         }]
     }],
 
