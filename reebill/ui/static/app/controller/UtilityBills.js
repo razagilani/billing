@@ -198,6 +198,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleDelete: function() {
         var scope = this,
+            store = this.getUtilityBillsStore(),
             selected = this.getUtilityBillsGrid().getSelectionModel().getSelection(),
             selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
 
@@ -208,20 +209,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             'Are you sure you want to delete the selected Utility Bill(s)?',
             function(answer) {
                 if (answer == 'yes') {
-                    Ext.Ajax.request({
-                        url: 'http://'+window.location.host+'/rest/utilbill_grid',
-                        params: { 
-                            account: selectedAccount[0].get('account'),
-                            rows: selected[0].get('id'),
-                            xaction: 'destroy'
-                        },
-                        success: function(response, request) {
-                            var jsonData = Ext.JSON.decode(response.responseText);
-                            if (jsonData.success) {
-                                scope.getUtilityBillsStore().reload();
-                            }
-                        },
-                    });
+                    store.remove(selected)
                 }
             });
     },
@@ -231,8 +219,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleToggleProcessed: function() {
         var grid = this.getUtilityBillsGrid(),
-            selected = grid.getSelectionModel().getSelection(),
-            store = this.getUtilityBillsStore();
+            selected = grid.getSelectionModel().getSelection();
 
         if (!selected || selected.length != 1)
             return;
