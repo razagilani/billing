@@ -12,13 +12,15 @@ from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
-from billing.processing.exceptions import MissingDataError
+from billing.processing.exceptions import MissingDataError, RegisterError
+
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, reebill_dao):
+    def __init__(self, splinter, reebill_dao, logger):
         self._splinter = splinter
         self._reebill_dao = reebill_dao
+        self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
             measure, ignore_missing=True, verbose=False, ):
@@ -81,9 +83,9 @@ class RenewableEnergyGetter(object):
         install_obj = self._splinter.get_install_obj_for(olap_id)
         reebill_doc = self._reebill_dao.load_reebill(reebill.customer.account,
                                                      reebill.sequence, reebill.version)
-        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-        start, end = mongo.meter_read_period(utilbill_doc)
+        utilbill = reebill.utilbill
+        start, end = utilbill.period_start, utilbill.period_end
+
         # get hourly "energy sold" values during this period
         for reading in reebill.readings:
 
@@ -111,11 +113,18 @@ class RenewableEnergyGetter(object):
                 return total
 
             results = self._usage_data_to_virtual_register(reebill_doc,
-                utilbill_doc, energy_function)
+                utilbill, energy_function)
+
             for binding, quantity in results:
                 assert isinstance(binding, basestring)
                 assert isinstance(quantity, (float, int))
-                reebill.set_renewable_energy_reading(binding, quantity)
+                try:
+                    reebill.set_renewable_energy_reading(binding, quantity)
+                except RegisterError:
+                    # ignore any registers that exist in the utility bill
+                    # but don't have corresponding readings in the reebill
+                    self._logger.info(('In update_renewable_readings: skipped '
+                            'register "%s" in %s') % (binding, reebill))
 
     def fetch_interval_meter_data(self, reebill, csv_file,
             meter_identifier=None, timestamp_column=0, energy_column=1,
@@ -359,7 +368,7 @@ class RenewableEnergyGetter(object):
 
 
     def _usage_data_to_virtual_register(self, reebill_doc,
-            utilbill_doc, energy_function, verbose=False):
+            utilbill, energy_function, verbose=False):
         '''Gets energy quantities from 'energy_function' and returns new
         renewable energy register readings as a list of (register binding,
         quantity) pairs. The caller should put these values in the
@@ -381,13 +390,16 @@ class RenewableEnergyGetter(object):
                 # time-of-use registers
                 # TODO make this a method of MongoReebill
                 hour_ranges = None
-                if 'active_periods_weekday' in register:
+                if register.active_periods not in [None, []]:
                     # a tou register should have all 3 active_periods_... keys
-                    assert 'active_periods_weekend' in register
-                    assert 'active_periods_holiday' in register
+                    for k in ['active_periods_weekday',
+                              'active_periods_weekend',
+                              'active_periods_holiday']:
+                        assert k in register.active_periods
                     hour_ranges = map(tuple,
-                        register['active_periods_' + holidays.get_day_type(day)])
-                elif register.get('type') == 'total':
+                        register.active_periods['active_periods_%s' %\
+                                                holidays.get_day_type(day)])
+                elif register.reg_type == 'total':
                     # For non-TOU registers, only insert renewable energy if the
                     # register dictionary has the key "type" and its value is
                     # "total". Every non-TOU utility bill should have exactly one
@@ -418,11 +430,9 @@ class RenewableEnergyGetter(object):
             return total_energy
 
         result = []
-        for meter in utilbill_doc['meters']:
-            for register in meter['registers']:
-                hypothetical_quantity = get_renewable_energy_for_register(
-                        register, meter['prior_read_date'],
-                        meter['present_read_date'])
-                result.append((register['register_binding'],
-                               hypothetical_quantity))
+        for register in utilbill.registers:
+            hypothetical_quantity = get_renewable_energy_for_register(register,
+                utilbill.period_start, utilbill.period_end)
+            result.append((register.register_binding, hypothetical_quantity))
+
         return result
