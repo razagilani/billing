@@ -266,7 +266,7 @@ class RESTResource(WebResource):
     """
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
-    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_in(force=False)
     def default(self, *vpath, **params):
         method = getattr(self,
                          "handle_" + cherrypy.request.method.lower(),
@@ -434,10 +434,33 @@ class UtilBillResource(RESTResource):
             self.session, account, start, limit)
         return True, {'rows': rows, 'results': total_count}
 
-    def handle_post(self):
-        new_bill = cherrypy.request.json
-        print new_bill
-        return True, {}
+    def handle_post(self, *vpath, **params):
+        """ Handles Utilitybill creation. Since this information is sent by a
+        form and contains a file object we have to manually parse the data """
+        # pre-process parameters
+        params = cherrypy.request.params
+        account = params['account']
+        service = params['service'].lower()
+        total_charges = float(params['total_charges'])
+        begin_date = datetime.strptime(params['begin_date'], '%Y-%m-%d').date()
+        end_date = datetime.strptime(params['end_date'], '%Y-%m-%d').date()
+        UtilBill.validate_utilbill_period(begin_date, end_date)
+
+        # NOTE 'fileobj.file' is always a CherryPy object; if no
+        # file was specified, 'fileobj.file' will be None
+        fileobj = params['file_to_upload']
+
+        billstate = UtilBill.Complete if fileobj.file else \
+            UtilBill.SkylineEstimated
+        self.process.upload_utility_bill(
+            self.session, account, service,
+            begin_date, end_date, fileobj.file,
+            fileobj.filename if fileobj.file else None,
+            total=total_charges, state=billstate, utility=None, rate_class=None)
+
+        # Since this is initated by an Ajax request, we will still have to
+        # send a {'success', 'true'} parameter
+        return True, {'success': 'true'}
 
     def handle_put(self, rows, *vpath, **params):
         # ext sends a JSON object if there is one row, a list of
