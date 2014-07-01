@@ -160,7 +160,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         this.getUploadUtilityBillForm().getForm().submit({
             url: 'http://'+window.location.host+'/reebill/utilitybills',
-            method: 'PUT',
             success: function() {
                 scope.initalizeUploadForm();
             },
