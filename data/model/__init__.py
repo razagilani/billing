@@ -3,4 +3,3 @@
 since they belong to a wider scope than just within
 :module:`billing.processing`.
 """
-

@@ -38,7 +38,7 @@ from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, dict_merge
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
@@ -1151,9 +1151,14 @@ class BillToolBridge:
         '''
         with DBSession(self.state_db) as session:
             sequence = int(sequence)
-            return self.dumps(dict_merge({'success': True},
-                    self.process.get_sequential_account_info(session, account,
-                    sequence)))
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            return self.dumps({
+                'success': True,
+                'billing_address': reebill.billing_address.to_dict(),
+                'service_address': reebill.service_address.to_dict(),
+                'discount_rate': reebill.discount_rate,
+                'late_charge_rate': reebill.late_charge_rate,
+            })
 
     @cherrypy.expose
     @authenticate_ajax

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 from datetime import date, datetime
+from bson.objectid import ObjectId
 import pymongo
 import bson # part of pymongo package
 from operator import itemgetter
@@ -835,24 +836,6 @@ class ReebillDAO(object):
         if result['err'] is not None or result['n'] == 0:
             raise MongoError(result)
 
-    def load_utilbill_template(self, session, account):
-        '''Returns the Mongo utility bill document template for the customer
-        given by 'account'.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        assert customer.utilbill_template_id not in (None, '')
-        docs = self.utilbills_collection.find({
-                '_id': bson.ObjectId(customer.utilbill_template_id)})
-        if docs.count() == 0:
-            raise NoSuchBillException("No utility bill template for %s" %
-                    customer)
-        assert docs.count() == 1
-        utilbill_doc = docs[0]
-
-        # convert types
-        utilbill_doc = convert_datetimes(utilbill_doc)
-
-        return utilbill_doc
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
