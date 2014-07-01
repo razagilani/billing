@@ -4,6 +4,7 @@ Ext.define('ReeBill.store.UtilityBills', {
     model: 'ReeBill.model.UtilityBill',
 
     autoLoad: false,
+    autoSync: true,
     remoteSort: true,
       
 	proxy: {

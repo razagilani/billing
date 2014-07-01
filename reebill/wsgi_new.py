@@ -462,30 +462,20 @@ class UtilBillResource(RESTResource):
         # send a {'success', 'true'} parameter
         return True, {'success': 'true'}
 
-    def handle_put(self, rows, *vpath, **params):
-        # ext sends a JSON object if there is one row, a list of
-        # objects if there are more than one. but in this case only one
-        # row can be edited at a time
-        row = ju.loads(rows)
-
+    def handle_put(self, utilbill_id, *vpath, **params):
         # convert JSON key/value pairs into arguments for
         # Process.update_utilbill_metadata below
         update_args = {}
-        for k, v in row.iteritems():
-            # NOTE Ext-JS uses '' (empty string) to represent not
-            # changing a value. yes, that means you can never set a
-            # value to ''.
-            if v == '':
-                pass
-            elif k in ('period_start', 'period_end'):
-                update_args[k] = datetime.strptime(v,
-                        ISO_8601_DATETIME_WITHOUT_ZONE).date()
+        for k, v in cherrypy.request.json.iteritems():
+            if k in ('period_start', 'period_end'):
+                update_args[k] = datetime.strptime(
+                    v, ISO_8601_DATE).date()
             elif k == 'service':
                 update_args[k] = v.lower()
-            elif k != 'id':
+            elif k in ('total_charges', 'utility', 'rate_class', 'processed'):
                 update_args[k] = v
 
-        self.process.update_utilbill_metadata(self.session, row['id'],
+        self.process.update_utilbill_metadata(self.session, utilbill_id,
                                               **update_args)
 
         return True, {}
