@@ -422,6 +422,12 @@ _example_uprs = RateStructure(
     ],
 )
 
+_empty_uprs = RateStructure(
+    rates=[
+
+    ],
+)
+
 def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
     '''Returns an example reebill with the given account, sequence, and dates.
@@ -473,3 +479,7 @@ def get_uprs():
     result.id = ObjectId()
     return result
 
+def get_empty_uprs():
+    empty_uprs = deepcopy(_empty_uprs)
+    empty_uprs.id = ObjectId()
+    return empty_uprs

@@ -59,7 +59,7 @@ class RateStructureItem(EmbeddedDocument):
     # charge when multiplied together; the separation into 'quantity' and
     # 'rate' is somewhat arbitrary
     quantity = StringField(required=True, default='0')
-    quantity_units = StringField()
+    quantity_units = StringField(required=True, default='')
     rate = StringField(required=True, default='0')
     #rate_units = StringField()
 
