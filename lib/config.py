@@ -1,4 +1,6 @@
 from ConfigParser import RawConfigParser
+import logging
+log = logging.getLogger(__name__)
 
 class ValidatedConfigParser(RawConfigParser):
     """A ConfigParser class with built-in validation logic and type conversion.
@@ -35,3 +37,4 @@ class ValidatedConfigParser(RawConfigParser):
         runs formencode validators on each configuration section. 
         """
         RawConfigParser.read(self, filenames)
+        self._validate()
