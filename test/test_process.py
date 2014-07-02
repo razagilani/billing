@@ -1,26 +1,20 @@
 import unittest
+from itertools import chain
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
+
 import os
+from bson import ObjectId
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.sql import desc
 from os.path import realpath, join, dirname
 
-from sqlalchemy.orm.exc import NoResultFound
-
-from skyliner.sky_handlers import cross_range
 from billing.processing.session_contextmanager import DBSession
-<<<<<<< local
-from billing.processing.rate_structure2 import RateStructureItem
-=======
 
 #from billing.processing.rate_structure2 import RateStructureItem
->>>>>>> other
 from billing.processing.process import IssuedBillError
-<<<<<<< local
-from billing.processing.state import ReeBill, Customer, UtilBill
-=======
 from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address, Customer, Charge
->>>>>>> other
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
@@ -28,7 +22,6 @@ from billing.processing.exceptions import BillStateError, NoRSIError, RSIError
 from billing.test import utils
 #from processing.state import Charge
 from billing.processing.exceptions import FormulaSyntaxError
-
 
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
@@ -459,7 +452,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # of the bill from which it derives. on 2013-01-15, make a version
             # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
             # 2 with a higher total, and check that the late charge comes from
-            # version 1.
+            # version 1. 
             self.process.new_version(session, acc, 1)
             bill1_1 = self.state_db.get_reebill(session, acc, 1, version=1)
             self.process.ree_getter = MockReeGetter(100)
@@ -1348,53 +1341,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'description': 'System Charge',
                 'quantity': '1',
                 'rate': '11.2',
-<<<<<<< local
-                'shared': True,
-                'group': 'A',
-           })
-           self.process.update_rsi(session, id_a, 'New RSI #2', {
-=======
                 'shared': True
             })
             self.process.update_rsi(session, id_a, 'New RSI #2', {
->>>>>>> other
                'rsi_binding': 'NOT_SHARED',
                'description': 'System Charge',
                'quantity': '1',
                'rate': '3',
-<<<<<<< local
-               'shared': False,
-               'group': 'B',
-           })
-           for i in (id_b, id_c):
-               self.process.add_rsi(session, i)
-               self.process.add_rsi(session, i)
-               self.process.update_rsi(session, i, 'New RSI #1', {
-=======
                'shared': False
             })
             for i in (id_b, id_c):
                 self.process.add_rsi(session, i)
                 self.process.add_rsi(session, i)
                 self.process.update_rsi(session, i, 'New RSI #1', {
->>>>>>> other
                    'rsi_binding': 'DISTRIBUTION_CHARGE',
                    'description': 'Distribution charge for all therms',
                    'quantity': '750.10197727',
                    'rate': '220.16',
-<<<<<<< local
-                   'shared': True,
-                   'group': 'C',
-               })
-               self.process.update_rsi(session, i, 'New RSI #2', {
-                   'rsi_binding': 'PGC',
-                   'description': 'Purchased Gas Charge',
-                   'quantity': '750.10197727',
-                   'rate': '0.7563',
-                   'shared': True,
-                   'group': 'D',
-               })
-=======
                    'shared': True
                 })
                 self.process.update_rsi(session, i, 'New RSI #2', {
@@ -1404,7 +1367,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'rate': '0.7563',
                     'shared': True
                 })
->>>>>>> other
 
             # create utility bill and reebill #2 for A
             self.process.upload_utility_bill(session, acc_a,
@@ -2180,79 +2142,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'balance_forward': 0,
                 'corrections': '#1 not issued',
             }], reebill_data, 'id')
-
-    def test_tou_metering(self):
-        # TODO: possibly move to test_fetch_bill_data
-        account = '99999'
-
-        def get_mock_energy_consumption(install, start, end, measure,
-                    ignore_misisng=True, verbose=False):
-            assert start, end == (date(2000,1,1), date(2000,2,1))
-            result = []
-            for hourly_period in cross_range(start, end):
-                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
-                # (Sat Jan 15), return number of BTU equal to the hour of
-                # the day. no energy is consumed on other days.
-                if hourly_period.day in (1, 14, 15):
-                    result.append(hourly_period.hour)
-                else:
-                    result.append(0)
-            assert len(result) == 31 * 24 # hours in January
-            return result
-
-        self.process.ree_getter.get_billable_energy_timeseries = \
-                get_mock_energy_consumption
-
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, account, 'gas',
-                    date(2000, 1, 1), date(2000, 2, 1),
-                    StringIO('January'), 'january.pdf')
-
-            # modify registers of this utility bill so they are TOU
-            u = session.query(UtilBill).join(Customer).\
-                    filter_by(account='99999').one()
-            doc = self.reebill_dao.load_doc_for_utilbill(u)
-            doc['meters'][0]['registers'] = [{
-                'register_binding': 'REG_TOTAL',
-                'description': 'normal register',
-                'identifier': 'test1',
-                'quantity': 0,
-                # use BTU to avoid unit conversion
-                'quantity_units': 'btu',
-                # this appears to be unused (though "type" values include
-                # "total", "tou", "demand", and "")
-                'type': 'total',
-            },{
-                'register_binding': 'TOU',
-                'description': 'time-of-use register',
-                'identifier': 'test2',
-                'quantity': 0,
-                'quantity_units': 'btu',
-                # NOTE these hour ranges are inclusive at both ends
-                'active_periods_weekday': [[9, 9]],
-                'active_periods_weekend': [[11, 11]],
-                'active_periods_holiday': [[13, 13]],
-                'type': 'tou',
-            }]
-            self.reebill_dao.save_utilbill(doc)
-
-            self.process.roll_reebill(session, account,
-                    start_date=date(2000,1,1))
-
-            # the total energy consumed over the 3 non-0 days is
-            # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-            # when only the hours 9, 11, and 13 are included, the total is just
-            # 9 + 11 + 13 = 33.
-            total_renewable_btu = 23 * 24 / 2. * 3
-            tou_renewable_btu = 9 + 11 + 13
-
-            # check reading of the reebill corresponding to the utility register
-            total_reading, tou_reading = session.query(ReeBill).one().readings
-            self.assertEqual('btu', total_reading.unit)
-            self.assertEqual(total_renewable_btu,
-                    total_reading.renewable_quantity)
-            self.assertEqual('btu', tou_reading.unit)
-            self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
