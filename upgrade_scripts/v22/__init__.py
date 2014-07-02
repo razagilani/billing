@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 def copy_registers_from_mongo():
     log.info('Copying registers from Mongo')
     client = MongoClient(config.get('billdb', 'host'),
-                         config.get('billdb', 'port'))
+                         int(config.get('billdb', 'port')))
     db = client[config.get('billdb', 'database')]
 
     s = Session()
@@ -34,7 +34,7 @@ def copy_registers_from_mongo():
                       "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
         for mongo_meter in mongo_ub['meters']:
-            for mongo_register in mongo_ub['registers']:
+            for mongo_register in mongo_meter['registers']:
                 log.debug('Adding register for utilbill id %s' % ub.id)
                 s.add(Register(ub,
                                mongo_register.get('description', ""),

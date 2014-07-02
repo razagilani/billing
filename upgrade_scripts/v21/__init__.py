@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 def copy_charges_from_mongo():
 
     client = MongoClient(config.get('billdb', 'host'),
-                         config.get('billdb', 'port'))
+                         int(config.get('billdb', 'port')))
     db = client[config.get('billdb', 'database')]
     s = Session()
     assert s.query(Charge).all() == [], "Charges table is not empty"
@@ -33,6 +33,9 @@ def copy_charges_from_mongo():
             continue
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
+            if mongo_charge.get('quantity_units', "") is None:
+                continue
+            print "quantity units: ", mongo_charge.get('quantity_units', "")
             s.add(Charge(ub,
                          mongo_charge.get('description', ""),
                          mongo_charge.get('group', ""),
