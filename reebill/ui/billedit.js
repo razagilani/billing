@@ -655,6 +655,7 @@ function reeBillReady() {
                                 ubRegisterGrid.setEditable(false);
                                 rateStructurePanel.setDisabled(true);
                                 chargeItemsPanel.setDisabled(true);
+                                BILLPDF.fetchUtilbill()
                             }
                         });
                 }
@@ -853,6 +854,7 @@ function reeBillReady() {
                     if (answer == 'yes') {
                         reeBillGrid.getSelectionModel().clearSelections();
                         deleteReebills(sequences);
+                        BILLPDF.fetchReebill()
                     }
             });
 
