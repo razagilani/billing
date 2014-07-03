@@ -1646,9 +1646,34 @@ function reeBillReady() {
     renderDataConn.disableCaching = true;
     function renderOperation()
     {
-        BILLPDF.fetchReebill(selected_account, selected_sequence);
+        // while waiting for the next ajax request to finish, show a loading message
+        // in the utilbill image box
+        BILLPDF.domOverwrite('reebill', 'loading');
+        renderDataConn.request({
+            params: {
+                account: selected_account,
+                sequence: selected_sequence
+            },
+            success: function(response, options) {
+                var response_obj = {};
+                try {
+                    response_obj = Ext.decode(response.responseText);
+                } catch (e) {
+                    Ext.Msg.alert("Fatal: Could not decode JSON data");
+                }
+                if (response_obj.success !== true) {
+                    // handle failure if notselected
+                    BILLPDF.domOverwrite('reebill', 'notselected');
+                } else {
+                    BILLPDF.fetchReebill(selected_account, selected_sequence);
+                }
+            },
+            failure: function () {
+                // handle failure if needed
+                BILLPDF.domOverwrite('reebill', 'notselected');
+            }
+        });
     }
-
     /*var attachDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
@@ -6425,7 +6450,7 @@ var BILLPDF = function(){
     initialize();
 
     return {fetchUtilbill: fetchUtilbill, renderPages: renderPages,
-            fetchReebill: fetchReebill, reset:reset};
+            fetchReebill: fetchReebill, reset:reset, domOverwrite:domOverwrite};
 }();
 
 function loadDashboard()
