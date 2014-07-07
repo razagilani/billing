@@ -1508,7 +1508,14 @@ class Process(object):
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        self._freeze_utilbill_document(session, reebill)
+        try:
+            self._freeze_utilbill_document(session, reebill)
+        except IssuedBillError:
+            # this happens when a correction was already issued in the call to
+            # 'issue_corrections' preceding the call to 'issue' for the target
+            # bill. if a "frozen utility bill document" is not created it
+            # it should not cause any problems.
+            pass
 
         # also duplicate UPRS, storing the new _ids in MySQL
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
