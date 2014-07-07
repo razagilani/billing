@@ -1369,7 +1369,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(session, account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
-        if reebill.sequence < self.state_db.last_sequence(session, account):
+        if reebill.version == 0 and reebill.sequence < \
+                self.state_db.last_sequence(session, account):
             raise IssuedBillError("Only the last reebill can be deleted")
 
         version = reebill.version
