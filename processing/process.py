@@ -582,6 +582,15 @@ class Process(object):
                     service, utility, rate_class, original_last_end,
                     begin_date)
 
+        # utility bill should be computed, but any error that happens when
+        # computing it should be ignored to prevent apparent failure to upload
+        # the bill. TODO: see Pivotal 72645700
+        try:
+            self.compute_utility_bill(session, new_utilbill.id)
+        except Exception as e:
+            self.logger.error("Error when computing utility bill %s:" % (
+                    new_utilbill.id, e))
+
         return new_utilbill
 
     def get_service_address(self,session,account):
