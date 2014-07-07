@@ -1550,31 +1550,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
-            # create utility bill and first reebill, for January 2012
+            # create 2 utility bills for Jan-Feb 2012
             self.process.upload_utility_bill(session, account, 'gas',
-                                             date(2012, 1, 1), date(2012, 2, 1),
-                                             StringIO('january 2012'),
-                                             'january.pdf')
-            utilbill = session.query(UtilBill).one()
-            self.process.roll_reebill(session, account,
-                                      start_date=date(2012, 1, 1))
+                    date(2012, 1, 1), date(2012, 2, 1),
+                    StringIO('january 2012'), 'january.pdf')
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012, 2, 1), date(2012, 3, 1),
+                    StringIO('february 2012'), 'february.pdf')
+            utilbill = session.query(UtilBill).order_by(
+                    UtilBill.period_start).first()
 
-            # delete the reebill: should succeed, because it's not issued
-            self.process.delete_reebill(session, account, 1)
-            self.assertRaises(NoSuchBillException,
-                              self.reebill_dao.load_reebill, account, 1,
-                              version=0)
-            self.assertEquals(0, session.query(ReeBill).count())
-            self.assertEquals([utilbill], session.query(UtilBill).all())
-
-            # re-create it
+            # create 2 reebills
             reebill = self.process.roll_reebill(session, account,
-                                                start_date=date(2012, 1, 1))
+                                      start_date=date(2012, 1, 1))
+            self.process.roll_reebill(session, account)
+
+            # only the last reebill is deletable: deleting the 2nd one should
+            # succeed, but deleting the 1st one should fail
+            with self.assertRaises(IssuedBillError):
+                self.process.delete_reebill(session, account, 1)
+            self.process.delete_reebill(session, account, 2)
+            with self.assertRaises(NoSuchBillException):
+                self.reebill_dao.load_reebill(account, 2, version=0)
+            self.assertEquals(1, session.query(ReeBill).count())
             self.assertEquals([1], self.state_db.listSequences(session,
-                                                               account))
+                    account))
             self.assertEquals([utilbill], reebill.utilbills)
 
-            # issue it: it should not be deletable
+            # issued reebill should not be deletable
             self.process.issue(session, account, 1)
             self.assertEqual(1, reebill.issued)
             self.assertEqual([utilbill], reebill.utilbills)
@@ -1584,9 +1587,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               session, account, 1)
 
             # create a new verison and delete it, returning to just version 0
-            # (versioning requires a cprs)
             self.process.new_version(session, account, 1)
-            reebill_v1 = session.query(ReeBill).filter_by(version=1).one()
+            session.query(ReeBill).filter_by(version=1).one()
             self.assertEqual(1, self.state_db.max_version(session, account, 1))
             self.assertFalse(self.state_db.is_issued(session, account, 1))
             self.process.delete_reebill(session, account, 1)
