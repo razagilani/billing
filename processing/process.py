@@ -588,8 +588,8 @@ class Process(object):
         try:
             self.compute_utility_bill(session, new_utilbill.id)
         except Exception as e:
-            self.logger.error("Error when computing utility bill %s:" % (
-                    new_utilbill.id, e))
+            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
+                    new_utilbill.id, e, traceback.format_exc()))
 
         return new_utilbill
 
