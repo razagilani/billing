@@ -3207,7 +3207,7 @@ function reeBillReady() {
                 dataIndex: 'group',
                 sortable: true,
                 editor: new Ext.form.TextField({allowBlank: true}),
-                width: 60,
+                width: 200,
             }
         ]
     });
