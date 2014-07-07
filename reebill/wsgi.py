@@ -791,11 +791,12 @@ class BillToolBridge:
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
                 self.process.issue_corrections(session, account, sequence)
-                for cor in unissued_corrections:
+                for correction in unissued_corrections:
+                    sequence, _, _ = correction
                     journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'],account, sequence,
-                        self.state_db.max_version(session, account, cor),
-                        applied_sequence=sequences[0])
+                        self.state_db.max_version(session, account, sequence),
+                        applied_sequence=sequence)
             self.process.compute_reebill(session, account, sequence)
             self.process.issue(session, account, sequence)
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
