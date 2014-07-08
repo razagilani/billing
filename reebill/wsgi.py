@@ -750,6 +750,8 @@ class BillToolBridge:
             result = self.process.issue_and_mail(cherrypy.session['user'], session, account,
                 sequence, recipients, apply_corrections)
             return self.dumps(result)
+                    correction_sequence, _, _ = correction
+                        applied_sequence=sequence)
 
     @cherrypy.expose
     @authenticate_ajax

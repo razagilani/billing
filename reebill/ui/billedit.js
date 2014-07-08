@@ -8,46 +8,6 @@ var DEFAULT_ACCOUNT_FILTER = "No filter";
 
 //PDFJS.disableWorker = true;
 
-/*
-* Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
-*/
-// Ext 4 fires events when ajax is aborted
-// so this is an Ext 3 workaround
-/*
-Ext.Ajax.addEvents({requestaborted:true});
-Ext.override(Ext.data.Connection, {
-    abort : function(transId){
-        if(transId || this.isLoading()){
-            Ext.lib.Ajax.abort(transId || this.transId);
-            this.fireEvent('requestaborted', this, this.transId);
-        }
-    }
-});
-Ext.Ajax.addListener('beforerequest', function (conn, request) {
-        console.log("beforerequest");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestcomplete', function (conn, request) {
-        console.log("requestcomplete");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestexception', function (conn, request) {
-        console.log("requestexception");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestaborted', function (conn, request) {
-        console.log("requestaborted");
-        console.log(conn);
-        console.log(request);
-    }, this);
-*/
-
-/* Constructor for menus that show versions of utility bills in
- * utility-bill-editing tabs */
-
 ///////////////////////////////////////////////////
 //
 //         CUSTOM COMPONENTS
@@ -56,34 +16,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 Ext.ns('Ext.ux.grid');
 
-/**
- * A Column definition class which renders enum data fields.
- * @class Ext.ux.grid.CheckboxColumn
- * @extends Ext.grid.Column
- * @author Tran Cong Ly - tcl_java@yahoo.com - http://5cent.net
- * Create the column:
- *   
- v ar cm = new Ext.grid.ColumnModel([                                    *
- new Ext.ux.grid.CheckboxColumn({
-     header: 'Header #1',
-     dataIndex: 'field_name_1'
-     },
-     {
-         xtype: 'checkboxcolumn',
-         header: 'Header #2',
-         dataIndex: 'field_name_2',
-         on: 1,
-         off: 0
-         },
-         {
-             xtype: 'checkboxcolumn',
-             header: 'Header #3',
-             dataIndex: 'field_name_3',
-             on: 'abc',
-             off: 'def'
-             }])
-             
-             */
 Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
     on: true,
     off: false,
@@ -655,6 +587,7 @@ function reeBillReady() {
                                 ubRegisterGrid.setEditable(false);
                                 rateStructurePanel.setDisabled(true);
                                 chargeItemsPanel.setDisabled(true);
+                                BILLPDF.fetchUtilbill()
                             }
                         });
                 }
@@ -828,12 +761,9 @@ function reeBillReady() {
             url: 'http://'+location.host+'/reebill/delete_reebill',
             params: { account: selected_account, sequences: sequences },
             success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                Ext.Msg.hide();
-                if (jsonData.success == true) {
-                    reeBillStore.reload();
-                }
-            },
+                defaultRequestComplete(null, result);
+                reeBillStore.reload();
+            }
         });
     }
 
@@ -853,6 +783,7 @@ function reeBillReady() {
                     if (answer == 'yes') {
                         reeBillGrid.getSelectionModel().clearSelections();
                         deleteReebills(sequences);
+                        BILLPDF.fetchReebill()
                     }
             });
 
@@ -1682,9 +1613,34 @@ function reeBillReady() {
     renderDataConn.disableCaching = true;
     function renderOperation()
     {
-        BILLPDF.fetchReebill(selected_account, selected_sequence);
+        // while waiting for the next ajax request to finish, show a loading message
+        // in the utilbill image box
+        BILLPDF.domOverwrite('reebill', 'loading');
+        renderDataConn.request({
+            params: {
+                account: selected_account,
+                sequence: selected_sequence
+            },
+            success: function(response, options) {
+                var response_obj = {};
+                try {
+                    response_obj = Ext.decode(response.responseText);
+                } catch (e) {
+                    Ext.Msg.alert("Fatal: Could not decode JSON data");
+                }
+                if (response_obj.success !== true) {
+                    // handle failure if notselected
+                    BILLPDF.domOverwrite('reebill', 'notselected');
+                } else {
+                    BILLPDF.fetchReebill(selected_account, selected_sequence);
+                }
+            },
+            failure: function () {
+                // handle failure if needed
+                BILLPDF.domOverwrite('reebill', 'notselected');
+            }
+        });
     }
-
     /*var attachDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
@@ -3218,7 +3174,7 @@ function reeBillReady() {
                 dataIndex: 'group',
                 sortable: true,
                 editor: new Ext.form.TextField({allowBlank: true}),
-                width: 60,
+                width: 200,
             }
         ]
     });
@@ -6547,7 +6503,7 @@ var BILLPDF = function(){
     initialize();
 
     return {fetchUtilbill: fetchUtilbill, renderPages: renderPages,
-            fetchReebill: fetchReebill, reset:reset};
+            fetchReebill: fetchReebill, reset:reset, domOverwrite:domOverwrite};
 }();
 
 function loadDashboard()
