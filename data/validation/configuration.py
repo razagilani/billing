@@ -39,7 +39,8 @@ class journaldb(Schema):
 class http(Schema):
     socket_port = TCPPort()
     socket_host = String()
-    
+    secret_key = String()
+
 class rsdb(Schema):
     host = String()
     port = TCPPort(min=1, max=65535)

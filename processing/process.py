@@ -5,16 +5,13 @@ Description: Various utility procedures to process bills
 """
 import sys
 import os
-import copy
 from datetime import date, datetime, timedelta
 from operator import itemgetter
 import traceback
-from itertools import chain
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from sqlalchemy.orm import aliased
 from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
