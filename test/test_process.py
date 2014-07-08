@@ -788,16 +788,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                     'reebills': [],
                                                 }, last_utilbill, 'id', 'name')
 
-        # make sure images can be accessed for these bills (except the
+        # make sure files can be accessed for these bills (except the
         # estimated one)
         for obj in utilbills_data:
             id, state = obj['id'], obj['state']
+            u = self.state_db.get_utilbill_by_id(session, id)
             if state == 'Final':
-                self.process.get_utilbill_image_path(session, id, 50)
+                self.process.billupload.get_utilbill_file_path(u)
             else:
-                self.assertRaises(IOError,
-                                  self.process.get_utilbill_image_path, session,
-                                  id, 50)
+                with self.assertRaises(IOError):
+                    self.process.billupload.get_utilbill_file_path(u)
 
         # delete utility bills
         ids = [obj['id'] for obj in utilbills_data]

@@ -1,17 +1,13 @@
 #!/usr/bin/python
-import sys
 import datetime
-import uuid
-import copy
-import operator
-import pymongo
-import mongoengine
 import ConfigParser
 import os
 from operator import attrgetter
+
+import mongoengine
+
 from billing.util.dateutils import ISO_8601_DATE
-from billing.processing.state import StateDB
-from billing.processing.session_contextmanager import DBSession
+
 
 # list of event types proposed but not used yet:
 # ReeBillUsagePeriodUpdated
