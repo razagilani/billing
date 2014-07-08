@@ -6,7 +6,6 @@ initialize()
 from billing import config
 
 import sys
-import os
 import pprint
 
 # TODO: 64957006
@@ -23,7 +22,7 @@ import json
 import cherrypy
 import os
 import ConfigParser
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import inspect
 import logging
 import time
@@ -36,7 +35,7 @@ import mongoengine
 from billing.skyliner.splinter import Splinter
 from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map, dict_merge
 from billing.processing import mongo, excel_export
@@ -725,15 +724,12 @@ class BillToolBridge:
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
         with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            # TODO 22598787 - branch awareness
             self.renderer.render(
                 session,
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
-                #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                        "%.5d_%.4d.pdf" % (account, sequence),
                 False
             )
             return self.dumps({'success': True})
@@ -1588,44 +1584,6 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
-    def getUtilBillImage(self, utilbill_id):
-        # TODO: put url here, instead of in billentry.js?
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        with DBSession(self.state_db) as session:
-            result = self.process.get_utilbill_image_path(session, utilbill_id,
-                                                          resolution)
-        return self.dumps({'success':True, 'imageName':result})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.get('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'errors': {'reason':
-                    'Reebill images have been turned off.'}})
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getReeBillImagePath(account, sequence,
-                resolution)
-        return self.dumps({'success':True, 'imageName':result})
-    
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def getBillImageResolution(self, **kwargs):
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        return self.dumps({'success':True, 'resolution': resolution})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def setBillImageResolution(self, resolution, **kwargs):
-        cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
-        self.user_dao.save_user(cherrypy.session['user'])
-        return self.dumps({'success':True})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
     def getDifferenceThreshold(self, **kwargs):
         threshold = cherrypy.session['user'].preferences['difference_threshold']
         return self.dumps({'success':True, 'threshold': threshold})
@@ -1671,10 +1629,6 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
             'tools.sessions.timeout': 240
         },
-        '/utilitybillimages' : {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': '/tmp/billimages'
-        }
     }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),

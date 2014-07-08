@@ -1,31 +1,31 @@
 """
 Utility functions to interact with state database
 """
+import sys
 from collections import defaultdict
 from copy import deepcopy
 
-import os, sys
-import itertools
-import datetime
 from datetime import timedelta, datetime, date
 from itertools import groupby, chain
-from operator import attrgetter, itemgetter
+from operator import attrgetter
+
 import sqlalchemy
-from sqlalchemy import Table, Column, MetaData, ForeignKey
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import mapper, sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc, asc, label
-from sqlalchemy.sql.functions import max as sql_max
-from sqlalchemy.sql.functions import min as sql_min
-from sqlalchemy import func, not_
+from sqlalchemy.sql.expression import desc, asc
+from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
+
 import tsort
+from billing.processing.exceptions import IssuedBillError, NoSuchBillException, RegisterError
+
 
 from exc import DatabaseError
 from alembic.script import ScriptDirectory
