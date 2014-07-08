@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 from datetime import timedelta as td
 #from brokerage.use_period import UsePeriod
 from billing.data.model import RateClass, Address, Base, Session, Supplier, Utility, \
-    BlockQuote, BlockOfferMaker, TermOfferMaker, OfferMaker, TermQuote, UsePeriod, Company
+    BlockQuote, BlockOfferMaker, TermOfferMaker, OfferMaker, TermQuote, UsePeriod, Company, \
+    Customer
 from itertools import product
 from hashlib import sha256
 
 import logging
+#from processing.state import Customer
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +60,7 @@ def create_companies(session):
                         address=Address("Charlie",
                                        "123 Some Street", "Washington", "DC", "13093"),
                         service='electric',
-                        rate_classes=['R', 'RAD', 'RTM']),
+                        rate_classes=['R', 'RAD', 'CTM']),
                       Utility(name='Delmarva',
                         address=Address("Delmarva Mail Room",
                                         "Great Street", "Fredericksburg", "VA", "22401"),
@@ -79,7 +81,7 @@ def create_companies(session):
     session.flush()
 
 
-def create_block_quote(utility, start, end, block_min, block_max, rate_class, charge, time_expired):
+def create_block_quote(utility, start, end, month_min, month_max, rate_class, charge, time_expired):
     """Determinstically makes a block quote"""
 
     assert(utility.service in ['electric', 'gas'])
@@ -90,11 +92,11 @@ def create_block_quote(utility, start, end, block_min, block_max, rate_class, ch
 
     rcord = ord(rate_class.name[-1])
 
-    escalator = 1 + int(block_min / block_factor) * 0.02
+    escalator = int(month_min / block_factor) * 0.02
     base = 1.0 if (len(utility.name) + rcord + time_expired.day if \
                         time_expired else 0) % 2 == 0 else 0.90
 
-    offset = int(block_min / (block_factor * 1.5)) * 0.05
+    offset = int(month_min / (block_factor * 1.5)) * 0.05
 
     if start.month % 2 == 0:
         offset = offset + 0.05
@@ -107,17 +109,17 @@ def create_block_quote(utility, start, end, block_min, block_max, rate_class, ch
             rate = round(rate / 20.0, 3)
 
     time_issued = start - timedelta(days=rcord)
-    return BlockQuote(start, end, block_min, block_max, escalator, utility,
+    return BlockQuote(start, end, month_min, month_max, escalator, utility,
                         rate_class, rate, charge, time_issued, 'xxref',
                         time_expired)
 
 
 def create_block_quotes(session, utilities, blocks, dates, expiration_times, charges):
-    for utility, (start, end), (block_min, block_max), expiration_time, \
+    for utility, (start, end), (month_min, month_max), expiration_time, \
         charge in product(utilities, dates, blocks, expiration_times, charges):
         for rate_class in utility.rate_classes:
-            block_quote = create_block_quote(utility, start, end, block_min,
-                block_max, rate_class, charge, expiration_time)
+            block_quote = create_block_quote(utility, start, end, month_min,
+                month_max, rate_class, charge, expiration_time)
             session.add(block_quote)
 
 
@@ -164,9 +166,10 @@ def print_quotes(session):
     column_names = [s for s in BlockQuote.column_names() if s not in
                    ['discriminator', 'id', 'rate_class_id', 'company_id']]
     print "\n\nFound %s block quotes" % session.query(BlockQuote).count()
-    print ", ".join(['company', 'rate_class'] + column_names)
+    print ", ".join(['company', 'utility', 'rate_class'] + column_names)
     for block_quote in session.query(BlockQuote):
         print ", ".join([block_quote.company.name,
+                         block_quote.rate_class.utility.name,
                          block_quote.rate_class.name] +
                         [str(getattr(block_quote, n)) for n in column_names])
 
@@ -201,6 +204,7 @@ def create_quotes(session):
     elec_suppliers = session.query(Supplier).filter_by(service='electric').all()
     elec_annual_volumes = tuplize([0, 75, 150, 250, 500, 2000])
     elec_blocks = tuplize([0, 350, 800, None])
+    #elec_blocks = tuplize([0, 350, 800])
     elec_expiration_times = [datetime(2013, 11, 10), None]
 
     #All Block Quotes
@@ -222,112 +226,6 @@ def create_quotes(session):
         ['supply'])
 
 
-
-'''
-def create_quotes(session):
-    log.debug('Creating quotes')
-    create_block_quotes(session)
-    return
-
-    """Define supplier quotes"""
-    sq = lambda s: session.query(Supplier).filter_by(name=s).one()
-    uq = lambda u: session.query(Utility).filter_by(name=u).one()
-    rc = lambda sup, s: sup.rate_classes.filter_by(name=s).one()
-
-    #gas suppliers
-    hess = sq('Hess')
-    constil = sq('Constillation')
-    direct = sq('Direct Energy')
-
-    #elec suppliers
-    think = sq('Think Energy')
-    hudson = sq('Hudson Energy')
-    liberty = sq('Liberty Power')
-
-    #gas utilities
-    wgas = uq('Washington Gas')
-    columbia = uq('Columbia Gas')
-
-    #elec utilities
-    pepco = uq('Pepco')
-    delmarva = uq('Delmarva')
-
-    #TimeRangeQuotes (SOS quotes)
-    for company, rate_class, quote, block_min, block_max, escalator, charge, time_issued, start_time, end_time in\
-        [#Washington Gas SOS Supply C1 Jun 1, 2014 - Sept 1, 2014
-         (wgas, rc(wgas, 'C1'), 0.75, 0, 350, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (wgas, rc(wgas, 'C1'), 0.70, 350, 700, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (wgas, rc(wgas, 'C1'), 0.60, 700, None, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-
-         #Washington Gas SOS Supply C1 Sept 1, 2014 - Dec 1, 2014
-         (wgas, rc(wgas, 'C1'), 0.90, 0, 350, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 9, 1), dt(2014, 12, 1)),
-         (wgas, rc(wgas, 'C1'), 0.80, 350, 700, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 9, 1), dt(2014, 12, 1)),
-         (wgas, rc(wgas, 'C1'), 0.70, 700, None, 1.01, 'supply', dt(2014, 5, 1), dt(2014, 9, 1), dt(2014, 12, 1)),
-
-
-         #Pepco SOS Generation RAD Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'RAD'), 0.125, 0, 350, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.11, 350, 700, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.10, 700, None, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-
-         #Pepco SOS Generation RAD Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'RAD'), 0.13, 0, 350, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.125, 350, 700, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.11, 700, None, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-
-         #Pepco SOS Generation RAD Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'RAD'), 0.006, 0, 350, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.005, 350, 700, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.004, 700, None, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-
-         #Pepco SOS Generation RAD Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'RAD'), 0.006, 0, 350, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.0055, 350, 700, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'RAD'), 0.005, 700, None, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-
-
-          #Pepco SOS Generation R Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'R'), 0.135, 0, 350, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'R'), 0.13, 350, 700, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'R'), 0.12, 700, None, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-
-         #Pepco SOS Generation R Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'R'), 0.14, 0, 350, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'R'), 0.135, 350, 700, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'R'), 0.12, 700, None, 1.01, 'generation', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-
-         #Pepco SOS Generation R Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'R'), 0.007, 0, 350, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'R'), 0.0065, 350, 700, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-         (pepco, rc(pepco, 'R'), 0.005, 700, None, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 6, 1), dt(2014, 9, 1)),
-
-         #Pepco SOS Generation R Jun 1, 2014 - Sept 1, 2014
-         (pepco, rc(pepco, 'R'), 0.007, 0, 350, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'R'), 0.0065, 350, 700, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1)),
-         (pepco, rc(pepco, 'R'), 0.006, 700, None, 1.01, 'transmission', dt(2014, 5, 1), dt(2014, 9, 1), dt(2015, 1, 1))]:
-
-        session.add(BlockQuote(start_time, end_time, block_min, block_max, escalator, company, rate_class, quote, charge, time_issued, 'xref'))
-
-    #CommitmentPeriodQuotes (non-SOS quotes)
-    for (term_months, supplier, rate_class, quote, charge, time_isued) in \
-        [#Think energy supply for Pepco
-         (6, think, rc(pepco, 'RAD'), 0.10, 'generation', dt(2014, 5, 1)),
-         (6, think, rc(pepco, 'RAD'), 0.007, 'transmission', dt(2014, 5, 1)),
-         (12, think, rc(pepco, 'RAD'), 0.95, 'generation', dt(2014, 5, 1)),
-         (12, think, rc(pepco, 'RAD'), 0.0065, 'transmission', dt(2014, 5, 1)),
-
-         #Hudson energy supply for Pepco
-         (6, hudson, rc(pepco, 'RAD'), 0.07, 'generation', dt(2014, 5, 1)),
-         (6, hudson, rc(pepco, 'RAD'), 0.007, 'transmission', dt(2014, 5, 1)),
-         (12, hudson, rc(pepco, 'RAD'), 0.13, 'generation', dt(2014, 5, 1)),
-         (12, hudson, rc(pepco, 'RAD'), 0.007, 'transmission', dt(2014, 5, 1))]:
-
-        session.add(TermQuote(term_months, supplier, rate_class, quote, charge,
-            time_issued, 'xref'))
-    session.flush()
-'''
-
-
 def create_offer_makers(session):
     log.debug('creating offer_makers')
     session.add_all([BlockOfferMaker(session),
@@ -345,10 +243,11 @@ def run_poc():
     create_companies(session)
     create_quotes(session)
     create_offer_makers(session)
+    print_quotes(session)
 
     rate_class = session.query(RateClass).join(Utility).\
-        filter(Utility.name == 'Pepco').filter(RateClass.name == 'RAD').\
-        filter(RateClass.active == True).one()
+        filter(Utility.name == 'Pepco').filter(RateClass.name == 'R').\
+        filter(datetime.now() <= RateClass.time_deactivated).one()
 
     use_periods = [UsePeriod(650, datetime(2013, 9, 1), datetime(2013, 10, 1)),
                    UsePeriod(700, datetime(2013, 10, 1), datetime(2013, 11, 1)),
@@ -358,17 +257,44 @@ def run_poc():
                    UsePeriod(620, datetime(2014, 2, 1), datetime(2014, 3, 1)),
                    UsePeriod(800, datetime(2014, 3, 1), datetime(2014, 4, 1))]
 
+    address = Address("Barack Obama",
+                      "1600 Pennsylvania Avenue",
+                      "Washington, DC", "20006")
+    customer = Customer("Bacack Obama", "123", 0.0, 0.0,
+                        "barack@example.com", "Washington Gas", "G1",
+                        address, address)
+
     offers = []
     for maker in session.query(OfferMaker).filter_by(active=True).all():
-        offers.extend(maker.make_offers(rate_class, use_periods))
+        offers.extend(maker.make_offers(address, customer, rate_class,
+            use_periods))
 
-    print "found %s offers:" % len(offers)
-    for offer in offers:
-        print offer
+    session.add_all(offers)
+    session.commit()
 
+    print "\n\nFound %s Offers." % len(offers)
+    for offer in sorted(offers, key=lambda x: x.id):
+        print "\n\n\n\n"
+        print "************"
+        print "Offer ID %s" % offer.id
+        print "***********"
+        print "  Rate Class: %s %s" % (offer.rate_class.utility.name,
+                                            offer.rate_class.name)
+        print "  Offer From: %s" % offer.company.name
+        print "  Service Type: %s" % offer.company.service.capitalize()
+        print "  For Customer: %s (ID %s)" % (customer.name, customer.id)
+        a = offer.address
+        print "  Service Address: %s, %s, %s, %s" % \
+              (a.street, a.city, a.state, a.postal_code)
+        print "  Term Begin: %s" % offer.term_begin
+        print "  Term Months: %s" % offer.term_months
+        print "  Total Projected Cost: %s" % offer.total_projected_cost
+        print "  Total Projected Consumption: %s" % round(offer.total_projected_consumption, 2)
+        print "  Require Custom Quote: %s" % offer.custom
 
-
-
-
-
-
+        #prints block quotes only
+        print "\n  company, rate_class, rate_class_utility, time_start, time_end, month_min, month_max, rate, escalator, charge"
+        for quote in offer.quotes:
+                print "  %s, %s, %s, %s, %s, %s, %s, %s, %s, %s" % (quote.company.name, quote.rate_class.name, quote.rate_class.utility.name, quote.time_start,
+                                     quote.time_end, quote.month_min,
+                                     quote.month_max, quote.rate, quote.escalator, quote.charge)

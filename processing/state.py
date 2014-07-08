@@ -81,7 +81,7 @@ class Address(Base):
 
     def __repr__(self):
         return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
-                                         self.city, self.state, self.postal_code)
+                                        self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
