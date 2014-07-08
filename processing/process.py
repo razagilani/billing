@@ -681,6 +681,15 @@ class Process(object):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, utility, rate_class, original_last_end,
                     begin_date)
+        # utility bill should be computed, but any error that happens when
+        # computing it should be ignored to prevent apparent failure to upload
+        # the bill. TODO: see Pivotal 72645700
+        try:
+            self.compute_utility_bill(session, new_utilbill.id)
+        except Exception as e:
+            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
+                    new_utilbill.id, e, traceback.format_exc()))
+
         return new_utilbill
 
     def get_service_address(self,session,account):
@@ -1352,6 +1361,9 @@ class Process(object):
         reebill = self.state_db.get_reebill(session, account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
+        if reebill.version == 0 and reebill.sequence < \
+                self.state_db.last_sequence(session, account):
+            raise IssuedBillError("Only the last reebill can be deleted")
 
         version = reebill.version
 
@@ -1459,7 +1471,14 @@ class Process(object):
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        self._freeze_utilbill_document(session, reebill)
+        try:
+            self._freeze_utilbill_document(session, reebill)
+        except IssuedBillError:
+            # this happens when a correction was already issued in the call to
+            # 'issue_corrections' preceding the call to 'issue' for the target
+            # bill. if a "frozen utility bill document" is not created it
+            # it should not cause any problems.
+            pass
 
         # also duplicate UPRS, storing the new _ids in MySQL
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
