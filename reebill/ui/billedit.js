@@ -8,46 +8,6 @@ var DEFAULT_ACCOUNT_FILTER = "No filter";
 
 //PDFJS.disableWorker = true;
 
-/*
-* Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
-*/
-// Ext 4 fires events when ajax is aborted
-// so this is an Ext 3 workaround
-/*
-Ext.Ajax.addEvents({requestaborted:true});
-Ext.override(Ext.data.Connection, {
-    abort : function(transId){
-        if(transId || this.isLoading()){
-            Ext.lib.Ajax.abort(transId || this.transId);
-            this.fireEvent('requestaborted', this, this.transId);
-        }
-    }
-});
-Ext.Ajax.addListener('beforerequest', function (conn, request) {
-        console.log("beforerequest");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestcomplete', function (conn, request) {
-        console.log("requestcomplete");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestexception', function (conn, request) {
-        console.log("requestexception");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestaborted', function (conn, request) {
-        console.log("requestaborted");
-        console.log(conn);
-        console.log(request);
-    }, this);
-*/
-
-/* Constructor for menus that show versions of utility bills in
- * utility-bill-editing tabs */
-
 ///////////////////////////////////////////////////
 //
 //         CUSTOM COMPONENTS
@@ -56,34 +16,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 Ext.ns('Ext.ux.grid');
 
-/**
- * A Column definition class which renders enum data fields.
- * @class Ext.ux.grid.CheckboxColumn
- * @extends Ext.grid.Column
- * @author Tran Cong Ly - tcl_java@yahoo.com - http://5cent.net
- * Create the column:
- *   
- v ar cm = new Ext.grid.ColumnModel([                                    *
- new Ext.ux.grid.CheckboxColumn({
-     header: 'Header #1',
-     dataIndex: 'field_name_1'
-     },
-     {
-         xtype: 'checkboxcolumn',
-         header: 'Header #2',
-         dataIndex: 'field_name_2',
-         on: 1,
-         off: 0
-         },
-         {
-             xtype: 'checkboxcolumn',
-             header: 'Header #3',
-             dataIndex: 'field_name_3',
-             on: 'abc',
-             off: 'def'
-             }])
-             
-             */
 Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
     on: true,
     off: false,
