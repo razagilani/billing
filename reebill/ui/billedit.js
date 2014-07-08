@@ -829,12 +829,9 @@ function reeBillReady() {
             url: 'http://'+location.host+'/reebill/delete_reebill',
             params: { account: selected_account, sequences: sequences },
             success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                Ext.Msg.hide();
-                if (jsonData.success == true) {
-                    reeBillStore.reload();
-                }
-            },
+                defaultRequestComplete(null, result);
+                reeBillStore.reload();
+            }
         });
     }
 
