@@ -1417,13 +1417,13 @@ function reeBillReady() {
                         Ext.getCmp('ba_street').setValue(jsonData['billing_address']['street']);
                         Ext.getCmp('ba_city').setValue(jsonData['billing_address']['city']);
                         Ext.getCmp('ba_state').setValue(jsonData['billing_address']['state']);
-                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postal_code']);
+                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postalcode']);
 
                         Ext.getCmp('sa_addressee').setValue(jsonData['service_address']['addressee']);
                         Ext.getCmp('sa_street').setValue(jsonData['service_address']['street']);
                         Ext.getCmp('sa_city').setValue(jsonData['service_address']['city']);
                         Ext.getCmp('sa_state').setValue(jsonData['service_address']['state']);
-                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postal_code']);
+                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postalcode']);
 
                         accountInfoFormPanel.doLayout();
                     } 
@@ -1588,6 +1588,7 @@ function reeBillReady() {
                                 loadReeBillUIForSequence(jsonData.account,
                                     jsonData.sequence, false);
                                 sm.resumeEvents();
+                                BILLPDF.domOverwrite('reebill', 'notfound');
                             }});
                         }
                     } catch (err) {
