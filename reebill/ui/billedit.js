@@ -1550,6 +1550,7 @@ function reeBillReady() {
                                 loadReeBillUIForSequence(jsonData.account,
                                     jsonData.sequence, false);
                                 sm.resumeEvents();
+                                BILLPDF.domOverwrite('reebill', 'notfound');
                             }});
                         }
                     } catch (err) {
