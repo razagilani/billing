@@ -1,3 +1,6 @@
+from billing import init_model
+init_model("mysql://root:root@localhost:3306/skyline_dev")
+
 from sys import stderr
 from itertools import chain
 import pymongo
@@ -6,6 +9,7 @@ import MySQLdb
 from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Address
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
+from billing.processing.state import Session
 
 con = MySQLdb.Connect(host='localhost', db='skyline_dev', user='dev',
                       passwd='dev')
@@ -38,6 +42,7 @@ create table if not exists address (
     postal_code varchar(1000) not null
 );
 ''')
+
 cur.execute('''alter table reebill add column billing_address_id
 integer not null
 ''')
@@ -46,12 +51,8 @@ integer not null
 ''')
 con.commit()
 
-sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
-})
+sdb = StateDB(Session)
+
 db = pymongo.Connection(host='localhost')['skyline-dev']
 rbd = ReebillDAO(sdb, db)
 rsd = RateStructureDAO()
