@@ -720,7 +720,7 @@ class BillToolBridge:
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account,
-                        "%.5d_%.4d.pdf" % (account, sequence),
+                        "%s_%.4d.pdf" % (account, sequence),
                 False
             )
             return self.dumps({'success': True})
