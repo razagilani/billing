@@ -8,15 +8,6 @@ from billing import config
 import sys
 import pprint
 
-# TODO: 64957006
-# Dislike having this exceptionally useful code here, whose purpose is to 
-# display the runtime  configuration to the operator of the software for 
-# troubleshooting.  Not having this code here, renders it useless.
-sys.stdout = sys.stderr
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
-
 import traceback
 import json
 import cherrypy
