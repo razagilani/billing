@@ -15,7 +15,7 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError
+from billing.processing.exceptions import BillStateError, NoRSIError, RSIError
 from billing.test import utils
 
 
@@ -34,11 +34,6 @@ class MockReeGetter(object):
 
 
 class ProcessTest(TestCaseWithSetup, utils.TestCase):
-    # apparenty this is what you need to do if you override the __init__ method
-    # of a TestCase
-    #def __init__(self, methodName='runTest', param=None):
-    #print '__init__'
-    #super(ProcessTest, self).__init__(methodName)
 
     def setup_dummy_utilbill_calc_charges(self, session, acc, begin_date,
                                           end_date):
@@ -123,8 +118,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                  'editable': True,
                                                  'name': '88888 - Example 2/1786 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
                                                  'reebills': [],
-                                                }, utilbill_data, 'id',
-                                                'charges', 'reebills')
+                                                }, utilbill_data, 'id', 'charges', 'reebills')
+
 
             self.process.add_rsi(session, utilbill_data['id'])
             self.process.update_rsi(session, utilbill_data['id'],
@@ -1029,16 +1024,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                   date(2012, 2, 1),
                                                   StringIO('January 2012'),
                                                   'january.pdf')
-            u1_doc = self.reebill_dao.load_doc_for_utilbill(u1)
-            u1_doc['charges'] = [{
-                                     'rsi_binding': 'THE_CHARGE',
-                                     'group': '',
-                                     'quantity': 100,
-                                     'quantity_units': 'therms',
-                                     'rate': 1,
-                                     'total': 100,
-                                 }]
-            self.reebill_dao.save_utilbill(u1_doc)
+
+            self.process.add_charge(session, u1.id, "")
+            self.process.update_charge(session, u1.id, "",
+                                       dict(rsi_binding='THE_CHARGE',
+                                            quantity=100,
+                                            quantity_units='therms', rate=1,
+                                            total=100, group='All Charges'))
+
             u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
             u1_uprs.rates = [RateStructureItem(
                 rsi_binding='THE_CHARGE',
@@ -1704,7 +1697,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                              self.process.get_reebill_metadata_json(session,
                                                                     '99999'))
 
-
     def test_create_first_reebill(self):
         '''Test creating the first utility bill and reebill for an account,
         making sure the reebill is correct with respect to the utility bill.
@@ -1942,8 +1934,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         the accounting numbers in reebills are correct.
         '''
         account = '99999'
-        energy_quantity = 100
-        payment_amount = 100
+        energy_quantity = 100.0
+        payment_amount = 100.0
         self.process.ree_getter = MockReeGetter(energy_quantity)
 
         with DBSession(self.state_db) as session:
@@ -2029,7 +2021,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'total_error': 0.,
                  'ree_quantity': energy_quantity,
                  'balance_due': energy_quantity * .5,
-                 'balance_forward': 0.,
+                 'balance_forward': 0.0,
                  'corrections': '-',
              }], reebill_data)
 
@@ -2046,7 +2038,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                                   account)
             self.assertDocumentsEqualExceptKeys([{
                 'sequence': 2,
-                'max_version': 0,
+                'max_version': 0L,
                 'issued': False,
                 'issue_date': None,
                 'actual_total': 0,
@@ -2059,7 +2051,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
-                'total_error': 0,
+                'total_error': 0.0,
                 'ree_quantity': energy_quantity,
                 'balance_due': energy_quantity * .5 +
                             energy_quantity * .8 - payment_amount,
@@ -2067,13 +2059,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                 payment_amount,
                 'corrections': '(never issued)',
             },{
-                'sequence': 1,
-                'max_version': 0,
+                'sequence': 1L,
+                'max_version': 0L,
                 'issued': True,
                 'issue_date': date(2013,2,15),
                 'actual_total': 0,
                 'hypothetical_total': energy_quantity,
-                'payment_received': 0,
+                'payment_received': 0.0,
                 'period_start': date(2013,1,1),
                 'period_end': date(2013,2,1),
                 'prior_balance': 0,
@@ -2081,10 +2073,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'ree_value': energy_quantity,
                 'services': [],
                 'total_adjustment': 0,
-                'total_error': 0,
+                'total_error': 0.0,
                 'ree_quantity': energy_quantity,
                 'balance_due': energy_quantity * .5,
-                'balance_forward': 0,
+                'balance_forward': 0.0,
                 'corrections': '-',
             }], reebill_data, 'id')
 
