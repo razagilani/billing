@@ -10,12 +10,15 @@ from datetime import date, datetime, timedelta
 from operator import itemgetter
 import traceback
 from itertools import chain
+
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from sqlalchemy.orm import aliased
 from bson import ObjectId
+
+from billupload import ACCOUNT_NAME_REGEX
+
 #
 # uuid collides with locals so both the locals and package are renamed
 import re
@@ -26,14 +29,13 @@ from billing.processing.mongo import MongoReebill
 from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
-from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
+from billing.processing.state import Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Address, Reading
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, \
-    RSIError, NoSuchRSIError
+    NoSuchBillException, NotUniqueException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -1416,8 +1418,14 @@ class Process(object):
         if self.state_db.account_exists(session, account):
             raise ValueError("Account %s already exists" % account)
 
-        template_last_sequence = self.state_db.last_sequence(session,
-                template_account)
+        # validate parameters
+        if not re.match(ACCOUNT_NAME_REGEX, account):
+            raise ValueError('Invalid account number')
+        if not 0 <= discount_rate <= 1:
+            raise ValueError('Discount rate must be between 0 and 1 inclusive')
+        if not 0 <= late_charge_rate <=1:
+            raise ValueError(('Late charge rate must be between 0 and 1 '
+                              'inclusive'))
 
         # load document of last utility bill from template account (or its own
         # template utility bill document if there are no real ones) to become
