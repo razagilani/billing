@@ -1,17 +1,17 @@
 from datetime import datetime, timedelta
-from datetime import timedelta as td
-#from brokerage.use_period import UsePeriod
+from billing import config
 from billing.data.model import RateClass, Address, Base, Session, Supplier, Utility, \
     BlockQuote, BlockOfferMaker, TermOfferMaker, OfferMaker, TermQuote, UsePeriod, Company, \
-    Customer
+    Customer, CustomerInterest, User
+
 from itertools import product
 from hashlib import sha256
 
 import logging
 #from processing.state import Customer
+#from data.model.brokerage import CustomerInterest
 
 log = logging.getLogger(__name__)
-
 
 def tuplize(ls):
     """[1, 2, 3, 4, 5] --> [(1, 2), (2, 3), (3, 4), (4, 5)]"""
@@ -232,6 +232,60 @@ def create_offer_makers(session):
                      TermOfferMaker(session)])
     session.flush()
 
+
+def create_users(session):
+    admins = set(["Michael Naber"])
+    names = ["Michael Naber", "Justin Schafer", "Kris Bahlke", "Dan Sullivan"]
+    for name in names:
+        email = "%s@example.com" % name.split(" ")[0].lower()
+        session.add(User(name, email, "monkey123", admin=name in admins))
+
+
+def create_customer_interest(session):
+
+    def rcq(utility, clas):
+        print "querying for %s %s" % (utility, clas)
+        return session.query(RateClass).join(Utility).\
+            filter(Utility.name == utility).\
+            filter(datetime.now() <= RateClass.time_deactivated).\
+            filter(RateClass.name == clas).one()
+
+    use_periods = [(650, datetime(2013, 9, 1), datetime(2013, 10, 1)),
+                   (700, datetime(2013, 10, 1), datetime(2013, 11, 1)),
+                   (710, datetime(2013, 11, 1), datetime(2013, 12, 1)),
+                   (580, datetime(2013, 12, 1), datetime(2014, 1, 1)),
+                   (600, datetime(2014, 1, 1), datetime(2014, 2, 1)),
+                   (620, datetime(2014, 2, 1), datetime(2014, 3, 1)),
+                   (800, datetime(2014, 3, 1), datetime(2014, 4, 1))]
+
+    mn = session.query(User).filter_by(name='Michael Naber').one()
+    js = session.query(User).filter_by(name='Justin Schafer').one()
+
+    customer_data = [(rcq('Pepco', 'R'),
+                      Customer.for_brokerage("Barack Obama"),
+                      Address.for_brokerage("1600 Pennsylvania Avenue",
+                                            "Washington", "DC", "20006"),
+                      js),
+
+                     (rcq('Pepco', 'RAD'),
+                      Customer.for_brokerage("George Washington"),
+                      Address.for_brokerage("123 George St",
+                                            "Alexandria", "VA", "20384"),
+                      js),
+                     (rcq('Delmarva', 'RTM'),
+                      Customer.for_brokerage('Mickey Mouse'),
+                      Address.for_brokerage("777 Third Ave",
+                                            "New York", "NY", "10017"),
+                      mn)]
+
+
+    for rate_class, customer, address, user in customer_data:
+        ci = CustomerInterest(customer, address, rate_class, user)
+        ups = []
+        for quantity, time_start, time_end in use_periods:
+            ups.append(UsePeriod(quantity, time_start, time_end,
+                customer_interest=ci))
+        session.add(ci)
 
 """
 Proof of concept

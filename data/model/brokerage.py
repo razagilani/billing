@@ -134,7 +134,7 @@ class BlockQuote(Quote):
 
     def term_consumption(self, consumption_qps, term_begin, term_end):
         """
-        Given a `consumption_rate` in quantity / second, and term bounded by
+        Given a `consumption_qps` in quantity / second, and term bounded by
         `term_begin` and `term_end`, compute the total consumption within the
         block_quote.
 
@@ -181,7 +181,7 @@ class UsePeriod(Base):
     __tablename__ = 'use_period'
 
     id = Column(Integer, primary_key=True)
-    offer_id = Column(Integer, ForeignKey('offer.id'))
+    customer_interest_id = Column(Integer, ForeignKey('customer_interest.id'))
 
     quantity = Column(Float, nullable=False)
     time_start = Column(DateTime, nullable=False)
@@ -189,8 +189,8 @@ class UsePeriod(Base):
     peak_quantity = Column(Float)
     off_peak_quantity = Column(Float)
 
-    offer = relationship("Offer", backref=backref("use_periods", lazy="dynamic",
-                                                  cascade="all, delete-orphan"))
+    customer_interest = relationship("CustomerInterest", backref=
+        backref("use_periods", lazy="dynamic", cascade="all, delete-orphan"))
 
     def prorated_quantity(self, start, end):
         """
@@ -209,13 +209,62 @@ class UsePeriod(Base):
         return (self.time_end - self.time_start).total_seconds()
 
     def __init__(self, quantity, time_start, time_end, peak_quantity=None,
-                 off_peak_quantity=None, offer=None):
+                 off_peak_quantity=None, customer_interest=None):
         self.quantity = quantity
         self.time_start = time_start
         self.time_end = time_end
         self.peak_quantity = peak_quantity
         self.off_peak_quantity = off_peak_quantity
-        self.offer = None
+        self.customer_interest = customer_interest
+
+
+class CustomerInterest(Base):
+    """Represents a customer interested in receiving offers at a specific
+    address, for a specific rate class"""
+
+    __tablename__ = 'customer_interest'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
+    rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey('user.id'))
+
+    #relationships
+    customer = relationship("Customer", backref="customer_interests")
+    address = relationship("Address", backref="customer_interests")
+    rate_class = relationship("RateClass", backref='customer_interests')
+    created_by_user = relationship('User', backref='customer_interests_created')
+
+    time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
+    time_offers_generated = Column(DateTime)
+
+    def generate_offers(self):
+        session = billing.data.model.orm.Session.object_session(self)
+        session.query(Offer).filter_by(customer_interest=self).\
+            filter_by(created_by_user=None).delete()
+        session.flush()
+
+        self.time_offers_generated = datetime.now()
+        for maker in session.query(OfferMaker).filter_by(active=True).all():
+            self.offers.extend(maker.make_offers(self,
+                self.time_offers_generated))
+
+
+    def __init__(self, customer, address, rate_class,
+                 created_by_user, use_periods=[]):
+        self.customer = customer
+        self.address = address
+        self.rate_class = rate_class
+        self.use_periods = use_periods
+        self.created_by_user = created_by_user
+
+    @property
+    def best_rate(self):
+        br = self.offers.order_by(Offer.total_projected_rate).first()
+        if br and br.total_projected_rate is not None:
+            return br.total_projected_rate
+        return "none"
 
 
 offer_quote = Table('offer_quote', Base.metadata,
@@ -230,30 +279,24 @@ class Offer(Base):
     __tablename__ = 'offer'
 
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
-    rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
     company_id = Column(Integer, ForeignKey('company.id'), nullable=False)
+    customer_interest_id = Column(Integer, ForeignKey('customer_interest.id'))
+    created_by_user_id = Column(Integer, ForeignKey('user.id'))
 
-    time_inserted = Column(DateTime,
-                           server_default=func.now(),
-                           nullable=False)
+    time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
     term_months = Column(Float)
     term_begin = Column(Date)
 
     total_projected_cost = Column(Float)
     total_projected_consumption = Column(Float, nullable=False)
-    custom = Column(Boolean, nullable=False)
+    total_projected_rate = Column(Float)
 
-    address = relationship("Address", backref="offers")
+
     quotes = relationship("Quote", secondary=offer_quote)
-    rate_class = relationship("RateClass", backref='offers')
-    customer = relationship("Customer", backref="offers")
     company = relationship("Company", backref="offers")
-
-    @property
-    def total_projected_rate(self):
-        return self.total_projected_cost / self.total_projected_consumption
+    customer_interest = relationship("CustomerInterest",
+                                     backref=backref("offers", lazy="dynamic"))
+    created_by_user = relationship('User', backref='offers_created')
 
     @property
     def mean_monthly_consumption(self):
@@ -268,21 +311,21 @@ class Offer(Base):
         last = self.use_periods.order_by(UsePeriod.end_time.desc()).first()
         return last.end_time - first.time_start
 
-    def __init__(self, address, company, customer, rate_class, use_periods,
-                 quotes, custom, term_begin, term_months, total_projected_cost,
+    def __init__(self, customer_interest, company, created_by_user, quotes,
+                 term_begin, term_months, total_projected_cost,
                  total_projected_consumption):
-
-        self.address = address
+        self.customer_interest = customer_interest
         self.company = company
-        self.customer = customer
-        self.rate_class = rate_class
-        self.custom = custom
+        self.created_by_user = created_by_user
         self.quotes = quotes
-        self.use_periods = use_periods
         self.term_begin = term_begin
         self.term_months = term_months
         self.total_projected_cost = total_projected_cost
         self.total_projected_consumption = total_projected_consumption
+
+        if total_projected_cost is not None:
+            self.total_projected_rate = total_projected_cost / \
+                                        total_projected_consumption
 
 
 ###OfferMakers###
@@ -344,9 +387,9 @@ class BlockOfferMaker(OfferMaker):
         two weeks from now, then use the first day of the following month.
         """
         nm = offerdt + relativedelta(months=1)
-        if (datetime(nm.year, nm.month, nm.day) - offerdt).days < 14:
+        if (datetime(nm.year, nm.month, 1) - offerdt).days < 14:
             nm = offerdt + relativedelta(months=2)
-        return datetime(nm.year, nm.month, nm.day)
+        return datetime(nm.year, nm.month, 1)
 
     @staticmethod
     def mean_quantity(use_periods):
@@ -477,8 +520,8 @@ class BlockOfferMaker(OfferMaker):
                 company_quotes[(company, term_months)] = quotes
         return company_quotes
 
-    def make_offers(self, address, customer, rate_class, use_periods,
-                    offer_time=datetime.now(), term_months=[6, 12, 24]):
+    def make_offers(self, customer_interest, offer_time,
+                    term_months=[6, 12, 24]):
         """Returns offers from use periods
         :param address: The address of the customer
         :param customer: A :class:`processing.state.Customer` instance
@@ -486,13 +529,16 @@ class BlockOfferMaker(OfferMaker):
         :param use_periods: A list of :class:`.UsePeriod` instances
         :param offer_time: The time `datetime` to make the offers,
         """
-        OfferMaker.validate(rate_class, use_periods)
+
+        OfferMaker.validate(customer_interest.rate_class,
+                            customer_interest.use_periods)
         term_begin = BlockOfferMaker.compute_term_begin(offer_time)
 
-        company_quotes = self.quotes_by_company(rate_class, offer_time,
-                                                term_begin, term_months)
+        company_quotes = self.quotes_by_company(customer_interest.rate_class,
+                                            offer_time, term_begin, term_months)
 
-        mean_qps = BlockOfferMaker.mean_quantity_per_second(use_periods)
+        mean_qps = BlockOfferMaker.mean_quantity_per_second(
+            customer_interest.use_periods)
 
         offers = []
         for (company, term_months), quotes in company_quotes.iteritems():
@@ -502,7 +548,12 @@ class BlockOfferMaker(OfferMaker):
             total_projected_cost = BlockOfferMaker.\
                 project_cost(term_begin, term_months, mean_qps, quotes)
 
-            offers.append(Offer(address, company, customer, rate_class,
+
+            offers.append(Offer(customer_interest, company, None, quotes, term_begin, term_months,
+                                total_projected_cost, ))
+            offers.append(Offer(customer_interest,
+
+                address, company, customer, rate_class,
                                 use_periods, [q for q in quotes if q.id
                                               is not None],
                                 True if total_projected_cost is None else False,
