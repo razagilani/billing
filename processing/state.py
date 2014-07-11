@@ -2,31 +2,28 @@
 Utility functions to interact with state database
 """
 from collections import defaultdict
+import sys
 from copy import deepcopy
 
-import os, sys
-import itertools
-import datetime
 from datetime import timedelta, datetime, date
 from itertools import groupby, chain
-from operator import attrgetter, itemgetter
+from operator import attrgetter
+
 import sqlalchemy
-from sqlalchemy import Table, Column, MetaData, ForeignKey
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import mapper, sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc, asc, label
-from sqlalchemy.sql.functions import max as sql_max
-from sqlalchemy.sql.functions import min as sql_min
-from sqlalchemy import func, not_
+from sqlalchemy.sql.expression import desc, asc
+from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
-from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
+from billing.processing.exceptions import IssuedBillError, NoSuchBillException, RegisterError
 from exc import DatabaseError
 from alembic.script import ScriptDirectory
 from alembic.config import Config
@@ -361,15 +358,20 @@ class ReeBill(Base):
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
         return None
 
-    def update_readings_from_reebill(self, session, reebill_readings):
+    def update_readings_from_reebill(self, session, reebill_readings, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
-        the list of registers in the given reebill_readings.
+        the list of registers in the given reebill_readings. Readings that do not
+        have a register binding that matches a register in 'utilbill_doc' are
+        ignored.
         '''
         for r in self.readings:
             session.delete(r)
+        utilbill_register_bindings = {r['register_binding']
+                for r in chain.from_iterable(m['registers']
+                for m in utilbill_doc['meters'])}
         self.readings = [Reading(r.register_binding, r.measure, 0,
-                         0, r.aggregate_function, r.unit) for r in reebill_readings]
-        return None
+                0, r.aggregate_function, r.unit) for r in reebill_readings
+                if r.register_binding in utilbill_register_bindings]
 
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
@@ -384,14 +386,17 @@ class ReeBill(Base):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
         '''
-        return next(r for r in self.readings if r.register_binding == binding)
+        try:
+            result = next(r for r in self.readings if r.register_binding == binding)
+        except StopIteration:
+            raise RegisterError('Unknown register binding "%s"' % binding)
+        return result
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
         assert isinstance(new_quantity, (float, int))
-        reading = next(r for r in self.readings
-                       if r.register_binding == register_binding)
-        unit = reading.unit
+        reading = self.get_reading_by_register_binding(register_binding)
+        unit = reading.unit.lower()
 
         # Thermal: convert quantity to therms according to unit, and add it to
         # the total
@@ -408,10 +413,10 @@ class ReeBill(Base):
             # deal with non-energy unit "CCF" by converting to therms with
             # conversion factor 1
             # TODO: 28825375 - need the conversion factor for this
-            print ("Register in reebill %s-%s-%s contains gas measured "
-                   "in ccf: energy value is wrong; time to implement "
-                   "https://www.pivotaltracker.com/story/show/28825375") \
-                  % (self.account, self.sequence, self.version)
+            # print ("Register in reebill %s-%s-%s contains gas measured "
+            #        "in ccf: energy value is wrong; time to implement "
+            #        "https://www.pivotaltracker.com/story/show/28825375") \
+            #       % (self.account, self.sequence, self.version)
             new_quantity /= 1e5
         # PV: Unit is kilowatt; no conversion needs to happen
         elif unit == 'kwd':
@@ -425,7 +430,7 @@ class ReeBill(Base):
         total_therms = 0
         for reading in self.readings:
             quantity = reading.renewable_quantity
-            unit = reading.unit
+            unit = reading.unit.lower()
             assert isinstance(quantity, (float, int))
             assert isinstance(unit, basestring)
 
@@ -444,10 +449,11 @@ class ReeBill(Base):
                     total_therms += quantity * ccf_conversion_factor
                 else:
                     # TODO: 28825375 - need the conversion factor for this
-                    print ("Register in reebill %s-%s-%s contains gas measured "
-                           "in ccf: energy value is wrong; time to implement "
-                           "https://www.pivotaltracker.com/story/show/28825375") \
-                          % (self.account, self.sequence, self.version)
+                    # print ("Register in reebill %s-%s-%s contains gas measured "
+                    #        "in ccf: energy value is wrong; time to implement "
+                    #        "https://www.pivotaltracker.com/story/show/28825375"
+                    #       ) % (self.customer.account, self.sequence,
+                    #       self.version)
                     # assume conversion factor is 1
                     total_therms += quantity
             elif unit =='kwd':

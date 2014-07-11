@@ -46,15 +46,6 @@ def utilbill_service_address_to_reebill_address(service_address):
     }
 
 
-def reebill_address_to_utilbill_address(address):
-    '''Transforms any reebill address to utility bill address.'''
-    return {
-            (key[3:-1] if key[-7:] == 'street1'
-                else ('postal_code' if key[3:] == 'postal_code'
-                    else key[3:])): value
-        for (key, value) in address.iteritems()
-    }
-
 # type-conversion functions
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
@@ -83,28 +74,6 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
         return [convert_datetimes(element, datetime_keys, ancestor_key) for
                 element in x]
     return x
-
-
-# NOTE deperecated; avoid using this if at all possible
-def flatten_chargegroups_dict(chargegroups):
-    flat_charges = []
-    for (chargegroup, charges) in chargegroups.items(): 
-        for charge in charges:
-            charge['chargegroup'] = chargegroup
-            flat_charges.append(charge)
-    return flat_charges
-
-# NOTE deperecated; avoid using this if at all possible
-def unflatten_chargegroups_list(flat_charges):
-    new_chargegroups = {}
-    for cg, charges in it.groupby(sorted(flat_charges, key=lambda
-            charge:charge['chargegroup']),
-            key=lambda charge:charge['chargegroup']):
-        new_chargegroups[cg] = []
-        for charge in charges:
-            del charge['chargegroup']
-            new_chargegroups[cg].append(charge)
-    return new_chargegroups
 
 # TODO make this a method of a utility bill document class when one exists
 def get_all_actual_registers_json(utilbill_doc):
@@ -569,18 +538,6 @@ class MongoReebill(object):
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
-
-    def update_utilbill_subdocs(self, discount_rate):
-        '''Refreshes the "utilbills" sub-documents of the reebill document to
-        match the utility bill documents in _utilbills. (These represent the
-        "hypothetical" version of each utility bill.)
-        '''
-        # TODO maybe this should be done in compute_bill or a method called by
-        # it; see https://www.pivotaltracker.com/story/show/51581067
-        # also might want to merge this with compute_charges below.
-        self.reebill_dict['utilbills'] = \
-                [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
-                utilbill_doc in self._utilbills]
 
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the

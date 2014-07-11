@@ -6,24 +6,14 @@ initialize()
 from billing import config
 
 import sys
-import os
 import pprint
-
-# TODO: 64957006
-# Dislike having this exceptionally useful code here, whose purpose is to 
-# display the runtime  configuration to the operator of the software for 
-# troubleshooting.  Not having this code here, renders it useless.
-sys.stdout = sys.stderr
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
 
 import traceback
 import json
 import cherrypy
 import os
 import ConfigParser
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import inspect
 import logging
 import time
@@ -36,7 +26,7 @@ import mongoengine
 from billing.skyliner.splinter import Splinter
 from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map, dict_merge
 from billing.processing import mongo, excel_export
@@ -253,7 +243,7 @@ class BillToolBridge:
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao)
+                self.reebill_dao, self.logger)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
@@ -607,6 +597,14 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    def update_readings(self, account, sequence, **kwargs):
+        with DBSession(self.state_db) as session:
+            self.process.update_reebill_readings(session, account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
@@ -717,15 +715,12 @@ class BillToolBridge:
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
         with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            # TODO 22598787 - branch awareness
             self.renderer.render(
                 session,
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
-                #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                        "%.5d_%.4d.pdf" % (account, sequence),
                 False
             )
             return self.dumps({'success': True})
@@ -893,7 +888,7 @@ class BillToolBridge:
             if account is not None:
                 spreadsheet_name = account + '.xls'
             else:
-                spreadsheet_name = 'xbill_accounts.xls'
+                spreadsheet_name = 'brokerage_accounts.xls'
 
             exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
@@ -1131,17 +1126,16 @@ class BillToolBridge:
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
+            version = self.process.new_version(session, account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence, new_reebill.version)
+                    account, sequence, version)
             # NOTE ReebillBoundEvent is no longer saved in the journal because
             # new energy data are not retrieved unless the user explicitly
             # chooses to do it by clicking "Bind RE&E"
 
             # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences':
-                    [new_reebill.sequence]})
+            return self.dumps({'success': True, 'sequences': [sequence]})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1378,7 +1372,8 @@ class BillToolBridge:
                     # should be selected)
                     del row['id']
                     new_meter_id, new_reg_id = self.process.update_register(
-                            session, utilbill_id, orig_meter_id, orig_reg_id, **row)
+                            session, utilbill_id, orig_meter_id, orig_reg_id,
+                            row)
 
                     # if this row was selected before, tell the client it should
                     # still be selected, specifying the row by its new "id"
@@ -1578,44 +1573,6 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
-    def getUtilBillImage(self, utilbill_id):
-        # TODO: put url here, instead of in billentry.js?
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        with DBSession(self.state_db) as session:
-            result = self.process.get_utilbill_image_path(session, utilbill_id,
-                                                          resolution)
-        return self.dumps({'success':True, 'imageName':result})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.get('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'errors': {'reason':
-                    'Reebill images have been turned off.'}})
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getReeBillImagePath(account, sequence,
-                resolution)
-        return self.dumps({'success':True, 'imageName':result})
-    
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def getBillImageResolution(self, **kwargs):
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        return self.dumps({'success':True, 'resolution': resolution})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def setBillImageResolution(self, resolution, **kwargs):
-        cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
-        self.user_dao.save_user(cherrypy.session['user'])
-        return self.dumps({'success':True})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
     def getDifferenceThreshold(self, **kwargs):
         threshold = cherrypy.session['user'].preferences['difference_threshold']
         return self.dumps({'success':True, 'threshold': threshold})
@@ -1661,10 +1618,6 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
             'tools.sessions.timeout': 240
         },
-        '/utilitybillimages' : {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': '/tmp/billimages'
-        }
     }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
