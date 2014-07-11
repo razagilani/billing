@@ -12,7 +12,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session
-from processing.state import Register, UtilBill
+from processing.state import Register, UtilBill, Address
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -33,8 +33,15 @@ def copy_registers_from_mongo():
             log.error("No mongo utility bill found for utilbill"
                       "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
+
+        for prop in ['service_address', 'billing_address']:
+            log.debug("Adding %s for utilbill id %s" % (prop, ub.id))
+            a = mongo_ub[prop]
+            setattr(ub, prop, Address(a['addressee'], a['street'], a['city'],
+                                      a['state'], a['postal_code']))
+
         for mongo_meter in mongo_ub['meters']:
-            for mongo_register in mongo_ub['registers']:
+            for mongo_register in mongo_meter['registers']:
                 log.debug('Adding register for utilbill id %s' % ub.id)
                 s.add(Register(ub,
                                mongo_register.get('description', ""),
@@ -51,7 +58,7 @@ def copy_registers_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
-    alembic_upgrade('1df716f63a8b')
+    alembic_upgrade('3781adb9429d')
     log.info('Alembic Upgrade Complete')
     init_model()
     copy_registers_from_mongo()
