@@ -20,9 +20,14 @@ def interest_edit(interest_id):
     return 'interest edit'
 
 def interest_view(interest_id):
-    return 'interest view'
+    s = Session()
+    interest = s.query(CustomerInterest).filter_by(id=interest_id).one()
+    return render_template('interest_view.mako', interest=interest)
 
 def generate_offers(interest_id):
+    s = Session()
+    interest = s.query(CustomerInterest).filter_by(id=interest_id).one()
+
     return 'interest generate offers'
 
 def customer_interest():
