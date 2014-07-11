@@ -12,13 +12,15 @@ from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
-from billing.processing.exceptions import MissingDataError
+from billing.processing.exceptions import MissingDataError, RegisterError
+
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, reebill_dao):
+    def __init__(self, splinter, reebill_dao, logger):
         self._splinter = splinter
         self._reebill_dao = reebill_dao
+        self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
             measure, ignore_missing=True, verbose=False, ):
@@ -115,7 +117,13 @@ class RenewableEnergyGetter(object):
             for binding, quantity in results:
                 assert isinstance(binding, basestring)
                 assert isinstance(quantity, (float, int))
-                reebill.set_renewable_energy_reading(binding, quantity)
+                try:
+                    reebill.set_renewable_energy_reading(binding, quantity)
+                except RegisterError:
+                    # ignore any registers that exist in the utility bill
+                    # but don't have corresponding readings in the reebill
+                    self._logger.info(('In update_renewable_readings: skipped '
+                            'register "%s" in %s') % (binding, reebill))
 
     def fetch_interval_meter_data(self, reebill, csv_file,
             meter_identifier=None, timestamp_column=0, energy_column=1,

@@ -151,6 +151,9 @@ class Process(object):
 
     def new_register(self, session, utilbill_id, row,
                     reebill_sequence=None, reebill_version=None):
+        '''"row" argument is a dictionary but keys other than
+        "meter_id" and "register_id" are ignored.
+        '''
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
@@ -159,15 +162,13 @@ class Process(object):
         self.reebill_dao.save_utilbill(utilbill_doc)
 
 
-    def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id, rows,
-                reebill_sequence=None, reebill_version=None):
+    def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
+                fields, reebill_sequence=None, reebill_version=None):
         utilbill_doc = self.get_utilbill_doc(session, utilbill_id,
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
-        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc, 
-                                                         orig_meter_id, 
-                                                         orig_reg_id, 
-                                                         **rows)
+        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc,
+                orig_meter_id, orig_reg_id, **fields)
         self.reebill_dao.save_utilbill(utilbill_doc)
         return new_meter_id, new_reg_id
 
@@ -611,6 +612,15 @@ class Process(object):
                     service, utility, rate_class, original_last_end,
                     begin_date)
 
+        # utility bill should be computed, but any error that happens when
+        # computing it should be ignored to prevent apparent failure to upload
+        # the bill. TODO: see Pivotal 72645700
+        try:
+            self.compute_utility_bill(session, new_utilbill.id)
+        except Exception as e:
+            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
+                    new_utilbill.id, e, traceback.format_exc()))
+
         return new_utilbill
 
     def get_service_address(self,session,account):
@@ -919,9 +929,9 @@ class Process(object):
         # TODO: this could be moved to a method of ReeBill
         utilbill_registers = chain.from_iterable(r for r in
                 (m['registers'] for m in utilbill_document['meters']))
-        for reading in reebill.readings:
-            register = next(r for r in utilbill_registers if r[
-                    'register_binding'] == reading.register_binding)
+        for register in utilbill_registers:
+            reading = reebill.get_reading_by_register_binding(
+                    register['register_binding'])
             reading.conventional_quantity = register['quantity']
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill.utilbill)
@@ -1095,12 +1105,13 @@ class Process(object):
         assert len(new_utilbill_docs) == 1
         if last_reebill_row is None:
             new_reebill.update_readings_from_document(session,
-                new_utilbill_docs[0])
+                    new_utilbill_docs[0])
         else:
             readings = session.query(Reading)\
                     .filter(Reading.reebill_id == last_reebill_row.id)\
                     .all()
-            new_reebill.update_readings_from_reebill(session, readings)
+            new_reebill.update_readings_from_reebill(session, readings,
+                    new_utilbill_docs[0])
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
@@ -1137,7 +1148,9 @@ class Process(object):
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
-        max_version number in MySQL. Returns the new MongoReebill object.'''
+        max_version number in MySQL. Returns the new MongoReebill object.
+        Returns version of the new reebill.
+        '''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
 
@@ -1205,6 +1218,7 @@ class Process(object):
                     reebill_doc.sequence, e, traceback.format_exc()))
 
         self.reebill_dao.save_reebill(reebill_doc)
+        return reebill.version
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
@@ -1339,6 +1353,9 @@ class Process(object):
         reebill = self.state_db.get_reebill(session, account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
+        if reebill.version == 0 and reebill.sequence < \
+                self.state_db.last_sequence(session, account):
+            raise IssuedBillError("Only the last reebill can be deleted")
 
         version = reebill.version
 
@@ -1475,7 +1492,14 @@ class Process(object):
         # that document's _id in the utilbill_reebill table
         # NOTE this only works when the reebill has one utility bill
         assert len(reebill._utilbill_reebills) == 1
-        self._freeze_utilbill_document(session, reebill)
+        try:
+            self._freeze_utilbill_document(session, reebill)
+        except IssuedBillError:
+            # this happens when a correction was already issued in the call to
+            # 'issue_corrections' preceding the call to 'issue' for the target
+            # bill. if a "frozen utility bill document" is not created it
+            # it should not cause any problems.
+            pass
 
         # also duplicate UPRS, storing the new _ids in MySQL
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(
@@ -1787,6 +1811,17 @@ class Process(object):
 
         return data, total_count
 
+    def update_reebill_readings(self, session, account, sequence):
+        '''Replace the readings of the reebill given by account, sequence
+        with a new set of readings that matches the reebill's utility bill.
+        '''
+        reebill = self.state_db.get_reebill(session, account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill.update_readings_from_document(session, utilbill_doc)
+
     def bind_renewable_energy(self, session, account, sequence):
         reebill = self.state_db.get_reebill(session, account, sequence)
         self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
@@ -2026,7 +2061,7 @@ class Process(object):
         #Various filter functions used below to filter the resulting rows
         def filter_reebillcustomers(row):
             return int(row['account'])<20000
-        def filter_xbillcustomers(row):
+        def filter_brokeragecustomers(row):
             return int(row['account'])>=20000
         # Function to format the "Utility Service Address" grid column
         def format_service_address(service_address, account):
@@ -2075,8 +2110,8 @@ class Process(object):
         #Apply filters
         if filtername=="reebillcustomers":
             rows=filter(filter_reebillcustomers, rows)
-        elif filtername=="xbillcustomers":
-            rows=filter(filter_xbillcustomers, rows)
+        elif filtername=="brokeragecustomers":
+            rows=filter(filter_brokeragecustomers, rows)
         rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
         total_length=len(rows)
         rows = rows[start:start+limit]
