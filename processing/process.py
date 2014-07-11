@@ -1026,8 +1026,7 @@ class Process(object):
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
 
-    def roll_reebill(self, session, account, integrate_skyline_backend=True,
-                     start_date=None, skip_compute=False):
+    def roll_reebill(self, session, account, start_date=None):
         """ Create first or roll the next reebill for given account.
         After the bill is rolled, this function also binds renewable energy data
         and computes the bill by default. This behavior can be modified by
@@ -1125,17 +1124,15 @@ class Process(object):
         # the changes to MySQL above, leaving a Mongo reebill document without
         # a corresponding MySQL row; only undo the changes related to binding
         # and computing (currently there are none).
-        if integrate_skyline_backend:
-            self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
-                                            new_reebill, use_olap=True)
-            self.reebill_dao.save_reebill(new_mongo_reebill)
+        self.ree_getter.update_renewable_readings(
+                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
+        self.reebill_dao.save_reebill(new_mongo_reebill)
 
-        if not skip_compute:
-            try:
-                self.compute_reebill(session, account, new_sequence)
-            except Exception as e:
-                self.logger.error("Error when computing reebill %s: %s" % (
-                        new_reebill, e))
+        try:
+            self.compute_reebill(session, account, new_sequence)
+        except Exception as e:
+            self.logger.error("Error when computing reebill %s: %s" % (
+                    new_reebill, e))
         return new_reebill
 
     def new_versions(self, session, account, sequence):
