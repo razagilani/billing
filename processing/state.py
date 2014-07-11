@@ -75,6 +75,10 @@ class Address(Base):
                    other_address.state,
                    other_address.postal_code)
 
+    @classmethod
+    def for_brokerage(cls, street, city, state, postal_code):
+        return cls("", street, city, state, postal_code)
+
     def __hash__(self):
         return hash(self.addressee + self.street + self.city +
                     self.postal_code)
@@ -111,9 +115,9 @@ class Customer(Base):
     fb_utility_name = Column(String(255), nullable=False)
     fb_rate_class = Column(String(255), nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
-                                   nullable=False,)
+                                   nullable=True,)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
-                                   nullable=False)
+                                   nullable=True)
 
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
                     primaryjoin='Customer.fb_billing_address_id==Address.id')
@@ -156,6 +160,10 @@ class Customer(Base):
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
+
+    @classmethod
+    def for_brokerage(cls, name):
+        return cls(name, "", 0.0, 0.0, "", "", "", None, None)
 
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \

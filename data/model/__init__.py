@@ -28,6 +28,6 @@ def check_schema_revision(schema_revision=_schema_revision):
     log.debug('Verified database at schema revision %s' % current_revision)
 
 from billing.processing.state import *
-from billing.processing.state import Customer
 from .brokerage import *
 from .company import *
+from .auth import *
