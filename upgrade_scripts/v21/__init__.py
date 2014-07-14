@@ -51,7 +51,7 @@ def copy_charges_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 21')
-    alembic_upgrade('55e7e5ebdd29')
+    #alembic_upgrade('55e7e5ebdd29')
     init_model()
     copy_charges_from_mongo()
     log.info('Upgrade to version 21 complete')

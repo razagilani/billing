@@ -58,7 +58,7 @@ def copy_registers_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
-    alembic_upgrade('3781adb9429d')
+    #alembic_upgrade('3781adb9429d')
     log.info('Alembic Upgrade Complete')
     init_model()
     copy_registers_from_mongo()

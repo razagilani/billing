@@ -102,15 +102,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleActivate: function() {
         var selected = this.getAccountsGrid().getSelectionModel().getSelection();
+        var store = this.getUtilityBillsStore();
 
         if (!selected || !selected.length)
             return;
 
         this.initalizeUploadForm();
 
-        this.getUtilityBillsStore().getProxy().setExtraParam('account', selected[0].get('account'));
-
-        this.getUtilityBillsStore().reload();
+        store.getProxy().setExtraParam('account', selected[0].get('account'));
+        store.resetAllData();
     },
 
     /**
@@ -221,6 +221,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         var grid = this.getUtilityBillsGrid(),
             selected = grid.getSelectionModel().getSelection();
 
+        console.log(selected);
         if (!selected || selected.length != 1)
             return;
 
