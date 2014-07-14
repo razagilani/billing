@@ -7,6 +7,7 @@ from StringIO import StringIO
 import dateutil
 from bson import ObjectId
 
+from billing.processing.exceptions import RSIError
 from processing.session_contextmanager import DBSession
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
@@ -14,6 +15,7 @@ from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.exceptions import NoRSIError
 import example_data
+
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
@@ -484,9 +486,9 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
             'charges': [
-                # a charge with no corrseponding RSI
-                {'rsi_binding': 'NO_RSI', 'quantity': 0, 'group': 'All '
-                                                                  'Charges'}
+                # a charge with no corrseponding RS
+                {'rsi_binding': 'NO_RSI', 'quantity': 0,
+                        'group': 'All Charges'}
             ],
             'meters': [{
                 'present_read_date': date(2000,2,1),
@@ -508,11 +510,6 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             id=ObjectId(),
             rates=[]
         )
-        cprs = RateStructure(
-            id=ObjectId(),
-            rates=[]
-        )
-
         # compute_all_charges should raise a KeyError if not all charges have
         # an RSI
         self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
@@ -536,7 +533,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
             utilbill = self.process.get_all_utilbills_json(session,
                     account, 0, 30)[0][0]
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
+            self.process.add_rsi(session, utilbill['id'])
             self.process.update_rsi(session, utilbill['id'],'New RSI #1', {
                     'rsi_binding': 'NEW_1',
                     'description':'a charge for this will be added',
@@ -544,7 +541,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                     'rate': '2',
                     'quantity_units':'dollars'
                 })
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
+            self.process.add_rsi(session, utilbill['id'])
             self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
                     'rsi_binding': 'NEW_2',
                     'description':'a charge for this will be added too',
@@ -558,27 +555,27 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             self.process.refresh_charges(session, utilbill['id'])
             charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
             self.assertEqual([
-                {
-                    'rsi_binding': 'NEW_1',
-                    'id': 'NEW_1',
-                    'description': 'a charge for this will be added',
-                    'quantity': 1,
-                    'quantity_units': 'dollars',
-                    'rate': 2,
-                    'total': 2,
-                    'group': '',
-                },
-                {
-                    'rsi_binding': 'NEW_2',
-                    'id': 'NEW_2',
-                    'description': 'a charge for this will be added too',
-                    'quantity': 5,
-                    'quantity_units': 'therms',
-                    'rate': 6,
-                    'total': 30,
-                    'group': '',
-                },
-            ], charges)
+            {
+                'rsi_binding': 'NEW_1',
+                'id': 'NEW_1',
+                'description': 'a charge for this will be added',
+                'quantity': 1,
+                'quantity_units': 'dollars',
+                'rate': 2,
+                'total': 2,
+                'group': '',
+            },
+            {
+                'rsi_binding': 'NEW_2',
+                'id': 'NEW_2',
+                'description': 'a charge for this will be added too',
+                'quantity': 5,
+                'quantity_units': 'therms',
+                'rate': 6,
+                'total': 30,
+                'group': '',
+            },
+        ], charges)
 
         # TODO move the stuff below into a unit test (in test_utilbill.py)
         # when there's any kind of exception in computing the bill, the new
@@ -586,14 +583,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # re-raised
         new_rsi = self.process.add_rsi(session, utilbill['id'])
         self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'BAD',
-                    'description':"quantity formula can't be computed",
-                    'quantity': 'WTF',
-                    'rate': '1',
-                    'quantity_units':'whatever',
-                })
+            'rsi_binding': 'BAD',
+            'description':"quantity formula can't be computed",
+            'quantity': 'WTF',
+            'rate': '1',
+            'quantity_units':'whatever',
+        })
 
-        from billing.processing.exceptions import RSIError
         with self.assertRaises(RSIError) as e:
             self.process.refresh_charges(session, utilbill['id'])
         charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
