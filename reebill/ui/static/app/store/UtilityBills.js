@@ -1,5 +1,6 @@
 Ext.define('ReeBill.store.UtilityBills', {
     extend: 'Ext.data.Store',
+    //extend: 'Ext.ux.data.PagingStore',
 
     model: 'ReeBill.model.UtilityBill',
 
@@ -7,8 +8,8 @@ Ext.define('ReeBill.store.UtilityBills', {
     autoSync: true,
     remoteSort: true,
     // For PagingStore
-    //pageSize: 25,
-    //lastOptions: {start: 0, limit: 400, page: 1},
+    // pageSize: 25,
+    // lastOptions: {start: 0, limit: 400, page: 1},
 
 	proxy: {
 		type: 'rest',

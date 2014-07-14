@@ -110,7 +110,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
         this.initalizeUploadForm();
 
         store.getProxy().setExtraParam('account', selected[0].get('account'));
-        store.reload();
+        store.loadPage(1);
     },
 
     /**

@@ -547,7 +547,7 @@ Ext.define('Ext.ux.data.PagingStore', {
             me.fireEvent('bulkremove', me, allRecords, indexes, !!isMove);
             me.fireEvent('datachanged', me);
         }
-        if (!isMove && me.autoSync && sync && !me.autoSyncSuspended && !silent) {
+        if (!isMove && me.autoSync && sync && !me.autoSyncSuspended) {
             me.sync();
         }
     },
@@ -747,6 +747,21 @@ Ext.define('Ext.ux.data.PagingStore', {
         }
         delete me.lastParams;
         me.lastOptions = me.initOptions;
-        me.reload();
+        // Make sure the store remove events don't sync
+        me.suspendAutoSync()
+
+        // First retrieve all records, then go to the first page
+        // (since all records are in memory at this point, this will not
+        // create a new reqest), then resume the autosync
+        me.reload({
+            callback:function(){
+                me.loadPage(1,{
+                    callback:function(records, operation, success){
+                        me.resumeAutoSync();
+                    }
+                });
+            }
+        });
+
     }
 });
