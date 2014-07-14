@@ -7,7 +7,7 @@ from copy import deepcopy
 
 from datetime import timedelta, datetime, date
 from itertools import groupby, chain
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey

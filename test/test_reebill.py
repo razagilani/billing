@@ -103,6 +103,7 @@ class ReebillTest(TestCaseWithSetup):
                     rate='2',
                 )
             ])
+            uprs.save()
             utilbill_doc = {
                 '_id': ObjectId(),
                 'account': '12345', 'service': 'gas', 'utility': 'washgas',
@@ -149,14 +150,15 @@ class ReebillTest(TestCaseWithSetup):
                 }
             ], utilbill_doc['charges'])
 
-            customer = Customer('someone', '11111', 0.5, 0.1, None,
+            customer = Customer('someone', '11111', 0.5, 0.1, '',
                                 'example@example.com')
             utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                     'DC Non Residential Non Heat', period_start=date(2000,1,1),
                     period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
-                    uprs_id=uprs.id)
+                    uprs_id=str(uprs.id))
             reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                     utilbills=[utilbill])
+            session.add(reebill)
             reebill.update_readings_from_document(session, utilbill_doc)
             reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
                     0, 0.5, 0.1, [utilbill_doc])
@@ -169,7 +171,10 @@ class ReebillTest(TestCaseWithSetup):
             self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
 
             #reebill_doc.compute_charges(uprs)
-            self.process._compute_reebill_charges(session, reebill, uprs)
+            #self.process._compute_reebill_charges(session, reebill, uprs)
+            self.process.compute_utility_bill(session, utilbill.id)
+            self.process.compute_reebill(session, reebill.customer.account,
+                    reebill.sequence, version=reebill.version)
 
             # check that there are the same group names and rsi_bindings and only,
             # by creating two dictionaries mapping group names to sets of

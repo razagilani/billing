@@ -4,13 +4,13 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
+
 import os
 import copy
 from datetime import date, datetime, timedelta
 from operator import itemgetter
 import traceback
 from itertools import chain
-:
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
