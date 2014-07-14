@@ -4,18 +4,15 @@ Ext.define('ReeBill.store.Payments', {
     model: 'ReeBill.model.Payment',
 
     autoLoad: false,
+    autoSync: true,
     remoteSort: true,
     remoteFilter: true,
 
 	proxy: {
-		type: 'ajax',
-        url: 'http://'+window.location.host+'/rest/payment',
+		type: 'rest',
+        url: 'http://'+window.location.host+'/reebill/payments',
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
 
 		reader: {
 			type: 'json',

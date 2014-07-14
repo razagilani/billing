@@ -623,6 +623,36 @@ class RateStructureResource(RESTResource):
         return True, {'rows': rsis, 'results': len(rsis)}
 
 
+class PaymentsResource(RESTResource):
+
+    def handle_get(self, account, *vpath, **params):
+        payments = self.state_db.payments(self.session, account)
+        return True , {'rows': [payment.to_dict() for payment in payments]}
+
+    def handle_post(self, account, *vpath, **params):
+        d = cherrypy.request.json['date_received']
+        d = datetime.strptime(d, '%Y-%m-%dT%H:%M:%S')
+        print "\n\n\n\n", d, type(d)
+        new_payment = self.process.create_payment(
+            self.session, account, d, "New Entry", 0, d)
+        self.session.flush()
+        return True, {"rows": new_payment.to_dict(), 'results': 1}
+
+    def handle_put(self, payment_id, *vpath, **params):
+        row = cherrypy.request.json
+        self.process.update_payment(
+            self.session,
+            int(payment_id),
+            row['date_applied'],
+            row['description'],
+            row['credit'],
+        )
+        return True, {"rows": row, 'results': 1}
+
+    def handle_delete(self, account, *vpath, **params):
+        return True, {}
+
+
 class BillToolBridge(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
@@ -630,6 +660,7 @@ class BillToolBridge(WebResource):
     charges = ChargesResource()
     registers = RegistersResource()
     ratestructure = RateStructureResource()
+    payments = PaymentsResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

@@ -44,16 +44,14 @@ Ext.define('ReeBill.controller.Payments', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+        var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
+            store = this.getPaymentsStore();
 
         if (!selectedAccount.length)
             return;
 
-        this.getPaymentsStore().load({
-            params: {
-                account: selectedAccount[0].get('account')
-            }
-        });
+        store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
+        store.load();
     },
 
     /**
@@ -75,20 +73,7 @@ Ext.define('ReeBill.controller.Payments', {
         if (!selectedAccount || !selectedAccount.length)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/payment',
-            method: 'POST',
-            params: {
-                xaction: 'create',
-                account: selectedAccount[0].get('account'),
-                service: '',
-                sequence: '',
-                rows: '{}'
-            },
-            success: function() {
-                store.reload();
-            }
-        });
+        store.add({'date_received': new Date(), 'editable': true});
     },
 
     /**
@@ -102,41 +87,41 @@ Ext.define('ReeBill.controller.Payments', {
     /**
      * Handle the edit of a row.
      */
-    handleEdit: function(editor, e) {
-        var updated = e.record,
-            store = this.getPaymentsStore(),
-            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
-
-        var updateProperties = Object.getOwnPropertyNames(updated.modified);
-
-        if (!updated || updateProperties.length === 0)
-            return;
-
-        var updatedData = Ext.clone(updated.data);
-        updatedData.date_applied = Ext.util.Format.date(updatedData.date_applied, 'Y-m-d') + 'T00:00:00';
-
-        var params =  {
-            xaction: 'update',
-            account: selectedAccount[0].get('account'),
-            rows: JSON.stringify(updatedData),
-            sequence: '',
-            service: this.getServiceForCharges().getValue() || ''
-        };
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/payment',
-            method: 'POST',
-            params: params,
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            }
-        });
-    },
+//    handleEdit: function(editor, e) {
+//        var updated = e.record,
+//            store = this.getPaymentsStore(),
+//            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+//
+//        var updateProperties = Object.getOwnPropertyNames(updated.modified);
+//
+//        if (!updated || updateProperties.length === 0)
+//            return;
+//
+//        var updatedData = Ext.clone(updated.data);
+//        updatedData.date_applied = Ext.util.Format.date(updatedData.date_applied, 'Y-m-d') + 'T00:00:00';
+//
+//        var params =  {
+//            xaction: 'update',
+//            account: selectedAccount[0].get('account'),
+//            rows: JSON.stringify(updatedData),
+//            sequence: '',
+//            service: this.getServiceForCharges().getValue() || ''
+//        };
+//
+//        Ext.Ajax.request({
+//            url: 'http://'+window.location.host+'/rest/payment',
+//            method: 'POST',
+//            params: params,
+//            success: function(response, request) {
+//                var jsonData = Ext.JSON.decode(response.responseText);
+//                if (jsonData.success) {
+//                    store.reload();
+//                } else {
+//                    Ext.Msg.alert('Error', jsonData.errors.details);
+//                }
+//            }
+//        });
+//    },
 
     /**
      * Handle the delete button being clicked.
@@ -149,20 +134,13 @@ Ext.define('ReeBill.controller.Payments', {
         if (!selectedAccount || !selectedAccount.length || !selectedPayment || !selectedPayment.length)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/payment',
-            method: 'POST',
-            params: {
-                xaction: 'destroy',
-                account: selectedAccount[0].get('account'),
-                service: '',
-                sequence: '',
-                rows: selectedPayment[0].get('id')
-            },
-            success: function() {
-                store.reload();
-            }
-        });
+        Ext.Msg.confirm('Confirm deletion',
+            'Are you sure you want to delete the selected Payment(s)?',
+            function(answer) {
+                if (answer == 'yes') {
+                    store.remove(selected)
+                }
+            });
     }    
 
 });
