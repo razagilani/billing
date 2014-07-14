@@ -1,23 +1,19 @@
-'''Unit tests for what will be the class wrapping a utility bill
-document, when there finally is one.
+'''Unit tests for the UtilBill class and other code that will eventually be
+included in it.
 '''
 from datetime import date
 from StringIO import StringIO
+
 import dateutil
 from bson import ObjectId
-from decimal import Decimal
-from unittest import TestCase
+
 from processing.session_contextmanager import DBSession
-from billing.test import example_data
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.exceptions import NoRSIError
-
 import example_data
-
-
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
