@@ -528,8 +528,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         account = '99999'
         with DBSession(self.state_db) as session:
             self.process.upload_utility_bill(session, account, 'gas',
-                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                'january.pdf')
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                    'january.pdf')
 
             utilbill = self.process.get_all_utilbills_json(session,
                     account, 0, 30)[0][0]
@@ -543,13 +543,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 })
             self.process.add_rsi(session, utilbill['id'])
             self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'NEW_2',
-                    'description':'a charge for this will be added too',
-                    'quantity': '5',
-                    'rate': '6',
-                    'quantity_units':'therms',
-                    'shared': False
-                })
+                'rsi_binding': 'NEW_2',
+                'description':'a charge for this will be added too',
+                'quantity': '5',
+                'rate': '6',
+                'quantity_units':'therms',
+                'shared': False
+            })
 
 
             self.process.refresh_charges(session, utilbill['id'])
@@ -577,11 +577,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             },
         ], charges)
 
-        # TODO move the stuff below into a unit test (in test_utilbill.py)
-        # when there's any kind of exception in computing the bill, the new
-        # set of charges should still get saved, and the exception should be
-        # re-raised
-        new_rsi = self.process.add_rsi(session, utilbill['id'])
+        self.process.add_rsi(session, utilbill['id'])
         self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
             'rsi_binding': 'BAD',
             'description':"quantity formula can't be computed",
@@ -592,7 +588,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
         with self.assertRaises(RSIError) as e:
             self.process.refresh_charges(session, utilbill['id'])
-        charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(session,
+                utilbill['id'])
         self.assertEqual([{
             'rsi_binding': 'BAD',
             'id': 'BAD',
@@ -605,8 +602,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             'group': '',
         }], [charges[0]])
 
-        # TODO test that document is still saved after any kind of Exception--
-        # i'm not sure how to do this because the code should be (and is)
-        # written so that there are no known ways to trigger unexpected
-        # exceptions. in a real unit test, mongo.compute_charges could be
-        # replaced with a mock that did this.
