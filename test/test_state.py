@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy.orm.exc import NoResultFound
 import pymongo
 from billing.processing import state
-from billing.processing.state import Customer, UtilBill, ReeBill
+from billing.processing.state import Customer, UtilBill, ReeBill, Session
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
@@ -53,7 +53,7 @@ class StateTest(utils.TestCase):
         # https://www.pivotaltracker.com/story/show/58851006
         #sqlalchemy.orm.clear_mappers()
 
-        self.state_db = state.StateDB('localhost', 'test', 'dev', 'dev')
+        self.state_db = state.StateDB(Session)
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection(billdb_config['host'],
                 int(billdb_config['port']))[billdb_config['database']])
