@@ -98,17 +98,7 @@ class Process(object):
         for r in session.query(Register).join(UtilBill,
             Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id).all():
-            l.append(dict(meter_id=r.meter_identifier,
-                          register_id=r.id,
-                          service=r.utilbill.service,
-                          type=r.reg_type,
-                          binding=r.register_binding,
-                          description=r.description,
-                          quantity=r.quantity,
-                          quantity_units=r.quantity_units,
-                          id='%s/%s/%s' % (r.utilbill.service,
-                                           r.meter_identifier,
-                                           r.id)))
+            l.append(r.to_dict())
         return l
 
     def new_register(self, session, utilbill_id, row):
@@ -117,40 +107,28 @@ class Process(object):
         "meter_id" and "register_id" are ignored.
         """
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        session.add(Register(utility_bill,
-                             "Insert description",
-                             0,
-                             "therms",
-                             row.get('register_id', "Insert register ID here"),
-                             False,
-                             "total",
-                             "Insert register binding here",
-                             None,
-                             row.get('meter_id', "")))
+        r = Register(
+            utility_bill,
+            "Insert description",
+            0,
+            "therms",
+            row.get('register_id', "Insert register ID here"),
+            False,
+            "total",
+            "Insert register binding here",
+            None,
+            row.get('meter_id', ""))
+        session.add(r)
+        return r
 
-    def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
-                        rows):
-        """Updates fields in the register given by 'original_register_id' in
-        the meter given by 'original_meter_id', with the data contained by rows.
+    def update_register(self, session, register_id, rows):
+        """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
-        q = session.query(Register).join(UtilBill,
-                                         Register.utilbill_id == UtilBill.id).\
-            filter(UtilBill.id == utilbill_id)
+        self.logger.info("Running Process.update_register %s" % register_id)
 
         #Register to be updated
-        register = q.filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
-
-        #Check if a register with target register_id/meter_id already exists
-        target_register_id = rows.get('register_id', orig_reg_id)
-        target_meter_id = rows.get('meter_id', orig_meter_id)
-        target = q.filter(Register.meter_identifier == target_meter_id).\
-            filter(Register.identifier == target_register_id).first()
-        if target and target != register:
-            raise ValueError("There is already a register with id %s and meter"
-                             " id %s" % (target_register_id, target_meter_id))
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
 
         for k in ['description', 'quantity', 'quantity_units',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
@@ -160,14 +138,13 @@ class Process(object):
                               (k, register.id, val))
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
+        return register
 
-    def delete_register(self, session, utilbill_id, orig_meter_id, orig_reg_id):
-        self.logger.info("Running Process.delete_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
-        register = session.query(Register).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
+    def delete_register(self, session, register_id):
+        self.logger.info("Running Process.delete_register %s" %
+                         register_id)
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
         session.delete(register)
 
     def add_charge(self, session, utilbill_id, group_name):

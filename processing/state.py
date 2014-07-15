@@ -950,6 +950,21 @@ class Register(Base):
         self.active_periods = active_periods
         self.meter_identifier = meter_identifier
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'utilbill_id': self.utilbill_id,
+            'description': self.description,
+            'quantity': self.quantity,
+            'quantity_units': self.quantity_units,
+            'identifier': self.identifier,
+            'estimated': self.estimated,
+            'reg_type': self.reg_type,
+            'register_binding': self.register_binding,
+            'active_periods': self.active_periods,
+            'meter_identifier': self.meter_identifier
+        }
+
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.

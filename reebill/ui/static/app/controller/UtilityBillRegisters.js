@@ -26,6 +26,9 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     }],    
 
     init: function() {
+        var me = this,
+            store = me.getUtilityBillRegistersStore();
+
         this.application.on({
             scope: this
         });
@@ -36,9 +39,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             },
             'grid[id=utilityBillRegistersGrid]': {
                 selectionchange: this.handleRowSelect,
-                beforeedit: this.handleStartEdit,
-                canceledit: this.handleRowSelect,
-                edit: this.handleEdit
             },
             'button[action=newUtilityBillRegister]': {
                 click: this.handleNew
@@ -56,6 +56,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
                 click: this.submitUploadIntervalMeter
             }
         });
+
     },
 
     /**
@@ -70,14 +71,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             return;
 
         var params = {
-            account: selectedBill[0].get('account'),
             utilbill_id: selectedBill[0].get('id')
-        }
-
-        if (selectedVersion !== '') {
-            var versionRec = this.getUtilityBillVersions().findRecordByValue(selectedVersion);
-            params.reebill_sequence = versionRec.get('sequence');
-            params.reebill_version = versionRec.get('version');
         }
 
         store.getProxy().extraParams = params;
@@ -95,22 +89,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     },
 
     /**
-     * Handle the start of a row edit.
-     */
-    handleStartEdit: function() {
-        this.getRemoveUtilityBillRegisterButton().setDisabled(true);
-    },
-
-    /**
-     * Handle the edit of a row.
-     */
-    handleEdit: function(editor, e) {
-        // Reload the store to avoid the ext stale id issue
-        var store = this.getUtilityBillRegistersStore();
-        store.reload();
-    },
-
-    /**
      * Handle the new utitlity bill button being clicked.
      */
     handleNew: function() {
@@ -121,8 +99,8 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length)
             return;
 
-        store.add({register_id:'new Register',
-                   meter_id:'new Meter'})
+        store.add({identifier:'new Register',
+                   meter_identifier:'new Meter'})
 
     },
 
@@ -145,15 +123,15 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     /**
      * Keep the version number in sync. There are multiple instances.
      */ 
-    syncVersions: function(combo) {
-        var val = combo.getValue();
-
-        Ext.each(Ext.ComponentQuery.query('utilityBillVersions'), function(version) {
-            version.setValue(val);
-        });
-
-        this.handleActivate();
-    },
+//    syncVersions: function(combo) {
+//        var val = combo.getValue();
+//
+//        Ext.each(Ext.ComponentQuery.query('utilityBillVersions'), function(version) {
+//            version.setValue(val);
+//        });
+//
+//        this.handleActivate();
+//    },
 
     /**
      * Handle the reset upload meter CSV button.
