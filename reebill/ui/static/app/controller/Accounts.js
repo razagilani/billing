@@ -62,7 +62,7 @@ Ext.define('ReeBill.controller.Accounts', {
     handleFilter: function() {
         var filter = this.getAccountsFilter().getValue();
 
-        this.getAccountsStore().load({
+        this.getAccountsStore().loadPage(1, {
             params: {
                 filtername: filter
             }
