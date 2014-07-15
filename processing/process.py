@@ -30,7 +30,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Reading
+    UtilBillLoader, ReeBillCharge, Address, Charge, Reading, Session
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -85,7 +85,7 @@ class Process(object):
         # NOTE this method is in Process because it uses both databases; is
         # there a better place to put it?
 
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
         if reebill_sequence is None:
             assert reebill_version is None
@@ -115,7 +115,7 @@ class Process(object):
             raise ValueError(('Unknown "rs_type": expected "uprs", '
                     'got "%s"') % rs_type)
 
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
         if reebill_sequence is None:
             assert reebill_version is None
@@ -184,16 +184,18 @@ class Process(object):
         self.reebill_dao.save_utilbill(utilbill_doc)
 
     @staticmethod
-    def add_charge(session, utilbill_id, group_name):
+    def add_charge(utilbill_id, group_name):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
+        session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
 
     @staticmethod
-    def update_charge(session, utilbill_id, rsi_binding, fields):
+    def update_charge(utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
@@ -201,21 +203,22 @@ class Process(object):
             setattr(charge, k, v)
 
     @staticmethod
-    def delete_charge(session, utilbill_id, rsi_binding):
+    def delete_charge(utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
 
-    def get_rsis_json(self, session, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+    def get_rsis_json(self, utilbill_id):
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         return [rsi.to_dict() for rsi in rs_doc.rates]
 
     def add_rsi(self, session, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         new_rsi = rs_doc.add_rsi()
         rs_doc.save()
@@ -225,7 +228,7 @@ class Process(object):
         '''Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         rsi = rs_doc.get_rsi(rsi_binding)
         rsi.update(**fields)
@@ -233,7 +236,7 @@ class Process(object):
         return rsi.rsi_binding
 
     def delete_rsi(self, session, utilbill_id, rsi_binding):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         rsi = rs_doc.get_rsi(rsi_binding)
         rs_doc.rates.remove(rsi)
@@ -278,7 +281,7 @@ class Process(object):
         MySQL id is 'utilbill_id'. Fields that are not None get updated to new
         values while other fields are unaffected.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
         # save period dates for use in moving the utility bill file at the end
         # of this method
@@ -625,13 +628,14 @@ class Process(object):
 
         return new_utilbill
 
-    def get_service_address(self,session,account):
+    def get_service_address(self, account):
         '''Finds the last state.Utilbill, loads the mongo document for it,
         and extracts the service address from it '''
-        utilbill=self.state_db.get_last_real_utilbill(session, account,
-                                                      datetime.now())
+        session = Session()
+        utilbill = self.state_db.get_last_real_utilbill(session, account,
+                datetime.utcnow())
         utilbill_doc=self.reebill_dao.load_doc_for_utilbill(utilbill)
-        address=mongo.get_service_address(utilbill_doc)
+        address= mongo.get_service_address(utilbill_doc)
         return address
 
     def _find_replaceable_utility_bill(self, session, customer, service, start,
@@ -844,7 +848,7 @@ class Process(object):
     def regenerate_uprs(self, session, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         existing_uprs = self.rate_structure_dao.load_uprs_for_utilbill(
                 utilbill)
         new_rs = self.rate_structure_dao.get_predicted_rate_structure(utilbill,
@@ -854,7 +858,7 @@ class Process(object):
 
     def has_utilbill_predecessor(self, session, utilbill_id):
         try:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+            utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
             predecessor = self.state_db.get_last_real_utilbill(session,
                     utilbill.customer.account, utilbill.period_start,
                     utility=utilbill.utility, service=utilbill.service)
@@ -868,7 +872,7 @@ class Process(object):
         Structure Item in the UPRS. The charges are computed according to the
         rate structure.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         utilbill.refresh_charges(uprs.rates)
@@ -883,7 +887,7 @@ class Process(object):
         'utilbill_id' so they are correct according to its rate structure, and
         saves the document.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
 
         # update Mongo document to match "metadata" columns in MySQL:
@@ -2054,7 +2058,7 @@ class Process(object):
         return reebill.version
 
     def get_utilbill_image_path(self, session, utilbill_id, resolution):
-        utilbill=self.state_db.get_utilbill_by_id(session,utilbill_id)
+        utilbill= self.state_db.get_utilbill_by_id(utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
 
     def list_account_status(self, session, start, limit, filtername, sortcol,
@@ -2099,8 +2103,7 @@ class Process(object):
             }
             if sortcol=='utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(session,
-                                                                status.account)
+                    service_address = self.get_service_address(status.account)
                     service_address=format_service_address(service_address,
                                                             status.account)
                 except NoSuchBillException:
@@ -2126,8 +2129,7 @@ class Process(object):
             row['lastevent']=self.journal_dao.last_event_summary(row['account'])
             if sortcol != 'utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(session,
-                                                                row['account'])
+                    service_address = self.get_service_address(row['account'])
                     service_address=format_service_address(service_address,
                                                             row['account'])
                 except NoSuchBillException:

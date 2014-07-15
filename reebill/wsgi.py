@@ -919,7 +919,7 @@ class BillToolBridge:
             if xaction == "read":
                 return json.dumps({
                     'success': True,
-                    'rows': self.process.get_rsis_json(session, utilbill_id),
+                    'rows': self.process.get_rsis_json(utilbill_id),
                 })
 
             # only xaction "read" is allowed when reebill_sequence/version
@@ -968,7 +968,7 @@ class BillToolBridge:
                 for row in rows:
                     self.process.delete_rsi(session, utilbill_id, row)
 
-            rsis_json = self.process.get_rsis_json(session, utilbill_id)
+            rsis_json = self.process.get_rsis_json(utilbill_id)
             return json.dumps({'success': True, 'rows': rsis_json,
                     'total':len(rsis_json)})
 
@@ -1229,14 +1229,13 @@ class BillToolBridge:
                 assert isinstance(row, dict)
 
                 rsi_binding = row.pop('id')
-                self.process.update_charge(session, utilbill_id, rsi_binding,
-                        row)
+                self.process.update_charge(utilbill_id, rsi_binding, row)
 
             if xaction == "create":
                 row = json.loads(kwargs["rows"])[0]
                 assert isinstance(row, dict)
                 group_name = row['group']
-                self.process.add_charge(session, utilbill_id, group_name)
+                self.process.add_charge(utilbill_id, group_name)
 
             if xaction == "destroy":
                 rsi_binding = json.loads(kwargs["rows"])[0]

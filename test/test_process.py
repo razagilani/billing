@@ -792,7 +792,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # estimated one)
         for obj in utilbills_data:
             id, state = obj['id'], obj['state']
-            u = self.state_db.get_utilbill_by_id(session, id)
+            u = self.state_db.get_utilbill_by_id(id)
             if state == 'Final':
                 self.process.billupload.get_utilbill_file_path(u)
             else:
@@ -887,7 +887,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.upload_utility_bill(session, account, 'gas',
                                              date(2012, 1, 1), date(2012, 2, 1),
                                              StringIO("A PDF"), 'january.pdf')
-            address = self.process.get_service_address(session, account)
+            address = self.process.get_service_address(account)
             self.assertEqual(address['postal_code'], '20010')
             self.assertEqual(address['city'], 'Washington')
             self.assertEqual(address['state'], 'DC')
@@ -1027,12 +1027,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                   StringIO('January 2012'),
                                                   'january.pdf')
 
-            self.process.add_charge(session, u1.id, "")
-            self.process.update_charge(session, u1.id, "",
-                                       dict(rsi_binding='THE_CHARGE',
-                                            quantity=100,
-                                            quantity_units='therms', rate=1,
-                                            total=100, group='All Charges'))
+            self.process.add_charge(u1.id, "")
+            self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
+                quantity=100,
+                quantity_units='therms', rate=1,
+                total=100, group='All Charges'))
 
             u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
             u1_uprs.rates = [RateStructureItem(
@@ -1380,7 +1379,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
            # initially there will be no RSIs in A's 2nd utility bill, because
            # there are no "processed" utility bills yet.
-           self.assertEqual([], self.process.get_rsis_json(session, id_a_2))
+           self.assertEqual([], self.process.get_rsis_json(id_a_2))
 
            # when the other bills have been marked as "processed", they should
            # affect the new one.
@@ -1395,7 +1394,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
            # un-shared RSIs always get copied from each bill to its successor.
            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                     set(r['rsi_binding'] for r in
-                    self.process.get_rsis_json(session, id_a_2)))
+                        self.process.get_rsis_json(id_a_2)))
 
            # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
            # a new bill is rolled, the UPRS it gets depends on whether it's
@@ -1420,7 +1419,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     StringIO('February 2000 B'),
                    'february-b.pdf', total=0, state=UtilBill.Complete)
            self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
-                    self.process.get_rsis_json(session, id_a_2)))
+               self.process.get_rsis_json(id_a_2)))
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -1810,7 +1809,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # put it in an un-computable state by adding a charge without an
             # RSI. it should now raise an RSIError
-            self.process.add_charge(session, utilbill_id, '')
+            self.process.add_charge(utilbill_id, '')
             with self.assertRaises(NoRSIError) as context:
                 self.process.compute_reebill(session, account, 1, version=1)
 

@@ -516,7 +516,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
     def test_get_service_address(self):
         utilbill_doc = example_data.get_utilbill_dict('10003')
-        address = mongo.get_service_address(utilbill_doc)
+        address = mongo.get_service_address()
         self.assertEqual(address['postal_code'],'20010')
         self.assertEqual(address['city'],'Washington')
         self.assertEqual(address['state'],'DC')

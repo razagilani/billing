@@ -13,7 +13,7 @@ from billing.util.dateutils import ISO_8601_DATE
 # ReeBillUsagePeriodUpdated
 # ReeBillBillingPeriodUpdated
 # ReeBillRateStructureModified
-# PaymentEntered
+# PaymentEnteredG
 # TODO add utility bill uploaded?
 
 class JournalDAO(object):
