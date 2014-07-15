@@ -3,7 +3,8 @@ Ext.define('ReeBill.store.IssuableReebills', {
 
     model: 'ReeBill.model.IssuableReebill',
 
-    autoLoad: true,
+    autoLoad: false,
+    autoSync: true,
 
     remoteGroup: false,
     remoteSort: true,
