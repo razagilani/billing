@@ -217,6 +217,17 @@ class UsePeriod(Base):
         self.off_peak_quantity = off_peak_quantity
         self.customer_interest = customer_interest
 
+    @classmethod
+    def from_csv_row(cls, csv_row):
+        """csv_row in format:
+         time_start, time_end, quantity
+         %Y-%m-%d, %Y-%m-%d, quantity
+         """
+        start, end, q = csv_row.split(",")
+        return cls(float(q),
+                   datetime.strptime(start.strip(), "%Y-%m-%d"),
+                   datetime.strptime(end.strip(), "%Y-%m-%d"))
+
 
 class CustomerInterest(Base):
     """Represents a customer interested in receiving offers at a specific
@@ -229,14 +240,20 @@ class CustomerInterest(Base):
     address_id = Column(Integer, ForeignKey('address.id'), nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'), nullable=False)
     created_by_user_id = Column(Integer, ForeignKey('user.id'))
+    last_updated_by_user_id = Column(Integer, ForeignKey('user.id'))
 
     #relationships
     customer = relationship("Customer", backref="customer_interests")
     address = relationship("Address", backref="customer_interests")
     rate_class = relationship("RateClass", backref='customer_interests')
-    created_by_user = relationship('User', backref='customer_interests_created')
+    created_by_user = relationship('User', backref='customer_interests_created',
+                                   foreign_keys=[created_by_user_id])
+    updated_by_user = relationship('User',
+                                   foreign_keys=[last_updated_by_user_id])
 
     time_inserted = Column(DateTime, server_default=func.now(), nullable=False)
+    time_updated = Column(DateTime, server_default=func.now(),
+                          server_onupdate=func.now(), nullable=False)
     time_offers_generated = Column(DateTime)
 
     def generate_offers(self):

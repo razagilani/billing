@@ -46,10 +46,10 @@ a.visitcolor:visited {
 }
 
 #nav {
+  font-size:14px;
   padding: 0px 15px 0px 15px;
   /* background: #787; */
   height: 32px;
-  font-size: 1em;
   display:inline-block;
   position:absolute;
   bottom:0px;
@@ -74,6 +74,7 @@ a.visitcolor:visited {
   height: 28px;
   width: 180px;
   background-color: #e8e8e8;
+  /* padding:12px 0px 32px 0px; */ /* ext true */
   clear: left;
 }
 #nav ul li ul li:hover {
@@ -92,9 +93,10 @@ a.visitcolor:visited {
 #nav li {
   float: left;
   margin: 0;
-  padding: 0;
-  padding-top: 8px;
+  padding:8px 0px 0px 0px; /* ext false */
+  /* padding:8px 0px 8px 0px; */ /* ext true */
   min-height: 24px;
+
 }
 #nav li:hover, #nav li .active {
   color: #fff;
@@ -108,7 +110,7 @@ a.visitcolor:visited {
 div.offer {
     color:black;
     display:block;
-    padding:10px 0px 10px 0px;
+    padding:10px;
     position:relative;
     cursor:pointer;
 }
@@ -132,3 +134,7 @@ div.offer:hover a.offeredit {
 /* #nav {
     display: none !important;
 } */
+
+div.error {
+    color:red;
+}

@@ -3,6 +3,7 @@
     company_name = 'Skyline'
     page_width = '1000px'
     page_padding = '20px'
+    extjs = True
 %>
 
 
@@ -19,16 +20,6 @@
                 <ul>
                     <li>
                         <a href="${url_for('customer_interest')}">Customer Interest</a>
-                        <%doc>
-                        <ul>
-                            <li><a href="http://docs.sqlalchemy.org">New Interest</a></li>
-                            <li><a href="http://docs.sqlalchemy.org">Input/Select Offer</a></li>
-                            <li><a href="http://docs.sqlalchemy.org">Offer Select</a></li>
-                            <li><a href="http://docs.sqlalchemy.org">Customer Accept</a></li>
-                            <li><a href="http://docs.sqlalchemy.org">Contract </a></li>
-                            <li><a href="http://docs.sqlalchemy.org">Completed</a></li>
-                        </ul>
-                        </%doc>
                     </li>
                     <li>
                         <a href="${url_for('quotes')}">Quote Data</a>
@@ -40,12 +31,39 @@
     </div>
 </%def>
 
+<%def name="jsbody()"></%def>
+
 <html lang="en">
     <head>
         <title>${' - '.join([self.sectiontitle(), company_name])}</title>
-        <link rel="stylesheet" type="text/css" href="/static/style.css" />
+
         <link href='http://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
         <link href='http://fonts.googleapis.com/css?family=Roboto:400,300' rel='stylesheet' type='text/css'>
+
+        <link href="http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="/static/style.css" />
+        ${self.jsbody()}
+        %if extjs:
+            <script src="http://cdn.sencha.com/ext/gpl/4.2.0/ext-all.js"></script>
+            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+            <script type="text/javascript">
+                $(document).ready(function() {
+                    pdta = {
+                        title: '${self.sectiontitle()}',
+                        collapsible:false,
+                        width:'100%',
+                        html: $('#panel_content').html()
+                    }
+
+                   var element = Ext.getBody().createChild();
+                   Ext.widget('panel', Ext.applyIf(pdta, {
+                        renderTo: Ext.get('panel_container'),
+                        bodyPadding: 0,
+                        border: 0
+                   }));
+                });
+            </script>
+        %endif
     </head>
     <body>
         <div style="background-color:#f0f0f0; width:100%;">
@@ -61,6 +79,11 @@
                   ${self.nav()}
             </div>
         </div>
-        ${next.body()}
+        %if extjs:
+            <div id="panel_content" style="display:none;"><div style="font-size:14px;" id="panel_body">${next.body()}</div></div>
+            <div id="panel_container"></div>
+        %else:
+            ${next.body()}
+        %endif
     </body>
 </html>

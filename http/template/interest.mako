@@ -1,16 +1,8 @@
 <%inherit file="base.mako"/>
 <%def name="sectiontitle()">Customer Interest</%def>
 
-<%def name="render_interest(interest)">
-    <div>
-
-
-
-    </div>
-</%def>
-
-
 <div style="width:${self.attr.page_width}; margin-left:auto; margin-right:auto; margin-top:20px; padding-left:${self.attr.page_padding}; padding-right:${self.attr.page_padding};">
+
 
     <div style="overflow:auto; margin-bottom:20px;">
         <button type="button" style="float:right;" onclick="location.href='${url_for('interest_new')}'">New Customer Interest</button>
@@ -35,6 +27,7 @@
                 <div style="min-width:120px; display:inline-block;">Best Rate </div>${interest.best_rate}<br/>
                 <div style="min-width:120px; display:inline-block;">Created By </div>${interest.created_by_user.name}<br/>
                 <div style="min-width:120px; display:inline-block;">Use Periods </div>${interest.use_periods.count()}
+                <br/>
             </div>
             <a href="${url_for('interest_edit', interest_id=interest.id)}" class="offeredit">edit</a>
         </div>
