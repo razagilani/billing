@@ -14,6 +14,7 @@ from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.exceptions import NoRSIError
+from billing.processing.state import UtilBill
 import example_data
 
 
@@ -417,6 +418,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         }
 
         # simplified version of document with _id 52b455467eb49a52d23d105c
+        # (originally this was a CPRS with an empty UPRS)
         uprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
             "type" : "UPRS",
@@ -587,6 +589,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
         with self.assertRaises(RSIError) as e:
             self.process.refresh_charges(session, utilbill['id'])
+        session.flush()
+        session.commit()
         charges = self.process.get_utilbill_charges_json(session,
                 utilbill['id'])
         self.assertEqual([{
