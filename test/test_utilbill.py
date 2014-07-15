@@ -417,7 +417,6 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         }
 
         # simplified version of document with _id 52b455467eb49a52d23d105c
-        # (originally this was a CPRS with an empty UPRS)
         uprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
             "type" : "UPRS",

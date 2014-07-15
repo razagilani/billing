@@ -599,8 +599,7 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
-    uprs_document_id = Column(String) #indicates the rate structure data
-    cprs_document_id = Column(String) 
+    uprs_document_id = Column(String)
 
     # there is no delete cascade in this 'relationship' because a UtilBill
     # should not be deleted when a UtilbillReebill is deleted.
@@ -745,7 +744,6 @@ class UtilBill(Base):
     # _ids of Mongo documents
     document_id = Column(String)
     uprs_document_id = Column(String)
-    cprs_document_id = Column(String)
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
