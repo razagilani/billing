@@ -22,21 +22,15 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
     
     columns: [{
         header: 'Service',
-        dataIndex: 'service',
-        editor: {
-            xtype: 'combo',
-            name: 'service',
-            store: 'Services',
-            triggerAction: 'all',
-            valueField: 'name',
-            displayField: 'value',
-            queryMode: 'local',
-            forceSelection: true,
-            selectOnFocus: true
-        }  
+        renderer: function(value){
+            console.log()
+            var selectedBill = ReeBill.getApplication().getController('UtilityBills')
+                .getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+            return selectedBill.get('service');
+        },
     },{
         header: 'Meter ID',
-        dataIndex: 'meter_id',
+        dataIndex: 'meter_identifier',
         sortable: false,
         editor: {
             xtype: 'textfield',
@@ -45,7 +39,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         width: 100,
     },{
         header: 'Register ID',
-        dataIndex: 'register_id',
+        dataIndex: 'identifier',
         sortable: false,
         editor: {
             xtype: 'textfield',
@@ -54,7 +48,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         width: 100,
     },{
         header: 'Type',
-        dataIndex: 'type',
+        dataIndex: 'reg_type',
         sortable: false,
         editor: {
             xtype: 'textfield',
@@ -63,7 +57,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         width: 70,
     },{
         header: 'RSI Binding',
-        dataIndex: 'binding',
+        dataIndex: 'register_binding',
         sortable: false,
         editor: {
             xtype: 'textfield',
