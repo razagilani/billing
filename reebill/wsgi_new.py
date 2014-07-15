@@ -512,68 +512,22 @@ class ChargesResource(RESTResource):
 
 class RegistersResource(RESTResource):
 
-    def validate_id_components(self, *components):
-        if any('/' in c for c in components):
-            raise ValueError(('Service names and meter/register ids must '
-                              'not contain "/"'))
 
-    def handle_get(self, utilbill_id, reebill_sequence=None,
-                   reebill_version=None, *vpath, **params):
+    def handle_get(self, utilbill_id, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
         registers_json = self.process.get_registers_json(
             self.session, utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
-    def handle_post(self, utilbill_id, reebill_sequence=None,
-                    reebill_version=None, *vpath, **params):
-        self.check_modifiable(reebill_sequence, reebill_version)
+    def handle_post(self, utilbill_id, *vpath, **params):
         new_register = cherrypy.request.json
-
-        self.validate_id_components(new_register.get('meter_id', ''),
-                                    new_register.get('register_id', ''))
-
-        # Since the porper response to a REST-POST is only the newly created
-        # record, we will request all registers, create a new one, request all
-        # registers again and compare the two record register lists
-        # TODO: in the future process.new_register should return the newly
-        # created register
-
-        # All registers before we create a new one
-        registers_json_inital = self.process.get_registers_json(
-            self.session, utilbill_id)
-
-        # create the new register
-        self.process.new_register(
+        r = self.process.new_register(
             self.session, utilbill_id, new_register)
 
-        # All registers after we created a new one
-        registers_json = self.process.get_registers_json(
-            self.session, utilbill_id)
+        return True, {"rows": r.to_dict(), 'results': 1}
 
-        # Find the newly added register
-        new_register = {}
-        for register in registers_json:
-            if not register in registers_json_inital:
-                new_register = register
-                break
-
-        return True, {"rows": new_register, 'results': 1}
-
-    def handle_put(self, service, orig_meter_id, orig_reg_id, utilbill_id,
-                   reebill_sequence=None, reebill_version=None, *vpath,
-                   **params):
-        # Unfortuantely register ids are a string of service, orig_meter_id,
-        # and orig_reg_id seperated by '/'
-        # ex: gas/new Meter/new Register
-        # This means they are passed as arguments in this function
-        # Todo: In the future register ids should correspond to the actual
-        # register ids in a table, then the id is the only thing that needs
-        # to be passed into this function
-
-        self.check_modifiable(reebill_sequence, reebill_version)
+    def handle_put(self, register_id, *vpath, **params):
         updated_reg = cherrypy.request.json
-
-        self.validate_id_components(orig_meter_id,orig_reg_id)
 
         # all arguments should be strings, except "quantity",
         # which should be a number
@@ -581,40 +535,13 @@ class RegistersResource(RESTResource):
             assert isinstance(updated_reg['quantity'], (float, int))
 
         # modify the register using every field in 'updated_reg' except "id"
-        del updated_reg['id']
-        new_meter_id, new_reg_id = self.process.update_register(
-            self.session, utilbill_id, orig_meter_id, orig_reg_id,
-            updated_reg)
+        register = self.process.update_register(
+            self.session, register_id, updated_reg)
 
-        registers_json = self.process.get_registers_json(
-            self.session, utilbill_id)
+        return True, {"rows": register.to_dict(), 'results': 1}
 
-        # Only return the updated register
-        updated_reg = {}
-        for register in registers_json:
-            if new_meter_id == register['meter_id'] and new_reg_id == \
-                    register['register_id']:
-                updated_reg = register
-                break
-
-        return True, {"rows": updated_reg, 'results': 1}
-
-    def handle_delete(self, service, orig_meter_id, orig_reg_id, utilbill_id,
-                      reebill_sequence=None, reebill_version=None, *vpath,
-                      **params):
-        # Unfortuantely register ids are a string of service, orig_meter_id,
-        # and orig_reg_id seperated by '/'
-        # ex: gas/new Meter/new Register
-        # This means they are passed as arguments in this function
-        # Todo: In the future register ids should correspond to the actual
-        # register ids in a table, then the id is the only thing that needs
-        # to be passed into this function
-        self.check_modifiable(reebill_sequence, reebill_version)
-
-        self.process.delete_register(
-            self.session, utilbill_id, orig_meter_id, orig_reg_id,
-            reebill_sequence=reebill_sequence, reebill_version=reebill_version)
-
+    def handle_delete(self, register_id, *vpath, **params):
+        self.process.delete_register( self.session, register_id)
         return True, {}
 
 
