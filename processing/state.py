@@ -2,16 +2,14 @@
 Utility functions to interact with state database
 """
 from collections import defaultdict
-import sys
 from copy import deepcopy
-
 from datetime import timedelta, datetime, date
 from itertools import groupby, chain
 from operator import attrgetter, itemgetter
+import logging
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
@@ -20,22 +18,21 @@ from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
-from billing.processing.exceptions import IssuedBillError, NoSuchBillException, RegisterError
-from exc import DatabaseError
-from alembic.script import ScriptDirectory
-from alembic.config import Config
-from billing import config
 from alembic.migration import MigrationContext
-import logging
+
+from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
+        RegisterError
+
+from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
+from exc import DatabaseError
+
+
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
-
 MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
 log = logging.getLogger(__name__)
@@ -195,60 +192,20 @@ class ReeBill(Base):
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
-    # i think SQLAlchemy does not automatically know which keys to use to
-    # determine billing and service addresses of a ReeBill because there are
-    # two foreign keys to Address; this can be fixed by using "primaryjoin"
-    billing_address = relationship('Address', uselist=False,
-            cascade='all',
+    # "primaryjoin is necessary because ReeBill has two foreign keys to Address
+    billing_address = relationship('Address', uselist=False, cascade='all',
             primaryjoin='ReeBill.billing_address_id==Address.id')
-    service_address = relationship('Address', uselist=False,
-            cascade='all',
+    service_address = relationship('Address', uselist=False, cascade='all',
             primaryjoin='ReeBill.service_address_id==Address.id')
 
     _utilbill_reebills = relationship('UtilbillReebill', backref='reebill',
-            # 'cascade' controls how all insert/delete operations are
-            # propagated from the "parent" (ReeBill) to the "child"
-            # (UtilbillReebill). UtilbillReebill should be deleted if its
-            # ReeBill AND its UtilBill are deleted (though for
-            # application-logic reasons the ReeBill will always be deleted
-            # first). docs:
-            # http://docs.sqlalchemy.org/en/rel_0_8/orm/relationships.html#sqlalchemy.orm.relationship
-            # http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#cascades
-            # "delete" here means that if a ReeBill is deleted, its
-            # UtilbillReebill is also deleted. it doesn't matter if the
-            # UtilbillReebill has a UtilBill, because there is no delete
-            # cascade from UtilbillReebill to UtilBill.
             # NOTE: the "utilbill_reebill" table also has ON DELETE CASCADE in
             # the db
             cascade='delete')
 
-    # 'utilbills' is a sqlalchemy.ext.associationproxy.AssociationProxy, which
-    # allows users of the ReeBill class to get and set the 'utilbills'
-    # attribute (a list of UtilBills) as if ReeBill had a direct relationship
-    # to UtilBill, while it is actually an indirect relationship mediated by
-    # the UtilBillReebill class (corresponding to the utilbill_reebill table).
-    # 'utilbills' is said to be a "view" of the underlying attribute
-    # '_utilbill_reebills' (a list of UtilbillReebill objects, which ReeBill
-    # has because of the 'backref' in UtilbillReebill.reebill). in other words,
-    # if 'r' is a ReeBill, 'r.utilbills' is another way of saying [ur.utilbill
-    # for ur in r._utilbill_reebills] (except that it is both readable and
-    # writable).
-    # 
-    # the 1st argument to 'association_proxy' is the name of the attribute of
-    # this class containing instances of the intermediate class (UtilbillReebill).
-    # the 2nd argument is the name of the property of the intermediate class
-    # whose value becomes the value of each element of this property's value.
-    #
-    # documentation:
-    # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
-    # AssociationProxy code:
-    # https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/ext/associationproxy.py
-    # example code (showing only one-directional relationship):
-    # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
-    #
     # NOTE on why there is no corresponding 'UtilBill.reebills' attribute: each
     # 'AssociationProxy' has a 'creator', which is a callable that creates a
-    # new instance of the intermediate class whenver an instance of the
+    # new instance of the intermediate class whenever an instance of the
     # "target" class is appended to the list (in this case, a new instance of
     # 'UtilbillReebill' to hold each UtilBill). the default 'creator' is just
     # the intermediate class itself, which works when that class' constructor
@@ -267,10 +224,15 @@ class ReeBill(Base):
     # code is executed. it also does not work to move the code into __init__
     # and assign the 'utilbills' attribute to a particular ReeBill instance
     # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
-    # switching
-    # to "classical" class-definition style?) but i decided it was sufficient
-    # (for now) to have only a one-directional relationship from ReeBill to
+    # switching to "classical" class-definition style?) but i decided it was
+    # sufficient to have only a one-directional relationship from ReeBill to
     # UtilBill.
+    # documentation:
+    # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
+    # AssociationProxy code:
+    # https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/ext/associationproxy.py
+    # example code (showing only one-directional relationship):
+    # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
     utilbills = association_proxy('_utilbill_reebills', 'utilbill')
 
     @property
@@ -278,8 +240,7 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0]
 
-    # see the following documentation fot delete cascade behavior
-    #http://docs.sqlalchemy.org/en/rel_0_8/orm/session.html#unitofwork-cascades
+    # see the following documentation for delete cascade behavior
     charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
     readings = relationship('Reading', backref='reebill', cascade='all')
 
@@ -314,12 +275,9 @@ class ReeBill(Base):
 
         # NOTE: billing/service_address arguments can't be given default value
         # 'Address()' because that causes the same Address instance to be
-        # assigned every time. ('Address()' is evaluated once, at the time
-        # the module is imported.)
-        self.billing_address = Address() if billing_address is None \
-                else  billing_address
-        self.service_address = Address() if service_address is None \
-                else service_address
+        # assigned every time.
+        self.billing_address = billing_address or Address()
+        self.service_address = service_address or Address()
 
         # supposedly, SQLAlchemy sends queries to the database whenever an
         # association_proxy attribute is accessed, meaning that if
@@ -348,8 +306,6 @@ class ReeBill(Base):
         the list of registers in the given utility bill document. Renewable
         energy quantities are all set to 0.
         '''
-        # NOTE mongo.get_all_actual_registers_json can't be used here due to
-        # circular dependency
         for r in self.readings:
             session.delete(r)
         self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
@@ -585,7 +541,8 @@ class ReeBill(Base):
             quantity, rate = rsi.compute_charge(identifiers)
             total = quantity * rate
             ac = acs[rsi.rsi_binding]
-            quantity_units = ac.quantity_units if ac.quantity_units is not None else ''
+            quantity_units = ac.quantity_units \
+                    if ac.quantity_units is not None else ''
             self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
                     ac.description, ac.group, ac.quantity,
                     quantity, quantity_units, ac.rate, rate, ac.total,
@@ -645,7 +602,6 @@ class UtilbillReebill(Base):
     uprs_document_id = Column(String) #indicates the rate structure data
     cprs_document_id = Column(String) 
 
-    # 'backref' creates corresponding '_utilbill_reebills' attribute in UtilBill.
     # there is no delete cascade in this 'relationship' because a UtilBill
     # should not be deleted when a UtilbillReebill is deleted.
     utilbill = relationship('UtilBill', backref='_utilbill_reebills')
