@@ -51,7 +51,7 @@ Ext.define('ReeBill.controller.Payments', {
             return;
 
         store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
-        store.load();
+        store.loadPage(1);
     },
 
     /**
