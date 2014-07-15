@@ -156,12 +156,14 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the submit button being clicked.
      */
     handleSubmit: function() {
-        var scope = this;
+        var scope = this,
+            store = this.getUtilityBillsStore();
 
         this.getUploadUtilityBillForm().getForm().submit({
             url: 'http://'+window.location.host+'/reebill/utilitybills',
             success: function() {
                 scope.initalizeUploadForm();
+                store.reload();
             },
             failure: function(form, action) {
                 Ext.Msg.alert('Error', 'Error uploading utility bill.')
