@@ -1,14 +1,15 @@
 from flask.app import Flask
 from flask.ext.mako import MakoTemplates
+from flask.ext.wtf.csrf import CsrfProtect
 from billing import config
-from billing.http.view.brokerage import *
+from http.view.brokerage import *
 
 routes = [('/quotes', 'quotes', quotes),
           ('/quote/<quote_id>', 'quote_view', quote_view),
           ('/offer/<offer_id>', 'offer_view', offer_view),
           ('/interest', 'customer_interest', customer_interest),
           ('/interest/new/edit', 'interest_new', interest_edit, {'defaults': {'interest_id': 'new'}}),
-          ('/interest/<interest_id>/edit', 'interest_edit', interest_edit),
+          ('/interest/<interest_id>/edit', 'interest_edit', interest_edit, {'methods': ['GET', 'POST']}),
           ('/interest/<interest_id>', 'interest_view', interest_view),
           ('/interest/<interest_id>/generate_offers', 'generate_offers', generate_offers),
           ('/dummydata', 'dummy_data', dummy_data)]
@@ -29,10 +30,10 @@ def make_flask_app():
     app.secret_key = config.get('http', 'secret_key')
 
     MakoTemplates(app)
+    CsrfProtect(app)
 
     for route in routes:
         d = route[3] if len(route) > 3 else {}
         app.add_url_rule(*route[0:3], **d)
-
 
     return app
