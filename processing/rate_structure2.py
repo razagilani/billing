@@ -12,7 +12,7 @@ from mongoengine import DateTimeField, BooleanField
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
-# minimum normlized score for an RSI to get included in a probable UPRS
+# minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
 RSI_PRESENCE_THRESHOLD = 0.5
 
@@ -227,14 +227,14 @@ class RateStructure(Document):
             default=[])
 
     @classmethod
-    def combine(cls, uprs, cprs):
+    def combine(cls, a, b):
         '''Returns a RateStructure object not corresponding to any Mongo
-        document, containing RSIs from the two RateStructures 'uprs' and
-        'cprs'. Do not save this object in the database!
+        document, containing RSIs from the two RateStructures 'a' and 'b'.
+        'b' overrides 'a'.
         '''
-        combined_dict = uprs.rsis_dict()
-        combined_dict.update(cprs.rsis_dict())
-        return RateStructure(type='UPRS', rates=combined_dict.values())
+        combined_dict = a.rsis_dict()
+        combined_dict.update(b.rsis_dict())
+        return RateStructure(rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to
@@ -257,8 +257,6 @@ class RateStructure(Document):
         '''Document.validate() is overridden to make sure a RateStructure
         without unique rsi_bindings can't be saved.'''
         self._check_rsi_uniqueness()
-        # TODO also check that 'type' is "UPRS" or "CPRS"
-
         return super(RateStructure, self).validate(clean=clean)
 
     def add_rsi(self):
@@ -406,7 +404,7 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.
         '''
-        result = RateStructure(type='UPRS',
+        result = RateStructure(
                 rates=self._get_probable_shared_rsis(utilbill_loader,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
