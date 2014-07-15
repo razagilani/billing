@@ -243,8 +243,8 @@ class Process(object):
     def create_payment(self, session, account, date_applied, description,
             credit, date_received=None):
         '''Wrapper to create_payment method in state.py'''
-        return self.state_db.create_payment(session, account, date_applied, description,
-            credit, date_received)
+        return self.state_db.create_payment(session, account, date_applied,
+                description, credit, date_received)
 
     def update_payment(self, session, oid, date_applied, description, credit):
         '''Wrapper to update_payment method in state.py'''
@@ -963,13 +963,12 @@ class Process(object):
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
                 reebill.payment_received = self.state_db. \
-                    get_total_payment_since(session, account,
-                                            state.MYSQLDB_DATETIME_MIN)
+                        get_total_payment_since(session, account,
+                        state.MYSQLDB_DATETIME_MIN)
             else:
                 reebill.payment_received = self.state_db. \
-                    get_total_payment_since(session, account,
-                                            state.MYSQLDB_DATETIME_MIN,
-                                            end=present_v0_issue_date)
+                        get_total_payment_since(session, account,
+                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date)
             # obviously balances are 0
             reebill.prior_balance = 0
             reebill.balance_forward = 0
@@ -994,12 +993,10 @@ class Process(object):
                 if self.state_db.is_issued(session, account,
                                 reebill.sequence, version=0):
                     present_v0_issue_date = self.state_db.get_reebill(session,
-                            account, reebill.sequence,
-                            version=0).issue_date
+                            account, reebill.sequence, version=0).issue_date
                     reebill.payment_received = self.state_db. \
                             get_total_payment_since(session, account,
-                            predecessor.issue_date,
-                            end=present_v0_issue_date)
+                            predecessor.issue_date, end=present_v0_issue_date)
                 else:
                     reebill.payment_received = self.state_db. \
                             get_total_payment_since(session, account,
@@ -1284,7 +1281,7 @@ class Process(object):
                 sequence, version='max')
         return latest.total - earliest.total
 
-    def get_late_charge(self, session, reebill, day=datetime.utcnow().date()):
+    def get_late_charge(self, session, reebill, day=None):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
         hasn't been issued yet: there is a late fee applied to the balance of
@@ -1293,6 +1290,8 @@ class Process(object):
         issued; None is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
+        if day is None:
+            day = datetime.utcnow().date()
         acc, seq = reebill.customer.account, reebill.sequence
 
         if reebill.sequence <= 1:
@@ -1462,19 +1461,19 @@ class Process(object):
 
 # keys above for which null values should be allowed in corresponding MySQL #
 # column
-    def issue(self, session, account, sequence,
-            issue_date=datetime.utcnow().date()):
+    def issue(self, session, account, sequence, issue_date=None):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default), and the due date to 30 days from
         the issue date. The reebill's late charge is set to its permanent value
         in mongo, and the reebill is marked as issued in the state database.'''
         # version 0 of predecessor must be issued before this bill can be
         # issued:
+        if issue_date is None:
+            issue_date = datetime.utcnow()
         if sequence > 1 and not self.state_db.is_issued(session, account,
                 sequence - 1, version=0):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
-
 
         reebill = self.state_db.get_reebill(session, account, sequence)
 
@@ -1484,7 +1483,7 @@ class Process(object):
 
         # set issue date in MySQL and due date in mongo
         reebill.issue_date = issue_date
-        reebill.due_date = issue_date + timedelta(days=30)
+        reebill.due_date = (issue_date + timedelta(days=30)).date()
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)

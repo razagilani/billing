@@ -23,15 +23,6 @@ def manhattan_distance(p1, p2):
     delta_end = abs(p1[1] - p2[1]).days
     return delta_begin + delta_end
 
-def gaussian(height, center, fwhm):
-    def result(x):
-        sigma =  fwhm / 2 * sqrt(2 * log(2))
-        return height * exp(- (x - center)**2 / (2 * sigma**2))
-    return result
-
-def exp_weight(a, b):
-    return lambda x: a**(x * b)
-
 def exp_weight_with_min(a, b, minimum):
     '''Exponentially-decreasing weight function with a minimum value so it's
     always nonnegative.'''

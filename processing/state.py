@@ -165,7 +165,7 @@ class ReeBill(Base):
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
-    issue_date = Column(Date)
+    issue_date = Column(DateTime)
 
     # new fields from Mongo
     ree_charge = Column(Float, nullable=False)
@@ -1024,7 +1024,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     date_received = Column(DateTime, nullable=False)
-    date_applied = Column(Date, nullable=False)
+    date_applied = Column(DateTime, nullable=False)
     description = Column(String)
     credit = Column(Float)
 
@@ -1042,8 +1042,8 @@ class Payment(Base):
         assert isinstance(date_received, datetime)
         assert isinstance(date_applied, date)
         self.customer = customer
-        self.date_received = date_received # datetime
-        self.date_applied = date_applied   # date
+        self.date_received = date_received
+        self.date_applied = date_applied
         self.description = description
         self.credit = credit
 
@@ -1339,10 +1339,12 @@ class StateDB(object):
         session.add(new_reebill)
         return new_reebill
 
-    def issue(self, session, account, sequence, issue_date=datetime.utcnow()):
+    def issue(self, session, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
         '''
+        if issue_date is None:
+            issue_date = datetime.utcnow()
         reebill = self.get_reebill(session, account, sequence)
         if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
@@ -1635,7 +1637,7 @@ class StateDB(object):
         '''
         assert isinstance(start, date)
         if end is None:
-            end=datetime.utcnow().date()
+            end=datetime.utcnow()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(session, account))\
                 .filter(Payment.date_applied < end)
