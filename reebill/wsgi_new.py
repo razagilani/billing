@@ -385,7 +385,6 @@ class IssuableReebills(RESTResource):
         issuable_reebills = self.process.get_issuable_reebills_dict(
             self.session)
         for reebill_info in issuable_reebills:
-            reebill_info['id'] = reebill_info['account'],
             reebill_info['difference'] = abs(
                 reebill_info['reebill_total'] - reebill_info['util_total'])
             reebill_info['matching'] = (reebill_info['difference'] <
@@ -396,7 +395,6 @@ class IssuableReebills(RESTResource):
         issuable_reebills.sort(key=lambda d: d['matching'], reverse=True)
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
-
 
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
