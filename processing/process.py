@@ -1401,12 +1401,14 @@ class Process(object):
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
-        issuable_reebills = sorted([{'account': r.customer.account,
-                         'sequence':r.sequence,
-                         'util_total': sum(u.total_charges for u in r.utilbills),
-                         'mailto':r.customer.bill_email_recipient,
-                         'reebill_total': sum(u.total_charges for u in r.utilbills)
-                         } for r in reebills.all()], key=itemgetter('account'))
+        issuable_reebills = sorted([{
+            'id': r.id,
+            'account': r.customer.account,
+            'sequence':r.sequence,
+            'util_total': sum(u.total_charges for u in r.utilbills),
+            'mailto':r.customer.bill_email_recipient,
+            'reebill_total': sum(u.total_charges for u in r.utilbills)
+            } for r in reebills.all()], key=itemgetter('account'))
 
         return issuable_reebills
 

@@ -87,6 +87,14 @@ Ext.define('ReeBill.view.IssuableReebills', {
             iconCls: 'silk-email-go',
             disabled: true
         }]
-    }]    
+    }],
+
+    bbar: {
+        xtype: 'pagingtoolbar',
+        pageSize: 25,
+        store: 'IssuableReebills',
+        displayInfo: true,
+        displayMsg: 'Displaying {0} - {1} of {2}'
+    }
 
 });
