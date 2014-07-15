@@ -851,7 +851,7 @@ class UtilBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
-        for rsi in sorted(rates, key=itemgetter('rsi_binding')):
+        for rsi in sorted(rates, key=attrgetter('rsi_binding')):
             session.add(Charge(utilbill=self,
                                description=rsi.description,
                                group=rsi.group,
