@@ -513,8 +513,7 @@ class RegistersResource(RESTResource):
                    reebill_version=None, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
         registers_json = self.process.get_registers_json(
-            self.session, utilbill_id, reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+            self.session, utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
     def handle_post(self, utilbill_id, reebill_sequence=None,
@@ -533,19 +532,15 @@ class RegistersResource(RESTResource):
 
         # All registers before we create a new one
         registers_json_inital = self.process.get_registers_json(
-            self.session, utilbill_id, reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+            self.session, utilbill_id)
 
         # create the new register
         self.process.new_register(
-            self.session, utilbill_id, new_register,
-            reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+            self.session, utilbill_id, new_register)
 
         # All registers after we created a new one
         registers_json = self.process.get_registers_json(
-            self.session, utilbill_id, reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+            self.session, utilbill_id)
 
         # Find the newly added register
         new_register = {}
@@ -584,8 +579,7 @@ class RegistersResource(RESTResource):
             updated_reg)
 
         registers_json = self.process.get_registers_json(
-            self.session, utilbill_id, reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+            self.session, utilbill_id)
 
         # Only return the updated register
         updated_reg = {}
