@@ -720,7 +720,7 @@ class BillToolBridge:
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account,
-                        "%s_%.4d.pdf" % (account, sequence),
+                        "%.5d_%.4d.pdf" % (account, sequence),
                 False
             )
             return self.dumps({'success': True})
@@ -737,8 +737,6 @@ class BillToolBridge:
             result = self.process.issue_and_mail(cherrypy.session['user'], session, account,
                 sequence, recipients, apply_corrections)
             return self.dumps(result)
-                    correction_sequence, _, _ = correction
-                        applied_sequence=sequence)
 
     @cherrypy.expose
     @authenticate_ajax

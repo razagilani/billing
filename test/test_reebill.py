@@ -101,8 +101,10 @@ class ReebillTest(TestCaseWithSetup):
                     description='a',
                     quantity='REG_TOTAL.quantity',
                     rate='2',
+                    group='All Charges',
                 )
             ])
+            uprs.save()
             utilbill_doc = {
                 '_id': ObjectId(),
                 'account': '12345', 'service': 'gas', 'utility': 'washgas',
@@ -149,53 +151,50 @@ class ReebillTest(TestCaseWithSetup):
                 }
             ], utilbill_doc['charges'])
 
-            customer = Customer('someone', '11111', 0.5, 0.1, None,
+            customer = Customer('someone', '11111', 0.5, 0.1, '',
                                 'example@example.com')
             utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                     'DC Non Residential Non Heat', period_start=date(2000,1,1),
                     period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
-                    uprs_id=uprs.id)
+                    uprs_id=str(uprs.id))
+            session.add(utilbill)
+            utilbill.refresh_charges(uprs.rates)
             reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                     utilbills=[utilbill])
+            session.add(reebill)
+            session.flush()
             reebill.update_readings_from_document(session, utilbill_doc)
-            reebill_doc = MongoReebill.get_reebill_doc_for_utilbills('11111', 1,
-                    0, 0.5, 0.1, [utilbill_doc])
-            utilbill_subdoc = reebill_doc.reebill_dict['utilbills'][0]
-            assert all(register['quantity'] == 0 for register in
-                    utilbill_subdoc['shadow_registers'])
+            self.assertTrue(all(r.renewable_quantity == 0 for r in
+                    reebill.readings))
 
             self.reebill_dao.save_utilbill(utilbill_doc)
-            self.reebill_dao.save_reebill(reebill_doc)
-            self.reebill_dao.save_utilbill(reebill_doc._utilbills[0])
+            self.process.compute_utility_bill(session, utilbill.id)
+            self.process.compute_reebill(session, reebill.customer.account,
+                    reebill.sequence, version=reebill.version)
 
-            #reebill_doc.compute_charges(uprs)
-            self.process._compute_reebill_charges(session, reebill, uprs)
-
-            # check that there are the same group names and rsi_bindings and only,
-            # by creating two dictionaries mapping group names to sets of
-            # rsi_bindings and comparing them
-            self.assertEqual(subdict(utilbill_doc['charges'],
-                    ['rsi_binding, description']),
-                    subdict(utilbill_subdoc['hypothetical_charges'],
-                    ['rsi_binding, description']))
+            # check that there are the same group names and rsi_bindings in
+            # reebill charges as utility bill charges
+            self.assertEqual(
+                set((c['rsi_binding'], c['description'])
+                        for c in utilbill_doc['charges']),
+                set((c.rsi_binding, c.description) for c in reebill.charges)
+            )
 
             self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
             # check reebill charges. since there is no renewable energy,
             # hypothetical charges should be identical to actual charges:
-            self.assertEqual([{
-                'rsi_binding': 'A',
-                'description': 'a',
-                'quantity': 100,
-                'rate': 2,
-                'total': 200,
-                'group': 'All Charges',
-            }], utilbill_subdoc['hypothetical_charges'])
-
-            self.assertEqual(subdict(utilbill_doc['charges'],
-                    ['rsi_binding, description', 'quantity', 'rate', 'total']),
-                    subdict(utilbill_subdoc['hypothetical_charges'],
-                    ['rsi_binding, description', 'quantity', 'rate', 'total']))
+            self.assertEqual(1, len(reebill.charges))
+            c = reebill.charges[0]
+            self.assertEqual('A', c.rsi_binding)
+            self.assertEqual('a', c.description)
+            self.assertEqual(100, c.a_quantity)
+            self.assertEqual(100, c.h_quantity)
+            self.assertEqual(2, c.a_rate)
+            self.assertEqual(2, c.h_rate)
+            self.assertEqual(200, c.a_total)
+            self.assertEqual(200, c.h_total)
+            self.assertEqual('All Charges', c.group)
 
             self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
