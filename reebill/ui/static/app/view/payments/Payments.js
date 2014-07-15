@@ -30,13 +30,13 @@ Ext.define('ReeBill.view.Payments', {
         xtype: 'datecolumn', 
         dataIndex: 'date_applied', 
         text: 'Date Applied',   
-        format: 'Y-m-d',
+        format: 'Y-m-d H:i:s',
         editor: {
-            xtype: 'datefield',
+            xtype: 'datetimefield',
             allowBlank: false, 
-            format: 'Y-m-d'
+            format: 'Y-m-d H:i:s'
         },
-        width: 125
+        width: 175
     },{
         header: 'Description',
         sortable: true,
@@ -45,13 +45,13 @@ Ext.define('ReeBill.view.Payments', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 200
+        width: 300
     },{
         header: 'Credit',
         sortable: true,
         dataIndex: 'credit',
         editor: {
-            xtype: 'textfield',
+            xtype: 'numberfield',
             allowBlank: false
         },
         width: 125
@@ -72,5 +72,13 @@ Ext.define('ReeBill.view.Payments', {
             iconCls: 'silk-delete',
             disabled: true
         }]
-    }]
+    }],
+
+    bbar: {
+        xtype: 'pagingtoolbar',
+        pageSize: 25,
+        store: 'Payments',
+        displayInfo: true,
+        displayMsg: 'Displaying {0} - {1} of {2}'
+    }
 });

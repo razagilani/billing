@@ -625,9 +625,11 @@ class RateStructureResource(RESTResource):
 
 class PaymentsResource(RESTResource):
 
-    def handle_get(self, account, *vpath, **params):
+    def handle_get(self, account, start, limit, *vpath, **params):
+        start, limit = int(start), int(limit)
         payments = self.state_db.payments(self.session, account)
-        return True , {'rows': [payment.to_dict() for payment in payments]}
+        rows = [payment.to_dict() for payment in payments]
+        return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
         d = cherrypy.request.json['date_received']
@@ -635,7 +637,7 @@ class PaymentsResource(RESTResource):
         print "\n\n\n\n", d, type(d)
         new_payment = self.process.create_payment(
             self.session, account, d, "New Entry", 0, d)
-        self.session.flush()
+        self.session.commit()
         return True, {"rows": new_payment.to_dict(), 'results': 1}
 
     def handle_put(self, payment_id, *vpath, **params):
