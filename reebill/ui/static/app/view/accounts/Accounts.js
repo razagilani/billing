@@ -44,7 +44,7 @@ Ext.define('ReeBill.view.Accounts', {
                 data: [
                     {label: 'No filter', value: ''},
                     {label: 'All ReeBill Customers', value: 'reebillcustomers'},
-                    {label: 'All XBill Customers', value: 'xbillcustomers'}
+                    {label: 'All P&G Customers', value: 'brokeragecustomers'}
                 ]
             }),
             triggerAction: 'all',
