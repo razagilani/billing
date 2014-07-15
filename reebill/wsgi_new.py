@@ -104,7 +104,7 @@ class WebResource(object):
         self.config = config
         self.logger = logging.getLogger('reebill')
 
-        self.session = Session
+        self.session = None
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
@@ -279,7 +279,15 @@ class RESTResource(WebResource):
             raise cherrypy.HTTPError(405, "Method not implemented.")
 
         return_value = {}
-        response = method(*vpath, **params)
+
+        self.session = Session()
+        try:
+            response = method(*vpath, **params)
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
         if type(response) != tuple:
             raise ValueError("%s.handle_%s must return a tuple ("
                              "True/False, {}) where True/False is a boolean "
