@@ -334,7 +334,7 @@ class AccountsResource(RESTResource):
 
         start, limit = int(start), int(limit)
 
-        if not filtername:
+        if filtername is None:
             filtername = cherrypy.session['user'].preferences.get(
                 'filtername', '')
 
