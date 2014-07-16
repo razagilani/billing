@@ -1,6 +1,7 @@
 Ext.define('ReeBill.model.Reebill', {
     extend: 'Ext.data.Model',
     fields: [
+        {name: 'action'}, // Allows for other actions besides CRUD (e.g. 'render')
         {name: 'sequence'},
         {name: 'period_start'},
         {name: 'period_end'},
