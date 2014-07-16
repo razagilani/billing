@@ -516,7 +516,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
     def test_get_service_address(self):
         utilbill_doc = example_data.get_utilbill_dict('10003')
-        address = mongo.get_service_address()
+        address = mongo.get_service_address(utilbill_doc)
         self.assertEqual(address['postal_code'],'20010')
         self.assertEqual(address['city'],'Washington')
         self.assertEqual(address['state'],'DC')
@@ -525,35 +525,33 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
     def test_refresh_charges(self):
         account = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf')
+        self.process.upload_utility_bill(account, 'gas',
+                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                'january.pdf')
 
-            utilbill = self.process.get_all_utilbills_json(session,
-                    account, 0, 30)[0][0]
-            self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'],'New RSI #1', {
-                    'rsi_binding': 'NEW_1',
-                    'description':'a charge for this will be added',
-                    'quantity': '1',
-                    'rate': '2',
-                    'quantity_units':'dollars'
-                })
-            self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                'rsi_binding': 'NEW_2',
-                'description':'a charge for this will be added too',
-                'quantity': '5',
-                'rate': '6',
-                'quantity_units':'therms',
-                'shared': False
+        utilbill = self.process.get_all_utilbills_json(account, 0, 30)[0][0]
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'],'New RSI #1', {
+                'rsi_binding': 'NEW_1',
+                'description':'a charge for this will be added',
+                'quantity': '1',
+                'rate': '2',
+                'quantity_units':'dollars'
             })
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'], 'New RSI #1', {
+            'rsi_binding': 'NEW_2',
+            'description':'a charge for this will be added too',
+            'quantity': '5',
+            'rate': '6',
+            'quantity_units':'therms',
+            'shared': False
+        })
 
 
-            self.process.refresh_charges(session, utilbill['id'])
-            charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-            self.assertEqual([
+        self.process.refresh_charges(utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(utilbill['id'])
+        self.assertEqual([
             {
                 'rsi_binding': 'NEW_1',
                 'id': 'NEW_1',
@@ -576,8 +574,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             },
         ], charges)
 
-        self.process.add_rsi(session, utilbill['id'])
-        self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'], 'New RSI #1', {
             'rsi_binding': 'BAD',
             'description':"quantity formula can't be computed",
             'quantity': 'WTF',
@@ -586,9 +584,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         })
 
         with self.assertRaises(RSIError) as e:
-            self.process.refresh_charges(session, utilbill['id'])
-        charges = self.process.get_utilbill_charges_json(session,
-                utilbill['id'])
+            self.process.refresh_charges(utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(utilbill['id'])
         self.assertEqual([{
             'rsi_binding': 'BAD',
             'id': 'BAD',
