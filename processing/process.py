@@ -1105,14 +1105,13 @@ class Process(object):
         # utility bill document
         assert len(new_utilbill_docs) == 1
         if last_reebill_row is None:
-            new_reebill.update_readings_from_document(session,
-                    new_utilbill_docs[0])
+            new_reebill.update_readings_from_document(new_utilbill_docs[0])
         else:
             readings = session.query(Reading)\
                     .filter(Reading.reebill_id == last_reebill_row.id)\
                     .all()
-            new_reebill.update_readings_from_reebill(session, readings,
-                    new_utilbill_docs[0])
+            new_reebill.update_readings_from_reebill(readings,
+                                                     new_utilbill_docs[0])
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
@@ -1186,7 +1185,7 @@ class Process(object):
         self.reebill_dao.save_reebill(reebill_doc)
 
         # update readings to match utility bill document
-        reebill.update_readings_from_document(session, utilbill_doc)
+        reebill.update_readings_from_document(utilbill_doc)
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and

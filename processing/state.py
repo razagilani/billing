@@ -301,11 +301,12 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
-    def update_readings_from_document(self, session, utilbill_doc):
+    def update_readings_from_document(self, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given utility bill document. Renewable
         energy quantities are all set to 0.
         '''
+        session = Session.object_session(self)
         for r in self.readings:
             session.delete(r)
         self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
@@ -314,12 +315,13 @@ class ReeBill(Base):
                 (r for r in m['registers']) for m in utilbill_doc['meters'])]
         return None
 
-    def update_readings_from_reebill(self, session, reebill_readings, utilbill_doc):
+    def update_readings_from_reebill(self, reebill_readings, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given reebill_readings. Readings that do not
         have a register binding that matches a register in 'utilbill_doc' are
         ignored.
         '''
+        session = Session.object_session(self)
         for r in self.readings:
             session.delete(r)
         utilbill_register_bindings = {r['register_binding']
