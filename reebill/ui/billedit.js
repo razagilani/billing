@@ -887,6 +887,7 @@ function reeBillReady() {
             {name: 'balance_forward'},
             {name: 'ree_charges'},
             {name: 'balance_due'},
+            {name: 'processed'},
             {name: 'total_error'},
             {name: 'issued'},
             {name: 'services'},
@@ -931,7 +932,7 @@ function reeBillReady() {
         // options appears to override baseParams.  Furthermore, start and limit appear
         // to be treated differently.  Need to scour the Ext source to figure this out.
 
-        // account changed, reset the paging 
+        // account changed, reset the paging
         if (store.baseParams.account && store.baseParams.account != selected_account) {
             // TODO: 26143175 start new account selection on the last page
             // reset pagination since it is a new account being loaded.
@@ -970,7 +971,10 @@ function reeBillReady() {
         if (record.data.issued) {
             // issued bill
             metaData.css = 'reebill-grid-issued';
-        } else if (record.data.max_version == 0) {
+         } else if(record.data.processed) {
+            // processed bill
+            metaData.css = 'reebill-grid-processed';
+         } else if (record.data.max_version == 0) {
             // unissued version-0 bill
             metaData.css = 'reebill-grid-unissued';
         } else {
@@ -978,7 +982,7 @@ function reeBillReady() {
             metaData.css = 'reebill-grid-unissued-correction';
         }
         //Format number columns
-        if([5,6,8,9].indexOf(colIndex)>=0){
+        if([5,6,9,10].indexOf(colIndex)>=0){
             value=Ext.util.Format.usMoney(value);
         }
         else if(colIndex == 7){
@@ -1049,6 +1053,18 @@ function reeBillReady() {
                 width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
+            },{
+                header: 'Processed',
+                sortable: false,
+                dataIndex: 'processed',
+                width: 80,
+                align: 'right',
+                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value = reeBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    var str = value ? 'Yes' : 'No'
+                    return str;
+                },
             },{
                 header: 'RE&E',
                 sortable: false,
@@ -1165,6 +1181,28 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'rbRenderPDFButton', text: 'Render PDF', handler:
                 renderOperation, disabled: true},
+            {xtype: 'tbseparator'},
+            {
+                xtype: 'button',
+                id: 'rbToggleProcessed',
+                text: 'Mark as Processed',
+                disabled: true,
+                handler: function() {
+                    var selection = reeBillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/mark_reebill_processed',
+                        params: { account: +selected_account, sequence: +selection.data.sequence, processed: +(!selection.data.processed) },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                reeBillStore.reload();
+                                // Toggle Button text
+                                !selection.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+                            }
+                        },
+                    });
+                }
+            },
         ]
     });
 
@@ -5216,6 +5254,7 @@ function reeBillReady() {
     //Issuable Reebills Tab
     //Show all unissued reebills, show the reebills whose totals match their
     //  utilbills first
+
     
     var initialIssuable = {
         rows: [
@@ -5229,10 +5268,11 @@ function reeBillReady() {
             {name: 'id', mapping: 'id'},
             {name: 'account', mapping: 'account'},
             {name: 'sequence', mapping: 'sequence'},
+            {name: 'processed', mapping: 'processed'},
             {name: 'mailto', mapping: 'mailto'},
             {name: 'util_total', mapping: 'util_total'},
             {name: 'reebill_total', mapping: 'reebill_total'},
-            {name: 'matching', mapping: 'matching'},
+            {name: 'group', mapping: 'group'},
             {name: 'difference', mapping: 'difference'},
         ],
     });
@@ -5257,7 +5297,7 @@ function reeBillReady() {
         autoSave: true,
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
-        groupField: 'matching',
+        groupField: 'group',
         sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
@@ -5275,11 +5315,11 @@ function reeBillReady() {
     var issuableColModel = new Ext.grid.ColumnModel({
         columns: [
             {
-                id: 'matching',
+                id: 'group',
                 header: '',
                 width: 160,
                 sortable: true,
-                dataIndex: 'matching',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 id: 'account',
@@ -5299,6 +5339,27 @@ function reeBillReady() {
                 dataIndex: 'sequence',
                 editable: false,
                 editor: new Ext.form.TextField(),
+            },{
+                id: 'processed',
+                header: 'Processed',
+                width: 75,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'processed',
+                editable: false,
+                editor: new Ext.form.TextField(),
+                renderer: function(v, params, record)
+                {
+                    if (Ext.isEmpty(record.data.processed))
+                    {
+                        return "No";
+                    }
+                    else if (record.data.mailto)
+                    {
+                        return "Yes";
+                    }
+                    return "No";
+                }
             },{
                 id: 'mailto',
                 header: 'Recipients',
@@ -5449,13 +5510,71 @@ function reeBillReady() {
             });
         },
     });
+
+
+
+    var issueProcessedDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issue_processed_and_mail',
+    });
+    issueProcessedDataConn.autoAbort = false;
+    issueProcessedDataConn.disableCaching = true;
+    issueProcessedDataConn.timeout = 600000
+
+    var issuableProcessedCurrentlyEditing = false;
     
+    var issueProcessedReebillButton = new Ext.Button({
+        xtype: 'button',
+        id: 'issueProcessedReebillBtn',
+        iconCls: 'icon-mail-go',
+        text: 'Issue Processed Reebills',
+        disabled: false,
+        handler: function()
+        {
+
+                issuableGrid.setDisabled(true);
+                issueProcessedDataConn.request({
+                    params: {
+                        apply_corrections: true
+                    },
+                    success: function (response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);
+                        }
+                        catch(e) {
+                            Ext.Msg.alert("Data Error", "Could not decode response from server");
+                            return;
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert("Success", "Mail successfully sent");
+                            issuableGrid.getSelectionModel().clearSelections();
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                            utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                        }
+                        else {
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                    },
+                    failure: function () {
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                });
+            },
+        });
+
     var issueReebillToolbar = new Ext.Toolbar({
         items: [
             issueReebillButton,
+            issueProcessedReebillButton,
         ],
     });
-    
+
+
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
         selModel: new Ext.grid.RowSelectionModel({
@@ -5482,7 +5601,8 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            //groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            groupTextTpl: '{text}',
             showGroupName: false,
         }),
         frame: true,
@@ -5494,6 +5614,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         forceValidation: true,
     });
+
     
     issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
         oldAllowed = issuableMailListRegex.test(e.originalValue)
@@ -5869,6 +5990,7 @@ function reeBillReady() {
         //Update the buttons on the reebill tab
         deleteButton.setDisabled(true)
         versionButton.setDisabled(true);
+
         if (account == null) {
             /* no account selected */
             updateStatusbar(null, null, null)
@@ -5986,6 +6108,8 @@ function reeBillReady() {
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
+            record.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+            Ext.getCmp('rbToggleProcessed').setDisabled(false);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill

@@ -6,7 +6,7 @@ import unittest
 import sqlalchemy
 import pymongo
 from mock import Mock
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Session
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
@@ -56,13 +56,7 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        #sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user': 'dev',
-            'password': 'dev',
-            'host': 'localhost',
-            'database': 'skyline_dev'
-        })
+        self.state_db = state.StateDB(Session)
         reebill_dao = mongo.ReebillDAO(None,
                 pymongo.Connection('localhost', 27017)['skyline-dev'])
 
@@ -75,8 +69,7 @@ class FetchTest(unittest.TestCase):
                 start=date(2000,1,1), end=date(2000,2,1), utility='washgas',
                 service='gas')
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
-        self.reebill.update_readings_from_document(self.state_db.session(),
-                utilbill_doc)
+        self.reebill.update_readings_from_document(utilbill_doc)
         self.reebill_doc = example_data.get_reebill('12345', 1,
                 start=date(2000,1,1), end=date(2000,1,1))
         reebill_dao = Mock()

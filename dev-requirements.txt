@@ -11,3 +11,4 @@ mock
 nose
 nose-progressive
 pudb
+sqlalchemy

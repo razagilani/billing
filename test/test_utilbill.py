@@ -1,22 +1,20 @@
-'''Unit tests for what will be the class wrapping a utility bill
-document, when there finally is one.
+'''Unit tests for the UtilBill class and other code that will eventually be
+included in it.
 '''
 from datetime import date
 from StringIO import StringIO
+
 import dateutil
 from bson import ObjectId
-from decimal import Decimal
-from unittest import TestCase
+
+from billing.processing.exceptions import RSIError
 from processing.session_contextmanager import DBSession
-from billing.test import example_data
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.exceptions import NoRSIError
-
 import example_data
-
 
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
@@ -419,7 +417,6 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         }
 
         # simplified version of document with _id 52b455467eb49a52d23d105c
-        # (originally this was a CPRS with an empty UPRS)
         uprs =  RateStructure.from_json('''{
             "_cls" : "RateStructure",
             "type" : "UPRS",
@@ -488,9 +485,9 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             'start': date(2000,1,1), 'end': date(2000,2,1),
             'rate_class': "won't be loaded from the db anyway",
             'charges': [
-                # a charge with no corrseponding RSI
-                {'rsi_binding': 'NO_RSI', 'quantity': 0, 'group': 'All '
-                                                                  'Charges'}
+                # a charge with no corrseponding RS
+                {'rsi_binding': 'NO_RSI', 'quantity': 0,
+                        'group': 'All Charges'}
             ],
             'meters': [{
                 'present_read_date': date(2000,2,1),
@@ -512,11 +509,6 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             id=ObjectId(),
             rates=[]
         )
-        cprs = RateStructure(
-            id=ObjectId(),
-            rates=[]
-        )
-
         # compute_all_charges should raise a KeyError if not all charges have
         # an RSI
         self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
@@ -533,74 +525,67 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
     def test_refresh_charges(self):
         account = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, account, 'gas',
+        self.process.upload_utility_bill(account, 'gas',
                 date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
                 'january.pdf')
 
-            utilbill = self.process.get_all_utilbills_json(session,
-                    account, 0, 30)[0][0]
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'],'New RSI #1', {
-                    'rsi_binding': 'NEW_1',
-                    'description':'a charge for this will be added',
-                    'quantity': '1',
-                    'rate': '2',
-                    'quantity_units':'dollars'
-                })
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'NEW_2',
-                    'description':'a charge for this will be added too',
-                    'quantity': '5',
-                    'rate': '6',
-                    'quantity_units':'therms',
-                    'shared': False
-                })
+        utilbill = self.process.get_all_utilbills_json(account, 0, 30)[0][0]
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'],'New RSI #1', {
+                'rsi_binding': 'NEW_1',
+                'description':'a charge for this will be added',
+                'quantity': '1',
+                'rate': '2',
+                'quantity_units':'dollars'
+            })
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'], 'New RSI #1', {
+            'rsi_binding': 'NEW_2',
+            'description':'a charge for this will be added too',
+            'quantity': '5',
+            'rate': '6',
+            'quantity_units':'therms',
+            'shared': False
+        })
 
 
-            self.process.refresh_charges(session, utilbill['id'])
-            charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-            self.assertEqual([
-                {
-                    'rsi_binding': 'NEW_1',
-                    'id': 'NEW_1',
-                    'description': 'a charge for this will be added',
-                    'quantity': 1,
-                    'quantity_units': 'dollars',
-                    'rate': 2,
-                    'total': 2,
-                    'group': '',
-                },
-                {
-                    'rsi_binding': 'NEW_2',
-                    'id': 'NEW_2',
-                    'description': 'a charge for this will be added too',
-                    'quantity': 5,
-                    'quantity_units': 'therms',
-                    'rate': 6,
-                    'total': 30,
-                    'group': '',
-                },
-            ], charges)
+        self.process.refresh_charges(utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(utilbill['id'])
+        self.assertEqual([
+            {
+                'rsi_binding': 'NEW_1',
+                'id': 'NEW_1',
+                'description': 'a charge for this will be added',
+                'quantity': 1,
+                'quantity_units': 'dollars',
+                'rate': 2,
+                'total': 2,
+                'group': '',
+            },
+            {
+                'rsi_binding': 'NEW_2',
+                'id': 'NEW_2',
+                'description': 'a charge for this will be added too',
+                'quantity': 5,
+                'quantity_units': 'therms',
+                'rate': 6,
+                'total': 30,
+                'group': '',
+            },
+        ], charges)
 
-        # TODO move the stuff below into a unit test (in test_utilbill.py)
-        # when there's any kind of exception in computing the bill, the new
-        # set of charges should still get saved, and the exception should be
-        # re-raised
-        new_rsi = self.process.add_rsi(session, utilbill['id'])
-        self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'BAD',
-                    'description':"quantity formula can't be computed",
-                    'quantity': 'WTF',
-                    'rate': '1',
-                    'quantity_units':'whatever',
-                })
+        self.process.add_rsi(utilbill['id'])
+        self.process.update_rsi(utilbill['id'], 'New RSI #1', {
+            'rsi_binding': 'BAD',
+            'description':"quantity formula can't be computed",
+            'quantity': 'WTF',
+            'rate': '1',
+            'quantity_units':'whatever',
+        })
 
-        from billing.processing.exceptions import RSIError
         with self.assertRaises(RSIError) as e:
-            self.process.refresh_charges(session, utilbill['id'])
-        charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
+            self.process.refresh_charges(utilbill['id'])
+        charges = self.process.get_utilbill_charges_json(utilbill['id'])
         self.assertEqual([{
             'rsi_binding': 'BAD',
             'id': 'BAD',
@@ -613,8 +598,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             'group': '',
         }], [charges[0]])
 
-        # TODO test that document is still saved after any kind of Exception--
-        # i'm not sure how to do this because the code should be (and is)
-        # written so that there are no known ways to trigger unexpected
-        # exceptions. in a real unit test, mongo.compute_charges could be
-        # replaced with a mock that did this.
