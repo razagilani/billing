@@ -163,7 +163,7 @@ class ReebillTest(TestCaseWithSetup):
                     utilbills=[utilbill])
             session.add(reebill)
             session.flush()
-            reebill.update_readings_from_document(session, utilbill_doc)
+            reebill.update_readings_from_document(utilbill_doc)
             self.assertTrue(all(r.renewable_quantity == 0 for r in
                     reebill.readings))
 

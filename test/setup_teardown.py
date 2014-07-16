@@ -69,7 +69,7 @@ class TestCaseWithSetup(unittest.TestCase):
 
         logger = logging.getLogger('test')
 
-        self.state_db = StateDB(Session, logger)
+        self.state_db = StateDB(logger)
         self.billupload = BillUpload(config, logger)
 
         mock_install_1 = MockSkyInstall(name='example-1')
