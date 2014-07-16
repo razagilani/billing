@@ -19,9 +19,22 @@ Ext.define('ReeBill.store.Accounts', {
         url: 'http://' + window.location.host + '/reebill/accounts',
 
         reader: {
-			type: 'json',
-			root: 'rows',
-			totalProperty: 'results'
-		}
+            type: 'json',
+            root: 'rows',
+            totalProperty: 'results'
+        },
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('Accounts').rejectChanges();
+                Ext.MessageBox.show({
+                    title: 'Server error',
+                    msg: response.status + " - " + response.statusText + "</br></br>" + response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+            },
+            scope: this
+        }
 	}
 });

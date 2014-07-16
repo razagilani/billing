@@ -22,6 +22,19 @@ Ext.define('ReeBill.store.Reebills', {
 			totalProperty: 'results'
 		},
 
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('Reebills').rejectChanges();
+                Ext.MessageBox.show({
+                    title: 'Server error',
+                    msg: response.status + " - " + response.statusText + "</br></br>" + response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+            },
+            scope: this
+        },
+
 	},
 
     sorters: [{

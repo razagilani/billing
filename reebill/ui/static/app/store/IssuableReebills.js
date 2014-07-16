@@ -12,22 +12,32 @@ Ext.define('ReeBill.store.IssuableReebills', {
     groupField: 'matching',
 
 	proxy: {
-        type: 'ajax',
+        type: 'rest',
         url: 'http://'+window.location.host+'/reebill/reebills/issuable',
 
         pageParam: false,        
 
         simpleSortMode: true,
 
-        extraParams: {
-            xaction: 'read'
-        },
-
 		reader: {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('IssuableReebills').rejectChanges();
+                Ext.MessageBox.show({
+                    title: 'Server error',
+                    msg: response.status + " - " + response.statusText + "</br></br>" + response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+            },
+            scope: this
+        },
+
 	},
 
     sorters: [{

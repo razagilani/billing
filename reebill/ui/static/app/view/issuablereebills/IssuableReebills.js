@@ -17,7 +17,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
 
     features: [{
         ftype: 'groupingsummary',
-        groupHeaderTpl: '{[values.gvalue==true?"Reebill"+(values.rows.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rows.length>1?"s":"")+" without Matching Totals"]}',
+        groupHeaderTpl: '{[values.children[0].get("matching")==true?"Reebill"+(values.rows.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rows.length>1?"s":"")+" without Matching Totals"]}',
         hideGroupedHeader: true
     }],
 
