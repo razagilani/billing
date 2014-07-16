@@ -135,6 +135,8 @@ class TestCaseWithSetup(unittest.TestCase):
         self.init_dependencies()
         TestCaseWithSetup.insert_data()
 
+        self.session = Session()
+
     def tearDown(self):
         '''Clears out databases.'''
         # clear out mongo test database
@@ -143,7 +145,7 @@ class TestCaseWithSetup(unittest.TestCase):
 
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
-        self.state_db.session.commit()
+        self.session.commit()
         Session.remove()
 
 
