@@ -28,41 +28,40 @@ class ReebillTest(TestCaseWithSetup):
 
     def test_utilbill_periods(self):
         acc = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, acc, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf', utility='washgas',
-                    rate_class='DC Non Residential Non Heat')
-            self.process.roll_reebill(session, acc, start_date=date(2013,1,1))
-            b = self.reebill_dao.load_reebill(acc, 1)
+        self.process.upload_utility_bill(acc, 'gas',
+                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                'january.pdf', utility='washgas',
+                rate_class='DC Non Residential Non Heat')
+        self.process.roll_reebill(acc, start_date=date(2013,1,1))
+        b = self.reebill_dao.load_reebill(acc, 1)
 
-            # function to check that the utility bill matches the reebill's
-            # reference to it
-            def check():
-                # reebill should be loadable
-                reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
-                # there should be two utilbill documents: the account's
-                # template and new one
-                all_utilbills = self.reebill_dao.load_utilbills()
-                self.assertEquals(2, len(all_utilbills))
-                # all its _id fields dates should match the reebill's reference
-                # to it
-                self.assertEquals(reebill._utilbills[0]['_id'],
-                        reebill.reebill_dict['utilbills'][0]['id'])
-                
-            # this must work because nothing has been changed yet
-            check()
+        # function to check that the utility bill matches the reebill's
+        # reference to it
+        def check():
+            # reebill should be loadable
+            reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
+            # there should be two utilbill documents: the account's
+            # template and new one
+            all_utilbills = self.reebill_dao.load_utilbills()
+            self.assertEquals(2, len(all_utilbills))
+            # all its _id fields dates should match the reebill's reference
+            # to it
+            self.assertEquals(reebill._utilbills[0]['_id'],
+                    reebill.reebill_dict['utilbills'][0]['id'])
 
-            # change utilbill period
-            b._utilbills[0]['start'] = date(2100,1,1)
-            b._utilbills[0]['start'] = date(2100,2,1)
-            check()
-            self.reebill_dao.save_reebill(b)
-            self.reebill_dao.save_utilbill(b._utilbills[0])
-            check()
+        # this must work because nothing has been changed yet
+        check()
 
-            # NOTE account, utility name, service can't be changed, but if they
-            # become changeable, do the same test for them
+        # change utilbill period
+        b._utilbills[0]['start'] = date(2100,1,1)
+        b._utilbills[0]['start'] = date(2100,2,1)
+        check()
+        self.reebill_dao.save_reebill(b)
+        self.reebill_dao.save_utilbill(b._utilbills[0])
+        check()
+
+        # NOTE account, utility name, service can't be changed, but if they
+        # become changeable, do the same test for them
 
     def test_get_reebill_doc_for_utilbills(self):
         utilbill_template = example_data.get_utilbill_dict('99999',
@@ -168,8 +167,8 @@ class ReebillTest(TestCaseWithSetup):
                     reebill.readings))
 
             self.reebill_dao.save_utilbill(utilbill_doc)
-            self.process.compute_utility_bill(session, utilbill.id)
-            self.process.compute_reebill(session, reebill.customer.account,
+            self.process.compute_utility_bill(utilbill.id)
+            self.process.compute_reebill(reebill.customer.account,
                     reebill.sequence, version=reebill.version)
 
             # check that there are the same group names and rsi_bindings in
