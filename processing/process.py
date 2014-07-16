@@ -139,7 +139,7 @@ class Process(object):
                 reebill_sequence=reebill_sequence,
                 reebill_version=reebill_version)
         utilbill = session.query(UtilBill).\
-            filter_by(document_id=utilbill_doc['_id']).one()
+                filter_by(document_id=utilbill_doc['_id']).one()
         return [dict([(col, getattr(charge, col)) for col in
                      set(charge.column_names()) - set(['utilbill_id'])
                      if hasattr(charge, col)] + [('id', charge.rsi_binding)])
