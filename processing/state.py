@@ -468,6 +468,12 @@ class ReeBill(Base):
         produced by the difference between two versions of a bill.'''
         return self.ree_charge + self.late_charge
 
+    def get_total_actual_charges(self):
+        '''Returns sum of "actual" versions of all charges.
+        '''
+        assert len(self.utilbills) == 1
+        return sum(charge.a_total for charge in self.charges)
+
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
