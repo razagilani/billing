@@ -13,14 +13,29 @@ Ext.define('ReeBill.store.UtilityBillRegisters', {
         pageParam: false,
 
         url: 'http://'+window.location.host+'/reebill/registers',
+
 		reader: {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
 		},
+
         writer:{
             type: 'json',
             writeAllFields: false
-        }
+        },
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('UtilityBillRegisters').rejectChanges();
+                Ext.MessageBox.show({
+                    title: 'Server error',
+                    msg: response.status + " - " + response.statusText + "</br></br>" + response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+            },
+            scope: this
+        },
 	}
 });
