@@ -288,16 +288,15 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
-        accounts = self.state_db.listAccounts(session)
+        accounts = self.state_db.listAccounts()
         ds_rows = []
 
         for account in accounts:
-            payments = self.state_db.payments(session, account)
+            payments = self.state_db.payments(account)
             cumulative_savings = 0
 
-            reebills = self.state_db.listReebills(session, 0, 10000,
-                                                  account, u'sequence',
-                                                  u'ASC')[0]
+            reebills = self.state_db.listReebills(0, 10000,
+                    account, u'sequence', u'ASC')[0]
             for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
@@ -468,8 +467,6 @@ def main(export_func, filename, account=None):
         else:
             exporter.export_account_charges(session, output_file,
                                             account=account)
-    session.commit()
-
 
 if __name__ == '__main__':
     filename = 'spreadsheet.xls'
