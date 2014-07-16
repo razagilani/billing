@@ -18,6 +18,19 @@ Ext.define('ReeBill.store.Payments', {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('Payments').rejectChanges();
+                Ext.MessageBox.show({
+                    title: 'Server error',
+                    msg: response.status + " - " + response.statusText + "</br></br>" + response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK
+                });
+            },
+            scope: this
+        },
     }
 });

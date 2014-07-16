@@ -60,33 +60,13 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var selections = this.getIssuableReebillsGrid().getSelectionModel().getSelection();
         if (!selections.length)
             return;
-
         var selected = selections[0];
-
         var store = this.getIssuableReebillsStore();
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/issue_and_mail',
-            method: 'POST',
-            params: {
-                account: selected.get('account'),
-                sequence: selected.get('sequence'),
-                sequence: selected.get('mailto'),
-                apply_corrections: false
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                    Ext.Msg.alert('Success', 'Mail successfully sent');
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            },
-            callback: function() {
-                waitMask.hide();
-            }
-        });
+        // Issueing the Reebill is like removing it from the 'IssuableReebills'
+        // list
+        store.remove(selected);
+
     }
 
 });
