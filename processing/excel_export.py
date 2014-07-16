@@ -347,8 +347,7 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
-                actual_total = reebill.total
-
+                actual_total = reebill.get_total_actual_charges()
                 hypothetical_total = reebill.get_total_hypothetical_charges()
 
                 total_ree = reebill.get_total_renewable_energy()

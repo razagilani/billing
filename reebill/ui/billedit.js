@@ -1616,6 +1616,7 @@ function reeBillReady() {
     {
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box
+        BILLPDF.regenerate_bust_cache();
         BILLPDF.domOverwrite('reebill', 'loading');
         renderDataConn.request({
             params: {
@@ -6317,12 +6318,14 @@ var LOADING_MESSAGE = '<div style="display: block; margin-left: auto; margin-rig
 
 var BILLPDF = function(){
 
+    var bust_cache = null;
     var rb;
     var ub;
 
     var initialize = function() {
         rb = {};
         ub = {};
+        regenerate_bust_cache();
     }
 
     var fetchReebill = function(accountno, sequence) {
@@ -6333,7 +6336,7 @@ var BILLPDF = function(){
             while (s.length < 4) {
                 s = '0' + s;
             }
-            url = 'reebills/' + accountno + '/' + accountno + '_' + s + '.pdf';
+            url = 'reebills/' + accountno + '/' + accountno + '_' + s + '.pdf?bc=' + bust_cache;
         }
         _fetchBill('reebill', url);
     };
@@ -6341,7 +6344,7 @@ var BILLPDF = function(){
     var fetchUtilbill = function(accountno, billid) {
         var url = null;
         if(accountno && billid){
-            url = 'utilitybills/' + accountno + '/' + billid + '.pdf';
+            url = 'utilitybills/' + accountno + '/' + billid + '.pdf?bc=' + bust_cache;
         }
         _fetchBill('utilbill', url);
     };
@@ -6497,14 +6500,19 @@ var BILLPDF = function(){
         _fetchBill('reebill', null);
     };
 
+    var regenerate_bust_cache = function(){
+        bust_cache = Math.random()*100000000000000000;
+    };
+
     var get_ub = function(){
         return ub
-    }
+    };
 
     initialize();
 
     return {fetchUtilbill: fetchUtilbill, renderPages: renderPages,
-            fetchReebill: fetchReebill, reset:reset, domOverwrite:domOverwrite};
+            fetchReebill: fetchReebill, reset:reset, domOverwrite:domOverwrite,
+            regenerate_bust_cache: regenerate_bust_cache};
 }();
 
 function loadDashboard()
