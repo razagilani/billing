@@ -808,7 +808,7 @@ class ReebillDAO(object):
 
         return utilbill_doc
 
-    def _load_all_utillbills_for_reebill(self, session, reebill_doc):
+    def _load_all_utillbills_for_reebill(self, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
         object). Returns list of dictionaries with converted types.'''
@@ -863,8 +863,7 @@ class ReebillDAO(object):
             # documents are templates that do not go in MySQL)
             try:
                 if sequence != 0:
-                    max_version = self.state_db.max_version(session, account,
-                            sequence)
+                    max_version = self.state_db.max_version(account, sequence)
                     query.update({'_id.version': max_version})
                 mongo_doc = self.reebills_collection.find_one(query)
             except NoResultFound:
@@ -882,7 +881,7 @@ class ReebillDAO(object):
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
         # load utility bills
-        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+        utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
 
         mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
         return mongo_reebill
@@ -891,7 +890,7 @@ class ReebillDAO(object):
         if not account: return None
         # NOTE not using context manager (see comment in load_reebill)
         session = self.state_db.session()
-        sequences = self.state_db.listSequences(session, account)
+        sequences = self.state_db.listSequences(account)
         return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
     def save_reebill(self, reebill, force=False):
@@ -901,9 +900,8 @@ class ReebillDAO(object):
         utility bills is forbidden unless 'force' is True (this should only be
         used for testing).
         '''
-        session = self.state_db.session()
-        issued = self.state_db.is_issued(session, reebill.account,
-                 reebill.sequence, version=reebill.version, nonexistent=False)
+        issued = self.state_db.is_issued(reebill.account, reebill.sequence,
+                    version=reebill.version, nonexistent=False)
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
 
