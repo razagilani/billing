@@ -1,8 +1,12 @@
 '''
 File: wsgi.py
 '''
-from billing import initialize
-initialize()
+from billing import init_config, init_model, init_logging
+from os.path import dirname, realpath, join
+p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+init_logging(path=p)
+init_config(filename=p)
+init_model()
 from billing import config
 
 import sys
