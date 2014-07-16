@@ -284,9 +284,9 @@ class RESTResource(WebResource):
         try:
             response = method(*vpath, **params)
             self.session.commit()
-        except Exception as e:
+        except:
             self.session.rollback()
-            raise e
+            raise
 
         if type(response) != tuple:
             raise ValueError("%s.handle_%s must return a tuple ("
@@ -395,6 +395,33 @@ class IssuableReebills(RESTResource):
         issuable_reebills.sort(key=lambda d: d['matching'], reverse=True)
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
+
+    def handle_delete(self, reebill_id, *vpath, **params):
+        # Issues and mails the ReeBill
+        # Issuing is like Deleting from issuables
+        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+        account, sequence = r.customer.account, r.sequence
+        self.process.compute_reebill(self.session, account, sequence)
+        self.process.issue(self.session, account, sequence)
+        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                                 account, sequence, 0)
+
+        # Let's mail!
+        # Recepients can be a comma seperated list of email addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
+        self.process.mail_reebills(self.session, account, [sequence],
+                                   recipient_list)
+        journal.ReeBillMailedEvent.save_instance(
+            cherrypy.session['user'], account, sequence, recipients)
+
+        return True, {}
+
+    def handle_put(self, reebill_id, *vpath, **params):
+        # Handle email address update
+        row = cherrypy.request.json
+        self.process.update_bill_email_recipient(
+            self.session, row['account'], row['sequence'], row['mailto'])
+        return True, {'row': row, 'results': 1}
 
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
