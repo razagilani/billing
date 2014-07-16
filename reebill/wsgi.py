@@ -681,7 +681,7 @@ class BillToolBridge:
         self.renderer.render(account, sequence,
             self.config.get("billdb", "billpath")+ "%s" % account,
             "%.5d_%.4d.pdf" % (account, sequence), False )
-        eturn self.dumps({'success': True})
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -827,22 +827,22 @@ class BillToolBridge:
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-            if account is not None:
-                spreadsheet_name = account + '.xls'
-            else:
-                spreadsheet_name = 'brokerage_accounts.xls'
+        if account is not None:
+            spreadsheet_name = account + '.xls'
+        else:
+            spreadsheet_name = 'brokerage_accounts.xls'
 
-            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            # write excel spreadsheet into a StringIO buffer (file-like)
-            buf = StringIO()
-            exporter.export_energy_usage(buf, account)
+        # write excel spreadsheet into a StringIO buffer (file-like)
+        buf = StringIO()
+        exporter.export_energy_usage(buf, account)
 
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+        # set MIME type for file download
+        cherrypy.response.headers['Content-Type'] = 'application/excel'
+        cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+        return buf.getvalue()
 
     @cherrypy.expose
     @authenticate_ajax
