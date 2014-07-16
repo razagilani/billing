@@ -11,7 +11,6 @@ Ext.Ajax.request({
     success: function(response) {
         var data = Ext.JSON.decode(response.responseText);
 
-        config.mailPanelDisabled = data.mail_panel_disabled;
         config.preferencesPanelDisabled = data.preferences_panel_disabled;
         config.reportPanelDisabled = data.report_panel_disabled;
         config.journalPanelDisabled = data.preferences_panel_disabled;
@@ -35,7 +34,7 @@ Ext.Ajax.request({
             autoCreateViewport: true,
             
             controllers: [
-                'Accounts', 'Charges', 'IssuableReebills', 'Journal', 'Mail', 'Payments', 'RateStructures', 
+                'Accounts', 'Charges', 'IssuableReebills', 'Journal', 'Payments', 'RateStructures',
                 'ReebillCharges', 'Reebills', 'TabPanel', 'UtilityBillRegisters', 'UtilityBills', 'Viewer'
             ],
             
