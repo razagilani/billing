@@ -874,6 +874,7 @@ class Process(object):
         Structure Item in the UPRS. The charges are computed according to the
         rate structure.
         '''
+        session = Session()
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
