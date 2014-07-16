@@ -178,10 +178,6 @@ Ext.define('ReeBill.view.Viewport', {
                     xtype: 'issuableReebills',
                     id: 'issuableReebillsGrid'
                 },{
-                    xtype: 'mail',
-                    id: 'mailGrid',
-                    disabled: true
-                },{
                     xtype: 'panel',
                     name: 'journalTab',
                     title: 'Journal',

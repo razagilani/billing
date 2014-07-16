@@ -91,17 +91,11 @@ Ext.define('ReeBill.view.Reebills', {
         dock: 'top',
         xtype: 'toolbar',
         items: [{
-            xtype: 'combo',
-            name: 'serviceForCharges',
-            hideLabel: true,
-            store: 'Services',
-            triggerAction: 'all',
-            allowBlank: true,
-            valueField: 'value',
-            displayField: 'name',
-            queryMode: 'local',
-            forceSelection: false
-        },{        
+            xtype: 'button',
+            text: 'Mail',
+            iconCls: 'silk-email',
+            action: 'email'
+        },{
             xtype: 'button',
             text: 'Create Next',
             action: 'createNext'
