@@ -1283,6 +1283,9 @@ class StateDB(object):
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
             ReeBill.id == reebill.id).all()
 
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
+
     def max_version(self, session, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
