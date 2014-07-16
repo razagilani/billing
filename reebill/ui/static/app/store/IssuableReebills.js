@@ -29,7 +29,7 @@ Ext.define('ReeBill.store.IssuableReebills', {
             exception: function (proxy, response, operation) {
                 Ext.getStore('IssuableReebills').rejectChanges();
                 Ext.MessageBox.show({
-                    title: 'Server error' + response.status + " - " + response.statusText,
+                    title: 'Server error' + " - " + response.status + " - " + response.statusText,
                     msg:  response.responseText,
                     icon: Ext.MessageBox.ERROR,
                     buttons: Ext.Msg.OK
