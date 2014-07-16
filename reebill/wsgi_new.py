@@ -442,6 +442,24 @@ class ReebillsResource(RESTResource):
         result = rows[start: start + limit]
         return True, {'rows': result, 'results': len(rows)}
 
+    def handle_put(self, reebill_id, *vpath, **params):
+        row = cherrypy.request.json
+
+        if row['action'] == 'bindree':
+            pass
+
+        if row['action'] == 'render':
+            pass
+
+        if row['action'] == 'mail':
+            pass
+
+        if row['action'] == 'compute':
+            pass
+
+        row['action'] = ''
+        return True, {'rows': row, 'results': 1}
+
 
 class UtilBillLastEndDateResource(RESTResource):
 

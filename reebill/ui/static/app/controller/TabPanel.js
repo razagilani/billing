@@ -31,10 +31,7 @@ Ext.define('ReeBill.controller.TabPanel', {
     },{
         ref: 'reebillChargesGrid',
         selector: 'grid[id=reebillChargesGrid]'
-    },{
-        ref: 'mailGrid',
-        selector: 'grid[id=mailGrid]'
-    }],    
+    }],
     
     init: function() {
         this.application.on({
@@ -66,7 +63,6 @@ Ext.define('ReeBill.controller.TabPanel', {
         this.getUtilityBillsTab().setDisabled(!accountSelections || !accountSelections.length);
         this.getReebillsTab().setDisabled(!accountSelections || !accountSelections.length);
         this.getPaymentsGrid().setDisabled(!accountSelections || !accountSelections.length);
-        this.getMailGrid().setDisabled(!accountSelections || !accountSelections.length);
 
         this.getMetersTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
         this.getRateStructuresTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);

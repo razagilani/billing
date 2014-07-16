@@ -29,6 +29,9 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'renderPdfButton',
         selector: 'button[action=renderPdf]'        
+    },{
+        ref: 'emailButton',
+        selector: 'button[action=email]'
     }],
     
     init: function() {
@@ -54,6 +57,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=createNewVersion]': {
                 click: this.handleCreateNewVersion
+            },
+            'button[action=email]': {
+                click: this.handleMail
             }
         });
     },
@@ -101,6 +107,24 @@ Ext.define('ReeBill.controller.Reebills', {
     },
 
     /**
+    * Handle the delete button.
+    */
+    handleMail: function() {
+        var store = this.getReebillsStore();
+
+        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+        if (!selections.length)
+            return;
+
+        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+        if (!selectedAccounts.length)
+            return;
+
+        var selected = selections[0];
+        selected.set('action', 'mail');
+    },
+
+    /**
      * Handle the bind RE offset button.
      */
     handleBindREOffset: function() {
@@ -115,30 +139,30 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
+        selected.set('action', 'bindree');
 
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Gathering data; please wait' });
-        waitMask.show();
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/bindree',
-            method: 'POST',
-            params: {
-                account: selectedAccount.get('account'),
-                sequence: selected.get('sequence')
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            },
-            callback: function() {
-                waitMask.hide();
-            }
-        });
+//        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Gathering data; please wait' });
+//        waitMask.show();
+//
+//        Ext.Ajax.request({
+//            url: 'http://'+window.location.host+'/rest/bindree',
+//            method: 'POST',
+//            params: {
+//                account: selectedAccount.get('account'),
+//                sequence: selected.get('sequence')
+//            },
+//            success: function(response, request) {
+//                var jsonData = Ext.JSON.decode(response.responseText);
+//                if (jsonData.success) {
+//                    store.reload();
+//                } else {
+//                    Ext.Msg.alert('Error', jsonData.errors.details);
+//                }
+//            },
+//            callback: function() {
+//                waitMask.hide();
+//            }
+//        });
 
      },
 
@@ -157,25 +181,7 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/compute_bill',
-            method: 'POST',
-            params: {
-                account: selectedAccount.get('account'),
-                sequence: selected.get('sequence')
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            }
-        });
-
+        selected.set('action', 'compute');
      },
 
      /**
@@ -235,19 +241,7 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/render',
-            method: 'POST',
-            params: {
-                account: selectedAccount.get('account'),
-                sequence: selected.get('sequence')
-            },
-            success: function(response, request) {
-
-            }
-        });
+        selected.set('action', 'render');
      },
 
      /**
