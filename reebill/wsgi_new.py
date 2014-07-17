@@ -48,7 +48,7 @@ from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
+from billing.processing.exceptions import Unauthenticated, IssuedBillError, RenderError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 user_dao = UserDAO(**dict(config.items('usersdb')))
@@ -445,19 +445,36 @@ class ReebillsResource(RESTResource):
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
+        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+        sequence, account = r.sequence, r.customer.account
 
         if row['action'] == 'bindree':
-            pass
+            if self.config.get('runtime', 'integrate_skyline_backend') is False:
+                raise ValueError("OLTP is not integrated")
+            if self.config.get('runtime', 'integrate_nexus') is False:
+                raise ValueError("Nexus is not integrated")
 
-        if row['action'] == 'render':
-            pass
+            self.process.bind_renewable_energy(self.session, account, sequence)
+            reebill = self.state_db.get_reebill(self.session, account, sequence)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, sequence, r.version)
 
-        if row['action'] == 'mail':
+        elif row['action'] == 'render':
+            if not self.config.get('billimages', 'show_reebill_images'):
+                raise RenderError('Render does nothing because reebill'
+                                  ' images have been turned off.')
+            self.renderer.render(
+                self.session,
+                account,
+                sequence,
+                self.config.get("billdb", "billpath")+ "%s" % account,
+                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
+                False
+            )
+
+        elif row['action'] == 'mail':
             if not row['action_value']:
                 raise ValueError("Got no value for row['action_value']")
-
-            r = self.state_db.get_reebill_by_id(self.session, reebill_id)
-            sequence, account = r.sequence, r.customer.account
 
             recipients = row['action_value']
             recipient_list = [rec.strip() for rec in recipients.split(',')]
@@ -470,8 +487,8 @@ class ReebillsResource(RESTResource):
                 journal.ReeBillMailedEvent.save_instance(
                     cherrypy.session['user'], account, sequence, recipients)
 
-        if row['action'] == 'compute':
-            pass
+        elif row['action'] == 'compute':
+            self.process.compute_reebill(self.session, account, sequence,'max')
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again

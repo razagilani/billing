@@ -60,6 +60,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=email]': {
                 click: this.handleMail
+            },
+            'button[action=renderPdf]': {
+                click: this.handleRenderPdf
             }
         });
     },
@@ -73,6 +76,7 @@ Ext.define('ReeBill.controller.Reebills', {
         if (!selectedAccount.length)
             return;
 
+        // required for GET
         this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
 
         this.getReebillsStore().reload();
@@ -178,29 +182,6 @@ Ext.define('ReeBill.controller.Reebills', {
 
         var selected = selections[0];
         selected.set('action', 'bindree');
-
-//        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Gathering data; please wait' });
-//        waitMask.show();
-//
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/bindree',
-//            method: 'POST',
-//            params: {
-//                account: selectedAccount.get('account'),
-//                sequence: selected.get('sequence')
-//            },
-//            success: function(response, request) {
-//                var jsonData = Ext.JSON.decode(response.responseText);
-//                if (jsonData.success) {
-//                    store.reload();
-//                } else {
-//                    Ext.Msg.alert('Error', jsonData.errors.details);
-//                }
-//            },
-//            callback: function() {
-//                waitMask.hide();
-//            }
-//        });
 
      },
 
