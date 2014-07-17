@@ -52,7 +52,7 @@ class Event(mongoengine.Document):
         # all Event documents are associated with the database of the
         # MongoEngine connection whose "alias" is "journal", which should be
         # created by calling mongoengine.connect(alias='journal') in
-        # BillToolBridge.__init__. if a class other than BTB wants to use the
+        # ReeBillWSGI.__init__. if a class other than BTB wants to use the
         # journal, it must call mongoengine.connect(alias='journal') itself.
         'db_alias': 'journal',
 

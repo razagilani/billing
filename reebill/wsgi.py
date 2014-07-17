@@ -78,10 +78,10 @@ def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
     logged in. This should go "inside" (i.e. after) the cherrypy.expose
     decorator.'''
-    # wrapper function takes a BillToolBridge object as its first argument, and
+    # wrapper function takes a ReeBillWSGI object as its first argument, and
     # passes that as the "self" argument to the wrapped function. so this
-    # decorator, which runs before any instance of BillToolBridge exists,
-    # doesn't need to know about any BillToolBridge instance data. the wrapper
+    # decorator, which runs before any instance of ReeBillWSGI exists,
+    # doesn't need to know about any ReeBillWSGI instance data. the wrapper
     # is executed when an HTTP request is received, so it can use BTB instance
     # data.
     @functools.wraps(method)
@@ -112,7 +112,7 @@ def authenticate(method):
             #return ju.dumps({'success': False, 'code': 1, 'errors':
             #    {'reason': 'Authenticate: No Session'}})
             cherrypy.response.status = 403
-            raise cherrypy.HTTPRedirect('/login.html')
+            raise cherrypy.HTTPRedirect('/reebill/login.html')
     return wrapper
 
 def json_exception(method):
@@ -127,9 +127,7 @@ def json_exception(method):
     return wrapper
 
 
-# TODO 11454025 rename to ProcessBridge or something
-# TODO (object)?
-class BillToolBridge:
+class ReeBillWSGI(object):
     def __init__(self, config, Session):
         self.config = config        
         self.logger = logging.getLogger('reebill')
@@ -240,7 +238,7 @@ class BillToolBridge:
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
         # print a message in the log--TODO include the software version
-        self.logger.info('BillToolBridge initialized')
+        self.logger.info('ReeBillWSGI initialized')
 
     def dumps(self, data):
 
@@ -610,7 +608,7 @@ class BillToolBridge:
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
-    # TODO clean this up and move it out of BillToolBridge
+    # TODO clean this up and move it out of ReeBillWSGI
     # https://www.pivotaltracker.com/story/show/31404685
     def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
@@ -1522,7 +1520,7 @@ class BillToolBridge:
 
 
 if __name__ == '__main__':
-    bridge = BillToolBridge(config, Session)
+    bridge = ReeBillWSGI(config, Session)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1552,5 +1550,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start(blocking=False)
         atexit.register(cherrypy.engine.stop)
-    bridge = BillToolBridge(config, Session)
+    bridge = ReeBillWSGI(config, Session)
     application = cherrypy.Application(bridge, script_name=None, config=None)
