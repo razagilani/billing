@@ -225,22 +225,7 @@ Ext.define('ReeBill.controller.Reebills', {
 
         Ext.Msg.confirm('Confirm deletion', msg, function(answer) {
             if (answer == 'yes') {
-                Ext.Ajax.request({
-                    url: 'http://'+window.location.host+'/rest/delete_reebill',
-                    method: 'POST',
-                    params: {
-                        account: selectedAccount.get('account'),
-                        sequences: selected.get('sequence')
-                    },
-                    success: function(response, request) {
-                        var jsonData = Ext.JSON.decode(response.responseText);
-                        if (jsonData.success) {
-                            store.reload();
-                        } else {
-                            Ext.Msg.alert('Error', jsonData.errors.details);
-                        }
-                    }
-                });
+                store.remove(selected);
             }
         });
      },
