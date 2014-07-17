@@ -25,6 +25,7 @@ def upgrade():
     sa.Column('rate', sa.Float(), nullable=True),
     sa.Column('rsi_binding', sa.String(length=255), nullable=True),
     sa.Column('total', sa.Float(), nullable=True),
+    sa.Column('error', sa.String(255), nullable=True),
     sa.ForeignKeyConstraint(['utilbill_id'], ['utilbill.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
