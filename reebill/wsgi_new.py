@@ -496,6 +496,18 @@ class ReebillsResource(RESTResource):
         row['action_value'] = ''
         return True, {'rows': row, 'results': 1}
 
+    def handle_delete(self, reebill_id, *vpath, **params):
+        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+
+        sequence, account = r.sequence, r.customer.account
+        deleted_version = self.process.delete_reebill(
+            self.session, account, sequence)
+        # deletions must all have succeeded, so journal them
+        journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+            account, sequence, deleted_version)
+
+        return True, {}
+
 
 class UtilBillLastEndDateResource(RESTResource):
 
