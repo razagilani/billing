@@ -1,8 +1,10 @@
 '''
 File: wsgi.py
 '''
-from billing import init_config, init_model, init_logging
 from os.path import dirname, realpath, join
+
+from billing import init_config, init_model, init_logging
+
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
 init_config(filename=p)
@@ -20,7 +22,6 @@ import ConfigParser
 from datetime import datetime
 import inspect
 import logging
-import time
 import functools
 import md5
 from operator import itemgetter
@@ -32,7 +33,7 @@ from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map, dict_merge
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
@@ -45,34 +46,6 @@ from billing.processing.users import UserDAO
 from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
-
-# from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
-class Debugger:
-    def __init__(self, object):
-        self.__object = object
-
-    def __call__(self, *args, **kwargs):
-        import pdb, sys
-        debugger = pdb.Pdb()
-        debugger.use_rawinput = 0
-        debugger.reset()
-        sys.settrace(debugger.trace_dispatch)
-
-        try:
-            return self.__object(*args, **kwargs)
-        finally:
-            debugger.quitting = 1
-            sys.settrace(None)
-
-# decorator for stressing ajax asynchronicity
-def random_wait(target):
-    @functools.wraps(target)
-    def random_wait_wrapper(*args, **kwargs):
-        #t = random.random()
-        t = 0
-        time.sleep(t)
-        return target(*args, **kwargs)
-    return random_wait_wrapper
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -119,7 +92,6 @@ def json_exception(method):
     '''Decorator for exception handling in methods trigged by Ajax requests.'''
     @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
-        #print >> sys.stderr, '*************', method, args
         try:
             return method(btb_instance, *args, **kwargs)
         except Exception as e:
@@ -1328,12 +1300,6 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
-
-    ################
-    # Handle utility bill upload
-
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
@@ -1368,9 +1334,6 @@ class ReeBillWSGI(object):
 
         return self.dumps({'success': True})
 
-    #
-    ################
-
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
@@ -1378,8 +1341,6 @@ class ReeBillWSGI(object):
         if xaction == "read":
             journal_entries = self.journal_dao.load_entries(account)
             return self.dumps({'success': True, 'rows':journal_entries})
-
-        # TODO: 20493983 eventually allow admin user to override and edit
         return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
     @cherrypy.expose
