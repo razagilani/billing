@@ -423,6 +423,7 @@ class IssuableReebills(RESTResource):
             self.session, row['account'], row['sequence'], row['mailto'])
         return True, {'row': row, 'results': 1}
 
+
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
 
@@ -452,12 +453,30 @@ class ReebillsResource(RESTResource):
             pass
 
         if row['action'] == 'mail':
-            pass
+            if not row['action_value']:
+                raise ValueError("Got no value for row['action_value']")
+
+            r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+            sequence, account = r.sequence, r.customer.account
+
+            recipients = row['action_value']
+            recipient_list = [rec.strip() for rec in recipients.split(',')]
+
+            self.process.mail_reebills(self.session, account,
+                                       [int(sequence)], recipient_list)
+
+            # journal mailing of every bill
+            for sequence in sequences:
+                journal.ReeBillMailedEvent.save_instance(
+                    cherrypy.session['user'], account, sequence, recipients)
 
         if row['action'] == 'compute':
             pass
 
+        # Reset the action parameters, so the client can coviniently submit
+        # the same action again
         row['action'] = ''
+        row['action_value'] = ''
         return True, {'rows': row, 'results': 1}
 
 

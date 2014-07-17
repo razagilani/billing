@@ -110,6 +110,7 @@ Ext.define('ReeBill.controller.Reebills', {
     * Handle the delete button.
     */
     handleMail: function() {
+        var me = this;
         var store = this.getReebillsStore();
 
         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
@@ -121,7 +122,44 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
 
         var selected = selections[0];
-        selected.set('action', 'mail');
+
+        // Prompt for email address input
+        var previousInput = this.previousInput === undefined ? '' : this.previousInput;
+        Ext.Msg.prompt(
+            'Enter Recipients',
+            'Please enter a comma separated list of email addresses',
+            function(button, value, idk){
+                if(button == 'ok'){
+
+                    // Validate input
+                    var validationFailed = false;
+                    var emailArr = value.split(',');
+                    for(var i=0; i<emailArr.length; i++){
+                        if(!Ext.data.validations.email({}, emailArr[i].trim())){
+                            validationFailed = true;
+                        }
+                    }
+
+                    if(!validationFailed){
+                        selected.beginEdit();
+                        selected.set('action_value', value);
+                        selected.set('action', 'mail');
+                        selected.endEdit();
+                    }else{
+                        this.previousInput = value;
+                        Ext.Msg.show({
+                            title: 'Error',
+                            msg: 'At least one of the email addresses you entered was not valid',
+                            buttons: Ext.Msg.OK,
+                            icon: Ext.window.MessageBox.ERROR
+                        });
+                    }
+                }
+            },
+            me,           // scope
+            false,        // multiline input
+            previousInput // default input value
+        )
     },
 
     /**
