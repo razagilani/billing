@@ -1869,6 +1869,7 @@ class Process(object):
             charges and the associated customer email address
             of the earliest unissued version-0 reebill account
         """
+        session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
         min_sequence = session.query(
