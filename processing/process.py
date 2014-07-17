@@ -318,7 +318,7 @@ class Process(object):
         for reebill, total_charge in q:
 
             the_dict = {
-                'id': reebill.sequence,
+                'id': reebill.id,
                 'sequence': reebill.sequence,
                 'issue_date': reebill.issue_date,
                 'period_start': reebill.utilbill.period_start,
