@@ -1275,7 +1275,7 @@ class StateDB(object):
         assuming accounts will be integers, even though we always store them as
         strings).'''
         session = Session()
-        last_account = max(map(int, self.listAccounts(session)))
+        last_account = max(map(int, self.listAccounts()))
         return last_account + 1
 
     def get_utilbill(self, account, service, start, end):
@@ -1591,7 +1591,7 @@ class StateDB(object):
         '''Generates (account, sequence, max version) tuples for all reebills
         in MySQL.'''
         session = Session()
-        for account in self.listAccounts(session):
+        for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
                 if include_unissued or reebill.issued:
@@ -1601,7 +1601,7 @@ class StateDB(object):
         '''Generates (account, sequence, version) tuples for all reebills in
         MySQL.'''
         session = Session()
-        for account in self.listAccounts(session):
+        for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
                 if include_unissued or reebill.issued:
