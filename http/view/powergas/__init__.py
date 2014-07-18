@@ -1,11 +1,11 @@
 from flask_mako import render_template, render_template_def
 import logging
 from werkzeug.datastructures import MultiDict
-from billing.brokerage.demo.proof_of_concept import drop_create_tables, create_companies, \
+from billing.powergas.demo.proof_of_concept import drop_create_tables, create_companies, \
     create_quotes, create_offer_makers, create_users, create_customer_interest
-from billing.data.model import Session, CustomerInterest, RateClass
-from http.form import InterestEdit
-from flask import request
+from billing.data.model import Session, CustomerInterest, RateClass, Quote
+from billing.http.view.powergas.form import InterestEdit
+
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ class Obj(object):
 
 
 def quotes():
+    s = Session()
+    #quotes = s.query(Quote).
     return 'quotes'
 
 

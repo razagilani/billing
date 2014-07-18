@@ -3967,7 +3967,7 @@ function reeBillReady() {
         fields: ['abbr','name'],
         data: [ ['', 'No filter'],
                 ['reebillcustomers', 'All Solar Customers'],
-                ['brokeragecustomers', 'All Brokerage Customers'],
+                ['powergascustomers', 'All powergas Customers'],
         ]
     });
     

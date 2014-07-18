@@ -2,7 +2,7 @@ from flask.app import Flask
 from flask.ext.mako import MakoTemplates
 from flask.ext.wtf.csrf import CsrfProtect
 from billing import config
-from http.view.brokerage import *
+from http.view.powergas import *
 
 routes = [('/quotes', 'quotes', quotes),
           ('/quote/<quote_id>', 'quote_view', quote_view),
