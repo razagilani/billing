@@ -83,7 +83,6 @@ class RenewableEnergyGetter(object):
         install_obj = self._splinter.get_install_obj_for(olap_id)
         utilbill = reebill.utilbill
         start, end = utilbill.period_start, utilbill.period_end
-
         # get hourly "energy sold" values during this period
         for reading in reebill.readings:
 

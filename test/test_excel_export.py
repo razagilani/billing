@@ -1,12 +1,13 @@
 #!/usr/bin/env python2
 from billing.processing.excel_export import Exporter
 from billing.processing.state import (StateDB, ReeBill, Payment,
-        ReeBillCharge, Reading)
+        ReeBillCharge, Reading, UtilBill, Address)
 from billing.processing.mongo import ReebillDAO
 from billing.processing.session_contextmanager import DBSession
 from datetime import date, datetime
 from billing.test import example_data
-import unittest, mock
+import unittest
+import mock
 
 def load_reebills_for():
     return [example_data.get_reebill('10003',1,version=0)]
@@ -50,123 +51,45 @@ def createMockReebill():
     rb.ree_savings = 2.22
     rb.late_charge = 32.20
     rb.ree_charge = 122.20
-    from mock import Mock
-    from billing.util.dictutils import subdict
-    def charge(d):
-        result = Mock()
-        result.quantity = d['quantity']
-        result.rate = d['rate']
-        result.total = d['total']
-        return result
-        return ReeBillCharge
-    rb.charges = [ReeBillCharge(rb, **subdict(d, ['rsi_binding', 'description',
-            'group', 'quantity', 'rate', 'total'])) for d in [
-        {
-            u"rsi_binding" : u"SYSTEM_CHARGE",
-            u"description" : u"System Charge",
-            u"quantity" : 1,
-            u"processingnote" : u"",
-            u"rate" : 11.2,
-            u"quantity_units" : u"",
-            u"total" : 11.2,
-            u"uuid" : u"c9733cca-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-            u"description" : u"Distribution charge for all therms",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.2935,
-            u"quantity_units" : u"therms",
-            u"total" : 220.16,
-            u"uuid" : u"c9733ed2-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"PGC",
-            u"description" : u"Purchased Gas Charge",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.7653,
-            u"quantity_units" : u"therms",
-            u"total" : 574.05,
-            u"uuid" : u"c97340da-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"PUC",
-            u"quantity_units" : u"kWh",
-            u"quantity" : 1,
-            u"description" : u"Peak Usage Charge",
-            u"rate" : 23.14,
-            u"total" : 23.14,
-            u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"RIGHT_OF_WAY",
-            u"description" : u"DC Rights-of-Way Fee",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.03059,
-            u"quantity_units" : u"therms",
-            u"total" : 22.95,
-            u"uuid" : u"c97344f4-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"SETF",
-            u"description" : u"Sustainable Energy Trust Fund",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.01399,
-            u"quantity_units" : u"therms",
-            u"total" : 10.5,
-            u"uuid" : u"c97346f2-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"EATF",
-            u"description" : u"DC Energy Assistance Trust Fund",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.006,
-            u"quantity_units" : u"therms",
-            u"total" : 4.5,
-            u"uuid" : u"c9734af8-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"SALES_TAX",
-            u"description" : u"Sales tax",
-            u"quantity" : 924.84,
-            u"processingnote" : u"",
-            u"rate" : 0.06,
-            u"quantity_units" : u"dollars",
-            u"total" : 55.49,
-            u"uuid" : u"c9734f3a-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        },
-        {
-            u"rsi_binding" : u"DELIVERY_TAX",
-            u"description" : u"Delivery tax",
-            u"quantity" : 750.10197727,
-            u"processingnote" : u"",
-            u"rate" : 0.07777,
-            u"quantity_units" : u"therms",
-            u"total" : 58.34,
-            u"uuid" : u"c9735372-2c16-11e1-8c7f-002421e88ffb",
-            u'group': 'All Charges',
-        }
-    ]]
+    rb.total = 743.49
+    rb.charges = [ReeBillCharge(rb, *args) for args in [
+        (u"SYSTEM_CHARGE", u"System Charge", u'All Charges', 1, 1, u'dollars',
+         11.2, 11.2, 11.2, 11.2),
+        (u"DISTRIBUTION_CHARGE", u"Distribution charge for all therms",
+         u'All Charges', 750.10197727, 750.10197727, u'dollars', 0.2935, 0.2935,
+         220.16, 220.16),
+        (u"PGC", u"Purchased Gas Charge",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.7653, 0.7653,
+         574.05, 574.05),
+        (u"PUC", u"Peak Usage Charge",
+         u'All Charges', 1, 1, u'kWh', 23.14, 23.14,
+         23.14, 23.14),
+        (u"RIGHT_OF_WAY", u"DC Rights-of-Way Fee",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.03059, 0.03059,
+         22.95, 22.95),
+        (u"SETF", u"Sustainable Energy Trust Fund",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.01399, 0.01399,
+         10.5, 10.5),
+        (u"EATF", u"DC Energy Assistance Trust Fund",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.006, 0.006,
+         4.5, 4.5),
+        (u"SALES_TAX", u"Sales tax",
+         u'All Charges', 924.84, 924.84, u'dollars', 0.06, 0.06,
+         55.49, 55.49),
+        (u"DELIVERY_TAX", u"Delivery tax",
+         u'All Charges', 750.10197727, 750.10197727, u'therms', 0.07777, 0.07777,
+         58.34, 58.34)]]
     rb.readings = [Reading('REG_TOTAL', 'Energy Sold', 561.9,
-                           188.20197727, 'therms')]
+                           188.20197727, '', 'therms')]
+    rb.service_address = Address('Managing Member', 'Monroe Towers',
+                                 'Silver Spring', 'MD', 'Silver Spring')
+    rb.billing_address = Address('Managing Member', 'Monroe Towers',
+                                 'Silver Spring', 'MD', 'Silver Spring')
     rb.get_total_renewable_energy.return_value = 188.20197727
     rb.get_total_hypothetical_charges.return_value = sum(c.h_total for c in rb
         .charges)
-    rb.period_begin = date(2011,11,12)
-    rb.period_end = date(2011,12,14)
+    rb.get_period.return_value = date(2011,11,12), date(2011,12,14)
+    rb.utilbills = [createMockUtilBill()]
     return rb
 
 
@@ -183,14 +106,14 @@ class ExporterTest(unittest.TestCase):
         #Set up the mock
         self.mock_StateDB.listAccounts.return_value = listAccounts()
         self.mock_StateDB.payments.return_value = payments()
-        self.mock_StateDB.get_reebill.return_value = createMockReebill()
-        self.mock_ReebillDAO.load_reebills_for.return_value = load_reebills_for()
+        self.mock_StateDB.listReebills.return_value = [[createMockReebill()] ,1]
 
         with self.mock_session(self.mock_StateDB) as session:
-            dataset=self.exp.get_export_reebill_details_dataset(session, None, None)
-        correct_data=[('10003', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
+            dataset = self.exp.get_export_reebill_details_dataset(session,
+                                                                 None, None)
+        correct_data=[('10003', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
                       ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', '13.37', None, None, None, None, None, None, None, None, None, None),
-                      ('10004', 1, 0, u'Managing Member Monroe Towers  Silver Spring MD 20910', u'Monroe Towers  Washington DC 20010', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
+                      ('10004', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
         for indx,row in enumerate(dataset):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))

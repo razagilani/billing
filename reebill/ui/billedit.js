@@ -6,45 +6,7 @@ var DEFAULT_DIFFERENCE_THRESHOLD = 10;
 var ERROR_MESSAGE_BOX_WIDTH = 630;
 var DEFAULT_ACCOUNT_FILTER = "No filter";
 
-/*
-* Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
-*/
-// Ext 4 fires events when ajax is aborted
-// so this is an Ext 3 workaround
-/*
-Ext.Ajax.addEvents({requestaborted:true});
-Ext.override(Ext.data.Connection, {
-    abort : function(transId){
-        if(transId || this.isLoading()){
-            Ext.lib.Ajax.abort(transId || this.transId);
-            this.fireEvent('requestaborted', this, this.transId);
-        }
-    }
-});
-Ext.Ajax.addListener('beforerequest', function (conn, request) {
-        console.log("beforerequest");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestcomplete', function (conn, request) {
-        console.log("requestcomplete");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestexception', function (conn, request) {
-        console.log("requestexception");
-        console.log(conn);
-        console.log(request);
-    }, this);
-Ext.Ajax.addListener('requestaborted', function (conn, request) {
-        console.log("requestaborted");
-        console.log(conn);
-        console.log(request);
-    }, this);
-*/
-
-/* Constructor for menus that show versions of utility bills in
- * utility-bill-editing tabs */
+//PDFJS.disableWorker = true;
 
 ///////////////////////////////////////////////////
 //
@@ -54,34 +16,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 Ext.ns('Ext.ux.grid');
 
-/**
- * A Column definition class which renders enum data fields.
- * @class Ext.ux.grid.CheckboxColumn
- * @extends Ext.grid.Column
- * @author Tran Cong Ly - tcl_java@yahoo.com - http://5cent.net
- * Create the column:
- *   
- v ar cm = new Ext.grid.ColumnModel([                                    *
- new Ext.ux.grid.CheckboxColumn({
-     header: 'Header #1',
-     dataIndex: 'field_name_1'
-     },
-     {
-         xtype: 'checkboxcolumn',
-         header: 'Header #2',
-         dataIndex: 'field_name_2',
-         on: 1,
-         off: 0
-         },
-         {
-             xtype: 'checkboxcolumn',
-             header: 'Header #3',
-             dataIndex: 'field_name_3',
-             on: 'abc',
-             off: 'def'
-             }])
-             
-             */
 Ext.ux.grid.CheckboxColumn = Ext.extend(Ext.grid.Column, {
     on: true,
     off: false,
@@ -211,6 +145,7 @@ function reeBillReady() {
         collapsible: true,
         floatable: false,
         titleCollapse: true,
+        id: 'utilbillImagePanel',
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_UTILBILL_SELECTED_MESSAGE,
@@ -219,11 +154,16 @@ function reeBillReady() {
         region: 'west',
         width: 300,
     });
+    utilBillImageBox.on('resize', function(panel, adjWidth, adjHeight,
+                                           rawWidth, rawHeight){
+        BILLPDF.renderPages('utilbill');
+    });
     var reeBillImageBox = new Ext.Panel({
         collapsible: true,
         collapsed: true,
         floatable: false,
         titleCollapse: true,
+        id: 'reebillImagePanel',
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'reebillimagebox', children: [{tag: 'div', html: NO_REEBILL_SELECTED_MESSAGE,
@@ -231,6 +171,10 @@ function reeBillReady() {
         autoScroll: true,
         region: 'east',
         width: 300,
+    });
+    reeBillImageBox.on('resize', function(panel, adjWidth, adjHeight,
+                                           rawWidth, rawHeight){
+        BILLPDF.renderPages('reebill');
     });
 
     // account field
@@ -596,15 +540,6 @@ function reeBillReady() {
         ],
     });
 
-
-    // put this by the other dataconnection instantiations
-    var utilbillImageDataConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/getUtilBillImage',
-        timeout: 60000, // 1 minute
-    });
-    utilbillImageDataConn.autoAbort = true;
-    utilbillImageDataConn.disableCaching = true;
-
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
         tbar: new Ext.Toolbar({
@@ -652,6 +587,7 @@ function reeBillReady() {
                                 ubRegisterGrid.setEditable(false);
                                 rateStructurePanel.setDisabled(true);
                                 chargeItemsPanel.setDisabled(true);
+                                BILLPDF.fetchUtilbill()
                             }
                         });
                 }
@@ -718,40 +654,8 @@ function reeBillReady() {
                     // Then Enable the button
                     record.data.processed ? Ext.getCmp('utilbillToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('utilbillToggleProcessed').setText("Mark as Processed");
                     Ext.getCmp('utilbillToggleProcessed').setDisabled(false);
-                    // ajax call to generate image, get the name of it, and display it in a
-                    // new window
-                    if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        utilbillImageDataConn.request({
-                            params: {utilbill_id: selected_utilbill.id},
-                            success: function(result, request) {
-                                var jsonData = null;
-                                try {
-                                    jsonData = Ext.util.JSON.decode(result.responseText);
-                                    var imageUrl = '';
-                                    if (jsonData.success == true) {
-                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
-                                    }
-                                    // TODO handle failure if needed
-                                    Ext.DomHelper.overwrite('utilbillimagebox',
-                                        getImageBoxHTML(imageUrl, 'Utility bill',
-                                        'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
-                                        true);
-                                } catch (err) {
-                                    Ext.MessageBox.alert('getutilbillimage ERROR', err);
-                                }
-                            },
-                            // this is called when the server returns 500 as well as when there's no response
-                        });
-
-                        // while waiting for the ajax request to finish, show a
-                        // loading message in the utilbill image box
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                                html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
-                    }
-                    else {
-                        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
-                    }
+                    BILLPDF.fetchUtilbill(selected_account, selected_utilbill.id);
                 }
             }
         }),
@@ -857,12 +761,9 @@ function reeBillReady() {
             url: 'http://'+location.host+'/reebill/delete_reebill',
             params: { account: selected_account, sequences: sequences },
             success: function(result, request) {
-                var jsonData = Ext.util.JSON.decode(result.responseText);
-                Ext.Msg.hide();
-                if (jsonData.success == true) {
-                    reeBillStore.reload();
-                }
-            },
+                defaultRequestComplete(null, result);
+                reeBillStore.reload();
+            }
         });
     }
 
@@ -882,6 +783,7 @@ function reeBillReady() {
                     if (answer == 'yes') {
                         reeBillGrid.getSelectionModel().clearSelections();
                         deleteReebills(sequences);
+                        BILLPDF.fetchReebill()
                     }
             });
 
@@ -985,6 +887,7 @@ function reeBillReady() {
             {name: 'balance_forward'},
             {name: 'ree_charges'},
             {name: 'balance_due'},
+            {name: 'processed'},
             {name: 'total_error'},
             {name: 'issued'},
             {name: 'services'},
@@ -1029,7 +932,7 @@ function reeBillReady() {
         // options appears to override baseParams.  Furthermore, start and limit appear
         // to be treated differently.  Need to scour the Ext source to figure this out.
 
-        // account changed, reset the paging 
+        // account changed, reset the paging
         if (store.baseParams.account && store.baseParams.account != selected_account) {
             // TODO: 26143175 start new account selection on the last page
             // reset pagination since it is a new account being loaded.
@@ -1068,7 +971,10 @@ function reeBillReady() {
         if (record.data.issued) {
             // issued bill
             metaData.css = 'reebill-grid-issued';
-        } else if (record.data.max_version == 0) {
+         } else if(record.data.processed) {
+            // processed bill
+            metaData.css = 'reebill-grid-processed';
+         } else if (record.data.max_version == 0) {
             // unissued version-0 bill
             metaData.css = 'reebill-grid-unissued';
         } else {
@@ -1076,7 +982,7 @@ function reeBillReady() {
             metaData.css = 'reebill-grid-unissued-correction';
         }
         //Format number columns
-        if([5,6,8,9].indexOf(colIndex)>=0){
+        if([5,6,9,10].indexOf(colIndex)>=0){
             value=Ext.util.Format.usMoney(value);
         }
         else if(colIndex == 7){
@@ -1147,6 +1053,18 @@ function reeBillReady() {
                 width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
+            },{
+                header: 'Processed',
+                sortable: false,
+                dataIndex: 'processed',
+                width: 80,
+                align: 'right',
+                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
+                renderer: function(value, metaData, record, rowIndex, colIndex, store){
+                    var value = reeBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
+                    var str = value ? 'Yes' : 'No'
+                    return str;
+                },
             },{
                 header: 'RE&E',
                 sortable: false,
@@ -1237,14 +1155,21 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'updateReadingsButton', text: 'Update Readings', handler:
                 function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/update_readings',
-                        params: {account: selected_account, sequence: selected_sequence},
-                        success: function(result, request) {
-                            var jsonData = Ext.util.JSON.decode(result.responseText);
-                        },
-                    });
-                }},
+                    Ext.Msg.confirm('Confirm deletion',
+                        'Are you sure you want to update the Readings?',
+                        function(answer) {
+                            if (answer == 'yes')
+                            {
+                                Ext.Ajax.request({
+                                url: 'http://'+location.host+'/reebill/update_readings',
+                                params: {account: selected_account, sequence: selected_sequence},
+                                success: function(result, request) {
+                                    var jsonData = Ext.util.JSON.decode(result.responseText);
+                                    },
+                                });
+                            }}
+                        );
+                    },disabled: true},
             {xtype: 'button', id: 'rbBindREEButton', text: 'Bind RE&E Offset', handler:
                 bindREEOperation},
             {xtype: 'button', id: 'rbComputeButton', text: 'Compute', handler:
@@ -1256,6 +1181,28 @@ function reeBillReady() {
             {xtype: 'tbseparator'},
             {xtype: 'button', id: 'rbRenderPDFButton', text: 'Render PDF', handler:
                 renderOperation, disabled: true},
+            {xtype: 'tbseparator'},
+            {
+                xtype: 'button',
+                id: 'rbToggleProcessed',
+                text: 'Mark as Processed',
+                disabled: true,
+                handler: function() {
+                    var selection = reeBillGrid.getSelectionModel().getSelections()[0];
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/mark_reebill_processed',
+                        params: { account: +selected_account, sequence: +selection.data.sequence, processed: +(!selection.data.processed) },
+                        success: function(result, request) {
+                            var jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == true) {
+                                reeBillStore.reload();
+                                // Toggle Button text
+                                !selection.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+                            }
+                        },
+                    });
+                }
+            },
         ]
     });
 
@@ -1470,13 +1417,13 @@ function reeBillReady() {
                         Ext.getCmp('ba_street').setValue(jsonData['billing_address']['street']);
                         Ext.getCmp('ba_city').setValue(jsonData['billing_address']['city']);
                         Ext.getCmp('ba_state').setValue(jsonData['billing_address']['state']);
-                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postal_code']);
+                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postalcode']);
 
                         Ext.getCmp('sa_addressee').setValue(jsonData['service_address']['addressee']);
                         Ext.getCmp('sa_street').setValue(jsonData['service_address']['street']);
                         Ext.getCmp('sa_city').setValue(jsonData['service_address']['city']);
                         Ext.getCmp('sa_state').setValue(jsonData['service_address']['state']);
-                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postal_code']);
+                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postalcode']);
 
                         accountInfoFormPanel.doLayout();
                     } 
@@ -1641,6 +1588,7 @@ function reeBillReady() {
                                 loadReeBillUIForSequence(jsonData.account,
                                     jsonData.sequence, false);
                                 sm.resumeEvents();
+                                BILLPDF.domOverwrite('reebill', 'notfound');
                             }});
                         }
                     } catch (err) {
@@ -1668,9 +1616,10 @@ function reeBillReady() {
     {
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
+        BILLPDF.regenerate_bust_cache();
+        BILLPDF.domOverwrite('reebill', 'loading');
         renderDataConn.request({
-            params: { 
+            params: {
                 account: selected_account,
                 sequence: selected_sequence
             },
@@ -1682,19 +1631,18 @@ function reeBillReady() {
                     Ext.Msg.alert("Fatal: Could not decode JSON data");
                 }
                 if (response_obj.success !== true) {
-                    // handle failure if needed
-                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+                    // handle failure if notselected
+                    BILLPDF.domOverwrite('reebill', 'notselected');
                 } else {
-                    loadReeBillUIForSequence(selected_account, selected_sequence);
+                    BILLPDF.fetchReebill(selected_account, selected_sequence);
                 }
             },
             failure: function () {
                 // handle failure if needed
-                Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+                BILLPDF.domOverwrite('reebill', 'notselected');
             }
         });
     }
-
     /*var attachDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
@@ -3222,13 +3170,13 @@ function reeBillReady() {
                 sortable: true,
                 on: true,
                 off: false,
-                width: 60
+                width: 80
             },{
                 header: 'Group',
                 dataIndex: 'group',
                 sortable: true,
                 editor: new Ext.form.TextField({allowBlank: true}),
-                width: 60,
+                width: 200,
             }
         ]
     });
@@ -3460,6 +3408,7 @@ function reeBillReady() {
                 header: 'Date Applied',
                 sortable: true,
                 dataIndex: 'date_applied',
+                format: 'Y-m-d',
                 editor: new Ext.form.DateField({
                     allowBlank: false,
                     format: 'Y-m-d',
@@ -3476,7 +3425,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'credit',
                 renderer: paymentColRenderer,
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.NumberField({allowBlank: true})
             },
         ]
     });
@@ -4525,75 +4474,6 @@ function reeBillReady() {
     // bill image resolution field in preferences tab (needs a name so its
     // value can be gotten)
 
-    var billImageResolutionField = new Ext.ux.form.SpinnerField({
-      id: 'billresolutionmenu',
-      fieldLabel: 'Bill image resolution',
-      name: 'billresolution',
-      value: DEFAULT_RESOLUTION,
-      minValue: 50,
-      maxValue: 200,
-      allowDecimals: false,
-      decimalPrecision: 10,
-      incrementValue: 10,
-      alternateIncrementValue: 2.1,
-      accelerate: true
-    });
-
-    var setPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/setBillImageResolution',
-    });
-    setPreferencesDataConn.autoAbort = true;
-    setPreferencesDataConn.disableCaching = true;
-    var preferencesFormPanel = new Ext.FormPanel({
-      labelWidth: 240, // label settings here cascade unless overridden
-      frame: true,
-      title: 'Image Resolution Preferences',
-      bodyStyle: 'padding:5px 5px 0',
-      //width: 610,
-      defaults: {width: 435},
-      layout: 'fit', 
-      defaultType: 'textfield',
-      items: [
-        billImageResolutionField,
-      ],
-      buttons: [
-        new Ext.Button({
-            text: 'Save',
-            handler: function() {
-                setPreferencesDataConn.request({
-                    params: { 'resolution': billImageResolutionField.getValue() },
-                });
-            }
-        }),
-      ],
-    });
-
-    // get initial value of this field from the server
-    var getPreferencesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getBillImageResolution',
-    });
-    getPreferencesDataConn.autoAbort = true;
-    getPreferencesDataConn.disableCaching = true;
-    // TODO: 22360193 populating a form from Ajax creates a race condition.  
-    // What if the network doesn't return and user enters a value nefore the callback is fired?
-    var resolution = null;
-    getPreferencesDataConn.request({
-        success: function(result, request) {
-            var jsonData = null;
-            try {
-                jsonData = Ext.util.JSON.decode(result.responseText);
-                if (jsonData.success == true) {
-                    resolution = jsonData['resolution'];
-                    billImageResolutionField.setValue(resolution);
-                } else {
-                    // handle success:false here if needed
-                }
-            } catch (err) {
-                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-            }
-        },
-    });
-
     var differenceThresholdField = new Ext.ux.form.SpinnerField({
       id: 'differencethresholdmenu',
       fieldLabel: '$ Difference Allowed between Utility Bill and ReeBill',
@@ -4673,7 +4553,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, thresholdFormPanel],
+        items: [thresholdFormPanel],
     });
 
     ///////////////////////////////////////
@@ -5374,6 +5254,7 @@ function reeBillReady() {
     //Issuable Reebills Tab
     //Show all unissued reebills, show the reebills whose totals match their
     //  utilbills first
+
     
     var initialIssuable = {
         rows: [
@@ -5387,10 +5268,11 @@ function reeBillReady() {
             {name: 'id', mapping: 'id'},
             {name: 'account', mapping: 'account'},
             {name: 'sequence', mapping: 'sequence'},
+            {name: 'processed', mapping: 'processed'},
             {name: 'mailto', mapping: 'mailto'},
             {name: 'util_total', mapping: 'util_total'},
             {name: 'reebill_total', mapping: 'reebill_total'},
-            {name: 'matching', mapping: 'matching'},
+            {name: 'group', mapping: 'group'},
             {name: 'difference', mapping: 'difference'},
         ],
     });
@@ -5415,7 +5297,7 @@ function reeBillReady() {
         autoSave: true,
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
-        groupField: 'matching',
+        groupField: 'group',
         sortInfo:{field: 'account', direction: 'ASC'},
         remoteSort: true,
     });
@@ -5433,11 +5315,11 @@ function reeBillReady() {
     var issuableColModel = new Ext.grid.ColumnModel({
         columns: [
             {
-                id: 'matching',
+                id: 'group',
                 header: '',
                 width: 160,
                 sortable: true,
-                dataIndex: 'matching',
+                dataIndex: 'group',
                 hidden: true,
             },{
                 id: 'account',
@@ -5457,6 +5339,27 @@ function reeBillReady() {
                 dataIndex: 'sequence',
                 editable: false,
                 editor: new Ext.form.TextField(),
+            },{
+                id: 'processed',
+                header: 'Processed',
+                width: 75,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'processed',
+                editable: false,
+                editor: new Ext.form.TextField(),
+                renderer: function(v, params, record)
+                {
+                    if (Ext.isEmpty(record.data.processed))
+                    {
+                        return "No";
+                    }
+                    else if (record.data.mailto)
+                    {
+                        return "Yes";
+                    }
+                    return "No";
+                }
             },{
                 id: 'mailto',
                 header: 'Recipients',
@@ -5607,13 +5510,71 @@ function reeBillReady() {
             });
         },
     });
+
+
+
+    var issueProcessedDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issue_processed_and_mail',
+    });
+    issueProcessedDataConn.autoAbort = false;
+    issueProcessedDataConn.disableCaching = true;
+    issueProcessedDataConn.timeout = 600000
+
+    var issuableProcessedCurrentlyEditing = false;
     
+    var issueProcessedReebillButton = new Ext.Button({
+        xtype: 'button',
+        id: 'issueProcessedReebillBtn',
+        iconCls: 'icon-mail-go',
+        text: 'Issue Processed Reebills',
+        disabled: false,
+        handler: function()
+        {
+
+                issuableGrid.setDisabled(true);
+                issueProcessedDataConn.request({
+                    params: {
+                        apply_corrections: true
+                    },
+                    success: function (response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);
+                        }
+                        catch(e) {
+                            Ext.Msg.alert("Data Error", "Could not decode response from server");
+                            return;
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert("Success", "Mail successfully sent");
+                            issuableGrid.getSelectionModel().clearSelections();
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                            utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                        }
+                        else {
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                    },
+                    failure: function () {
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                });
+            },
+        });
+
     var issueReebillToolbar = new Ext.Toolbar({
         items: [
             issueReebillButton,
+            issueProcessedReebillButton,
         ],
     });
-    
+
+
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
         selModel: new Ext.grid.RowSelectionModel({
@@ -5640,7 +5601,8 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            //groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            groupTextTpl: '{text}',
             showGroupName: false,
         }),
         frame: true,
@@ -5652,6 +5614,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         forceValidation: true,
     });
+
     
     issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
         oldAllowed = issuableMailListRegex.test(e.originalValue)
@@ -6023,15 +5986,11 @@ function reeBillReady() {
 
         //journalPanel.setDisabled(true);
 
-        // TODO: 25226989 ajax cancelled???
-        // unload previously loaded utility and reebill images
-        // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
-        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
-        Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-
+        BILLPDF.reset();
         //Update the buttons on the reebill tab
         deleteButton.setDisabled(true)
         versionButton.setDisabled(true);
+
         if (account == null) {
             /* no account selected */
             updateStatusbar(null, null, null)
@@ -6116,13 +6075,6 @@ function reeBillReady() {
     ubMeasuredUsagesDataConn.disableCaching = true;
 
 
-
-    var reeBillImageDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/getReeBillImage',
-    });
-    reeBillImageDataConn.autoAbort = true;
-    reeBillImageDataConn.disableCaching = true;
-
     function loadReeBillUIForSequence(account, sequence, loadReebillImage) {
         /* null argument means no sequence is selected */
         // Load the ReebillImage by default
@@ -6152,9 +6104,12 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(record.data.issued == true);
+            Ext.getCmp('updateReadingsButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbBindREEButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
+            record.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
+            Ext.getCmp('rbToggleProcessed').setDisabled(false);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
@@ -6200,50 +6155,7 @@ function reeBillReady() {
         }
 
         if(loadReebillImage){
-            // image rendering resolution
-            var menu = document.getElementById('reebillresolutionmenu');
-            if (menu) {
-                resolution = menu.value;
-            } else {
-                resolution = DEFAULT_RESOLUTION;
-            }
-
-            // while waiting for the next ajax request to finish, show a loading message
-            // in the utilbill image box
-            Ext.DomHelper.overwrite('reebillimagebox',
-                {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-
-            // ajax call to generate image, get the name of it, and display it in a
-            // new window
-            // abort previous transaction
-            reeBillImageDataConn.request({
-                disablecaching: true,
-                params: {account: selected_account, sequence: selected_sequence,
-                            resolution: resolution},
-                success: function(result, request) {
-                    var jsonData = null;
-                    try {
-                        jsonData = Ext.util.JSON.decode(result.responseText);
-                        var imageUrl = '';
-                        if (jsonData.success == true) {
-                            imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
-                        }
-                        // handle failure if needed
-                        Ext.DomHelper.overwrite('reebillimagebox',
-                            getImageBoxHTML(imageUrl, 'Reebill', 'reebill',
-                                NO_REEBILL_SELECTED_MESSAGE), true);
-
-                    } catch (err) {
-                        Ext.MessageBox.alert('error', err);
-                    }
-                },
-                // this is called when the server returns 500 as well as when there's no response
-                failure: function() {
-                    // replace reebill image with a missing graphic
-                    Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                        html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-                },
-            });
+            BILLPDF.fetchReebill(selected_account, selected_sequence);
         }
 
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
@@ -6399,21 +6311,209 @@ function hideSpinnerRequestAborted(conn, response, options)
 
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
-var NO_UTILBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
+var NO_UTILBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;">PDF NOT FOUND</td></tr></table></div>';
 var NO_REEBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
-var NO_REEBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height:100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
-var LOADING_MESSAGE = '<div style="display: block; margin-left: auto, margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
+var NO_REEBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height:100%; width: 100%;"><tr><td style="text-align: center;">PDF NOT FOUND</td></tr></tr></table></div>';
+var LOADING_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
 
-// TODO: 17613609  Need to show bill image, error not found image, error does not exist image
-function getImageBoxHTML(url, label, idPrefix, errorHTML) {
-    if (url) {
-        // TODO default menu selection
-        return {tag: 'img', src: url, width: '100%', id: idPrefix + 'image'}
-    } else {
-        return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: errorHTML,
-            id: 'utilbillimage'}] };
+var BILLPDF = function(){
+
+    var bust_cache = null;
+    var rb;
+    var ub;
+
+    var initialize = function() {
+        rb = {};
+        ub = {};
+        regenerate_bust_cache();
     }
-}
+
+    var fetchReebill = function(accountno, sequence) {
+        // Add leading zeros to sequence to a total of 4 digits
+        var url = null;
+        if ( accountno && sequence) {
+            var s = sequence + '';
+            while (s.length < 4) {
+                s = '0' + s;
+            }
+            url = 'reebills/' + accountno + '/' + accountno + '_' + s + '.pdf?bc=' + bust_cache;
+        }
+        _fetchBill('reebill', url);
+    };
+
+    var fetchUtilbill = function(accountno, billid) {
+        var url = null;
+        if(accountno && billid){
+            url = 'utilitybills/' + accountno + '/' + billid + '.pdf?bc=' + bust_cache;
+        }
+        _fetchBill('utilbill', url);
+    };
+
+    var _fetchBill = function(prefix, url){
+        var ptr = prefix === 'utilbill' ? ub : rb;
+
+        var getPage = function(p) {
+            ptr.pdf.getPage(p).then(function (page) {
+                ptr.pages[page.pageNumber-1] = page;
+                page.getTextContent().then(function (textContent) {
+                    ptr.content[page.pageNumber-1] = textContent;
+                    if (page.pageNumber < ptr.pdf.numPages) {
+                        getPage(page.pageNumber+1);
+                    }else{
+                      ptr.pdf = {}
+                      renderPages(prefix);
+                    }
+                });
+            });
+        };
+
+        if(url) {
+            domOverwrite(prefix, 'loading');
+            PDFJS.getDocument(url).then(
+                function getDocumentCallback(pdfdoc) {
+                    ptr.pdf = pdfdoc;
+                    ptr.pages = []
+                    ptr.content = []
+                    getPage(1);
+                },
+                function getDocumentError(message, exception) {
+                    console.log(message, exception);
+                    domOverwrite(prefix, 'notfound');
+                }
+            );
+        }else{
+            domOverwrite(prefix, 'notselected');
+        }
+    };
+
+    var domOverwrite = function(idPrefix, state){
+        var elem;
+        switch(state){
+            case 'loading':
+                elem = LOADING_MESSAGE;
+                break;
+            case 'notfound':
+                if(idPrefix == 'utilbill'){
+                    elem = NO_UTILBILL_FOUND_MESSAGE;
+                }else{
+                    elem = NO_REEBILL_FOUND_MESSAGE;
+                }
+                break;
+            case 'notselected':
+                if(idPrefix == 'utilbill'){
+                    elem = NO_UTILBILL_SELECTED_MESSAGE;
+                }else{
+                    elem = NO_REEBILL_SELECTED_MESSAGE;
+                }
+                break;
+            case 'display':
+                elem = {tag: 'div', style:'width:100%;height:100%;', children:[
+                    //{tag: 'canvas', id: idPrefix + '-canvas'},
+                    {tag: 'div', id: idPrefix + '-canvas-layer'},
+                    {tag: 'div', id: idPrefix + '-canvas-text-layer'}]}
+                break;
+        }
+        Ext.DomHelper.overwrite(idPrefix + 'imagebox', elem, true);
+    };
+
+    var renderText = function(prefix, page, viewport, content){
+        var textlayerelem = document.getElementById(prefix + '-canvas-text-layer');
+        var textLayerDiv = document.createElement('div');
+        textLayerDiv.style.height = viewport.height;
+        textLayerDiv.style.width = viewport.width;
+        textLayerDiv.style.top = (page.pageNumber - 1) * viewport.height;
+        textLayerDiv.className = 'textLayer';
+
+        var textLayer = new TextLayerBuilder({textLayerDiv: textLayerDiv,
+                pageIndex: page.pageNumber, viewport: viewport,
+                isViewerInPresentationMode: false});
+        textLayer.setTextContent(content);
+        textlayerelem.appendChild(textLayerDiv);
+    };
+
+    var createRenderTextTimeout = function(prefix, page, viewport, content){
+        return function(){
+            setTimeout(function() {renderText(prefix, page, viewport, content);}, page.pageNumber * 20);
+        };
+    };
+
+    var renderPage = function(prefix, page, content){
+        var canvaslayer = document.getElementById(prefix + '-canvas-layer');
+
+        var canvas = document.createElement('canvas');
+        var scale = (panelWidth) / page.getViewport(1.0).width;
+        var viewport = page.getViewport(scale);
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.style.top = (page.pageNumber - 1) * viewport.height;
+        canvaslayer.appendChild(canvas);
+        var context = canvas.getContext('2d');
+
+        page.render({
+            canvasContext: context,
+            viewport: viewport
+        }).then(function(){
+            createRenderTextTimeout(prefix, page, viewport, content)();
+        });
+    };
+
+    var createRenderTimeout = function(prefix, page, content){
+        return function(){
+            setTimeout(function() {renderPage(prefix, page, content);}, 0);
+        };
+    };
+
+    var renderPages = function(prefix){
+        var ptr = prefix === 'utilbill' ? ub : rb;
+        if(!ptr.pdf) {
+            return;
+        }
+
+        panelWidth =  Ext.getCmp(prefix + 'ImagePanel').getWidth() - 20;
+        domOverwrite(prefix, 'display');
+        if(panelWidth > 0) {
+
+            var canvaslayer = document.getElementById(prefix + '-canvas-layer');
+            var textlayerelem = document.getElementById(prefix + '-canvas-text-layer');
+            while (canvaslayer.lastChild) {
+                canvaslayer.removeChild(canvaslayer.lastChild);
+            }
+            while (textlayerelem.lastChild) {
+                while(textlayerelem.lastChild.lastChild){
+                    textlayerelem.lastChild.removeChild(textlayerelem.lastChild.lastChild);
+                }
+                textlayerelem.removeChild(textlayerelem.lastChild);
+            }
+
+            for(var i = 0; i < ptr.pages.length; i++) {
+                var page = ptr.pages[i];
+                var content  = ptr.content[i];
+                createRenderTimeout(prefix, page, content)();
+            }
+        }
+    };
+
+    var reset = function(){
+        initialize();
+        _fetchBill('utilbill', null);
+        _fetchBill('reebill', null);
+    };
+
+    var regenerate_bust_cache = function(){
+        bust_cache = Math.random()*100000000000000000;
+    };
+
+    var get_ub = function(){
+        return ub
+    };
+
+    initialize();
+
+    return {fetchUtilbill: fetchUtilbill, renderPages: renderPages,
+            fetchReebill: fetchReebill, reset:reset, domOverwrite:domOverwrite,
+            regenerate_bust_cache: regenerate_bust_cache};
+}();
 
 function loadDashboard()
 {

@@ -34,11 +34,6 @@ def copy_charges_from_mongo():
             continue
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
-            if mongo_charge.get('quantity_units') is None:
-                log.error("No quantity units found for utilbill %s charge "
-                          "rsi_binding %s" %
-                          (ub.id, mongo_charge.get('rsi_binding', '')))
-                continue
             s.add(Charge(ub,
                          mongo_charge.get('description', ""),
                          mongo_charge.get('group', ""),
@@ -51,6 +46,11 @@ def copy_charges_from_mongo():
     s.commit()
 
 def upgrade():
+    log.info('Beginning upgrade to version 21')
+    alembic_upgrade('4f2f8e2f7cd')
+    init_model()
+    copy_charges_from_mongo()
+    log.info('Upgrade to version 21 complete')
     log.info('Beginning upgrade to version 21')
     alembic_upgrade('55e7e5ebdd29')
     init_model()

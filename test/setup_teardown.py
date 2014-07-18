@@ -1,5 +1,5 @@
 
-import logging
+
 import sys
 
 def init_logging():
@@ -44,6 +44,9 @@ from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
+import logging
+
+
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
@@ -55,14 +58,17 @@ class TestCaseWithSetup(unittest.TestCase):
                   "utilbill", "customer", "address"]:
             print "deleting from %s" % t
             session.execute("delete from %s" % t)
-
-
+    def init_logging():
+        """Setup NullHandlers for test and root loggers.
+        """
+        testlogger = logging.getLogger('test')
+        testlogger.addHandler(logging.NullHandler())
+        testlogger.propagate = False
     @staticmethod
     def insert_data():
         session = Session()
         db = pymongo.Connection('localhost')['test']
         TestCaseWithSetup.truncate_tables(session)
-
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
                      '123 Test Street',
@@ -84,7 +90,6 @@ class TestCaseWithSetup(unittest.TestCase):
                      'Test City',
                      'XX',
                      '12345')
-
         #Utility Bill Addresses
         ub_sa1 = Address('Test Customer 2 UB 1 Service',
                          '123 Test Street',
@@ -187,9 +192,21 @@ class TestCaseWithSetup(unittest.TestCase):
         """
         from billing import config
 
+        self.state_db = StateDB(Session, logger)
+        self.billupload = BillUpload(config, logger)
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
+
+    def init_dependencies(self):
+        """Configure connectivity to various other systems and databases.
+        """
+        from billing import config
+
         logger = logging.getLogger('test')
 
-        self.state_db = StateDB(Session, logger)
+        self.state_db = StateDB(logger)
         self.billupload = BillUpload(config, logger)
 
         mock_install_1 = MockSkyInstall(name='example-1')
@@ -260,6 +277,9 @@ class TestCaseWithSetup(unittest.TestCase):
         self.init_dependencies()
         TestCaseWithSetup.insert_data()
 
+
+        self.session = Session()
+
     def tearDown(self):
         '''Clears out databases.'''
         # clear out mongo test database
@@ -268,8 +288,9 @@ class TestCaseWithSetup(unittest.TestCase):
 
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
-        self.state_db.session.commit()
+        self.session.commit()
         Session.remove()
+
 
 if __name__ == '__main__':
     unittest.main()
