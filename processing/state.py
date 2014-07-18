@@ -1122,6 +1122,11 @@ class Charge(Base):
     rate = Column(Float)
     rsi_binding = Column(String(255))
     total = Column(Float)
+
+    # description of error in computing the quantity and/or rate formula.
+    # either this or quantity and rate should be null at any given time,
+    # never both or neither.
+    error = Column(String(255))
     
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id,
                                                         cascade="all"))
@@ -1147,6 +1152,7 @@ class Charge(Base):
         self.rate = rate
         self.rsi_binding = rsi_binding
         self.total = total
+        self.error = None
 
 class Payment(Base):
     __tablename__ = 'payment'
