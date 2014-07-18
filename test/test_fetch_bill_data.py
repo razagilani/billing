@@ -6,7 +6,7 @@ import unittest
 import sqlalchemy
 import pymongo
 from mock import Mock
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Session
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
@@ -56,13 +56,7 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        #sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user': 'dev',
-            'password': 'dev',
-            'host': 'localhost',
-            'database': 'skyline_dev'
-        })
+        self.state_db = state.StateDB(Session)
         reebill_dao = mongo.ReebillDAO(None,
                 pymongo.Connection('localhost', 27017)['skyline-dev'])
 
@@ -88,7 +82,7 @@ class FetchTest(unittest.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    reebill_dao)
+                reebill_dao, None)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([

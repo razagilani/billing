@@ -140,18 +140,18 @@ class RateStructureTest(unittest.TestCase):
             quantity_units='therms',
             rate='4',
         )
-        self.uprs = RateStructure(type='UPRS', rates=[self.a, self.b_1])
-        self.cprs = RateStructure(type='CPRS', rates=[self.b_2, self.c])
+        self.uprs = RateStructure(rates=[self.a, self.b_1])
 
     def test_combine(self):
         # 2nd RateStructure overrides the first, so b_2 is in the combination
         # (note that order of RSIs within a RateStructure does not matter,
         # so they are compared as sets)
-        result = RateStructure.combine(self.uprs, self.cprs)
+        other_rs = RateStructure(rates=[self.b_2, self.c])
+        result = RateStructure.combine(self.uprs, other_rs)
         self.assertEqual(set([self.a, self.b_2, self.c]), set(result.rates))
 
         # if the order of the arguments is reversed, b_1 is in the combination
-        result = RateStructure.combine(self.cprs, self.uprs)
+        result = RateStructure.combine(other_rs, self.uprs)
         self.assertEqual(set([self.a, self.b_1, self.c]), set(result.rates))
 
     def test_add_update_rsi(self):
@@ -188,24 +188,32 @@ class RateStructureDAOTest(unittest.TestCase):
             quantity='1',
             rate='1',
             shared=True,
+            group='a',
+            has_charge=True,
         )
         self.rsi_b_shared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=True,
+            group='b',
+            has_charge=True,
         )
         self.rsi_b_unshared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=False,
+            group='c',
+            has_charge=False,
         )
         self.rsi_c_unshared = RateStructureItem(
             rsi_binding='C',
             quantity='3',
             rate='3',
             shared=False,
+            group='d',
+            has_charge=False,
         )
 
         # 3 rate structures, two containing B shared and one containing B
@@ -300,6 +308,8 @@ class RateStructureDAOTest(unittest.TestCase):
         u.service = 'gas'
         u.utility = 'washgas'
         u.rate_class = 'whatever'
+        # arbitrary 24-digit string
+        u.uprs_document_id = ''.join(str(i % 10) for i in xrange(24))
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the

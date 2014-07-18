@@ -9,7 +9,7 @@ class Mailer(object):
         self._config_dict = config_dict
 
     def mail(self, recipients, merge_fields, bill_path, bill_files):
-        from_user = self._config_dict["from"]
+        from_user = self._config_dict["mail_from"]
         originator = self._config_dict["originator"]
         password = self._config_dict["password"]
         subject = "Skyline Innovations: Your Monthly Bill for %s" % (
