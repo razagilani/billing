@@ -668,6 +668,7 @@ function reeBillReady() {
         var editable = sm.getSelections().every(function(r) {return r.data.editable});
         // Check if there are Reebills associated with this Utility Bill
         var has_reebills = sm.getSelections().every(function(r) {return (r.data.reebills.length > 0)});
+
         if (editable && !has_reebills){
             utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
         }
@@ -6109,7 +6110,7 @@ function reeBillReady() {
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
             record.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
-            Ext.getCmp('rbToggleProcessed').setDisabled(false);
+            Ext.getCmp('rbToggleProcessed').setDisabled(record.data.issued == true);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
