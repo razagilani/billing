@@ -138,17 +138,6 @@ class ReebillTest(TestCaseWithSetup):
                     "postal_code" : "21046"
                 },
             }
-            mongo.compute_all_charges(utilbill_doc, uprs)
-            self.assertEqual([
-                {
-                    'rsi_binding': 'A',
-                    'description': 'a',
-                    'quantity': 100,
-                    'rate': 2,
-                    'total': 200,
-                    'group': 'All Charges',
-                }
-            ], utilbill_doc['charges'])
 
             customer = Customer('someone', '11111', 0.5, 0.1, '',
                                 'example@example.com')
@@ -174,8 +163,8 @@ class ReebillTest(TestCaseWithSetup):
             # check that there are the same group names and rsi_bindings in
             # reebill charges as utility bill charges
             self.assertEqual(
-                set((c['rsi_binding'], c['description'])
-                        for c in utilbill_doc['charges']),
+                set((c.rsi_binding, c.description)
+                        for c in utilbill.charges),
                 set((c.rsi_binding, c.description) for c in reebill.charges)
             )
 

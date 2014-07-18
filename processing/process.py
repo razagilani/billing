@@ -905,7 +905,7 @@ class Process(object):
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
 
-        mongo.compute_all_charges(document, uprs)
+        utilbill.compute_charges(uprs, document)
 
         # also try to compute documents of any unissued reebills associated
         # with this utility bill
