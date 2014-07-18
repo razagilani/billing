@@ -34,7 +34,7 @@ from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map
+from billing.util.dictutils import deep_map, dict_merge
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
@@ -553,6 +553,13 @@ class ReeBillWSGI(object):
                 'sequence': reebill.sequence})
 
     @cherrypy.expose
+    @json_exception
+    def update_readings(self, account, sequence, **kwargs):
+        with DBSession(self.state_db) as session:
+            self.process.update_reebill_readings(session, account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
     @authenticate_ajax
     @json_exception
     @db_commit
@@ -859,6 +866,7 @@ class ReeBillWSGI(object):
         if xaction == "read":
             return json.dumps({'success': True,
                     'rows': self.process.get_rsis_json(utilbill_id), })
+                })
 
         # only xaction "read" is allowed when reebill_sequence/version
         # arguments are given
@@ -1546,6 +1554,10 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
             'tools.sessions.timeout': 240
         },
+        '/utilitybillimages' : {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': '/tmp/billimages'
+        }
     }
     cherrypy.config.update({
         'server.socket_host': root.reebill.config.get("http", "socket_host"),
