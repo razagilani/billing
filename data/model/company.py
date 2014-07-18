@@ -2,7 +2,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import Integer, String, Boolean, DateTime, Enum
 from billing.data.model.orm import Base
-import billing.data.model.brokerage
+import billing.data.model.powergas
 
 class Company(Base):
     __tablename__ = 'company'
@@ -34,6 +34,6 @@ class Utility(Company):
         """Construct a :class:`Utility` instance"""
         for s in rate_classes:
             self.rate_classes.append(\
-                billing.data.model.brokerage.RateClass(self, s))
+                billing.data.model.powergas.RateClass(self, s))
         super(Utility, self).__init__(name, address, service)
 

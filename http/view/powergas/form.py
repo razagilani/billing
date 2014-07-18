@@ -37,3 +37,6 @@ class InterestEdit(Form):
 
 class TestForm(Form):
     name = TextField('name', validators=[DataRequired()])
+
+class QuoteForm(Form):
+    type = SelectField('Type', choices=[])

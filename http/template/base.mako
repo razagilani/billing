@@ -3,7 +3,7 @@
     company_name = 'Skyline'
     page_width = '1000px'
     page_padding = '20px'
-    extjs = True
+    extjs = False
 %>
 
 
@@ -22,7 +22,7 @@
                         <a href="${url_for('customer_interest')}">Customer Interest</a>
                     </li>
                     <li>
-                        <a href="${url_for('quotes')}">Quote Data</a>
+                        <a href="${url_for('quotes')}">Quotes</a>
                     </li>
                 </ul>
             </li>

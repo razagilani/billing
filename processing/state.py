@@ -76,7 +76,7 @@ class Address(Base):
                    other_address.postal_code)
 
     @classmethod
-    def for_brokerage(cls, street, city, state, postal_code):
+    def for_powergas(cls, street, city, state, postal_code):
         return cls("", street, city, state, postal_code)
 
     def __hash__(self):
@@ -162,7 +162,7 @@ class Customer(Base):
         self.fb_service_address = fb_service_address
 
     @classmethod
-    def for_brokerage(cls, name):
+    def for_powergas(cls, name):
         return cls(name, "", 0.0, 0.0, "", "", "", None, None)
 
     def __repr__(self):

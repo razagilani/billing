@@ -9,7 +9,7 @@ from hashlib import sha256
 
 import logging
 #from processing.state import Customer
-#from data.model.brokerage import CustomerInterest
+#from data.model.powergas import CustomerInterest
 
 log = logging.getLogger(__name__)
 
@@ -262,19 +262,19 @@ def create_customer_interest(session):
     js = session.query(User).filter_by(name='Justin Schafer').one()
 
     customer_data = [(rcq('Pepco', 'R'),
-                      Customer.for_brokerage("Barack Obama"),
-                      Address.for_brokerage("1600 Pennsylvania Avenue",
+                      Customer.for_powergas("Barack Obama"),
+                      Address.for_powergas("1600 Pennsylvania Avenue",
                                             "Washington", "DC", "20006"),
                       js),
 
                      (rcq('Pepco', 'RAD'),
-                      Customer.for_brokerage("George Washington"),
-                      Address.for_brokerage("123 George St",
+                      Customer.for_powergas("George Washington"),
+                      Address.for_powergas("123 George St",
                                             "Alexandria", "VA", "20384"),
                       js),
                      (rcq('Delmarva', 'RTM'),
-                      Customer.for_brokerage('Mickey Mouse'),
-                      Address.for_brokerage("777 Third Ave",
+                      Customer.for_powergas('Mickey Mouse'),
+                      Address.for_powergas("777 Third Ave",
                                             "New York", "NY", "10017"),
                       mn)]
 
