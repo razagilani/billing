@@ -662,7 +662,7 @@ class ReeBill(Base):
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
-            quantity, rate = rsi.compute_charge(identifiers)
+            quantity, rate, error = rsi.compute_charge(identifiers)
             total = quantity * rate
             ac = acs[rsi.rsi_binding]
             quantity_units = ac.quantity_units \
@@ -1087,7 +1087,7 @@ class UtilBill(Base):
 
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
-            quantity, rate = rsi.compute_charge(identifiers)
+            quantity, rate, error = rsi.compute_charge(identifiers)
             total = quantity * rate
             try:
                 charge = all_charges[rsi.rsi_binding]
@@ -1098,6 +1098,10 @@ class UtilBill(Base):
                 charge.quantity = quantity
                 charge.rate = rate
                 charge.total = total
+                if error is None:
+                    charge.error = None
+                else:
+                    charge.error = str(error)
 
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate

@@ -1833,26 +1833,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # NOTE if the commented-out lines are added below the test will
         # fail, because the charges are missing those keys.
         self.assertEqual([
-                             {
-                                 'rsi_binding': 'A',
-                                 'quantity': 2,
-                                 'id': 'A',
-                                 'quantity_units': 'kWh',
-                                 'rate': 3,
-                                 'total': 6,
-                                 'description': 'UPRS only',
-                                 'group': 'All Charges',
-                             }, {
-                                 'rsi_binding': 'B',
-                                 'id': 'B',
-                                 'quantity': 6,
-                                 'quantity_units': 'therms',
-                                 'rate': 7,
-                                 'total': 42,
-                                 'description': 'not shared',
-                                 'group': 'All Charges',
-                             },
-                         ], charges)
+             {
+                 'rsi_binding': 'A',
+                 'quantity': 2,
+                 'id': 'A',
+                 'quantity_units': 'kWh',
+                 'rate': 3,
+                 'total': 6,
+                 'description': 'UPRS only',
+                 'group': 'All Charges',
+                 'error': None,
+             }, {
+                 'rsi_binding': 'B',
+                 'id': 'B',
+                 'quantity': 6,
+                 'quantity_units': 'therms',
+                 'rate': 7,
+                 'total': 42,
+                 'description': 'not shared',
+                 'group': 'All Charges',
+                 'error': None,
+             },
+         ], charges)
 
 
     def test_compute_reebill(self):
