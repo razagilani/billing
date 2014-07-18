@@ -70,7 +70,6 @@ class Exporter(object):
                            'Billing Month', 'Estimated']
 
         for sequence in sorted(self.state_db.listSequences(session, account)):
-            reebill_doc = self.reebill_dao.load_reebill(account, sequence)
             reebill = self.state_db.get_reebill(session, account, sequence)
 
             # load utilbill from mysql to find out if the bill was
@@ -89,12 +88,12 @@ class Exporter(object):
             row = [
                 account,
                 sequence,
-                reebill_doc.period_begin.strftime(dateutils.ISO_8601_DATE),
-                reebill_doc.period_end.strftime(dateutils.ISO_8601_DATE),
+                utilbill.period_start.strftime(dateutils.ISO_8601_DATE),
+                utilbill.period_end.strftime(dateutils.ISO_8601_DATE),
                 # TODO rich hypothesizes that for utilities, the fuzzy "billing
                 # month" is the month in which the billing period ends
-                approximate_month(reebill_doc.period_begin,
-                                  reebill_doc.period_end).strftime('%Y-%m'),
+                approximate_month(utilbill.period_start,
+                                  utilbill.period_end).strftime('%Y-%m'),
                 'Yes' if estimated else 'No'
             ]
             # pad row with blank cells to match dataset width
@@ -104,43 +103,17 @@ class Exporter(object):
             try:
                 actual_charges = sorted(mongo.get_charges_json(utilbill_doc),
                                         key=itemgetter('description'))
-                hypothetical_charges = reebill.charges
             except KeyError as e:
                 print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
                         sequence, e.message, traceback.format_exc()))
                 continue
 
-            for charge in actual_charges:
-                charge['description'] += ' (actual)'
-            for charge in hypothetical_charges:
-                charge.description += ' (hypothetical)'
-                # extra charges: actual and hypothetical totals, difference between
-                # them, Skyline's late fee from the reebill
-            utilbill_doc = self.reebill_dao.load_doc_for_utilbill(reebill
-                    .utilbills[0])
-            actual_total = sum(mongo.total_of_all_charges(utilbill_doc))
-            hypothetical_total = reebill_doc.get_total_hypothetical_charges()
-            extra_charges = [
-                {'description': 'Actual Total', 'total': actual_total},
-                {'description': 'Hypothetical Total',
-                 'total': hypothetical_total},
-                {
-                    'description': 'Energy Offset Value (Hypothetical - Actual)',
-                    'total': hypothetical_total - actual_total,
-                },
-                {
-                    'description': 'Skyline Late Charge',
-                    'total': reebill_doc.late_charges \
-                        if hasattr(reebill_doc, 'late_charges') else 0
-                },
-            ]
-
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
-            for charge in hypothetical_charges + actual_charges + extra_charges:
-                column_name = '%s: %s' % (charge.get('group',''),
-                                          charge.get('description','Error: No Description Found!'))
-                total = charge.total
+            for charge in actual_charges:
+                column_name = '%s: %s' % (charge['group'],
+                        charge.get('description', 'Error: No Description Found!'))
+                total = charge.get('total', 0)
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
@@ -173,7 +146,7 @@ class Exporter(object):
         '''
         book = tablib.Databook()
         if account == None:
-            #Only export XBill accounts (id>20000)
+            #Only export brokerage accounts (id>20000)
             for acc in [x for x in
                         sorted(self.state_db.listAccounts(statedb_session)) if
                         (int(x) >= 20000)]:
@@ -315,52 +288,44 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
-        # Method to format the Service address/Billin address in a Reebill
-        def format_addr(addr):
-            addr_str = "%s %s %s %s %s" % (
-                addr['addressee'] if 'addressee' in addr and addr[
-                    'addressee'] is not None else "",
-                addr['street'] if 'street' in addr and addr[
-                    'street'] is not None else "",
-                addr['city'] if 'city' in addr and addr[
-                    'city'] is not None else "",
-                addr['state'] if 'state' in addr and addr[
-                    'state'] is not None else "",
-                addr['postal_code'] if 'postal_code' in addr and addr[
-                    'postal_code'] is not None else "",
-            )
-            return addr_str
-
-        accounts = self.state_db.listAccounts(session)
+        accounts = self.state_db.listAccounts()
         ds_rows = []
 
         for account in accounts:
-            payments = self.state_db.payments(session, account)
+            payments = self.state_db.payments(account)
             cumulative_savings = 0
-            try:
-                reebills= self.reebill_dao.load_reebills_for(account, 0)
-            except NoSuchBillException:
-                # A bill exists in MySQL, but not in mongo. Ignore this bill
-                pass
-            for reebill_doc in reebills:
-                reebill = self.state_db.get_reebill(session,account,reebill_doc.sequence,
-                                               reebill_doc.version)
+
+            reebills = self.state_db.listReebills(0, 10000,
+                    account, u'sequence', u'ASC')[0]
+            for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
                     continue
+
+                # Reebills with > 1 utilitybills are no longer supported.
+                # Skip them
+                if len(reebill.utilbills) > 1:
+                    continue
+
+                period_start, period_end = reebill.get_period()
+
                 # if the user has chosen a begin and/or end date *and* this
                 # reebill falls outside of its bounds, skip to the next one
-                have_period_dates = begin_date or end_date
-                reebill_begins_in_this_period = begin_date and reebill_doc.period_begin >= begin_date
-                reebill_ends_in_this_period = end_date and reebill_doc.period_end <= end_date
-                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
-                if have_period_dates and not reebill_in_this_period: continue
+                reebill_in_period = False
+                if begin_date:
+                    if period_start >= begin_date:
+                        reebill_in_period = True
+                if end_date:
+                    if period_end <= end_date:
+                        reebill_in_period = True
+                if (begin_date or end_date) and not reebill_in_period:
+                    continue
 
                 # iterate the payments and find the ones that apply.
-                if (reebill.period_begin is not None and reebill.period_end is not None):
-                    applicable_payments = filter(lambda x: x.date_applied >
-                            reebill.period_begin and x.date_applied <
-                            reebill.period_end, payments)
+                if period_start and period_end:
+                    applicable_payments = filter(
+                        lambda x: period_start <= x.date_applied < period_end,
+                        payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
                     # where a payment may be applicable more than ones)
@@ -382,37 +347,22 @@ class Exporter(object):
                     applicable_payments.pop(0)
 
                 average_rate_unit_ree=None
-                utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                        reebill.utilbills[0])
-                actual_total = mongo.total_of_all_charges(utilbill_doc)
+                actual_total = reebill.get_total_actual_charges()
+                hypothetical_total = reebill.get_total_hypothetical_charges()
 
-                try:
-                    hypothetical_total=reebill.get_total_hypothetical_charges()
-                except KeyError:
-                    hypothetical_total="Error!"
-                try:
-                    total_ree = reebill.get_total_renewable_energy()
-                    if total_ree != 0:
-                        average_rate_unit_ree = (hypothetical_total-actual_total)/total_ree
-                except StopIteration:
-                    # A bill didnt have registers, ignore this column
-                    total_ree = 'Error! No Registers found!'
-                except TypeError:
-                    total_ree = 'Error!'
-
-                try:
-                    late_charges = reebill.late_charge
-                except KeyError:
-                    late_charges = None
+                total_ree = reebill.get_total_renewable_energy()
+                if total_ree != 0:
+                    average_rate_unit_ree = ((hypothetical_total-actual_total)
+                                             / total_ree)
 
                 row = [account,
                        reebill.sequence,
                        reebill.version,
-                       format_addr(reebill.billing_address),
-                       format_addr(reebill.service_address),
+                       str(reebill.billing_address),
+                       str(reebill.service_address),
                        reebill.issue_date.isoformat(),
-                       reebill_doc.period_begin.isoformat(),
-                       reebill_doc.period_end.isoformat(),
+                       period_start.isoformat(),
+                       period_end.isoformat(),
                        hypothetical_total,
                        actual_total,
                        reebill.ree_value,
@@ -431,8 +381,10 @@ class Exporter(object):
                        total_ree,
                        average_rate_unit_ree
                        ]
+
                 # Formatting
-                for i in (8,9,10,11,12,14,15,16,17,19,21,22,23,24):
+                # The following columns are numbers with two decimals
+                for i in (8, 9, 10, 11, 12, 14, 15, 16, 17, 19, 21, 22, 23, 24):
                     try:
                         row[i] = ("%.2f" % row[i])
                     except TypeError:
@@ -443,39 +395,36 @@ class Exporter(object):
                 # only account, reebill and payment data
                 for applicable_payment in applicable_payments:
                     # ok, there was more than one applicable payment
-                    row = [ account, reebill_doc.sequence, reebill_doc.version,
-                            None, None, None, None, None,
-                            None, None, None, None, None,
+                    row = [account, reebill.sequence, reebill.version,
+                           None, None, None, None, None,
+                           None, None, None, None, None,
                            applicable_payment.date_applied.isoformat(),
                            applicable_payment.credit,
-                            None, None, None, None, None,
-                            None, None, None, None, None]
-                    try:
-                        row[14] = ("%.2f" % row[14])
-                    except TypeError:
-                        pass
+                           None, None, None, None, None,
+                           None, None, None, None, None]
+                    row[14] = ("%.2f" % row[14])
                     ds_rows.append(row)
 
         # We got all rows! Assemble the dataset
         ds_headers = ['Account', 'Sequence', 'Version',
-                    'Billing Addressee', 'Service Addressee',
-                    'Issue Date', 'Period Begin', 'Period End',
-                    'Hypothesized Charges', 'Actual Utility Charges',
-                    'RE&E Value',
-                    'Prior Balance',
-                    'Payment Applied',
-                    'Payment Date',
-                    'Payment Amount',
-                    'Adjustment',
-                    'Balance Forward',
-                    'RE&E Charges',
-                    'Late Charges',
-                    'Balance Due',
-                    '', # spacer
-                    'Savings',
-                    'Cumulative Savings',
-                    'RE&E Energy',
-                    'Average Rate per Unit RE&E',
+                      'Billing Addressee', 'Service Addressee',
+                      'Issue Date', 'Period Begin', 'Period End',
+                      'Hypothesized Charges', 'Actual Utility Charges',
+                      'RE&E Value',
+                      'Prior Balance',
+                      'Payment Applied',
+                      'Payment Date',
+                      'Payment Amount',
+                      'Adjustment',
+                      'Balance Forward',
+                      'RE&E Charges',
+                      'Late Charges',
+                      'Balance Due',
+                      '',  # spacer
+                      'Savings',
+                      'Cumulative Savings',
+                      'RE&E Energy',
+                      'Average Rate per Unit RE&E',
         ]
         dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
                                  title='All REE Charges')
@@ -517,8 +466,6 @@ def main(export_func, filename, account=None):
         else:
             exporter.export_account_charges(session, output_file,
                                             account=account)
-    session.commit()
-
 
 if __name__ == '__main__':
     filename = 'spreadsheet.xls'

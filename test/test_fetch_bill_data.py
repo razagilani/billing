@@ -6,13 +6,13 @@ import unittest
 import sqlalchemy
 import pymongo
 from mock import Mock
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Session
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing import state
 from billing.test import example_data
-from skyliner.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
 
@@ -56,13 +56,7 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        #sqlalchemy.orm.clear_mappers()
-        self.state_db = state.StateDB(**{
-            'user': 'dev',
-            'password': 'dev',
-            'host': 'localhost',
-            'database': 'skyline_dev'
-        })
+        self.state_db = state.StateDB(Session)
         reebill_dao = mongo.ReebillDAO(None,
                 pymongo.Connection('localhost', 27017)['skyline-dev'])
 
@@ -82,9 +76,12 @@ class FetchTest(unittest.TestCase):
         reebill_dao.load_reebill.return_value = self.reebill_doc
         reebill_dao.load_doc_for_utilbill.return_value = utilbill_doc
 
-        self.splinter = MockSplinter(deterministic=True)
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    reebill_dao)
+                reebill_dao, None)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
@@ -198,7 +195,7 @@ class FetchTest(unittest.TestCase):
         register contains the right amount of energy.'''
         # create mock skyliner objects
         monguru = self.splinter.get_monguru()
-        install = self.splinter.get_install_obj_for('99999')
+        install = self.splinter.get_install_obj_for('example-1')
 
         # gather REE data into the reebill
         self.ree_getter.update_renewable_readings(install.name, self.reebill)

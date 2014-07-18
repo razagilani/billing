@@ -1,23 +1,54 @@
 '''Tests for rate_structure.py'''
 from datetime import date
-from StringIO import StringIO
 import unittest
 from mock import Mock
 from bson import ObjectId
 from mongoengine import DoesNotExist
 from billing.processing.rate_structure2 import RateStructure, \
     RateStructureItem, RateStructureDAO
-from billing.processing.state import StateDB, Customer, UtilBill
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.util.dictutils import deep_map, subdict
-from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
-
 class RSITest(unittest.TestCase):
-    def setUp(self):
-        pass
+
+    def test_basic(self):
+        a = RateStructureItem(
+            rsi_binding='A',
+            quantity='1',
+            quantity_units='dollars',
+            rate='1',
+        )
+
+        self.assertEqual({
+             'id': 'A',
+             'rsi_binding':'A',
+             'description': '',
+             'quantity':'1',
+             'quantity_units':'dollars',
+             'rate':'1',
+             'has_charge': True,
+             'group': '',
+             'round_rule': None,
+             'shared': True,
+         }, a.to_dict())
+
+        a.update()
+        self.assertEqual(RateStructureItem(
+            rsi_binding='A',
+            quantity='1',
+            quantity_units='dollars',
+            rate='1',
+        ), a)
+
+        a.update(quantity='10', rate='11')
+        self.assertEqual(RateStructureItem(
+            rsi_binding='A',
+            quantity='10',
+            quantity_units='dollars',
+            rate='11',
+        ), a)
+
+        self.assertRaises(TypeError, a.update, 'A', nonexistent_field=1)
 
     def test_load_malformed_document(self):
         '''Test creating RateStructureItem object from malformed Mongo
@@ -84,7 +115,6 @@ class RSITest(unittest.TestCase):
 
 class RateStructureTest(unittest.TestCase):
 
-
     def setUp(self):
         self.a = RateStructureItem(
             rsi_binding='A',
@@ -110,21 +140,21 @@ class RateStructureTest(unittest.TestCase):
             quantity_units='therms',
             rate='4',
         )
-        self.uprs = RateStructure(type='UPRS', rates=[self.a, self.b_1])
-        self.cprs = RateStructure(type='CPRS', rates=[self.b_2, self.c])
+        self.uprs = RateStructure(rates=[self.a, self.b_1])
 
     def test_combine(self):
         # 2nd RateStructure overrides the first, so b_2 is in the combination
         # (note that order of RSIs within a RateStructure does not matter,
         # so they are compared as sets)
-        result = RateStructure.combine(self.uprs, self.cprs)
+        other_rs = RateStructure(rates=[self.b_2, self.c])
+        result = RateStructure.combine(self.uprs, other_rs)
         self.assertEqual(set([self.a, self.b_2, self.c]), set(result.rates))
 
         # if the order of the arguments is reversed, b_1 is in the combination
-        result = RateStructure.combine(self.cprs, self.uprs)
+        result = RateStructure.combine(other_rs, self.uprs)
         self.assertEqual(set([self.a, self.b_1, self.c]), set(result.rates))
 
-    def test_add_rsi(self):
+    def test_add_update_rsi(self):
         new_rsi_1 = RateStructureItem(
             rsi_binding='New RSI #1',
             description='Insert description here',
@@ -142,11 +172,10 @@ class RateStructureTest(unittest.TestCase):
             round_rule='',
         )
         self.uprs.add_rsi()
-        self.assertEqual(set([self.a, self.b_1, new_rsi_1]),
-                set(self.uprs.rates))
+        self.assertEqual([self.a, self.b_1, new_rsi_1], self.uprs.rates)
         self.uprs.add_rsi()
-        self.assertEqual(set([self.a, self.b_1, new_rsi_1, new_rsi_2]),
-                set(self.uprs.rates))
+        self.assertEqual([self.a, self.b_1, new_rsi_1, new_rsi_2],
+                self.uprs.rates)
 
     def test_validate(self):
         self.uprs.rates.append(self.a)
@@ -159,24 +188,32 @@ class RateStructureDAOTest(unittest.TestCase):
             quantity='1',
             rate='1',
             shared=True,
+            group='a',
+            has_charge=True,
         )
         self.rsi_b_shared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=True,
+            group='b',
+            has_charge=True,
         )
         self.rsi_b_unshared = RateStructureItem(
             rsi_binding='B',
             quantity='2',
             rate='2',
             shared=False,
+            group='c',
+            has_charge=False,
         )
         self.rsi_c_unshared = RateStructureItem(
             rsi_binding='C',
             quantity='3',
             rate='3',
             shared=False,
+            group='d',
+            has_charge=False,
         )
 
         # 3 rate structures, two containing B shared and one containing B
@@ -271,6 +308,8 @@ class RateStructureDAOTest(unittest.TestCase):
         u.service = 'gas'
         u.utility = 'washgas'
         u.rate_class = 'whatever'
+        # arbitrary 24-digit string
+        u.uprs_document_id = ''.join(str(i % 10) for i in xrange(24))
 
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the

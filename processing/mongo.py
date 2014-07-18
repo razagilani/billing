@@ -46,15 +46,6 @@ def utilbill_service_address_to_reebill_address(service_address):
     }
 
 
-def reebill_address_to_utilbill_address(address):
-    '''Transforms any reebill address to utility bill address.'''
-    return {
-            (key[3:-1] if key[-7:] == 'street1'
-                else ('postal_code' if key[3:] == 'postal_code'
-                    else key[3:])): value
-        for (key, value) in address.iteritems()
-    }
-
 # type-conversion functions
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
@@ -83,28 +74,6 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
         return [convert_datetimes(element, datetime_keys, ancestor_key) for
                 element in x]
     return x
-
-
-# NOTE deperecated; avoid using this if at all possible
-def flatten_chargegroups_dict(chargegroups):
-    flat_charges = []
-    for (chargegroup, charges) in chargegroups.items(): 
-        for charge in charges:
-            charge['chargegroup'] = chargegroup
-            flat_charges.append(charge)
-    return flat_charges
-
-# NOTE deperecated; avoid using this if at all possible
-def unflatten_chargegroups_list(flat_charges):
-    new_chargegroups = {}
-    for cg, charges in it.groupby(sorted(flat_charges, key=lambda
-            charge:charge['chargegroup']),
-            key=lambda charge:charge['chargegroup']):
-        new_chargegroups[cg] = []
-        for charge in charges:
-            del charge['chargegroup']
-            new_chargegroups[cg].append(charge)
-    return new_chargegroups
 
 # TODO make this a method of a utility bill document class when one exists
 def get_all_actual_registers_json(utilbill_doc):
@@ -367,133 +336,6 @@ def add_charge(utilbill_doc, group_name):
     })
 
 # TODO make this a method of a utility bill document class when one exists
-def compute_all_charges(utilbill_doc, uprs):
-    '''Updates "quantity", "rate", and "total" fields in all charges in this
-    utility bill document so they're correct according to the formulas in the
-    RSIs in the given rate structures.
-    '''
-    # catch any type errors in the rate structure document up front to avoid
-    # confusing error messages later
-    uprs.validate()
-
-    rate_structure = uprs
-    rsis = rate_structure.rates
-
-    # complain if any charge has an rsi_binding that does not match an RSI
-    _validate_charges(utilbill_doc, rate_structure)
-
-    # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
-    # (where NAME can be a register or the RSI_BINDING of some other charge).
-    # these are not valid python identifiers, so they can't be parsed as
-    # individual names. this dictionary maps names to "quantity"/"rate"/"total"
-    # to float values; RateStructureItem.compute_charge uses it to get values
-    # for the identifiers in the RSI formulas. it is initially filled only with
-    # register names, and the inner dictionary corresponding to each register
-    # name contains only "quantity".
-    identifiers = defaultdict(lambda:{})
-    for meter in utilbill_doc['meters']:
-        for register in meter['registers']:
-            identifiers[register['register_binding']]['quantity'] = \
-                    register['quantity']
-
-    # get dictionary mapping rsi_bindings names to the indices of the
-    # corresponding RSIs in an alphabetical list. 'rsi_numbers' assigns a number
-    # to each.
-    rsi_numbers = {rsi.rsi_binding: index for index, rsi in enumerate(rsis)}
-
-    # the dependencies of some RSIs' formulas on other RSIs form a
-    # DAG, which will be represented as a list of pairs of RSI numbers in
-    # 'rsi_numbers'. this list will be used to determine the order
-    # in which charges get computed. to build the list, find all identifiers
-    # in each RSI formula that is not a register name; every such identifier
-    # must be the name of an RSI, and its presence means the RSI whose
-    # formula contains that identifier depends on the RSI whose rsi_binding is
-    # the identifier.
-    dependency_graph = []
-    # the list 'independent_rsi_numbers' initially contains all RSI
-    # numbers, and by the end of the loop will contain only the numbers of
-    # RSIs that have no relationship to another one
-    independent_rsi_numbers = set(rsi_numbers.itervalues())
-    for rsi in rsis:
-        this_rsi_num = rsi_numbers[rsi.rsi_binding]
-
-        # for every node in the AST of the RSI's "quantity" and "rate"
-        # formulas, if the 'ast' module labels that node as an
-        # identifier, and its name does not occur in 'identifiers' above
-        # (which contains only register names), add the tuple (this
-        # charge's number, that charge's number) to 'dependency_graph'.
-        for identifier in rsi.get_identifiers():
-            if identifier in identifiers:
-                continue
-            try:
-                other_rsi_num = rsi_numbers[identifier]
-            except KeyError:
-                # TODO might want to validate identifiers before computing
-                # for clarity
-                raise FormulaError(('Unknown variable in formula of RSI '
-                        '"%s": %s') % (rsi.rsi_binding, identifier))
-            # a pair (x,y) means x precedes y, i.e. y depends on x
-            dependency_graph.append((other_rsi_num, this_rsi_num))
-            independent_rsi_numbers.discard(other_rsi_num)
-            independent_rsi_numbers.discard(this_rsi_num)
-
-    # charges that don't depend on other charges can be evaluated before ones
-    # that do.
-    evaluation_order = list(independent_rsi_numbers)
-
-    # 'evaluation_order' now contains only the indices of charges that don't
-    # have dependencies. topological sort the dependency graph to find an
-    # evaluation order that works for the charges that do have dependencies.
-    try:
-        evaluation_order.extend(tsort.topological_sort(dependency_graph))
-    except tsort.GraphError as g:
-        # if the graph contains a cycle, provide a more comprehensible error
-        # message with the charge numbers converted back to names
-        names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                g.args[1])
-        raise RSIError('Circular dependency: %s' % names_in_cycle)
-
-    assert len(evaluation_order) == len(rsis)
-
-    all_charges = sorted(utilbill_doc['charges'],
-            key=lambda charge: charge['rsi_binding'])
-
-    assert len(evaluation_order) == len(rsis)
-
-    # compute each charge, using its corresponding RSI, in the order described
-    # by 'evaluation_order'. every time a charge is computed, store the
-    # resulting "quantity", "rate", and "total" in 'identifiers' so it can be
-    # used in evaluating subsequent charges that depend on it.
-    for rsi_number in evaluation_order:
-        # compute the RSI regardless of whether there is really a charge
-        # corresponding to it
-        rsi = rsis[rsi_number]
-        quantity, rate = rsi.compute_charge(identifiers)
-        total = quantity * rate
-
-        # if there is a charge update its "quantity", "rate', and "total"
-        # fields
-        try:
-            charge = next(c for c in all_charges
-                    if c['rsi_binding'] == rsi.rsi_binding)
-        except StopIteration:
-            # this RSI has no charge corresponding to it
-            pass
-        else:
-            charge.update({
-                'quantity': quantity,
-                'rate': rate,
-                'total': total,
-                'description': rsi['description']
-            })
-
-        # update 'identifiers' so the results of this computation can be used
-        # as identifier values in other RSIs
-        identifiers[rsi.rsi_binding]['quantity'] = quantity
-        identifiers[rsi.rsi_binding]['rate'] = rate
-        identifiers[rsi.rsi_binding]['total'] = total
-
-# TODO make this a method of a utility bill document class when one exists
 def total_of_all_charges(utilbill_doc):
     '''Returns sum of "total" fields of all charges in the utility bill.
     '''
@@ -569,18 +411,6 @@ class MongoReebill(object):
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
-
-    def update_utilbill_subdocs(self, discount_rate):
-        '''Refreshes the "utilbills" sub-documents of the reebill document to
-        match the utility bill documents in _utilbills. (These represent the
-        "hypothetical" version of each utility bill.)
-        '''
-        # TODO maybe this should be done in compute_bill or a method called by
-        # it; see https://www.pivotaltracker.com/story/show/51581067
-        # also might want to merge this with compute_charges below.
-        self.reebill_dict['utilbills'] = \
-                [MongoReebill._get_utilbill_subdoc(utilbill_doc) for
-                utilbill_doc in self._utilbills]
 
     def compute_charges(self, uprs):
         '''Recomputes hypothetical versions of all charges based on the
@@ -675,85 +505,6 @@ class MongoReebill(object):
         year). Utility bills for this service should be ignored in the attach
         operation.'''
         return self.reebill_dict.get('suspended_services', [])
-
-    # # TODO remove, since this feature is dead
-    # def suspend_service(self, service):
-    #     '''Adds 'service' to the list of suspended services. Returns True iff
-    #     it was added, False if it already present.'''
-    #     service = service.lower()
-    #     if service not in [s.lower() for s in self.services]:
-    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
-    #
-    #     if 'suspended_services' not in self.reebill_dict:
-    #         self.reebill_dict['suspended_services'] = []
-    #     if service not in self.reebill_dict['suspended_services']:
-    #         self.reebill_dict['suspended_services'].append(service)
-
-    # # TODO remove, since this feature is dead
-    # def resume_service(self, service):
-    #     '''Removes 'service' from the list of suspended services. Returns True
-    #     iff it was removed, False if it was not present.'''
-    #     service = service.lower()
-    #     if service not in [s.lower() for s in self.services]:
-    #         raise ValueError('Unknown service %s: services are %s' % (service, self.services))
-    #
-    #     if service in self.reebill_dict.get('suspended_services', {}):
-    #         self.reebill_dict['suspended_services'].remove(service)
-    #         # might as well take out the key if the list is empty
-    #         if self.reebill_dict['suspended_services'] == []:
-    #             del self.reebill_dict['suspended_services']
-
-    # def set_hypothetical_register_quantity(self, register_binding,
-    #                 new_quantity):
-    #     ''' Sets the "quantity" field of the given register subdocument to the
-    #     given value, assumed to be in BTU for thermal and kW for PV.
-    #     When stored, this quantity is converted to the same unit as the
-    #     corresponding utility bill register.
-    #     '''
-    #     assert isinstance(new_quantity, float)
-    #
-    #     # NOTE this may choose the wrong utility bill register if there are
-    #     # multiple utility bills
-    #     assert len(self.reebill_dict['utilbills']) == 1
-    #
-    #     # look up corresponding utility bill register to get unit
-    #     utilbill = self._utilbills[0]
-    #     utilbill_register = next(chain.from_iterable((r for r in m['registers']
-    #             if r['register_binding'] == register_binding)
-    #             for m in utilbill['meters']))
-    #     unit = utilbill_register['quantity_units'].lower()
-    #
-    #     # Thermal: convert quantity to therms according to unit, and add it to
-    #     # the total
-    #     if unit == 'therms':
-    #         new_quantity /= 1e5
-    #     elif unit == 'btu':
-    #         # TODO physical constants must be global
-    #         pass
-    #     elif unit == 'kwh':
-    #         # TODO physical constants must be global
-    #         new_quantity /= 1e5
-    #         new_quantity /= .0341214163
-    #     elif unit == 'ccf':
-    #         # deal with non-energy unit "CCF" by converting to therms with
-    #         # conversion factor 1
-    #         # TODO: 28825375 - need the conversion factor for this
-    #         print ("Register in reebill %s-%s-%s contains gas measured "
-    #                "in ccf: energy value is wrong; time to implement "
-    #                "https://www.pivotaltracker.com/story/show/28825375") \
-    #               % (self.account, self.sequence, self.version)
-    #         new_quantity /= 1e5
-    #     # PV: Unit is kilowatt; no conversion needs to happen
-    #     elif unit == 'kwd':
-    #         pass
-    #     else:
-    #         raise ValueError('Unknown energy unit: "%s"' % unit)
-    #
-    #     all_hypo_registers = chain.from_iterable(u['shadow_registers'] for u
-    #             in self.reebill_dict['utilbills'])
-    #     register_subdoc = next(r for r in all_hypo_registers
-    #             if r['register_binding'] == register_binding)
-    #     register_subdoc['quantity'] = new_quantity
 
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
@@ -930,7 +681,7 @@ class ReebillDAO(object):
 
         return utilbill_doc
 
-    def _load_all_utillbills_for_reebill(self, session, reebill_doc):
+    def _load_all_utillbills_for_reebill(self, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
         object). Returns list of dictionaries with converted types.'''
@@ -985,8 +736,7 @@ class ReebillDAO(object):
             # documents are templates that do not go in MySQL)
             try:
                 if sequence != 0:
-                    max_version = self.state_db.max_version(session, account,
-                            sequence)
+                    max_version = self.state_db.max_version(account, sequence)
                     query.update({'_id.version': max_version})
                 mongo_doc = self.reebills_collection.find_one(query)
             except NoResultFound:
@@ -1004,7 +754,7 @@ class ReebillDAO(object):
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
         # load utility bills
-        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+        utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
 
         mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
         return mongo_reebill
@@ -1013,7 +763,7 @@ class ReebillDAO(object):
         if not account: return None
         # NOTE not using context manager (see comment in load_reebill)
         session = self.state_db.session()
-        sequences = self.state_db.listSequences(session, account)
+        sequences = self.state_db.listSequences(account)
         return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
     def save_reebill(self, reebill, force=False):
@@ -1023,9 +773,8 @@ class ReebillDAO(object):
         utility bills is forbidden unless 'force' is True (this should only be
         used for testing).
         '''
-        session = self.state_db.session()
-        issued = self.state_db.is_issued(session, reebill.account,
-                 reebill.sequence, version=reebill.version, nonexistent=False)
+        issued = self.state_db.is_issued(reebill.account, reebill.sequence,
+                    version=reebill.version, nonexistent=False)
         if issued and not force:
             raise IssuedBillError("Can't modify an issued reebill.")
 

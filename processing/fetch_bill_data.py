@@ -7,20 +7,23 @@ import sys
 from datetime import date, datetime,timedelta
 import csv
 from bisect import bisect_left
+import skyliner
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
-from billing.processing.exceptions import MissingDataError
+from billing.processing.exceptions import MissingDataError, RegisterError
+
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, reebill_dao):
+    def __init__(self, splinter, reebill_dao, logger):
         self._splinter = splinter
         self._reebill_dao = reebill_dao
+        self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
-            ignore_missing=True, verbose=False):
+            measure, ignore_missing=True, verbose=False, ):
         '''Returns a list of hourly billable-energy values from OLAP during the
         datetime range [start, end) (endpoints must whole hours). Values during
         unbillable annotations are removed. If 'skip_missing' is True, missing OLAP
@@ -47,16 +50,17 @@ class RenewableEnergyGetter(object):
                                 "for %s: OLAP document missing at %s") % (
                                 install.name, hour))
                     try:
-                        energy_sold = cube_doc.energy_sold
+                        attr_name = measure.lower().replace(' ', '_')
+                        data = getattr(cube_doc, attr_name)
                         # NOTE CubeDocument returns None if the measure doesn't
                         # exist, but this should be changed:
                         # https://www.pivotaltracker.com/story/show/35857625
-                        if energy_sold == None:
-                            raise AttributeError('energy_sold')
+                        if data == None:
+                            raise AttributeError('%s' %measure)
                     except AttributeError:
-                        raise MissingDataError(("Couldn't get renewable energy "
+                        raise MissingDataError(("Couldn't get %s "
                             "data for %s: OLAP document lacks energy_sold "
-                            "measure at %s") % (install.name, hour))
+                            "measure at %s") % (measure, install.name, hour))
                 except MissingDataError as e:
                     if ignore_missing:
                         print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
@@ -65,9 +69,9 @@ class RenewableEnergyGetter(object):
                         raise
                 else:
                     if verbose:
-                        print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
-                                install.name, hour, energy_sold)
-                    result.append(energy_sold)
+                        print >> sys.stderr, "%s's OLAP %s for %s: %s" % (
+                                install.name, measure, hour, data)
+                    result.append(data)
         return result
 
     def update_renewable_readings(self, olap_id, reebill, use_olap=True,
@@ -82,37 +86,44 @@ class RenewableEnergyGetter(object):
         utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
         start, end = mongo.meter_read_period(utilbill_doc)
-
         # get hourly "energy sold" values during this period
-        if use_olap:
-            timeseries = self.get_billable_energy_timeseries(install_obj,
-                    date_to_datetime(start), date_to_datetime(end),
-                    verbose=verbose)
-        else:
-            # NOTE if install_obj.get_billable_energy_timeseries() uses
-            # die_fast=False, this timeseries may be shorter than anticipated and
-            # energy_function below will fail.
-            # TODO support die_fast=False: 35547299
-            timeseries = [pair[1] for pair in
-                    install_obj.get_billable_energy_timeseries(
-                    date_to_datetime(start), date_to_datetime(end))]
+        for reading in reebill.readings:
 
-        # this function takes an hour and returns energy sold during that hour
-        def energy_function(day, hourrange):
-            total = 0
-            for hour in range(hourrange[0], hourrange[1] + 1):
-                index = timedelta_in_hours(date_to_datetime(day) +
+            if use_olap:
+                timeseries = self.get_billable_energy_timeseries(install_obj,
+                    date_to_datetime(start), date_to_datetime(end), reading.measure,
+                    verbose=verbose)
+            else:
+                # NOTE if install_obj.get_billable_energy_timeseries() uses
+                # die_fast=False, this timeseries may be shorter than anticipated and
+                # energy_function below will fail.
+                # TODO support die_fast=False: 35547299
+                timeseries = [pair[1] for pair in
+                    install_obj.get_billable_energy_timeseries(
+                    date_to_datetime(start), date_to_datetime(end), reading.measure)]
+
+            # this function takes an hour and returns energy sold during that hour
+            def energy_function(day, hourrange):
+                total = 0
+                for hour in range(hourrange[0], hourrange[1] + 1):
+                    index = timedelta_in_hours(date_to_datetime(day) +
                         timedelta(hours=hour)
                         - date_to_datetime(start))
-                total += timeseries[index]
-            return total
+                    total += timeseries[index]
+                return total
 
-        results = self._usage_data_to_virtual_register(reebill_doc,
+            results = self._usage_data_to_virtual_register(reebill_doc,
                 utilbill_doc, energy_function)
-        for binding, quantity in results:
-            assert isinstance(binding, basestring)
-            assert isinstance(quantity, (float, int))
-            reebill.set_renewable_energy_reading(binding, quantity)
+            for binding, quantity in results:
+                assert isinstance(binding, basestring)
+                assert isinstance(quantity, (float, int))
+                try:
+                    reebill.set_renewable_energy_reading(binding, quantity)
+                except RegisterError:
+                    # ignore any registers that exist in the utility bill
+                    # but don't have corresponding readings in the reebill
+                    self._logger.info(('In update_renewable_readings: skipped '
+                            'register "%s" in %s') % (binding, reebill))
 
     def fetch_interval_meter_data(self, reebill, csv_file,
             meter_identifier=None, timestamp_column=0, energy_column=1,

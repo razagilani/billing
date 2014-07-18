@@ -1,109 +1,58 @@
+
+
 from os.path import realpath, join, dirname
 import unittest
 from StringIO import StringIO
 import ConfigParser
-import logging
 import pymongo
 from bson import ObjectId
 import mongoengine
 import MySQLdb
 from datetime import date, datetime, timedelta
-from billing.util import dateutils
+from sqlalchemy.exc import UnboundExecutionError
+from billing import init_config, init_model
 from billing.processing import mongo
 from billing.processing import rate_structure2
-from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
+from billing.processing.process import Process
+from billing.processing.state import StateDB, Customer, Session
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
 from billing.processing.fetch_bill_data import RenewableEnergyGetter
-from billing.util.dictutils import deep_map
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
-from skyliner.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
+import logging
+
+
 
 class TestCaseWithSetup(unittest.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
 
-    def setUp(self):
-        '''Sets up "test" databases in Mongo and MySQL, and crates DAOs:
-        ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
-        NexusUtil.'''
-        # show long diffs for failed dict equality assertions
-        self.maxDiff = None
+    @staticmethod
+    def init_logging():
+        """Setup NullHandlers for test and root loggers.
+        """
+        testlogger = logging.getLogger('test')
+        testlogger.addHandler(logging.NullHandler())
+        testlogger.propagate = False
 
-        # clear SQLAlchemy mappers so StateDB can be instantiated again
-        #sqlalchemy.orm.clear_mappers()
+        rootlogger = logging.getLogger('root')
+        rootlogger.addHandler(logging.NullHandler())
+        rootlogger.propagate = False
 
-        # everything needed to create a Process object
-        config_file = StringIO('''[runtime]
-integrate_skyline_backend = true
-[billimages]
-bill_image_directory = /tmp/test/billimages
-show_reebill_images = true
-[billdb]
-billpath = /tmp/test/db-test/skyline/bills/
-database = test
-utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
-utility_bill_trash_directory = /tmp/test/db-test/skyline/utilitybills-deleted
-collection = reebills
-host = localhost
-port = 27017
-''')
-        self.config = ConfigParser.RawConfigParser()
-        self.config.readfp(config_file)
-        self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.splinter = MockSplinter(deterministic=True)
-        
-        # temporary hack to get a bill that's always the same
-        # this bill came straight out of mongo (except for .date() applied to
-        # datetimes)
-        ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
-        true, false = True, False
-
-        # customer database ("test" database has already been created with
-        # empty customer table)
-        statedb_config = {
-            'host': 'localhost',
-            'database': 'test',
-            'user': 'dev',
-            'password': 'dev'
-        }
-
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from reebill")
-        c.execute("delete from utilbill")
-        c.execute("delete from customer")
-        # (note that status_days_since is a view and you neither can nor need
-        # to delete from it)
-        mysql_connection.commit()
-
-        # insert one customer
-        self.state_db = StateDB(**statedb_config)
-        session = self.state_db.session()
-        # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34,
-                '000000000000000000000001', 'example@example.com')
-        session.add(customer)
+    @staticmethod
+    def insert_data():
+        session = Session()
+        session.execute("delete from charge")
+        session.execute("delete from payment")
+        session.execute("delete from reebill")
+        session.execute("delete from utilbill")
+        session.execute("delete from customer")
+        session.add(Customer('Test Customer', '99999', .12, .34,
+                            '000000000000000000000001', 'example@example.com'))
         session.commit()
-
-        # set up logger, but ingore all log output
-        logger = logging.getLogger('test')
-        # a logger is required to have >= 1 handler
-        logger.addHandler(logging.NullHandler())
-        # this is how you prevent the logger from printing to
-        # stdout/stderr, according to
-        # http://stackoverflow.com/questions/2266646/how-to-i-disable-and-re-enable-console-logging-in-python
-        logger.propagate = False
-
-        mongoengine.connect('test', host='localhost', port=27017,
-                alias='utilbills')
-        mongoengine.connect('test', host='localhost', port=27017,
-                alias='ratestructure')
 
         # insert template utilbill document for the customer in Mongo
         db = pymongo.Connection('localhost')['test']
@@ -112,6 +61,21 @@ port = 27017
                 utility='washgas', service='gas')
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
+
+    def init_dependencies(self):
+        """Configure connectivity to various other systems and databases.
+        """
+        from billing import config
+
+        logger = logging.getLogger('test')
+
+        self.state_db = StateDB(logger)
+        self.billupload = BillUpload(config, logger)
+
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
                 pymongo.Connection('localhost', 27017)['test'])
@@ -132,7 +96,7 @@ port = 27017
                 'olap': 'example-2',
                 'casualname': 'Example 2',
                 'primus': '1786 Massachusetts Ave.',
-                },
+            },
         ])
 
         bill_mailer = Mailer({
@@ -148,12 +112,30 @@ port = 27017
         }, self.state_db, self.reebill_dao,
                 logger)
 
-        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao)
+        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao, logger)
 
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
                 bill_mailer, renderer, ree_getter,
                 self.splinter, logger=logger)
+
+        mongoengine.connect('test', host='localhost', port=27017,
+                            alias='utilbills')
+        mongoengine.connect('test', host='localhost', port=27017,
+                            alias='ratestructure')
+
+    def setUp(self):
+        """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
+        ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
+        NexusUtil."""
+        TestCaseWithSetup.init_logging()
+        init_config('tstsettings.cfg')
+        init_model()
+        self.maxDiff = None # show detailed dict equality assertion diffs
+        self.init_dependencies()
+        TestCaseWithSetup.insert_data()
+
+        self.session = Session()
 
     def tearDown(self):
         '''Clears out databases.'''
@@ -161,14 +143,11 @@ port = 27017
         mongo_connection = pymongo.Connection('localhost', 27017)
         mongo_connection.drop_database('test')
 
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from reebill")
-        c.execute("delete from utilbill")
-        c.execute("delete from customer")
-        mysql_connection.commit()
+        # this helps avoid a "lock wait timeout exceeded" error when a test
+        # fails to commit the SQLAlchemy session
+        self.session.commit()
+        Session.remove()
+
 
 if __name__ == '__main__':
     unittest.main()

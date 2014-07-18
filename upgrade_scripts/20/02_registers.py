@@ -1,20 +1,21 @@
 '''Move data from "shadow_registers" subdocuments in Mongo to new "reading"
 table in MySQL.
 '''
+from billing import init_model
+init_model("mysql://root:root@localhost:3306/skyline_dev")
+
+
 from sys import stderr
 import pymongo
 import MySQLdb
-from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge
+from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Session
 from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 from itertools import chain
 
-sdb = StateDB(**{
-    'host': 'localhost',
-    'database': 'skyline_dev',
-    'user': 'dev',
-    'password': 'dev'
-})
+
+sdb = StateDB(Session)
+
 db = pymongo.Connection(host='localhost')['skyline-dev']
 rbd = ReebillDAO(sdb, db)
 rsd = RateStructureDAO()
@@ -36,6 +37,7 @@ create table if not exists reading (
     conventional_quantity float not null,
     renewable_quantity float not null,
     unit varchar(1000) not null,
+    aggregate_function varchar(15) default 'SUM',
     foreign key (reebill_id) references reebill (id) on delete cascade
 )''')
 
@@ -67,6 +69,15 @@ for reebill in s.query(ReeBill).join(Customer) \
             conventional_quantity = the_register['quantity']
             unit = the_register['quantity_units']
 
+        # for 10004, an account that has multiple meters that all measure
+        # total energy, only the first meter should  be used.
+        # see https://www.pivotaltracker.com/story/show/72656436
+        if reebill.customer.account == '10004' and \
+                sr['register_binding'] not in (None, 'REG_TOTAL'):
+            print 'INFO %s-%s-%s skipped register %s' % (
+                    reebill.customer.account, reebill.sequence, reebill.version,
+                    sr['register_binding'])
+            continue
         cur.execute('''insert into reading (reebill_id, register_binding,
                 measure, conventional_quantity, renewable_quantity, unit)
                 values (%s, '%s', '%s', %s, %s, '%s')''' % (

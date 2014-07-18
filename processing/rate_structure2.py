@@ -12,7 +12,7 @@ from mongoengine import DateTimeField, BooleanField
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
-# minimum normlized score for an RSI to get included in a probable UPRS
+# minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
 RSI_PRESENCE_THRESHOLD = 0.5
 
@@ -67,6 +67,20 @@ class RateStructureItem(EmbeddedDocument):
     round_rule = StringField()
 
     group = StringField(required=True, default='')
+
+    @classmethod
+    def duplicate(cls, other):
+        return RateStructureItem(
+            rsi_binding=other.rsi_binding,
+            description=other.description,
+            shared=other.shared,
+            has_charge=other.has_charge,
+            quantity=other.quantity,
+            quantity_units=other.quantity_units,
+            rate=other.rate,
+            round_rule=other.round_rule,
+            group=other.group,
+        )
 
     def __init__(self, *args, **kwargs):
         super(RateStructureItem, self).__init__(*args, **kwargs)
@@ -179,64 +193,27 @@ class RateStructureItem(EmbeddedDocument):
         '''String representation of this RateStructureItem to send as JSON to
         the browser.
         '''
-        return {
-            'id': self.rsi_binding,
-            'rsi_binding': self.rsi_binding,
-            'quantity': self.quantity,
-            'quantity_units': self.quantity_units,
-            'rate': self.rate,
-            'round_rule': self.round_rule,
-            'description': self.description,
-            'shared': self.shared,
-            'has_charge': self.has_charge,
-            'group': self.group,
-        }
+        result = {name: getattr(self, name) for name in self._fields}
+        result['id'] = self.rsi_binding
+        return result
 
-    def update(self, rsi_binding=None, quantity=None, quantity_units=None,
-                    rate=None, round_rule=None, description=None):
-        if rsi_binding is not None:
-            self.rsi_binding = rsi_binding
-        if quantity is not None:
-            self.quantity = quantity
-        if quantity_units is not None:
-            self.quantity_units = quantity_units
-        if rate is not None:
-            self.rate = rate
-        if round_rule is not None:
-            self.roundrule = round_rule
-        if description is not None:
-            self.description = description
+    def update(self, **fields):
+        for name, value in fields.iteritems():
+            # only set attributes that are names of valid fields
+            if name not in self._fields:
+                raise ValueError('Unknown field "%s"' % name)
+            setattr(self, name, value)
 
     def __repr__(self):
         return '<RSI %s: "%s", "%s">' % (self.rsi_binding, self.quantity,
                 self.rate)
 
     def __eq__(self, other):
-        return (
-                   self.rsi_binding,
-                   self.description,
-                   self.quantity,
-                   self.quantity_units,
-                   self.rate,
-                   self.round_rule
-               ) == (
-                   other.rsi_binding,
-                   other.description,
-                   other.quantity,
-                   other.quantity_units,
-                   other.rate,
-                   other.round_rule
-               )
+        return all(getattr(self, name) == getattr(other, name) for name in
+                self._fields)
 
     def __hash__(self):
-        return sum([
-            hash(self.rsi_binding),
-            hash(self.description),
-            hash(self.quantity),
-            hash(self.quantity_units),
-            hash(self.rate),
-            hash(self.round_rule),
-        ])
+        return sum(hash(value) for value in self._fields.values())
 
 
 class RateStructure(Document):
@@ -250,14 +227,14 @@ class RateStructure(Document):
             default=[])
 
     @classmethod
-    def combine(cls, uprs, cprs):
+    def combine(cls, a, b):
         '''Returns a RateStructure object not corresponding to any Mongo
-        document, containing RSIs from the two RateStructures 'uprs' and
-        'cprs'. Do not save this object in the database!
+        document, containing RSIs from the two RateStructures 'a' and 'b'.
+        'b' overrides 'a'.
         '''
-        combined_dict = uprs.rsis_dict()
-        combined_dict.update(cprs.rsis_dict())
-        return RateStructure(type='UPRS', rates=combined_dict.values())
+        combined_dict = a.rsis_dict()
+        combined_dict.update(b.rsis_dict())
+        return RateStructure(rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to
@@ -280,8 +257,6 @@ class RateStructure(Document):
         '''Document.validate() is overridden to make sure a RateStructure
         without unique rsi_bindings can't be saved.'''
         self._check_rsi_uniqueness()
-        # TODO also check that 'type' is "UPRS" or "CPRS"
-
         return super(RateStructure, self).validate(clean=clean)
 
     def add_rsi(self):
@@ -289,7 +264,7 @@ class RateStructure(Document):
         and returns the new RateStructureItem object.
         '''
         # generate a number to go in a unique "rsi_binding" string
-        all_rsi_bindings = set(rsi.rsi_binding for rsi in self.rates)
+        all_rsi_bindings = self.get_all_rsi_bindings()
         n = 1
         while ('New RSI #%s' % n) in all_rsi_bindings:
             n += 1
@@ -304,7 +279,6 @@ class RateStructure(Document):
             round_rule='',
         )
         self.rates.append(new_rsi)
-
         return new_rsi
 
     def get_rsi(self, rsi_binding):
@@ -314,6 +288,8 @@ class RateStructure(Document):
         self.validate()
         return next(rsi for rsi in self.rates if rsi.rsi_binding ==
                                                  rsi_binding)
+    def get_all_rsi_bindings(self):
+        return set(rsi.rsi_binding for rsi in self.rates)
 
 class RateStructureDAO(object):
     '''Loads and saves RateStructure objects. Also responsible for generating
@@ -413,16 +389,7 @@ class RateStructureDAO(object):
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
-                rsi_dict = closest_occurrence[binding][1]
-                rate, quantity = 0, 0
-                try:
-                    rate = rsi_dict.rate
-                    quantity = closest_occurrence[binding][1].quantity
-                except KeyError:
-                    if self.logger:
-                        self.logger.error('malformed RSI: %s' % rsi_dict)
-                result.append(RateStructureItem(rsi_binding=binding, rate=rate,
-                    quantity=quantity))
+                result.append(RateStructureItem.duplicate(closest_occurrence[binding][1]))
         return result
 
     def get_predicted_rate_structure(self, utilbill, utilbill_loader):
@@ -437,11 +404,11 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.
         '''
-        result = RateStructure(type='UPRS',
+        result = RateStructure(
                 rates=self._get_probable_shared_rsis(utilbill_loader,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
-                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+                ignore=lambda rs:rs.id == ObjectId(utilbill.uprs_document_id)))
         result.id = ObjectId()
 
         # add any RSIs from the predecessor's UPRS that are not already there
@@ -478,20 +445,6 @@ class RateStructureDAO(object):
             return self._load_rs_by_id(utilbill.uprs_document_id)
         return self._load_rs_by_id(reebill.uprs_id_for_utilbill(utilbill))
 
-    def load_cprs_for_utilbill(self, utilbill, reebill=None):
-        '''Loads and returns a CPRS document for the given state.Utilbill.
-
-        If 'reebill' is None, this is the "current" document, i.e. the one
-        whose _id is in the utilbill table.
-
-        If a ReeBill is given, this is the CPRS document for the version of the
-        utility bill associated with the current reebill--either the same as
-        the "current" one if the reebill is unissued, or a frozen one (whose
-        _id is in the utilbill_reebill table) if the reebill is issued.'''
-        if reebill is None or reebill.document_id_for_utilbill(utilbill) \
-            is None:
-            return self._load_rs_by_id(utilbill.cprs_document_id)
-        return self._load_rs_by_id(reebill.cprs_id_for_utilbill(utilbill))
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id (string).
         '''

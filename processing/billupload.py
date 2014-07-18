@@ -2,10 +2,8 @@
 import os
 import sys
 import errno
-import datetime
 from uuid import uuid1
 import re
-import subprocess
 from glob import glob
 import shutil
 
@@ -31,21 +29,13 @@ UTILBILL_EXTENSIONS = ['.pdf', '.html', '.htm', '.tif', '.tiff']
 # extension of reebills (there probably won't be more than one format)
 REEBILL_EXTENSION = 'pdf'
 
-# determines the format of bill image files
-# TODO put in config file
-IMAGE_EXTENSION = 'png'
-
 class BillUpload(object):
 
     def __init__(self, config, logger):
         #self.state_db = state_db
         self.config = config
 
-        # get bill image directory from config file
-        self.bill_image_directory = self.config.get('billimages',
-                'bill_image_directory')
-
-        # directory where utility bill images are stored after being "deleted"
+        # directory where utility bill files are stored after being "deleted"
         self.utilbill_trash_dir = self.config.get('billdb',
                 'utility_bill_trash_directory')
         
@@ -166,169 +156,11 @@ class BillUpload(object):
         return os.path.join(self.reebill_directory, account,
                 '%s_%.4d.pdf' % (account, sequence))
 
-    # TODO rename: ImagePath -> ImageName
-    def getUtilBillImagePath(self, utilbill, resolution):
-        '''Given an utility bill, renders that bill as
-        an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
-        file. (The caller is responsble for providing a URL to the client where
-        that image can be accessed.)'''
-        bill_file_path = self.get_utilbill_file_path(utilbill)
-        bill_file_name = os.path.split(bill_file_path)[1]
-        bill_file_name_without_extension = os.path.splitext(bill_file_name)[0]
-        extension = os.path.splitext(bill_file_name)[1][1:] # splitext includes '.'!
-
-        # name and path of bill image: name includes date so it's always unique
-        bill_image_name_without_extension = 'utilbill_' + \
-                utilbill.customer.account + '_' \
-                + bill_file_name_without_extension + '_' + \
-                str(datetime.datetime.today()).replace(' ', '') \
-                .replace('.','').replace(':','')
-        bill_image_path_without_extension = os.path.join(
-                self.bill_image_directory,
-                bill_image_name_without_extension)
-
-        # create bill image directory if it doesn't exist already
-        create_directory_if_necessary(self.bill_image_directory, self.logger)
-
-        # render the image
-        output_file = self.renderBillImage(bill_file_path, bill_image_path_without_extension,
-                extension, resolution)
-        
-        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
-        
-
-    # TODO rename: ImagePath -> ImageName
-    def getReeBillImagePath(self, account, sequence, resolution):
-        '''Given an account number and sequence number of a reebill, remnders
-        that bill as an image in self.bill_image_directory, and returns the
-        name of the image file. ("Sequence" means the position of that bill in
-        the sequence of bills issued to a particular customer.) The caller is
-        responsble for providing a URL to the client where that image can be
-        accessed.'''
-        # check account name (validate_account just checks that it's a string
-        # and that it matches a regex)
-        if not validate_account(account):
-            raise ValueError('invalid account name: "%s"' % account)
-
-        # check sequence number
-        if not validate_sequence_number(sequence):
-            raise ValueError('invalid sequence number: "%s"' % account)
-
-        # get path of reebill
-        reebill_file_path = os.path.join(self.reebill_directory, account, \
-                "%.5d_%.4d" % (int(account), int(sequence)) + '.' + REEBILL_EXTENSION)
-
-        # make sure it exists and can be read
-        if not os.access(reebill_file_path, os.R_OK):
-            error_text = 'Could not find the reebill "%s"' % reebill_file_path
-            raise IOError(error_text)
-
-        # name and path of bill image: name includes date so it's always unique
-        bill_image_name_without_extension = 'reebill_' + account + '_' \
-                + ("%.5d_%.4d" % (int(account), int(sequence))) + str(datetime.datetime.today()).replace(' ', '') \
-                .replace('.','').replace(':','')
-        bill_image_path_without_extension = os.path.join(
-                self.bill_image_directory,
-                bill_image_name_without_extension)
-
-        # create bill image directory if it doesn't exist already
-        create_directory_if_necessary(self.bill_image_directory, self.logger)
-        
-        # render the image
-        output_file = self.renderBillImage(reebill_file_path, 
-                bill_image_path_without_extension, REEBILL_EXTENSION,
-                resolution)
-
-        # return name of image file (the caller should know where to find the
-        # image file)
-        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
-
-
-    def renderBillImage(self, bill_file_path, \
-            bill_image_path_without_extension, extension, density):
-        '''Converts the file at [bill_file_path_without_extension].[extension]
-        to an image. Types are determined by
-        extensions. For non-raster input formats like PDF, the resolution of
-        the output image is determined by 'density' (in pixels per inch?).
-        (This requires the 'convert' command from ImageMagick, which itself
-        requires html2pdf to render html files, and the 'montage' command from
-        ImageMagick to join multi-page documents into a single image.) Raises
-        an exception if image rendering fails.'''
-
-        # TODO: this needs to be reimplemented so as to be command line command
-        # oriented It is not possible to make a generic function for N command
-        # line programs
-        output_path_without_extension = bill_image_path_without_extension + '-output'
-
-        if extension.lower() == "pdf":
-            convert_command = ['pdftoppm', '-png', '-rx', \
-                    str(density), '-ry', str(density), bill_file_path, \
-                    output_path_without_extension]
-        else:
-            # use the command-line version of ImageMagick to convert the file.
-            # ('-quiet' suppresses warning messages. formats are determined by
-            # extensions.)
-            # TODO: figure out how to really suppress warning messages; '-quiet'
-            # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
-            # truncating." when converting pdfs
-            convert_command = ['convert', '-quiet', '-density', \
-                    str(density), bill_file_path, \
-                    output_path_without_extension + '.' + IMAGE_EXTENSION]
-
-        convert_result = subprocess.Popen(convert_command, \
-                stderr=subprocess.PIPE)
-
-        # wait for 'convert' to finish (also sets convert_result.returncode)
-        convert_result.wait()
-
-        # if 'convert' failed, raise exception with the text that it printed to
-        # stderr
-        if convert_result.returncode != 0:
-            error_text = convert_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(convert_command), \
-                    error_text))
-
-        # if the original was a multi-page PDF, 'convert' may have produced
-        # multiple images named output_path_without_extension-0,1,2, etc, get names of those
-        # sorted() is necessary because glob doesn't guarantee order
-        bill_image_names = sorted(glob(output_path_without_extension \
-                + '*.' + IMAGE_EXTENSION))
-
-        # always use ImageMagick's 'montage' command to join them
-        # since pdftoppm always outputs a '-1' even if there is only one page
-        # convert will only output a '-N' if there are more than one page
-        #if (len(bill_image_names) > 1):
-        montage_command = ['montage'] + bill_image_names + \
-                ['-geometry', '+1+1', '-tile', '1x', \
-                bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
-        montage_result = subprocess.Popen(montage_command, \
-                stderr=subprocess.PIPE)
-    
-        # wait for 'montage' to finish (also sets
-        # montage_result.returncode)
-        montage_result.wait()
-    
-        # if 'montage' failed, raise exception with the text that
-        # it printed to stderr
-        if montage_result.returncode != 0:
-            error_text = montage_result.communicate()[1]
-            raise Exception('"%s" failed: %s' % (' '.join(montage_command),
-                error_text))
-    
-        # delete the individual page images now that they've been joined
-        for bill_image_name in bill_image_names:
-            try:
-                os.remove(bill_image_name)
-            except Exception as e:
-                # this is not critical, so if it fails, just log the error
-                self.logger.warning((('couldn\'t remove bill image file '
-                        '"%s": ') % bill_image_name) + str(e))
-
 def create_directory_if_necessary(path, logger):
     '''Creates the directory at 'path' if it does not exist and can be
     created.  If it cannot be created, logs the error using 'logger' and raises
     an exception.'''
-    # TODO logging should be handled by BillToolBridge; just raise an exception
+    # TODO logging should be handled by ReeBillWSGI; just raise an exception
     # here and let BTB catch it and log it
     try:
         os.makedirs(path)
@@ -350,21 +182,6 @@ def validate_account(account):
         # re.match() accepts only 'str' and 'unicode' types; if account is not
         # even a string, it's definitely not valid
         return False
-
-def format_date(date_string):
-    # TODO this function should go away when we stop passing dates into
-    # BillUpload as strings
-    # https://www.pivotaltracker.com/story/show/24869817
-    '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
-    formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
-    INPUT_DATE_FORMAT, raises an exception.'''
-    # convert to a time.struct_time object
-    try:
-        date_object = datetime.datetime.strptime(date_string, INPUT_DATE_FORMAT)
-    except:
-        raise
-    # convert back
-    return datetime.date.strftime(date_object, OUTPUT_DATE_FORMAT)
 
 def validate_sequence_number(sequence):
     '''Returns true iff the sequence number is valid (just checks against a

@@ -1,81 +1,52 @@
 '''
 File: wsgi.py
 '''
-import sys
-import os
-import pprint
+from os.path import dirname, realpath, join
+from os.path import dirname, realpath, join
 
-# TODO: 64957006
-# Dislike having this exceptionally useful code here, whose purpose is to 
-# display the runtime  configuration to the operator of the software for 
-# troubleshooting.  Not having this code here, renders it useless.
-sys.stdout = sys.stderr
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
+from billing import init_config, init_model, init_logging
+
+p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+init_logging(path=p)
+init_config(filename=p)
+init_model()
+from billing import config
+
+import sys
+import pprint
 
 import traceback
 import json
 import cherrypy
 import os
 import ConfigParser
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import inspect
 import logging
-import time
 import functools
 import md5
 from operator import itemgetter
 from StringIO import StringIO
 import pymongo
 import mongoengine
-from skyliner.splinter import Splinter
-from skyliner import mock_skyliner
+from billing.skyliner.splinter import Splinter
+from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
-from nexusapi.nexus_util import NexusUtil
+from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
-from billing.processing import process, state, fetch_bill_data as fbd, rate_structure2 as rs
-from billing.processing.state import UtilBill
+from billing.processing import process, state, fetch_bill_data as fbd,\
+        rate_structure2 as rs
+from billing.processing.state import UtilBill, Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing import calendar_reports
-from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
-
-# from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
-class Debugger:
-    def __init__(self, object):
-        self.__object = object
-
-    def __call__(self, *args, **kwargs):
-        import pdb, sys
-        debugger = pdb.Pdb()
-        debugger.use_rawinput = 0
-        debugger.reset()
-        sys.settrace(debugger.trace_dispatch)
-
-        try:
-            return self.__object(*args, **kwargs)
-        finally:
-            debugger.quitting = 1
-            sys.settrace(None)
-
-# decorator for stressing ajax asynchronicity
-def random_wait(target):
-    @functools.wraps(target)
-    def random_wait_wrapper(*args, **kwargs):
-        #t = random.random()
-        t = 0
-        time.sleep(t)
-        return target(*args, **kwargs)
-    return random_wait_wrapper
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -122,81 +93,29 @@ def json_exception(method):
     '''Decorator for exception handling in methods trigged by Ajax requests.'''
     @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
-        #print >> sys.stderr, '*************', method, args
         try:
             return method(btb_instance, *args, **kwargs)
         except Exception as e:
             return btb_instance.handle_exception(e)
     return wrapper
 
+def db_commit(method):
+    '''Decorator for committing a database transaction when the method returns.
+    This should be used only on methods that should be allowed to modify the
+    database.
+    '''
+    @functools.wraps(method)
+    def wrapper(btb_instance, *args, **kwargs):
+        # because of the thread-local session, there's no need to do anything
+        # before the method starts.
+        return method(btb_instance, *args, **kwargs)
+        Session().commit()
+    return wrapper
 
-# TODO 11454025 rename to ProcessBridge or something
-# TODO (object)?
-class BillToolBridge:
-    # TODO: clean up this comment on how to use sessions.
-    """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
-    """ and invoke bill processing code.  No business logic should reside here."""
-
-    """
-    Notes on using SQLAlchemy.  Since the ORM sits on top of the MySQL API, care must
-    be given to the underlying resource utilization.  Namely, sessions have to be
-    closed via a commit or rollback.
-
-    Also, SQLAlchemy may be lazy in the way it executes database operations.  Primary
-    keys may not be returned and set in an instance unless commit is called.  Therefore,
-    ensure that a commit is issued before using newly inserted instances.
-
-    The pattern of usage is as follows:
-    - declare a local variable that will point to a session at the top of a try block
-    - initialize this variable to None, so that if an exception is subsequently raised
-      the local will not be undefined.
-    - pass the session into a statedb function.
-    - commit the session once, immediately before returning out of the WSGI function
-    - if an exception was raised, and the local variable pointing to the session is
-      initialized, then rollback.
-    """
-
-    config = None
-
-    # TODO: refactor config and share it between btb and bt 15413411
-    def __init__(self):
-        self.config = ConfigParser.RawConfigParser()
-        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
-        if not self.config.read(config_file_path):
-            # TODO: 64958246
-            # can't log this because logger hasn't been created yet (log file
-            # name & associated info comes from config file)
-            print >> sys.stderr, 'Config file "%s" not found'%config_file_path
-            sys.exit(1)
-
-        self.config.read(config_file_path)
-
-        # logging:
-        # get log file name and format from config file
-        # TODO: if logging section of config file is malformed, choose default
-        # values and report the error to stderr
-        log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                self.config.get('log', 'log_file_name'))
-        log_format = self.config.get('log', 'log_format')
-        # make sure log file is writable
-        try:
-            open(log_file_path, 'a').close() # 'a' for append
-        except Exception as e:
-            # logging this error is impossible, so print to stderr
-            print >> sys.stderr, 'Log file path "%s" is not writable.' \
-                    % log_file_path
-            raise
-        # create logger
+class ReeBillWSGI(object):
+    def __init__(self, config, Session):
+        self.config = config        
         self.logger = logging.getLogger('reebill')
-        formatter = logging.Formatter(log_format)
-        handler = logging.FileHandler(log_file_path)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler) 
-        # loggers are created with level 'NOTSET' by default, except the root
-        # logger (this one), which is created with level 'WARNING'. to include
-        # messages like the initialization message at the end of this function,
-        # the level has to be changed.
-        self.logger.setLevel(logging.DEBUG)
 
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_web_host'))
@@ -206,13 +125,7 @@ class BillToolBridge:
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
-        self.state_db = state.StateDB(
-            host=self.statedb_config['host'],
-            password=self.statedb_config['password'],
-            database=self.statedb_config['database'],
-            user=self.statedb_config['user'],
-            logger=self.logger,
-        )
+        self.state_db = state.StateDB(logger=self.logger)
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
@@ -248,7 +161,7 @@ class BillToolBridge:
             self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
-        if self.config.getboolean('runtime', 'mock_skyliner'):
+        if self.config.get('runtime', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
@@ -281,7 +194,7 @@ class BillToolBridge:
                 },
             )
 
-        self.integrate_skyline_backend = self.config.getboolean('runtime',
+        self.integrate_skyline_backend = self.config.get('runtime',
                 'integrate_skyline_backend')
 
         # create a ReebillRenderer
@@ -292,7 +205,7 @@ class BillToolBridge:
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao)
+                self.reebill_dao, self.logger)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db, self.reebill_dao,
                 self.ratestructure_dao, self.billUpload, self.nexus_util,
@@ -301,7 +214,7 @@ class BillToolBridge:
 
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.getboolean('authentication', 'authenticate')
+        self.authentication_on = self.config.get('authentication', 'authenticate')
 
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
@@ -342,13 +255,11 @@ class BillToolBridge:
         return ju.dumps(data)
     
     @cherrypy.expose
-    @random_wait
     @authenticate
     def index(self, **kwargs):
         raise cherrypy.HTTPRedirect('/billentry.html')
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_reconciliation_data(self, start, limit, **kwargs):
@@ -368,7 +279,6 @@ class BillToolBridge:
             })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_estimated_revenue_data(self, start, limit, **kwargs):
@@ -384,7 +294,6 @@ class BillToolBridge:
             })
     
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def estimated_revenue_xls(self, **kwargs):
@@ -404,7 +313,6 @@ class BillToolBridge:
     # authentication functions
 
     @cherrypy.expose
-    @random_wait
     def login(self, username, password, rememberme='off', **kwargs):
         user = self.user_dao.load_user(username, password)
         if user is None:
@@ -515,19 +423,16 @@ class BillToolBridge:
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getUsername(self, **kwargs):
         '''This returns the username of the currently logged-in user--not to be
         confused with the identifier. The identifier is a unique id but the
         username is not.'''
-        with DBSession(self.state_db) as session:
-            return self.dumps({'success':True,
-                    'username': cherrypy.session['user'].username})
+        return self.dumps({'success':True,
+                'username': cherrypy.session['user'].username})
 
     @cherrypy.expose
-    @random_wait
     def logout(self):
 
         # delete remember me
@@ -549,7 +454,6 @@ class BillToolBridge:
     # UI configuration
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def ui_configuration(self, **kwargs):
@@ -578,7 +482,6 @@ class BillToolBridge:
     # bill processing
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_next_account_number(self, **kwargs):
@@ -586,99 +489,100 @@ class BillToolBridge:
         were created (highest existing account number + 1--we require accounts
         to be numbers, even though we always store them as arbitrary
         strings).'''
-        with DBSession(self.state_db) as session:
-            next_account = self.state_db.get_next_account_number(session)
-            return self.dumps({'success': True, 'account': next_account})
+        next_account = self.state_db.get_next_account_number()
+        return self.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def new_account(self, name, account, discount_rate, late_charge_rate,
             template_account, ba_addressee, ba_street, ba_city, ba_state,
             ba_postal_code, sa_addressee, sa_street, sa_city, sa_state,
             sa_postal_code, **kwargs):
-        with DBSession(self.state_db) as session:
-            billing_address = {
-                'addressee': ba_addressee,
-                'street': ba_street,
-                'city': ba_city,
-                'state': ba_state,
-                'postal_code': ba_postal_code,
-            }
-            service_address = {
-                'addressee': sa_addressee,
-                'street': sa_street,
-                'city': sa_city,
-                'state': sa_state,
-                'postal_code': sa_postal_code,
-            }
+        billing_address = {
+            'addressee': ba_addressee,
+            'street': ba_street,
+            'city': ba_city,
+            'state': ba_state,
+            'postal_code': ba_postal_code,
+        }
+        service_address = {
+            'addressee': sa_addressee,
+            'street': sa_street,
+            'city': sa_city,
+            'state': sa_state,
+            'postal_code': sa_postal_code,
+        }
 
-            self.process.create_new_account(session, account, name,
-                    discount_rate, late_charge_rate, billing_address,
-                    service_address, template_account)
+        self.process.create_new_account(account, name, discount_rate,
+                late_charge_rate, billing_address,
+                service_address, template_account)
 
-            # record account creation
-            # (no sequence associated with this)
-            journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
-                    account)
+        # record account creation
+        # (no sequence associated with this)
+        journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
+                account)
 
-            # get next account number to send it back to the client so it
-            # can be shown in the account-creation form
-            next_account = self.state_db.get_next_account_number(session)
-            return self.dumps({'success': True, 'nextAccount': next_account})
+        # get next account number to send it back to the client so it
+        # can be shown in the account-creation form
+        next_account = self.state_db.get_next_account_number()
+        return self.dumps({'success': True, 'nextAccount': next_account})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def roll(self, account, **kwargs):
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        with DBSession(self.state_db) as session:
-            reebill = self.process.roll_reebill(session,account,
-                    start_date=start_date,
-                    integrate_skyline_backend=self.integrate_skyline_backend)
+        reebill = self.process.roll_reebill(account, start_date=start_date)
 
-            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, reebill.sequence)
-            # Process.roll includes attachment
-            # TODO "attached" is no longer a useful event;
-            # see https://www.pivotaltracker.com/story/show/55044870
-            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, reebill.sequence, reebill.version)
-            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, reebill.sequence, reebill.version)
+        journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
+                account, reebill.sequence)
+        # Process.roll includes attachment
+        # TODO "attached" is no longer a useful event;
+        # see https://www.pivotaltracker.com/story/show/55044870
+        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+            account, reebill.sequence, reebill.version)
+        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+            account, reebill.sequence, reebill.version)
 
         return self.dumps({'success': True, 'account':account,
-                           'sequence': reebill.sequence})
+                'sequence': reebill.sequence})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
+    def update_readings(self, account, sequence, **kwargs):
+        self.process.update_reebill_readings(account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
+        if self.config.get('runtime', 'integrate_skyline_backend') is False:
             raise ValueError("OLTP is not integrated")
-        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+        if self.config.get('runtime', 'integrate_nexus') is False:
             raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
-
-        with DBSession(self.state_db) as session:
-            self.process.bind_renewable_energy(session, account, sequence)
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                    account, sequence, reebill.version)
+        self.process.bind_renewable_energy(account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
+        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, sequence, reebill.version)
         return self.dumps({'success': True})
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def upload_interval_meter_csv(self, account, sequence, csv_file,
             timestamp_column, timestamp_format, energy_column, energy_unit, register_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
@@ -692,142 +596,114 @@ class BillToolBridge:
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     # TODO clean this up and move it out of BillToolBridge
     # https://www.pivotaltracker.com/story/show/31404685
     def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         sequence = int(sequence)
-        with DBSession(self.state_db) as session:
-            self.process.compute_reebill(session,account,sequence,'max')
-            return self.dumps({'success': True})
+        self.process.compute_reebill(account,sequence,'max')
+        return self.dumps({'success': True})
     
         
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def mark_utilbill_processed(self, utilbill, processed, **kwargs):
         '''Takes a utilbill id and a processed-flag and applies they flag to the bill '''
         utilbill, processed = int(utilbill), bool(int(processed))
-        with DBSession(self.state_db) as session:
-            self.process.update_utilbill_metadata(session, utilbill, processed=processed)
-            return self.dumps({'success': True})
+        self.process.update_utilbill_metadata(utilbill, processed=processed)
+        return self.dumps({'success': True})
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        self.process.update_sequential_account_info(account, sequence,
+                processed=processed)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def compute_utility_bill(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            self.process.compute_utility_bill(session, utilbill_id)
-            return self.dumps({'success': True})
+        self.process.compute_utility_bill(utilbill_id)
+        return self.dumps({'success': True})
     
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def has_utilbill_predecessor(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            predecessor=self.process.has_utilbill_predecessor(session, utilbill_id)
-            return self.dumps({'success': True, 'has_predecessor':predecessor})
+        predecessor=self.process.has_utilbill_predecessor(utilbill_id)
+        return self.dumps({'success': True, 'has_predecessor':predecessor})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def refresh_charges(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            self.process.refresh_charges(session, utilbill_id)
-            return self.dumps({'success': True})
+        self.process.refresh_charges(utilbill_id)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def regenerate_rs(self, utilbill_id, **args):
-        with DBSession(self.state_db) as session:
-            self.process.regenerate_uprs(session, utilbill_id)
-            # NOTE utility bill is not automatically computed after rate
-            # structure is changed. nor are charges updated to match.
-            return self.dumps({'success': True})
+        self.process.regenerate_uprs(utilbill_id)
+        # NOTE utility bill is not automatically computed after rate
+        # structure is changed. nor are charges updated to match.
+        return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
+        if not self.config.get('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            # TODO 22598787 - branch awareness
-            self.renderer.render(
-                session,
-                account,
-                sequence,
-                self.config.get("billdb", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
-                #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
-                False
-            )
-            return self.dumps({'success': True})
+        self.renderer.render(account, sequence,
+            self.config.get("billdb", "billpath")+ "%s" % account,
+            "%.5d_%.4d.pdf" % (account, sequence), False )
+        return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def issue_and_mail(self, account, sequence, recipients, apply_corrections,
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
+        result = self.process.issue_and_mail(cherrypy.session['user'], account,
+                sequence, recipients, apply_corrections)
+        return self.dumps(result)
 
-        with DBSession(self.state_db) as session:
-            # If there are unissued corrections and the user has not confirmed
-            # to issue them, we will return a list of those corrections and the
-            # sum of adjustments that have to be made so the client can create
-            # a confirmation message
-            unissued_corrections = self.process.get_unissued_corrections(session, account)
-            if len(unissued_corrections) > 0 and not apply_corrections:
-                    return self.dumps({'success': False,
-                        'corrections': [c[0] for c in unissued_corrections],
-                        'adjustment': sum(c[2] for c in unissued_corrections)})
-
-            # The user has confirmed to issue unissued corrections.
-            # Let's issue
-            if len(unissued_corrections) > 0:
-                assert apply_corrections is True
-                self.process.issue_corrections(session, account, sequence)
-                for cor in unissued_corrections:
-                    journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'],account, sequence,
-                        self.state_db.max_version(session, account, cor),
-                        applied_sequence=sequences[0])
-            self.process.compute_reebill(session, account, sequence)
-            self.process.issue(session, account, sequence)
-            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                                                     account, sequence, 0)
-
-            # Let's mail!
-            # Recepients can be a comma seperated list of email addresses
-            recipient_list = [rec.strip() for rec in recipients.split(',')]
-            self.process.mail_reebills(session, account, [sequence],
-                                       recipient_list)
-            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                                                account, sequence, recipients)
-
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
+    def issue_processed_and_mail(self, apply_corrections, **kwargs):
+        apply_corrections = (apply_corrections == 'true')
+        self.process.issue_processed_and_mail(cherrypy.session['user'],
+                apply_corrections)
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def mail(self, account, sequences, recipients, **kwargs):
         # Go from comma-separated e-mail addresses to a list of e-mail addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
@@ -839,67 +715,59 @@ class BillToolBridge:
         else:
             sequences = [int(sequences)]
 
-        with DBSession(self.state_db) as session:
-            self.process.mail_reebills(session, account, sequences,
-                    recipient_list)
+        self.process.mail_reebills(account, sequences, recipient_list)
 
-            # journal mailing of every bill
-            for sequence in sequences:
-                journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], account, sequence, recipients)
+        # journal mailing of every bill
+        for sequence in sequences:
+            journal.ReeBillMailedEvent.save_instance(
+                    cherrypy.session['user'], account, sequence, recipients)
 
-            return self.dumps({'success': True})
+        return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def listAccounts(self, **kwargs):
-        with DBSession(self.state_db) as session:
-            accounts = self.state_db.listAccounts(session)
-            rows = [{'account': account, 'name': full_name} for account,
-                    full_name in zip(accounts,
-                    self.process.full_names_of_accounts(session, accounts))]
-            return self.dumps({'success': True, 'rows':rows})
+        accounts = self.state_db.listAccounts()
+        rows = [{'account': account, 'name': full_name} for account,
+                full_name in zip(accounts,
+                self.process.full_names_of_accounts(accounts))]
+        return self.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def retrieve_account_status(self, start, limit ,**kwargs):
         '''Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab.'''
+        start, limit = int(start), int(limit)
 
-        with DBSession(self.state_db) as session:
-            start, limit = int(start), int(limit)
+        filtername = kwargs.get('filtername', None)
+        if filtername is None:
+            filtername = cherrypy.session['user'].preferences.get('filtername','')
 
-            filtername = kwargs.get('filtername', None)
-            if filtername is None:
-                filtername = cherrypy.session['user'].preferences.get('filtername','')
+        sortcol = kwargs.get('sort', None)
+        if sortcol is None:
+            sortcol = cherrypy.session['user'].preferences.get('default_account_sort_field',None)
 
-            sortcol = kwargs.get('sort', None)
-            if sortcol is None:
-                sortcol = cherrypy.session['user'].preferences.get('default_account_sort_field',None)
+        sortdir = kwargs.get('dir', None)
+        if sortdir is None:
+            sortdir = cherrypy.session['user'].preferences.get('default_account_sort_direction',None)
 
-            sortdir = kwargs.get('dir', None)
-            if sortdir is None:
-                sortdir = cherrypy.session['user'].preferences.get('default_account_sort_direction',None)
+        if sortdir == 'ASC':
+            sortreverse = False
+        else:
+            sortreverse = True
 
-            if sortdir == 'ASC':
-                sortreverse = False
-            else:
-                sortreverse = True
+        count, rows = self.process.list_account_status(start,limit,filtername,sortcol,sortreverse)
 
-            count, rows = self.process.list_account_status(session,start,limit,filtername,sortcol,sortreverse)
+        cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
+        cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
+        self.user_dao.save_user(cherrypy.session['user'])
 
-            cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
-            cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
-            self.user_dao.save_user(cherrypy.session['user'])
-
-            return self.dumps({'success': True, 'rows':rows, 'results':count})
+        return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
@@ -908,24 +776,19 @@ class BillToolBridge:
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        #write out spreadsheet(s)
-        with DBSession(self.state_db) as session:
-            buf = StringIO()
-            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            # write excel spreadsheet into a StringIO buffer (file-like)
-            buf = StringIO()
-            exporter.export_reebill_details(session, buf)
+        # write excel spreadsheet into a StringIO buffer (file-like)
+        buf = StringIO()
+        exporter.export_reebill_details(buf)
 
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = \
-                'attachment; filename=%s.xls' % \
-                datetime.now().strftime("%Y%m%d")
-            return buf.getvalue()
+        # set MIME type for file download
+        cherrypy.response.headers['Content-Type'] = 'application/excel'
+        cherrypy.response.headers['Content-Disposition'] = \
+                'attachment; filename=%s.xls'%datetime.now().strftime("%Y%m%d")
+        return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
@@ -935,27 +798,25 @@ class BillToolBridge:
         'account' is not given, or all utility bills for the account(s) filtered
         by time, if 'start_date' and/or 'end_date' are given.
         '''
-        with DBSession(self.state_db) as session:
-            if account is not None:
-                spreadsheet_name = account + '.xls'
-            else:
-                spreadsheet_name = 'all_accounts.xls'
+        if account is not None:
+            spreadsheet_name = account + '.xls'
+        else:
+            spreadsheet_name = 'all_accounts.xls'
 
-            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            # write excel spreadsheet into a StringIO buffer (file-like)
-            buf = StringIO()
-            exporter.export_account_charges(session, buf, account, start_date=start_date,
-                            end_date=end_date)
+        # write excel spreadsheet into a StringIO buffer (file-like)
+        buf = StringIO()
+        exporter.export_account_charges(buf, account, start_date=start_date,
+                        end_date=end_date)
 
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+        # set MIME type for file download
+        cherrypy.response.headers['Content-Type'] = 'application/excel'
+        cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+        return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate
     @json_exception
     def excel_energy_export(self, account=None, **kwargs):
@@ -964,46 +825,27 @@ class BillToolBridge:
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        with DBSession(self.state_db) as session:
-            if account is not None:
-                spreadsheet_name = account + '.xls'
-            else:
-                spreadsheet_name = 'xbill_accounts.xls'
+        if account is not None:
+            spreadsheet_name = account + '.xls'
+        else:
+            spreadsheet_name = 'brokerage_accounts.xls'
 
-            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            # write excel spreadsheet into a StringIO buffer (file-like)
-            buf = StringIO()
-            exporter.export_energy_usage(session, buf, account)
+        # write excel spreadsheet into a StringIO buffer (file-like)
+        buf = StringIO()
+        exporter.export_energy_usage(buf, account)
 
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+        # set MIME type for file download
+        cherrypy.response.headers['Content-Type'] = 'application/excel'
+        cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate
-    @json_exception
-    def daily_average_energy_xls(self, account, **kwargs):
-        '''Responds with an excel spreadsheet containing daily average energy
-        over all time for the given account.'''
-        with DBSession(self.state_db) as session:
-            buf = StringIO()
-            # TODO: include all services
-            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='gas')
-
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = ('attachment;'
-                    ' filename=%s_daily_average_energy.xls') % (account)
-            return buf.getvalue()
+        return buf.getvalue()
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def rsi(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
         '''AJAX request handler for "Shared Rate Structure Items" grid.
@@ -1014,188 +856,183 @@ class BillToolBridge:
         contain data to create
         '''
         rows = kwargs.get('rows')
-        with DBSession(self.state_db) as session:
-            rate_structure = self.process.get_rs_doc(session, utilbill_id,
-                    'uprs', reebill_sequence=reebill_sequence,
-                    reebill_version=reebill_version)
-            rates = rate_structure.rates
+        if xaction == "read":
+            return json.dumps({'success': True,
+                    'rows': self.process.get_rsis_json(utilbill_id), })
 
-            if xaction == "read":
-                #return self.dumps({'success': True, 'rows':rates})
-                return json.dumps({'success': True, 'rows':[rsi.to_dict()
-                        for rsi in rates]})
+        # only xaction "read" is allowed when reebill_sequence/version
+        # arguments are given
+        if (reebill_sequence, reebill_version) != (None, None):
+            raise IssuedBillError('Issued reebills cannot be modified')
 
-            # only xaction "read" is allowed when reebill_sequence/version
-            # arguments are given
-            if (reebill_sequence, reebill_version) != (None, None):
-                raise IssuedBillError('Issued reebills cannot be modified')
+        rows = json.loads(rows)
 
-            rows = json.loads(rows)
+        if 'total' in rows:
+            del rows['total']
 
-            if 'total' in rows:
-                del rows['total']
+        if xaction == "update":
+            # single edit comes in not in a list
+            if type(rows) is dict: rows = [rows]
 
-            if xaction == "update":
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
+            # process list of edits
+            for row in rows:
+                # extract "id" field from the JSON because all remaining
+                # key-value pairs are fields to update in the RSI
+                id = row.pop('id')
 
+                # Fix boolean values that are interpreted as strings
+                for key in ('shared', 'has_charge'):
+                    if row[key] in ("false", False):
+                        row[key] = False
+                    else:
+                        row[key] = True
 
-                # process list of edits
-                for row in rows:
-                    # extract "id" field from the JSON because all remaining
-                    # key-value pairs are fields to update in the RSI
-                    id = row.pop('id')
+                # "id" field contains the old rsi_binding, which is used
+                # to look up the RSI; "rsi_binding" field contains the
+                # new one that will replace it (if there is one)
+                rsi_binding = self.process.update_rsi(utilbill_id, id, row)
 
-                    # Fix boolean values that are interpreted as strings
-                    for key in ('shared', 'has_charge'):
-                        if row[key] in ("false", False):
-                            row[key] = False
-                        else:
-                            row[key] = True
+                # re-add "id" field which was removed above (using new
+                # rsi_binding)
+                # TODO this is ugly; find a better way
+                row['id'] = rsi_binding
 
-                    # "id" field contains the old rsi_binding, which is used
-                    # to look up the RSI; "rsi_binding" field contains the
-                    # new one that will replace it (if there is one)
-                    rsi = rate_structure.get_rsi(id)
-                    for key, value in row.iteritems():
-                        assert hasattr(rsi, key)
-                        setattr(rsi, key, value)
+        if xaction == "create":
+            self.process.add_rsi(utilbill_id)
 
-                    # re-add "id" field which was removed above (using new
-                    # rsi_binding)
-                    # TODO this is ugly; find a better way
-                    row['id'] = rsi.rsi_binding
+        if xaction == "destroy":
+            if type(rows) is unicode: rows = [rows]
+            for row in rows:
+                self.process.delete_rsi(utilbill_id, row)
 
-            if xaction == "create":
-                new_rsi = rate_structure.add_rsi()
-
-            if xaction == "destroy":
-                if type(rows) is unicode: rows = [rows]
-                # process list of removals
-                for row in rows:
-                    rsi = rate_structure.get_rsi(row)
-                    rates.remove(rsi)
-
-            rate_structure.save()
-            rows = [rsi.to_dict() for rsi in rate_structure.rates]
-            return json.dumps({'success': True, 'rows':rows, 'total':len(rows) })
+        rsis_json = self.process.get_rsis_json(utilbill_id)
+        return json.dumps({'success': True, 'rows': rsis_json,
+                'total':len(rsis_json)})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def payment(self, xaction, account, **kwargs):
-        with DBSession(self.state_db) as session:
-            if xaction == "read":
-                payments = self.state_db.payments(session, account)
-                return self.dumps({'success': True,
-                    'rows': [payment.to_dict() for payment in payments]})
-            elif xaction == "update":
-                rows = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
-                # process list of edits
-                for row in rows:
-                    self.state_db.update_payment(
-                        session,
-                        row['id'],
-                        row['date_applied'],
-                        row['description'],
-                        row['credit'],
-                    )
-                return self.dumps({'success':True})
-            elif xaction == "create":
-                # date applied is today by default (can be edited later)
-                today = datetime.utcnow().date()
-                new_payment = self.state_db.create_payment(session, account,
-                        today, "New Entry", 0)
-                # Payment object lacks "id" until row is inserted in database
-                session.flush()
-                return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
-            elif xaction == "destroy":
-                rows = json.loads(kwargs["rows"])
-                # single delete comes in not in a list
-                if type(rows) is int: rows = [rows]
-                for oid in rows:
-                    self.state_db.delete_payment(session, oid)
-                return self.dumps({'success':True})
+        if xaction == "read":
+            payments = self.state_db.payments(account)
+            return self.dumps({'success': True,
+                'rows': [payment.to_dict() for payment in payments]})
+        elif xaction == "update":
+            rows = json.loads(kwargs["rows"])
+            # single edit comes in not in a list
+            if type(rows) is dict: rows = [rows]
+            # process list of edits
+            for row in rows:
+                self.process.update_payment(
+                    row['id'],
+                    row['date_applied'],
+                    row['description'],
+                    row['credit'],
+                )
+            return self.dumps({'success':True})
+        elif xaction == "create":
+            # date applied is today by default (can be edited later)
+            today = datetime.utcnow().date()
+            new_payment = self.process.create_payment(account,
+                    today, "New Entry", 0)
+            # Payment object lacks "id" until row is inserted in database
+            Session().flush()
+            return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
+        elif xaction == "destroy":
+            rows = json.loads(kwargs["rows"])
+            # single delete comes in not in a list
+            if type(rows) is int: rows = [rows]
+            for oid in rows:
+                self.process.delete_payment(oid)
+            return self.dumps({'success':True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def reebill(self, xaction, start, limit, account, sort = u'sequence',
             dir=u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         start, limit = int(start), int(limit)
-        with DBSession(self.state_db) as session:
-            if xaction == "read":
-                # this is inefficient but length is always <= 120 rows
-                rows = sorted(self.process.get_reebill_metadata_json(session,
-                        account), key=itemgetter(sort))
-                if dir.lower() == 'desc':
-                    rows.reverse()
+        if xaction == "read":
+            # this is inefficient but length is always <= 120 rows
+            rows = sorted(self.process.get_reebill_metadata_json(account),
+                    key=itemgetter(sort))
+            if dir.lower() == 'desc':
+                rows.reverse()
 
-                # "limit" means number of rows to return, so the real limit is
-                # start + limit
-                result = rows[start : start + limit]
-                return self.dumps({'success': True, 'rows': result,
-                        'results':len(rows)})
+            # "limit" means number of rows to return, so the real limit is
+            # start + limit
+            result = rows[start : start + limit]
+            return self.dumps({'success': True, 'rows': result,
+                    'results':len(rows)})
 
-            elif xaction == "update":
-                return self.dumps({'success':False})
+        elif xaction == "update":
+            return self.dumps({'success':False})
 
-            elif xaction == "create":
-                return self.dumps({'success':False})
+        elif xaction == "create":
+            return self.dumps({'success':False})
 
-            elif xaction == "destroy":
-                # we do not delete reebills through reebillStore's remove()
-                # method, because Ext believes in a 1-1 mapping between grid
-                # rows and things, but "deleting" a reebill does not
-                # necessarily mean that a row disappears from the grid.
-                raise ValueError("Use delete_reebill instead!")
+        elif xaction == "destroy":
+            # we do not delete reebills through reebillStore's remove()
+            # method, because Ext believes in a 1-1 mapping between grid
+            # rows and things, but "deleting" a reebill does not
+            # necessarily mean that a row disappears from the grid.
+            raise ValueError("Use delete_reebill instead!")
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def issuable(self, xaction, **kwargs):
         '''Return a list of the issuable reebills'''
-        with DBSession(self.state_db) as session:
-            if xaction == 'read':
-                start = int(kwargs['start'])
-                limit = int(kwargs['limit'])
-                sort = kwargs['sort']
-                direction = kwargs['dir']
+        if xaction == 'read':
+            start = int(kwargs['start'])
+            limit = int(kwargs['limit'])
+            sort = kwargs['sort']
+            direction = kwargs['dir']
 
-                try:
-                    allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
-                except:
-                    allowable_diff = UserDAO.default_user.preferences['difference_threshold']
+            try:
+                allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
+            except:
+                allowable_diff = UserDAO.default_user.preferences['difference_threshold']
 
-                issuable_reebills = self.process.get_issuable_reebills_dict(session)
-                for reebill_info in issuable_reebills:
-                    reebill_info['id'] = reebill_info['account'],
-                    reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
-                    reebill_info['matching'] = reebill_info['difference'] < allowable_diff
+            issuable_reebills = self.process.get_issuable_reebills_dict()
+            for reebill_info in issuable_reebills:
+                reebill_info['id'] = reebill_info['account'],
+                reebill_info['difference'] = abs(reebill_info['reebill_total']-reebill_info['util_total'])
+                if reebill_info['processed'] == True:
+                    reebill_info['group'] = 'Processed ReeBills'
+                elif reebill_info['difference'] < allowable_diff:
+                    reebill_info['group'] = 'ReeBills with Matching Totals'
+                else:
+                    reebill_info['group'] = 'ReeBills with Non Matching Totals'
 
-                issuable_reebills.sort(key=lambda d: d[sort], reverse = (direction == 'DESC'))
-                issuable_reebills.sort(key=lambda d: d['matching'], reverse = True)
-                return self.dumps({'success': True,
-                                   'rows': issuable_reebills[start:start+limit],
-                                   'total': len(issuable_reebills)})
-            elif xaction == 'update':
-                row = json.loads(kwargs["rows"])
-                self.process.update_bill_email_recipient(session,
-                                                         row['account'],
-                                                         row['sequence'],
-                                                         row['mailto'])
-                return self.dumps({'success':True})
+            # sort by 'sort' column, then by 'group' to
+            # get rows sorted by 'sort' column within groups
+            issuable_reebills.sort(key=itemgetter(sort),
+                    reverse = (direction == 'DESC'))
+            def group_order(row):
+                result = ['Processed ReeBills', 'ReeBills with Matching Totals',
+                          'ReeBills with Non Matching Totals'].index(
+                        row['group'])
+                assert result >= 0
+                return result
+            issuable_reebills.sort(key=group_order)
+
+            return self.dumps({'success': True,
+                               'rows': issuable_reebills[start:start+limit],
+                               'total': len(issuable_reebills)})
+        elif xaction == 'update':
+            row = json.loads(kwargs["rows"])
+            self.process.update_bill_email_recipient(row['account'],
+                                                     row['sequence'],
+                                                     row['mailto'])
+            return self.dumps({'success':True})
             
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def delete_reebill(self, account, sequences, **kwargs):
         '''Delete the unissued version of each reebill given, assuming that one
         exists.'''
@@ -1203,61 +1040,55 @@ class BillToolBridge:
             sequences = map(int, sequences)
         else:
             sequences = [int(sequences)]
-        with DBSession(self.state_db) as session:
-            for sequence in sequences:
-                deleted_version = self.process.delete_reebill(session,
-                        account, sequence)
-            # deletions must all have succeeded, so journal them
-            for sequence in sequences:
-                journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
-                        account, sequence, deleted_version)
+        for sequence in sequences:
+            deleted_version = self.process.delete_reebill(account, sequence)
+        # deletions must all have succeeded, so journal them
+        for sequence in sequences:
+            journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                    account, sequence, deleted_version)
 
         return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def new_reebill_version(self, account, sequence, **args):
         '''Creates a new version of the given reebill (only one bill, not all
         successors as in original design).'''
         sequence = int(sequence)
-        with DBSession(self.state_db) as session:
-            # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
+        # Process will complain if new version is not issued
+        version = self.process.new_version(account, sequence)
 
-            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence, new_reebill.version)
-            # NOTE ReebillBoundEvent is no longer saved in the journal because
-            # new energy data are not retrieved unless the user explicitly
-            # chooses to do it by clicking "Bind RE&E"
+        journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                account, sequence, version)
+        # NOTE ReebillBoundEvent is no longer saved in the journal because
+        # new energy data are not retrieved unless the user explicitly
+        # chooses to do it by clicking "Bind RE&E"
 
-            # client doesn't do anything with the result (yet)
-            return self.dumps({'success': True, 'sequences':
-                    [new_reebill.sequence]})
+        # client doesn't do anything with the result (yet)
+        return self.dumps({'success': True, 'sequences': [sequence]})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def account_info(self, account, sequence, **args):
         '''Handles AJAX request for "Sequential Account Information form.
         '''
-        with DBSession(self.state_db) as session:
-            sequence = int(sequence)
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            return self.dumps({
-                'success': True,
-                'billing_address': reebill.billing_address.to_dict(),
-                'service_address': reebill.service_address.to_dict(),
-                'discount_rate': reebill.discount_rate,
-                'late_charge_rate': reebill.late_charge_rate,
-            })
+        sequence = int(sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
+        return self.dumps({
+            'success': True,
+            'billing_address': reebill.billing_address.to_dict(),
+            'service_address': reebill.service_address.to_dict(),
+            'discount_rate': reebill.discount_rate,
+            'late_charge_rate': reebill.late_charge_rate,
+        })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def set_account_info(self, account, sequence,
         discount_rate, late_charge_rate,
         ba_addressee, ba_street, ba_city, ba_state, ba_postal_code,
@@ -1273,21 +1104,18 @@ class BillToolBridge:
         assert discount_rate >= 0 and discount_rate <= 1
         assert late_charge_rate >= 0 and late_charge_rate <= 1
 
-        with DBSession(self.state_db) as session:
-            self.process.update_sequential_account_info(session, account,
-                    sequence, discount_rate=discount_rate,
-                    late_charge_rate=late_charge_rate,
-                    ba_addressee=ba_addressee, ba_street=ba_street,
-                    ba_city=ba_city, ba_state=ba_state,
-                    ba_postal_code=ba_postal_code,
-                    sa_addressee=sa_addressee, sa_street=sa_street,
-                    sa_city=sa_city, sa_state=sa_state,
-                    sa_postal_code=sa_postal_code)
-            return self.dumps({'success': True})
-
+        self.process.update_sequential_account_info(account, sequence,
+                discount_rate=discount_rate,
+                late_charge_rate=late_charge_rate,
+                ba_addressee=ba_addressee, ba_street=ba_street,
+                ba_city=ba_city, ba_state=ba_state,
+                ba_postal_code=ba_postal_code,
+                sa_addressee=sa_addressee, sa_street=sa_street,
+                sa_city=sa_city, sa_state=sa_state,
+                sa_postal_code=sa_postal_code)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def get_reebill_services(self, account, sequence, **args):
@@ -1307,53 +1135,49 @@ class BillToolBridge:
         })
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
-        with DBSession(self.state_db) as session:
-            charges_json = self.process.get_utilbill_charges_json(session,
-                    utilbill_id, reebill_sequence=reebill_sequence,
-                    reebill_version=reebill_version)
-            if xaction == "read":
-                return self.dumps({'success': True, 'rows': charges_json,
-                        'total':len(charges_json)})
-
-            # only xaction "read" is allowed when reebill_sequence/version
-            # arguments are given
-            if (reebill_sequence, reebill_version) != (None, None):
-                raise IssuedBillError('Issued reebills cannot be modified')
-
-            if xaction == "update":
-                row = json.loads(kwargs["rows"])[0]
-                # single edit comes in a list containing a dict;
-                # multiple would be in list of
-                # dicts but that should be impossible
-                assert isinstance(row, dict)
-
-                rsi_binding = row.pop('id')
-                self.process.update_charge(session, utilbill_id, rsi_binding,
-                        row)
-
-            if xaction == "create":
-                row = json.loads(kwargs["rows"])[0]
-                assert isinstance(row, dict)
-                group_name = row['group']
-                self.process.add_charge(session, utilbill_id, group_name)
-
-            if xaction == "destroy":
-                rsi_binding = json.loads(kwargs["rows"])[0]
-                self.process.delete_charge(session, utilbill_id, rsi_binding)
-
-            charges_json = self.process.get_utilbill_charges_json(session,
-                    utilbill_id)
+        charges_json = self.process.get_utilbill_charges_json(
+                utilbill_id, reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        if xaction == "read":
             return self.dumps({'success': True, 'rows': charges_json,
-                                'total':len(charges_json)})
+                    'total':len(charges_json)})
+
+        # only xaction "read" is allowed when reebill_sequence/version
+        # arguments are given
+        if (reebill_sequence, reebill_version) != (None, None):
+            raise IssuedBillError('Issued reebills cannot be modified')
+
+        if xaction == "update":
+            row = json.loads(kwargs["rows"])[0]
+            # single edit comes in a list containing a dict;
+            # multiple would be in list of
+            # dicts but that should be impossible
+            assert isinstance(row, dict)
+
+            rsi_binding = row.pop('id')
+            self.process.update_charge(utilbill_id, rsi_binding, row)
+
+        if xaction == "create":
+            row = json.loads(kwargs["rows"])[0]
+            assert isinstance(row, dict)
+            group_name = row['group']
+            self.process.add_charge(utilbill_id, group_name)
+
+        if xaction == "destroy":
+            rsi_binding = json.loads(kwargs["rows"])[0]
+            self.process.delete_charge(utilbill_id, rsi_binding)
+
+        charges_json = self.process.get_utilbill_charges_json(utilbill_id)
+        return self.dumps({'success': True, 'rows': charges_json,
+                            'total':len(charges_json)})
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def hypotheticalCharges(self, xaction, service, account, sequence, **kwargs):
@@ -1361,17 +1185,16 @@ class BillToolBridge:
         if not xaction == "read":
             raise NotImplementedError('Cannot create, edit or destroy charges'
                                       ' from this grid.')
-        with DBSession(self.state_db) as session:
-                charges=self.process.get_hypothetical_matched_charges(
-                        session, account, sequence)
-                return self.dumps({'success': True, 'rows': charges,
-                                   'total':len(charges)})
+            charges=self.process.get_hypothetical_matched_charges(
+                    account, sequence)
+            return self.dumps({'success': True, 'rows': charges,
+                               'total':len(charges)})
 
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def utilbill_registers(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
         '''Handles AJAX requests to read and write data for the "Utility Bill
@@ -1390,169 +1213,173 @@ class BillToolBridge:
         if xaction not in ('create', 'read', 'update', 'destroy'):
             raise ValueError('Unknown xaction "%s"' % xaction)
 
-        with DBSession(self.state_db) as session:
-            utilbill_doc = self.process.get_utilbill_doc(session, utilbill_id,
-                    reebill_sequence=reebill_sequence,
-                    reebill_version=reebill_version)
+        if xaction == 'read':
+            # get dictionaries describing all registers in all utility bills
+            registers_json = self.process.get_registers_json(utilbill_id,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
 
-            if xaction == 'read':
-                # get dictionaries describing all registers in all utility bills
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
 
-                result = {'success': True, "rows": registers_json,
-                        'total': len(registers_json)}
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
 
-                # client sends "current_selected_id" to identify which row is
-                # selected in the grid; if this key is present, server must also
-                # include "current_selected_id" in the response to indicate that
-                # the same row is still selected
-                if 'current_selected_id' in kwargs:
-                    result['current_selected_id'] = kwargs['current_selected_id']
-
-                return self.dumps(result)
-
-            # only xaction "read" is allowed when reebill_sequence/version
-            # arguments are given
-            if (reebill_sequence, reebill_version) != (None, None):
-                raise IssuedBillError('Issued reebills cannot be modified')
-
-            # the "rows" argument is only given when xaction is "create", "update",
-            # or "destroy". it's a list if there are multiple rows (though in
-            # practice there is only one because only one row of the grid can be
-            # created/edited/deleted at a time).
-            rows = json.loads(kwargs['rows'])
-            if not isinstance(rows, list):
-                rows = [rows]
-
-            if xaction == 'create':
-                for row in rows:
-                    validate_id_components(row.get('meter_id',''),
-                            row.get('register_id',''))
-
-                    # create the new register (ignoring return value)
-                    mongo.new_register(utilbill_doc, row.get('meter_id', None),
-                            row.get('register_id', None))
-                   
-                # get dictionaries describing all registers in all utility bills
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
-
-                result = {'success': True, "rows": registers_json,
-                        'total': len(registers_json)}
-
-                # client sends "current_selected_id" to identify which row is
-                # selected in the grid; if this key is present, server must also
-                # include "current_selected_id" in the response to indicate that
-                # the same row is still selected
-                if 'current_selected_id' in kwargs:
-                    result['current_selected_id'] = kwargs['current_selected_id']
-
-            if xaction == 'update':
-                # for update, client sends a JSON representation of the grid rows,
-                # containing only the fields to be updated, plus an "id" field that
-                # contains the service, meter id, and register id BEFORE the user
-                # edited them.
-
-                result = {'success': True}
-
-                for row in rows:
-                    # extract keys needed to identify the register being updated
-                    # from the "id" field sent by the client
-                    _, orig_meter_id, orig_reg_id = row['id'].split('/')
-
-                    validate_id_components(row.get('meter_id',''),
-                            row.get('register_id',''))
-
-                    # all arguments should be strings, except "quantity",
-                    # which should be a number
-                    if 'quantity' in row:
-                        assert isinstance(row['quantity'], (float, int))
-
-                    # modify the register using every field in 'row' except "id"
-                    # (getting back values necessary to tell the client which row
-                    # should be selected)
-                    del row['id']
-                    new_meter_id, new_reg_id = mongo.update_register(
-                            utilbill_doc, orig_meter_id, orig_reg_id, **row)
-
-                    # if this row was selected before, tell the client it should
-                    # still be selected, specifying the row by its new "id"
-                    if kwargs.get('current_selected_id') == '%s/%s/%s' % (
-                            utilbill_id, orig_meter_id, orig_reg_id):
-                        result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
-                                new_meter_id, new_reg_id)
-
-                registers_json = mongo.get_all_actual_registers_json(utilbill_doc)
-                result.update({
-                    'rows': registers_json,
-                    'total': len(registers_json)
-                })
-
-            if xaction == 'destroy':
-                assert len(rows) == 1
-                id_of_row_to_delete = rows[0]
-
-                # extract keys needed to identify the register being updated
-                _, orig_meter_id, orig_reg_id = id_of_row_to_delete\
-                        .split('/')
-                mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
-
-                # NOTE there is no "current_selected_id" because the formerly
-                # selected row was deleted
-                registers_json = mongo.get_all_actual_registers_json(
-                        utilbill_doc)
-                result = {'success': True, "rows": registers_json,
-                        'total': len(registers_json)}
-
-            self.reebill_dao.save_utilbill(utilbill_doc)
             return self.dumps(result)
 
-    #
+        # only xaction "read" is allowed when reebill_sequence/version
+        # arguments are given
+        if (reebill_sequence, reebill_version) != (None, None):
+            raise IssuedBillError('Issued reebills cannot be modified')
+
+        # the "rows" argument is only given when xaction is "create", "update",
+        # or "destroy". it's a list if there are multiple rows (though in
+        # practice there is only one because only one row of the grid can be
+        # created/edited/deleted at a time).
+        rows = json.loads(kwargs['rows'])
+        if not isinstance(rows, list):
+            rows = [rows]
+
+        if xaction == 'create':
+            for row in rows:
+                validate_id_components(row.get('meter_id',''),
+                        row.get('register_id',''))
+
+                # create the new register (ignoring return value)
+                self.process.new_register(utilbill_id, row,
+                                        reebill_sequence=reebill_sequence,
+                                        reebill_version=reebill_version)
+
+
+            # get dictionaries describing all registers in all utility bills
+            registers_json = self.process.get_registers_json(utilbill_id,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
+
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
+
+            # client sends "current_selected_id" to identify which row is
+            # selected in the grid; if this key is present, server must also
+            # include "current_selected_id" in the response to indicate that
+            # the same row is still selected
+            if 'current_selected_id' in kwargs:
+                result['current_selected_id'] = kwargs['current_selected_id']
+
+        if xaction == 'update':
+            # for update, client sends a JSON representation of the grid rows,
+            # containing only the fields to be updated, plus an "id" field that
+            # contains the service, meter id, and register id BEFORE the user
+            # edited them.
+
+            result = {'success': True}
+
+            for row in rows:
+                # extract keys needed to identify the register being updated
+                # from the "id" field sent by the client
+                _, orig_meter_id, orig_reg_id = row['id'].split('/')
+
+                validate_id_components(row.get('meter_id',''),
+                        row.get('register_id',''))
+
+                # all arguments should be strings, except "quantity",
+                # which should be a number
+                if 'quantity' in row:
+                    assert isinstance(row['quantity'], (float, int))
+
+                # modify the register using every field in 'row' except "id"
+                # (getting back values necessary to tell the client which row
+                # should be selected)
+                del row['id']
+                new_meter_id, new_reg_id = self.process.update_register(
+                        utilbill_id, orig_meter_id, orig_reg_id,
+                        row)
+
+                # if this row was selected before, tell the client it should
+                # still be selected, specifying the row by its new "id"
+                if kwargs.get('current_selected_id') == '%s/%s/%s' % (
+                        utilbill_id, orig_meter_id, orig_reg_id):
+                    result['current_selected_id'] = '%s/%s/%s' % (utilbill_id,
+                            new_meter_id, new_reg_id)
+
+            registers_json = self.process.get_registers_json(utilbill_id,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
+            result.update({
+                'rows': registers_json,
+                'total': len(registers_json)
+            })
+
+        if xaction == 'destroy':
+            assert len(rows) == 1
+            id_of_row_to_delete = rows[0]
+
+            # extract keys needed to identify the register being updated
+            _, orig_meter_id, orig_reg_id = id_of_row_to_delete\
+                    .split('/')
+            self.process.delete_register(utilbill_id, orig_meter_id, orig_reg_id,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
+
+            # NOTE there is no "current_selected_id" because the formerly
+            # selected row was deleted
+            registers_json = self.process.get_registers_json(utilbill_id,
+                                            reebill_sequence=reebill_sequence,
+                                            reebill_version=reebill_version)
+            result = {'success': True, "rows": registers_json,
+                    'total': len(registers_json)}
+
+        return self.dumps(result)
+
+#
     ################
 
     ################
     # Handle utility bill upload
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def upload_utility_bill(self, account, service, begin_date, end_date,
             total_charges, file_to_upload, **args):
         '''Handles AJAX request to create a new utility bill from the "Upload
         Utility Bill" form. If 'file_to_upload' None, the utility bill state
         will be 'SkylineEstimated'; otherwise it will be 'Complete'. Currently,
         there is no way to specify a 'UtilityEstimated' state in the UI.'''
-        with DBSession(self.state_db) as session:
-            # pre-process parameters
-            service = service.lower()
-            total_charges_as_float = float(total_charges)
-            begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
-            end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            UtilBill.validate_utilbill_period(begin_date_as_date,
-                    end_date_as_date)
+        # pre-process parameters
+        service = service.lower()
+        total_charges_as_float = float(total_charges)
+        begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
+        end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        UtilBill.validate_utilbill_period(begin_date_as_date,
+                end_date_as_date)
 
-            # NOTE 'file_to_upload.file' is always a CherryPy object; if no
-            # file was specified, 'file_to_upload.file' will be None
+        # NOTE 'file_to_upload.file' is always a CherryPy object; if no
+        # file was specified, 'file_to_upload.file' will be None
 
-            self.process.upload_utility_bill(session, account, service,
-                    begin_date_as_date,
-                    end_date_as_date, file_to_upload.file,
-                    file_to_upload.filename if file_to_upload else None,
-                    total=total_charges_as_float,
-                    state=UtilBill.Complete if file_to_upload.file else \
-                            UtilBill.SkylineEstimated,
-                    # determine these values from previous bills because
-                    # user does not want to specify them explicitly
-                    utility=None,
-                    rate_class=None)
+        self.process.upload_utility_bill(account, service,
+                begin_date_as_date,
+                end_date_as_date, file_to_upload.file,
+                file_to_upload.filename if file_to_upload else None,
+                total=total_charges_as_float,
+                state=UtilBill.Complete if file_to_upload.file else \
+                        UtilBill.SkylineEstimated,
+                # determine these values from previous bills because
+                # user does not want to specify them explicitly
+                utility=None,
+                rate_class=None)
 
-            return self.dumps({'success': True})
+        return self.dumps({'success': True})
 
     #
     ################
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
@@ -1564,9 +1391,9 @@ class BillToolBridge:
         return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def save_journal_entry(self, account, sequence, entry, **kwargs):
         '''Saves the text 'entry' as a Note in the journal for 'account'.
         Sequence is optional in case the entry applies to the account as whole,
@@ -1582,138 +1409,91 @@ class BillToolBridge:
 
  
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def last_utilbill_end_date(self, account, **kwargs):
         '''Returns date of last utilbill.'''
-        with DBSession(self.state_db) as session:
-            the_date = self.state_db.last_utilbill_end_date(session, account)
-            # the_date will be None (converted to JSON as null) if there are no
-            # utilbills for this account
-            the_datetime = None
-            if the_date is not None:
-                # TODO: a pure date gets converted to JSON as a datetime with
-                # midnight as its time, causing problems in the browser
-                # (https://www.pivotaltracker.com/story/show/23569087). temporary
-                # fix is to make it a datetime with a later time.
-                the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
-            return self.dumps({'success':True, 'date': the_datetime})
+        the_date = self.state_db.last_utilbill_end_date(account)
+        # the_date will be None (converted to JSON as null) if there are no
+        # utilbills for this account
+        the_datetime = None
+        if the_date is not None:
+            # TODO: a pure date gets converted to JSON as a datetime with
+            # midnight as its time, causing problems in the browser
+            # (https://www.pivotaltracker.com/story/show/23569087). temporary
+            # fix is to make it a datetime with a later time.
+            the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
+        return self.dumps({'success':True, 'date': the_datetime})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
-    # TODO: 25650643 explicit params - security risk and other 
+    @db_commit
+    # TODO: 25650643 explicit params - security risk and other
     def utilbill_grid(self, xaction, **kwargs):
         '''Handles AJAX requests to read and write data for the grid of utility
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
         wants to read data and "update" when a cell in the grid was edited.'''
-        with DBSession(self.state_db) as session:
-            if xaction == 'read':
-                account = kwargs['account']
-                start, limit = int(kwargs['start']), int(kwargs['limit'])
-                rows, total_count = self.process.get_all_utilbills_json(
-                        session, account, start, limit)
-                return self.dumps({'success': True, 'rows':rows,
-                        'results': total_count})
+        if xaction == 'read':
+            account = kwargs['account']
+            start, limit = int(kwargs['start']), int(kwargs['limit'])
+            rows, total_count = self.process.get_all_utilbills_json(
+                    account, start, limit)
+            return self.dumps({'success': True, 'rows':rows,
+                    'results': total_count})
 
-            elif xaction == 'update':
-                # ext sends a JSON object if there is one row, a list of
-                # objects if there are more than one. but in this case only one
-                # row can be edited at a time
-                row = ju.loads(kwargs['rows'])
+        elif xaction == 'update':
+            # ext sends a JSON object if there is one row, a list of
+            # objects if there are more than one. but in this case only one
+            # row can be edited at a time
+            row = ju.loads(kwargs['rows'])
 
-                # convert JSON key/value pairs into arguments for
-                # Process.update_utilbill_metadata below
-                update_args = {}
-                for k, v in row.iteritems():
-                    # NOTE Ext-JS uses '' (empty string) to represent not
-                    # changing a value. yes, that means you can never set a
-                    # value to ''.
-                    if v == '':
-                        pass
-                    elif k in ('period_start', 'period_end'):
-                        update_args[k] = datetime.strptime(v,
-                                ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                    elif k == 'service':
-                        update_args[k] = v.lower()
-                    elif k != 'id':
-                        update_args[k] = v
+            # convert JSON key/value pairs into arguments for
+            # Process.update_utilbill_metadata below
+            update_args = {}
+            for k, v in row.iteritems():
+                # NOTE Ext-JS uses '' (empty string) to represent not
+                # changing a value. yes, that means you can never set a
+                # value to ''.
+                if v == '':
+                    pass
+                elif k in ('period_start', 'period_end'):
+                    update_args[k] = datetime.strptime(v,
+                            ISO_8601_DATETIME_WITHOUT_ZONE).date()
+                elif k == 'service':
+                    update_args[k] = v.lower()
+                elif k != 'id':
+                    update_args[k] = v
 
-                self.process.update_utilbill_metadata(session, row['id'],
-                        **update_args)
+            self.process.update_utilbill_metadata(row['id'], **update_args)
 
-                return self.dumps({'success': True})
+            return self.dumps({'success': True})
 
-            elif xaction == 'create':
-                # creation happens via upload_utility_bill
-                # TODO move here?
-                raise ValueError('utilbill_grid does not accept xaction "create"')
-            elif xaction == 'destroy':
-                # "rows" is either a single id or a list of ids
-                account = kwargs["account"]
-                rows = ju.loads(kwargs['rows'])
-                if type(rows) is int:
-                    ids = [rows]
-                else:
-                    ids = rows
+        elif xaction == 'create':
+            # creation happens via upload_utility_bill
+            # TODO move here?
+            raise ValueError('utilbill_grid does not accept xaction "create"')
+        elif xaction == 'destroy':
+            # "rows" is either a single id or a list of ids
+            account = kwargs["account"]
+            rows = ju.loads(kwargs['rows'])
+            if type(rows) is int:
+                ids = [rows]
+            else:
+                ids = rows
 
-                # delete each utility bill, and log the deletion in the journal
-                # with the path where the utility bill file was moved
-                for utilbill_id in ids:
-                    utilbill, deleted_path = self.process\
-                            .delete_utility_bill_by_id(session, utilbill_id)
-                    journal.UtilBillDeletedEvent.save_instance(
-                            cherrypy.session['user'], account,
-                            utilbill.period_start, utilbill.period_end,
-                            utilbill.service, deleted_path)
-                return self.dumps({'success': True})
+            # delete each utility bill, and log the deletion in the journal
+            # with the path where the utility bill file was moved
+            for utilbill_id in ids:
+                utilbill, deleted_path = self.process\
+                        .delete_utility_bill_by_id(utilbill_id)
+                journal.UtilBillDeletedEvent.save_instance(
+                        cherrypy.session['user'], account,
+                        utilbill.period_start, utilbill.period_end,
+                        utilbill.service, deleted_path)
+            return self.dumps({'success': True})
 
     @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def getUtilBillImage(self, utilbill_id):
-        # TODO: put url here, instead of in billentry.js?
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        with DBSession(self.state_db) as session:
-            result = self.process.get_utilbill_image_path(session, utilbill_id,
-                                                          resolution)
-        return self.dumps({'success':True, 'imageName':result})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def getReeBillImage(self, account, sequence, resolution, **args):
-        if not self.config.getboolean('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'errors': {'reason':
-                    'Reebill images have been turned off.'}})
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        result = self.billUpload.getReeBillImagePath(account, sequence,
-                resolution)
-        return self.dumps({'success':True, 'imageName':result})
-    
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def getBillImageResolution(self, **kwargs):
-        resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-        return self.dumps({'success':True, 'resolution': resolution})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def setBillImageResolution(self, resolution, **kwargs):
-        cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
-        self.user_dao.save_user(cherrypy.session['user'])
-        return self.dumps({'success':True})
-
-    @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getDifferenceThreshold(self, **kwargs):
@@ -1721,9 +1501,9 @@ class BillToolBridge:
         return self.dumps({'success':True, 'threshold': threshold})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
+    @db_commit
     def setDifferenceThreshold(self, threshold, **kwargs):
         threshold=float(threshold)
         if not threshold or threshold <= 0:
@@ -1733,7 +1513,6 @@ class BillToolBridge:
         return self.dumps({'success':True})
     
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def getFilterPreference(self, **kwargs):
@@ -1741,7 +1520,6 @@ class BillToolBridge:
         return self.dumps({'success':True, 'filtername': filtername})
 
     @cherrypy.expose
-    @random_wait
     @authenticate_ajax
     @json_exception
     def setFilterPreference(self, filtername, **kwargs):
@@ -1751,11 +1529,13 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
-# TODO: place instantiation in main, so this module can be loaded without btb being instantiated
-bridge = BillToolBridge()
+
 
 if __name__ == '__main__':
-    # configure CherryPy
+    class Root(object):
+        pass
+    root = Root()
+    root.reebill = ReeBillWSGI(config, Session)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1768,21 +1548,12 @@ if __name__ == '__main__':
         },
     }
     cherrypy.config.update({
-        'server.socket_host': bridge.config.get("http", "socket_host"),
-        'server.socket_port': int(bridge.config.get("http", "socket_port")),
-    })
-    #cherrypy.quickstart(bridge, "/", config = local_conf)
-    cherrypy.quickstart(bridge,
-            # cherrypy doc refers to this as 'script_name': "a string
-            # containing the 'mount point' of the application'", i.e. the URL
-            # corresponding to the method 'index' above and prefixed to the
-            # URLs corresponding to the other methods
-            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
-            "/",
-            config = local_conf)
+        'server.socket_host': root.reebill.config.get("http", "socket_host"),
+        'server.socket_port': root.reebill.config.get("http", "socket_port")})
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
+    cherrypy.quickstart(root, config=local_conf)
 else:
     # WSGI Mode
     cherrypy.config.update({
@@ -1791,8 +1562,5 @@ else:
         'tools.sessions.timeout': 240
     })
 
-    if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
-        cherrypy.engine.start(blocking=False)
-        atexit.register(cherrypy.engine.stop)
-
+    bridge = ReeBillWSGI(config, Session)
     application = cherrypy.Application(bridge, script_name=None, config=None)
