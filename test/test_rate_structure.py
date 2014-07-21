@@ -113,8 +113,7 @@ class RSITest(unittest.TestCase):
         self.assertIsNone(quantity)
         self.assertIsNone(rate)
         self.assertIsInstance(error, FormulaSyntaxError)
-        self.assertEqual("A quantity formula can't be empty",
-                error.message)
+        self.assertEqual("quantity formula can't be empty", error.message)
 
         # rate formula can't be empty
         bad_rsi.quantity = '1'
@@ -123,8 +122,7 @@ class RSITest(unittest.TestCase):
         self.assertIsNone(quantity)
         self.assertIsNone(rate)
         self.assertIsInstance(error, FormulaSyntaxError)
-        self.assertEqual("A rate formula can't be empty",
-                error.message)
+        self.assertEqual("rate formula can't be empty", error.message)
 
 class RateStructureTest(unittest.TestCase):
 
