@@ -1842,6 +1842,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                  'total': 6,
                                  'description': 'UPRS only',
                                  'group': 'All Charges',
+                 'error': None,
                              }, {
                                  'rsi_binding': 'B',
                                  'id': 'B',
@@ -1851,6 +1852,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                  'total': 42,
                                  'description': 'not shared',
                                  'group': 'All Charges',
+                 'error': None,
                              },
                          ], charges)
 
