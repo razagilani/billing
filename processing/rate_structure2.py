@@ -112,14 +112,11 @@ class RateStructureItem(EmbeddedDocument):
         def parse_formula(name):
             formula = getattr(self, name)
             if formula == '':
-                raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                    self.rsi_binding, name))
+                raise FormulaSyntaxError("%s formula can't be empty" % name)
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
-                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                                         '"%s":\n%s' % (name, self.rsi_binding,
-                getattr(self, name)))
+                raise FormulaSyntaxError('Syntax error in %s formula' % name)
         return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
@@ -190,8 +187,7 @@ class RateStructureItem(EmbeddedDocument):
             try:
                 return eval(formula, {}, register_quantities)
             except Exception as e:
-                raise FormulaError(('Error when computing %s for RSI "%s": '
-                                    '%s') % (name, self.rsi_binding, e))
+                raise FormulaError(('Error in %s formula: %s') % (name, e))
         try:
             return compute('quantity'), compute('rate'), None
         except FormulaError as e:
