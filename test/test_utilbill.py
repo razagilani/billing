@@ -334,4 +334,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             ],
         }], utilbill_doc['meters'])
 
-
