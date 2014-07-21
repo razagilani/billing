@@ -1,5 +1,4 @@
-"""Upgrade script for version 21. 
-
+"""Upgrade script for version 21.
 Script must define `upgrade`, the function for upgrading.
 
 Important: For the purpose of allowing schema migration, this module will be 
@@ -21,7 +20,7 @@ log = logging.getLogger(__name__)
 def copy_charges_from_mongo():
 
     client = MongoClient(config.get('billdb', 'host'),
-                         config.get('billdb', 'port'))
+                         int(config.get('billdb', 'port')))
     db = client[config.get('billdb', 'database')]
     s = Session()
     assert s.query(Charge).all() == [], "Charges table is not empty"

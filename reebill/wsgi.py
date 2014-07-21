@@ -222,7 +222,6 @@ class ReeBillWSGI(object):
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -866,7 +865,6 @@ class ReeBillWSGI(object):
         if xaction == "read":
             return json.dumps({'success': True,
                     'rows': self.process.get_rsis_json(utilbill_id), })
-                })
 
         # only xaction "read" is allowed when reebill_sequence/version
         # arguments are given
@@ -1343,11 +1341,10 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
 
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax

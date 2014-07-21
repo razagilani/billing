@@ -42,7 +42,6 @@ from billing.processing.exceptions import NoRSIError, FormulaError, RSIError, \
 from billing.processing.exceptions import FormulaSyntaxError, RegisterError
 
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
-
 log = logging.getLogger(__name__)
 
 Session = scoped_session(sessionmaker())
@@ -591,6 +590,7 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
+
     uprs_document_id = Column(String)  #indicates the rate structure data
 
     # there is no delete cascade in this 'relationship' because a UtilBill
@@ -933,6 +933,21 @@ class Register(Base):
         self.active_periods = active_periods
         self.meter_identifier = meter_identifier
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'utilbill_id': self.utilbill_id,
+            'description': self.description,
+            'quantity': self.quantity,
+            'quantity_units': self.quantity_units,
+            'identifier': self.identifier,
+            'estimated': self.estimated,
+            'reg_type': self.reg_type,
+            'register_binding': self.register_binding,
+            'active_periods': self.active_periods,
+            'meter_identifier': self.meter_identifier
+        }
+
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
@@ -1251,6 +1266,9 @@ class StateDB(object):
         reebill = self.get_reebill(account, sequence, version=version)
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
                 ReeBill.id == reebill.id).all()
+
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
