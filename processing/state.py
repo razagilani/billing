@@ -561,8 +561,10 @@ class ReeBill(Base):
 
         utilbill = self.utilbill
 
+        # raise exception if any utility bill charges could not be computed; it
+        # doesn't make sense to base a reebill on a broken utility bill
         utilbill_doc = reebill_dao.load_doc_for_utilbill(utilbill)
-        utilbill.compute_charges(uprs, utilbill_doc)
+        utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
 
         #[MN]:This code temporary until utilbill_doc stops storing register data
         # We duplicate the utilbill and update its register quantities,
