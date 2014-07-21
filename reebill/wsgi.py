@@ -554,6 +554,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def update_readings(self, account, sequence, **kwargs):
         self.process.update_reebill_readings(account, sequence)
         return self.dumps({'success': True})
@@ -628,6 +629,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def mark_reebill_processed(self, account, sequence , processed, **kwargs):
         '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
         account, processed, sequence = int(account), bool(int(processed)), int(sequence)
@@ -928,6 +930,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def payment(self, xaction, account, **kwargs):
         if xaction == "read":
             payments = self.state_db.payments(account)
