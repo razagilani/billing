@@ -18,7 +18,7 @@ def init_config(filename='settings.cfg', fp=None):
     """
     from billing.data.validation import configuration as vns
     from billing.lib.config import ValidatedConfigParser
-    from os.path import dirname
+    from os.path import dirname, realpath
     import logging
 
     log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def init_config(filename='settings.cfg', fp=None):
         config.read(filename)
     if not config.has_section('main'):
         config.add_section('main')
-    config.set('main', 'appdir', "/".join(dirname(__file__).split("/")[:-1]))
+    config.set('main', 'appdir', dirname(realpath(__file__)))
     log.debug('Initialized configuration')
 
 

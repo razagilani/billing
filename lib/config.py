@@ -1,6 +1,6 @@
 from ConfigParser import RawConfigParser
-import logging
-log = logging.getLogger(__name__)
+from formencode.api import Invalid
+
 
 class ValidatedConfigParser(RawConfigParser):
     """A ConfigParser class with built-in validation logic and type conversion.
@@ -22,7 +22,11 @@ class ValidatedConfigParser(RawConfigParser):
             validator = getattr(self._vns, section, None)
             if not validator: continue
             raw_section_vals = dict(self.items(section))
-            for k, v in validator.to_python(raw_section_vals).iteritems():
+            try:
+                validated = validator.to_python(raw_section_vals)
+            except Invalid as e:
+                raise Invalid("%s.%s" % (section, e.msg), e.value, e.state)
+            for k, v in validated.iteritems():
                 self.set(section, k, v)
 
     def readfp(self, fp, filename=None):

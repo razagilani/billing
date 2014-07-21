@@ -1,5 +1,5 @@
 from billing import init_model
-init_model("mysql://root:@localhost:3306/skyline_dev")
+init_model("mysql://root:root@localhost:3306/skyline_dev")
 
 from sys import stderr
 from itertools import chain

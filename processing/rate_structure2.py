@@ -12,7 +12,7 @@ from mongoengine import DateTimeField, BooleanField
 from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
-# minimum normlized score for an RSI to get included in a probable UPRS
+# minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
 from billing.processing.state import Charge
 
@@ -38,7 +38,6 @@ def exp_weight_with_min(a, b, minimum):
     '''Exponentially-decreasing weight function with a minimum value so it's
     always nonnegative.'''
     return lambda x: max(a**(x * b), minimum)
-
 
 class RateStructureDAO(object):
     '''Loads and saves RateStructure objects. Also responsible for generating
