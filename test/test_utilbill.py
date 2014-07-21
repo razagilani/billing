@@ -213,6 +213,12 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
+        # 'raise_exception' argument validates that all charges were computed
+        # without errors
+        with self.assertRaises(RSIError):
+            utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
+
+
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
         create registers with the same identifier. Should be expanded to test

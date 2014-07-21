@@ -998,12 +998,14 @@ class UtilBill(Base):
                                rsi_binding=rsi.rsi_binding,
                                total=0))
 
-    def compute_charges(self, uprs, utilbill_doc):
+    def compute_charges(self, uprs, utilbill_doc, raise_exception=False):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
         the :class:`.UtilityBill` according to the formulas in the RSIs in the
         given rate structures.
         :param uprs: A uprs from MongoDB
-        :parm utillbill_doc: The utilbill_doc from mongodb. Needed for meters
+        :param utillbill_doc: The utilbill_doc from mongodb. Needed for meters
+        :param raise_exception: if True, raises an RSIError if any charge could
+        not be computed.
         """
         uprs.validate()
         rate_structure = uprs
@@ -1101,6 +1103,8 @@ class UtilBill(Base):
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
             quantity, rate, error = rsi.compute_charge(identifiers)
+            if raise_exception and error is not None:
+                raise error
             total = quantity * rate if error is None else None
             try:
                 charge = all_charges[rsi.rsi_binding]
