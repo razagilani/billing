@@ -1784,13 +1784,14 @@ function reeBillReady() {
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
-        ],
+            {name: 'active_periods', mapping: 'active_periods'}
+        ]
     });
 
     var ubRegisterWriter = new Ext.data.JsonWriter({
         encode: true,
         writeAllFields: false,
-        listful: true,
+        listful: true
     });
 
     var ubRegisterStoreProxyConn = new Ext.data.Connection({
@@ -1992,6 +1993,14 @@ function reeBillReady() {
                 sortable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
             },
+            {
+                id: 'active_periods',
+                header: 'Active Periods',
+                dataIndex: 'active_periods',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false})
+            }
         ],
     });
 
@@ -5578,7 +5587,7 @@ function reeBillReady() {
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
         selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
+            multiSelect: true,
             moveEditorOnEnter: false,
             listeners: {
                 rowselect: function (selModel, index, record) {
