@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from calendar import Calendar
 from collections import defaultdict
 import tablib
+from processing.state import Session
 from skyliner import sky_handlers
 from billing.processing.process import Process
 from billing.util.dateutils import date_generator, date_to_datetime
@@ -34,12 +35,11 @@ class EstimatedRevenue(object):
 
         # pre-load all the olap ids of accounts for speed (each one requires an
         # HTTP request)
-        session = self.state_db.session()
+        session = Session()
         self.olap_ids = dict([
             (account, nexus_util.olap_id(account)) for account in
             self.state_db.listAccounts(session)
         ])
-        session.commit()
 
         # cache of already-loaded reebills for speed--will become especially
         # useful if we start re-computing bills before using their energy, so

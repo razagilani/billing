@@ -4,6 +4,7 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
+
 import os
 import copy
 from datetime import date, datetime, timedelta
@@ -14,8 +15,10 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from sqlalchemy.orm import aliased
 from bson import ObjectId
+
+from billupload import ACCOUNT_NAME_REGEX
+
 #
 # uuid collides with locals so both the locals and package are renamed
 import re
@@ -23,14 +26,13 @@ import errno
 import bson
 from billing.processing import journal
 from billing.processing import state
-from billing.processing.state import Payment, Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading
+from billing.processing.state import Customer, UtilBill, ReeBill, \
+    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
 from billing.processing.exceptions import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, \
-    RSIError, NoSuchRSIError
+    NoSuchBillException, NotUniqueException
 
 import pprint
 from processing.state import UtilbillReebill
@@ -72,18 +74,18 @@ class Process(object):
         self.logger = logger
         self.journal_dao = journal.JournalDAO()
 
-
-    def get_utilbill_doc(self, session, utilbill_id, reebill_sequence=None,
+    def get_utilbill_doc(self, utilbill_id, reebill_sequence=None,
             reebill_version=None):
         raise DeprecationWarning
 
-    def get_rs_doc(self, session, utilbill_id, rs_type, reebill_sequence=None,
+    def get_rs_doc(self, utilbill_id, rs_type, reebill_sequence=None,
             reebill_version=None):
         raise DeprecationWarning
 
-    def get_utilbill_charges_json(self, session, utilbill_id):
+    def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
+        session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         columns = ['id', 'description', 'group', 'quantity', 'quantity_units',
                    'rate', 'rsi_binding', 'total']
@@ -152,26 +154,87 @@ class Process(object):
         "group_name" and default values for all its fields."""
         ub = session.query(UtilBill).filter_by(id=utilbill_id).one()
         ub.charges.append(Charge(ub, "", group_name, 0, "", 0, "", 0))
+        mongo.new_register(utilbill_doc, row.get('meter_id', None),
+                            row.get('register_id', None))
 
-    def update_charge(self, session, utilbill_id, rsi_binding, fields):
+
+    def update_register(self, utilbill_id, orig_meter_id, orig_reg_id,
+                fields, reebill_sequence=None, reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc,
+                orig_meter_id, orig_reg_id, **fields)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+        return new_meter_id, new_reg_id
+
+    def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id,
+                    reebill_sequence=None,
+                    reebill_version=None):
+        utilbill_doc = self.get_utilbill_doc(utilbill_id,
+                reebill_sequence=reebill_sequence,
+                reebill_version=reebill_version)
+        mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
+        self.reebill_dao.save_utilbill(utilbill_doc)
+
+    @staticmethod
+    def add_charge(utilbill_id, group_name):
+        """Add a new charge to the given utility bill with charge group
+        "group_name" and default values for all its fields."""
+        session = Session()
+        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
+        utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+
+    @staticmethod
+    def update_charge(utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
 
-    def delete_charge(self, session, utilbill_id, rsi_binding):
+    @staticmethod
+    def delete_charge(utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
 
+    def get_rsis_json(self, utilbill_id):
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        return [rsi.to_dict() for rsi in rs_doc.rates]
+
+    def add_rsi(self, utilbill_id):
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        new_rsi = rs_doc.add_rsi()
+        rs_doc.save()
+        return new_rsi
+
+    def update_rsi(self, utilbill_id, rsi_binding, fields):
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        rsi = rs_doc.get_rsi(rsi_binding)
+        rsi.update(**fields)
+        rs_doc.save()
+        return rsi.rsi_binding
+
+    def delete_rsi(self, utilbill_id, rsi_binding):
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        rsi = rs_doc.get_rsi(rsi_binding)
+        rs_doc.rates.remove(rsi)
+        assert rsi not in rs_doc.rates
+        rs_doc.save()
+
     def get_rsis_json(self, session, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         return [{'rsi_binding': c.rsi_binding,
                  'quantity_formula': c.quantity_formula,
                  'rate_formula': c.rate_formula,
@@ -232,11 +295,25 @@ class Process(object):
         '''Wrapper to delete_payment method in state.py'''
         self.state_db.delete_payment(session, oid)
 
-    def get_hypothetical_matched_charges(self, session, account, sequence):
+    def create_payment(self, account, date_applied, description,
+            credit, date_received=None):
+        '''Wrapper to create_payment method in state.py'''
+        return self.state_db.create_payment(account, date_applied, description,
+            credit, date_received)
+
+    def update_payment(self, oid, date_applied, description, credit):
+        '''Wrapper to update_payment method in state.py'''
+        self.state_db.update_payment(oid, date_applied, description, credit)
+
+    def delete_payment(self, oid):
+        '''Wrapper to delete_payment method in state.py'''
+        self.state_db.delete_payment(oid)
+
+    def get_hypothetical_matched_charges(self, account, sequence):
         """Gets all hypothetical charges from a reebill for a service and
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
-        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
         return [{
             'rsi_binding': reebill_charge.rsi_binding,
             'description': reebill_charge.description,
@@ -249,14 +326,14 @@ class Process(object):
             'total': reebill_charge.h_total,
         } for reebill_charge in reebill.charges]
 
-    def update_utilbill_metadata(self, session, utilbill_id, period_start=None,
+    def update_utilbill_metadata(self, utilbill_id, period_start=None,
             period_end=None, service=None, total_charges=None, utility=None,
             rate_class=None, processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         if total_charges is not None:
             utilbill.total_charges = total_charges
 
@@ -279,13 +356,14 @@ class Process(object):
         utilbill.period_start = period_start
         utilbill.period_end = period_end
 
-        self.state_db.trim_hypothetical_utilbills(session,
-                utilbill.customer.account, utilbill.service)
+        self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
+                utilbill.service)
 
-    def get_reebill_metadata_json(self, session, account):
+    def get_reebill_metadata_json(self, account):
         """Returns data describing all reebills for the given account, as list
         of JSON-ready dictionaries.
         """
+        session = Session()
         result = []
 
         # this subquery gets (customer_id, sequence, version) for all the
@@ -332,9 +410,9 @@ class Process(object):
                 'ree_charges': reebill.ree_charge,
                 # invisible columns
                 'prior_balance': reebill.prior_balance,
-                'total_error': self.get_total_error(session, account,
-                                                    reebill.sequence),
+                'total_error': self.get_total_error(account, reebill.sequence),
                 'balance_due': reebill.balance_due,
+                'processed': reebill.processed,
                 'payment_received': reebill.payment_received,
                 'total_adjustment': reebill.total_adjustment,
                 'balance_forward': reebill.balance_forward,
@@ -365,8 +443,8 @@ class Process(object):
             result.append(the_dict)
         return result
 
-    def get_sequential_account_info(self, session, account, sequence):
-        reebill = self.state_db.get_reebill(session, account, sequence)
+    def get_sequential_account_info(self, account, sequence):
+        reebill = self.state_db.get_reebill(account, sequence)
         return {
             'billing_address': reebill.billing_address.to_dict(),
             'service_address': reebill.service_address.to_dict(),
@@ -374,8 +452,8 @@ class Process(object):
             'late_charge_rate': reebill.late_charge_rate,
         }
 
-    def update_sequential_account_info(self, session, account, sequence,
-            discount_rate=None, late_charge_rate=None,
+    def update_sequential_account_info(self, account, sequence,
+            discount_rate=None, late_charge_rate=None, processed=None,
             ba_addressee=None, ba_street=None, ba_city=None, ba_state=None,
             ba_postal_code=None,
             sa_addressee=None, sa_street=None, sa_city=None, sa_state=None,
@@ -383,7 +461,7 @@ class Process(object):
         """Update fields for the reebill given by account, sequence
         corresponding to the "sequential account information" form in the UI,
         """
-        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
 
@@ -391,6 +469,8 @@ class Process(object):
             reebill.discount_rate = discount_rate
         if late_charge_rate is not None:
             reebill.late_charge_rate = late_charge_rate
+        if processed is not None:
+            reebill.processed = processed
 
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
@@ -414,7 +494,7 @@ class Process(object):
         if sa_postal_code is not None:
             reebill.service_address.postal_code = sa_postal_code
 
-    def upload_utility_bill(self, session, account, service, begin_date,
+    def upload_utility_bill(self, account, service, begin_date,
             end_date, bill_file, file_name, utility=None, rate_class=None,
             total=0, state=UtilBill.Complete):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
@@ -436,7 +516,7 @@ class Process(object):
                     (begin_date, end_date))
         if end_date - begin_date > timedelta(days=365):
             raise ValueError(("Utility bill period %s to %s is longer than "
-                "1 year") % (begin_date, begin_date))
+                "1 year") % (begin_date, end_date))
         if bill_file is None and state in (UtilBill.UtilityEstimated,
                 UtilBill.Complete):
             raise ValueError(("A file is required for a complete or "
@@ -446,11 +526,12 @@ class Process(object):
             raise ValueError("Hypothetical or Skyline-estimated utility bills "
                     "can't have file")
 
+        session = Session()
+
 
         # get & save end date of last bill (before uploading a new bill which
         # may come later)
-        original_last_end = self.state_db.last_utilbill_end_date(session,
-                account)
+        original_last_end = self.state_db.last_utilbill_end_date(account)
 
         # find an existing utility bill that will provide rate class and
         # utility name for the new one, or get it from the template.
@@ -458,8 +539,8 @@ class Process(object):
         # edit it after uploading.
         customer = self.state_db.get_customer(session, account)
         try:
-            predecessor = self.state_db.get_last_real_utilbill(session, account,
-                             begin_date, service=service)
+            predecessor = self.state_db.get_last_real_utilbill(account,
+                    begin_date, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -497,8 +578,8 @@ class Process(object):
 
         # delete any existing bill with same service and period but less-final
         # state
-        customer = self.state_db.get_customer(session, account)
-        bill_to_replace = self._find_replaceable_utility_bill(session,
+        customer = self.state_db.get_customer(account)
+        bill_to_replace = self._find_replaceable_utility_bill(
                 customer, service, begin_date, end_date, state)
         if bill_to_replace is not None:
             session.delete(bill_to_replace)
@@ -520,6 +601,7 @@ class Process(object):
                 raise IOError('File upload failed: %s %s %s' % (account,
                     new_utilbill.id, file_name))
 
+
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
@@ -539,18 +621,27 @@ class Process(object):
         if original_last_end is not None and begin_date > original_last_end \
                 and begin_date - original_last_end > \
                 timedelta(days=MAX_GAP_DAYS):
-            self.state_db.fill_in_hypothetical_utilbills(session, account,
+            self.state_db.fill_in_hypothetical_utilbills(account,
                     service, utility, rate_class, original_last_end,
                     begin_date)
+        # utility bill should be computed, but any error that happens when
+        # computing it should be ignored to prevent apparent failure to upload
+        # the bill. TODO: see Pivotal 72645700
+        try:
+            self.compute_utility_bill(new_utilbill.id)
+        except Exception as e:
+            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
+                    new_utilbill.id, e, traceback.format_exc()))
+
         return new_utilbill
 
-    def get_service_address(self,session,account):
+    def get_service_address(self, account):
         '''Finds the last state.Utilbill and extracts the service address'''
-        utilbill=self.state_db.get_last_real_utilbill(session, account,
-                                                      datetime.now())
+        utilbill = self.state_db.get_last_real_utilbill(account,
+                datetime.utcnow())
         return utilbill.service_address.column_dict()
 
-    def _find_replaceable_utility_bill(self, session, customer, service, start,
+    def _find_replaceable_utility_bill(self, customer, service, start,
             end, state):
         '''Returns exactly one state.UtilBill that should be replaced by
         'new_utilbill' which is about to be uploaded (i.e. has the same
@@ -566,6 +657,7 @@ class Process(object):
 
         # get existing bills matching dates and service
         # (there should be at most one, but you never know)
+        session = Session()
         existing_bills = session.query(UtilBill)\
                 .filter_by(customer=customer)\
                 .filter_by(service=service)\
@@ -593,7 +685,7 @@ class Process(object):
 
         return existing_bill
 
-    def delete_utility_bill_by_id(self, session, utilbill_id):
+    def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
         it's not attached to a reebill) and returns the deleted state
         .UtilBill object and the path  where the file was moved (it never
@@ -601,6 +693,7 @@ class Process(object):
         it could not be found. Raises a ValueError if the
         utility bill cannot be deleted.
         """
+        session = Session()
         utility_bill = session.query(state.UtilBill).\
             filter(state.UtilBill.id == utilbill_id).one()
 
@@ -617,47 +710,46 @@ class Process(object):
             session.delete(charge)
         for register in utility_bill.registers:
             session.delete(register)
-        self.state_db.trim_hypothetical_utilbills(session,
-                utility_bill.customer.account, utility_bill.service)
+        self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
+                utilbill.service)
         session.delete(utility_bill)
 
         return utility_bill, path
 
-    def regenerate_uprs(self, session, utilbill_id):
+    def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        session = Session()
         for charge in utilbill.charges:
             session.delete(charge)
         utilbill.charges = []
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
 
-    def has_utilbill_predecessor(self, session, utilbill_id):
+    def has_utilbill_predecessor(self, utilbill_id):
         try:
-            utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-            _ = self.state_db.get_last_real_utilbill(session,
+            utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+            predecessor = self.state_db.get_last_real_utilbill(
                     utilbill.customer.account, utilbill.period_start,
                     utility=utilbill.utility, service=utilbill.service)
             return True
         except NoSuchBillException:
             return False
 
-    def refresh_charges(self, session, utilbill_id):
+    def refresh_charges(self, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
         ones based on its rate structures. A charge is created for every Rate
         Structure Item in the UPRS. The charges are computed according to the
         rate structure.
         '''
-        self.state_db.get_utilbill_by_id(session, utilbill_id).compute_charges()
+        self.state_db.get_utilbill_by_id(utilbill_id).compute_charges()
 
-    def compute_utility_bill(self, session, utilbill_id):
+    def compute_utility_bill(self, utilbill_id):
         '''Updates all charges in the document of the utility bill given by
         'utilbill_id' so they are correct according to its rate structure, and
         saves the document.
         '''
-
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         utilbill.compute_charges()
 
         # also try to compute documents of any unissued reebills associated
@@ -665,17 +757,17 @@ class Process(object):
         for reebill in (ur.reebill for ur in utilbill._utilbill_reebills if not
                 ur.reebill.issued):
             try:
-                self.compute_reebill(session, reebill.customer.account,
+                self.compute_reebill(reebill.customer.account,
                     reebill.sequence, version=reebill.version)
             except Exception as e:
                 self.logger.error("Error when computing reebill %s: %s" % (
                         reebill, e))
 
 
-    def compute_reebill(self, session, account, sequence, version='max'):
+    def compute_reebill(self, account, sequence, version='max'):
         '''Loads, computes, and saves the reebill
         '''
-        reebill = self.state_db.get_reebill(session, account, sequence,
+        reebill = self.state_db.get_reebill(account, sequence,
                 version)
         reebill.copy_reading_conventional_quantities_from_utility_bill()
         reebill.compute_charges()
@@ -700,15 +792,15 @@ class Process(object):
             # if any version of this bill has been issued, get payments up
             # until the issue date; otherwise get payments up until the
             # present.
-            present_v0_issue_date = self.state_db.get_reebill(session,
+            present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
                 reebill.payment_received = self.state_db. \
-                    get_total_payment_since(session, account,
+                    get_total_payment_since(account,
                                             state.MYSQLDB_DATETIME_MIN)
             else:
                 reebill.payment_received = self.state_db. \
-                    get_total_payment_since(session, account,
+                    get_total_payment_since(account,
                                             state.MYSQLDB_DATETIME_MIN,
                                             end=present_v0_issue_date)
             # obviously balances are 0
@@ -718,11 +810,10 @@ class Process(object):
             # NOTE 'calculate_statistics' is not called because statistics
             # section should already be zeroed out
         else:
-            predecessor = self.state_db.get_reebill(session, account,
+            predecessor = self.state_db.get_reebill(account,
                     reebill.sequence - 1, version=0)
             if reebill.version == 0 and predecessor.issued:
-                reebill.total_adjustment = self.get_total_adjustment(session,
-                                                                     account)
+                reebill.total_adjustment = self.get_total_adjustment(account)
 
             # get payment_received: all payments between issue date of
             # predecessor's version 0 and issue date of current reebill's version 0
@@ -732,18 +823,17 @@ class Process(object):
                 # if predecessor's version 0 is issued, gather all payments from
                 # its issue date until version 0 issue date of current bill, or
                 # today if this bill has never been issued
-                if self.state_db.is_issued(session, account,
-                                reebill.sequence, version=0):
-                    present_v0_issue_date = self.state_db.get_reebill(session,
-                            account, reebill.sequence,
-                            version=0).issue_date
+                if self.state_db.is_issued(account, reebill.sequence,
+                        version=0):
+                    present_v0_issue_date = self.state_db.get_reebill(account,
+                            reebill.sequence, version=0).issue_date
                     reebill.payment_received = self.state_db. \
-                            get_total_payment_since(session, account,
+                            get_total_payment_since(account,
                             predecessor.issue_date,
                             end=present_v0_issue_date)
                 else:
                     reebill.payment_received = self.state_db. \
-                            get_total_payment_since(session, account,
+                            get_total_payment_since(account,
                             predecessor.issue_date)
             else:
                 # if predecessor is not issued, there's no way to tell what
@@ -762,13 +852,12 @@ class Process(object):
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
-        lc = self.get_late_charge(session, reebill)
+        lc = self.get_late_charge(reebill)
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
 
-    def roll_reebill(self, session, account, integrate_skyline_backend=True,
-                     start_date=None, skip_compute=False):
+    def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
         After the bill is rolled, this function also binds renewable energy data
         and computes the bill by default. This behavior can be modified by
@@ -778,8 +867,9 @@ class Process(object):
                                      data.
         'skip_compute': for tests that want to check for correct default
                         values before the bill was computed"""
-        # 1st transaction: roll
-        customer = self.state_db.get_customer(session, account)
+        session = Session()
+
+        customer = self.state_db.get_customer(account)
         last_reebill_row = session.query(ReeBill)\
                 .filter(ReeBill.customer == customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
@@ -838,39 +928,36 @@ class Process(object):
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
-        if integrate_skyline_backend:
-            self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
-                                            new_reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(
+                self.nexus_util.olap_id(account), new_reebill, use_olap=True)
 
-        if not skip_compute:
-            try:
-                self.compute_reebill(session, account, new_sequence)
-            except Exception as e:
-                self.logger.error("Error when computing reebill %s: %s" % (
-                        new_reebill, e))
+        try:
+            self.compute_reebill(account, new_sequence)
+        except Exception as e:
+            self.logger.error("Error when computing reebill %s: %s" % (
+                    new_reebill, e))
         return new_reebill
 
-    def new_versions(self, session, account, sequence):
+    def new_versions(self, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
         'sequence'. Any reebills that already have an unissued version are
         skipped. Returns a list of the new reebill objects.'''
-        sequences = range(sequence, self.state_db.last_sequence(session,
-                account) + 1)
-        return [self.new_version(session, account, s) for s in sequences if
-                self.state_db.is_issued(session, account, s)]
+        sequences = range(sequence, self.state_db.last_sequence(account) + 1)
+        return [self.new_version(account, s) for s in sequences if
+                self.state_db.is_issued(account, s)]
 
-    def new_version(self, session, account, sequence):
+    def new_version(self, account, sequence):
         """Creates a new version of the given reebill: duplicates the Reebill,
         re-computes the it, saves it, and increments the max_version number in
         MySQL. Returns the version number of the new reebill.
         """
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
-        if not self.state_db.is_issued(session, account, sequence):
+        if not self.state_db.is_issued(account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        max_version = self.state_db.max_version(session, account, sequence)
-        reebill = self.state_db.increment_version(session, account, sequence)
+        max_version = self.state_db.max_version(account, sequence)
+        reebill = self.state_db.increment_version(account, sequence)
 
         assert len(reebill.utilbills) == 1
 
@@ -878,8 +965,7 @@ class Process(object):
         self.ree_getter.\
             update_renewable_readings(self.nexus_util.olap_id(account), reebill)
         try:
-            self.compute_reebill(session, account, sequence,
-                        version=max_version+1)
+            self.compute_reebill(account, sequence, version=max_version+1)
         except Exception as e:
             # NOTE: catching Exception is awful and horrible and terrible and
             # you should never do it, except when you can't think of any other
@@ -894,72 +980,67 @@ class Process(object):
 
         return reebill.version
 
-    def get_unissued_corrections(self, session, account):
+    def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
         un-issued versions of reebills > 0 for the given account."""
         result = []
-        for seq, max_version in self.state_db.get_unissued_corrections(session,
-                account):
+        for seq, max_version in self.state_db.get_unissued_corrections(account):
             # adjustment is difference between latest version's
             # charges and the previous version's
             assert max_version > 0
-            latest_version = self.state_db.get_reebill(session, account, seq,
+            latest_version = self.state_db.get_reebill(account, seq,
                     version=max_version)
-            prev_version = self.state_db.get_reebill(session, account, seq,
+            prev_version = self.state_db.get_reebill(account, seq,
                     version=max_version - 1)
             adjustment = latest_version.total - prev_version.total
             result.append((seq, max_version, adjustment))
         return result
 
-    def get_unissued_correction_sequences(self, session, account):
-        return [c[0] for c in self.get_unissued_corrections(session, account)]
+    def get_unissued_correction_sequences(self, account):
+        return [c[0] for c in self.get_unissued_corrections(account)]
 
-    def issue_corrections(self, session, account, target_sequence):
+    def issue_corrections(self, account, target_sequence):
         '''Applies adjustments from all unissued corrections for 'account' to
         the reebill given by 'target_sequence', and marks the corrections as
         issued.'''
         # corrections can only be applied to an un-issued reebill whose version
         # is 0
-        target_max_version = self.state_db.max_version(session, account,
-                target_sequence)
-        if self.state_db.is_issued(session, account, target_sequence) \
+        target_max_version = self.state_db.max_version(account, target_sequence)
+        if self.state_db.is_issued(account, target_sequence) \
                 or target_max_version > 0:
             raise ValueError(("Can't apply corrections to %s-%s, "
                     "because the latter is an issued reebill or another "
                     "correction.") % (account, target_sequence))
-        all_unissued_corrections = self.get_unissued_corrections(session,
-                account)
+        all_unissued_corrections = self.get_unissued_corrections(account)
         if len(all_unissued_corrections) == 0:
             raise ValueError('%s has no corrections to apply' % account)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_reebill(session, account, target_sequence,
+        self.compute_reebill(account, target_sequence,
                 version=target_max_version)
 
         # issue each correction
         for correction in all_unissued_corrections:
             correction_sequence, _, _ = correction
-            self.issue(session, account, correction_sequence)
+            self.issue(account, correction_sequence)
 
-    def get_total_adjustment(self, session, account):
+    def get_total_adjustment(self, account):
         '''Returns total adjustment that should be applied to the next issued
         reebill for 'account' (i.e. the earliest unissued version-0 reebill).
         This adjustment is the sum of differences in totals between each
         unissued correction and the previous version it corrects.'''
         return sum(adjustment for (sequence, version, adjustment) in
-                self.get_unissued_corrections(session, account))
+                self.get_unissued_corrections(account))
 
-    def get_total_error(self, session, account, sequence):
+    def get_total_error(self, account, sequence):
         '''Returns the net difference between the total of the latest
         version (issued or not) and version 0 of the reebill given by account,
         sequence.'''
-        earliest = self.state_db.get_reebill(session, account,
-                sequence, version=0)
-        latest = self.state_db.get_reebill(session, account,
-                sequence, version='max')
+        earliest = self.state_db.get_reebill(account, sequence, version=0)
+        latest = self.state_db.get_reebill(account, sequence, version='max')
         return latest.total - earliest.total
 
-    def get_late_charge(self, session, reebill, day=datetime.utcnow().date()):
+    def get_late_charge(self, reebill, day=datetime.utcnow().date()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
         hasn't been issued yet: there is a late fee applied to the balance of
@@ -968,17 +1049,18 @@ class Process(object):
         issued; None is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
+        session = Session()
         acc, seq = reebill.customer.account, reebill.sequence
 
         if reebill.sequence <= 1:
             return 0
 
         # unissued bill has no late charge
-        if not self.state_db.is_issued(session, acc, seq - 1):
+        if not self.state_db.is_issued(acc, seq - 1):
             return None
 
         # late charge is 0 if version 0 of the previous bill is not overdue
-        predecessor0 = self.state_db.get_reebill(session, acc, seq - 1,
+        predecessor0 = self.state_db.get_reebill(acc, seq - 1,
                 version=0)
         if day <= predecessor0.due_date:
             return 0
@@ -988,17 +1070,17 @@ class Process(object):
         # least balance_due of any issued version of the predecessor (as if it
         # had been charged on version 0's issue date, even if the version
         # chosen is not 0).
-        customer = self.state_db.get_customer(session, acc)
+        customer = self.state_db.get_customer(acc)
         min_balance_due = session.query(func.min(ReeBill.balance_due))\
                 .filter(ReeBill.customer == customer)\
                 .filter(ReeBill.sequence == seq - 1).one()[0]
         source_balance = min_balance_due - \
-                self.state_db.get_total_payment_since(session, acc,
+                self.state_db.get_total_payment_since(acc,
                 predecessor0.issue_date)
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
 
-    def get_outstanding_balance(self, session, account, sequence=None):
+    def get_outstanding_balance(self, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
         (or the account's last issued reebill when 'sequence' is not given)
         minus the sum of all payments that have been made since that bill was
@@ -1006,27 +1088,39 @@ class Process(object):
         balance due, or if no reebill has ever been issued for the customer.'''
         # get balance due of last reebill
         if sequence == None:
-            sequence = self.state_db.last_issued_sequence(session, account)
+            sequence = self.state_db.last_issued_sequence(account)
         if sequence == 0:
             return 0
-        reebill = self.state_db.get_reebill(account, sequence)
+        reebill = self.state_db.get_reebill(sequence)
 
         if reebill.issue_date == None:
             return 0
 
         # result cannot be negative
         return max(0, reebill.balance_due -
-                self.state_db.get_total_payment_since(session, account,
-                reebill.issue_date))
+                self.state_db.get_total_payment_since(account,
+                        reebill.issue_date))
 
-    def delete_reebill(self, session, account, sequence):
+    def delete_reebill(self, account, sequence):
         '''Deletes the the given reebill and its utility bill associations.
         A reebill version has been issued can't be deleted. Returns the version
         of the reebill that was deleted.'''
-        reebill = self.state_db.get_reebill(session, account, sequence)
+        session = Session()
+        reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't delete an issued reebill.")
+        if reebill.version == 0 and reebill.sequence < \
+                self.state_db.last_sequence(account):
+            raise IssuedBillError("Only the last reebill can be deleted")
         version = reebill.version
+
+        # NOTE session.delete() fails with an errror like "InvalidRequestError:
+        # Instance '<ReeBill at 0x353cbd0>' is not persisted" if the object has
+        # not been persisted (i.e. flushed from SQLAlchemy cache to database)
+        # yet; the author says on Stack Overflow to use 'expunge' if the object
+        # is in 'session.new' and 'delete' otherwise, but for some reason
+        # 'reebill' does not get into 'session.new' when session.add() is
+        # called. i have not solved this problem yet.
         session.delete(reebill)
 
         # Delete the PDF associated with a reebill if it was version 0
@@ -1043,7 +1137,7 @@ class Process(object):
                     raise
         return version
 
-    def create_new_account(self, session, account, name, discount_rate,
+    def create_new_account(self, account, name, discount_rate,
             late_charge_rate, billing_address, service_address,
             template_account):
         '''Creates a new account with utility bill template copied from the
@@ -1055,9 +1149,19 @@ class Process(object):
         utility bill address format.
 
         Returns the new state.Customer.'''
-        if self.state_db.account_exists(session, account):
+        if self.state_db.account_exists(account):
             raise ValueError("Account %s already exists" % account)
 
+        # validate parameters
+        if not re.match(ACCOUNT_NAME_REGEX, account):
+            raise ValueError('Invalid account number')
+        if not 0 <= discount_rate <= 1:
+            raise ValueError('Discount rate must be between 0 and 1 inclusive')
+        if not 0 <= late_charge_rate <=1:
+            raise ValueError(('Late charge rate must be between 0 and 1 '
+                              'inclusive'))
+        session = Session()
+        
         last_utility_bill = session.query(UtilBill)\
             .join(Customer).filter(Customer.account == template_account)\
             .order_by(desc(UtilBill.period_end)).first()
@@ -1083,21 +1187,21 @@ class Process(object):
         session.add(new_customer)
         return new_customer
 
-    def issue(self, session, account, sequence,
+    def issue(self, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default), and the due date to 30 days from
         the issue date. The reebill is marked as issued.'''
         # version 0 of predecessor must be issued before this bill can be
         # issued:
-        if sequence > 1 and not self.state_db.is_issued(session, account,
+        if sequence > 1 and not self.state_db.is_issued(account,
                 sequence - 1, version=0):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
-        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
 
         # compute the bill to make sure it's up to date before issuing
-        self.compute_reebill(session, reebill.customer.account,
+        self.compute_reebill(reebill.customer.account,
                 reebill .sequence, version=reebill.version)
 
         reebill.issue_date = issue_date
@@ -1108,17 +1212,18 @@ class Process(object):
         # TODO: should this be replaced with a call to compute_reebill to
         # just make sure everything is up-to-date before issuing?
         # https://www.pivotaltracker.com/story/show/36197985
-        reebill.late_charge = self.get_late_charge(session, reebill)
+        reebill.late_charge = self.get_late_charge(reebill)
 
         assert len(reebill._utilbill_reebills) == 1
 
         # mark as issued in mysql
-        self.state_db.issue(session, account, sequence, issue_date=issue_date)
+        self.state_db.issue(account, sequence, issue_date=issue_date)
 
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
 
-    def reebill_report_altitude(self, session):
+    def reebill_report_altitude(self):
+        session = Session()
         rows = []
         total_count = 0
         customer_id = None
@@ -1169,7 +1274,7 @@ class Process(object):
             rows.append(row)
         return rows, total_count
 
-    def sequences_for_approximate_month(self, session, account, year, month):
+    def sequences_for_approximate_month(self, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or
         None if the month precedes the approximate month of the first reebill.
@@ -1198,7 +1303,7 @@ class Process(object):
 
         # get approximate month of last reebill (return [] if there were never
         # any reebills)
-        last_sequence = self.state_db.last_sequence(session, account)
+        last_sequence = self.state_db.last_sequence(account)
         if last_sequence == 0:
             return []
         last_reebill = self.state_db.get_reebill(account, last_sequence)
@@ -1217,7 +1322,7 @@ class Process(object):
                 last_reebill_month, year, month)
         return [last_sequence + sequence_offset]
 
-    def sequences_in_month(self, session, account, year, month):
+    def sequences_in_month(self, account, year, month):
         '''Returns a list of sequences of all reebills whose periods contain
         ANY days within the given month. The list is empty if the month
         precedes the period of the account's first issued reebill, or if the
@@ -1234,7 +1339,7 @@ class Process(object):
 
         # get sequence of last reebill and the month in which its period ends,
         # which will be useful below
-        last_sequence = self.state_db.last_sequence(session, account)
+        last_sequence = self.state_db.last_sequence(account)
 
         # if there's at least one sequence, return the list of sequences. but
         # if query_month is the month in which the account's last reebill ends,
@@ -1242,7 +1347,7 @@ class Process(object):
         # also include the sequence of an additional hypothetical reebill whose
         # period would cover the end of the month.
         if sequences_for_month != []:
-            last_end = self.state_db.get_reebill(account, last_sequence
+            last_end = self.state_db.get_reebill(last_sequence
                     ).period_end
             if Month(last_end) == query_month and last_end \
                     < (Month(last_end) + 1).first:
@@ -1271,7 +1376,7 @@ class Process(object):
         name_dicts = sorted(all_accounts_all_names.iteritems())
         return name_dicts
 
-    def full_names_of_accounts(self, session, accounts):
+    def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
         form "accountnumber - codename - casualname - primus" (sorted by
@@ -1292,8 +1397,7 @@ class Process(object):
             #account if one exists as per
             #https://www.pivotaltracker.com/story/show/58027082
             try:
-                last_utilbill = self.state_db.get_last_utilbill(
-                    session, account)
+                last_utilbill = self.state_db.get_last_utilbill(account)
             except NoSuchBillException:
                 #No utilbill found, just don't append utility info
                 pass
@@ -1303,18 +1407,18 @@ class Process(object):
             result.append(res)
         return result
 
-    def get_all_utilbills_json(self, session, account, start, limit):
+    def get_all_utilbills_json(self, account, start, limit):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
-        utilbills, total_count = self.state_db.list_utilbills(session,
-                account, start, limit)
+        utilbills, total_count = self.state_db.list_utilbills(account,
+                start, limit)
 
         # this "name" is really not the name in nexus, but Stiles' creative
         # way to get utilities and rate structures shown in the "Create New
         # Account" form. luckily it's ignored by all other consumers of this
         # data.
-        full_names = self.full_names_of_accounts(session, [account])
+        full_names = self.full_names_of_accounts([account])
         full_name = full_names[0] if full_names else account
 
         data = [{
@@ -1348,13 +1452,13 @@ class Process(object):
 
         return data, total_count
 
-    def bind_renewable_energy(self, session, account, sequence):
-        reebill = self.state_db.get_reebill(session, account, sequence)
+    def bind_renewable_energy(self, account, sequence):
+        reebill = self.state_db.get_reebill(account, sequence)
         self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
                                         reebill, use_olap=True)
 
-    def mail_reebills(self, session, account, sequences, recipient_list):
-        all_reebills = [self.state_db.get_reebill(session, account, sequence)
+    def mail_reebills(self, account, sequences, recipient_list):
+        all_reebills = [self.state_db.get_reebill(account, sequence)
                 for sequence in sequences]
 
         # render all the bills
@@ -1362,7 +1466,7 @@ class Process(object):
             the_path = self.billupload.get_reebill_file_path(account,
                     reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(session, reebill.customer.account,
+            self.renderer.render_max_version(reebill.customer.account,
                     reebill.sequence,
                     # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
                     # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
@@ -1385,12 +1489,13 @@ class Process(object):
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
                 bill_file_paths)
 
-    def get_issuable_reebills_dict(self, session):
+    def get_issuable_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries containing
             the account, sequence, total utility bill charges, total reebill
             charges and the associated customer email address
             of the earliest unissued version-0 reebill account
         """
+        session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
         min_sequence = session.query(
@@ -1409,15 +1514,139 @@ class Process(object):
             'mailto':r.customer.bill_email_recipient,
             'reebill_total': sum(u.total_charges for u in r.utilbills)
             } for r in reebills.all()], key=itemgetter('account'))
-
         return issuable_reebills
 
-    def update_bill_email_recipient(self, session, account, sequence, recepients):
+    def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):
+        '''issues a reebill and sends out a confirmation email'''
+        # If there are unissued corrections and the user has not confirmed
+        # to issue them, we will return a list of those corrections and the
+        # sum of adjustments that have to be made so the client can create
+        # a confirmation message
+        unissued_corrections = self.get_unissued_corrections(account)
+        if len(unissued_corrections) > 0 and not apply_corrections:
+                return {'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+
+        # The user has confirmed to issue unissued corrections.
+        # Let's issue
+        if len(unissued_corrections) > 0:
+            assert apply_corrections is True
+            try:
+                self.issue_corrections(account, sequence)
+            except Exception, e:
+                e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            account, sequence, e.__class__.__name__),) + e.args
+                raise
+            for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    session['user'],account, sequence,
+                    self.state_db.max_version(account, cor),
+                    applied_sequence=cor[0])
+        try:
+            self.compute_reebill(account, sequence)
+            #mark issued bills as processed
+            self.update_sequential_account_info(account, sequence,
+                processed=True)
+            self.issue(account, sequence)
+        except Exception, e:
+            e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            account, sequence, e.__class__.__name__),) + e.args
+            raise
+        journal.ReeBillIssuedEvent.save_instance(user,
+                                                 account, sequence, 0)
+        # Let's mail!
+        # Recepients can be a comma seperated list of email addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
+        self.mail_reebills(account, [sequence], recipient_list)
+        journal.ReeBillMailedEvent.save_instance(user, account, sequence,
+            recipients)
+
+    def issue_processed_and_mail(self, user, apply_corrections):
+        ''' issues all reebills that are marked as processeed and sends confirmation emails
+        for each one of the issued reebills
+        '''
+
+        unissued_processed = self.get_issuable_processed_reebills_dict(session)
+        for bill in unissued_processed:
+            # If there are unissued corrections and the user has not confirmed
+            # to issue them, we will return a list of those corrections and the
+            # sum of adjustments that have to be made so the client can create
+            # a confirmation message
+
+            unissued_corrections = self.get_unissued_corrections(bill['account'])
+            if len(unissued_corrections) > 0 and not apply_corrections:
+                return {'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+
+            # The user has confirmed to issue unissued corrections.
+            # Let's issue
+            if len(unissued_corrections) > 0:
+                assert apply_corrections is True
+                try:
+                    self.issue_corrections(bill['account'], bill['sequence'])
+                except Exception, e:
+                    e.args = ('Error when issuing reebill %s-%s: %s' %(
+                            bill['account'], bill['sequence'],
+                            e.__class__.__name__),) + e.args
+                    raise
+                for cor in unissued_corrections:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        user, bill['account'], bill['sequence'],
+                        self.state_db.max_version(bill['account'], cor),
+                        applied_sequence=cor[0])
+            try:
+                self.compute_reebill(bill['account'], bill['sequence'])
+                self.issue(bill['account'], bill['sequence'])
+            except Exception, e:
+                e.args = ('Error when issuing reebill %s-%s: %s' %(
+                        bill['account'], bill['sequence'], e.__class__.__name__),) + e.args
+                raise
+            journal.ReeBillIssuedEvent.save_instance(user, bill['account'], bill['sequence'], 0)
+        # Let's mail!
+        # Recepients can be a comma seperated list of email addresses
+            recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
+            self.mail_reebills(bill['account'], [bill['sequence']],
+                                   recipient_list)
+            journal.ReeBillMailedEvent.save_instance(user, bill['account'],
+                                                bill['sequence'], bill['mailto'])
+
+    def get_issuable_processed_reebills_dict(self):
+        """ Returns a list of issuable reebill dictionaries containing
+            the account, sequence, total utility bill charges, total reebill
+            charges and the associated customer email address
+            of the earliest unissued version-0 reebill account
+        """
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.version == 0, ReeBill.processed==1).subquery()
+        min_sequence = session.query(
+                unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
+
+        issuable_processed_reebills = sorted([{
+            'account': r.customer.account,
+            'sequence':r.sequence,
+            'util_total': sum(u.total_charges for u in r.utilbills),
+            'mailto':r.customer.bill_email_recipient,
+            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
+                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
+                    for ub_id in(u.document_id for u in r.utilbills))),
+            'processed': r.processed,
+        } for r in reebills.all()], key=itemgetter('account'))
+
+        return issuable_processed_reebills
+
+    def update_bill_email_recipient(self, account, sequence, recepients):
         """ Finds a particular reebill by account and sequence,
             finds the connected customer and updates the customer's default
             email recipient(s)
         """
-        reebill = self.state_db.get_reebill(session, account, sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
         reebill.customer.bill_email_recipient = recepients
 
     def upload_interval_meter_csv(self, account, sequence, csv_file,
@@ -1427,7 +1656,7 @@ class Process(object):
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence. Returns reebill version number.
         '''
-        reebill = self.state_db.get_reebill(account, sequence)
+        reebill = self.state_db.get_reebill(sequence)
 
         # convert column letters into 0-based indices
         if not re.match('[A-Za-z]', timestamp_column):
@@ -1446,11 +1675,11 @@ class Process(object):
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
         return reebill.version
 
-    def get_utilbill_image_path(self, session, utilbill_id, resolution):
-        utilbill=self.state_db.get_utilbill_by_id(session,utilbill_id)
+    def get_utilbill_image_path(self, utilbill_id, resolution):
+        utilbill= self.state_db.get_utilbill_by_id(utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
 
-    def list_account_status(self, session, start, limit, filtername, sortcol,
+    def list_account_status(self, start, limit, filtername, sortcol,
                             sort_reverse):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
           Casual name, Primus Name, Utility Service Address, Date of last
@@ -1471,8 +1700,10 @@ class Process(object):
                                 account, e.message, service_address))
                 return '?'
 
-        statuses = self.state_db.retrieve_status_days_since(session, sortcol, sort_reverse)
-        name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
+        statuses = self.state_db.retrieve_status_days_since(sortcol,
+                sort_reverse)
+        name_dicts = self.nexus_util.all_names_for_accounts(
+                [s.account for s in statuses])
 
         rows = []
         # To make this for loop faster we only include nexus data, status data
@@ -1492,16 +1723,15 @@ class Process(object):
             }
             if sortcol=='utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(session,
-                                                                status.account)
+                    service_address = self.get_service_address(status.account)
                     service_address=format_service_address(service_address,
                                                             status.account)
                 except NoSuchBillException:
                     service_address = ''
                 new_record['utilityserviceaddress']=service_address
             elif sortcol=='lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(session,
-                     status.account, issued_only=True)
+                last_reebill = self.state_db.get_last_reebill(status.account,
+                        issued_only=True)
                 new_record['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
             rows.append(new_record)
 
@@ -1519,15 +1749,14 @@ class Process(object):
             row['lastevent']=self.journal_dao.last_event_summary(row['account'])
             if sortcol != 'utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(session,
-                                                                row['account'])
+                    service_address = self.get_service_address(row['account'])
                     service_address=format_service_address(service_address,
                                                             row['account'])
                 except NoSuchBillException:
                     service_address = ''
                 row['utilityserviceaddress']=service_address
             elif sortcol != 'lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(session,
+                last_reebill = self.state_db.get_last_reebill(
                      row['account'], issued_only=True)
                 row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
 

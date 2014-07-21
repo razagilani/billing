@@ -152,6 +152,11 @@ pre.code{
     font-style: italic;
     color: red;
 }
+.reebill-grid-processed {
+    font-style: italic;
+    color: green;
+}
+
 
 /* styles for utilbill grid rows */
 .utilbill-grid-processed {
