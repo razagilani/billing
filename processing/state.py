@@ -50,7 +50,6 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base(cls=Base)
 
-
 _schema_revision = '4f2f8e2f7cd'
 
 def check_schema_revision(schema_revision=_schema_revision):
@@ -103,7 +102,7 @@ class Address(Base):
 
     def __repr__(self):
         return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
-                                         self.city, self.state, self.postal_code)
+                self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
@@ -220,7 +219,7 @@ class ReeBill(Base):
     # and for UtilBill,
     #     creator=lambda r: UtilbillReebill(self, r)
     # but this will not actually work because 'self' is not available in class
-    # # scope; there is no instance of UtilBill or ReeBill at the time this
+    # scope; there is no instance of UtilBill or ReeBill at the time this
     # code is executed. it also does not work to move the code into __init__
     # and assign the 'utilbills' attribute to a particular ReeBill instance
     # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
@@ -421,15 +420,6 @@ class ReeBill(Base):
 
         return total_therms
 
-    def get_renewable_energy_reading(self, register_binding):
-        assert isinstance(register_binding, basestring)
-        try:
-            reading = next(r for r in self.readings
-                           if r.register_binding == register_binding)
-        except StopIteration:
-            raise ValueError('Unknown register binding "%s"' % register_binding)
-        return reading.renewable_quantity
-
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
@@ -439,6 +429,15 @@ class ReeBill(Base):
         except StopIteration:
             raise RegisterError('Unknown register binding "%s"' % binding)
         return result
+
+    def get_renewable_energy_reading(self, register_binding):
+        assert isinstance(register_binding, basestring)
+        try:
+            reading = next(r for r in self.readings
+                           if r.register_binding == register_binding)
+        except StopIteration:
+            raise ValueError('Unknown register binding "%s"' % register_binding)
+        return reading.renewable_quantity
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
@@ -625,10 +624,6 @@ class ReeBill(Base):
             raise RSIError('Circular dependency: %s' % names_in_cycle)
 
         assert len(evaluation_order) == len(rsis)
-
-        all_charges = {charge.rsi_binding: charge for charge in self.charges}
-
-        assert len(evaluation_order) == len(rsis)
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
@@ -682,14 +677,12 @@ class ReeBill(Base):
         assert len(self.utilbills) == 1
         return sum(charge.h_total for charge in self.charges)
 
-    def get_service_address_formatted(self):
-        return str(self.service_address)
-
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first ReeBillCharge object found belonging to this
         ReeBill whose 'rsi_binding' matches 'binding'.
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -738,11 +731,9 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
-
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
     group = Column(String, name='group_name', nullable=False)
-
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     quantity_unit = Column(String, nullable=False)
@@ -804,8 +795,9 @@ class Reading(Base):
         self.unit = unit
 
     def __hash__(self):
-        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
-                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+        return hash(self.register_binding + self.measure +
+                str(self.conventional_quantity) + str(self.renewable_quantity)
+                + self.aggregate_function + self.unit)
 
     def __eq__(self, other):
         return all([
@@ -927,22 +919,6 @@ class UtilBill(Base):
             key=lambda element: (element['sequence'], element['version'])
         )
 
-    # TODO: this is no longer used; client receives JSON and renders it as a
-    # string
-    def sequence_version_string(self):
-        '''Returns a string describing sequences and versions of reebills
-        attached to this utility bill, consisting of sequences followed by a
-        comma-separated list of versions of that sequence, e.g. "1-0,1,2, 2-0".
-        '''
-        # group _utilbill_reebills by sequence, sorted by version within each
-        # group
-        groups = groupby(sorted(self._utilbill_reebills,
-                key=lambda x: (x.reebill.sequence, x.reebill.version)),
-                key=attrgetter('reebill.sequence'))
-        return ', '.join('%s-%s' % (sequence,
-                ','.join(str(ur.reebill.version) for ur in group))
-                for (sequence, group) in groups)
-
     def refresh_charges(self, rates):
         """Replaces the `charges` list on the :class:`.UtilityBill` based
         on the specified rates.
@@ -951,12 +927,8 @@ class UtilBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             assert Session.object_session(charge) is session
-            # TODO: charge disappears from session here, but not from
-            # self.charges.
             session.delete(charge)
             session.flush()
-        # inserting this line makes the the test pass, but why is it necessary?
-        #self.charges = []
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
             session.add(Charge(utilbill=self,
@@ -1275,31 +1247,12 @@ class StateDB(object):
         were created were created (highest existing account number + 1--we're
         assuming accounts will be integers, even though we always store them as
         strings).'''
-        session = Session()
         last_account = max(map(int, self.listAccounts()))
         return last_account + 1
-
-    def get_utilbill(self, account, service, start, end):
-        session = Session()
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        return session.query(UtilBill)\
-                .filter(UtilBill.customer_id==customer.id)\
-                .filter(UtilBill.service==service)\
-                .filter(UtilBill.period_start==start)\
-                .filter(UtilBill.period_end==end).one()
 
     def get_utilbill_by_id(self, ubid):
         session = Session()
         return session.query(UtilBill).filter(UtilBill.id==ubid).one()
-
-    def utilbills_for_reebill(self, account, sequence, version='max'):
-        '''Returns all utility bills for the reebill given by account,
-        sequence, version (highest version by default).'''
-        session = Session()
-        reebill = self.get_reebill(account, sequence, version=version)
-        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
-                ReeBill.id == reebill.id).all()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -1377,20 +1330,6 @@ class StateDB(object):
                 .filter(ReeBill.issued==0).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
-
-    def discount_rate(self, account):
-        '''Returns the discount rate for the customer given by account.'''
-        session = Session()
-        result = session.query(Customer).filter_by(account=account).one().\
-                get_discount_rate()
-        return result
-        
-    def late_charge_rate(self, account):
-        '''Returns the late charge rate for the customer given by account.'''
-        session = Session()
-        result = session.query(Customer).filter_by(account=account).one()\
-                .get_late_charge_rate()
-        return result
 
     def last_sequence(self, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
@@ -1487,7 +1426,6 @@ class StateDB(object):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
         '''
-        session = Session()
         reebill = self.get_reebill(account, sequence)
         if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
@@ -1541,16 +1479,6 @@ class StateDB(object):
                 .order_by(Customer.account).all())
         return result
 
-    def list_accounts(self, start, limit):
-        '''List of customer accounts with start and limit (for paging).'''
-        # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        session = Session()
-        query = session.query(Customer.account)
-        slice = query[start:start + limit]
-        count = query.count()
-        result = map((lambda x: x[0]), slice)
-        return result, count
-
     def listSequences(self, account):
         session = Session()
 
@@ -1591,7 +1519,6 @@ class StateDB(object):
     def reebills(self, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
         in MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1601,7 +1528,6 @@ class StateDB(object):
     def reebill_versions(self, include_unissued=True):
         '''Generates (account, sequence, version) tuples for all reebills in
         MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1659,16 +1585,6 @@ class StateDB(object):
             return query[start:], query.count()
         return query[start:start + limit], query.count()
 
-    def get_utilbills_on_date(self, account, the_date):
-        '''Returns a list of UtilBill objects representing MySQL utility bills
-        whose periods start before/on and end after/on 'the_date'.'''
-        session = Session()
-        return session.query(UtilBill).filter(
-                UtilBill.customer==self.get_customer(account),
-                UtilBill.period_start<=the_date,
-                UtilBill.period_end>the_date).all()
-
-    
     def fill_in_hypothetical_utilbills(self, account, service,
             utility, rate_class, begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
@@ -1816,19 +1732,8 @@ class StateDB(object):
         # SQLAlchemy query to get account & dates for all utilbills
         session = Session()
         entityQuery = session.query(StatusDaysSince)
-
-        # example of how db sorting would be done
-        #if sort_col == 'dayssince' and sort_order == 'ASC':
-        #    sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
-        #elif sort_colr == 'dayssince' and sort_order == 'DESC':
-        #    sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
-        #lockmodeQuery = sortedQuery.with_lockmode("read")
-
         lockmodeQuery = entityQuery.with_lockmode("read")
-
-        result = lockmodeQuery.all()
-
-        return result
+        return lockmodeQuery.all()
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
