@@ -111,7 +111,6 @@ def db_commit(method):
         return method(btb_instance, *args, **kwargs)
         Session().commit()
     return wrapper
-
 class ReeBillWSGI(object):
     def __init__(self, config, Session):
         self.config = config        
@@ -564,6 +563,14 @@ class ReeBillWSGI(object):
     @authenticate_ajax
     @json_exception
     @db_commit
+    def update_readings(self, account, sequence, **kwargs):
+        self.process.update_reebill_readings(account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
@@ -618,6 +625,17 @@ class ReeBillWSGI(object):
         self.process.update_utilbill_metadata(utilbill, processed=processed)
         return self.dumps({'success': True})
 
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        self.process.update_sequential_account_info(account, sequence,
+                processed=processed)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -912,6 +930,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def payment(self, xaction, account, **kwargs):
         if xaction == "read":
             payments = self.state_db.payments(account)
