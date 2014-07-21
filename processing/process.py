@@ -1689,6 +1689,7 @@ class Process(object):
         NOT related to the approximate billing month.'''
         # get all reebills whose periods contain any days in this month, and
         # their sequences (there should be at most 3)
+        session = Session()
         query_month = Month(year, month)
         sequences_for_month = session.query(ReeBill.sequence).join(UtilBill)\
                 .filter(UtilBill.period_start >= query_month.first,
@@ -1941,7 +1942,7 @@ class Process(object):
         for each one of the issued reebills
         '''
 
-        unissued_processed = self.get_issuable_processed_reebills_dict(session)
+        unissued_processed = self.get_issuable_processed_reebills_dict()
         for bill in unissued_processed:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
@@ -1992,6 +1993,7 @@ class Process(object):
             charges and the associated customer email address
             of the earliest unissued version-0 reebill account
         """
+        session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0, ReeBill.processed==1).subquery()
         min_sequence = session.query(
