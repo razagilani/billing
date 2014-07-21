@@ -2406,6 +2406,7 @@ function reeBillReady() {
             {name: 'rate', mapping: 'rate'},
             //{name: 'rate_units', mapping: 'rate_units'},
             {name: 'total', mapping: 'total', type: 'float'},
+            {name: 'error', mapping: 'error'},
             {name: 'processingnote', mapping:'processingnote'},
         ]
     });
@@ -2551,6 +2552,14 @@ function reeBillReady() {
 
     var aChargesSummary = new Ext.ux.grid.GroupSummary();
 
+    function chargeTotalRenderer(value, metaData, record, rowIndex, colIndex,
+            store) {
+        if (record.data.error) {
+            metaData.css = 'charge-error';
+            return record.data.error;
+        }
+        return Ext.util.Format.usMoney(record.data.total);
+    }
     var aChargesColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -2621,29 +2630,6 @@ function reeBillReady() {
                 dataIndex: 'rate',
                 editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true}),
                 editable: false,
-            //},{
-                //header: 'Units',
-                //width: 75,
-                //sortable: true,
-                //dataIndex: 'rate_units',
-                //editor: new Ext.form.ComboBox({
-                    //typeAhead: true,
-                    //triggerAction: 'all',
-                    //// transform the data already specified in html
-                    ////transform: 'light',
-                    //lazyRender: true,
-                    //listClass: 'x-combo-list-small',
-                    //mode: 'local',
-                    //store: new Ext.data.ArrayStore({
-                        //fields: [
-                            //'displayText'
-                        //],
-                        //// TODO: externalize these units
-                        //data: [['dollars'], ['cents']]
-                    //}),
-                    //valueField: 'displayText',
-                    //displayField: 'displayText'
-                //}),
             },{
                 header: 'Total', 
                 width: 75, 
@@ -2652,11 +2638,8 @@ function reeBillReady() {
                 summaryType: 'sum',
                 align: 'right',
                 editor: new Ext.form.NumberField({allowBlank: false}),
-                renderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.total);
-                },
                 editable: false,
+                renderer: chargeTotalRenderer,
             },
         ]
     });
@@ -2840,7 +2823,7 @@ function reeBillReady() {
                         width:100
                     }
                 ]
-        })
+        }),
     });
 
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
