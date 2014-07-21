@@ -421,22 +421,6 @@ class ReeBill(Base):
 
         return total_therms
 
-    def compute_charges(self, uprs, reebill_dao):
-        """Updates `quantity`, `rate`, and `total` attributes all charges in
-        the :class:`.Reebill` according to the formulas in the RSIs in the
-        given rate structures.
-        :param uprs: A uprs from MongoDB
-        :parm reebill_dao:
-        """
-        session = Session.object_session(self)
-        for r in self.readings:
-            session.delete(r)
-        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
-                for reg_dict in chain.from_iterable(
-                (r for r in m['registers']) for m in utilbill_doc['meters'])]
-        return None
-
     def update_readings_from_reebill(self, reebill_readings, utilbill_doc):
         '''Updates the set of Readings associated with this ReeBill to match
         the list of registers in the given reebill_readings. Readings that do not
