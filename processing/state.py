@@ -23,7 +23,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
-        RegisterError
+        RegisterError, FormulaSyntaxError
 
 from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
 from exc import DatabaseError
@@ -1055,20 +1055,26 @@ class UtilBill(Base):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
-            for identifier in rsi.get_identifiers():
-                if identifier in identifiers:
-                    continue
-                try:
-                    other_rsi_num = rsi_numbers[identifier]
-                except KeyError:
-                    # TODO might want to validate identifiers before computing
-                    # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI '
-                            '"%s": %s') % (rsi.rsi_binding, identifier))
-                # a pair (x,y) means x precedes y, i.e. y depends on x
-                dependency_graph.append((other_rsi_num, this_rsi_num))
-                independent_rsi_numbers.discard(other_rsi_num)
-                independent_rsi_numbers.discard(this_rsi_num)
+            try:
+                this_rsi_identifiers = list(rsi.get_identifiers())
+            except FormulaSyntaxError:
+                # if this RSI has a syntax error, its number will remain in
+                # 'independent_rsi_numbers' because it's independent of others
+                pass
+            else:
+                for identifier in this_rsi_identifiers:
+                    if identifier in identifiers:
+                        continue
+                    try:
+                        other_rsi_num = rsi_numbers[identifier]
+                    except KeyError:
+                        # unknown variable in RSI formula: leave the RSI in
+                        # 'independent_rsi_numbers'
+                        continue
+                    # a pair (x,y) means x precedes y, i.e. y depends on x
+                    dependency_graph.append((other_rsi_num, this_rsi_num))
+                    independent_rsi_numbers.discard(other_rsi_num)
+                    independent_rsi_numbers.discard(this_rsi_num)
 
         # charges that don't depend on other charges can be evaluated before ones
         # that do.
@@ -1095,7 +1101,7 @@ class UtilBill(Base):
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
             quantity, rate, error = rsi.compute_charge(identifiers)
-            total = quantity * rate
+            total = quantity * rate if error is None else None
             try:
                 charge = all_charges[rsi.rsi_binding]
             except KeyError:
@@ -1105,11 +1111,20 @@ class UtilBill(Base):
                 charge.quantity = quantity
                 charge.rate = rate
                 charge.total = total
-                charge.error = error
+                charge.error = None if error is None else error.message
 
-            identifiers[rsi.rsi_binding]['quantity'] = quantity
-            identifiers[rsi.rsi_binding]['rate'] = rate
-            identifiers[rsi.rsi_binding]['total'] = total
+            # quantity/rate/total of this charge can only be used as identifiers
+            # in other charges if there was no error
+            if error is None:
+                identifiers[rsi.rsi_binding]['quantity'] = quantity
+                identifiers[rsi.rsi_binding]['rate'] = rate
+                identifiers[rsi.rsi_binding]['total'] = total
+
+    def get_charge_by_rsi_binding(self, binding):
+        '''Returns the first Charge object found belonging to this
+        ReeBill whose 'rsi_binding' matches 'binding'.
+        '''
+        return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
         return sum(charge.total for charge in self.charges)
