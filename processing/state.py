@@ -1094,7 +1094,7 @@ class UtilBill(Base):
 
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
-            quantity, rate = rsi.compute_charge(identifiers)
+            quantity, rate, error = rsi.compute_charge(identifiers)
             total = quantity * rate
             try:
                 charge = all_charges[rsi.rsi_binding]
@@ -1105,6 +1105,7 @@ class UtilBill(Base):
                 charge.quantity = quantity
                 charge.rate = rate
                 charge.total = total
+                charge.error = error
 
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate
@@ -1116,9 +1117,10 @@ class UtilBill(Base):
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
-    
     __tablename__ = 'charge'
-    
+
+    id = Column(Integer, primary_key=True)
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
     description = Column(String(255))
     group = Column(String(255))
     quantity = Column(Float)
