@@ -335,7 +335,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         }], utilbill_doc['meters'])
 
 
-        # 2 RSIs, NEW_1 and NEW_2
-        self.assertEqual(2, len(charges))
-        # add another RSI "BAD"
-        # try to compute it
