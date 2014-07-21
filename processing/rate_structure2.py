@@ -112,14 +112,11 @@ class RateStructureItem(EmbeddedDocument):
         def parse_formula(name):
             formula = getattr(self, name)
             if formula == '':
-                raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                    self.rsi_binding, name))
+                raise FormulaSyntaxError("%s formula can't be empty" % name)
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
-                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                                         '"%s":\n%s' % (name, self.rsi_binding,
-                getattr(self, name)))
+                raise FormulaSyntaxError('Syntax error in %s formula' % name)
         return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
@@ -153,8 +150,10 @@ class RateStructureItem(EmbeddedDocument):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
         register names to dictionaries containing keys "quantity" and "rate"),
-        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
-        if either of the formulas could not be parsed.
+        and returns (quantity result, rate result, error). 'error' is an
+        Exception describing any error that occurred.
+
+        Raises FormulaSyntaxError if either of the formulas could not be parsed.
         '''
         # validate argument types to avoid more confusing errors below
         assert all(
@@ -165,7 +164,10 @@ class RateStructureItem(EmbeddedDocument):
                 for k, v in register_quantities.iteritems())
 
         # check syntax
-        self._parse_formulas()
+        try:
+            self._parse_formulas()
+        except FormulaSyntaxError as e:
+            return None, None, e
 
         # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
         # the only way to evaluate these as Python code is to turn each of the
@@ -185,9 +187,11 @@ class RateStructureItem(EmbeddedDocument):
             try:
                 return eval(formula, {}, register_quantities)
             except Exception as e:
-                raise FormulaError(('Error when computing %s for RSI "%s": '
-                                    '%s') % (name, self.rsi_binding, e))
-        return compute('quantity'), compute('rate')
+                raise FormulaError(('Error in %s formula: %s') % (name, e))
+        try:
+            return compute('quantity'), compute('rate'), None
+        except FormulaError as e:
+            return None, None, e
 
     def to_dict(self):
         '''String representation of this RateStructureItem to send as JSON to
