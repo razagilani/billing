@@ -345,8 +345,12 @@ class Process(object):
         # save in Mongo last because it can't be rolled back
         self.reebill_dao.save_utilbill(doc)
 
-        # just in case utility bill can depend on this stuff
-        self.compute_utility_bill(utilbill_id)
+        # don't allow utility bill to be marked as processed if it has
+        # computation errors
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        utilbill.compute_charges(uprs, doc,
+                raise_exception=(processed is not None))
 
     def get_reebill_metadata_json(self, account):
         '''Returns data from both MySQL and Mongo describing all reebills for
