@@ -1,39 +1,27 @@
 <%inherit file="base.mako"/>
+<%namespace file="form.mako" import="render_form, render_ext_form"/>
 <%def name="sectiontitle()">Quotes</%def>
 
-<div style="width:${self.attr.page_width}; margin-left:auto; margin-right:auto; margin-top:20px; padding-left:${self.attr.page_padding}; padding-right:${self.attr.page_padding};">
 
-    <%doc>
-    <div style="overflow:auto; margin-bottom:20px;">
-        <button type="button" style="float:right;" onclick="location.href='${url_for('quote_new')}'">New Quote</button>
-    </div>
-    </%doc>
+<div style="width:${self.attr.page_width}; margin-left:auto; margin-right:auto; margin-top:20px; padding-left:${self.attr.page_padding}; padding-right:${self.attr.page_padding};">
     <%
     lis = len(interests)
     %>
-    %for idx, interest in enumerate(interests):
-        <div onclick="location.href='${url_for('interest_view', interest_id=interest.id)}'" class="offer">
-            <div style="font-size:16px;">
-                <div style="display:inline-block; vertical-align: top; min-width:200px;">
-                    <span style="font-weight:bold;">${interest.customer.name}</span>
-                    <br/>
-                    <span style="font-size:14px;">Interest ID ${interest.id}</span>
-                </div>
-                ${interest.rate_class.utility.name} <span style="display:inline-block; min-width:60px;">${interest.rate_class.name}</span>${interest.address.street}, ${interest.address.city}, ${interest.address.state}, ${interest.address.postal_code}
-            </div>
-            <div style="padding:10px 10px 10px 20px;">
-                <div style="min-width:120px; display:inline-block;">Interest ID </div>${interest.id}<br/>
-                <div style="min-width:120px; display:inline-block;">Total Offers </div>${interest.offers.count()}<br/>
-                <div style="min-width:120px; display:inline-block;">Best Rate </div>${interest.best_rate}<br/>
-                <div style="min-width:120px; display:inline-block;">Created By </div>${interest.created_by_user.name}<br/>
-                <div style="min-width:120px; display:inline-block;">Use Periods </div>${interest.use_periods.count()}
-                <br/>
-            </div>
-            <a href="${url_for('interest_edit', interest_id=interest.id)}" class="offeredit">edit</a>
+    ${render_form([], form.csrf_token, button=None)}
+    <div onclick="location.href='${url_for('quote_view', quote_id=quote.id)}'" style="display:table;">
+        <div style="display:table-row;">
+            <div style="display:table-cell;">Quote ID</div>
+            <div style="display:table-cell;">Company</div>
+            <div style="display:table-cell;">Rate Class</div>
+            <div style="display:table-cell;">Charge</div>
+            <div style="display:table-cell;">Rate</div>
+            <div style="display:table-cell;">Time Inserted</div>
+            <div style="display:table-cell;">Time Issued</div>
+            <div style="display:table-cell;">Time Expired</div>
+            <div style="display:table-cell;">Units</div>
         </div>
-        %if idx + 1 != lis:
-            <hr>
-        %endif
-    %endfor
 
+    %for quote in quotes:
+    %endfor
+    </div>
 </div>
