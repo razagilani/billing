@@ -2570,20 +2570,21 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'group',
                 hidden: true,
+                editable: false,
             },{
                 header: 'id',
                 width: 75,
                 sortable: true,
                 dataIndex: 'id',
-                editable: true,
                 hidden: true,
                 allowBlank: false,
+                editable: false,
             },{
                 header: 'RSI Binding',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rsi_binding',
-                editor: new Ext.form.TextField({allowBlank: true}),
+                editable: false,
                 allowBlank: false,
             },{
                 header: 'Description',
@@ -2591,44 +2592,22 @@ function reeBillReady() {
                 sortable: true,
                 editable: false,
                 dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
             },{
                 header: 'Quantity',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true}),
                 editable: false,
             },{
                 header: 'Units',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['therms'], ['kWD'], ['KQH'], ['rkVA']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                }),
-                
             },{
                 header: 'Rate',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true}),
                 editable: false,
             },{
                 header: 'Total', 
@@ -2637,7 +2616,6 @@ function reeBillReady() {
                 dataIndex: 'total', 
                 summaryType: 'sum',
                 align: 'right',
-                editor: new Ext.form.NumberField({allowBlank: false}),
                 editable: false,
                 renderer: chargeTotalRenderer,
             },
@@ -2666,108 +2644,6 @@ function reeBillReady() {
             {
                 xtype: 'tbseparator'
             },{
-                xtype: 'button',
-
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
-                id: 'aChargesInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-
-                    aChargesGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = aChargesGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var ChargeItemType = aChargesGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                        // ok, this is tricky:  the newly created record is assigned the chargegroup
-                        // of the selection during the insert.  This way, the new record is added
-                        // to the proper group.  Otherwise, if the record does not have the same
-                        // chargegroup name of the adjacent record, a new group is shown in the grid
-                        // and the UI goes out of sync.  Try this by change the chargegroup below
-                        // to some other string.
-                        group: selection.data.group,
-                        rsi_binding: 'RSI binding required',
-                        id: 'RSI binding required',
-                        description: 'description required',
-                        quantity: 0,
-                        quantity_units: 'kWh',
-                        rate: 0,
-                        total: 0,
-                    };
-                    var c = new ChargeItemType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = aChargesStore.indexOf(selection);
-                    aChargesStore.insert(insertionPoint + 1, c);
-                    aChargesGrid.getView().refresh();
-                    aChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                    aChargesGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
-                id: 'aChargesRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    aChargesGrid.stopEditing();
-                    var s = aChargesGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        aChargesStore.remove(r);
-                    }
-                    //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                id: 'aChargesAddGroupBtn',
-                iconCls: 'icon-add',
-                text: 'Add Group',
-                enabled: true,
-                handler: function() {
-                    Ext.Msg.prompt('Add Charge Group',
-                            'New charge group name:', function(btn, groupName) {
-                        if(btn != 'ok')
-                            return;
-                        var ChargeItemType = aChargesGrid.getStore().recordType;
-                        var c = new ChargeItemType({
-                            id: 'RSI binding required',
-                            rsi_binding: 'RSI binding required',
-                            group: groupName,
-                            description: 'Description required',
-                            quantity: 0,
-                            quantity_units: 'kWh',
-                            rate: 0,
-                            //rate_units: 'dollars',
-                            total: 0,
-                        });
-            
-                        // create new record
-                        aChargesStore.insert(aChargesStore.getTotalCount(), c);
-
-                        // select newly inserted record
-                        aChargesGrid.getView().refresh();
-                        aChargesGrid.getSelectionModel().selectRow(
-                                aChargesStore.getTotalCount() - 1);
-                    }
-                )
-            }
-        },{
             xtype: 'button',
             id: 'aChargesRegenerateBtn',
             text: 'Regenerate from Rate Structure',
@@ -2824,17 +2700,6 @@ function reeBillReady() {
                     }
                 ]
         }),
-    });
-
-    aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        aChargesGrid.getTopToolbar().findById('aChargesRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
     });
 
     aChargesGrid.on('activate', function(panel) {
