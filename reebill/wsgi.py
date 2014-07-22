@@ -111,6 +111,7 @@ def db_commit(method):
         return method(btb_instance, *args, **kwargs)
         Session().commit()
     return wrapper
+
 class ReeBillWSGI(object):
     def __init__(self, config, Session):
         self.config = config        
