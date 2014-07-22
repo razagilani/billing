@@ -108,8 +108,13 @@ def db_commit(method):
     def wrapper(btb_instance, *args, **kwargs):
         # because of the thread-local session, there's no need to do anything
         # before the method starts.
-        return method(btb_instance, *args, **kwargs)
-        Session().commit()
+        try:
+            return method(btb_instance, *args, **kwargs)
+        except:
+            Session().rollback()
+            raise
+        else:
+            Session().commit()
     return wrapper
 
 class ReeBillWSGI(object):
