@@ -1270,7 +1270,6 @@ class Process(object):
             savings = reebill.ree_value - reebill.ree_charge
 
             if reebill.customer_id != customer_id:
-        accounts = self.state_db.listAccounts()
                 cumulative_savings = 0
                 customer_id = reebill.customer_id
 

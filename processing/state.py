@@ -11,6 +11,7 @@ import logging
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
+from sqlalchemy.ext.declarative.api import declarative_base
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
