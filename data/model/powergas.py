@@ -34,7 +34,7 @@ class RateClass(Base):
         self.name = name
 
 
-class Quote(Base):
+class   Quote(Base):
     """Represents a quote for an energy supplier."""
 
     __tablename__ = 'quote'

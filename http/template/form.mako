@@ -1,29 +1,23 @@
-<%def name="render_form(fields, csrf_token=None, button='Submit', label_width='150px')">
-    <form method="post" id="ttt">
-        %for field in fields:
-            <div class="error" style="padding-left:${label_width}; padding-top:10px;">${field.errors[0] if field.errors else ''}</div>
-            <div><div style="width:${label_width}; display:inline-block;">${field.label}</div>${field(style="width:280px;")}</div>
-        %endfor
-        ${csrf_token}
-        <input type="submit" value="${button}" style="display:block; font-weight:bold; margin-left:130px; margin-top:20px;"/>
-    </form>
+<%namespace file="base.mako" import="extjs"/>
+
+<%def name="render_form(fields, csrf_field=None, method='post', button='Submit', label_width='150px')">
+    %if extjs():
+        ${render_ext_form(self.sectiontitle, fields)}
+    %else:
+        <form method="${method}">
+            %for field in fields:
+                <div class="error" style="padding-left:${label_width}; padding-top:10px;">${field.errors[0] if field.errors else ''}</div>
+                <div><div style="width:${label_width}; display:inline-block;">${field.label}</div>${field(style="width:280px;")}</div>
+            %endfor
+            ${csrf_field()}
+            %if button:
+                <input type="submit" value="${button}" style="display:block; font-weight:bold; margin-left:130px; margin-top:20px;"/>
+            %endif
+        </form>
+    %endif
 </%def>
 
 <%def name="render_ext_form(title, fields)">
-
-    <% for field in fields:
-         #print dir(field)
-         print "\n\n\n\n"
-         print field.label
-         print field.type
-         print field.data
-         print dir(field)
-         if field.type == 'SelectField':
-             for choice in field.iter_choices():
-                print choice
-         #print type(field.type)
-    %>
-
     <script type="text/javascript">
         Ext.Loader.setConfig({
             enabled: true

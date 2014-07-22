@@ -3,8 +3,13 @@
     company_name = 'Skyline'
     page_width = '1000px'
     page_padding = '20px'
-    extjs = False
 %>
+
+<%def name="extjs()">
+  <%
+    return False
+  %>
+</%def>
 
 
 <%def name="nav()">
@@ -40,12 +45,15 @@
         <link href='http://fonts.googleapis.com/css?family=Nunito:400,300' rel='stylesheet' type='text/css'>
         <link href='http://fonts.googleapis.com/css?family=Roboto:400,300' rel='stylesheet' type='text/css'>
 
-        <link href="http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css" rel="stylesheet" />
+        %if self.extjs():
+            <link href="http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css" rel="stylesheet" />
+        %endif
         <link rel="stylesheet" type="text/css" href="/static/style.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
         ${self.jsbody()}
         %if extjs:
             <script src="http://cdn.sencha.com/ext/gpl/4.2.0/ext-all.js"></script>
-            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+
             <script type="text/javascript">
                 $(document).ready(function() {
                     pdta = {
@@ -79,7 +87,7 @@
                   ${self.nav()}
             </div>
         </div>
-        %if extjs:
+        %if self.extjs():
             <div id="panel_content" style="display:none;"><div style="font-size:14px;" id="panel_body">${next.body()}</div></div>
             <div id="panel_container"></div>
         %else:

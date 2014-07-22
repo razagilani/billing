@@ -16,7 +16,7 @@
     %>
     <div style="padding-left:40px;" id="content_body">
 
-        %if self.attr.extjs:
+        %if self.extjs():
             ${render_ext_form(self.sectiontitle, fields)}
         %else:
             ${render_form(fields, form.csrf_token, button="Save")}
