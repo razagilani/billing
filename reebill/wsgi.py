@@ -111,6 +111,7 @@ def db_commit(method):
         return method(btb_instance, *args, **kwargs)
         Session().commit()
     return wrapper
+
 class ReeBillWSGI(object):
     def __init__(self, config, Session):
         self.config = config        
@@ -706,6 +707,7 @@ class ReeBillWSGI(object):
         apply_corrections = (apply_corrections == 'true')
         result = self.process.issue_and_mail(cherrypy.session['user'], account,
                 sequence, recipients, apply_corrections)
+        print result
         return self.dumps(result)
 
     @cherrypy.expose
@@ -714,9 +716,9 @@ class ReeBillWSGI(object):
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
         apply_corrections = (apply_corrections == 'true')
-        self.process.issue_processed_and_mail(cherrypy.session['user'],
+        result = self.process.issue_processed_and_mail(cherrypy.session['user'],
                 apply_corrections)
-        return self.dumps({'success': True})
+        return self.dumps(result)
 
     @cherrypy.expose
     @authenticate_ajax

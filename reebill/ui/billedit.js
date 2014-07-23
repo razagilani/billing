@@ -985,12 +985,16 @@ function reeBillReady() {
         if([5,6,9,10].indexOf(colIndex)>=0){
             value=Ext.util.Format.usMoney(value);
         }
-        else if(colIndex == 7){
+        else if(colIndex == 8){
             if (typeof(value) == 'number') {
                 value=value.toFixed(5);
             } else {
                 // it's a string with an error message--see bug #63401638
             }
+        }
+        else if(colIndex ==7)
+        {
+            value = value ? 'Yes' : 'No'
         }
         return value;
     }
@@ -1059,12 +1063,8 @@ function reeBillReady() {
                 dataIndex: 'processed',
                 width: 80,
                 align: 'right',
-                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
-                renderer: function(value, metaData, record, rowIndex, colIndex, store){
-                    var value = reeBillGridRenderer(value, metaData, record, rowIndex, colIndex, store);
-                    var str = value ? 'Yes' : 'No'
-                    return str;
-                },
+                tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ignored when predicting the rate structures of other bills.<br />",
+                renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E',
                 sortable: false,
@@ -5415,9 +5415,9 @@ function reeBillReady() {
     var issueReebillButton = new Ext.Button({
         xtype: 'button',
         id: 'issueReebillBtn',
-        iconCls: 'icon-mail-go',
+        iconCls: 'icon-mail',
         text: 'Issue',
-        disabled: true,
+        disabled: false,
         handler: function()
         {
             var r = issuableGrid.getSelectionModel().getSelected();
@@ -5531,7 +5531,10 @@ function reeBillReady() {
                             issuableGrid.setDisabled(false);
                         }
                         if (o.success == true) {
-                            Ext.Msg.alert("Success", "Mail successfully sent");
+                            if (o.issued == 0)
+                                Ext.Msg.alert("No Reeills issued", "No processed reebills to issue");
+                            else
+                                Ext.Msg.alert("Success", "Issued " + o.issued + " reebills");
                             issuableGrid.getSelectionModel().clearSelections();
                             issuableStore.reload();
                             issuableGrid.setDisabled(false);

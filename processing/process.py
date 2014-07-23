@@ -1897,6 +1897,7 @@ class Process(object):
         # to issue them, we will return a list of those corrections and the
         # sum of adjustments that have to be made so the client can create
         # a confirmation message
+        session = Session()
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
                 return {'success': False,
@@ -1943,6 +1944,7 @@ class Process(object):
         '''
 
         unissued_processed = self.get_issuable_processed_reebills_dict()
+        issued = 0
         for bill in unissued_processed:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
@@ -1979,13 +1981,16 @@ class Process(object):
                         bill['account'], bill['sequence'], e.__class__.__name__),) + e.args
                 raise
             journal.ReeBillIssuedEvent.save_instance(user, bill['account'], bill['sequence'], 0)
-        # Let's mail!
-        # Recepients can be a comma seperated list of email addresses
+            # Let's mail!
+            # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                    recipient_list)
             journal.ReeBillMailedEvent.save_instance(user, bill['account'],
                                                 bill['sequence'], bill['mailto'])
+            issued = issued + 1
+        return {'success': True,
+                'issued': issued}
 
     def get_issuable_processed_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries containing
