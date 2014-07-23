@@ -114,11 +114,12 @@ class Process(object):
                                            r.id)))
         return l
 
-    def new_register(self, session, utilbill_id, row):
+    def new_register(self, utilbill_id, row):
         """Creates a new register for the utility bill having the specified id
         "row" argument is a dictionary but keys other than
         "meter_id" and "register_id" are ignored.
         """
+        session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         session.add(Register(utility_bill,
                              "Insert description",
@@ -165,9 +166,10 @@ class Process(object):
         self.logger.debug("Commiting changes to register %s" % register.id)
 
 
-    def delete_register(self, session, utilbill_id, orig_meter_id, orig_reg_id):
+    def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id):
         self.logger.info("Running Process.delete_register %s %s %s" %
                          (utilbill_id, orig_meter_id, orig_reg_id))
+        session = Session()
         register = session.query(Register).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Register.meter_identifier == orig_meter_id).\
