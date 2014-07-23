@@ -2067,6 +2067,63 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'corrections': '#1 not issued',
         }], reebill_data, 'id')
 
+    def test_payment_application(self):
+        """Test that payments are applied to reebills according their "date
+        received", including when multiple payments are applied and multiple
+        bills are issued in the same day.
+        """
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 2, 1),
+                date(2000, 3, 1), StringIO('February'), 'March.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 3, 1),
+                date(2000, 4, 1), StringIO('March'), 'March.pdf')
+
+        # create 2 reebills
+        reebill_1 = self.process.roll_reebill(account,
+                start_date=date(2000,1,1))
+        reebill_2 = self.process.roll_reebill(account)
+
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000,1,1,1), 'one', 10)
+        self.process.create_payment(account, datetime(2000,1,1,2), 'two', 12)
+
+        # 1st reebill has both payments applied to it, 2nd has neither
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # issue the 1st bill
+        self.process.issue(account, 1, issue_date=datetime(2000,1,1,3))
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # now later payments apply to the 2nd bill
+        self.process.create_payment(account, datetime(2000,1,1,3), 'three', 30)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # even when a correction is made on the 1st bill
+        self.process.new_version(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # a payment that is backdated to before a corrected bill was issued
+        # does not appear on the corrected version
+        self.process.create_payment(account, datetime(2000,1,1,2,30),
+                'backdated payment', 230)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
+
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data
         account = '99999'
