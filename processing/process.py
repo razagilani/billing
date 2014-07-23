@@ -672,8 +672,8 @@ class Process(object):
             session.delete(charge)
         for register in utility_bill.registers:
             session.delete(register)
-        self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
-                utilbill.service)
+        self.state_db.trim_hypothetical_utilbills(utility_bill.customer.account,
+                                                  utility_bill.service)
         session.delete(utility_bill)
 
         return utility_bill, path
