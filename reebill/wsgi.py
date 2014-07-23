@@ -1552,7 +1552,7 @@ if __name__ == '__main__':
     class Root(object):
         pass
     root = Root()
-    root.reebill = ReeBillWSGI(config
+    root.reebill = ReeBillWSGI(config)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
