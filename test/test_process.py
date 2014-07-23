@@ -1411,51 +1411,49 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc = '99999'
         # two utilbills, with reebills
         session = self.session
-        self.process.upload_utility_bill(session, acc, 'gas',
+        self.process.upload_utility_bill(acc, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO('january 2012'),
                                          'january.pdf')
-        self.process.upload_utility_bill(session, acc, 'gas',
+        self.process.upload_utility_bill(acc, 'gas',
                                          date(2012, 2, 1), date(2012, 3, 1),
                                          StringIO('february 2012'),
                                          'february.pdf')
-        one = self.process.roll_reebill(session, acc,
-                                        start_date=date(2012, 1, 1))
-        two = self.process.roll_reebill(session, acc)
+        one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
+        two = self.process.roll_reebill(acc)
 
         # neither reebill should be issued yet
-        self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
+        self.assertEquals(False, self.state_db.is_issued(acc, 1))
         self.assertEquals(None, one.issue_date)
         self.assertEquals(None, one.due_date)
         self.assertEqual(None, one.email_recipient)
-        self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
+        self.assertEquals(False, self.state_db.is_issued(acc, 2))
         self.assertEquals(None, two.issue_date)
         self.assertEquals(None, two.due_date)
         self.assertEqual(None, two.email_recipient)
 
         # two should not be issuable until one_doc is issued
-        self.assertRaises(BillStateError, self.process.issue, session, acc,
-                          2)
+        self.assertRaises(BillStateError, self.process.issue, acc, 2)
 
         # issue one
-        self.process.issue(session, acc, 1)
+        self.process.issue(acc, 1)
 
         # re-load from mongo to see updated issue date, due date,
         # recipients
         self.assertEquals(True, one.issued)
-        self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
+        self.assertEquals(True, self.state_db.is_issued(acc, 1))
         self.assertEquals(datetime.utcnow().date(), one.issue_date)
         self.assertEquals(one.issue_date + timedelta(30), one.due_date)
         self.assertEquals('example@example.com', one.email_recipient)
 
-        customer = self.state_db.get_customer(session, acc)
+        customer = self.state_db.get_customer(acc)
         customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue two
-        self.process.issue(session, acc, 2)
+        self.process.issue(acc, 2)
 
         # re-load from mongo to see updated issue date and due date
-        self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
+        self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals(datetime.utcnow().date(), two.issue_date)
         self.assertEquals(two.issue_date + timedelta(30), two.due_date)
         self.assertEquals('test1@example.com, test2@exmaple.com',
