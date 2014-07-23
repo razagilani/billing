@@ -163,7 +163,7 @@ class Process(object):
         mongo.new_register(utilbill_doc, row.get('meter_id', None),
                             row.get('register_id', None))
         self.reebill_dao.save_utilbill(utilbill_doc)
-
+        self.compute_utility_bill(utilbill_id)
 
     def update_register(self, utilbill_id, orig_meter_id, orig_reg_id,
                 fields, reebill_sequence=None, reebill_version=None):
@@ -173,6 +173,7 @@ class Process(object):
         new_meter_id, new_reg_id = mongo.update_register(utilbill_doc,
                 orig_meter_id, orig_reg_id, **fields)
         self.reebill_dao.save_utilbill(utilbill_doc)
+        self.compute_utility_bill(utilbill_id)
         return new_meter_id, new_reg_id
 
     def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id,
@@ -183,17 +184,17 @@ class Process(object):
                 reebill_version=reebill_version)
         mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
         self.reebill_dao.save_utilbill(utilbill_doc)
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def add_charge(utilbill_id, group_name):
+    def add_charge(self, utilbill_id, group_name):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def update_charge(utilbill_id, rsi_binding, fields):
+    def update_charge(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
         session = Session()
@@ -202,9 +203,9 @@ class Process(object):
             filter(Charge.rsi_binding == rsi_binding).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def delete_charge(utilbill_id, rsi_binding):
+    def delete_charge(self, utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         session = Session()
@@ -212,6 +213,7 @@ class Process(object):
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
+        self.compute_utility_bill(utilbill_id)
 
     def get_rsis_json(self, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
@@ -223,6 +225,8 @@ class Process(object):
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         new_rsi = rs_doc.add_rsi()
         rs_doc.save()
+        self.refresh_charges(utilbill_id)
+        self.compute_utility_bill(utilbill_id)
         return new_rsi
 
     def update_rsi(self, utilbill_id, rsi_binding, fields):
@@ -234,6 +238,8 @@ class Process(object):
         rsi = rs_doc.get_rsi(rsi_binding)
         rsi.update(**fields)
         rs_doc.save()
+        self.refresh_charges(utilbill_id)
+        self.compute_utility_bill(utilbill_id)
         return rsi.rsi_binding
 
     def delete_rsi(self, utilbill_id, rsi_binding):
@@ -243,6 +249,8 @@ class Process(object):
         rs_doc.rates.remove(rsi)
         assert rsi not in rs_doc.rates
         rs_doc.save()
+        self.refresh_charges(utilbill_id)
+        self.compute_utility_bill(utilbill_id)
 
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
@@ -339,6 +347,13 @@ class Process(object):
 
         # save in Mongo last because it can't be rolled back
         self.reebill_dao.save_utilbill(doc)
+
+        # don't allow utility bill to be marked as processed if it has
+        # computation errors
+        uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
+        doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
+        utilbill.compute_charges(uprs, doc,
+                raise_exception=(processed is not None))
 
     def get_reebill_metadata_json(self, account):
         '''Returns data from both MySQL and Mongo describing all reebills for
@@ -857,11 +872,12 @@ class Process(object):
                 UtilBillLoader(session))
         existing_uprs.rates = new_rs.rates
         existing_uprs.save()
+        self.compute_utility_bill(utilbill_id)
 
     def has_utilbill_predecessor(self, utilbill_id):
         try:
             utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-            predecessor = self.state_db.get_last_real_utilbill(
+            self.state_db.get_last_real_utilbill(
                     utilbill.customer.account, utilbill.period_start,
                     utility=utilbill.utility, service=utilbill.service)
             return True
@@ -874,13 +890,10 @@ class Process(object):
         Structure Item in the UPRS. The charges are computed according to the
         rate structure.
         '''
-        session = Session()
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        document = self.reebill_dao.load_doc_for_utilbill(utilbill)
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         utilbill.refresh_charges(uprs.rates)
-        # NOTE this will fail if there's an error when computing the charges
-        utilbill.compute_charges(uprs, document)
+        self.compute_utility_bill(utilbill_id)
 
     def compute_utility_bill(self, utilbill_id):
         '''Updates all charges in the document of the utility bill given by

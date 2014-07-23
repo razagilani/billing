@@ -1,7 +1,3 @@
-'''
-File: wsgi.py
-'''
-from os.path import dirname, realpath, join
 from os.path import dirname, realpath, join
 
 from billing import init_config, init_model, init_logging
@@ -13,7 +9,6 @@ init_model()
 from billing import config
 
 import sys
-import pprint
 
 import traceback
 import json
@@ -45,8 +40,6 @@ from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.exceptions import Unauthenticated, IssuedBillError
-
-pp = pprint.PrettyPrinter(indent=4).pprint
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -108,12 +101,17 @@ def db_commit(method):
     def wrapper(btb_instance, *args, **kwargs):
         # because of the thread-local session, there's no need to do anything
         # before the method starts.
-        return method(btb_instance, *args, **kwargs)
+        try:
+            result = method(btb_instance, *args, **kwargs)
+        except:
+            Session().rollback()
+            raise
         Session().commit()
+        return result
     return wrapper
 
 class ReeBillWSGI(object):
-    def __init__(self, config, Session):
+    def __init__(self, config):
         self.config = config        
         self.logger = logging.getLogger('reebill')
 
@@ -153,7 +151,6 @@ class ReeBillWSGI(object):
                 host=journal_config['host'], port=int(journal_config['port']),
                 alias='journal')
         self.journal_dao = journal.JournalDAO()
-
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
@@ -1556,7 +1553,7 @@ if __name__ == '__main__':
     class Root(object):
         pass
     root = Root()
-    root.reebill = ReeBillWSGI(config, Session)
+    root.reebill = ReeBillWSGI(config)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1583,5 +1580,5 @@ else:
         'tools.sessions.timeout': 240
     })
 
-    bridge = ReeBillWSGI(config, Session)
+    bridge = ReeBillWSGI(config)
     application = cherrypy.Application(bridge, script_name=None, config=None)
