@@ -20,6 +20,7 @@ from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func, not_
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
@@ -744,6 +745,10 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+    billing_address = relationship('Address', uselist=False, cascade='all',
+            primaryjoin='UtilBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='all',
+            primaryjoin='UtilBill.service_address_id==Address.id')
 
     @property
     def bindings(self):

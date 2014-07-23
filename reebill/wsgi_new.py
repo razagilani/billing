@@ -104,8 +104,6 @@ class WebResource(object):
         self.config = config
         self.logger = logging.getLogger('reebill')
 
-        self.session = None
-
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'))
@@ -115,7 +113,7 @@ class WebResource(object):
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
-        self.state_db = state.StateDB(Session, logger=self.logger)
+        self.state_db = state.StateDB(logger=self.logger)
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
@@ -280,12 +278,11 @@ class RESTResource(WebResource):
 
         return_value = {}
 
-        self.session = Session()
         try:
             response = method(*vpath, **params)
-            self.session.commit()
+            Session().commit()
         except:
-            self.session.rollback()
+            Session().rollback()
             raise
 
         if type(response) != tuple:
@@ -317,10 +314,10 @@ class RESTResource(WebResource):
 class AccountsListResource(RESTResource):
 
     def handle_get(self, *vpath, **params):
-        accounts = self.state_db.listAccounts(self.session)
+        accounts = self.state_db.listAccounts()
         rows = [{'account': account, 'name': full_name} for account,
                 full_name in zip(accounts,
-                self.process.full_names_of_accounts(self.session, accounts))]
+                self.process.full_names_of_accounts(accounts))]
         return True, {'rows': rows, 'results': len(rows)}
 
 
@@ -357,7 +354,7 @@ class AccountsResource(RESTResource):
             sortreverse = True
 
         count, rows = self.process.list_account_status(
-            self.session, start, limit, filtername, sortcol, sortreverse)
+            start, limit, filtername, sortcol, sortreverse)
 
         cherrypy.session['user'].preferences[
             'default_account_sort_field'] = sortcol
@@ -382,8 +379,7 @@ class IssuableReebills(RESTResource):
             allowable_diff = UserDAO.default_user.preferences[
                 'difference_threshold']
 
-        issuable_reebills = self.process.get_issuable_reebills_dict(
-            self.session)
+        issuable_reebills = self.process.get_issuable_reebills_dict()
         for reebill_info in issuable_reebills:
             reebill_info['difference'] = abs(
                 reebill_info['reebill_total'] - reebill_info['util_total'])
@@ -399,18 +395,17 @@ class IssuableReebills(RESTResource):
     def handle_delete(self, reebill_id, *vpath, **params):
         # Issues and mails the ReeBill
         # Issuing is like Deleting from issuables
-        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+        r = self.state_db.get_reebill_by_id(reebill_id)
         account, sequence = r.customer.account, r.sequence
-        self.process.compute_reebill(self.session, account, sequence)
-        self.process.issue(self.session, account, sequence)
+        self.process.compute_reebill(account, sequence)
+        self.process.issue(account, sequence)
         journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                                                  account, sequence, 0)
 
         # Let's mail!
         # Recepients can be a comma seperated list of email addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.process.mail_reebills(self.session, account, [sequence],
-                                   recipient_list)
+        self.process.mail_reebills(account, [sequence], recipient_list)
         journal.ReeBillMailedEvent.save_instance(
             cherrypy.session['user'], account, sequence, recipients)
 
@@ -420,7 +415,7 @@ class IssuableReebills(RESTResource):
         # Handle email address update
         row = cherrypy.request.json
         self.process.update_bill_email_recipient(
-            self.session, row['account'], row['sequence'], row['mailto'])
+            row['account'], row['sequence'], row['mailto'])
         return True, {'row': row, 'results': 1}
 
 
@@ -434,7 +429,7 @@ class ReebillsResource(RESTResource):
         '''Handles GET requests for reebill grid data.'''
         # this is inefficient but length is always <= 120 rows
         rows = sorted(self.process.get_reebill_metadata_json(
-            self.session, account), key=itemgetter(sort))
+            account), key=itemgetter(sort))
         if dir == 'DESC':
             rows.reverse()
 
@@ -445,7 +440,7 @@ class ReebillsResource(RESTResource):
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
-        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+        r = self.state_db.get_reebill_by_id(reebill_id)
         sequence, account = r.sequence, r.customer.account
 
         if row['action'] == 'bindree':
@@ -454,8 +449,8 @@ class ReebillsResource(RESTResource):
             if self.config.get('runtime', 'integrate_nexus') is False:
                 raise ValueError("Nexus is not integrated")
 
-            self.process.bind_renewable_energy(self.session, account, sequence)
-            reebill = self.state_db.get_reebill(self.session, account, sequence)
+            self.process.bind_renewable_energy(account, sequence)
+            reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
 
@@ -464,7 +459,6 @@ class ReebillsResource(RESTResource):
                 raise RenderError('Render does nothing because reebill'
                                   ' images have been turned off.')
             self.renderer.render(
-                self.session,
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account,
@@ -479,8 +473,7 @@ class ReebillsResource(RESTResource):
             recipients = row['action_value']
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
-            self.process.mail_reebills(self.session, account,
-                                       [int(sequence)], recipient_list)
+            self.process.mail_reebills(account, [int(sequence)], recipient_list)
 
             # journal mailing of every bill
             for sequence in sequences:
@@ -488,7 +481,7 @@ class ReebillsResource(RESTResource):
                     cherrypy.session['user'], account, sequence, recipients)
 
         elif row['action'] == 'compute':
-            self.process.compute_reebill(self.session, account, sequence,'max')
+            self.process.compute_reebill(account, sequence,'max')
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
@@ -497,11 +490,10 @@ class ReebillsResource(RESTResource):
         return True, {'rows': row, 'results': 1}
 
     def handle_delete(self, reebill_id, *vpath, **params):
-        r = self.state_db.get_reebill_by_id(self.session, reebill_id)
+        r = self.state_db.get_reebill_by_id(reebill_id)
 
         sequence, account = r.sequence, r.customer.account
-        deleted_version = self.process.delete_reebill(
-            self.session, account, sequence)
+        deleted_version = self.process.delete_reebill(account, sequence)
         # deletions must all have succeeded, so journal them
         journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
             account, sequence, deleted_version)
@@ -512,7 +504,7 @@ class ReebillsResource(RESTResource):
 class UtilBillLastEndDateResource(RESTResource):
 
     def handle_get(self, account,*vpath, **params):
-        the_date = self.state_db.last_utilbill_end_date(self.session, account)
+        the_date = self.state_db.last_utilbill_end_date(account)
         # (https://www.pivotaltracker.com/story/show/23569087)
         # Date is interpreted as a datetime in the client with 12AM UTC set as
         # its time. This has the effect of the date displayed being off by
@@ -530,7 +522,7 @@ class UtilBillResource(RESTResource):
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
         rows, total_count = self.process.get_all_utilbills_json(
-            self.session, account, start, limit)
+            account, start, limit)
         return True, {'rows': rows, 'results': total_count}
 
     def handle_post(self, *vpath, **params):
@@ -552,8 +544,7 @@ class UtilBillResource(RESTResource):
         billstate = UtilBill.Complete if fileobj.file else \
             UtilBill.SkylineEstimated
         self.process.upload_utility_bill(
-            self.session, account, service,
-            begin_date, end_date, fileobj.file,
+            account, service, begin_date, end_date, fileobj.file,
             fileobj.filename if fileobj.file else None,
             total=total_charges, state=billstate, utility=None, rate_class=None)
 
@@ -574,14 +565,13 @@ class UtilBillResource(RESTResource):
             elif k in ('total_charges', 'utility', 'rate_class', 'processed'):
                 update_args[k] = v
 
-        self.process.update_utilbill_metadata(self.session, utilbill_id,
-                                              **update_args)
+        self.process.update_utilbill_metadata(utilbill_id, **update_args)
 
         return True, {}
 
     def handle_delete(self, utilbill_id, account, *vpath, **params):
         utilbill, deleted_path = self.process.delete_utility_bill_by_id(
-            self.session, utilbill_id)
+            utilbill_id)
         journal.UtilBillDeletedEvent.save_instance(
             cherrypy.session['user'], account,
             utilbill.period_start, utilbill.period_end,
@@ -593,10 +583,7 @@ class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, reebill_sequence=None,
                    reebill_version=None, *vpath, **params):
-        charges_json = self.process.get_utilbill_charges_json(
-            self.session, utilbill_id,
-            reebill_sequence=reebill_sequence,
-            reebill_version=reebill_version)
+        charges_json = self.process.get_utilbill_charges_json(utilbill_id)
 
         return True, {'rows': charges_json, 'total': len(charges_json)}
 
@@ -606,14 +593,12 @@ class RegistersResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
         # get dictionaries describing all registers in all utility bills
-        registers_json = self.process.get_registers_json(
-            self.session, utilbill_id)
+        registers_json = self.process.get_registers_json(utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
     def handle_post(self, utilbill_id, *vpath, **params):
         new_register = cherrypy.request.json
-        r = self.process.new_register(
-            self.session, utilbill_id, new_register)
+        r = self.process.new_register(utilbill_id, new_register)
 
         return True, {"rows": r.to_dict(), 'results': 1}
 
@@ -625,21 +610,19 @@ class RegistersResource(RESTResource):
         if 'quantity' in updated_reg:
             assert isinstance(updated_reg['quantity'], (float, int))
 
-        # modify the register using every field in 'updated_reg' except "id"
-        register = self.process.update_register(
-            self.session, register_id, updated_reg)
+        register = self.process.update_register(register_id, updated_reg)
 
         return True, {"rows": register.to_dict(), 'results': 1}
 
     def handle_delete(self, register_id, *vpath, **params):
-        self.process.delete_register( self.session, register_id)
+        self.process.delete_register(register_id)
         return True, {}
 
 
 class RateStructureResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
-        rsis = self.process.get_rsis_json(self.session, utilbill_id)
+        rsis = self.process.get_rsis_json(utilbill_id)
         return True, {'rows': rsis, 'results': len(rsis)}
 
 
@@ -647,7 +630,7 @@ class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        payments = self.state_db.payments(self.session, account)
+        payments = self.state_db.payments(account)
         rows = [payment.to_dict() for payment in payments]
         return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
@@ -655,15 +638,12 @@ class PaymentsResource(RESTResource):
         d = cherrypy.request.json['date_received']
         d = datetime.strptime(d, '%Y-%m-%dT%H:%M:%S')
         print "\n\n\n\n", d, type(d)
-        new_payment = self.process.create_payment(
-            self.session, account, d, "New Entry", 0, d)
-        self.session.commit()
+        new_payment = self.process.create_payment(account, d, "New Entry", 0, d)
         return True, {"rows": new_payment.to_dict(), 'results': 1}
 
     def handle_put(self, payment_id, *vpath, **params):
         row = cherrypy.request.json
         self.process.update_payment(
-            self.session,
             int(payment_id),
             row['date_applied'],
             row['description'],
