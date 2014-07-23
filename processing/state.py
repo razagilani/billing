@@ -11,6 +11,7 @@ import logging
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
+from sqlalchemy.ext.declarative.api import declarative_base
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
@@ -400,22 +401,6 @@ class ReeBill(Base):
             0, r.aggregate_function, r.unit) for r in reebill_readings
                          if r.register_binding in utilbill_register_bindings]
 
-    def update_readings_from_reebill(self, reebill_readings, utilbill_doc):
-        '''Updates the set of Readings associated with this ReeBill to match
-        the list of registers in the given reebill_readings. Readings that do not
-        have a register binding that matches a register in 'utilbill_doc' are
-        ignored.
-        '''
-        session = Session.object_session(self)
-        for r in self.readings:
-            session.delete(r)
-        utilbill_register_bindings = {r['register_binding']
-                for r in chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])}
-        self.readings = [Reading(r.register_binding, r.measure, 0,
-                0, r.aggregate_function, r.unit) for r in reebill_readings
-                if r.register_binding in utilbill_register_bindings]
-
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
         try:
@@ -508,7 +493,7 @@ class ReeBill(Base):
 
     def replace_charges_with_context_evaluations(self, context):
         """Replace the ReeBill charges with data from each `BindingEvaluation`.
-        :param binding_evaluations: a dictionary of binding: `BindingEvaluation`
+        :param context: a dictionary of binding: `BindingEvaluation`
         """
         for binding in set([r.register_binding for r in self.readings]):
             del context[binding]
@@ -523,6 +508,8 @@ class ReeBill(Base):
                 charge.description, charge.group, charge.quantity,
                 evaluation.quantity, charge.quantity_units, charge.rate,
                 evaluation.rate, charge.total, evaluation.total))
+        rbch = session.query(ReeBillCharge).all()
+        print rbch
 
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
@@ -647,7 +634,7 @@ class ReeBillCharge(Base):
                  a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
                  a_total, h_total):
         assert quantity_unit is not None
-        self.reebill_id = reebill.id
+        self.reebill = reebill
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
@@ -746,9 +733,9 @@ class UtilBill(Base):
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
     billing_address = relationship('Address', uselist=False, cascade='all',
-            primaryjoin='UtilBill.billing_address_id==Address.id')
+        primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
-            primaryjoin='UtilBill.service_address_id==Address.id')
+        primaryjoin='UtilBill.service_address_id==Address.id')
 
     @property
     def bindings(self):
