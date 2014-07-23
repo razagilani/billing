@@ -289,7 +289,7 @@ class StateTest(utils.TestCase):
                 date(2012,2,1))
         p = payments[0]
         self.assertEqual(1, len(payments))
-        self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
+        self.assertEqual((acc, datetime(2012,1,15), 'payment 1', 100),
                 (p.customer.account, p.date_applied, p.description,
                 p.credit))
         self.assertDatetimesClose(datetime.utcnow(), p.date_received)
@@ -307,26 +307,26 @@ class StateTest(utils.TestCase):
                 date(2012,3,1))
         self.assertEqual(1, len(payments))
         q = payments[0]
-        self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
+        self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
                 (q.customer.account, q.date_applied, q.description,
                 q.credit))
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
         # update feb 1: move it to mar 1
-        self.state_db.update_payment(q.id, date(2012,3,1),
+        self.state_db.update_payment(q.id, datetime(2012,3,1),
                     'new description', 200)
-        payments = self.state_db.find_payment(acc, date(2012,1,16),
-                date(2012,3,2))
+        payments = self.state_db.find_payment(acc, datetime(2012,1,16),
+                datetime(2012,3,2))
         self.assertEqual(1, len(payments))
         q = payments[0]
-        self.assertEqual((acc, date(2012,3,1), 'new description', 200),
+        self.assertEqual((acc, datetime(2012,3,1), 'new description', 200),
                 (q.customer.account, q.date_applied, q.description,
                 q.credit))
 
         # delete jan 15
         self.state_db.delete_payment(p.id)
         self.assertEqual([q], self.state_db.find_payment(acc,
-                date(2012,1,1), date(2012,4,1)))
+                datetime(2012,1,1), datetime(2012,4,1)))
 
 
     def test_get_last_reebill(self):
