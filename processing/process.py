@@ -82,9 +82,10 @@ class Process(object):
             reebill_version=None):
         raise DeprecationWarning
 
-    def get_utilbill_charges_json(self, session, utilbill_id):
+    def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
+        session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         columns = ['id', 'description', 'group', 'quantity', 'quantity_units',
                    'rate', 'rsi_binding', 'total']
@@ -92,10 +93,11 @@ class Process(object):
                      if hasattr(charge, col)] + [('id', charge.rsi_binding)])
                 for charge in utilbill.charges]
 
-    def get_registers_json(self, session, utilbill_id):
+    def get_registers_json(self, utilbill_id):
         """Returns a dictionary of register information for the utility bill
         having the specified utilbill_id."""
         l = []
+        session = Session()
         for r in session.query(Register).join(UtilBill,
             Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id).all():
@@ -129,33 +131,20 @@ class Process(object):
                              None,
                              row.get('meter_id', "")))
 
-    def update_register(self, session, utilbill_id, orig_meter_id, orig_reg_id,
-                        rows):
+    def update_register(self, utilbill_id, orig_meter_id, orig_reg_id, rows):
         """Updates fields in the register given by 'original_register_id' in
         the meter given by 'original_meter_id', with the data contained by rows.
         """
         self.logger.info("Running Process.update_register %s %s %s" %
                          (utilbill_id, orig_meter_id, orig_reg_id))
+        session = Session()
         q = session.query(Register).join(UtilBill,
                                          Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id)
 
-    def get_utilbill_charges_json(self, utilbill_id,
-                    reebill_sequence=None, reebill_version=None):
-        """Returns a list of dictionaries of charges for the utility bill given
-        by  'utilbill_id' (MySQL id). If the sequence and version of an issued
-        reebill are given, the document returned will be the frozen version for
-        the issued reebill."""
-        session = Session()
-        utilbill_doc = self.get_utilbill_doc(utilbill_id,
-                reebill_sequence=reebill_sequence,
-                reebill_version=reebill_version)
-        utilbill = session.query(UtilBill).\
-                filter_by(document_id=utilbill_doc['_id']).one()
-        return [dict([(col, getattr(charge, col)) for col in
-                     set(charge.column_names()) - set(['utilbill_id'])
-                     if hasattr(charge, col)] + [('id', charge.rsi_binding)])
-                for charge in utilbill.charges]
+        #Register to be updated
+        register = q.filter(Register.meter_identifier == orig_meter_id).\
+            filter(Register.identifier == orig_reg_id).one()
 
         #Check if a register with target register_id/meter_id already exists
         target_register_id = rows.get('register_id', orig_reg_id)
@@ -175,6 +164,7 @@ class Process(object):
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
 
+
     def delete_register(self, session, utilbill_id, orig_meter_id, orig_reg_id):
         self.logger.info("Running Process.delete_register %s %s %s" %
                          (utilbill_id, orig_meter_id, orig_reg_id))
@@ -183,34 +173,6 @@ class Process(object):
             filter(Register.meter_identifier == orig_meter_id).\
             filter(Register.identifier == orig_reg_id).one()
         session.delete(register)
-
-    def add_charge(self, session, utilbill_id, group_name):
-        """Add a new charge to the given utility bill with charge group
-        "group_name" and default values for all its fields."""
-        ub = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        ub.charges.append(Charge(ub, "", group_name, 0, "", 0, "", 0))
-        mongo.new_register(utilbill_doc, row.get('meter_id', None),
-                            row.get('register_id', None))
-
-
-    def update_register(self, utilbill_id, orig_meter_id, orig_reg_id,
-                fields, reebill_sequence=None, reebill_version=None):
-        utilbill_doc = self.get_utilbill_doc(utilbill_id,
-                reebill_sequence=reebill_sequence,
-                reebill_version=reebill_version)
-        new_meter_id, new_reg_id = mongo.update_register(utilbill_doc,
-                orig_meter_id, orig_reg_id, **fields)
-        self.reebill_dao.save_utilbill(utilbill_doc)
-        return new_meter_id, new_reg_id
-
-    def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id,
-                    reebill_sequence=None,
-                    reebill_version=None):
-        utilbill_doc = self.get_utilbill_doc(utilbill_id,
-                reebill_sequence=reebill_sequence,
-                reebill_version=reebill_version)
-        mongo.delete_register(utilbill_doc, orig_meter_id, orig_reg_id)
-        self.reebill_dao.save_utilbill(utilbill_doc)
 
     @staticmethod
     def add_charge(utilbill_id, group_name):
@@ -243,33 +205,6 @@ class Process(object):
 
     def get_rsis_json(self, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        return [rsi.to_dict() for rsi in rs_doc.rates]
-
-    def add_rsi(self, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        new_rsi = rs_doc.add_rsi()
-        rs_doc.save()
-        return new_rsi
-
-    def update_rsi(self, utilbill_id, rsi_binding, fields):
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        rsi = rs_doc.get_rsi(rsi_binding)
-        rsi.update(**fields)
-        rs_doc.save()
-        return rsi.rsi_binding
-
-    def delete_rsi(self, utilbill_id, rsi_binding):
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
-        rsi = rs_doc.get_rsi(rsi_binding)
-        rs_doc.rates.remove(rsi)
-        assert rsi not in rs_doc.rates
-        rs_doc.save()
-
-    def get_rsis_json(self, session, utilbill_id):
         return [{'rsi_binding': c.rsi_binding,
                  'quantity_formula': c.quantity_formula,
                  'rate_formula': c.rate_formula,
@@ -277,8 +212,9 @@ class Process(object):
                  'shared': c.shared,
                  'roundrule': c.roundrule} for c in utilbill.charges]
 
-    def add_rsi(self, session, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
+    def add_rsi(self, utilbill_id):
+        session = Session()
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
         n = 1
         while ('New RSI #%s' % n) in all_rsi_bindings:
@@ -291,12 +227,15 @@ class Process(object):
                             rate = 0.0,
                             rsi_binding = "New RSI #%s" % n,
                             total = 0.0))
+        session.flush()
+        ubs = session.query(UtilBill).all()
+        print ubs
 
-
-    def update_rsi(self, session, utilbill_id, rsi_binding, fields):
+    def update_rsi(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by `rsi_binding` in the given utility
         bill by setting attributes to match the dictionary `fields`.
         """
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
@@ -306,7 +245,8 @@ class Process(object):
                 k = '%s_formula' % k  # we renamed these
             setattr(charge, k, v)
 
-    def delete_rsi(self, session, utilbill_id, rsi_binding):
+    def delete_rsi(self, utilbill_id, rsi_binding):
+        session = Session()
         charge = session.query(Charge).join(UtilBill).\
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
@@ -314,21 +254,6 @@ class Process(object):
         session.commit()
         #test_rs_prediction fails without this commit; I believe the commit
         #should be moved to inside test_rs_prediction
-
-    def create_payment(self, session, account, date_applied, description,
-            credit, date_received=None):
-        '''Wrapper to create_payment method in state.py'''
-        return self.state_db.create_payment(session, account, date_applied,
-            description, credit, date_received)
-
-    def update_payment(self, session, oid, date_applied, description, credit):
-        '''Wrapper to update_payment method in state.py'''
-        self.state_db.update_payment(session, oid, date_applied, description,
-            credit)
-
-    def delete_payment(self, session, oid):
-        '''Wrapper to delete_payment method in state.py'''
-        self.state_db.delete_payment(session, oid)
 
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
@@ -572,7 +497,7 @@ class Process(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        customer = self.state_db.get_customer(session, account)
+        customer = self.state_db.get_customer(account)
         try:
             predecessor = self.state_db.get_last_real_utilbill(account,
                     begin_date, service=service)
@@ -755,6 +680,7 @@ class Process(object):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         session = Session()
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         for charge in utilbill.charges:
             session.delete(charge)
         utilbill.charges = []

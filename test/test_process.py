@@ -16,6 +16,7 @@ from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Addre
 from os.path import realpath, join, dirname
 
 from sqlalchemy.orm.exc import NoResultFound
+from processing.state import ReeBillCharge
 
 from skyliner.sky_handlers import cross_range
 #from billing.processing.rate_structure2 import RateStructureItem
@@ -514,9 +515,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # corresponding to them from example_data. (this is the same way
         # the user would manually add RSIs and charges when processing the
         # first bill for a given rate structure.)
-        for rsi in example_data.get_uprs().rates:
-            fields = rsi.to_dict()
-            del fields['id']
+        for fields in example_data.charge_fields:
             self.process.add_rsi(utilbill_id)
             self.process.update_rsi(utilbill_id, "New RSI #1", fields)
         self.process.refresh_charges(utilbill_id)
@@ -1411,49 +1410,52 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         '''Tests issuing of reebills.'''
         acc = '99999'
         # two utilbills, with reebills
-        self.process.upload_utility_bill(acc, 'gas',
+        session = self.session
+        self.process.upload_utility_bill(session, acc, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO('january 2012'),
                                          'january.pdf')
-        self.process.upload_utility_bill(acc, 'gas',
+        self.process.upload_utility_bill(session, acc, 'gas',
                                          date(2012, 2, 1), date(2012, 3, 1),
                                          StringIO('february 2012'),
                                          'february.pdf')
-        one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
-        two = self.process.roll_reebill(acc)
+        one = self.process.roll_reebill(session, acc,
+                                        start_date=date(2012, 1, 1))
+        two = self.process.roll_reebill(session, acc)
 
         # neither reebill should be issued yet
-        self.assertEquals(False, self.state_db.is_issued(acc, 1))
+        self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
         self.assertEquals(None, one.issue_date)
         self.assertEquals(None, one.due_date)
         self.assertEqual(None, one.email_recipient)
-        self.assertEquals(False, self.state_db.is_issued(acc, 2))
+        self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
         self.assertEquals(None, two.issue_date)
         self.assertEquals(None, two.due_date)
         self.assertEqual(None, two.email_recipient)
 
         # two should not be issuable until one_doc is issued
-        self.assertRaises(BillStateError, self.process.issue, acc, 2)
+        self.assertRaises(BillStateError, self.process.issue, session, acc,
+                          2)
 
         # issue one
-        self.process.issue(acc, 1)
+        self.process.issue(session, acc, 1)
 
-        # re-load from mongo to see updated issue date, due date, recipients
+        # re-load from mongo to see updated issue date, due date,
+        # recipients
         self.assertEquals(True, one.issued)
-        self.assertEquals(True, self.state_db.is_issued(acc, 1))
+        self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
         self.assertEquals(datetime.utcnow().date(), one.issue_date)
         self.assertEquals(one.issue_date + timedelta(30), one.due_date)
         self.assertEquals('example@example.com', one.email_recipient)
 
-        customer = self.state_db.get_customer(acc)
+        customer = self.state_db.get_customer(session, acc)
         customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue two
-        self.process.issue(acc, 2)
+        self.process.issue(session, acc, 2)
 
         # re-load from mongo to see updated issue date and due date
-        two_doc = self.reebill_dao.load_reebill(acc, 2)
-        self.assertEquals(True, self.state_db.is_issued(acc, 2))
+        self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
         self.assertEquals(datetime.utcnow().date(), two.issue_date)
         self.assertEquals(two.issue_date + timedelta(30), two.due_date)
         self.assertEquals('test1@example.com, test2@exmaple.com',
@@ -1889,10 +1891,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.ree_getter = MockReeGetter(energy_quantity)
 
         # create 2 utility bills with 1 charge in them
+        #from processing.state import Session
+        #s = Session()
+
         self.process.upload_utility_bill(account, 'gas',
                                          date(2013, 1, 1), date(2013, 2, 1),
                                          StringIO('January 2013'),
-                                             StringIO('January 2013'),
                                          'january.pdf')
         self.process.upload_utility_bill(account, 'gas',
                                          date(2013, 2, 1), date(2013, 3, 1),
@@ -1912,7 +1916,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_utilbill_metadata(id_2, processed=True)
 
         # create, process, and issue reebill
+
+        rbc = self.session.query(ReeBillCharge).all()
         self.process.roll_reebill(account, start_date=date(2013, 1, 1))
+        rbc = self.session.query(ReeBillCharge).all()
         self.process.update_sequential_account_info(account, 1,
                 discount_rate=0.5)
 
