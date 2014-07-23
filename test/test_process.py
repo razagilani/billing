@@ -1094,8 +1094,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # REG_TOTAL and OTHER
         id_1 = self.process.get_all_utilbills_json(
                 account, 0, 30)[0][0]['id']
-        self.process.new_register(id_1,
-                {'meter_id': 'M60324', 'register_id': 'R',})
+        self.process.new_register(id_1, {'meter_id': 'M60324',
+                                         'register_id': 'R'})
         self.process.update_register(id_1,
                 'M60324', 'R', {'binding': 'OTHER'})
 
@@ -1244,27 +1244,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
            'state': 'DC',
            'postal_code': '20009',
         }
-        self.process.create_new_account(acc_a, 'Customer A',
-                .12, .34, billing_address, service_address, '99999')
-        self.process.create_new_account(acc_b, 'Customer B',
-               .12, .34, billing_address, service_address, '99999')
-        self.process.create_new_account(acc_c, 'Customer C',
-               .12, .34, billing_address, service_address, '99999')
 
-        billing_address = {
-            'addressee': 'Andrew Mellon',
-            'street': '1785 Massachusetts Ave. NW',
-            'city': 'Washington',
-            'state': 'DC',
-            'postal_code': '20036',
-        }
-        service_address = {
-            'addressee': 'Skyline Innovations',
-            'street': '1606 20th St. NW',
-            'city': 'Washington',
-            'state': 'DC',
-            'postal_code': '20009',
-        }
+        self.process.create_new_account(acc_a, 'Customer A',
+                .12, .34, billing_address, service_address, '100001')
+        self.process.create_new_account(acc_b, 'Customer B',
+               .12, .34, billing_address, service_address, '100001')
+        self.process.create_new_account(acc_c, 'Customer C',
+               .12, .34, billing_address, service_address, '100001')
+
         # new customers also need to be in nexus for 'update_renewable_readings' to
         # work (using mock Skyliner)
         self.nexus_util._customers.extend([
