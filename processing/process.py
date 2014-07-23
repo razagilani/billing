@@ -225,6 +225,7 @@ class Process(object):
         rs_doc = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
         new_rsi = rs_doc.add_rsi()
         rs_doc.save()
+        self.refresh_charges(utilbill_id)
         self.compute_utility_bill(utilbill_id)
         return new_rsi
 
@@ -237,6 +238,7 @@ class Process(object):
         rsi = rs_doc.get_rsi(rsi_binding)
         rsi.update(**fields)
         rs_doc.save()
+        self.refresh_charges(utilbill_id)
         self.compute_utility_bill(utilbill_id)
         return rsi.rsi_binding
 
@@ -246,6 +248,7 @@ class Process(object):
         rsi = rs_doc.get_rsi(rsi_binding)
         rs_doc.rates.remove(rsi)
         assert rsi not in rs_doc.rates
+        self.refresh_charges(utilbill_id)
         self.compute_utility_bill(utilbill_id)
         rs_doc.save()
 
