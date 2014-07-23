@@ -14,7 +14,8 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError, RSIError
+from billing.processing.exceptions import BillStateError, NoRSIError, RSIError, \
+    FormulaSyntaxError
 from billing.test import utils
 
 
@@ -988,12 +989,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               date(2012, 2, 1),
                                               StringIO('January 2012'),
                                               'january.pdf')
-
-        self.process.add_charge(u1.id, "")
-        self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
-            quantity=100,
-            quantity_units='therms', rate=1,
-            total=100, group='All Charges'))
+        self.process.add_rsi(u1.id)
+        self.process.update_rsi(u1.id, 'New RSI #1', {
+            'rsi_binding': 'THE_CHARGE',
+            'quantity': 100,
+            'quantity_units': 'therms',
+            'rate': '1',
+            'group': 'All Charges',
+        })
 
         u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
         u1_uprs.rates = [RateStructureItem(
@@ -1002,8 +1005,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             rate='1',
         )]
         u1_uprs.save()
-        self.process.update_utilbill_metadata(u1.id,
-                                              processed=True)
+        self.process.update_utilbill_metadata(u1.id, processed=True)
 
         # 2nd utility bill
         self.process.upload_utility_bill(acc, 'gas',
@@ -1735,10 +1737,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # initially, reebill version 1 can be computed without an error
         self.process.compute_reebill(account, 1, version=1)
 
-        # put it in an un-computable state by adding a charge without an
-        # RSI. it should now raise an RSIError
-        self.process.add_charge(utilbill_id, '')
-        with self.assertRaises(NoRSIError) as context:
+        # put it in an un-computable state by adding a charge with a syntax
+        # error in its formula. it should now raise an RSIError.
+        # (computing a utility bill doesn't raise an exception by default, but
+        # computing a reebill based on the utility bill does.)
+        self.process.add_rsi(utilbill_id)
+        self.process.update_rsi(utilbill_id, 'New RSI #1', {
+            'quantity': '1 + ',
+        })
+        self.process.refresh_charges(utilbill_id)
+        with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)
 
         # delete the new version
@@ -2058,6 +2066,63 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'balance_forward': 0,
             'corrections': '#1 not issued',
         }], reebill_data, 'id')
+
+    def test_payment_application(self):
+        """Test that payments are applied to reebills according their "date
+        received", including when multiple payments are applied and multiple
+        bills are issued in the same day.
+        """
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 2, 1),
+                date(2000, 3, 1), StringIO('February'), 'March.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 3, 1),
+                date(2000, 4, 1), StringIO('March'), 'March.pdf')
+
+        # create 2 reebills
+        reebill_1 = self.process.roll_reebill(account,
+                start_date=date(2000,1,1))
+        reebill_2 = self.process.roll_reebill(account)
+
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000,1,1,1), 'one', 10)
+        self.process.create_payment(account, datetime(2000,1,1,2), 'two', 12)
+
+        # 1st reebill has both payments applied to it, 2nd has neither
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # issue the 1st bill
+        self.process.issue(account, 1, issue_date=datetime(2000,1,1,3))
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # now later payments apply to the 2nd bill
+        self.process.create_payment(account, datetime(2000,1,1,3), 'three', 30)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # even when a correction is made on the 1st bill
+        self.process.new_version(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # a payment that is backdated to before a corrected bill was issued
+        # does not appear on the corrected version
+        self.process.create_payment(account, datetime(2000,1,1,2,30),
+                'backdated payment', 230)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
 
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data

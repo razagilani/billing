@@ -50,7 +50,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base(cls=Base)
 
-_schema_revision = '4f2f8e2f7cd'
+_schema_revision = '3147aa982e03'
 
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
@@ -1712,9 +1712,9 @@ class StateDB(object):
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert isinstance(start, date)
+        assert isinstance(start, datetime)
         if end is None:
-            end=datetime.utcnow().date()
+            end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(account))\
