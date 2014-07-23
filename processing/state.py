@@ -1712,9 +1712,9 @@ class StateDB(object):
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert isinstance(start, date)
+        assert isinstance(start, datetime)
         if end is None:
-            end=datetime.utcnow().date()
+            end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(account))\

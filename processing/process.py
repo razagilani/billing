@@ -1493,7 +1493,7 @@ class Process(object):
 
         # set issue date in MySQL and due date in mongo
         reebill.issue_date = issue_date
-        reebill.due_date = issue_date + timedelta(days=30)
+        reebill.due_date = issue_date.date() + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
