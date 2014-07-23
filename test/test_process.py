@@ -14,7 +14,8 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError, RSIError
+from billing.processing.exceptions import BillStateError, NoRSIError, RSIError, \
+    FormulaSyntaxError
 from billing.test import utils
 
 
@@ -988,12 +989,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               date(2012, 2, 1),
                                               StringIO('January 2012'),
                                               'january.pdf')
-
-        self.process.add_charge(u1.id, "")
-        self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
-            quantity=100,
-            quantity_units='therms', rate=1,
-            total=100, group='All Charges'))
+        self.process.add_rsi(u1.id)
+        self.process.update_rsi(u1.id, 'New RSI #1', {
+            'rsi_binding': 'THE_CHARGE',
+            'quantity': 100,
+            'quantity_units': 'therms',
+            'rate': '1',
+            'group': 'All Charges',
+        })
 
         u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
         u1_uprs.rates = [RateStructureItem(
@@ -1002,8 +1005,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             rate='1',
         )]
         u1_uprs.save()
-        self.process.update_utilbill_metadata(u1.id,
-                                              processed=True)
+        self.process.update_utilbill_metadata(u1.id, processed=True)
 
         # 2nd utility bill
         self.process.upload_utility_bill(acc, 'gas',
@@ -1735,10 +1737,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # initially, reebill version 1 can be computed without an error
         self.process.compute_reebill(account, 1, version=1)
 
-        # put it in an un-computable state by adding a charge without an
-        # RSI. it should now raise an RSIError
-        self.process.add_charge(utilbill_id, '')
-        with self.assertRaises(NoRSIError) as context:
+        # put it in an un-computable state by adding a charge with a syntax
+        # error in its formula. it should now raise an RSIError.
+        # (computing a utility bill doesn't raise an exception by default, but
+        # computing a reebill based on the utility bill does.)
+        self.process.add_rsi(utilbill_id)
+        self.process.update_rsi(utilbill_id, 'New RSI #1', {
+            'quantity': '1 + ',
+        })
+        self.process.refresh_charges(utilbill_id)
+        with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)
 
         # delete the new version
