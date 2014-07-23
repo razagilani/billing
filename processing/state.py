@@ -929,6 +929,9 @@ class UtilBill(Base):
             assert Session.object_session(charge) is session
             session.delete(charge)
             session.flush()
+        # TODO: despite deleting the charges above, they do not seem to go away
+        # unless this line is here
+        self.charges = []
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
             session.add(Charge(utilbill=self,

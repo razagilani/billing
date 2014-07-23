@@ -248,9 +248,9 @@ class Process(object):
         rsi = rs_doc.get_rsi(rsi_binding)
         rs_doc.rates.remove(rsi)
         assert rsi not in rs_doc.rates
+        rs_doc.save()
         self.refresh_charges(utilbill_id)
         self.compute_utility_bill(utilbill_id)
-        rs_doc.save()
 
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
