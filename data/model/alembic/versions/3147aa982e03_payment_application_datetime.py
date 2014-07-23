@@ -16,11 +16,11 @@ from sqlalchemy.types import DateTime, Date
 
 
 def upgrade():
-    op.alter_table('Payment', 'date_applied', type_=DateTime)
-    op.alter_table('ReeBill', 'issue_date', type_=DateTime)
+    op.alter_column('payment', 'date_applied', type_=DateTime)
+    op.alter_column('reebill', 'issue_date', type_=DateTime)
 
 
 def downgrade():
-    op.alter_table('Payment', 'date_applied', type_=Date)
-    op.alter_table('ReeBill', 'issue_date', type_=Date)
+    op.alter_column('payment', 'date_applied', type_=Date)
+    op.alter_column('reebill', 'issue_date', type_=Date)
 

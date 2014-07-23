@@ -50,7 +50,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base(cls=Base)
 
-_schema_revision = '4f2f8e2f7cd'
+_schema_revision = '3147aa982e03'
 
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
