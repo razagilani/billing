@@ -1,5 +1,4 @@
-"""Upgrade script for version 21. 
-
+"""Upgrade script for version 21.
 Script must define `upgrade`, the function for upgrading.
 
 Important: For the purpose of allowing schema migration, this module will be 
@@ -21,7 +20,7 @@ log = logging.getLogger(__name__)
 def copy_charges_from_mongo():
 
     client = MongoClient(config.get('billdb', 'host'),
-                         config.get('billdb', 'port'))
+                         int(config.get('billdb', 'port')))
     db = client[config.get('billdb', 'database')]
     s = Session()
     assert s.query(Charge).all() == [], "Charges table is not empty"
@@ -34,11 +33,12 @@ def copy_charges_from_mongo():
             continue
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
+            quantity_units = mongo_charge.get('quantity_units', "")
             s.add(Charge(ub,
                          mongo_charge.get('description', ""),
                          mongo_charge.get('group', ""),
                          mongo_charge.get('quantity', 0),
-                         mongo_charge.get('quantity_units', ""),
+                         quantity_units if quantity_units is not None else '',
                          mongo_charge.get('rate', 0),
                          mongo_charge.get('rsi_binding', ""),
                          mongo_charge.get('total', 0)))
@@ -47,12 +47,7 @@ def copy_charges_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 21')
-    alembic_upgrade('4f2f8e2f7cd')
-    init_model()
-    copy_charges_from_mongo()
-    log.info('Upgrade to version 21 complete')
-    log.info('Beginning upgrade to version 21')
-    alembic_upgrade('55e7e5ebdd29')
+    #alembic_upgrade('55e7e5ebdd29')
     init_model()
     copy_charges_from_mongo()
     log.info('Upgrade to version 21 complete')
