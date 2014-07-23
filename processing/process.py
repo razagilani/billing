@@ -1429,7 +1429,7 @@ class Process(object):
             'rate_class': ub.rate_class,
             # capitalize service name
             'service': 'Unknown' if ub.service is None else
-                    ub.service[0].upper() + ub.service[1:],
+                    ub.service.capitalize(),
             'period_start': ub.period_start,
             'period_end': ub.period_end,
             'total_charges': ub.total_charges,

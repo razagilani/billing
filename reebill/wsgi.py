@@ -99,18 +99,7 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
-def db_commit(method):
-    '''Decorator for committing a database transaction when the method returns.
-    This should be used only on methods that should be allowed to modify the
-    database.
-    '''
-    @functools.wraps(method)
-    def wrapper(btb_instance, *args, **kwargs):
-        # because of the thread-local session, there's no need to do anything
-        # before the method starts.
-        return method(btb_instance, *args, **kwargs)
-        Session().commit()
-    return wrapper
+
 
 class ReeBillWSGI(object):
     def __init__(self, config, Session):
