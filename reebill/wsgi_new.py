@@ -462,6 +462,8 @@ class ReebillsResource(RESTResource):
         row = cherrypy.request.json
         r = self.state_db.get_reebill_by_id(reebill_id)
         sequence, account = r.sequence, r.customer.account
+        # Initialize the return value to the client
+        rtn = None
 
         if row['action'] == 'bindree':
             if self.config.get('runtime', 'integrate_skyline_backend') is False:
@@ -473,7 +475,7 @@ class ReebillsResource(RESTResource):
             reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
-            row = reebill.to_dict()
+            rtn = reebill.to_dict()
 
         elif row['action'] == 'render':
             if not self.config.get('billimages', 'show_reebill_images'):
@@ -486,6 +488,7 @@ class ReebillsResource(RESTResource):
                 "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 False
             )
+            rtn = row
 
         elif row['action'] == 'mail':
             if not row['action_value']:
@@ -500,17 +503,24 @@ class ReebillsResource(RESTResource):
             for sequence in sequences:
                 journal.ReeBillMailedEvent.save_instance(
                     cherrypy.session['user'], account, sequence, recipients)
+            rtn = row
 
         elif row['action'] == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
-            row = rb.to_dict()
-        
+            rtn = rb.to_dict()
+
+        elif row['action'] == 'newversion':
+            rb = self.process.new_version(account, sequence)
+
+            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                    account, sequence, version)
+            rtn = rb.to_dict()
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
         row['action'] = ''
         row['action_value'] = ''
-        return True, {'rows': row, 'results': 1}
+        return True, {'rows': rtn, 'results': 1}
 
     def handle_delete(self, reebill_id, *vpath, **params):
         r = self.state_db.get_reebill_by_id(reebill_id)
