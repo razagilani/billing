@@ -9,7 +9,7 @@ from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
 # minimum normlized score for an RSI to get included in a probable RS

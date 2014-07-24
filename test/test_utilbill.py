@@ -7,13 +7,13 @@ from StringIO import StringIO
 import dateutil
 from bson import ObjectId
 
-from billing.processing.exceptions import RSIError
+from billing.exc import RSIError
 from processing.session_contextmanager import DBSession
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.exceptions import NoRSIError
+from billing.exc import NoRSIError
 import example_data
 from processing.state import UtilBill, Customer, Session, Charge
 

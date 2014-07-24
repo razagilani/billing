@@ -8,7 +8,7 @@ from billing.processing.state import StateDB
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing.mongo import ReebillDAO
-from billing.processing.exceptions import NoSuchRSIError
+from billing.exc import NoSuchRSIError
 
 state_db = StateDB(
     host='localhost',
