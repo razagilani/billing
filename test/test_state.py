@@ -11,7 +11,7 @@ from billing.processing.state import Customer, UtilBill, ReeBill, Session
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import NoSuchBillException
+from billing.exc import NoSuchBillException
 from billing.test import utils, example_data
 
 billdb_config = {
