@@ -33,18 +33,13 @@ Ext.define('ReeBill.controller.ReebillCharges', {
      */
     handleActivate: function() {
         var selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection(),
-            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+            store = this.getReebillChargesStore();
 
-        if (!selectedReebill.length || !selectedAccount.length)
+        if (!selectedReebill.length)
             return;
 
-        this.getReebillChargesStore().load({
-            params: {
-                account: selectedAccount[0].get('account'),
-                service: selectedReebill[0].get('services')[0],
-                sequence: selectedReebill[0].get('sequence')
-            }
-        });
+        store.getProxy().setExtraParam('reebill_id', selectedReebill[0].get('id'));
+        store.reload();
     }
 
 });

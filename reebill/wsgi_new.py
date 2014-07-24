@@ -639,6 +639,12 @@ class UtilBillResource(RESTResource):
         return True, {}
 
 
+class ReebillChargesResource(RESTResource):
+
+    def handle_get(self, reebill_id, *vpath, **params):
+        charges = self.process.get_hypothetical_matched_charges(reebill_id)
+        return True, {'rows': charges, 'total': len(charges)}
+
 class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, reebill_sequence=None,
@@ -723,6 +729,7 @@ class BillToolBridge(WebResource):
     registers = RegistersResource()
     ratestructure = RateStructureResource()
     payments = PaymentsResource()
+    reebillcharges = ReebillChargesResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

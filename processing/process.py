@@ -247,11 +247,11 @@ class Process(object):
         '''Wrapper to delete_payment method in state.py'''
         self.state_db.delete_payment(oid)
 
-    def get_hypothetical_matched_charges(self, account, sequence):
+    def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
-        reebill = self.state_db.get_reebill(account, sequence)
+        reebill = self.state_db.get_reebill_by_id(reebill_id)
         return [{
             'rsi_binding': reebill_charge.rsi_binding,
             'description': reebill_charge.description,
