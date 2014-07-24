@@ -71,3 +71,6 @@ class MongoError(Exception):
         self.err_dict = err_dict
     def __str__(self):
         return str(self.err_dict)
+
+class RenderError(Exception):
+    pass

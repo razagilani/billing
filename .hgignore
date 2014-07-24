@@ -1,10 +1,13 @@
 glob:*.pyc
 glob:*.swp
+glob:*.log
 reebill/reebill.cfg
+settings.cfg
 reebill/reebill.log
 reebill/reconciliation.log
 reebill/reconciliation_report.json
 reebill/ui/revision.txt
 revision.txt
+alembic.ini
 .directory
 .idea

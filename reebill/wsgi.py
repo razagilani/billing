@@ -99,18 +99,7 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
-def db_commit(method):
-    '''Decorator for committing a database transaction when the method returns.
-    This should be used only on methods that should be allowed to modify the
-    database.
-    '''
-    @functools.wraps(method)
-    def wrapper(btb_instance, *args, **kwargs):
-        # because of the thread-local session, there's no need to do anything
-        # before the method starts.
-        return method(btb_instance, *args, **kwargs)
-        Session().commit()
-    return wrapper
+
 
 class ReeBillWSGI(object):
     def __init__(self, config, Session):
@@ -222,7 +211,6 @@ class ReeBillWSGI(object):
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -866,7 +854,6 @@ class ReeBillWSGI(object):
         if xaction == "read":
             return json.dumps({'success': True,
                     'rows': self.process.get_rsis_json(utilbill_id), })
-                })
 
         # only xaction "read" is allowed when reebill_sequence/version
         # arguments are given
@@ -1343,11 +1330,10 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
 
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax
