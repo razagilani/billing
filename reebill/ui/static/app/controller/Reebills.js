@@ -35,6 +35,15 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'createNextButton',
         selector: 'button[action=createNext]'
+    },{
+        ref: 'sequentialAccountInformationForm',
+        selector: 'sequentialAccountInformation'
+    },{
+        ref: 'saveAccountInformationButton',
+        selector: 'button[action=saveAccountInformation]'
+    },{
+        ref: 'resetAccountInformationButton',
+        selector: 'button[action=resetAccountInformation]'
     }],
     
     init: function() {
@@ -70,6 +79,12 @@ Ext.define('ReeBill.controller.Reebills', {
             'button[action=createNext]': {
                 click: this.handleCreateNext
             },
+            'button[action=saveAccountInformation]': {
+                click: this.handleSaveAccountInformation
+            },
+            'button[action=resetAccountInformation]': {
+                click: this.handleResetAccountInformation
+            }
         });
     },
 
@@ -82,7 +97,7 @@ Ext.define('ReeBill.controller.Reebills', {
         if (!selectedAccount.length)
             return;
 
-        // required for GET
+        // required for GET & POST
         this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
 
         this.getReebillsStore().reload();
@@ -108,6 +123,8 @@ Ext.define('ReeBill.controller.Reebills', {
 
         if (selected.get('services').length)
             this.getServiceForCharges().setValue(selected.get('services')[0]);
+
+        this.loadSequentialAccountInformation();
 
         this.getDeleteReebillButton().setDisabled(issued);
         this.getBindREOffsetButton().setDisabled(issued);
@@ -189,97 +206,151 @@ Ext.define('ReeBill.controller.Reebills', {
         var selected = selections[0];
         selected.set('action', 'bindree');
 
-     },
+    },
 
     /**
      * Handle the compute button.
      */
      handleCompute: function() {
-        var store = this.getReebillsStore();
+         var store = this.getReebillsStore();
 
-        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
 
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+         if (!selectedAccounts.length)
+             return;
 
-        var selected = selections[0];
-        selected.set('action', 'compute');
+         var selected = selections[0];
+         selected.set('action', 'compute');
      },
 
      /**
       * Handle the delete button.
       */
      handleDelete: function() {
-        var store = this.getReebillsStore();
+         var store = this.getReebillsStore();
 
-        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
 
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+         if (!selectedAccounts.length)
+             return;
 
-        var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
+         var selected = selections[0];
+         var selectedAccount = selectedAccounts[0];
 
-        var msg = 'Are you sure you want to delete the latest version of reebill '
-            + selectedAccount.get('account') + '-' + selected.get('sequence') + '?';
+         var msg = 'Are you sure you want to delete the latest version of reebill '
+             + selectedAccount.get('account') + '-' + selected.get('sequence') + '?';
 
-        Ext.Msg.confirm('Confirm deletion', msg, function(answer) {
-            if (answer == 'yes') {
-                store.remove(selected);
-            }
-        });
+         Ext.Msg.confirm('Confirm deletion', msg, function(answer) {
+             if (answer == 'yes') {
+                 store.remove(selected);
+             }
+         });
      },
 
      /**
       * Handle the render pdf button.
       */
      handleRenderPdf: function() {
-        var store = this.getReebillsStore();
+         var store = this.getReebillsStore();
 
-        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
 
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+         if (!selectedAccounts.length)
+             return;
 
-        var selected = selections[0];
-        selected.set('action', 'render');
+         var selected = selections[0];
+         selected.set('action', 'render');
      },
 
      /**
       * Handle the create new version button.
       */
      handleCreateNewVersion: function() {
-        var store = this.getReebillsStore();
+         var store = this.getReebillsStore();
 
-        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
 
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+         if (!selectedAccounts.length)
+             return;
 
-        var selected = selections[0];
+         var selected = selections[0];
 
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Creating new versions; please wait' });
-        selected.set('action', 'newversion');
+         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Creating new versions; please wait' });
+         selected.set('action', 'newversion');
      },
 
      /**
       * Handle the create next version button.
       */
      handleCreateNext: function() {
-        var store = this.getReebillsStore();
-        store.add({issued:false});
-     }
+         var store = this.getReebillsStore();
+         store.add({issued:false});
 
+     },
+
+     /**
+      * Loads Sequential Account Information into the form from the
+      * currently selected Reebill
+      */
+     loadSequentialAccountInformation: function() {
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+         var selected = selections[0];
+
+         var form = this.getSequentialAccountInformationForm(),
+             discount_rate = form.down('[name=discount_rate]'),
+             late_charge_rate = form.down('[name=late_charge_rate]'),
+             ba_addressee = form.down('[name=ba_addressee]'),
+             ba_street = form.down('[name=ba_street]'),
+             ba_city = form.down('[name=ba_city]'),
+             ba_state = form.down('[name=ba_state]'),
+             ba_postal_code = form.down('[name=ba_postal_code]'),
+             sa_addressee = form.down('[name=sa_addressee]'),
+             sa_street = form.down('[name=sa_street]'),
+             sa_city = form.down('[name=sa_city]'),
+             sa_state = form.down('[name=sa_state]'),
+             sa_postal_code = form.down('[name=sa_postal_code]');
+
+         discount_rate.setValue(selected.get('discount_rate'));
+         late_charge_rate.setValue(selected.get('late_charge_rate'));
+         ba_addressee.setValue(selected.get('billing_address').addressee);
+         ba_street.setValue(selected.get('billing_address').street);
+         ba_city.setValue(selected.get('billing_address').city);
+         ba_state.setValue(selected.get('billing_address').state);
+         ba_postal_code.setValue(selected.get('billing_address').postalcode);
+         sa_addressee.setValue(selected.get('service_address').addressee);
+         sa_street.setValue(selected.get('service_address').street);
+         sa_city .setValue(selected.get('service_address').city);
+         sa_state.setValue(selected.get('service_address').state);
+         sa_postal_code.setValue(selected.get('service_address').postalcode);
+     },
+
+     /**
+      * Handles the click of the Save button in the Sequential Account
+      * Information panel
+      */
+     handleSaveAccountInformation: function() {
+
+     },
+
+     /**
+      * Handles the click of the Reset button in the Sequential Account
+      * Information panel
+      */
+     handleResetAccountInformation: function() {
+        this.loadSequentialAccountInformation();
+     }
 });
