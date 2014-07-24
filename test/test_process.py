@@ -111,8 +111,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         utilbill_data = utilbills_data[0]
         self.assertDocumentsEqualExceptKeys({'state': 'Final',
                                              'service': 'Gas',
-                                             'utility': 'washgas',
-                                             'rate_class': 'DC Non Residential Non Heat',
+                                             'utility': 'Test Utility Company Template',
+                                             'rate_class': 'Test Rate Class Template',
                                              'period_start': date(2013, 1,
                                                                   1),
                                              'period_end': date(2013, 2,
@@ -123,7 +123,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              'processed': 0,
                                              'account': '88888',
                                              'editable': True,
-                                                 'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
+                                             'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
                                              'reebills': [],
                                             }, utilbill_data, 'id', 'charges', 'reebills')
 
@@ -143,18 +143,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'computed_total': 0,
             'editable': True,
             'id': 6469L,
-            'name': ('88888 - Example 2/1786 Massachusetts Ave. - '
-                     'washgas: DC Non Residential Non Heat'),
+            'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
-            'rate_class': 'DC Non Residential Non Heat',
+            'rate_class': 'Test Rate Class Template',
             'reebills': [{'issue_date': None, 'sequence': 1,
                     'version': 0L}],
             'service': 'Gas',
             'state': 'Final',
             'total_charges': 0.0,
-            'utility': 'washgas',
+            'utility': 'Test Utility Company Template',
         }, ubdata, 'id', 'charges')
 
         reebill_data = self.process.get_reebill_metadata_json('88888')
@@ -862,11 +861,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO("A PDF"), 'january.pdf')
         address = self.process.get_service_address(account)
-        self.assertEqual(address['postal_code'], '20010')
-        self.assertEqual(address['city'], 'Washington')
-        self.assertEqual(address['state'], 'DC')
-        self.assertEqual(address['addressee'], 'Monroe Towers')
-        self.assertEqual(address['street'], '3501 13TH ST NW #WH')
+        self.assertEqual('12345', address['postal_code'])
+        self.assertEqual('Test City', address['city'])
+        self.assertEqual('XX', address['state'])
+        self.assertEqual('Test Customer 1 Service', address['addressee'])
+        self.assertEqual('123 Test Street', address['street'])
 
     def test_correction_issuing(self):
         """Test creating corrections on reebills, and issuing them to create
@@ -1151,18 +1150,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # addresses should be preserved from one reebill document to the
         # next
         billing_address = {
-            u"postalcode" : u"20910",
-            u"city" : u"Silver Spring",
-            u"state" : u"MD",
-            u"addressee" : u"Managing Member Monroe Towers",
-            u"street" : u"3501 13TH ST NW LLC"
+            u"postalcode" : u"12345",
+            u"city" : u"Test City",
+            u"state" : u"XX",
+            u"addressee" : u"Test Customer 1 Billing",
+            u"street" : u"123 Test Street"
         }
         service_address = {
-             u"postalcode" : u"20010",
-             u"city" : u"Washington",
-             u"state" : u"DC",
-             u"addressee" : u"Monroe Towers",
-             u"street" : u"3501 13TH ST NW #WH"
+            u"postalcode" : u"12345",
+            u"city" : u"Test City",
+            u"state" : u"XX",
+            u"addressee" : u"Test Customer 1 Service",
+            u"street" : u"123 Test Street"
         }
         account_info = self.process.get_sequential_account_info(
                 account, 1)
@@ -1501,34 +1500,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_delete_reebill(self):
         account = '99999'
-        # create 2 utility bills for Jan-Feb 2012
-        self.process.upload_utility_bill(account, 'gas',
-                date(2012, 1, 1), date(2012, 2, 1),
-                StringIO('january 2012'), 'january.pdf')
-        self.process.upload_utility_bill(account, 'gas',
-                date(2012, 2, 1), date(2012, 3, 1),
-                StringIO('february 2012'), 'february.pdf')
-        utilbill = self.session.query(UtilBill).order_by(
-                UtilBill.period_start).first()
 
+        #[MN] Temporary test modification; this query needs to go away
+        ubill_q = self.session.query(UtilBill).join(Customer).\
+            filter(Customer.account == account)
 
-        # create 2 reebills
+        # create utility bill and first reebill, for January 2012
+        self.process.upload_utility_bill(account, 'gas',
+                                         date(2012, 1, 1), date(2012, 2, 1),
+                                         StringIO('january 2012'),
+                                         'january.pdf')
+        utilbill = ubill_q.one()
+        self.process.roll_reebill(account, start_date=date(2012, 1, 1))
+
+        # delete the reebill: should succeed, because it's not issued
+        self.process.delete_reebill(account, 1)
+        self.assertRaises(NoSuchBillException,
+                          self.reebill_dao.load_reebill, account, 1,
+                          version=0)
+        self.assertEquals(0, self.session.query(ReeBill).count())
+        self.assertEquals([utilbill], ubill_q.all())
+
+        # re-create it
         reebill = self.process.roll_reebill(account,
-                                  start_date=date(2012, 1, 1))
-        self.process.roll_reebill(account)
-
-        # only the last reebill is deletable: deleting the 2nd one should
-        # succeed, but deleting the 1st one should fail
-        with self.assertRaises(IssuedBillError):
-            self.process.delete_reebill(account, 1)
-        self.process.delete_reebill(account, 2)
-        with self.assertRaises(NoSuchBillException):
-            self.reebill_dao.load_reebill(account, 2, version=0)
-        self.assertEquals(1, self.session.query(ReeBill).count())
+                                            start_date=date(2012, 1, 1))
         self.assertEquals([1], self.state_db.listSequences(account))
         self.assertEquals([utilbill], reebill.utilbills)
 
-        # issued reebill should not be deletable
+        # issue it: it should not be deletable
         self.process.issue(account, 1)
         self.assertEqual(1, reebill.issued)
         self.assertEqual([utilbill], reebill.utilbills)
@@ -1538,8 +1537,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           account, 1)
 
         # create a new verison and delete it, returning to just version 0
+        # (versioning requires a cprs)
         self.process.new_version(account, 1)
-        self.session.query(ReeBill).filter_by(version=1).one()
+        reebill_v1 = self.session.query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, self.state_db.max_version(account, 1))
         self.assertFalse(self.state_db.is_issued(account, 1))
         self.process.delete_reebill(account, 1)
@@ -1672,16 +1672,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'computed_total': 0,
             'editable': True,
             'id': 6469L,
-            'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
+            'name': '99999 - Example 1/1785 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
-            'rate_class': 'DC Non Residential Non Heat',
+            'rate_class': 'Test Rate Class Template',
             'reebills': [],
             'service': 'Gas',
             'state': 'Final',
             'total_charges': 0.0,
-            'utility': 'washgas',
+            'utility': 'Test Utility Company Template',
             }, utilbill_data, 'id', 'charges')
 
         # create a reebill
@@ -1694,16 +1694,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'computed_total': 0,
             'editable': True,
             'id': 6469L,
-            'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: DC Non Residential Non Heat',
+            'name': '99999 - Example 1/1785 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
-            'rate_class': 'DC Non Residential Non Heat',
-            'reebills': [{'issue_date': None, 'sequence': 1L,
-                    'version': 0L}],
+            'rate_class': 'Test Rate Class Template',
+            'reebills': [{'issue_date': None, 'sequence': 1, 'version': 0}],
             'service': 'Gas', 'state': 'Final',
             'total_charges': 0.0,
-            'utility': 'washgas',
+            'utility': 'Test Utility Company Template',
         }, utilbill_data, 'id', 'charges')
 
         billing_address = {
