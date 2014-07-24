@@ -55,7 +55,6 @@ class TestCaseWithSetup(unittest.TestCase):
     def truncate_tables(session):
         for t in ["charge", "register", "payment", "reebill",
                   "utilbill", "customer", "address"]:
-            print "deleting from %s" % t
             session.execute("delete from %s" % t)
     def init_logging():
         """Setup NullHandlers for test and root loggers.
