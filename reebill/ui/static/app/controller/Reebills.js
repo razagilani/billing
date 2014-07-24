@@ -32,6 +32,9 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'emailButton',
         selector: 'button[action=email]'
+    },{
+        ref: 'createNextButton',
+        selector: 'button[action=createNext]'
     }],
     
     init: function() {
@@ -63,7 +66,10 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=renderPdf]': {
                 click: this.handleRenderPdf
-            }
+            },
+            'button[action=createNext]': {
+                click: this.handleCreateNext
+            },
         });
     },
 
@@ -288,6 +294,14 @@ Ext.define('ReeBill.controller.Reebills', {
                 waitMask.hide();
             }
         });
+     },
+
+     /**
+      * Handle the create next version button.
+      */
+     handleCreateNext: function() {
+        var store = this.getReebillsStore();
+        store.add({issued:false});
      }
 
 });
