@@ -438,6 +438,26 @@ class ReebillsResource(RESTResource):
         result = rows[start: start + limit]
         return True, {'rows': result, 'results': len(rows)}
 
+    def handle_post(self, account, *vpath, **params):
+        """ Handles Reebill creation """
+        params = cherrypy.request.params
+        start_date = params.get('start_date')
+        if start_date is not None:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        reebill = self.process.roll_reebill(account, start_date=start_date)
+
+        journal.ReeBillRolledEvent.save_instance(
+            cherrypy.session['user'], account, reebill.sequence)
+        # Process.roll includes attachment
+        # TODO "attached" is no longer a useful event;
+        # see https://www.pivotaltracker.com/story/show/55044870
+        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+            reebill.customer.account, reebill.sequence, reebill.version)
+        journal.ReeBillBoundEvent.save_instance(
+            cherrypy.session['user'],account, reebill.sequence, reebill.version)
+
+        return True, {'rows': reebill.to_dict(), 'results': 1}
+
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
         r = self.state_db.get_reebill_by_id(reebill_id)

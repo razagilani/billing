@@ -569,6 +569,60 @@ class ReeBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
+    def to_dict(self):
+        the_dict = {
+            'id': self.id,
+            'customer_id': self.customer_id,
+            'sequence': self.sequence,
+            'issued': bool(self.issued),
+            'version': self.version,
+            'issue_date': self.issue_date,
+            'period_start': self.utilbill.period_start,
+            'period_end': self.utilbill.period_end,
+            'ree_charge': self.ree_charge,
+            'balance_due': self.ree_charge,
+            'balance_forward': self.balance_forward,
+            'discount_rate': self.discount_rate,
+            'due_date': self.due_date,
+            'hypothetical_total': self.get_total_hypothetical_charges(),
+            'late_charge_rate': self.late_charge_rate,
+            'late_charge': self.late_charge,
+            'total_adjustment': self.total_adjustment,
+            'manual_adjustment': self.manual_adjustment,
+            'payment_received': self.payment_received,
+            'prior_balance': self.prior_balance,
+            'ree_value': self.ree_value,
+            'ree_savings': self.ree_savings,
+            'email_recipient': self.email_recipient,
+            'processed': self.processed,
+            'billing_address': self.billing_address.to_dict(),
+            'service_address': self.service_address.to_dict(),
+            # TODO: is this used at all? does it need to be populated?
+            'services': []
+        }
+
+        if self.version > 0:
+            if self.issued:
+                the_dict['corrections'] = str(self.version)
+            else:
+                the_dict['corrections'] = '#%s not issued' % self.version
+        else:
+            the_dict['corrections'] = '-' if self.issued else '(never ' \
+                                                                 'issued)'
+
+        # wrong energy unit can make this method fail causing the reebill
+        # grid to not load; see
+        # https://www.pivotaltracker.com/story/show/59594888
+        try:
+            the_dict['ree_quantity'] = self.get_total_renewable_energy()
+        except (ValueError, StopIteration) as e:
+            self.logger.error("Error when getting renewable energy "
+                    "quantity for reebill %s:\n%s" % (
+                    self.id, traceback.format_exc()))
+            the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+
+        return the_dict
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
