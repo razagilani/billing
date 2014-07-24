@@ -22,10 +22,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
+from billing.exc import IssuedBillError, NoSuchBillException,\
         RegisterError, FormulaSyntaxError
 
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
+from billing.exc import NoRSIError, FormulaError, RSIError
 from exc import DatabaseError
 
 

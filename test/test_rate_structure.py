@@ -6,7 +6,7 @@ from bson import ObjectId
 from mongoengine import DoesNotExist
 from billing.processing.rate_structure2 import RateStructure, \
     RateStructureItem, RateStructureDAO
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
 class RSITest(unittest.TestCase):
