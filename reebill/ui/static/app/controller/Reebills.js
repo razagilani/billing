@@ -343,7 +343,48 @@ Ext.define('ReeBill.controller.Reebills', {
       * Information panel
       */
      handleSaveAccountInformation: function() {
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+         var selected = selections[0];
+         var store = this.getReebillsStore();
 
+         var form = this.getSequentialAccountInformationForm(),
+             discount_rate = form.down('[name=discount_rate]'),
+             late_charge_rate = form.down('[name=late_charge_rate]'),
+             ba_addressee = form.down('[name=ba_addressee]'),
+             ba_street = form.down('[name=ba_street]'),
+             ba_city = form.down('[name=ba_city]'),
+             ba_state = form.down('[name=ba_state]'),
+             ba_postal_code = form.down('[name=ba_postal_code]'),
+             sa_addressee = form.down('[name=sa_addressee]'),
+             sa_street = form.down('[name=sa_street]'),
+             sa_city = form.down('[name=sa_city]'),
+             sa_state = form.down('[name=sa_state]'),
+             sa_postal_code = form.down('[name=sa_postal_code]');
+
+         var ba = {
+             addressee: ba_addressee.getValue(),
+             street: ba_street.getValue(),
+             city: ba_city.getValue(),
+             state: ba_state.getValue(),
+             postal_code: ba_postal_code.getValue()
+         }
+         var sa = {
+             addressee: sa_addressee.getValue(),
+             street: sa_street.getValue(),
+             city: sa_city.getValue(),
+             state: sa_state.getValue(),
+             postal_code: sa_postal_code.getValue()
+         }
+
+         store.suspendAutoSync();
+         selected.set('billing_address', ba);
+         selected.set('service_address', sa);
+         selected.set('late_charge_rate', late_charge_rate.getValue());
+         selected.set('discount_rate', discount_rate.getValue());
+         store.resumeAutoSync();
+         store.sync();
      },
 
      /**
