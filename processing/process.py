@@ -34,7 +34,7 @@ from billing.processing.state import Customer, UtilBill, ReeBill, \
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
-from billing.processing.exceptions import IssuedBillError, NotIssuable, \
+from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, NotUniqueException
 
 import pprint

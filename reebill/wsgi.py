@@ -39,7 +39,7 @@ from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
+from billing.exc import Unauthenticated, IssuedBillError
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be

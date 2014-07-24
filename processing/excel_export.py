@@ -9,7 +9,7 @@ from billing.processing import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
 from billing.processing.state import UtilBill, ReeBill, Customer
-from billing.processing.exceptions import *
+from billing.exc import *
 
 import pprint
 pformat = pprint.PrettyPrinter().pformat
