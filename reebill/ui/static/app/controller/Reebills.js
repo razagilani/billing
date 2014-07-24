@@ -269,31 +269,9 @@ Ext.define('ReeBill.controller.Reebills', {
             return;
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
 
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Creating new versions; please wait' });
-        waitMask.show();
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/new_reebill_version',
-            method: 'POST',
-            params: {
-                account: selectedAccount.get('account'),
-                sequence: selected.get('sequence')
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                    Ext.MessageBox.alert("New version created", jsonData.new_version);
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            },
-            callback: function() {
-                waitMask.hide();
-            }
-        });
+        selected.set('action', 'newversion');
      },
 
      /**

@@ -834,7 +834,7 @@ class Process(object):
     def new_version(self, account, sequence):
         """Creates a new version of the given reebill: duplicates the Reebill,
         re-computes the it, saves it, and increments the max_version number in
-        MySQL. Returns the version number of the new reebill.
+        MySQL. Returns the the new reebill.
         """
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
@@ -863,7 +863,7 @@ class Process(object):
                     reebill.version, reebill.customer.account,
                     reebill.sequence, e, traceback.format_exc()))
 
-        return reebill.version
+        return reebill
 
     def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
