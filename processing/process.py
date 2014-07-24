@@ -740,6 +740,7 @@ class Process(object):
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
+        return reebill
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.

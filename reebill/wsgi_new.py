@@ -473,6 +473,7 @@ class ReebillsResource(RESTResource):
             reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
+            row = reebill.to_dict()
 
         elif row['action'] == 'render':
             if not self.config.get('billimages', 'show_reebill_images'):
@@ -501,7 +502,9 @@ class ReebillsResource(RESTResource):
                     cherrypy.session['user'], account, sequence, recipients)
 
         elif row['action'] == 'compute':
-            self.process.compute_reebill(account, sequence,'max')
+            rb = self.process.compute_reebill(account, sequence, 'max')
+            row = rb.to_dict()
+        
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
