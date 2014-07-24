@@ -504,12 +504,10 @@ class ReeBill(Base):
         charge_dct = {c.rsi_binding: c for c in self.utilbill.charges}
         for binding, evaluation in context.iteritems():
             charge = charge_dct[binding]
-            self.charges.append(ReeBillCharge(self, binding,
+            session.add(ReeBillCharge(self, binding,
                 charge.description, charge.group, charge.quantity,
                 evaluation.quantity, charge.quantity_units, charge.rate,
                 evaluation.rate, charge.total, evaluation.total))
-        rbch = session.query(ReeBillCharge).all()
-        print rbch
 
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
