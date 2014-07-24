@@ -12,7 +12,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session
-from processing.state import Charge, UtilBill
+from processing.state import Charge, UtilBill, Address
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -32,6 +32,12 @@ def copy_charges_from_mongo():
             log.error("No mongo utility bill found for utilbill"
                       "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
+        for prop in ['service_address', 'billing_address']:
+            log.debug("Adding %s for utilbill id %s" % (prop, ub.id))
+            a = mongo_ub[prop]
+            setattr(ub, prop, Address(a['addressee'], a['street'], a['city'],
+                                      a['state'], a['postal_code']))
+
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
             s.add(Charge(ub,
