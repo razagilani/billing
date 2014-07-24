@@ -4,20 +4,17 @@ Ext.define('ReeBill.store.ReebillCharges', {
     model: 'ReeBill.model.ReebillCharge',
 
     autoLoad: false,
+    autoSync: true,
     remoteSort: true,
     remoteFilter: true,
 
     groupField: 'group',
 
 	proxy: {
-		type: 'ajax',
-        url: 'http://'+window.location.host+'/rest/hypotheticalCharges',
+		type: 'rest',
+        url: 'http://'+window.location.host+'/reebill/reebillcharges',
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
 
         simpleSortMode: true,
 
@@ -25,7 +22,21 @@ Ext.define('ReeBill.store.ReebillCharges', {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('Payments').rejectChanges();
+                Ext.MessageBox.show({
+                    title: "Server error - " + response.status + " - " + response.statusText,
+                    msg:  response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK,
+                    cls: 'messageBoxOverflow'
+                });
+            },
+            scope: this
+        },
 	},
 
     sorters: [{
