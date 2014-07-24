@@ -516,6 +516,33 @@ class ReebillsResource(RESTResource):
                     account, sequence, version)
             rtn = rb.to_dict()
 
+        elif not row['action']:
+            # Regular PUT request. In this case this means updated
+            # Sequential Account Information
+
+            discount_rate = float(row['discount_rate'])
+            late_charge_rate = float(row['late_charge_rate'])
+
+            ba = row['billing_address']
+            sa = row['service_address']
+
+            # rely on client-side validation
+            assert discount_rate >= 0 and discount_rate <= 1
+            assert late_charge_rate >= 0 and late_charge_rate <= 1
+
+            self.process.update_sequential_account_info(
+                account, sequence,
+                discount_rate=discount_rate,
+                late_charge_rate=late_charge_rate,
+                ba_addressee=ba['addressee'], ba_street=ba['street'],
+                ba_city=ba['city'], ba_state=ba['state'],
+                ba_postal_code=ba['postal_code'],
+                sa_addressee=sa['addressee'], sa_street=sa['street'],
+                sa_city=sa['city'], sa_state=sa['state'],
+                sa_postal_code=sa['postal_code'])
+
+            rtn = row
+
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
         row['action'] = ''
