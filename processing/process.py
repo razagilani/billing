@@ -302,7 +302,6 @@ class Process(object):
         of JSON-ready dictionaries.
         """
         session = Session()
-        result = []
 
         # this subquery gets (customer_id, sequence, version) for all the
         # reebills whose version is the maximum in their (customer, sequence,
@@ -318,68 +317,14 @@ class Process(object):
         # query ReeBill joined to the above subquery to get only
         # maximum-version bills, and also outer join to ReeBillCharge to get
         # sum of 0 or more charges associated with each reebill
-        q = session.query(ReeBill,
-                # NOTE functions.sum(Reading.renewable_quantity) can't be used
-                # here to get total energy, because of unit conversion. instead
-                # the method ReeBill.get_total_renewable_energy must be used to
-                # calculate it.
-                functions.sum(ReeBillCharge.h_total).label('total_charge')
-                ).join(latest_versions_sq, and_(
+        q = session.query(ReeBill).join(latest_versions_sq, and_(
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
                 ReeBill.version == latest_versions_sq.c.max_version)
         ).outerjoin(ReeBillCharge)\
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        for reebill, total_charge in q:
-
-            the_dict = {
-                'id': reebill.id,
-                'sequence': reebill.sequence,
-                'issue_date': reebill.issue_date,
-                'period_start': reebill.utilbill.period_start,
-                'period_end': reebill.utilbill.period_end,
-                'max_version': reebill.version,
-                'issued': bool(reebill.issued),
-                # NOTE SQL sum() over no rows returns NULL, must substitute 0
-                'hypothetical_total': total_charge or 0,
-                'actual_total': reebill.utilbill.total_charge(),
-                'ree_value': reebill.ree_value,
-                'ree_charges': reebill.ree_charge,
-                # invisible columns
-                'prior_balance': reebill.prior_balance,
-                'total_error': self.get_total_error(account, reebill.sequence),
-                'balance_due': reebill.balance_due,
-                'processed': reebill.processed,
-                'payment_received': reebill.payment_received,
-                'total_adjustment': reebill.total_adjustment,
-                'balance_forward': reebill.balance_forward,
-                # TODO: is this used at all? does it need to be populated?
-                'services': [],
-            }
-            if reebill.version > 0:
-                if reebill.issued:
-                    the_dict['corrections'] = str(reebill.version)
-                else:
-                    the_dict['corrections'] = '#%s not issued' % reebill.version
-            else:
-                the_dict['corrections'] = '-' if reebill.issued else '(never ' \
-                                                                     'issued)'
-
-            # wrong energy unit can make this method fail causing the reebill
-            # grid to not load; see
-            # https://www.pivotaltracker.com/story/show/59594888
-            try:
-                the_dict['ree_quantity'] = reebill.get_total_renewable_energy()
-            except (ValueError, StopIteration) as e:
-                self.logger.error("Error when getting renewable energy "
-                        "quantity for reebill %s-%s-%s:\n%s" % (
-                        account, reebill.sequence, reebill.version,
-                        traceback.format_exc()))
-                the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-
-            result.append(the_dict)
-        return result
+        return [rb.to_dict() for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
