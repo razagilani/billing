@@ -27,6 +27,7 @@ Ext.define('ReeBill.view.SequentialAccountInformation', {
         },{
             xtype: 'textfield',
             fieldLabel: 'Late Charge Rate',
+            name: 'late_charge_rate',
             msgTarget: 'under'
         }]
     },{
@@ -67,23 +68,23 @@ Ext.define('ReeBill.view.SequentialAccountInformation', {
         items: [{
             xtype: 'textfield',
             fieldLabel: 'Addressee',
-            name: 'new_sa_addressee'
+            name: 'sa_addressee'
         },{
             xtype: 'textfield',
             fieldLabel: 'Street',
-            name: 'new_sa_street'
+            name: 'sa_street'
         },{
             xtype: 'textfield',
             fieldLabel: 'City',
-            name: 'new_sa_city'
+            name: 'sa_city'
         },{
             xtype: 'textfield',
             fieldLabel: 'State',
-            name: 'new_sa_state'
+            name: 'sa_state'
         },{
             xtype: 'textfield',
             fieldLabel: 'Postal Code',
-            name: 'new_sa_postal_code'
+            name: 'sa_postal_code'
         }]
     }],
 
@@ -93,11 +94,11 @@ Ext.define('ReeBill.view.SequentialAccountInformation', {
         items: ['->',{
             xtype: 'button',
             text: 'Save',
-            action: 'saveNewAccount'
+            action: 'saveAccountInformation'
         },{
             xtype: 'button',
             text: 'Reset',
-            action: 'reset'
+            action: 'resetAccountInformation'
         }]
     }]
 });

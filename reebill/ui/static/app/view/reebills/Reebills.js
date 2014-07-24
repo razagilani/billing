@@ -11,7 +11,7 @@ Ext.define('ReeBill.view.Reebills', {
         getRowClass: function(record) {
             if (record.get('issued')) {
                 // issued bill
-            } else if (record.get('max_version') == 0) {
+            } else if (record.get('version') == 0) {
                 // unissued version-0 bill
                 return 'reebill-grid-unissued';
             } else {
