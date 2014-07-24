@@ -1892,7 +1892,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                          StringIO('February 2013'),
                                          'february.pdf')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
-        id_1, id_2 = (obj['id'] for obj in utilbills_data)
+        id_2, id_1 = (obj['id'] for obj in utilbills_data)
         self.process.add_rsi(id_1)
         self.process.update_rsi(id_1, 'New RSI #1',
                                 {'rsi_binding': 'THE_CHARGE',
@@ -1905,10 +1905,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_utilbill_metadata(id_2, processed=True)
 
         # create, process, and issue reebill
-
-        rbc = self.session.query(ReeBillCharge).all()
         self.process.roll_reebill(account, start_date=date(2013, 1, 1))
-        rbc = self.session.query(ReeBillCharge).all()
         self.process.update_sequential_account_info(account, 1,
                 discount_rate=0.5)
 
