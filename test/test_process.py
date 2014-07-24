@@ -14,7 +14,7 @@ from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError, RSIError, \
+from billing.exc import BillStateError, NoRSIError, RSIError, \
     FormulaSyntaxError
 from billing.test import utils
 

@@ -22,10 +22,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
+from billing.exc import IssuedBillError, NoSuchBillException,\
         RegisterError, FormulaSyntaxError
 
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
+from billing.exc import NoRSIError, FormulaError, RSIError
 from exc import DatabaseError
 
 
@@ -818,6 +818,11 @@ class UtilBill(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
     utility = Column(String, nullable=False)
@@ -839,6 +844,11 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+    billing_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.service_address_id==Address.id')
+
 
     @classmethod
     def validate_utilbill_period(self, start, end):

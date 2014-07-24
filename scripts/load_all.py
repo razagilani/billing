@@ -3,7 +3,7 @@
 bad or semi-bad conditions occur.'''
 import pprint
 from sys import stderr
-from billing.processing.exceptions import NotUniqueException
+from billing.exc import NotUniqueException
 from billing.processing.mongo import ReebillDAO
 from billing.processing.state import StateDB
 from billing.processing.session_contextmanager import DBSession
