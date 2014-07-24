@@ -26,3 +26,7 @@
     font-style: italic;
     color: blue;
 }
+
+.messageBoxOverflow .x-box-inner .x-box-inner {
+    overflow: auto;
+}
