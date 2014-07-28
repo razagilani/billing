@@ -18,11 +18,11 @@ def load_utilbills():
 def payments():
     mock_Payment = mock.create_autospec(Payment)
     mock_Payment.date_received = datetime(2011, 11, 30)
-    mock_Payment.date_applied = date(2011, 11, 30)
+    mock_Payment.date_applied = datetime(2011, 11, 30)
     mock_Payment.credit = 400.13
     mock_Payment2 = mock.create_autospec(Payment)
     mock_Payment2.date_received = datetime(2011, 12, 1)
-    mock_Payment2.date_applied = date(2011, 12, 1)
+    mock_Payment2.date_applied = datetime(2011, 12, 1)
     mock_Payment2.credit = 13.37
     return [mock_Payment, mock_Payment2]
 def listAccounts():
@@ -99,7 +99,6 @@ class ExporterTest(unittest.TestCase):
         #Set up the mock
         self.mock_StateDB = mock.create_autospec(StateDB)
         self.mock_ReebillDAO = mock.create_autospec(ReebillDAO)
-        self.mock_session = mock.create_autospec(DBSession)
         self.exp = Exporter(self.mock_StateDB, self.mock_ReebillDAO)
 
     def test_get_reebill_details_dataset(self):
@@ -108,9 +107,7 @@ class ExporterTest(unittest.TestCase):
         self.mock_StateDB.payments.return_value = payments()
         self.mock_StateDB.listReebills.return_value = [[createMockReebill()] ,1]
 
-        with self.mock_session(self.mock_StateDB) as session:
-            dataset = self.exp.get_export_reebill_details_dataset(session,
-                                                                 None, None)
+        dataset = self.exp.get_export_reebill_details_dataset(None, None)
         correct_data=[('10003', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, '2011-11-30', '400.13', '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26'),
                       ('10003', 1, 0, None, None, None, None, None, None, None, None, None, None, '2011-12-01', '13.37', None, None, None, None, None, None, None, None, None, None),
                       ('10004', 1, 0, u'Monroe Towers, Silver Spring, MD', u'Monroe Towers, Silver Spring, MD', '2013-04-01', '2011-11-12', '2011-12-14', '980.33', '743.49', '4.30', '2.20', None, None, None, '0.00', '62.29', '122.20', 32.2, '5.01', '', '-117.90', '-117.90', '188.20', '1.26')]
@@ -121,7 +118,7 @@ class ExporterTest(unittest.TestCase):
     def test_get_energy_usage_sheet(self):
         #Setup Mock
         self.mock_ReebillDAO.load_utilbills.return_value=load_utilbills()
-        dataset = self.exp.get_energy_usage_sheet(None,'10003')
+        dataset = self.exp.get_energy_usage_sheet('10003')
         correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),
             ('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-12-15', '2012-01-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),]
         for indx,row in enumerate(dataset):
