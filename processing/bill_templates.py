@@ -139,29 +139,41 @@ class BillDoc(BaseDocTemplate):
                             bold = 'Inconsolata-Bold',
                             italic = 'Inconsolata')
 
+        pdfmetrics.registerFont(TTFont('BryantBd', os.path.join(our_fonts, os.path.join('Bryant', 'Bryant-BoldAlternate.ttf'))))
+        pdfmetrics.registerFont(TTFont('BryantLA', os.path.join(our_fonts, os.path.join('Bryant', 'Bryant-LightAlternate.ttf'))))
+        pdfmetrics.registerFont(TTFont('BryantMA', os.path.join(our_fonts, os.path.join('Bryant', 'Bryant-MediumAlternate.ttf'))))
+        pdfmetrics.registerFont(TTFont('BryantRA', os.path.join(our_fonts, os.path.join('Bryant', 'Bryant-RegularAlternate.ttf'))))
+        registerFontFamily('Bryant',normal='BryantRA',bold='BryantBd',italic='',boldItalic='')
+
+        pdfmetrics.registerFont(TTFont('AvenirBd', os.path.join(our_fonts, os.path.join('Avenir', 'AvenirNext-Bold.ttf'))))
+        pdfmetrics.registerFont(TTFont('AvenirI', os.path.join(our_fonts, os.path.join('Avenir', 'AvenirNext-Italic.ttf'))))
+        pdfmetrics.registerFont(TTFont('AvenirBI', os.path.join(our_fonts, os.path.join('Avenir', 'AvenirNext-BoldItalic.ttf'))))
+        pdfmetrics.registerFont(TTFont('Avenir', os.path.join(our_fonts, os.path.join('Avenir', 'AvenirNext-Regular.ttf'))))
+        registerFontFamily('Avenir',normal='Avenir',bold='AvenirBd',italic='AvenirI',boldItalic='AvenirBI')
+
 
     def set_styles(self):
 
         self.styles = getSampleStyleSheet()
-        self.styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
-        self.styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillLabelLg', fontName='VerdanaB', fontSize=16, leading=14))
-        self.styles.add(ParagraphStyle(name='BillLabelLgRight', fontName='VerdanaB', fontSize=12, leading=14, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
-        self.styles.add(ParagraphStyle(name='BillLabelExSm', fontName='VerdanaB', fontSize=6, leading=8))
-        self.styles.add(ParagraphStyle(name='BillLabelMicro', fontName='VerdanaB', fontSize=5, leading=8))
-        self.styles.add(ParagraphStyle(name='BillLabelSmRight', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillLabelSmCenter', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_CENTER))
-        self.styles.add(ParagraphStyle(name='GraphLabel', fontName='Verdana', fontSize=6, leading=6))
-        self.styles.add(ParagraphStyle(name='BillText', fontName='Vera', fontSize=10, leading=10, alignment=TA_LEFT))
-        self.styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
-        self.styles.add(ParagraphStyle(name='BillFieldLg', fontName='Inconsolata', fontSize=14, leading=14, alignment=TA_LEFT))
-        self.styles.add(ParagraphStyle(name='BillFieldLgBold', fontName='Inconsolata-Bold', fontSize=16, leading=14, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
-        self.styles.add(ParagraphStyle(name='BillFieldSm', fontName='Inconsolata', fontSize=8, leading=8, alignment=TA_LEFT))
-        self.styles.add(ParagraphStyle(name='BillFieldSmRight', fontName='Inconsolata', fontSize=8, leading=8, alignment=TA_RIGHT))
-        self.styles.add(ParagraphStyle(name='BillFieldMicroRight', fontName='Inconsolata', fontSize=5, leading=8, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillLabel', fontName='AvenirBd', fontSize=10, leading=10))
+        self.styles.add(ParagraphStyle(name='BillLabelRight', fontName='AvenirBd', fontSize=10, leading=10, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillLabelLg', fontName='AvenirBd', fontSize=16, leading=14))
+        self.styles.add(ParagraphStyle(name='BillLabelLgRight', fontName='AvenirBd', fontSize=12, leading=14, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillLabelSm', fontName='AvenirBd', fontSize=8, leading=8))
+        self.styles.add(ParagraphStyle(name='BillLabelExSm', fontName='AvenirBd', fontSize=6, leading=8))
+        self.styles.add(ParagraphStyle(name='BillLabelMicro', fontName='AvenirBd', fontSize=5, leading=8))
+        self.styles.add(ParagraphStyle(name='BillLabelSmRight', fontName='AvenirBd', fontSize=8, leading=8, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillLabelSmCenter', fontName='AvenirBd', fontSize=8, leading=8, alignment=TA_CENTER))
+        self.styles.add(ParagraphStyle(name='GraphLabel', fontName='AvenirBd', fontSize=6, leading=6))
+        self.styles.add(ParagraphStyle(name='BillText', fontName='BryantRA', fontSize=10, leading=10, alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle(name='BillField', fontName='BryantMA', fontSize=10, leading=10, alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle(name='BillFieldLg', fontName='BryantMA', fontSize=14, leading=14, alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle(name='BillFieldLgBold', fontName='BryantBd', fontSize=16, leading=14, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillFieldRight', fontName='BryantMA', fontSize=10, leading=10, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillFieldLeft', fontName='BryantMA', fontSize=10, leading=10, alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle(name='BillFieldSm', fontName='BryantMA', fontSize=8, leading=8, alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle(name='BillFieldSmRight', fontName='BryantMA', fontSize=8, leading=8, alignment=TA_RIGHT))
+        self.styles.add(ParagraphStyle(name='BillFieldMicroRight', fontName='BryantMA', fontSize=5, leading=8, alignment=TA_RIGHT))
         self.styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
 
         
@@ -267,7 +279,7 @@ class ThermalBillDoc(BillDoc):
 
         # section 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
 
-        billPeriodTableF = Frame(30, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=_showBoundaries)
+        billPeriodTableF = Frame(36, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=False)
 
 
         # Customer service address Frame
@@ -429,7 +441,7 @@ class ThermalBillDoc(BillDoc):
                 ] 
             ]
 
-        t = Table(serviceperiod, colWidths=[115,63,63])
+        t = Table(serviceperiod, colWidths=[115,70,70])
 
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('RIGHTPADDING', (0,2),(0,-1), 8), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,2), (-1,-1), 0.25, colors.black), ('BOX', (1,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,2),(-1,-1),colors.white)]))
         fl.append(t)
@@ -705,7 +717,7 @@ class PVBillDoc(BillDoc):
 
         # service address
         fr1.append(
-            Frame(125, 665, 220, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+            Frame(125, 645, 195, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
         )
 
 
@@ -725,7 +737,7 @@ class PVBillDoc(BillDoc):
         # bill summary
 
         fr1.append(
-            Frame(350, 615, 237, 120, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billSummary', showBoundary=_showBoundaries)
+            Frame(350, 595, 237, 120, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billSummary', showBoundary=_showBoundaries)
         )
 
         # amount due
@@ -857,7 +869,7 @@ class PVBillDoc(BillDoc):
         billing_period_table_data = [
             [Paragraph("Billing Period", s['BillLabel']), Paragraph(period_begin, s['BillField']), Paragraph(period_end, s['BillField'])]
         ]
-        t = Table(billing_period_table_data, colWidths=[90, 60, 60])
+        t = Table(billing_period_table_data, colWidths=[90, 70, 70])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-3),'LEFT'), ('ALIGN',(1,0),(1,-2),'LEFT'), ('ALIGN', (2,0),(1,-1), 'LEFT'), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
         fl.append(t)
         fl.append(UseUpSpace())
@@ -1435,7 +1447,8 @@ if __name__ == '__main__':
         # pass in all cycles data (for historical lookback)
 
         # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
-        #doc = PVBillDoc(logger, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.template_directory, args.template_name)
-        #doc = ThermalBillDoc(logger)
-        doc = PVBillDoc(logger)
+        if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
+            doc = ThermalBillDoc(logger)
+        else:
+            doc = PVBillDoc(logger)
         doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
