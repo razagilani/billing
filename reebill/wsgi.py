@@ -1203,10 +1203,10 @@ class ReeBillWSGI(object):
         if not xaction == "read":
             raise NotImplementedError('Cannot create, edit or destroy charges'
                                       ' from this grid.')
-            charges=self.process.get_hypothetical_matched_charges(
-                    account, sequence)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
+        charges=self.process.get_hypothetical_matched_charges(
+                account, sequence)
+        return self.dumps({'success': True, 'rows': charges,
+                           'total':len(charges)})
 
 
     @cherrypy.expose
