@@ -154,7 +154,7 @@ class Exporter(object):
                 self.get_energy_usage_sheet(account))
         output_file.write(book.xls)
 
-    def get_energy_usage_sheet(self, account):
+    def get_energy_usage_sheet(self, utilbills):
         '''
         Returns a tablib Dataset consisting of a period start,
         period end, total energy, rate class, and one column per
@@ -165,7 +165,6 @@ class Exporter(object):
                       'Period Start', 'Period End']
         # Initial datasheet rows
         ds_rows = []
-        utilbills, _ = self.state_db.list_utilbills(account)
         for ub in utilbills:
 
             units = quantity = ''
@@ -180,12 +179,12 @@ class Exporter(object):
             except NoSuchBillException:
                 units = quantity = "ERROR"
             # Create a row
-            row = [account,
+            row = [ub.customer.account,
                    ub.rate_class,
                    quantity, units,
                    ub.period_start.strftime(dateutils.ISO_8601_DATE),
                    ub.period_end.strftime(dateutils.ISO_8601_DATE)]
-            # Find all actual chagres connected to this utility bill
+            # Find all Insert register binding hereactual chagres connected to this utility bill
             actual_charges = sorted(ub.charges,
                                     key=lambda c: c.description)
             # write each actual charge in a separate column,
@@ -226,7 +225,8 @@ class Exporter(object):
         # all rows up to the length of the final header
         for row in ds_rows:
             row.extend([''] * (len(ds_headers) - len(row)))
-        dataset = tablib.Dataset(*ds_rows, headers=ds_headers, title=account)
+        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
+                title=ub.customer.account)
         return dataset
 
     def export_reebill_details(self, output_file, begin_date=None,
