@@ -1,7 +1,3 @@
-'''
-File: wsgi.py
-'''
-from os.path import dirname, realpath, join
 from os.path import dirname, realpath, join
 
 from billing import init_config, init_model, init_logging
@@ -13,7 +9,6 @@ init_model()
 from billing import config
 
 import sys
-import pprint
 
 import traceback
 import json
@@ -34,7 +29,7 @@ from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
-from billing.util.dictutils import deep_map, dict_merge
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
@@ -44,9 +39,7 @@ from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
-
-pp = pprint.PrettyPrinter(indent=4).pprint
+from billing.exc import Unauthenticated, IssuedBillError
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -108,12 +101,17 @@ def db_commit(method):
     def wrapper(btb_instance, *args, **kwargs):
         # because of the thread-local session, there's no need to do anything
         # before the method starts.
-        return method(btb_instance, *args, **kwargs)
+        try:
+            result = method(btb_instance, *args, **kwargs)
+        except:
+            Session().rollback()
+            raise
         Session().commit()
+        return result
     return wrapper
 
 class ReeBillWSGI(object):
-    def __init__(self, config, Session):
+    def __init__(self, config):
         self.config = config        
         self.logger = logging.getLogger('reebill')
 
@@ -153,7 +151,6 @@ class ReeBillWSGI(object):
                 host=journal_config['host'], port=int(journal_config['port']),
                 alias='journal')
         self.journal_dao = journal.JournalDAO()
-
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
@@ -553,10 +550,11 @@ class ReeBillWSGI(object):
                 'sequence': reebill.sequence})
 
     @cherrypy.expose
+    @authenticate_ajax
     @json_exception
+    @db_commit
     def update_readings(self, account, sequence, **kwargs):
-        with DBSession(self.state_db) as session:
-            self.process.update_reebill_readings(session, account, sequence)
+        self.process.update_reebill_readings(account, sequence)
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -641,6 +639,17 @@ class ReeBillWSGI(object):
     @authenticate_ajax
     @json_exception
     @db_commit
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        self.process.update_sequential_account_info(account, sequence,
+                processed=processed)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def compute_utility_bill(self, utilbill_id, **args):
         self.process.compute_utility_bill(utilbill_id)
         return self.dumps({'success': True})
@@ -695,6 +704,7 @@ class ReeBillWSGI(object):
         apply_corrections = (apply_corrections == 'true')
         result = self.process.issue_and_mail(cherrypy.session['user'], account,
                 sequence, recipients, apply_corrections)
+        print result
         return self.dumps(result)
 
     @cherrypy.expose
@@ -703,9 +713,9 @@ class ReeBillWSGI(object):
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
         apply_corrections = (apply_corrections == 'true')
-        self.process.issue_processed_and_mail(cherrypy.session['user'],
+        result = self.process.issue_processed_and_mail(cherrypy.session['user'],
                 apply_corrections)
-        return self.dumps({'success': True})
+        return self.dumps(result)
 
     @cherrypy.expose
     @authenticate_ajax
@@ -866,7 +876,6 @@ class ReeBillWSGI(object):
         if xaction == "read":
             return json.dumps({'success': True,
                     'rows': self.process.get_rsis_json(utilbill_id), })
-                })
 
         # only xaction "read" is allowed when reebill_sequence/version
         # arguments are given
@@ -920,6 +929,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def payment(self, xaction, account, **kwargs):
         if xaction == "read":
             payments = self.state_db.payments(account)
@@ -1193,10 +1203,10 @@ class ReeBillWSGI(object):
         if not xaction == "read":
             raise NotImplementedError('Cannot create, edit or destroy charges'
                                       ' from this grid.')
-            charges=self.process.get_hypothetical_matched_charges(
-                    account, sequence)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
+        charges=self.process.get_hypothetical_matched_charges(
+                account, sequence)
+        return self.dumps({'success': True, 'rows': charges,
+                           'total':len(charges)})
 
 
     @cherrypy.expose
@@ -1543,7 +1553,7 @@ if __name__ == '__main__':
     class Root(object):
         pass
     root = Root()
-    root.reebill = ReeBillWSGI(config, Session)
+    root.reebill = ReeBillWSGI(config)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1554,10 +1564,6 @@ if __name__ == '__main__':
             'tools.sessions.on': True,
             'tools.sessions.timeout': 240
         },
-        '/utilitybillimages' : {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': '/tmp/billimages'
-        }
     }
     cherrypy.config.update({
         'server.socket_host': root.reebill.config.get("http", "socket_host"),
@@ -1574,5 +1580,5 @@ else:
         'tools.sessions.timeout': 240
     })
 
-    bridge = ReeBillWSGI(config, Session)
+    bridge = ReeBillWSGI(config)
     application = cherrypy.Application(bridge, script_name=None, config=None)

@@ -2,30 +2,26 @@ import unittest
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
-
 import os
-from sqlalchemy.orm.exc import NoResultFound
 from os.path import realpath, join, dirname
 from datetime import date, datetime, timedelta
 import pprint
 import os
 
-#from billing.processing.rate_structure2 import RateStructureItem
+from sqlalchemy.orm.exc import NoResultFound
 from billing.processing.process import IssuedBillError
 from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address, Customer, Charge
 from os.path import realpath, join, dirname
 
-from sqlalchemy.orm.exc import NoResultFound
+from skyliner.sky_handlers import cross_range
 from processing.state import ReeBillCharge
 
-from skyliner.sky_handlers import cross_range
-#from billing.processing.rate_structure2 import RateStructureItem
 from billing.processing.process import IssuedBillError
 from billing.processing.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError, NoRSIError, RSIError,\
+from billing.exc import BillStateError, NoRSIError, RSIError, \
     FormulaSyntaxError
 from billing.test import utils
 
@@ -84,14 +80,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                             0.6, 0.2, billing_address,
                                             service_address, '100000')
 
-            # Disabled this test for now since it bypasses the process object
-            # customer = self.state_db.get_customer(session, '88888')
-            # self.assertEquals('88888', customer.account)
-            # self.assertEquals(0.6, customer.get_discount_rate())
-            # self.assertEquals(0.2, customer.get_late_charge_rate())
-            # template_customer = self.state_db.get_customer(session, '99999')
-            # self.assertNotEqual(template_customer.utilbill_template_id,
-            #                     customer.utilbill_template_id)
+        # Disabled this test for now since it bypasses the process object
+        # customer = self.state_db.get_customer(session, '88888')
+        # self.assertEquals('88888', customer.account)
+        # self.assertEquals(0.6, customer.get_discount_rate())
+        # self.assertEquals(0.2, customer.get_late_charge_rate())
+        # template_customer = self.state_db.get_customer(session, '99999')
+        # self.assertNotEqual(template_customer.utilbill_template_id,
+        #                     customer.utilbill_template_id)
 
         # No Reebills or Utility Bills should exist
         self.assertEqual([], self.process.get_reebill_metadata_json(
@@ -1500,34 +1496,34 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_delete_reebill(self):
         account = '99999'
-
-        #[MN] Temporary test modification; this query needs to go away
-        ubill_q = self.session.query(UtilBill).join(Customer).\
-            filter(Customer.account == account)
-
-        # create utility bill and first reebill, for January 2012
+        # create 2 utility bills for Jan-Feb 2012
         self.process.upload_utility_bill(account, 'gas',
-                                         date(2012, 1, 1), date(2012, 2, 1),
-                                         StringIO('january 2012'),
-                                         'january.pdf')
-        utilbill = ubill_q.one()
-        self.process.roll_reebill(account, start_date=date(2012, 1, 1))
+                date(2012, 1, 1), date(2012, 2, 1),
+                StringIO('january 2012'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas',
+                date(2012, 2, 1), date(2012, 3, 1),
+                StringIO('february 2012'), 'february.pdf')
+        utilbill = self.session.query(UtilBill).order_by(
+                UtilBill.period_start).first()
 
-        # delete the reebill: should succeed, because it's not issued
-        self.process.delete_reebill(account, 1)
-        self.assertRaises(NoSuchBillException,
-                          self.reebill_dao.load_reebill, account, 1,
-                          version=0)
-        self.assertEquals(0, self.session.query(ReeBill).count())
-        self.assertEquals([utilbill], ubill_q.all())
-
-        # re-create it
+        # create 2 reebills
         reebill = self.process.roll_reebill(account,
-                                            start_date=date(2012, 1, 1))
+        reebill = self.process.roll_reebill(account,
+                                  start_date=date(2012, 1, 1))
+        self.process.roll_reebill(account)
+
+        # only the last reebill is deletable: deleting the 2nd one should
+        # succeed, but deleting the 1st one should fail
+        with self.assertRaises(IssuedBillError):
+            self.process.delete_reebill(account, 1)
+        self.process.delete_reebill(account, 2)
+        with self.assertRaises(NoSuchBillException):
+            self.reebill_dao.load_reebill(account, 2, version=0)
+        self.assertEquals(1, self.session.query(ReeBill).count())
         self.assertEquals([1], self.state_db.listSequences(account))
         self.assertEquals([utilbill], reebill.utilbills)
 
-        # issue it: it should not be deletable
+        # issued reebill should not be deletable
         self.process.issue(account, 1)
         self.assertEqual(1, reebill.issued)
         self.assertEqual([utilbill], reebill.utilbills)
@@ -1537,9 +1533,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           account, 1)
 
         # create a new verison and delete it, returning to just version 0
-        # (versioning requires a cprs)
         self.process.new_version(account, 1)
-        reebill_v1 = self.session.query(ReeBill).filter_by(version=1).one()
+        self.session.query(ReeBill).filter_by(version=1).one()
         self.assertEqual(1, self.state_db.max_version(account, 1))
         self.assertFalse(self.state_db.is_issued(account, 1))
         self.process.delete_reebill(account, 1)
@@ -1558,7 +1553,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # replace process.ree_getter with one that always sets the renewable
         # energy readings to a known value
         self.process.ree_getter = MockReeGetter(10)
-
         acc = '99999'
 
         # create 3 utility bills: Jan, Feb, Mar
@@ -1746,17 +1740,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # initially, reebill version 1 can be computed without an error
         self.process.compute_reebill(account, 1, version=1)
 
-        # put it in an un-computable state by adding a charge without an
-        # RSI. it should now raise an RSIError
-        self.process.add_charge(utilbill_id, '')
-        #Todo: Do we want to raise a FormulaSyntaxError or a NoRSIError Here?
-        self.assertRaises(FormulaSyntaxError, self.process.compute_reebill,
-                          account, 1, version=1)
+        # put it in an un-computable state by adding a charge with a syntax
+        # error in its formula. it should now raise an RSIError.
+        # (computing a utility bill doesn't raise an exception by default, but
+        # computing a reebill based on the utility bill does.)
+        self.process.add_charge(utilbill_id, 'NEW_CHARGE')
+        self.process.update_charge(utilbill_id, 'NEW_CHARGE', {
+            'quantity': '1 + ',
+        })
+        with self.assertRaises(FormulaSyntaxError):
+            self.process.compute_reebill(account, 1, version=1)
 
         # delete the new version
         self.process.delete_reebill(account, 1)
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertEquals(0, reebill_data[0]['max_version'])
         self.assertEquals(0, reebill_data[0]['max_version'])
 
         # try to create a new version again: it should succeed, even though
@@ -1857,6 +1854,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                  'total': 6,
                                  'description': 'UPRS only',
                                  'group': 'All Charges',
+                 'error': None,
                              }, {
                                  'rsi_binding': 'B',
                                  'id': 'B',
@@ -1866,8 +1864,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                  'total': 42,
                                  'description': 'not shared',
                                  'group': 'All Charges',
+                 'error': None,
                              },
                          ], charges)
+
 
     def test_compute_reebill(self):
         '''Basic test of reebill processing with an emphasis on making sure
@@ -1879,9 +1879,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.ree_getter = MockReeGetter(energy_quantity)
 
         # create 2 utility bills with 1 charge in them
-        #from processing.state import Session
-        #s = Session()
-
         self.process.upload_utility_bill(account, 'gas',
                                          date(2013, 1, 1), date(2013, 2, 1),
                                          StringIO('January 2013'),
@@ -2071,6 +2068,63 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'balance_forward': 0,
             'corrections': '#1 not issued',
         }], reebill_data, 'id')
+
+    def test_payment_application(self):
+        """Test that payments are applied to reebills according their "date
+        received", including when multiple payments are applied and multiple
+        bills are issued in the same day.
+        """
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 2, 1),
+                date(2000, 3, 1), StringIO('February'), 'March.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 3, 1),
+                date(2000, 4, 1), StringIO('March'), 'March.pdf')
+
+        # create 2 reebills
+        reebill_1 = self.process.roll_reebill(account,
+                start_date=date(2000,1,1))
+        reebill_2 = self.process.roll_reebill(account)
+
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000,1,1,1), 'one', 10)
+        self.process.create_payment(account, datetime(2000,1,1,2), 'two', 12)
+
+        # 1st reebill has both payments applied to it, 2nd has neither
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # issue the 1st bill
+        self.process.issue(account, 1, issue_date=datetime(2000,1,1,3))
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+
+        # now later payments apply to the 2nd bill
+        self.process.create_payment(account, datetime(2000,1,1,3), 'three', 30)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # even when a correction is made on the 1st bill
+        self.process.new_version(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
+
+        # a payment that is backdated to before a corrected bill was issued
+        # does not appear on the corrected version
+        self.process.create_payment(account, datetime(2000,1,1,2,30),
+                'backdated payment', 230)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
 
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data
