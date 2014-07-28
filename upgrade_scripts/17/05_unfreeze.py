@@ -30,7 +30,7 @@ import MySQLdb
 from billing.util.dateutils import date_to_datetime
 from billing.util.dictutils import subdict, dict_merge
 from billing.util.mongo_utils import format_query, check_error
-from billing.processing.exceptions import MongoError
+from billing.exc import MongoError
 
 def unfreeze_utilbill(utilbill_doc, new_id=None):
     '''Converts 'utilbill_doc' into an editable utility bill document, i.e.

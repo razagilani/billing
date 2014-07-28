@@ -9,7 +9,7 @@ from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
 # minimum normlized score for an RSI to get included in a probable RS
@@ -110,6 +110,10 @@ class RateStructureDAO(object):
                 # whether the binding was present or not, update total weight
                 total_weight[binding] += weight
 
+
+        # include in the result all charges whose normalized weight
+        # exceeds 'threshold', with the rate and quantity formulas it had in
+        # its closest occurrence.
         result = []
         if verbose:
             self.logger.info('Predicted RSIs for %s %s %s - %s' % (utility,

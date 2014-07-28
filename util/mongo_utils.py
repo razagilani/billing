@@ -4,7 +4,7 @@ from datetime import date, time, datetime
 from bson.objectid import ObjectId
 from billing.util.dictutils import deep_map
 from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
-from billing.processing.exceptions import MongoError
+from billing.exc import MongoError
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 

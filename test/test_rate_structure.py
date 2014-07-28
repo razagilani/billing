@@ -6,7 +6,7 @@ from bson import ObjectId
 from mongoengine import DoesNotExist
 from billing.processing.rate_structure2 import RateStructure, \
     RateStructureItem, RateStructureDAO
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
 class RSITest(unittest.TestCase):
@@ -77,12 +77,13 @@ class RSITest(unittest.TestCase):
             # is being used, so 3/4 = .75, not 0
             rate='3 / 4 - R2.quantity',
         )
-        quantity, rate = rsi.compute_charge({
+        quantity, rate, error = rsi.compute_charge({
             'R1': { 'quantity': 2, 'rate': 1, },
             'R2': { 'quantity': 0.5, 'rate': 10, }
         })
         self.assertEqual(3, quantity)
         self.assertEqual(0.25, rate)
+        self.assertEqual(None, error)
 
     def test_compute_charge_errors(self):
         bad_rsi = RateStructureItem(
@@ -92,26 +93,36 @@ class RSITest(unittest.TestCase):
             rate='0',
         )
         # invalid syntax: FormulaSyntaxError
-        self.assertRaises(FormulaSyntaxError, bad_rsi.compute_charge, {})
+        #self.assertRaises(FormulaSyntaxError, bad_rsi.compute_charge, {})
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
 
         # unknown identifier: generic FormulaError
         bad_rsi.quantity = '1 + x.quantity'
-        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaError)
+        self.assertNotIsInstance(error, FormulaSyntaxError)
 
         # quantity formula can't be empty
         bad_rsi.quantity = ''
-        with self.assertRaises(FormulaSyntaxError) as context:
-            bad_rsi.compute_charge({})
-        self.assertEqual("A quantity formula can't be empty",
-                context.exception.message)
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
+        self.assertEqual("quantity formula can't be empty", error.message)
 
         # rate formula can't be empty
         bad_rsi.quantity = '1'
         bad_rsi.rate = ''
-        with self.assertRaises(FormulaSyntaxError) as e:
-                bad_rsi.compute_charge({})
-        self.assertEqual("A quantity formula can't be empty",
-                context.exception.message)
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
+        self.assertEqual("rate formula can't be empty", error.message)
 
 class RateStructureTest(unittest.TestCase):
 
