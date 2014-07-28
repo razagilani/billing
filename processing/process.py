@@ -224,12 +224,14 @@ class Process(object):
         session.delete(register)
 
     @staticmethod
+    def add_charge(session, utilbill_id, group_name):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
 
     @staticmethod
+    def update_charge(session, utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
         charge = session.query(Charge).join(UtilBill).\
@@ -240,6 +242,7 @@ class Process(object):
             setattr(charge, k, v)
 
     @staticmethod
+    def delete_charge(session, utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         charge = session.query(Charge).join(UtilBill).\
