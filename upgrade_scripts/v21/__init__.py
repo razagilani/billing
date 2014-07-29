@@ -40,11 +40,12 @@ def copy_charges_from_mongo():
 
         for mongo_charge in mongo_ub['charges']:
             log.debug('Adding charge for utilbill id %s' % ub.id)
+            quantity_units = mongo_charge.get('quantity_units', "")
             s.add(Charge(ub,
                          mongo_charge.get('description', ""),
                          mongo_charge.get('group', ""),
                          mongo_charge.get('quantity', 0),
-                         mongo_charge.get('quantity_units', ""),
+                         quantity_units if quantity_units is not None else '',
                          mongo_charge.get('rate', 0),
                          mongo_charge.get('rsi_binding', ""),
                          mongo_charge.get('total', 0)))
