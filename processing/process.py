@@ -556,6 +556,8 @@ class Process(object):
                 utility = predecessor.utility
             if rate_class is None:
                 rate_class = predecessor.rate_class
+            billing_address = Address.from_other(predecessor.billing_address)
+            service_address = Address.from_other(predecessor.service_address)
 
         except NoSuchBillException:
             template = self.reebill_dao.load_utilbill_template(session, account)
@@ -565,6 +567,8 @@ class Process(object):
                 utility = template['utility']
             if rate_class is None:
                 rate_class = template['rate_class']
+            service_address = Address(**template['service_address'])
+            billing_address = Address(**template['billing_address'])
 
         # delete any existing bill with same service and period but less-final
         # state
@@ -580,8 +584,9 @@ class Process(object):
         # calling session.add() is superfluous; see
         # https://www.pivotaltracker.com/story/show/26147819
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
-                period_start=begin_date, period_end=end_date,
-                total_charges=total, date_received=datetime.utcnow().date())
+            period_start=begin_date, period_end=end_date,
+            total_charges=total, date_received=datetime.utcnow().date(),
+            billing_address=billing_address, service_address=service_address)
         session.add(new_utilbill)
         session.flush()
 
