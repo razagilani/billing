@@ -162,7 +162,7 @@ class ReebillRenderer:
 
 
     # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
-    def render(self, session, account, sequence, outputdir, outputfile, verbose):
+    def render(self, account, sequence, outputdir, outputfile, verbose):
 
         # Hack for overriding default template if a teva account
         if (account in self.teva_accounts):
@@ -171,9 +171,9 @@ class ReebillRenderer:
             self.current_template = self.default_template
 
         # render each version
-        max_version = self.state_db.max_version(session, account, sequence)
+        max_version = self.state_db.max_version(account, sequence)
         for version in range(max_version + 1):
-            reebill = self.state_db.get_reebill(session, account, sequence,
+            reebill = self.state_db.get_reebill(account, sequence,
                     version=version)
             reebill_document = self.reebill_dao.load_reebill(account, sequence,
                     version=version)
