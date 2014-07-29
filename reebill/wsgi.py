@@ -572,10 +572,6 @@ class ReeBillWSGI(object):
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.get('runtime', 'integrate_skyline_backend') is False:
-            raise ValueError("OLTP is not integrated")
-        if self.config.get('runtime', 'integrate_nexus') is False:
-            raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
         self.process.bind_renewable_energy(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence)
