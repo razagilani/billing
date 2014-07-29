@@ -556,37 +556,15 @@ class ReeBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
-    def to_dict(self):
-        the_dict = {
-            'id': self.id,
-            'customer_id': self.customer_id,
-            'sequence': self.sequence,
-            'issued': bool(self.issued),
-            'version': self.version,
-            'issue_date': self.issue_date,
-            'period_start': self.utilbill.period_start,
-            'period_end': self.utilbill.period_end,
-            'ree_charge': self.ree_charge,
-            'balance_due': self.ree_charge,
-            'balance_forward': self.balance_forward,
-            'discount_rate': self.discount_rate,
-            'due_date': self.due_date,
+    def column_dict(self):
+        the_dict = super(ReeBill, self).colum_dict()
+        the_dict.update({
             'hypothetical_total': self.get_total_hypothetical_charges(),
-            'late_charge_rate': self.late_charge_rate,
-            'late_charge': self.late_charge,
-            'total_adjustment': self.total_adjustment,
-            'manual_adjustment': self.manual_adjustment,
-            'payment_received': self.payment_received,
-            'prior_balance': self.prior_balance,
-            'ree_value': self.ree_value,
-            'ree_savings': self.ree_savings,
-            'email_recipient': self.email_recipient,
-            'processed': self.processed,
-            'billing_address': self.billing_address.to_dict(),
-            'service_address': self.service_address.to_dict(),
+            'billing_address': self.billing_address.column_dict(),
+            'service_address': self.service_address.column_dict(),
             # TODO: is this used at all? does it need to be populated?
             'services': []
-        }
+        })
 
         if self.version > 0:
             if self.issued:
@@ -955,21 +933,6 @@ class Register(Base):
         self.register_binding = register_binding
         self.active_periods = active_periods
         self.meter_identifier = meter_identifier
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'utilbill_id': self.utilbill_id,
-            'description': self.description,
-            'quantity': self.quantity,
-            'quantity_units': self.quantity_units,
-            'identifier': self.identifier,
-            'estimated': self.estimated,
-            'reg_type': self.reg_type,
-            'register_binding': self.register_binding,
-            'active_periods': self.active_periods,
-            'meter_identifier': self.meter_identifier
-        }
 
 
 class Charge(Base):
