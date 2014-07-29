@@ -666,7 +666,7 @@ class RegistersResource(RESTResource):
         new_register = cherrypy.request.json
         r = self.process.new_register(utilbill_id, new_register)
 
-        return True, {"rows": r.to_dict(), 'results': 1}
+        return True, {"rows": r.column_dict(), 'results': 1}
 
     def handle_put(self, register_id, *vpath, **params):
         updated_reg = cherrypy.request.json
@@ -678,7 +678,7 @@ class RegistersResource(RESTResource):
 
         register = self.process.update_register(register_id, updated_reg)
 
-        return True, {"rows": register.to_dict(), 'results': 1}
+        return True, {"rows": register.column_dict(), 'results': 1}
 
     def handle_delete(self, register_id, *vpath, **params):
         self.process.delete_register(register_id)
@@ -697,7 +697,7 @@ class PaymentsResource(RESTResource):
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
         payments = self.state_db.payments(account)
-        rows = [payment.to_dict() for payment in payments]
+        rows = [payment.column_dict() for payment in payments]
         return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):
@@ -705,7 +705,7 @@ class PaymentsResource(RESTResource):
         d = datetime.strptime(d, '%Y-%m-%dT%H:%M:%S')
         print "\n\n\n\n", d, type(d)
         new_payment = self.process.create_payment(account, d, "New Entry", 0, d)
-        return True, {"rows": new_payment.to_dict(), 'results': 1}
+        return True, {"rows": new_payment.column_dict(), 'results': 1}
 
     def handle_put(self, payment_id, *vpath, **params):
         row = cherrypy.request.json
