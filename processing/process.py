@@ -164,7 +164,6 @@ class Process(object):
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(utilbill_id)
-        return new_meter_id, new_reg_id
 
 
     def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id):
@@ -325,7 +324,7 @@ class Process(object):
 
         self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
                 utilbill.service)
-        self.compute_utilbill(utilbill.id)
+        self.compute_utility_bill(utilbill.id)
 
     def get_reebill_metadata_json(self, account):
         """Returns data describing all reebills for the given account, as list
@@ -892,7 +891,7 @@ class Process(object):
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
         if last_reebill_row is None:
-            new_reebill.update_readings_from_document(new_utilbill_docs[0])
+            new_reebill.replace_readings_from_utility_bill_registers(utilbill)
         else:
             new_reebill.update_readings_from_reebill(last_reebill_row.readings)
 

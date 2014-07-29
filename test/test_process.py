@@ -1506,10 +1506,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         utilbill = self.session.query(UtilBill).order_by(
                 UtilBill.period_start).first()
 
-        # create 2 reebills
         reebill = self.process.roll_reebill(account,
-        reebill = self.process.roll_reebill(account,
-                                  start_date=date(2012, 1, 1))
+                                            start_date=date(2012, 1, 1))
         self.process.roll_reebill(account)
 
         # only the last reebill is deletable: deleting the 2nd one should
