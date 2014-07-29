@@ -5,8 +5,8 @@ import ast
 from collections import defaultdict
 from copy import deepcopy
 from datetime import timedelta, datetime, date
-from itertools import groupby
-from operator import attrgetter
+from itertools import groupby, chain
+from operator import attrgetter, itemgetter
 import logging
 
 import sqlalchemy
@@ -25,24 +25,15 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
+from billing.exc import IssuedBillError, NoSuchBillException,\
+        RegisterError, FormulaSyntaxError
+
+from billing.exc import NoRSIError, FormulaError, RSIError
 from exc import DatabaseError
-from alembic.migration import MigrationContext
-import logging
-from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
-        RegisterError
-
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
-from exc import DatabaseError
-
-
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError, \
-    NoSuchBillException
-from billing.processing.exceptions import FormulaSyntaxError, RegisterError
-
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 log = logging.getLogger(__name__)
 
@@ -61,11 +52,10 @@ class Base(object):
 
     def column_dict(self):
         return {c: getattr(self, c) for c in self.column_names()}
-
 Base = declarative_base(cls=Base)
 
-_schema_revision = '3781adb9429d'
 
+_schema_revision = '3781adb9429d'
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
     revision expected by the model metadata.
@@ -138,8 +128,7 @@ class Address(Base):
 
     def __repr__(self):
         return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
-                                         self.city, self.state,
-                                         self.postal_code)
+                self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
@@ -286,7 +275,7 @@ class ReeBill(Base):
     # and for UtilBill,
     #     creator=lambda r: UtilbillReebill(self, r)
     # but this will not actually work because 'self' is not available in class
-    # # scope; there is no instance of UtilBill or ReeBill at the time this
+    # scope; there is no instance of UtilBill or ReeBill at the time this
     # code is executed. it also does not work to move the code into __init__
     # and assign the 'utilbills' attribute to a particular ReeBill instance
     # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
@@ -630,7 +619,7 @@ class UtilbillReebill(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
     document_id = Column(String)
-
+    # TODO remove this
     uprs_document_id = Column(String)  #indicates the rate structure data
 
     # there is no delete cascade in this 'relationship' because a UtilBill
@@ -669,11 +658,9 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
-
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
     group = Column(String, name='group_name', nullable=False)
-
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     quantity_unit = Column(String, nullable=False)
@@ -736,8 +723,9 @@ class Reading(Base):
         self.unit = unit
 
     def __hash__(self):
-        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
-                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+        return hash(self.register_binding + self.measure +
+                str(self.conventional_quantity) + str(self.renewable_quantity)
+                + self.aggregate_function + self.unit)
 
     def __eq__(self, other):
         return all([
@@ -827,6 +815,7 @@ class UtilBill(Base):
         Hypothetical: 'Missing'
     }
 
+    # TODO remove uprs_id, doc_id
     def __init__(self, customer, state, service, utility, rate_class,
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
@@ -877,22 +866,6 @@ class UtilBill(Base):
             key=lambda element: (element['sequence'], element['version'])
         )
 
-    # TODO: this is no longer used; client receives JSON and renders it as a
-    # string
-    def sequence_version_string(self):
-        '''Returns a string describing sequences and versions of reebills
-        attached to this utility bill, consisting of sequences followed by a
-        comma-separated list of versions of that sequence, e.g. "1-0,1,2, 2-0".
-        '''
-        # group _utilbill_reebills by sequence, sorted by version within each
-        # group
-        groups = groupby(sorted(self._utilbill_reebills,
-            key=lambda x: (x.reebill.sequence, x.reebill.version)),
-            key=attrgetter('reebill.sequence'))
-        return ', '.join('%s-%s' % (sequence,
-                ','.join(str(ur.reebill.version) for ur in group))
-                for (sequence, group) in groups)
-
     def ordered_charges(self):
         """Sorts the charges by their evaluation order"""
         depends = {c.rsi_binding: c.formula_variables() for c in self.charges}
@@ -924,6 +897,12 @@ class UtilBill(Base):
                    self.registers}
         for charge in self.ordered_charges():
             context[charge.rsi_binding] = charge.evaluate(context, update=True)
+
+    def get_charge_by_rsi_binding(self, binding):
+        '''Returns the first Charge object found belonging to this
+        ReeBill whose 'rsi_binding' matches 'binding'.
+        '''
+        return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
         return sum(charge.total for charge in self.charges)
@@ -1268,13 +1247,12 @@ class StateDB(object):
 
     def __init__(self, logger=None):
         """Construct a new :class:`.StateDB`.
-        
+
         :param session: a ``scoped_session`` instance
         :param logger: a logger object
         """
         self.logger = logger
         self.session = Session
-        pass
 
     def get_customer(self, account):
         session = Session()
@@ -1391,7 +1369,7 @@ class StateDB(object):
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
-    def discount_rate(self, account):
+    def last_sequence(self, account):
         '''Returns the discount rate for the customer given by account.'''
         session = Session()
         result = session.query(Customer).filter_by(account=account).one(). \
@@ -1807,9 +1785,9 @@ class StateDB(object):
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert isinstance(start, date)
+        assert isinstance(start, datetime)
         if end is None:
-            end = datetime.utcnow().date()
+            end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(account))\
@@ -1831,19 +1809,8 @@ class StateDB(object):
         # SQLAlchemy query to get account & dates for all utilbills
         session = Session()
         entityQuery = session.query(StatusDaysSince)
-
-        # example of how db sorting would be done
-        #if sort_col == 'dayssince' and sort_order == 'ASC':
-        #    sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
-        #elif sort_colr == 'dayssince' and sort_order == 'DESC':
-        #    sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
-        #lockmodeQuery = sortedQuery.with_lockmode("read")
-
         lockmodeQuery = entityQuery.with_lockmode("read")
-
-        result = lockmodeQuery.all()
-
-        return result
+        return lockmodeQuery.all()
 
 
 class UtilBillLoader(object):
@@ -1863,13 +1830,13 @@ class UtilBillLoader(object):
         state SkylineEstimated or lower) are included.
         '''
         cursor = self._session.query(UtilBill).filter(UtilBill.state <=
-                                                      UtilBill.SkylineEstimated)
+                UtilBill.SkylineEstimated)
         for key, value in kwargs.iteritems():
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
 
     def get_last_real_utilbill(self, account, end, service=None, utility=None,
-                               rate_class=None, processed=None):
+                rate_class=None, processed=None):
         '''Returns the latest-ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.

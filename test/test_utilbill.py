@@ -7,17 +7,15 @@ from StringIO import StringIO
 import dateutil
 from bson import ObjectId
 
-from billing.processing.exceptions import RSIError
+from billing.exc import RSIError
 from processing.session_contextmanager import DBSession
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.exceptions import NoRSIError
-
+from billing.exc import NoRSIError
 import example_data
 from processing.state import UtilBill, Customer, Session, Charge
-
 
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
@@ -120,7 +118,27 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                     quantity='2',
                     quantity_units='therms',
                     rate='3',
-                )
+                ),
+                RateStructureItem(
+                    rsi_binding='SYNTAX_ERROR',
+                    quantity='5 + ',
+                    quantity_units='therms',
+                    rate='1',
+                ),
+                RateStructureItem(
+                    rsi_binding='DIV_BY_ZERO_ERROR',
+                    quantity='1',
+                    quantity_units='therms',
+                    rate='1 / 0',
+                ),
+                # shows that quantity formula error takes priority over rate
+                # formula error
+                RateStructureItem(
+                    rsi_binding='UNKNOWN_IDENTIFIER',
+                    quantity='x * 2',
+                    quantity_units='therms',
+                    rate='1 / 0',
+                ),
             ]
         )
         session = Session()
@@ -136,6 +154,33 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             return next(c.total for c in utilbill.charges
                     if c.rsi_binding == rsi_binding)
 
+        # function to check error state of a charge
+        def assert_error(c, error_message):
+            self.assertIsNone(c.quantity)
+            self.assertIsNone(c.rate)
+            self.assertIsNone(c.total)
+            self.assertIsNotNone(c.error)
+            self.assertEqual(error_message, c.error)
+
+        # 'raise_exception' argument validates that all charges were computed
+        # without errors. if this argument is given, all the charges without
+        # errors still be correct, and the exception raised only after computing
+        # all the charges
+        with self.assertRaises(RSIError):
+            utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
+        self.assertDecimalAlmostEqual(31,
+                the_charge_named('LINEAR_PLUS_CONSTANT'))
+        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
+        self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
+        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
+        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
+
         # check "total" for each of the charges in the utility bill at the
         # register quantity of 150 therms. there should not be a charge for # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate # structure. self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT')) self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(31,
@@ -144,6 +189,12 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
+        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
@@ -156,6 +207,12 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
+        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
@@ -168,6 +225,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
+        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
+
 
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
@@ -336,51 +400,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             ],
         }], utilbill_doc['meters'])
 
-
-        # 2 RSIs, NEW_1 and NEW_2
-        self.assertEqual(2, len(charges))
-        # add another RSI "BAD"
-        # try to compute it
-
-            charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-                    'id': 'NEW_1',
-                    'id': 'NEW_2',
-                    'description': 'a charge for this will be added too',
-                    'rate': 6,
-                    'total': 30,
-                    'group': '',
-                },
-            ], charges)
-
-        # TODO move the stuff below into a unit test (in test_utilbill.py)
-        # when there's any kind of exception in computing the bill, the new
-        # set of charges should still get saved, and the exception should be
-        # re-raised
-        new_rsi = self.process.add_rsi(session, utilbill['id'])
-        self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'BAD',
-                    'description':"quantity formula can't be computed",
-                    'quantity': 'WTF',
-                    'rate': '1',
-                    'quantity_units':'whatever',
-                })
-
-        from billing.processing.exceptions import RSIError
-        with self.assertRaises(RSIError) as e:
-            self.process.refresh_charges(session, utilbill['id'])
-        charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-        self.assertEqual([{
-            'rsi_binding': 'BAD',
-            'id': 'BAD',
-            'description': "quantity formula can't be computed",
-            'quantity_units': 'whatever',
-            # quantity, rate, total are all 0 when not computable
-            'quantity': 0,
-            'group': '',
-        }], [charges[0]])
-
-        # TODO test that document is still saved after any kind of Exception--
-        # i'm not sure how to do this because the code should be (and is)
-        # written so that there are no known ways to trigger unexpected
-        # exceptions. in a real unit test, mongo.compute_charges could be
-        # replaced with a mock that did this.

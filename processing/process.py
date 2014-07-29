@@ -31,7 +31,7 @@ from billing.processing.state import Customer, UtilBill, ReeBill, \
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
-from billing.processing.exceptions import IssuedBillError, NotIssuable, \
+from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, NotUniqueException
 
 import pprint
@@ -124,7 +124,6 @@ class Process(object):
             row.get('meter_id', ""))
         session.add(r)
         return r
-
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
         """
@@ -143,6 +142,7 @@ class Process(object):
                               (k, register.id, val))
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
+        self.compute_utility_bill(utilbill_id)
         return register
 
     def delete_register(self, session, register_id):
@@ -151,17 +151,17 @@ class Process(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
         session.delete(register)
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def add_charge(utilbill_id, group_name):
+    def add_charge(self, utilbill_id, group_name):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def update_charge(utilbill_id, rsi_binding, fields):
+    def update_charge(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
         session = Session()
@@ -170,9 +170,9 @@ class Process(object):
             filter(Charge.rsi_binding == rsi_binding).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
+        self.compute_utility_bill(utilbill_id)
 
-    @staticmethod
-    def delete_charge(utilbill_id, rsi_binding):
+    def delete_charge(self, utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         session = Session()
@@ -180,6 +180,7 @@ class Process(object):
             filter(UtilBill.id == utilbill_id).\
             filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
+        self.compute_utility_bill(utilbill_id)
 
     def get_rsis_json(self, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
@@ -206,8 +207,8 @@ class Process(object):
                             rsi_binding = "New RSI #%s" % n,
                             total = 0.0))
         session.flush()
-        ubs = session.query(UtilBill).all()
-        print ubs
+        self.compute_utility_bill(utilbill_id)
+        return new_rsi
 
     def update_rsi(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by `rsi_binding` in the given utility
@@ -222,6 +223,9 @@ class Process(object):
             if k in ['quantity', 'rate']:
                 k = '%s_formula' % k  # we renamed these
             setattr(charge, k, v)
+        self.refresh_charges(utilbill_id)
+        self.compute_utility_bill(utilbill_id)
+        return charge
 
     def delete_rsi(self, utilbill_id, rsi_binding):
         session = Session()
@@ -296,6 +300,7 @@ class Process(object):
 
         self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
                 utilbill.service)
+        self.compute_utilbill(utilbill.id)
 
     def get_reebill_metadata_json(self, account):
         """Returns data describing all reebills for the given account, as list
@@ -488,8 +493,8 @@ class Process(object):
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
-
             for register in predecessor.registers if predecessor else []:
+                new_utilbill.charges = []
                 session.add(Register(new_utilbill, register.description,
                                      0, register.quantity_units,
                                      register.identifier, False,
@@ -515,6 +520,7 @@ class Process(object):
         except Exception as e:
             self.logger.error("Error when computing utility bill %s: %s\n%s" % (
                     new_utilbill.id, e, traceback.format_exc()))
+
 
         return new_utilbill
 
@@ -552,8 +558,8 @@ class Process(object):
             return None
         except MultipleResultsFound:
             raise NotUniqueException(("Can't upload a bill for dates %s, %s "
-                    "because there are already %s of them") % (start,
-                    end, len(list(existing_bills))))
+                    "because there are already %s of them") % (begin_date,
+                    end_date, len(list(existing_bills))))
 
         # now there is one existing bill with the same dates. if state is
         # "more final" than an existing non-final bill that matches this
@@ -570,6 +576,7 @@ class Process(object):
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
+
         it's not attached to a reebill) and returns the deleted state
         .UtilBill object and the path  where the file was moved (it never
         really gets deleted). This path will be None if there was no file or
@@ -589,6 +596,7 @@ class Process(object):
             # file never existed or could not be found
             path = None
 
+        # TODO use cascade instead if possible
         for charge in utility_bill.charges:
             session.delete(charge)
         for register in utility_bill.registers:
@@ -609,11 +617,12 @@ class Process(object):
         utilbill.charges = []
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
+        self.compute_utility_bill(utilbill_id)
 
     def has_utilbill_predecessor(self, utilbill_id):
         try:
             utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-            predecessor = self.state_db.get_last_real_utilbill(
+            self.state_db.get_last_real_utilbill(
                     utilbill.customer.account, utilbill.period_start,
                     utility=utilbill.utility, service=utilbill.service)
             return True
@@ -653,10 +662,9 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
-        reebill.copy_reading_conventional_quantities_from_utility_bill()
         reebill.compute_charges()
-
         actual_total = reebill.utilbill.total_charge()
+
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
         reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
@@ -804,14 +812,14 @@ class Process(object):
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
-
         if last_reebill_row is None:
-            new_reebill.replace_readings_from_utility_bill_registers(utilbill)
+            new_reebill.update_readings_from_document(new_utilbill_docs[0])
         else:
             new_reebill.update_readings_from_reebill(last_reebill_row.readings)
 
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
+
 
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), new_reebill, use_olap=True)
@@ -1090,7 +1098,7 @@ class Process(object):
                 reebill .sequence, version=reebill.version)
 
         reebill.issue_date = issue_date
-        reebill.due_date = issue_date + timedelta(days=30)
+        reebill.due_date = issue_date.date() + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
@@ -1217,6 +1225,7 @@ class Process(object):
         billing month.'''
         # get all reebills whose periods contain any days in this month, and
         # their sequences (there should be at most 3)
+        session = Session()
         query_month = Month(year, month)
         sequences_for_month = session.query(ReeBill.sequence).join(UtilBill)\
                 .filter(UtilBill.period_start >= query_month.first,
@@ -1337,8 +1346,22 @@ class Process(object):
 
         return data, total_count
 
+    def update_reebill_readings(self, account, sequence):
+        '''Replace the readings of the reebill given by account, sequence
+        with a new set of readings that matches the reebill's utility bill.
+        '''
+        reebill = self.state_db.get_reebill(account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        # TODO replace with new methods
+        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
+                reebill.utilbills[0])
+        reebill.update_readings_from_document(utilbill_doc)
+        
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
         self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
                                         reebill, use_olap=True)
 
@@ -1407,6 +1430,7 @@ class Process(object):
         # to issue them, we will return a list of those corrections and the
         # sum of adjustments that have to be made so the client can create
         # a confirmation message
+        session = Session()
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
                 return {'success': False,
@@ -1452,7 +1476,8 @@ class Process(object):
         for each one of the issued reebills
         '''
 
-        unissued_processed = self.get_issuable_processed_reebills_dict(session)
+        unissued_processed = self.get_issuable_processed_reebills_dict()
+        issued = 0
         for bill in unissued_processed:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
@@ -1489,13 +1514,16 @@ class Process(object):
                         bill['account'], bill['sequence'], e.__class__.__name__),) + e.args
                 raise
             journal.ReeBillIssuedEvent.save_instance(user, bill['account'], bill['sequence'], 0)
-        # Let's mail!
-        # Recepients can be a comma seperated list of email addresses
+            # Let's mail!
+            # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                    recipient_list)
             journal.ReeBillMailedEvent.save_instance(user, bill['account'],
                                                 bill['sequence'], bill['mailto'])
+            issued = issued + 1
+        return {'success': True,
+                'issued': issued}
 
     def get_issuable_processed_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries containing
@@ -1503,6 +1531,7 @@ class Process(object):
             charges and the associated customer email address
             of the earliest unissued version-0 reebill account
         """
+        session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
                 .filter(ReeBill.issued == 0, ReeBill.version == 0, ReeBill.processed==1).subquery()
         min_sequence = session.query(

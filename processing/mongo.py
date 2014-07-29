@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 from datetime import date, datetime
-from bson.objectid import ObjectId
 import pymongo
 import bson # part of pymongo package
 from operator import itemgetter
@@ -15,7 +14,7 @@ from billing.util.mongo_utils import bson_convert, format_query, check_error
 from billing.util.dictutils import dict_merge
 from billing.util.dateutils import date_to_datetime
 from billing.processing.state import Customer, UtilBill
-from billing.processing.exceptions import NoSuchBillException, \
+from billing.exc import NoSuchBillException, \
     NotUniqueException, IssuedBillError, MongoError, FormulaError, RSIError, \
     NoRSIError
 import pprint
