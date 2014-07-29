@@ -117,6 +117,20 @@ class Address(Base):
             'postalcode': self.postal_code,
         }
 
+    @classmethod
+    def from_other(cls, other_address):
+        """Constructs a new :class:`.Address` instance whose attributes are
+        copied from the given `other_address`.
+        :param other_address: An :class:`.Address` instance from which to
+         copy attributes.
+        """
+        assert isinstance(other_address, cls)
+        return cls(other_address.addressee,
+                   other_address.street,
+                   other_address.city,
+                   other_address.state,
+                   other_address.postal_code)
+
 
 class Customer(Base):
     __tablename__ = 'customer'
@@ -885,7 +899,7 @@ class UtilBill(Base):
     def __init__(self, customer, state, service, utility, rate_class,
             account_number='', period_start=None, period_end=None, doc_id=None,
             uprs_id=None, total_charges=0, date_received=None,  processed=False,
-            reebill=None):
+            reebill=None, billing_address=None, service_address=None,):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -903,6 +917,8 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.billing_address = billing_address
+        self.service_address = service_address
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
