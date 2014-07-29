@@ -145,22 +145,23 @@ class Exporter(object):
         book = tablib.Databook()
         if account == None:
             #Only export brokerage accounts (id>20000)
-            for acc in [x for x in
-                        sorted(self.state_db.listAccounts()) if
-                        (int(x) >= 20000)]:
-                book.add_sheet(
-                    self.get_energy_usage_sheet(acc))
+            for acc in [
+                x for x in sorted(self.state_db.listAccounts()) if
+                    (int(x) >= 20000)]:
+                utilbills, _ = self.state_db.list_utilbills(acc)
+                book.add_sheet(self.get_energy_usage_sheet(utilbills))
         else:
-            book.add_sheet(
-                self.get_energy_usage_sheet(account))
+            utilbills = self.state_db.list_utilbills(account)
+            book.add_sheet(self.get_energy_usage_sheet(utilbills))
         output_file.write(book.xls)
 
     def get_energy_usage_sheet(self, utilbills):
         '''
         Returns a tablib Dataset consisting of a period start,
         period end, total energy, rate class, and one column per
-        charge for all utility bills belonging to 'account'.
+        charge for all 'utilbills'.
         '''
+        account = ''
         # Initital datasheet headers
         ds_headers = ['Account', 'Rate Class', 'Total Energy', 'Units',
                       'Period Start', 'Period End']
@@ -169,6 +170,7 @@ class Exporter(object):
         for ub in utilbills:
 
             units = quantity = ''
+            account = ub.customer.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
                 ub_doc = self.reebill_dao._load_utilbill_by_id(
@@ -199,7 +201,7 @@ class Exporter(object):
                     total = charge.total
                 except KeyError as key_error:
                     print >> sys.stderr, '%s KEY ERROR %s: %s' % (
-                        account, key_error, pformat(charge))
+                        ub.customer.account, key_error, pformat(charge))
                 else:
                     # pad row with empty values up to the length of the header
                     # if this charge header doesn't exists. Then append the total
@@ -226,8 +228,8 @@ class Exporter(object):
         # all rows up to the length of the final header
         for row in ds_rows:
             row.extend([''] * (len(ds_headers) - len(row)))
-        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
-                title=ub.customer.account)
+        dataset = tablib.Dataset(
+            *ds_rows, headers=ds_headers, title=account)
         return dataset
 
     def export_reebill_details(self, output_file, begin_date=None,
@@ -239,13 +241,15 @@ class Exporter(object):
         calculates cumulative savings and RE&E energy
         '''
 
-        dataset = self.get_export_reebill_details_dataset(begin_date,
-                                                          end_date)
+        accounts = self.state_db.listAccounts()
+        dataset = self.get_export_reebill_details_dataset(
+            accounts, begin_date, end_date)
         workbook = tablib.Databook()
         workbook.add_sheet(dataset)
         output_file.write(workbook.xls)
 
-    def get_export_reebill_details_dataset(self, begin_date, end_date):
+    def get_export_reebill_details_dataset(self, accounts, begin_date,
+                                           end_date):
         ''' Helper method for export_reebill_details_xls: extracts details
         data from issued  reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy.
@@ -289,7 +293,6 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
-        accounts = self.state_db.listAccounts()
         ds_rows = []
 
         for account in accounts:
@@ -343,7 +346,7 @@ class Exporter(object):
                 payment_date = None
                 payment_amount = None
                 if applicable_payments:
-                    payment_date = applicable_payments[0].date_applied.isoformat()
+                    payment_date = applicable_payments[0].date_applied.date().isoformat()
                     payment_amount = applicable_payments[0].credit
                     applicable_payments.pop(0)
 
@@ -399,7 +402,7 @@ class Exporter(object):
                     row = [account, reebill.sequence, reebill.version,
                            None, None, None, None, None,
                            None, None, None, None, None,
-                           applicable_payment.date_applied.isoformat(),
+                           applicable_payment.date_applied.date().isoformat(),
                            applicable_payment.credit,
                            None, None, None, None, None,
                            None, None, None, None, None]
