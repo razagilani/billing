@@ -896,9 +896,9 @@ class Process(object):
         self.compute_utility_bill(utilbill_id)
 
     def compute_utility_bill(self, utilbill_id):
-        '''Updates all charges in the document of the utility bill given by
-        'utilbill_id' so they are correct according to its rate structure, and
-        saves the document.
+        '''Updates all charges in the utility bill given by 'utilbill_id'.
+        Also updates some keys in the document that are duplicates of columns
+        in the MySQL table.
         '''
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         document = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -915,6 +915,7 @@ class Process(object):
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(utilbill)
 
+        utilbill.refresh_charges(uprs.rates)
         utilbill.compute_charges(uprs, document)
 
         # also try to compute documents of any unissued reebills associated
