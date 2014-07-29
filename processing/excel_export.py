@@ -144,14 +144,14 @@ class Exporter(object):
         book = tablib.Databook()
         if account == None:
             #Only export brokerage accounts (id>20000)
-            for acc in [x for x in
-                        sorted(self.state_db.listAccounts()) if
-                        (int(x) >= 20000)]:
-                book.add_sheet(
-                    self.get_energy_usage_sheet(acc))
+            for acc in [
+                x for x in sorted(self.state_db.listAccounts()) if
+                    (int(x) >= 20000)]:
+                utilbills, _ = self.state_db.list_utilbills(acc)
+                book.add_sheet(self.get_energy_usage_sheet(utilbills))
         else:
-            book.add_sheet(
-                self.get_energy_usage_sheet(account))
+            utilbills = self.state_db.list_utilbills(account)
+            book.add_sheet(self.get_energy_usage_sheet(utilbills))
         output_file.write(book.xls)
 
     def get_energy_usage_sheet(self, utilbills):
@@ -160,6 +160,7 @@ class Exporter(object):
         period end, total energy, rate class, and one column per
         charge for all 'utilbills'.
         '''
+        account = ''
         # Initital datasheet headers
         ds_headers = ['Account', 'Rate Class', 'Total Energy', 'Units',
                       'Period Start', 'Period End']
@@ -168,6 +169,7 @@ class Exporter(object):
         for ub in utilbills:
 
             units = quantity = ''
+            account = ub.customer.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
                 ub_doc = self.reebill_dao._load_utilbill_by_id(
@@ -225,8 +227,8 @@ class Exporter(object):
         # all rows up to the length of the final header
         for row in ds_rows:
             row.extend([''] * (len(ds_headers) - len(row)))
-        dataset = tablib.Dataset(*ds_rows, headers=ds_headers,
-                title=ub.customer.account)
+        dataset = tablib.Dataset(
+            *ds_rows, headers=ds_headers, title=account)
         return dataset
 
     def export_reebill_details(self, output_file, begin_date=None,
@@ -238,8 +240,9 @@ class Exporter(object):
         calculates cumulative savings and RE&E energy
         '''
 
-        dataset = self.get_export_reebill_details_dataset(begin_date,
-                                                          end_date)
+        accounts = self.state_db.listAccounts()
+        dataset = self.get_export_reebill_details_dataset(
+            accounts, begin_date, end_date)
         workbook = tablib.Databook()
         workbook.add_sheet(dataset)
         output_file.write(workbook.xls)
@@ -289,7 +292,6 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
-        #accounts = self.state_db.listAccounts()
         ds_rows = []
 
         for account in accounts:
