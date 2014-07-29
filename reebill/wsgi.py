@@ -691,7 +691,7 @@ class ReeBillWSGI(object):
                     'been turned off.'), 'details': ''}})
         self.renderer.render(account, sequence,
             self.config.get("billdb", "billpath")+ "%s" % account,
-            "%.5d_%.4d.pdf" % (account, sequence), False )
+            "%s_%.4d.pdf" % (account, sequence), False )
         return self.dumps({'success': True})
 
     @cherrypy.expose
