@@ -101,17 +101,7 @@ class Process(object):
         for r in session.query(Register).join(UtilBill,
             Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id).all():
-            l.append(dict(meter_id=r.meter_identifier,
-                          register_id=r.id,
-                          service=r.utilbill.service,
-                          type=r.reg_type,
-                          binding=r.register_binding,
-                          description=r.description,
-                          quantity=r.quantity,
-                          quantity_units=r.quantity_units,
-                          id='%s/%s/%s' % (r.utilbill.service,
-                                           r.meter_identifier,
-                                           r.id)))
+            l.append(r.to_dict())
         return l
 
     def new_register(self, utilbill_id, row):
@@ -121,39 +111,28 @@ class Process(object):
         """
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        session.add(Register(utility_bill,
-                             "Insert description",
-                             0,
-                             "therms",
-                             row.get('register_id', "Insert register ID here"),
-                             False,
-                             "total",
-                             "Insert register binding here",
-                             None,
-                             row.get('meter_id', "")))
-    def update_register(self, utilbill_id, orig_meter_id, orig_reg_id, rows):
-        """Updates fields in the register given by 'original_register_id' in
-        the meter given by 'original_meter_id', with the data contained by rows.
+        r = Register(
+            utility_bill,
+            "Insert description",
+            0,
+            "therms",
+            row.get('register_id', "Insert register ID here"),
+            False,
+            "total",
+            "Insert register binding here",
+            None,
+            row.get('meter_id', ""))
+        session.add(r)
+        return r
+    def update_register(self, register_id, rows):
+        """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
+        self.logger.info("Running Process.update_register %s" % register_id)
         session = Session()
-        q = session.query(Register).join(UtilBill,
-                                         Register.utilbill_id == UtilBill.id).\
-            filter(UtilBill.id == utilbill_id)
 
         #Register to be updated
-        register = q.filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
-
-        #Check if a register with target register_id/meter_id already exists
-        target_register_id = rows.get('register_id', orig_reg_id)
-        target_meter_id = rows.get('meter_id', orig_meter_id)
-        target = q.filter(Register.meter_identifier == target_meter_id).\
-            filter(Register.identifier == target_register_id).first()
-        if target and target != register:
-            raise ValueError("There is already a register with id %s and meter"
-                             " id %s" % (target_register_id, target_meter_id))
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
 
         for k in ['description', 'quantity', 'quantity_units',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
@@ -164,17 +143,13 @@ class Process(object):
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(utilbill_id)
-        return new_meter_id, new_reg_id
+        return register
 
-
-    def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id):
-        self.logger.info("Running Process.delete_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
-        session = Session()
-        register = session.query(Register).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
+    def delete_register(self, session, register_id):
+        self.logger.info("Running Process.delete_register %s" %
+                         register_id)
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
         session.delete(register)
         self.compute_utility_bill(utilbill_id)
 
@@ -276,11 +251,11 @@ class Process(object):
         '''Wrapper to delete_payment method in state.py'''
         self.state_db.delete_payment(oid)
 
-    def get_hypothetical_matched_charges(self, account, sequence):
+    def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
-        reebill = self.state_db.get_reebill(account, sequence)
+        reebill = self.state_db.get_reebill_by_id(reebill_id)
         return [{
             'rsi_binding': reebill_charge.rsi_binding,
             'description': reebill_charge.description,
@@ -332,7 +307,6 @@ class Process(object):
         of JSON-ready dictionaries.
         """
         session = Session()
-        result = []
 
         # this subquery gets (customer_id, sequence, version) for all the
         # reebills whose version is the maximum in their (customer, sequence,
@@ -348,68 +322,14 @@ class Process(object):
         # query ReeBill joined to the above subquery to get only
         # maximum-version bills, and also outer join to ReeBillCharge to get
         # sum of 0 or more charges associated with each reebill
-        q = session.query(ReeBill,
-                # NOTE functions.sum(Reading.renewable_quantity) can't be used
-                # here to get total energy, because of unit conversion. instead
-                # the method ReeBill.get_total_renewable_energy must be used to
-                # calculate it.
-                functions.sum(ReeBillCharge.h_total).label('total_charge')
-                ).join(latest_versions_sq, and_(
+        q = session.query(ReeBill).join(latest_versions_sq, and_(
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
                 ReeBill.version == latest_versions_sq.c.max_version)
         ).outerjoin(ReeBillCharge)\
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        for reebill, total_charge in q:
-
-            the_dict = {
-                'id': reebill.sequence,
-                'sequence': reebill.sequence,
-                'issue_date': reebill.issue_date,
-                'period_start': reebill.utilbill.period_start,
-                'period_end': reebill.utilbill.period_end,
-                'max_version': reebill.version,
-                'issued': bool(reebill.issued),
-                # NOTE SQL sum() over no rows returns NULL, must substitute 0
-                'hypothetical_total': total_charge or 0,
-                'actual_total': reebill.utilbill.total_charge(),
-                'ree_value': reebill.ree_value,
-                'ree_charges': reebill.ree_charge,
-                # invisible columns
-                'prior_balance': reebill.prior_balance,
-                'total_error': self.get_total_error(account, reebill.sequence),
-                'balance_due': reebill.balance_due,
-                'processed': reebill.processed,
-                'payment_received': reebill.payment_received,
-                'total_adjustment': reebill.total_adjustment,
-                'balance_forward': reebill.balance_forward,
-                # TODO: is this used at all? does it need to be populated?
-                'services': [],
-            }
-            if reebill.version > 0:
-                if reebill.issued:
-                    the_dict['corrections'] = str(reebill.version)
-                else:
-                    the_dict['corrections'] = '#%s not issued' % reebill.version
-            else:
-                the_dict['corrections'] = '-' if reebill.issued else '(never ' \
-                                                                     'issued)'
-
-            # wrong energy unit can make this method fail causing the reebill
-            # grid to not load; see
-            # https://www.pivotaltracker.com/story/show/59594888
-            try:
-                the_dict['ree_quantity'] = reebill.get_total_renewable_energy()
-            except (ValueError, StopIteration) as e:
-                self.logger.error("Error when getting renewable energy "
-                        "quantity for reebill %s-%s-%s:\n%s" % (
-                        account, reebill.sequence, reebill.version,
-                        traceback.format_exc()))
-                the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-
-            result.append(the_dict)
-        return result
+        return [rb.to_dict() for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
@@ -442,8 +362,8 @@ class Process(object):
 
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
-        if ba_street is not None:
-            reebill.billing_address.street = ba_street
+        if ba_state is not None:
+            reebill.billing_address.state = ba_state
         if ba_street is not None:
             reebill.billing_address.street = ba_street
         if ba_city is not None:
@@ -453,8 +373,8 @@ class Process(object):
 
         if sa_addressee is not None:
             reebill.service_address.addressee = sa_addressee
-        if sa_street is not None:
-            reebill.service_address.street = sa_street
+        if sa_state is not None:
+            reebill.service_address.state = sa_state
         if sa_street is not None:
             reebill.service_address.street = sa_street
         if sa_city is not None:
@@ -828,6 +748,7 @@ class Process(object):
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
+        return reebill
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
@@ -921,7 +842,7 @@ class Process(object):
     def new_version(self, account, sequence):
         """Creates a new version of the given reebill: duplicates the Reebill,
         re-computes the it, saves it, and increments the max_version number in
-        MySQL. Returns the version number of the new reebill.
+        MySQL. Returns the the new reebill.
         """
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
@@ -950,7 +871,7 @@ class Process(object):
                     reebill.version, reebill.customer.account,
                     reebill.sequence, e, traceback.format_exc()))
 
-        return reebill.version
+        return reebill
 
     def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
@@ -1194,7 +1115,8 @@ class Process(object):
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
 
-    def reebill_report_altitude(self, session):
+    def reebill_report_altitude(self):
+        session = Session()
         rows = []
         total_count = 0
         customer_id = None
@@ -1401,7 +1323,7 @@ class Process(object):
             'rate_class': ub.rate_class,
             # capitalize service name
             'service': 'Unknown' if ub.service is None else
-                    ub.service[0].upper() + ub.service[1:],
+                    ub.service.capitalize(),
             'period_start': ub.period_start,
             'period_end': ub.period_end,
             'total_charges': ub.total_charges,
@@ -1493,13 +1415,13 @@ class Process(object):
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
         issuable_reebills = sorted([{
+            'id': r.id,
             'account': r.customer.account,
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
-                         'reebill_total': sum(u.total_charges for u in r.utilbills)
-         } for r in reebills.all()], key=itemgetter('account'))
-
+            'reebill_total': sum(u.total_charges for u in r.utilbills)
+            } for r in reebills.all()], key=itemgetter('account'))
         return issuable_reebills
 
     def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):

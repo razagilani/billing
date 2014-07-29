@@ -21,6 +21,7 @@ from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func, not_
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
@@ -34,7 +35,6 @@ from exc import DatabaseError
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
-
 log = logging.getLogger(__name__)
 
 Session = scoped_session(sessionmaker())
@@ -556,6 +556,60 @@ class ReeBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
+    def to_dict(self):
+        the_dict = {
+            'id': self.id,
+            'customer_id': self.customer_id,
+            'sequence': self.sequence,
+            'issued': bool(self.issued),
+            'version': self.version,
+            'issue_date': self.issue_date,
+            'period_start': self.utilbill.period_start,
+            'period_end': self.utilbill.period_end,
+            'ree_charge': self.ree_charge,
+            'balance_due': self.ree_charge,
+            'balance_forward': self.balance_forward,
+            'discount_rate': self.discount_rate,
+            'due_date': self.due_date,
+            'hypothetical_total': self.get_total_hypothetical_charges(),
+            'late_charge_rate': self.late_charge_rate,
+            'late_charge': self.late_charge,
+            'total_adjustment': self.total_adjustment,
+            'manual_adjustment': self.manual_adjustment,
+            'payment_received': self.payment_received,
+            'prior_balance': self.prior_balance,
+            'ree_value': self.ree_value,
+            'ree_savings': self.ree_savings,
+            'email_recipient': self.email_recipient,
+            'processed': self.processed,
+            'billing_address': self.billing_address.to_dict(),
+            'service_address': self.service_address.to_dict(),
+            # TODO: is this used at all? does it need to be populated?
+            'services': []
+        }
+
+        if self.version > 0:
+            if self.issued:
+                the_dict['corrections'] = str(self.version)
+            else:
+                the_dict['corrections'] = '#%s not issued' % self.version
+        else:
+            the_dict['corrections'] = '-' if self.issued else '(never ' \
+                                                                 'issued)'
+
+        # wrong energy unit can make this method fail causing the reebill
+        # grid to not load; see
+        # https://www.pivotaltracker.com/story/show/59594888
+        try:
+            the_dict['ree_quantity'] = self.get_total_renewable_energy()
+        except (ValueError, StopIteration) as e:
+            self.logger.error("Error when getting renewable energy "
+                    "quantity for reebill %s:\n%s" % (
+                    self.id, traceback.format_exc()))
+            the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+
+        return the_dict
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -722,7 +776,6 @@ class UtilBill(Base):
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
-
 
     @property
     def bindings(self):
@@ -902,6 +955,21 @@ class Register(Base):
         self.register_binding = register_binding
         self.active_periods = active_periods
         self.meter_identifier = meter_identifier
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'utilbill_id': self.utilbill_id,
+            'description': self.description,
+            'quantity': self.quantity,
+            'quantity_units': self.quantity_units,
+            'identifier': self.identifier,
+            'estimated': self.estimated,
+            'reg_type': self.reg_type,
+            'register_binding': self.register_binding,
+            'active_periods': self.active_periods,
+            'meter_identifier': self.meter_identifier
+        }
 
 
 class Charge(Base):
@@ -1220,6 +1288,9 @@ class StateDB(object):
         reebill = self.get_reebill(account, sequence, version=version)
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
                 ReeBill.id == reebill.id).all()
+
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
