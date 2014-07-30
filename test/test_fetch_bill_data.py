@@ -6,7 +6,8 @@ import unittest
 import sqlalchemy
 import pymongo
 from mock import Mock
-from billing.processing.state import ReeBill, Customer, UtilBill, Session
+from billing.processing.state import ReeBill, Customer, UtilBill, Session, \
+    Address
 from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils
@@ -63,7 +64,8 @@ class FetchTest(unittest.TestCase):
         customer = Customer('someone', '12345', 0.5, 0.1,
                             '000000000000000000000000', 'example@example.com')
         utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-                'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                'DC Non Residential Non Heat', Address(), Address(),
+                period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill_doc = example_data.get_utilbill_dict('12345',
                 start=date(2000,1,1), end=date(2000,2,1), utility='washgas',

@@ -15,7 +15,7 @@ from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import NoRSIError
 import example_data
-from processing.state import UtilBill, Customer, Session, Charge
+from processing.state import UtilBill, Customer, Session, Charge, Address
 
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
@@ -144,7 +144,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         session = Session()
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
-                'gas', 'utility', 'rate class')
+                'gas', 'utility', 'rate class', Address(), Address())
         session.add(utilbill)
         utilbill.refresh_charges(uprs.rates)
         utilbill.compute_charges(uprs, utilbill_doc)
