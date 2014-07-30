@@ -9,8 +9,8 @@ Ext.define('ReeBill.controller.ReebillCharges', {
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
     },{
-        ref: 'reebillChargesGrid',
-        selector: 'grid[id=reebillChargesGrid]'
+        ref: 'reebillChargesTab',
+        selector: 'panel[name=reebillChargesTab]'
     },{
         ref: 'reebillsGrid',
         selector: 'grid[id=reebillsGrid]'
@@ -22,7 +22,7 @@ Ext.define('ReeBill.controller.ReebillCharges', {
         });
         
         this.control({
-            'grid[id=reebillChargesGrid]': {
+            'panel[name=reebillChargesTab]': {
                 activate: this.handleActivate
             }
         });
@@ -34,7 +34,7 @@ Ext.define('ReeBill.controller.ReebillCharges', {
     handleActivate: function() {
         var selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection(),
             store = this.getReebillChargesStore();
-
+        console.log('activated', selectedReebill);
         if (!selectedReebill.length)
             return;
 
