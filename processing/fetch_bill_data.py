@@ -12,7 +12,7 @@ from skyliner.sky_handlers import cross_range
 from billing.processing import mongo
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
-from billing.processing.exceptions import MissingDataError, RegisterError
+from billing.exc import MissingDataError, RegisterError
 
 
 class RenewableEnergyGetter(object):

@@ -1,22 +1,14 @@
 import unittest
-import pymongo
-import sqlalchemy
-import copy
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 from bson import ObjectId
-from billing.util import dateutils
-from billing.processing import mongo
-from billing.processing.state import StateDB
-from billing.processing.state import ReeBill, Customer, UtilBill
-import MySQLdb
+from billing.processing.state import ReeBill, Customer, UtilBill, Address
 from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.rate_structure2 import RateStructure, \
         RateStructureItem
 from billing.processing.mongo import MongoReebill, NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
-from billing.util.dictutils import subdict
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -28,41 +20,40 @@ class ReebillTest(TestCaseWithSetup):
 
     def test_utilbill_periods(self):
         acc = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, acc, 'gas',
-                    date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                    'january.pdf', utility='washgas',
-                    rate_class='DC Non Residential Non Heat')
-            self.process.roll_reebill(session, acc, start_date=date(2013,1,1))
-            b = self.reebill_dao.load_reebill(acc, 1)
+        self.process.upload_utility_bill(acc, 'gas',
+                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
+                'january.pdf', utility='washgas',
+                rate_class='DC Non Residential Non Heat')
+        self.process.roll_reebill(acc, start_date=date(2013,1,1))
+        b = self.reebill_dao.load_reebill(acc, 1)
 
-            # function to check that the utility bill matches the reebill's
-            # reference to it
-            def check():
-                # reebill should be loadable
-                reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
-                # there should be two utilbill documents: the account's
-                # template and new one
-                all_utilbills = self.reebill_dao.load_utilbills()
-                self.assertEquals(2, len(all_utilbills))
-                # all its _id fields dates should match the reebill's reference
-                # to it
-                self.assertEquals(reebill._utilbills[0]['_id'],
-                        reebill.reebill_dict['utilbills'][0]['id'])
-                
-            # this must work because nothing has been changed yet
-            check()
+        # function to check that the utility bill matches the reebill's
+        # reference to it
+        def check():
+            # reebill should be loadable
+            reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
+            # there should be two utilbill documents: the account's
+            # template and new one
+            all_utilbills = self.reebill_dao.load_utilbills()
+            self.assertEquals(2, len(all_utilbills))
+            # all its _id fields dates should match the reebill's reference
+            # to it
+            self.assertEquals(reebill._utilbills[0]['_id'],
+                    reebill.reebill_dict['utilbills'][0]['id'])
 
-            # change utilbill period
-            b._utilbills[0]['start'] = date(2100,1,1)
-            b._utilbills[0]['start'] = date(2100,2,1)
-            check()
-            self.reebill_dao.save_reebill(b)
-            self.reebill_dao.save_utilbill(b._utilbills[0])
-            check()
+        # this must work because nothing has been changed yet
+        check()
 
-            # NOTE account, utility name, service can't be changed, but if they
-            # become changeable, do the same test for them
+        # change utilbill period
+        b._utilbills[0]['start'] = date(2100,1,1)
+        b._utilbills[0]['start'] = date(2100,2,1)
+        check()
+        self.reebill_dao.save_reebill(b)
+        self.reebill_dao.save_utilbill(b._utilbills[0])
+        check()
+
+        # NOTE account, utility name, service can't be changed, but if they
+        # become changeable, do the same test for them
 
     def test_get_reebill_doc_for_utilbills(self):
         utilbill_template = example_data.get_utilbill_dict('99999',
@@ -139,47 +130,34 @@ class ReebillTest(TestCaseWithSetup):
                     "postal_code" : "21046"
                 },
             }
-            mongo.compute_all_charges(utilbill_doc, uprs)
-            self.assertEqual([
-                {
-                    'rsi_binding': 'A',
-                    'description': 'a',
-                    'quantity': 100,
-                    'rate': 2,
-                    'total': 200,
-                    'group': 'All Charges',
-                }
-            ], utilbill_doc['charges'])
 
             customer = Customer('someone', '11111', 0.5, 0.1, '',
                                 'example@example.com')
             utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                     'DC Non Residential Non Heat', period_start=date(2000,1,1),
                     period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
-                    uprs_id=str(uprs.id))
+                    uprs_id=str(uprs.id), billing_address=Address(),
+                    service_address=Address())
+            session.add(utilbill)
             utilbill.refresh_charges(uprs.rates)
             reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                     utilbills=[utilbill])
-            session.add(utilbill)
             session.add(reebill)
             session.flush()
-            reebill.update_readings_from_document(session, utilbill_doc)
+            reebill.update_readings_from_document(utilbill_doc)
             self.assertTrue(all(r.renewable_quantity == 0 for r in
                     reebill.readings))
 
             self.reebill_dao.save_utilbill(utilbill_doc)
-
-            #reebill_doc.compute_charges(uprs)
-            #self.process._compute_reebill_charges(session, reebill, uprs)
-            self.process.compute_utility_bill(session, utilbill.id)
-            self.process.compute_reebill(session, reebill.customer.account,
+            self.process.compute_utility_bill(utilbill.id)
+            self.process.compute_reebill(reebill.customer.account,
                     reebill.sequence, version=reebill.version)
 
             # check that there are the same group names and rsi_bindings in
             # reebill charges as utility bill charges
             self.assertEqual(
-                set((c['rsi_binding'], c['description'])
-                        for c in utilbill_doc['charges']),
+                set((c.rsi_binding, c.description)
+                        for c in utilbill.charges),
                 set((c.rsi_binding, c.description) for c in reebill.charges)
             )
 
