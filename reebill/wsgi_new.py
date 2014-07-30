@@ -48,7 +48,7 @@ from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated, IssuedBillError, RenderError
+from billing.exc import Unauthenticated, IssuedBillError, RenderError
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 user_dao = UserDAO(**dict(config.items('usersdb')))
@@ -456,7 +456,7 @@ class ReebillsResource(RESTResource):
         journal.ReeBillBoundEvent.save_instance(
             cherrypy.session['user'],account, reebill.sequence, reebill.version)
 
-        return True, {'rows': reebill.to_dict(), 'results': 1}
+        return True, {'rows': reebill.column_dict(), 'results': 1}
 
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
@@ -475,7 +475,7 @@ class ReebillsResource(RESTResource):
             reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, r.version)
-            rtn = reebill.to_dict()
+            rtn = reebill.column_dict()
 
         elif row['action'] == 'render':
             if not self.config.get('billimages', 'show_reebill_images'):
@@ -507,14 +507,14 @@ class ReebillsResource(RESTResource):
 
         elif row['action'] == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
-            rtn = rb.to_dict()
+            rtn = rb.column_dict()
 
         elif row['action'] == 'newversion':
             rb = self.process.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
                     account, sequence, version)
-            rtn = rb.to_dict()
+            rtn = rb.column_dict()
 
         elif not row['action']:
             # Regular PUT request. In this case this means updated
