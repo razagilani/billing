@@ -888,6 +888,20 @@ class UtilBill(Base):
     def total_charge(self):
         return sum(charge.total for charge in self.charges)
 
+    def column_dict(self):
+        the_dict = super(UtilBill, self).column_dict()
+        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
+        the_dict.update({
+            'account': self.customer.account,
+            'service': 'Unknown' if self.service is None
+                                else self.service.capitalize(),
+            'computed_total': self.total_charge() if self.state <
+                                UtilBill.Hypothetical else None,
+            'reebills': reebills,
+            'state': self.state_name()
+        })
+        return the_dict
+
 class Register(Base):
     """A register reading on a utility bill"""
 
