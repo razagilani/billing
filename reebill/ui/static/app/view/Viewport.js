@@ -149,27 +149,19 @@ Ext.define('ReeBill.view.Viewport', {
                     xtype: 'panel',
                     name: 'reebillsTab',
                     title: 'Reebills',
-                    layout: 'border',
+                    layout: 'accordion',
+                    defaults: {
+                            collapsible: true
+                    },
                     disabled: true,
                     items: [{
-                            xtype: 'reeBillVersions',
-                            region: 'north'
+                        xtype: 'reebills',
+                        id: 'reebillsGrid'
                     },{
-                        xtype: 'panel',
-                        layout: 'accordion',
-                        defaults: {
-                            collapsible: true
-                        },
-                        region: 'center',
-                        items:[
-                            {
-                                xtype: 'reebills',
-                                id: 'reebillsGrid'
-                            },{
-                                xtype: 'sequentialAccountInformation',
-                                id: 'sequentialAccountInformationForm'
-                            }
-                        ]
+                        xtype: 'sequentialAccountInformation',
+                        id: 'sequentialAccountInformationForm',
+                        disabled: true
+
                     }]
                 },{
                     xtype: 'panel',

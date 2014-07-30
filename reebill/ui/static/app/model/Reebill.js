@@ -4,6 +4,7 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'action'}, // Allows for other actions besides CRUD (e.g. 'render')
         {name: 'action_value'}, // Additional data associated with the action
         // Model data
+        {name: 'account'},
         {name: 'customer_id'},
         {name: 'sequence'},
         {name: 'period_start'},

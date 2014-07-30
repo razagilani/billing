@@ -419,6 +419,12 @@ class IssuableReebills(RESTResource):
         return True, {'row': row, 'results': 1}
 
 
+class ReebillVersionsRessource(RESTResource):
+
+    def handle_get(self, account, sequence, *vpath, **params):
+        result = self.process.list_all_versions(account, sequence)
+        return True, {'rows': result, 'results': len(result)}
+
 class ReebillsResource(RESTResource):
     issuable = IssuableReebills()
 
@@ -730,6 +736,7 @@ class BillToolBridge(WebResource):
     ratestructure = RateStructureResource()
     payments = PaymentsResource()
     reebillcharges = ReebillChargesResource()
+    reebillversions = ReebillVersionsRessource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
