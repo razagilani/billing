@@ -557,11 +557,14 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def column_dict(self):
-        the_dict = super(ReeBill, self).colum_dict()
+        period_start , period_end = self.get_period()
+        the_dict = super(ReeBill, self).column_dict()
         the_dict.update({
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'billing_address': self.billing_address.column_dict(),
             'service_address': self.service_address.column_dict(),
+            'period_start': period_start,
+            'period_end': period_end,
             # TODO: is this used at all? does it need to be populated?
             'services': []
         })
