@@ -1308,41 +1308,7 @@ class Process(object):
         utilbills, total_count = self.state_db.list_utilbills(account,
                 start, limit)
 
-        # this "name" is really not the name in nexus, but Stiles' creative
-        # way to get utilities and rate structures shown in the "Create New
-        # Account" form. luckily it's ignored by all other consumers of this
-        # data.
-        full_names = self.full_names_of_accounts([account])
-        full_name = full_names[0] if full_names else account
-
-        data = [{
-            'id': ub.id,
-            'account': ub.customer.account,
-            'name': full_name,
-            'utility': ub.utility,
-            'rate_class': ub.rate_class,
-            # capitalize service name
-            'service': 'Unknown' if ub.service is None else
-                    ub.service.capitalize(),
-            'period_start': ub.period_start,
-            'period_end': ub.period_end,
-            'total_charges': ub.total_charges,
-            # NOTE a type-based conditional is a bad pattern; this will
-            # have to go away
-            'computed_total': ub.total_charge() if \
-                ub.state < UtilBill.Hypothetical else None,
-            # NOTE the value of 'issue_date' in this JSON object is
-            # used by the client to determine whether a frozen utility
-            # bill version exists (when issue date == null, the reebill
-            # is unissued, so there is no frozen version of the utility
-            # bill corresponding to it).
-            'reebills': ub.sequence_version_json(),
-            'state': ub.state_name(),
-            # utility bill rows are always editable (since editing them
-            # should not affect utility bill data in issued reebills)
-            'processed': ub.processed,
-            'editable': True,
-        } for ub in utilbills]
+        data = [ub.column_dict() for ub in utilbills]
 
         return data, total_count
 
