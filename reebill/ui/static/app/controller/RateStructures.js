@@ -22,9 +22,6 @@ Ext.define('ReeBill.controller.RateStructures', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'reeBillVersions',
-        selector: 'reeBillVersions'
-    },{
         ref: 'serviceForCharges',
         selector: 'combo[name=serviceForCharges]'
     },{
@@ -53,12 +50,6 @@ Ext.define('ReeBill.controller.RateStructures', {
             },
             'button[action=regenerateRateStructure]': {
                 click: this.handleRegenerate
-            },
-            'reeBillVersions': {
-                change: this.syncVersions
-            },
-            'reeBillVersions': {
-                select: this.syncVersions
             }
         });
     },
@@ -69,7 +60,6 @@ Ext.define('ReeBill.controller.RateStructures', {
     handleActivate: function() {
         var store = this.getRateStructuresStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedVersion = this.getReeBillVersions().getValue();
 
         if (!selectedBill.length)
             return;
@@ -77,13 +67,6 @@ Ext.define('ReeBill.controller.RateStructures', {
         var params = {
             utilbill_id: selectedBill[0].get('id')
         }
-
-        if (selectedVersion !== '') {
-            var versionRec = this.getReeBillVersions().findRecordByValue(selectedVersion);
-            params.reebill_sequence = versionRec.get('sequence');
-            params.reebill_version = versionRec.get('version');
-        }
-
         store.getProxy().extraParams = params;
         store.load();
     },
@@ -214,18 +197,5 @@ Ext.define('ReeBill.controller.RateStructures', {
                 }
             },
         });
-    },
-
-    /**
-     * Keep the version number in sync. There are multiple instances.
-     */ 
-    syncVersions: function(combo) {
-        var val = combo.getValue();
-
-        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
-            version.setValue(val);
-        });
-
-        this.handleActivate();
     }
 });

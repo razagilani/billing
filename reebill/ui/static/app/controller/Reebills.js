@@ -44,6 +44,9 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'resetAccountInformationButton',
         selector: 'button[action=resetAccountInformation]'
+    },{
+        ref: 'reeBillVersions',
+        selector: 'reeBillVersions'
     }],
     
     init: function() {
@@ -84,6 +87,12 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
+            },
+            'reeBillVersions': {
+                change: this.syncVersions
+            },
+            'reeBillVersions': {
+                select: this.syncVersions
             }
         });
     },
@@ -393,5 +402,15 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleResetAccountInformation: function() {
         this.loadSequentialAccountInformation();
-     }
+     },
+
+     syncVersions: function(combo) {
+        var val = combo.getValue();
+
+        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
+            version.setValue(val);
+        });
+
+        this.handleActivate();
+    }
 });

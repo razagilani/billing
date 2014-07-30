@@ -100,9 +100,6 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'reeBillVersions',
-                        region: 'north'
-                    },{
                         xtype: 'utilityBillRegisters',
                         id: 'utilityBillRegistersGrid',
                         region: 'center',
@@ -125,9 +122,6 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'reeBillVersions',
-                        region: 'north'
-                    },{
                         xtype: 'rateStructures',
                         id: 'rateStructuresGrid',
                         region: 'center'                        
@@ -143,9 +137,6 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'reeBillVersions',
-                        region: 'north'
-                    },{
                         xtype: 'charges',
                         id: 'chargesGrid',
                         region: 'center'
@@ -158,22 +149,42 @@ Ext.define('ReeBill.view.Viewport', {
                     xtype: 'panel',
                     name: 'reebillsTab',
                     title: 'Reebills',
-                    layout: 'accordion',
+                    layout: 'border',
                     disabled: true,
-                    defaults: {
-                        collapsible: true
-                    },
                     items: [{
-                        xtype: 'reebills',
-                        id: 'reebillsGrid'
+                            xtype: 'reeBillVersions',
+                            region: 'north'
                     },{
-                        xtype: 'sequentialAccountInformation',
-                        id: 'sequentialAccountInformationForm'
+                        xtype: 'panel',
+                        layout: 'accordion',
+                        defaults: {
+                            collapsible: true
+                        },
+                        region: 'center',
+                        items:[
+                            {
+                                xtype: 'reebills',
+                                id: 'reebillsGrid'
+                            },{
+                                xtype: 'sequentialAccountInformation',
+                                id: 'sequentialAccountInformationForm'
+                            }
+                        ]
                     }]
                 },{
-                    xtype: 'reebillCharges',
-                    id: 'reebillChargesGrid',
-                    disabled: true
+                    xtype: 'panel',
+                    name: 'reebillChargesTab',
+                    title: 'Reebill Charges',
+                    layout: 'border',
+                    disabled: true,
+                    items: [{
+                        xtype: 'reeBillVersions',
+                        region: 'north'
+                    },{
+                        xtype: 'reebillCharges',
+                        id: 'reebillChargesGrid',
+                        region: 'center'
+                    }]
                 },{
                     xtype: 'issuableReebills',
                     id: 'issuableReebillsGrid'

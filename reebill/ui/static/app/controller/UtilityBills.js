@@ -324,22 +324,22 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Reload the version number 
      */
     refreshVersionNumbers: function(recs) {
-        var store = this.getReeBillVersionsStore();
-        store.removeAll();
-        store.add({sequence: '', version: '', issue_date: ''});
-
-        if (recs && recs[0]) {
-            var rec = recs[0];
-            var reebills = rec.get('reebills');
-            if (reebills && reebills.length) {
-                Ext.each(reebills, function(reebill) {
-                    if (reebill && reebill.issue_date)
-                        store.add(reebill);
-                });
-            }
-        }
-
-        store.commitChanges();
+//        var store = this.getReeBillVersionsStore();
+//        store.removeAll();
+//        store.add({sequence: '', version: '', issue_date: ''});
+//
+//        if (recs && recs[0]) {
+//            var rec = recs[0];
+//            var reebills = rec.get('reebills');
+//            if (reebills && reebills.length) {
+//                Ext.each(reebills, function(reebill) {
+//                    if (reebill && reebill.issue_date)
+//                        store.add(reebill);
+//                });
+//            }
+//        }
+//
+//        store.commitChanges();
     }
 
 });

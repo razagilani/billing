@@ -15,9 +15,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'reeBillVersions',
-        selector: 'reeBillVersions'
-    },{
         ref: 'removeUtilityBillRegisterButton',
         selector: 'button[action=removeUtilityBillRegister]'
     },{
@@ -46,9 +43,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             'button[action=removeUtilityBillRegister]': {
                 click: this.handleDelete
             },
-            'reeBillVersions': {
-                select: this.syncVersions
-            },
             'button[action=resetUploadIntervalMeter]': {
                 click: this.resetUploadIntervalMeter
             },
@@ -64,7 +58,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
      */
     handleActivate: function() {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedVersion = this.getReeBillVersions().getValue();
         var store = this.getUtilityBillRegistersStore();
 
         if (!selectedBill.length)
@@ -120,18 +113,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         store.remove(selectedUtilityBillRegister);
     },
 
-    /**
-     * Keep the version number in sync. There are multiple instances.
-     */ 
-//    syncVersions: function(combo) {
-//        var val = combo.getValue();
-//
-//        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
-//            version.setValue(val);
-//        });
-//
-//        this.handleActivate();
-//    },
 
     /**
      * Handle the reset upload meter CSV button.
@@ -146,8 +127,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     submitUploadIntervalMeter: function () {
         var form = this.getUploadIntervalMeterForm().getForm(),
             selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
-            selectedUtilityBillRegister = this.getUtilityBillRegistersGrid().getSelectionModel().getSelection(),
-            selectedVersion = this.getReeBillVersions().getValue();
+            selectedUtilityBillRegister = this.getUtilityBillRegistersGrid().getSelectionModel().getSelection();
 
         if (!selectedUtilityBillRegister.length)
             return;
@@ -161,11 +141,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             account: selectedAccount[0].get('account'),
             register_identifier: selectedUtilityBillRegister[0].get('register_id')
         };
-
-        if (selectedVersion !== '')
-            params.sequence = this.getReeBillVersions().findRecordByValue(selectedVersion).get('sequence');
-        else
-            params.sequence = '';
 
         form.submit({
             url: 'http://'+window.location.host+'/rest/upload_interval_meter_csv',
