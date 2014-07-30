@@ -1,22 +1,14 @@
 import unittest
-import pymongo
-import sqlalchemy
-import copy
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 from bson import ObjectId
-from billing.util import dateutils
-from billing.processing import mongo
-from billing.processing.state import StateDB
-from billing.processing.state import ReeBill, Customer, UtilBill
-import MySQLdb
+from billing.processing.state import ReeBill, Customer, UtilBill, Address
 from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.rate_structure2 import RateStructure, \
         RateStructureItem
 from billing.processing.mongo import MongoReebill, NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
-from billing.util.dictutils import subdict
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -144,7 +136,8 @@ class ReebillTest(TestCaseWithSetup):
             utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                     'DC Non Residential Non Heat', period_start=date(2000,1,1),
                     period_end=date(2000,2,1), doc_id=str(utilbill_doc['_id']),
-                    uprs_id=str(uprs.id))
+                    uprs_id=str(uprs.id), billing_address=Address(),
+                    service_address=Address())
             session.add(utilbill)
             utilbill.refresh_charges(uprs.rates)
             reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
