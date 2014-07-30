@@ -946,7 +946,7 @@ class ReeBillWSGI(object):
             return self.dumps({'success':True})
         elif xaction == "create":
             # date applied is today by default (can be edited later)
-            today = datetime.utcnow().date()
+            today = datetime.utcnow()
             new_payment = self.process.create_payment(account,
                     today, "New Entry", 0)
             # Payment object lacks "id" until row is inserted in database
