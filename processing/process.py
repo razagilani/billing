@@ -873,6 +873,18 @@ class Process(object):
 
         return reebill
 
+    def list_all_versions(self, account, sequence):
+        ''' Returns all Reebills with sequence and account ordered by versions
+            a list of dictionaries
+        '''
+        session = Session()
+        q = session.query(ReeBill).join(Customer).with_lockmode('read')\
+            .filter(Customer.account == account)\
+            .filter(ReeBill.sequence == sequence)\
+            .order_by(desc(ReeBill.version))
+
+        return [rb.column_dict() for rb in q]
+
     def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
         un-issued versions of reebills > 0 for the given account."""
@@ -1307,9 +1319,7 @@ class Process(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(account,
                 start, limit)
-
         data = [ub.column_dict() for ub in utilbills]
-
         return data, total_count
 
     def update_reebill_readings(self, account, sequence):

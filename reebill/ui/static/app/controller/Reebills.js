@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.Reebills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Reebills'
+        'Reebills', 'ReeBillVersions'
     ],
     
     refs: [{
@@ -37,7 +37,7 @@ Ext.define('ReeBill.controller.Reebills', {
         selector: 'button[action=createNext]'
     },{
         ref: 'sequentialAccountInformationForm',
-        selector: 'sequentialAccountInformation'
+        selector: 'panel[id=sequentialAccountInformationForm]'
     },{
         ref: 'saveAccountInformationButton',
         selector: 'button[action=saveAccountInformation]'
@@ -51,6 +51,15 @@ Ext.define('ReeBill.controller.Reebills', {
     
     init: function() {
         this.application.on({
+            scope: this
+        });
+
+        this.getReeBillVersionsStore().on({
+            beforeload: function(){
+                    console.log('loading');
+                    Ext.MessageBox.wait('Loading...');
+            },
+            load: this.loadSequentialAccountInformation,
             scope: this
         });
         
@@ -89,10 +98,13 @@ Ext.define('ReeBill.controller.Reebills', {
                 click: this.handleResetAccountInformation
             },
             'reeBillVersions': {
-                change: this.syncVersions
+                change: this.loadSequentialAccountInformation
             },
             'reeBillVersions': {
-                select: this.syncVersions
+                select: this.loadSequentialAccountInformation
+            },
+            'panel[id=sequentialAccountInformationForm]':{
+               expand: this.handleAccountInformationActivation
             }
         });
     },
@@ -108,8 +120,10 @@ Ext.define('ReeBill.controller.Reebills', {
 
         // required for GET & POST
         this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
-
         this.getReebillsStore().reload();
+
+        this.getSequentialAccountInformationForm().collapse();
+        this.getSequentialAccountInformationForm().setDisabled(true);
     },
 
     /**
@@ -130,16 +144,12 @@ Ext.define('ReeBill.controller.Reebills', {
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
 
-        if (selected.get('services').length)
-            this.getServiceForCharges().setValue(selected.get('services')[0]);
-
-        this.loadSequentialAccountInformation();
-
         this.getDeleteReebillButton().setDisabled(issued);
         this.getBindREOffsetButton().setDisabled(issued);
         this.getComputeReebillButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
+        this.getSequentialAccountInformationForm().setDisabled(false);
     },
 
     /**
@@ -310,10 +320,37 @@ Ext.define('ReeBill.controller.Reebills', {
      },
 
      /**
+      * Loads the ReeBillVersionsStore
+      */
+     handleAccountInformationActivation: function() {
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+         var selected = selections[0];
+         var account = selected.get('account');
+         var sequence = selected.get('sequence');
+
+         // Set store parameters for ReebillVersions
+         var versionStore = this.getReeBillVersionsStore();
+         var params = {
+             account: account,
+             sequence: sequence
+         }
+         versionStore.getProxy().extraParams = params;
+
+         // Only reload if the store doens't already contain bills of the current accounts/sequence
+         var record = versionStore.getAt(0)
+         if(record === undefined || record.get('account') !== account || record.get('sequence') !== sequence)
+            versionStore.reload();
+     },
+
+     /**
       * Loads Sequential Account Information into the form from the
       * currently selected Reebill
       */
      loadSequentialAccountInformation: function() {
+           console.log('getReeBillVersionsStore loaded');
+
          var selections = this.getReebillsGrid().getSelectionModel().getSelection();
          if (!selections.length)
              return;
@@ -345,6 +382,7 @@ Ext.define('ReeBill.controller.Reebills', {
          sa_city .setValue(selected.get('service_address').city);
          sa_state.setValue(selected.get('service_address').state);
          sa_postal_code.setValue(selected.get('service_address').postalcode);
+         Ext.MessageBox.hide();
      },
 
      /**
@@ -402,15 +440,5 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleResetAccountInformation: function() {
         this.loadSequentialAccountInformation();
-     },
-
-     syncVersions: function(combo) {
-        var val = combo.getValue();
-
-        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
-            version.setValue(val);
-        });
-
-        this.handleActivate();
-    }
+     }
 });
