@@ -30,3 +30,7 @@
 .messageBoxOverflow .x-box-inner .x-box-inner {
     overflow: auto;
 }
+
+.x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
+    font-weight: bold !important;
+}

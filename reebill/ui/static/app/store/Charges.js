@@ -9,16 +9,8 @@ Ext.define('ReeBill.store.Charges', {
     groupField: 'group',
 
 	proxy: {
-		type: 'ajax',
-        url: 'http://'+window.location.host+'/rest/actualCharges',
-
-        extraParams: {
-            xaction: 'read'
-        },
-
-        actionMethods: {
-            read: 'POST'
-        },
+		type: 'rest',
+        url: 'http://'+window.location.host+'/reebill/charges',
 
         pageParam: false,
         startParam: false,
@@ -26,13 +18,25 @@ Ext.define('ReeBill.store.Charges', {
         sortParam: false,
         groupParam: false,
 
-        noCache: false,
-
 		reader: {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('Charges').rejectChanges();
+                Ext.MessageBox.show({
+                    title: "Server error - " + response.status + " - " + response.statusText,
+                    msg:  response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK,
+                    cls: 'messageBoxOverflow'
+                });
+            },
+            scope: this
+        }
 	},
 
     sorters: [{
