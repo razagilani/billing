@@ -1294,7 +1294,7 @@ class Process(object):
         latest = self.state_db.get_reebill(account, sequence, version='max')
         return latest.total - earliest.total
 
-    def get_late_charge(self, session, reebill, day=None):
+    def get_late_charge(self, reebill, day=None):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
         hasn't been issued yet: there is a late fee applied to the balance of
