@@ -34,12 +34,6 @@ def copy_registers_from_mongo():
                       "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
 
-        for prop in ['service_address', 'billing_address']:
-            log.debug("Adding %s for utilbill id %s" % (prop, ub.id))
-            a = mongo_ub[prop]
-            setattr(ub, prop, Address(a['addressee'], a['street'], a['city'],
-                                      a['state'], a['postal_code']))
-
         for mongo_meter in mongo_ub['meters']:
             for mongo_register in mongo_meter['registers']:
                 log.debug('Adding register for utilbill id %s' % ub.id)
