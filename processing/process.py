@@ -232,7 +232,6 @@ class Process(object):
                             total = 0.0))
         session.flush()
         self.compute_utility_bill(utilbill_id)
-        return new_rsi
 
     def update_rsi(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by `rsi_binding` in the given utility
