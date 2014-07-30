@@ -100,7 +100,7 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'utilityBillVersions',
+                        xtype: 'reeBillVersions',
                         region: 'north'
                     },{
                         xtype: 'utilityBillRegisters',
@@ -125,7 +125,7 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'utilityBillVersions',
+                        xtype: 'reeBillVersions',
                         region: 'north'
                     },{
                         xtype: 'rateStructures',
@@ -143,7 +143,7 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'utilityBillVersions',
+                        xtype: 'reeBillVersions',
                         region: 'north'
                     },{
                         xtype: 'charges',

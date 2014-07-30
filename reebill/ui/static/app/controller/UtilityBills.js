@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'UtilityBills', 'UtilityBillVersions'
+        'UtilityBills', 'ReeBillVersions'
     ],
     
     refs: [{
@@ -324,7 +324,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Reload the version number 
      */
     refreshVersionNumbers: function(recs) {
-        var store = this.getUtilityBillVersionsStore();
+        var store = this.getReeBillVersionsStore();
         store.removeAll();
         store.add({sequence: '', version: '', issue_date: ''});
 
