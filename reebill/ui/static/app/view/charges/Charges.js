@@ -21,6 +21,8 @@ Ext.define('ReeBill.view.Charges', {
         ftype: 'grouping',
         groupHeaderTpl: 'Charge Group: {name} ({rows.length} Item{[values.rows.length > 1 ? "s" : ""]})',
         hideGroupedHeader: true
+    }, {
+        ftype: 'summary'
     }],
 
     viewConfig: {
