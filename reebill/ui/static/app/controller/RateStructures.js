@@ -22,8 +22,8 @@ Ext.define('ReeBill.controller.RateStructures', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'utilityBillVersions',
-        selector: 'utilityBillVersions'
+        ref: 'reeBillVersions',
+        selector: 'reeBillVersions'
     },{
         ref: 'serviceForCharges',
         selector: 'combo[name=serviceForCharges]'
@@ -54,10 +54,10 @@ Ext.define('ReeBill.controller.RateStructures', {
             'button[action=regenerateRateStructure]': {
                 click: this.handleRegenerate
             },
-            'utilityBillVersions': {
+            'reeBillVersions': {
                 change: this.syncVersions
             },
-            'utilityBillVersions': {
+            'reeBillVersions': {
                 select: this.syncVersions
             }
         });
@@ -69,7 +69,7 @@ Ext.define('ReeBill.controller.RateStructures', {
     handleActivate: function() {
         var store = this.getRateStructuresStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedVersion = this.getUtilityBillVersions().getValue();
+        var selectedVersion = this.getReeBillVersions().getValue();
 
         if (!selectedBill.length)
             return;
@@ -79,7 +79,7 @@ Ext.define('ReeBill.controller.RateStructures', {
         }
 
         if (selectedVersion !== '') {
-            var versionRec = this.getUtilityBillVersions().findRecordByValue(selectedVersion);
+            var versionRec = this.getReeBillVersions().findRecordByValue(selectedVersion);
             params.reebill_sequence = versionRec.get('sequence');
             params.reebill_version = versionRec.get('version');
         }
@@ -222,7 +222,7 @@ Ext.define('ReeBill.controller.RateStructures', {
     syncVersions: function(combo) {
         var val = combo.getValue();
 
-        Ext.each(Ext.ComponentQuery.query('utilityBillVersions'), function(version) {
+        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
             version.setValue(val);
         });
 

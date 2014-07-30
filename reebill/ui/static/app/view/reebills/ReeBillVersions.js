@@ -1,11 +1,11 @@
-Ext.define('ReeBill.view.UtilityBillVersions', {
+Ext.define('ReeBill.view.ReeBillVersions', {
     extend: 'Ext.form.field.ComboBox',
 
-    alias: 'widget.utilityBillVersions',    
+    alias: 'widget.reeBillVersions',
 
     queryMode: 'local',
     hideLabel: true,
-    store: 'UtilityBillVersions',
+    store: 'ReeBillVersions',
     region: 'north',
     triggerAction: 'all',
 

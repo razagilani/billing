@@ -15,8 +15,8 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'utilityBillVersions',
-        selector: 'utilityBillVersions'
+        ref: 'reeBillVersions',
+        selector: 'reeBillVersions'
     },{
         ref: 'removeUtilityBillRegisterButton',
         selector: 'button[action=removeUtilityBillRegister]'
@@ -46,7 +46,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             'button[action=removeUtilityBillRegister]': {
                 click: this.handleDelete
             },
-            'utilityBillVersions': {
+            'reeBillVersions': {
                 select: this.syncVersions
             },
             'button[action=resetUploadIntervalMeter]': {
@@ -64,7 +64,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
      */
     handleActivate: function() {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedVersion = this.getUtilityBillVersions().getValue();
+        var selectedVersion = this.getReeBillVersions().getValue();
         var store = this.getUtilityBillRegistersStore();
 
         if (!selectedBill.length)
@@ -126,7 +126,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
 //    syncVersions: function(combo) {
 //        var val = combo.getValue();
 //
-//        Ext.each(Ext.ComponentQuery.query('utilityBillVersions'), function(version) {
+//        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
 //            version.setValue(val);
 //        });
 //
@@ -147,7 +147,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var form = this.getUploadIntervalMeterForm().getForm(),
             selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
             selectedUtilityBillRegister = this.getUtilityBillRegistersGrid().getSelectionModel().getSelection(),
-            selectedVersion = this.getUtilityBillVersions().getValue();
+            selectedVersion = this.getReeBillVersions().getValue();
 
         if (!selectedUtilityBillRegister.length)
             return;
@@ -163,7 +163,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         };
 
         if (selectedVersion !== '')
-            params.sequence = this.getUtilityBillVersions().findRecordByValue(selectedVersion).get('sequence');
+            params.sequence = this.getReeBillVersions().findRecordByValue(selectedVersion).get('sequence');
         else
             params.sequence = '';
 
