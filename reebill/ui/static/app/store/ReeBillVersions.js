@@ -17,9 +17,12 @@ Ext.define('ReeBill.store.ReeBillVersions', {
         simpleSortMode: true,
 
         pageParam: false,
+        startParam: false,
+        limitParam: false,
+        sortParam: false,
+        groupParam: false,
 
-
-        url: 'http://'+window.location.host+'/reebill/reebills',
+        url: 'http://'+window.location.host+'/reebill/reebillversions',
 		reader: {
 			type: 'json',
 			root: 'rows',
