@@ -55,7 +55,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '3781adb9429d'
+_schema_revision = '39efff02706c'
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
     revision expected by the model metadata.
@@ -75,13 +75,15 @@ class BindingEvaluation(object):
     """A data structure to serve as both the evaluation context of a charge
     formula, as well as the result of charge formula evaluation."""
 
-    def __init__(self, quantity=None, rate=None):
+    def __init__(self, quantity=None, rate=None, error=None):
         """Construct a new `BindingEvaluation`."""
         assert quantity is None or isinstance(quantity, (float, int))
         assert rate is None or isinstance(rate, (float, int))
         self.quantity = quantity
         self.rate = rate
+        self.error = error
         if quantity is not None and rate is not None:
+            assert error is None
             self.total = quantity * rate
         else:
             self.total = None
@@ -508,7 +510,8 @@ class ReeBill(Base):
         context = {r.register_binding: BindingEvaluation(r.hypothetical_quantity)
                    for r in self.readings}
         for charge in self.utilbill.ordered_charges():
-            context[charge.rsi_binding] = charge.evaluate(context, update=False)
+            context[charge.rsi_binding] = charge.evaluate(context,
+                update=False, raise_exception=True)
         self.replace_charges_with_context_evaluations(context)
 
     def document_id_for_utilbill(self, utilbill):
@@ -834,16 +837,20 @@ class UtilBill(Base):
             raise RSIError('Circular dependency: %s' % ', '.join(g.args[1]))
         return sorted(self.charges, key=lambda c: order.index(c.rsi_binding))
 
-    def compute_charges(self):
+    def compute_charges(self, raise_exception=False):
         """Computes and updates the quantity, rate, and total attributes of
         all charges associated with `UtilBill`.
+        :param raise_exception: Raises an exception if any charge could not be
+        computed. Otherwise silently sets the error attribute of the charge
+        to the exception message.
         """
         for charge in self.charges:
             charge.validate_formulas(self.bindings)
         context = {r.register_binding: BindingEvaluation(r.quantity) for r in
                    self.registers}
         for charge in self.ordered_charges():
-            context[charge.rsi_binding] = charge.evaluate(context, update=True)
+            context[charge.rsi_binding] = charge.evaluate(context,
+                raise_exception=raise_exception, update=True)
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
@@ -920,6 +927,10 @@ class Charge(Base):
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float, nullable=False)
+    error = Column(String(255))
+    # description of error in computing the quantity and/or rate formula.
+    # either this or quantity and rate should be null at any given time,
+    # never both or neither.
 
     quantity_formula = Column(String(255), nullable=False)
     rate_formula = Column(String(255), nullable=False)
@@ -1014,9 +1025,6 @@ class Charge(Base):
         :param formula_name: a name of the formula for the exception message
         :param rsi_binding: an rsi binding for the exception message
         """
-        if formula == '':
-            raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                self.rsi_binding, formula_name))
         try:
             ast.parse(formula)
         except SyntaxError:
@@ -1040,21 +1048,31 @@ class Charge(Base):
         return set(Charge.get_variable_names(self.quantity_formula) +
                    Charge.get_variable_names(self.rate_formula))
 
-    def evaluate(self, context, update=False):
+    def evaluate(self, context, update=False, raise_exception=False):
         """Evaluates the quantity and rate formulas and returns a
         `BindingEvaluation` instance
         :param context: map of binding name to `BindingEvaluation`
         :param update: if true, set charge attributes to formula evaluations
+        :param raise_exception: Raises an exception if the charge could not be
+        computed. Otherwise silently sets the error attribute of the charge
+        to the exception message.
         :returns: a `BindingEvaluation`
         """
-        quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
-            context)
-        rate = self._evaluate_formula(self.rate_formula, 'rate', context)
-        evaluation = BindingEvaluation(quantity, rate)
+        try:
+            quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
+                context)
+            rate = self._evaluate_formula(self.rate_formula, 'rate', context)
+            evaluation = BindingEvaluation(quantity, rate)
+        except Exception as exception:
+            if raise_exception:
+                raise exception
+            evaluation = BindingEvaluation(error=exception.message)
+
         if update:
             self.quantity = evaluation.quantity
             self.rate = evaluation.rate
             self.total = evaluation.total
+            self.error = evaluation.error
         return evaluation
 
     def validate_formulas(self, valid_bindings):
