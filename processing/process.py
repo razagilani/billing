@@ -101,7 +101,7 @@ class Process(object):
         for r in session.query(Register).join(UtilBill,
             Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id).all():
-            l.append(r.to_dict())
+            l.append(r.column_dict())
         return l
 
     def new_register(self, utilbill_id, row):
@@ -329,13 +329,13 @@ class Process(object):
         ).outerjoin(ReeBillCharge)\
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        return [rb.to_dict() for rb in q]
+        return [rb.column_dict() for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         return {
-            'billing_address': reebill.billing_address.to_dict(),
-            'service_address': reebill.service_address.to_dict(),
+            'billing_address': reebill.billing_address.column_dict(),
+            'service_address': reebill.service_address.column_dict(),
             'discount_rate': reebill.discount_rate,
             'late_charge_rate': reebill.late_charge_rate,
         }
