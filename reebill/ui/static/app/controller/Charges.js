@@ -15,9 +15,6 @@ Ext.define('ReeBill.controller.Charges', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'reeBillVersions',
-        selector: 'reeBillVersions'
-    },{
         ref: 'newChargeButton',
         selector: 'button[action=newCharge]'
     },{
@@ -40,9 +37,6 @@ Ext.define('ReeBill.controller.Charges', {
             'grid[id=chargesGrid]': {
                 selectionchange: this.handleRowSelect,
                 edit: this.handleEdit
-            },
-            'reeBillVersions': {
-                select: this.syncVersions
             },
             'button[action=newCharge]': {
                 click: this.handleNew
@@ -67,7 +61,6 @@ Ext.define('ReeBill.controller.Charges', {
      */
     handleActivate: function() {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var selectedVersion = this.getReeBillVersions().getValue();
 
         if (!selectedBill.length)
             return;
@@ -76,12 +69,6 @@ Ext.define('ReeBill.controller.Charges', {
             account: selectedBill[0].get('account'),
             service: selectedBill[0].get('service'),
             utilbill_id: selectedBill[0].get('id')
-        }
-
-        if (selectedVersion !== '') {
-            var versionRec = this.getReeBillVersions().findRecordByValue(selectedVersion);
-            params.reebill_sequence = versionRec.get('sequence');
-            params.reebill_version = versionRec.get('version');
         }
 
         this.getChargesStore().load({
@@ -97,19 +84,6 @@ Ext.define('ReeBill.controller.Charges', {
 
         this.getNewChargeButton().setDisabled(!hasSelections);
         this.getDeleteChargeButton().setDisabled(!hasSelections);
-    },
-
-    /**
-     * Keep the version number in sync. There are multiple instances.
-     */ 
-    syncVersions: function(combo) {
-        var val = combo.getValue();
-
-        Ext.each(Ext.ComponentQuery.query('reeBillVersions'), function(version) {
-            version.setValue(val);
-        });
-
-        this.handleActivate();
     },
 
     /**

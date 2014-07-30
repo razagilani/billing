@@ -29,8 +29,8 @@ Ext.define('ReeBill.controller.TabPanel', {
         ref: 'reebillsGrid',
         selector: 'grid[id=reebillsGrid]'
     },{
-        ref: 'reebillChargesGrid',
-        selector: 'grid[id=reebillChargesGrid]'
+        ref: 'reebillChargesTab',
+        selector: 'panel[name=reebillChargesTab]'
     }],
     
     init: function() {
@@ -68,7 +68,7 @@ Ext.define('ReeBill.controller.TabPanel', {
         this.getRateStructuresTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
         this.getChargesTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
 
-        this.getReebillChargesGrid().setDisabled(!reebillSelections || !reebillSelections.length);
+        this.getReebillChargesTab().setDisabled(!reebillSelections || !reebillSelections.length);
     }
 
 });
