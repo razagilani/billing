@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.ReebillCharges', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'ReebillCharges'
+        'ReebillCharges', 'ReeBillVersions'
     ],
     
     refs: [{
@@ -14,7 +14,10 @@ Ext.define('ReeBill.controller.ReebillCharges', {
     },{
         ref: 'reebillsGrid',
         selector: 'grid[id=reebillsGrid]'
-    }],    
+    },{
+        ref: 'reeBillVersions',
+        selector: 'combo[name=reeBillChargesVersions]'
+    }],
 
     init: function() {
         this.application.on({
@@ -24,7 +27,22 @@ Ext.define('ReeBill.controller.ReebillCharges', {
         this.control({
             'panel[name=reebillChargesTab]': {
                 activate: this.handleActivate
+            },
+            'combo[name=reeBillChargesVersions]': {
+                change: this.loadCharges,
+                select: this.loadCharges
             }
+        });
+
+        this.getReeBillVersionsStore().on({
+            load: function(){
+                var store = this.getReeBillVersionsStore();
+                var combo = this.getReeBillVersions();
+                // Select the first element
+                combo.select(store.getAt(0));
+                this.loadCharges();
+            },
+            scope: this
         });
     },
 
@@ -32,14 +50,40 @@ Ext.define('ReeBill.controller.ReebillCharges', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection(),
-            store = this.getReebillChargesStore();
-        console.log('activated', selectedReebill);
-        if (!selectedReebill.length)
-            return;
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+         var selected = selections[0];
+         var account = selected.get('account');
+         var sequence = selected.get('sequence');
 
-        store.getProxy().setExtraParam('reebill_id', selectedReebill[0].get('id'));
+         // Set store parameters for ReebillVersions
+         var versionStore = this.getReeBillVersionsStore();
+         var params = {
+             account: account,
+             sequence: sequence
+         }
+         versionStore.getProxy().extraParams = params;
+
+         // Only reload if the store doens't already contain bills of the current accounts/sequence
+         var record = versionStore.getAt(0)
+         if(record === undefined || record.get('account') !== account || record.get('sequence') !== sequence)
+            versionStore.reload();
+    },
+
+    /**
+     * Handle the panel being activated.
+     */
+    loadCharges: function() {
+        var combo = this.getReeBillVersions();
+        var versionStore = this.getReeBillVersionsStore();
+        var version = combo.getValue();
+        var store = this.getReebillChargesStore();
+
+        var selected = versionStore.getAt(versionStore.find('version', version));
+
+        store.getProxy().setExtraParam('reebill_id', selected.get('id'));
         store.reload();
-    }
+    },
 
 });

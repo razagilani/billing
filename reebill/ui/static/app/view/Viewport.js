@@ -170,8 +170,12 @@ Ext.define('ReeBill.view.Viewport', {
                     layout: 'border',
                     disabled: true,
                     items: [{
+                        xtype: 'panel',
+                        title: 'Reebill Charges',
+                        region: 'north'
+                    },{
                         xtype: 'reeBillVersions',
-                        name: 'reeBillVersions',
+                        name: 'reeBillChargesVersions',
                         region: 'north'
                     },{
                         xtype: 'reebillCharges',
