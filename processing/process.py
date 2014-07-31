@@ -149,13 +149,15 @@ class Process(object):
         session.delete(register)
         self.compute_utility_bill(utilbill_id)
 
-    def add_charge(self, utilbill_id, group_name):
+    def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill with charge group
         "group_name" and default values for all its fields."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+        c = Charge(utilbill, "New Charge", "", 0, "", 0, "", 0)
+        utilbill.charges.append(c)
         self.compute_utility_bill(utilbill_id)
+        return session.query(Charge).filter_by(id=c.id).one()
 
     def update_charge(self, charge_id, fields):
         """Modify the charge given by charge_id
@@ -170,15 +172,14 @@ class Process(object):
             .filter(Charge.id == charge_id).one()
         return charge
 
-    def delete_charge(self, utilbill_id, rsi_binding):
+    def delete_charge(self, charge_id):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
         session.delete(charge)
-        self.compute_utility_bill(utilbill_id)
+        self.compute_utility_bill(charge.utilbill_id)
 
     def get_rsis_json(self, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
