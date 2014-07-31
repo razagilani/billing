@@ -1,5 +1,5 @@
-import logging
 import sys
+import logging
 
 def init_logging():
     """Initialize logging to debug before we import anything else"""
@@ -31,6 +31,7 @@ import MySQLdb
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import UnboundExecutionError
 from billing import init_config, init_model
+from billing.test import utils as test_utils
 from billing.processing import mongo
 from billing.processing import rate_structure2
 from billing.processing.process import Process
@@ -47,7 +48,7 @@ import logging
 
 
 
-class TestCaseWithSetup(unittest.TestCase):
+class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
 
@@ -56,12 +57,14 @@ class TestCaseWithSetup(unittest.TestCase):
         for t in ["charge", "register", "payment", "reebill",
                   "utilbill", "customer", "address"]:
             session.execute("delete from %s" % t)
+
     def init_logging():
         """Setup NullHandlers for test and root loggers.
         """
         testlogger = logging.getLogger('test')
         testlogger.addHandler(logging.NullHandler())
         testlogger.propagate = False
+
     @staticmethod
     def insert_data():
         session = Session()
