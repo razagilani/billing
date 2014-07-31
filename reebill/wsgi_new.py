@@ -694,8 +694,8 @@ class RegistersResource(RESTResource):
 class RateStructureResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
-        rsis = self.process.get_rsis_json(utilbill_id)
-        return True, {'rows': rsis, 'results': len(rsis)}
+        charges = self.process.get_utilbill_charges_json(utilbill_id)
+        return True, {'rows': charges, 'results': len(charges)}
 
 
 class PaymentsResource(RESTResource):

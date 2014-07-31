@@ -9,6 +9,25 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'quantity_units'},
         {name: 'rate'},
         {name: 'total', type: 'float'},
-        {name: 'processingnote'}
-    ]
+        {name: 'processingnote'},
+        {name: 'error'},
+        {name: 'has_charge'},
+        {name: 'quantity_formula'},
+        {name: 'rate_formula'},
+        {name: 'roundrule'},
+        {name: 'shared'},
+        {name: 'utilbill_id'}
+    ],
+
+    formulaMappings: {
+        'quantity': 'quantity_formula',
+        'rate': 'rate_formula'
+    },
+
+    getFormulaKey: function(originalKey){
+        if(this.formulaMappings[originalKey] !== undefined){
+            return this.formulaMappings[originalKey];
+        }
+        return originalKey;
+    }
 });
