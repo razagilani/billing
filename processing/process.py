@@ -697,7 +697,6 @@ class Process(object):
 
         return existing_bill
 
-
     def _generate_docs_for_new_utility_bill(self, utilbill):
         '''Returns utility bill doc, UPRS doc for the given
         StateDB.UtilBill which is about to be added to the database, using the
