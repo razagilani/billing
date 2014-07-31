@@ -2,7 +2,6 @@ from datetime import date, datetime
 import copy
 from itertools import chain
 
-import pymongo
 import bson # part of pymongo package
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -282,7 +281,6 @@ class MongoReebill(object):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
-
     @property
     def account(self):
         return self.reebill_dict['_id']['account']
@@ -304,19 +302,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    def get_all_shadow_registers_json(self):
-        '''Given a utility bill document, returns a list of dictionaries describing
-        registers of all meters.'''
-        assert len(self.reebill_dict['utilbills']) == 1
-        result = []
-        for register in self.reebill_dict['utilbills'][0]['shadow_registers']:
-                result.append({
-                    'measure': register['measure'],
-                    'register_binding': register['register_binding'],
-                    'quantity': register['quantity']
-                })
-        return result
-
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -324,39 +309,6 @@ class ReebillDAO(object):
         self.state_db = state_db
         self.reebills_collection = database['reebills']
         self.utilbills_collection = database['utilbills']
-
-    def load_utilbills(self, **kwargs):
-        '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.
-
-        kwargs (any of these added will be added to the query:
-        account
-        service
-        utility
-        start
-        end
-        sequence
-        version
-        '''
-        #check individually for each allowed key in case extra things get thrown into kwargs
-        query = {}
-        if kwargs.has_key('account'):
-            query.update({'account': kwargs['account']})
-        if kwargs.has_key('utility'):
-            query.update({'utility': kwargs['utility']})
-        if kwargs.has_key('service'):
-            query.update({'service': kwargs['service']})
-        if kwargs.has_key('start'):
-            query.update({'start': date_to_datetime(kwargs['start'])})
-        if kwargs.has_key('end'):
-            query.update({'end': date_to_datetime(kwargs['end'])})
-        if kwargs.has_key('sequence'):
-            query.update({'sequence': kwargs['sequence']})
-        if kwargs.has_key('version'):
-            query.update({'version': kwargs['version']})
-        cursor = self.utilbills_collection.find(query, sort=[('start',
-                pymongo.ASCENDING)])
-        return list(cursor)
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
