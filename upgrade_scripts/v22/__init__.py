@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 def copy_registers_from_mongo():
     log.info('Copying registers from Mongo')
     client = MongoClient(config.get('billdb', 'host'),
-                         config.get('billdb', 'port'))
+                         int(config.get('billdb', 'port')))
     db = client[config.get('billdb', 'database')]
 
     s = Session()
@@ -52,7 +52,7 @@ def copy_registers_from_mongo():
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
-    alembic_upgrade('39efff02706c')
+    #alembic_upgrade('39efff02706c')
     log.info('Alembic Upgrade Complete')
     init_model()
     copy_registers_from_mongo()

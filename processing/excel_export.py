@@ -293,6 +293,7 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
+
         ds_rows = []
 
         for account in accounts:
@@ -301,6 +302,7 @@ class Exporter(object):
 
             reebills = self.state_db.listReebills(0, 10000,
                     account, u'sequence', u'ASC')[0]
+
             for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
@@ -353,6 +355,7 @@ class Exporter(object):
                 average_rate_unit_ree=None
                 actual_total = reebill.get_total_actual_charges()
                 hypothetical_total = reebill.get_total_hypothetical_charges()
+
 
                 total_ree = reebill.get_total_renewable_energy()
                 if total_ree != 0:
