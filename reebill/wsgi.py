@@ -933,16 +933,11 @@ class ReeBillWSGI(object):
                 'rows': [payment.to_dict() for payment in payments]})
         elif xaction == "update":
             rows = json.loads(kwargs["rows"])
-            # single edit comes in not in a list
             if type(rows) is dict: rows = [rows]
-            # process list of edits
             for row in rows:
-                self.process.update_payment(
-                    row['id'],
-                    row['date_applied'],
-                    row['description'],
-                    row['credit'],
-                )
+                self.process.update_payment(row['id'], datetime.strptime(
+                        row['date_applied'], ISO_8601_DATETIME_WITHOUT_ZONE),
+                        row['description'], float(row['credit']))
             return self.dumps({'success':True})
         elif xaction == "create":
             # date applied is today by default (can be edited later)
