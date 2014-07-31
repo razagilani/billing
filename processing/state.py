@@ -1700,19 +1700,6 @@ class StateDB(object):
         session.add(new_payment)
         return new_payment
 
-    def update_payment(self, oid, date_applied, description, credit):
-        '''Sets the date_applied, description, and credit of the payment with
-        id 'oid'.'''
-        session = Session()
-        payment = session.query(Payment).filter(Payment.id == oid).one()
-        if isinstance(date_applied, basestring):
-            payment.date_applied = datetime.strptime(date_applied,
-                    "%Y-%m-%dT%H:%M:%S").date()
-        else:
-            payment.date_applied = date_applied
-        payment.description = description
-        payment.credit = credit
-
     def delete_payment(self, oid):
         '''Deletes the payment with id 'oid'.'''
         session = Session()
