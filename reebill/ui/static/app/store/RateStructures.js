@@ -1,7 +1,7 @@
 Ext.define('ReeBill.store.RateStructures', {
     extend: 'Ext.data.Store',
 
-    model: 'ReeBill.model.RateStructure',
+    model: 'ReeBill.model.Charge',
 
     autoLoad: false,
     disableCaching: true,

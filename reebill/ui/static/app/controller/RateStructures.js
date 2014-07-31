@@ -27,7 +27,10 @@ Ext.define('ReeBill.controller.RateStructures', {
     },{
         ref: 'removeRateStructure',
         selector: 'button[action=removeRateStructure]'
-    }],    
+    },{
+        ref: 'formulaField',
+        selector: 'formulaField'
+    }],
 
     init: function() {
         this.application.on({
@@ -37,7 +40,8 @@ Ext.define('ReeBill.controller.RateStructures', {
         this.control({
             'grid[id=rateStructuresGrid]': {
                 selectionchange: this.handleRowSelect,
-                edit: this.handleEdit
+                edit: this.handleEdit,
+                cellclick: this.handleCellClick
             },
             'panel[name=rateStructuresTab]': {
                 activate: this.handleActivate
@@ -60,6 +64,7 @@ Ext.define('ReeBill.controller.RateStructures', {
     handleActivate: function() {
         var store = this.getRateStructuresStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+        var field = this.getFormulaField();
 
         if (!selectedBill.length)
             return;
@@ -69,6 +74,24 @@ Ext.define('ReeBill.controller.RateStructures', {
         }
         store.getProxy().extraParams = params;
         store.load();
+
+        field.setDisabled(true);
+    },
+
+    /**
+     * Handle the panel being activated.
+     */
+    handleCellClick: function(grid, td, cellIndex, record, tr, rowIndex, e, eOpts) {
+        var field = this.getFormulaField();
+        var grid = this.getRateStructuresGrid();
+        var dataIndex = grid.getView().getHeaderCt().getHeaderAtIndex(cellIndex).dataIndex;
+
+        var formulaIndex = record.getFormulaKey(dataIndex);
+        field.setValue(record.get(formulaIndex));
+        field.setDisabled(false);
+
+        field.lastRecord = record;
+        field.lastDataIndex = dataIndex;
     },
 
     /**
