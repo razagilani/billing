@@ -11,6 +11,10 @@ Ext.define('ReeBill.view.RateStructures', {
         })
     ],
 
+    features: [{
+        ftype: 'summary'
+    }],
+
     viewConfig: {
         trackOver: false,
         stripeRows: true,
@@ -18,12 +22,15 @@ Ext.define('ReeBill.view.RateStructures', {
 
         }
     },
+
+    forceFit: true,
     
     columns: [{
         header: 'Shared',
         dataIndex: 'shared',
         sortable: true,
-        width: 60,
+        width: 65,
+        flex: 0,
         renderer: checkboxRenderer
     },{
         header: 'RSI Binding',
@@ -33,7 +40,8 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 150
+        width: 180,
+        flex: 0
     },{
         header: 'Description',
         sortable: true,
@@ -41,7 +49,9 @@ Ext.define('ReeBill.view.RateStructures', {
         editor: {
             xtype: 'textfield',
             allowBlank: false
-        }
+        },
+        flex: 0,
+        width: 150
     },{
         header: 'Quantity',
         id: 'quantity',
@@ -51,6 +61,7 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
+        flex: 1,
         width: 250
     },{
         header: 'Units',
@@ -60,7 +71,8 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 50
+        flex: 0,
+        width: 70
     },{
         header: 'Rate',
         sortable: true,
@@ -69,7 +81,8 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 75,
+        flex: 1,
+        width: 250,
         allowBlank: false
     },{
         header: 'Round Rule',
@@ -79,12 +92,13 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
+        flex: 0,
         width: 100
     },{
         header: 'Has Charge',
         dataIndex: 'has_charge',
         sortable: true,
-        width: 80,
+        width: 100,
         renderer: checkboxRenderer
     },{
         header: 'Group',
@@ -94,7 +108,16 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-       width: 60
+        flex: 0,
+        width: 90
+    },{
+        header: 'Total',
+        width: 90,
+        sortable: true,
+        dataIndex: 'total',
+        summaryType: 'sum',
+        align: 'right',
+        renderer: Ext.util.Format.usMoney
     }],
 
     dockedItems: [{
@@ -111,11 +134,14 @@ Ext.define('ReeBill.view.RateStructures', {
             action: 'removeRateStructure',
             iconCls: 'silk-delete',
             disabled: true
-        },{        
+        },{
             xtype: 'button',
             text: 'Regenerate',
             action: 'regenerateRateStructure',
             iconCls: 'silk-wrench'
+        },'-',{
+        xtype: 'formulaField',
+        name: 'formulaField',
         }]
     }]
 });

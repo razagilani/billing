@@ -87,11 +87,7 @@ class Process(object):
         by  'utilbill_id' (MySQL id)."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        columns = ['id', 'description', 'error', 'group', 'quantity',
-                   'quantity_units', 'rate', 'rsi_binding', 'total']
-        return [dict([(col, getattr(charge, col)) for col in columns
-                     if hasattr(charge, col)] + [('id', charge.rsi_binding)])
-                for charge in utilbill.charges]
+        return [charge.column_dict() for charge in utilbill.charges]
 
     def get_registers_json(self, utilbill_id):
         """Returns a dictionary of register information for the utility bill
