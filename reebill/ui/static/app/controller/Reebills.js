@@ -53,15 +53,6 @@ Ext.define('ReeBill.controller.Reebills', {
         this.application.on({
             scope: this
         });
-
-        this.getReeBillVersionsStore().on({
-            beforeload: function(){
-                    console.log('loading');
-                    Ext.MessageBox.wait('Loading...');
-            },
-            load: this.loadSequentialAccountInformation,
-            scope: this
-        });
         
         this.control({
             'panel[name=reebillsTab]': {
@@ -97,15 +88,27 @@ Ext.define('ReeBill.controller.Reebills', {
             'button[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
             },
-            'reeBillVersions': {
-                change: this.loadSequentialAccountInformation
-            },
-            'reeBillVersions': {
+            'combo[name=reeBillVersions]': {
+                change: this.loadSequentialAccountInformation,
                 select: this.loadSequentialAccountInformation
             },
             'panel[id=sequentialAccountInformationForm]':{
                expand: this.handleAccountInformationActivation
             }
+        });
+
+        this.getReeBillVersionsStore().on({
+            beforeload: function(){
+                this.getSequentialAccountInformationForm().setDisabled(true);
+            },
+            load: function(){
+                var store = this.getReeBillVersionsStore();
+                var combo = this.getReeBillVersions();
+                // Select the first element
+                combo.select(store.getAt(0));
+                this.loadSequentialAccountInformation();
+            },
+            scope: this
         });
     },
 
@@ -120,7 +123,7 @@ Ext.define('ReeBill.controller.Reebills', {
 
         // required for GET & POST
         this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
-        this.getReebillsStore().reload();
+        this.getReebillsStore().loadPage(1);
 
         this.getSequentialAccountInformationForm().collapse();
         this.getSequentialAccountInformationForm().setDisabled(true);
@@ -349,12 +352,14 @@ Ext.define('ReeBill.controller.Reebills', {
       * currently selected Reebill
       */
      loadSequentialAccountInformation: function() {
-           console.log('getReeBillVersionsStore loaded');
+         console.log('loadSAI');
+         var combo = this.getReeBillVersions();
+         var store = this.getReeBillVersionsStore();
+         var version = combo.getValue()
 
-         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-         if (!selections.length)
-             return;
-         var selected = selections[0];
+         var selected = store.getAt(store.find('version', version));
+
+         console.log(version, selected);
 
          var form = this.getSequentialAccountInformationForm(),
              discount_rate = form.down('[name=discount_rate]'),
@@ -376,13 +381,19 @@ Ext.define('ReeBill.controller.Reebills', {
          ba_street.setValue(selected.get('billing_address').street);
          ba_city.setValue(selected.get('billing_address').city);
          ba_state.setValue(selected.get('billing_address').state);
-         ba_postal_code.setValue(selected.get('billing_address').postalcode);
+         ba_postal_code.setValue(selected.get('billing_address').postal_code);
          sa_addressee.setValue(selected.get('service_address').addressee);
          sa_street.setValue(selected.get('service_address').street);
          sa_city .setValue(selected.get('service_address').city);
          sa_state.setValue(selected.get('service_address').state);
-         sa_postal_code.setValue(selected.get('service_address').postalcode);
-         Ext.MessageBox.hide();
+         sa_postal_code.setValue(selected.get('service_address').postal_code);
+
+         form.setDisabled(false);
+
+         // Disable Save Button if not the Highest Version is selected
+         // or if the bill is issued
+         this.getSaveAccountInformationButton().setDisabled(
+             !store.isHighestVersion(version) || selected.get('issued'));
      },
 
      /**
