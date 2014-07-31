@@ -54,6 +54,9 @@ Ext.define('ReeBill.controller.RateStructures', {
             },
             'button[action=regenerateRateStructure]': {
                 click: this.handleRegenerate
+            },
+            'formulaField':{
+                specialkey: this.handleFormulaFieldEnter
             }
         });
     },
@@ -92,6 +95,21 @@ Ext.define('ReeBill.controller.RateStructures', {
 
         field.lastRecord = record;
         field.lastDataIndex = dataIndex;
+    },
+
+    /**
+     * Handle the panel being activated.
+     */
+    handleFormulaFieldEnter: function(f, e, eOpts) {
+        var field = this.getFormulaField();
+        var record = field.lastRecord;
+        var dataIndex = field.lastDataIndex;
+        var formulaIndex = record.getFormulaKey(dataIndex);
+
+        if (e.getKey() == e.ENTER) {
+            record.set(formulaIndex, field.getValue());
+        }
+        console.log(record, formulaIndex, field.getValue());
     },
 
     /**
