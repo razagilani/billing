@@ -416,7 +416,7 @@ class Process(object):
                 'issued': bool(reebill.issued),
                 # NOTE SQL sum() over no rows returns NULL, must substitute 0
                 'hypothetical_total': total_charge or 0,
-                'actual_total': mongo.total_of_all_charges(utilbill_doc),
+                'actual_total': reebill.get_total_actual_charges(),
                 'ree_value': reebill.ree_value,
                 'ree_charges': reebill.ree_charge,
                 # invisible columns
@@ -1816,9 +1816,7 @@ class Process(object):
             'total_charges': ub.total_charges,
             # NOTE a type-based conditional is a bad pattern; this will
             # have to go away
-            'computed_total': mongo.total_of_all_charges(
-                    self.reebill_dao.load_doc_for_utilbill(ub))
-                    if ub.state < UtilBill.Hypothetical else None,
+            'computed_total': ub.total_charge(),
             # NOTE the value of 'issue_date' in this JSON object is
             # used by the client to determine whether a frozen utility
             # bill version exists (when issue date == null, the reebill
@@ -1904,9 +1902,7 @@ class Process(object):
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
-            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
-                    for ub_id in(u.document_id for u in r.utilbills))),
+            'reebill_total': r.get_total_actual_charges(),
             'processed': r.processed,
          } for r in reebills.all()], key=itemgetter('account'))
 
@@ -2034,10 +2030,8 @@ class Process(object):
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
-            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
-                    for ub_id in(u.document_id for u in r.utilbills))),
-            'processed': r.processed,
+            'reebill_total': r.get_total_actual_charges(),
+            'processed': r.processed
         } for r in reebills.all()], key=itemgetter('account'))
 
         return issuable_processed_reebills
