@@ -1503,7 +1503,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.upload_utility_bill(account, 'gas',
                 date(2012, 2, 1), date(2012, 3, 1),
                 StringIO('february 2012'), 'february.pdf')
-        utilbill = self.session.query(UtilBill).order_by(
+        utilbill = self.session.query(UtilBill).join(Customer).\
+                filter(Customer.account == account).order_by(
                 UtilBill.period_start).first()
 
         reebill = self.process.roll_reebill(account,
