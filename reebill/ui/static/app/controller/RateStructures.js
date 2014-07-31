@@ -40,7 +40,6 @@ Ext.define('ReeBill.controller.RateStructures', {
         this.control({
             'grid[id=rateStructuresGrid]': {
                 selectionchange: this.handleRowSelect,
-                edit: this.handleEdit,
                 cellclick: this.handleCellClick
             },
             'panel[name=rateStructuresTab]': {
@@ -90,8 +89,8 @@ Ext.define('ReeBill.controller.RateStructures', {
         var dataIndex = grid.getView().getHeaderCt().getHeaderAtIndex(cellIndex).dataIndex;
 
         var formulaIndex = record.getFormulaKey(dataIndex);
+        field.setDisabled(formulaIndex === null);
         field.setValue(record.get(formulaIndex));
-        field.setDisabled(false);
 
         field.lastRecord = record;
         field.lastDataIndex = dataIndex;
@@ -139,40 +138,6 @@ Ext.define('ReeBill.controller.RateStructures', {
                 utilbill_id: selectedBill[0].get('id'),
                 rows: '[{}]'
             },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            }
-        });
-    },
-
-    /**
-     * Handle the edit of a row.
-     */
-    handleEdit: function(editor, e) {
-        var updated = e.record,
-            store = this.getRateStructuresStore(),
-            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-
-        var updateProperties = Object.getOwnPropertyNames(updated.modified);
-
-        if (!updated || updateProperties.length === 0)
-            return;
-
-        var params =  {
-            xaction: 'update',
-            utilbill_id: selectedBill[0].get('id'),
-            rows: JSON.stringify(updated.data)
-        };
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/rsi',
-            method: 'POST',
-            params: params,
             success: function(response, request) {
                 var jsonData = Ext.JSON.decode(response.responseText);
                 if (jsonData.success) {

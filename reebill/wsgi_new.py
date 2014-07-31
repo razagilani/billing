@@ -697,6 +697,11 @@ class RateStructureResource(RESTResource):
         charges = self.process.get_utilbill_charges_json(utilbill_id)
         return True, {'rows': charges, 'results': len(charges)}
 
+    def handle_put(self, charge_id, *vpath, **params):
+        row = cherrypy.request.json
+        c = self.process.update_charge(charge_id, row)
+        return True, {'rows': c.column_dict(),  'results': 1}
+
 
 class PaymentsResource(RESTResource):
 
