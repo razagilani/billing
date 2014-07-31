@@ -1,83 +1,18 @@
 import unittest
-from StringIO import StringIO
-from datetime import date, datetime, timedelta
+from datetime import date
+import pprint
+
 from bson import ObjectId
+
 from billing.processing.state import ReeBill, Customer, UtilBill, Address
-from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.rate_structure2 import RateStructure, \
         RateStructureItem
-from billing.processing.mongo import MongoReebill, NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
 
-import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
 class ReebillTest(TestCaseWithSetup):
-    '''Tests for MongoReebill methods.'''
-    # TODO make this a real unit test (it should not inherit from
-    # TestCaseWithSetup and should not use the database)
-
-    def test_utilbill_periods(self):
-        acc = '99999'
-        self.process.upload_utility_bill(acc, 'gas',
-                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                'january.pdf', utility='washgas',
-                rate_class='DC Non Residential Non Heat')
-        self.process.roll_reebill(acc, start_date=date(2013,1,1))
-        b = self.reebill_dao.load_reebill(acc, 1)
-
-        # function to check that the utility bill matches the reebill's
-        # reference to it
-        def check():
-            # reebill should be loadable
-            reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
-            # there should be two utilbill documents: the account's
-            # template and new one
-            all_utilbills = self.reebill_dao.load_utilbills()
-            self.assertEquals(2, len(all_utilbills))
-            # all its _id fields dates should match the reebill's reference
-            # to it
-            self.assertEquals(reebill._utilbills[0]['_id'],
-                    reebill.reebill_dict['utilbills'][0]['id'])
-
-        # this must work because nothing has been changed yet
-        check()
-
-        # change utilbill period
-        b._utilbills[0]['start'] = date(2100,1,1)
-        b._utilbills[0]['start'] = date(2100,2,1)
-        check()
-        self.reebill_dao.save_reebill(b)
-        self.reebill_dao.save_utilbill(b._utilbills[0])
-        check()
-
-        # NOTE account, utility name, service can't be changed, but if they
-        # become changeable, do the same test for them
-
-    def test_get_reebill_doc_for_utilbills(self):
-        utilbill_template = example_data.get_utilbill_dict('99999',
-                utility='washgas', service='gas', start=date(2013,1,1),
-                end=date(2013,2,1))
-        reebill = MongoReebill.get_reebill_doc_for_utilbills('99999', 1, 0,
-                0.5, 0.1, [utilbill_template])
-        self.assertEquals('99999', reebill.account)
-        self.assertEquals(1, reebill.sequence)
-        self.assertEquals(0, reebill.version)
-        # self.assertEquals(0, reebill.ree_charge)
-        # self.assertEquals(0, reebill.ree_value)
-        # self.assertEquals(0.5, reebill.discount_rate)
-        # self.assertEquals(0.1, reebill.late_charge_rate)
-        # self.assertEquals(0, reebill.late_charge)
-        self.assertEquals(1, len(reebill._utilbills))
-        # TODO test utility bill document contents
-        # self.assertEquals(0, reebill.payment_received)
-        # self.assertEquals(None, reebill.due_date)
-        # self.assertEquals(0, reebill.total_adjustment)
-        # self.assertEquals(0, reebill.ree_savings)
-        # self.assertEquals(0, reebill.balance_due)
-        # self.assertEquals(0, reebill.prior_balance)
-        # self.assertEquals(0, reebill.balance_forward)
 
     def test_compute_charges(self):
         with DBSession(self.state_db) as session:
@@ -179,6 +114,3 @@ class ReebillTest(TestCaseWithSetup):
 
             self.assertEqual(200, reebill.get_total_hypothetical_charges())
 
-if __name__ == '__main__':
-    #unittest.main(failfast=True)
-    unittest.main()
