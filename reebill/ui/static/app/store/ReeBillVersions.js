@@ -48,5 +48,16 @@ Ext.define('ReeBill.store.ReeBillVersions', {
     sorters: [{
         property: 'sequence',
         direction: 'DESC'
-    }]
+    }],
+
+    isHighestVersion: function(version){
+        var highestVersion = version;
+        this.each(function(record){
+            if(record.get('version') > version){
+                highestVersion = record.get('version');
+                return false; // break
+            }
+        });
+        return (highestVersion === version)
+    }
 });

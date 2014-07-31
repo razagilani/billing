@@ -171,6 +171,7 @@ Ext.define('ReeBill.view.Viewport', {
                     disabled: true,
                     items: [{
                         xtype: 'reeBillVersions',
+                        name: 'reeBillVersions',
                         region: 'north'
                     },{
                         xtype: 'reebillCharges',

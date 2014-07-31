@@ -14,6 +14,7 @@ Ext.define('ReeBill.view.SequentialAccountInformation', {
 
     items: [{
         xtype: 'reeBillVersions',
+        name: 'reeBillVersions',
         region: 'north'
     },{
         xtype: 'fieldset',
