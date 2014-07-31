@@ -58,7 +58,7 @@ class UserDAO:
             'bill_image_resolution': 80,
             'difference_threshold': 0.01,
             'default_account_sort_field': 'account',
-            'default_account_sort_direction': 'DESC'
+            'default_account_sort_direction': 'ASC'
         }
     })
 
