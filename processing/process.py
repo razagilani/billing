@@ -30,7 +30,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Reading, Session
+    UtilBillLoader, ReeBillCharge, Address, Charge, Reading, Session, Payment
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -258,9 +258,12 @@ class Process(object):
         return self.state_db.create_payment(account, date_applied, description,
             credit, date_received)
 
-    def update_payment(self, oid, date_applied, description, credit):
-        '''Wrapper to update_payment method in state.py'''
-        self.state_db.update_payment(oid, date_applied, description, credit)
+    def update_payment(self, id, date_applied, description, credit):
+        session = Session()
+        payment = session.query(Payment).filter_by(id=id).one()
+        payment.date_applied = date_applied
+        payment.description = description
+        payment.credit = credit
 
     def delete_payment(self, oid):
         '''Wrapper to delete_payment method in state.py'''
