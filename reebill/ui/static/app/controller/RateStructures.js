@@ -130,55 +130,20 @@ Ext.define('ReeBill.controller.RateStructures', {
         if (!selectedBill || !selectedBill.length)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/rsi',
-            method: 'POST',
-            params: {
-                xaction: 'create',
-                utilbill_id: selectedBill[0].get('id'),
-                rows: '[{}]'
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                } else {
-                    Ext.Msg.alert('Error', jsonData.errors.details);
-                }
-            }
-        });
+        store.add({'name': 'New RSI'});
     },
 
     /**
      * Handle the delete button being clicked.
      */
     handleDelete: function() {
-        var store = this.getRateStructuresStore(),
-            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
-            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection(),
-            selectedRateStructure = this.getRateStructuresGrid().getSelectionModel().getSelection(),
-            selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection(),
-            service = this.getServiceForCharges().getValue() || '';
+        var store = this.getRateStructuresStore();
+        var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
 
-        if (!selectedAccount || !selectedAccount.length || !selectedBill || !selectedBill.length 
-                || !selectedRateStructure || !selectedRateStructure.length)
+        if (!selected)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/rsi',
-            method: 'POST',
-            params: {
-                xaction: 'destroy',
-                service: service,
-                sequence: selectedReebill.length ? selectedReebill[0].get('sequence') || '' : '',
-                account: selectedAccount[0].get('account'),
-                utilbill_id: selectedBill[0].get('id'),
-                rows: '["' + selectedRateStructure[0].get('id') + '"]'
-            },
-            success: function() {
-                store.reload();
-            }
-        });
+        store.remove(selected);
     },
 
     /**
