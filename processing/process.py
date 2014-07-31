@@ -650,13 +650,8 @@ class Process(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        '''Finds the last state.Utilbill, loads the mongo document for it,
-        and extracts the service address from it '''
-        utilbill = self.state_db.get_last_real_utilbill(account,
-                datetime.utcnow())
-        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(utilbill)
-        address= mongo.get_service_address(utilbill_doc)
-        return address
+        return self.state_db.get_last_real_utilbill(account,
+                datetime.utcnow()).service_address.to_dict()
 
     def _find_replaceable_utility_bill(self, customer, service, start,
             end, state):

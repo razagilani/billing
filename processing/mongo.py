@@ -19,33 +19,6 @@ from billing.exc import NoSuchBillException, \
     NoRSIError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
-pp = pprint.PrettyPrinter(indent=1).pprint
-sys.stdout = sys.stderr
-
-# utility bill-to-reebill address schema converters
-# also remember that utilbill and reebill use different names for these
-
-def utilbill_billing_address_to_reebill_address(billing_address):
-    '''Transforms Rich's utility bill billing address schema to his reebill
-    address schema (which is the same for both kinds of addresses).'''
-    return {
-        ('ba_postal_code' if key == 'postalcode'
-            else ('ba_street1' if key == 'street'
-                else 'ba_' + key)): value
-        for (key, value) in billing_address.iteritems()
-    }
-
-def utilbill_service_address_to_reebill_address(service_address):
-    '''Transforms Rich's utility bill service address schema to his reebill
-    address schema (which is the same for both kinds of addresses).'''
-    return {
-        ('sa_postal_code' if key == 'postalcode'
-            else ('sa_street1' if key == 'street'
-                else 'sa_' + key)): value
-        for (key, value) in service_address.iteritems()
-    }
-
-
 # type-conversion functions
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
@@ -243,17 +216,6 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
 
     return meter['identifier'], register['identifier']
 
-
-# TODO make this a method of a utility bill document class when one exists
-def get_charges_json(utilbill_doc):
-    '''Returns list of dictionaries describing charges for use in web browser.
-    '''
-    return [dict_merge(c, {'id': c['rsi_binding']})
-            for c in utilbill_doc['charges']]
-
-# TODO make this a method of a utility bill document class when one exists
-def get_service_address(utilbill_doc):
-    return utilbill_doc['service_address']
 
 # TODO rename to get_meter_read_period
 # TODO make this a method of a utility bill document class when one exists
