@@ -482,7 +482,6 @@ class Process(object):
             reebill.late_charge_rate = late_charge_rate
         if processed is not None:
             reebill.processed = processed
-
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
         if ba_street is not None:
@@ -2011,8 +2010,7 @@ class Process(object):
             journal.ReeBillMailedEvent.save_instance(user, bill['account'],
                                                 bill['sequence'], bill['mailto'])
             issued = issued + 1
-        return {'success': True,
-                'issued': issued}
+        return issued
 
     def get_issuable_processed_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries containing

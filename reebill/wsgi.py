@@ -698,10 +698,9 @@ class ReeBillWSGI(object):
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_and_mail(cherrypy.session['user'], account,
+        self.process.issue_and_mail(cherrypy.session['user'], account,
                 sequence, recipients, apply_corrections)
-        print result
-        return self.dumps(result)
+        return self.dumps({"success": True})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -711,7 +710,8 @@ class ReeBillWSGI(object):
         apply_corrections = (apply_corrections == 'true')
         result = self.process.issue_processed_and_mail(cherrypy.session['user'],
                 apply_corrections)
-        return self.dumps(result)
+        return self.dumps({"success": True,
+                           "issued": result})
 
     @cherrypy.expose
     @authenticate_ajax

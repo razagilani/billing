@@ -1463,6 +1463,7 @@ class StateDB(object):
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
         reebill.issued = 1
+        reebill.processed = 1
         reebill.issue_date = issue_date
 
     def is_issued(self, account, sequence, version='max',

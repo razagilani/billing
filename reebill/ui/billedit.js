@@ -5196,11 +5196,7 @@ function reeBillReady() {
                 editor: new Ext.form.TextField(),
                 renderer: function(v, params, record)
                 {
-                    if (Ext.isEmpty(record.data.processed))
-                    {
-                        return "No";
-                    }
-                    else if (record.data.mailto)
+                    if (record.data.processed)
                     {
                         return "Yes";
                     }
