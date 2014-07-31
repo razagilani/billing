@@ -1418,12 +1418,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # issue one
         self.process.issue(acc, 1, issue_date=datetime(2013,4,1))
 
-        # re-load from mongo to see updated issue date, due date, recipients
         self.assertEquals(True, one.issued)
+        self.assertEquals(True, one.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 1))
         self.assertEquals(datetime(2013,4,1), one.issue_date)
-        self.assertEquals((one.issue_date + timedelta(30)).date(),
-                one.due_date)
+        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
         self.assertEquals('example@example.com', one.email_recipient)
 
         customer = self.state_db.get_customer(acc)
@@ -1433,6 +1432,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.issue(acc, 2, issue_date=datetime(2013,5,1,12))
 
         # re-load from mongo to see updated issue date and due date
+        self.assertEquals(True, two.issued)
+        self.assertEquals(True, two.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals(datetime(2013,5,1,12), two.issue_date)
         self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
@@ -1571,7 +1572,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               'period_start': date(2012, 1, 1),
                               'period_end': date(2012, 2, 1),
                               'prior_balance': 0.,
-                              'processed': False,
+                              'processed': True,
                               'ree_charges': 8.8,
                               'ree_value': 10,
                               'services': [],
@@ -1938,14 +1939,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              'sequence': 1,
              'max_version': 0,
              'issued': True,
-                 'issue_date': datetime(2013,2,15),
+             'issue_date': datetime(2013,2,15),
              'actual_total': 0.,
              'hypothetical_total': energy_quantity,
              'payment_received': 0.,
              'period_start': date(2013,1,1),
              'period_end': date(2013,2,1),
              'prior_balance': 0.,
-             'processed': False,
+             'processed': True,
              'ree_charges': energy_quantity * .5,
              'ree_value': energy_quantity,
              'services': [],
@@ -2001,7 +2002,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013,1,1),
             'period_end': date(2013,2,1),
             'prior_balance': 0,
-            'processed': False,
+            'processed': True,
             'ree_charges': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],

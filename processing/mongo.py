@@ -233,69 +233,6 @@ def set_meter_read_period(utilbill_doc, start, end):
     meter['prior_read_date'], meter['present_read_date'] = start, end
 
 # TODO make this a method of a utility bill document class when one exists
-def refresh_charges(utilbill_doc, uprs):
-    '''Replaces charges in the utility bill document with newly-created ones
-    based on the Rate Structure Items in 'uprs'. A charge is created
-    for every RSI. The charges are computed according to the rate structures.
-    '''
-    utilbill_doc['charges'] = [{
-        'rsi_binding': rsi.rsi_binding,
-        'quantity': 0,
-        'quantity_units': rsi.quantity_units,
-        'rate': 0,
-        'total': 0,
-        'description': rsi.description,
-        'group': rsi.group,
-    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
-            if rsi.has_charge]
-
-def _validate_charges(utilbill_doc, rate_structure):
-    '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
-    a RateStructureItem in 'rate_structure'.
-    '''
-    rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
-    for charge in utilbill_doc['charges']:
-        if charge['rsi_binding'] not in rsi_bindings:
-            raise NoRSIError('No rate structure item for "%s"' %
-                           charge['rsi_binding'])
-
-def _get_charge_by_rsi_binding(utilbill_doc, rsi_binding):
-    matches = [c for c in utilbill_doc['charges']
-            if c['rsi_binding'] ==  rsi_binding]
-    assert len(matches) == 1
-    return matches[0]
-
-def update_charge(utilbill_doc, rsi_binding, fields):
-    '''Modify the charge given by 'rsi_binding' by setting key-value pairs
-    to match the dictionary 'fields'.
-    '''
-    charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
-    charge.update(fields)
-
-def delete_charge(utilbill_doc, rsi_binding):
-    for charge in utilbill_doc['charges']:
-        if charge['rsi_binding'] == rsi_binding:
-            utilbill_doc['charges'].remove(charge)
-            return
-    raise ValueError('RSI binding "%s" not found' % rsi_binding)
-
-# TODO make this a method of a utility bill document class when one exists
-# (if it doesn't go away first)
-def add_charge(utilbill_doc, group_name):
-    '''Add a new charge to the given utility bill with charge group "group_name"
-    and default value for all its fields.
-    '''
-    utilbill_doc['charges'].append({
-        'rsi_binding': 'RSI binding required',
-        'description': 'description required',
-        'quantity': 0,
-        'quantity_units': 'kWh',
-        'rate': 0,
-        'total': 0,
-        'group': group_name,
-    })
-
-# TODO make this a method of a utility bill document class when one exists
 def total_of_all_charges(utilbill_doc):
     '''Returns sum of "total" fields of all charges in the utility bill.
     '''
