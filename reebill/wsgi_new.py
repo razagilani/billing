@@ -702,6 +702,14 @@ class RateStructureResource(RESTResource):
         c = self.process.update_charge(charge_id, row)
         return True, {'rows': c.column_dict(),  'results': 1}
 
+    def handle_post(self, utilbill_id, *vpath, **params):
+        c = self.process.add_charge(utilbill_id)
+        return True, {'rows': c.column_dict(),  'results': 1}
+
+    def handle_delete(self, charge_id, *vpath, **params):
+        self.process.delete_charge(charge_id)
+        return True, {}
+
 
 class PaymentsResource(RESTResource):
 
