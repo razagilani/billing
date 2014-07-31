@@ -6,6 +6,7 @@ Ext.define('ReeBill.view.ReebillCharges', {
     ],
 
     title: 'Reebill Charges',
+    header: false,
     alias: 'widget.reebillCharges',    
     store: 'ReebillCharges',
     

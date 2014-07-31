@@ -117,6 +117,7 @@ Ext.define('ReeBill.controller.Reebills', {
      */
     handleActivate: function() {
         var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
 
         if (!selectedAccount.length)
             return;
@@ -126,7 +127,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getReebillsStore().loadPage(1);
 
         this.getSequentialAccountInformationForm().collapse();
-        this.getSequentialAccountInformationForm().setDisabled(true);
+        this.getSequentialAccountInformationForm().setDisabled(!selections.length);
     },
 
     /**
@@ -352,14 +353,11 @@ Ext.define('ReeBill.controller.Reebills', {
       * currently selected Reebill
       */
      loadSequentialAccountInformation: function() {
-         console.log('loadSAI');
          var combo = this.getReeBillVersions();
          var store = this.getReeBillVersionsStore();
          var version = combo.getValue()
 
          var selected = store.getAt(store.find('version', version));
-
-         console.log(version, selected);
 
          var form = this.getSequentialAccountInformationForm(),
              discount_rate = form.down('[name=discount_rate]'),
