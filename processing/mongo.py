@@ -1,25 +1,17 @@
-#!/usr/bin/env python
-import sys
 from datetime import date, datetime
+import copy
+from itertools import chain
+
 import pymongo
 import bson # part of pymongo package
-from operator import itemgetter
-import itertools as it
-import copy
-from copy import deepcopy
-from itertools import chain
-from collections import defaultdict
-import tsort
+from sqlalchemy.orm.exc import NoResultFound
+
 from billing.util.mongo_utils import bson_convert, format_query, check_error
-from billing.util.dictutils import dict_merge
 from billing.util.dateutils import date_to_datetime
 from billing.processing.state import Customer, UtilBill
 from billing.exc import NoSuchBillException, \
-    NotUniqueException, IssuedBillError, MongoError, FormulaError, RSIError, \
-    NoRSIError
-import pprint
-from sqlalchemy.orm.exc import NoResultFound
-# type-conversion functions
+    NotUniqueException, IssuedBillError, MongoError
+
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     # TODO combine this into python_convert(), and include the ancestor_key
@@ -384,7 +376,6 @@ class ReebillDAO(object):
             'account': account,
             'utility': utility,
             'service': service,
-            # querying for None datetimes should work
             'start': date_to_datetime(start) \
                     if isinstance(start, date) else None,
             'end': date_to_datetime(end) \
@@ -460,7 +451,6 @@ class ReebillDAO(object):
                 reebill.document_id_for_utilbill(utilbill))
 
     def delete_doc_for_statedb_utilbill(self, utilbill_row):
-        # TODO add reebill argument here like above?
         '''Deletes the Mongo utility bill document corresponding to the given
         state.UtilBill object.'''
         if utilbill_row._utilbill_reebills != []:
@@ -516,11 +506,6 @@ class ReebillDAO(object):
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
-        # NOTE not using context manager here because it commits the
-        # transaction when the session exits! this method should be usable
-        # inside other transactions.
-        session = self.state_db.session()
-
         assert isinstance(account, basestring)
         assert isinstance(sequence, long) or isinstance(sequence, int)
         assert isinstance(version, basestring) or isinstance(version, long) \
@@ -560,13 +545,9 @@ class ReebillDAO(object):
         # load utility bills
         utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
 
-        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
-        return mongo_reebill
+        return MongoReebill(mongo_doc, utilbill_docs)
 
     def load_reebills_for(self, account, version='max'):
-        if not account: return None
-        # NOTE not using context manager (see comment in load_reebill)
-        session = self.state_db.session()
         sequences = self.state_db.listSequences(account)
         return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
