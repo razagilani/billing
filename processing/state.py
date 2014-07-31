@@ -114,7 +114,7 @@ class Address(Base):
             'street': self.street,
             'city': self.city,
             'state': self.state,
-            'postalcode': self.postal_code,
+            'postal_code': self.postal_code,
         }
 
     @classmethod

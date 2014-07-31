@@ -32,10 +32,6 @@ class ReebillTest(TestCaseWithSetup):
         def check():
             # reebill should be loadable
             reebill = self.reebill_dao.load_reebill(acc, 1, version=0)
-            # there should be two utilbill documents: the account's
-            # template and new one
-            all_utilbills = self.reebill_dao.load_utilbills()
-            self.assertEquals(2, len(all_utilbills))
             # all its _id fields dates should match the reebill's reference
             # to it
             self.assertEquals(reebill._utilbills[0]['_id'],

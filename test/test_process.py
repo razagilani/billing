@@ -1143,14 +1143,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # addresses should be preserved from one reebill document to the
         # next
         billing_address = {
-            u"postalcode" : u"20910",
+            u"postal_code" : u"20910",
             u"city" : u"Silver Spring",
             u"state" : u"MD",
             u"addressee" : u"Managing Member Monroe Towers",
             u"street" : u"3501 13TH ST NW LLC"
         }
         service_address = {
-             u"postalcode" : u"20010",
+             u"postal_code" : u"20010",
              u"city" : u"Washington",
              u"state" : u"DC",
              u"addressee" : u"Monroe Towers",
