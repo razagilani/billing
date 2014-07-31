@@ -529,15 +529,13 @@ class ReebillRenderer:
 
         # Load registers and match up shadow registers to actual registers
         assert len(reebill.utilbills)==1
-        shadow_registers = reebill_document.get_all_shadow_registers_json()
         utilbill_doc=self.reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
-        actual_registers = mongo.get_all_actual_registers_json(
-           utilbill_doc)
-        for s_register in shadow_registers:
+        actual_registers = mongo.get_all_actual_registers_json(utilbill_doc)
+        for s_register in reebill.readings:
             total = 0
             for a_register in actual_registers:
-                if s_register['register_binding'] == a_register['binding']:
-                    shadow_total = s_register['quantity']
+                if s_register.register_binding == a_register['binding']:
+                    shadow_total = s_register.renewable_quantity
                     utility_total = a_register['quantity']
                     total += (utility_total + shadow_total)
                     measuredUsage.append([
@@ -548,10 +546,6 @@ class ReebillRenderer:
                         round_for_display(total),
                         a_register['quantity_units']
                     ])
-
-
-
-
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550
