@@ -21,6 +21,7 @@ from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func, not_
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
@@ -34,7 +35,6 @@ from exc import DatabaseError
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
-
 log = logging.getLogger(__name__)
 
 Session = scoped_session(sessionmaker())
@@ -560,6 +560,43 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
 
+    def column_dict(self):
+        period_start , period_end = self.get_period()
+        the_dict = super(ReeBill, self).column_dict()
+        the_dict.update({
+            'account': self.customer.account,
+            'hypothetical_total': self.get_total_hypothetical_charges(),
+            'billing_address': self.billing_address.column_dict(),
+            'service_address': self.service_address.column_dict(),
+            'period_start': period_start,
+            'period_end': period_end,
+            # TODO: is this used at all? does it need to be populated?
+            'services': []
+        })
+
+        if self.version > 0:
+            if self.issued:
+                the_dict['corrections'] = str(self.version)
+            else:
+                the_dict['corrections'] = '#%s not issued' % self.version
+        else:
+            the_dict['corrections'] = '-' if self.issued else '(never ' \
+                                                                 'issued)'
+
+        # wrong energy unit can make this method fail causing the reebill
+        # grid to not load; see
+        # https://www.pivotaltracker.com/story/show/59594888
+        try:
+            the_dict['ree_quantity'] = self.get_total_renewable_energy()
+        except (ValueError, StopIteration) as e:
+            self.logger.error("Error when getting renewable energy "
+                    "quantity for reebill %s:\n%s" % (
+                    self.id, traceback.format_exc()))
+            the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+
+        return the_dict
+
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
     many-to-many relationship between "utilbill" and "reebill".''' 
@@ -726,7 +763,6 @@ class UtilBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
 
-
     @property
     def bindings(self):
         """Returns all bindings across both charges and registers"""
@@ -860,6 +896,20 @@ class UtilBill(Base):
 
     def total_charge(self):
         return sum(charge.total for charge in self.charges)
+
+    def column_dict(self):
+        the_dict = super(UtilBill, self).column_dict()
+        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
+        the_dict.update({
+            'account': self.customer.account,
+            'service': 'Unknown' if self.service is None
+                                else self.service.capitalize(),
+            'computed_total': self.total_charge() if self.state <
+                                UtilBill.Hypothetical else None,
+            'reebills': reebills,
+            'state': self.state_name()
+        })
+        return the_dict
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -1238,6 +1288,9 @@ class StateDB(object):
         reebill = self.get_reebill(account, sequence, version=version)
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
                 ReeBill.id == reebill.id).all()
+
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer

@@ -1,0 +1,124 @@
+
+<!DOCTYPE HTML>
+
+<html>
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=8" />
+    
+    <title>Skyline ReeBill</title>
+    
+    <!-- Custom styles -->
+    <link rel="stylesheet" type="text/css" href="static/style/style.css">
+
+    <!-- Icon styles -->
+    <link rel="stylesheet" type="text/css" href="static/style/icons.css">
+
+    <!-- PDF viewer -->
+    <link rel="stylesheet" href="static/ext/ux/util/PDF/TextLayerBuilder.css">
+
+    <!-- Ext JS Style -->
+    <link rel="stylesheet" type="text/css" href="static/ext/resources/css/ext-all-neptune.css">
+    <link rel="stylesheet" type="text/css" href="static/ext/resources/css/ext-all-neptune.css">
+
+    <!-- Ext JS -->
+    <script type="text/javascript" src="static/ext/ext-all-debug.js"></script>
+    <script type="text/javascript" src="static/ext/src/grid/column/CheckColumn.js"></script>
+
+    <!-- Ext UX PDF Viewer -->
+    <script src="static/ext/lib/pdf.js/compatibility.js"></script>
+    <script src="static/ext/lib/pdf.js/pdf.js"></script>
+    <script src="static/ext/ux/panel/PDF.js"></script>
+    <script src="static/ext/ux/util/PDF/TextLayerBuilder.js"></script>
+
+    <!-- Ext PagingStore -->
+    <script src="static/ext/ux/data/PagingStore.js"></script>
+
+    <!-- DateTimePicker -->
+    <script type="text/javascript" src="static/ext/ux/UX_TimePickerField.js"></script>
+    <script type="text/javascript" src="static/ext/ux/UX_DateTimePicker.js"></script>
+    <script type="text/javascript" src="static/ext/ux/UX_DateTimeField.js"></script>
+    <script type="text/javascript" src="static/ext/ux/UX_DateTimeMenu.js"></script>
+
+    <!-- Config -->
+    <script type="text/javascript" src="static/app/config.js"></script>
+
+    <!-- Models -->
+    <script type="text/javascript" src="static/app/model/Account.js"></script>
+    <script type="text/javascript" src="static/app/model/AccountReeValue.js"></script>
+    <script type="text/javascript" src="static/app/model/AccountTemplate.js"></script>
+    <script type="text/javascript" src="static/app/model/Charge.js"></script>
+    <script type="text/javascript" src="static/app/model/IssuableReebill.js"></script>
+    <script type="text/javascript" src="static/app/model/JournalEntry.js"></script>
+    <script type="text/javascript" src="static/app/model/Payment.js"></script>
+    <script type="text/javascript" src="static/app/model/Reconciliation.js"></script>
+    <script type="text/javascript" src="static/app/model/Reebill.js"></script>
+    <script type="text/javascript" src="static/app/model/ReebillCharge.js"></script>
+    <script type="text/javascript" src="static/app/model/RateStructure.js"></script>
+    <script type="text/javascript" src="static/app/model/UtilityBill.js"></script>
+    <script type="text/javascript" src="static/app/model/UtilityBillRegister.js"></script>
+
+    <!-- Stores -->
+    <script type="text/javascript" src="static/app/store/Accounts.js"></script>
+    <script type="text/javascript" src="static/app/store/AccountsReeValue.js"></script>
+    <script type="text/javascript" src="static/app/store/AccountTemplates.js"></script>
+    <script type="text/javascript" src="static/app/store/Charges.js"></script>
+    <script type="text/javascript" src="static/app/store/IssuableReebills.js"></script>
+    <script type="text/javascript" src="static/app/store/JournalEntries.js"></script>
+    <script type="text/javascript" src="static/app/store/Payments.js"></script>
+    <script type="text/javascript" src="static/app/store/RateStructures.js"></script>
+    <script type="text/javascript" src="static/app/store/Reconciliations.js"></script>
+    <script type="text/javascript" src="static/app/store/ReebillCharges.js"></script>
+    <script type="text/javascript" src="static/app/store/Reebills.js"></script>
+    <script type="text/javascript" src="static/app/store/Services.js"></script>
+    <script type="text/javascript" src="static/app/store/Timestamps.js"></script>
+    <script type="text/javascript" src="static/app/store/Units.js"></script>
+    <script type="text/javascript" src="static/app/store/UtilityBillRegisters.js"></script>
+    <script type="text/javascript" src="static/app/store/ReeBillVersions.js"></script>
+    <script type="text/javascript" src="static/app/store/UtilityBills.js"></script>
+
+    <!-- Views -->
+    <script type="text/javascript" src="static/app/view/accounts/AccountForm.js"></script>
+    <script type="text/javascript" src="static/app/view/accounts/Accounts.js"></script>
+    <script type="text/javascript" src="static/app/view/accounts/AccountsReeValue.js"></script>
+    <script type="text/javascript" src="static/app/view/charges/Charges.js"></script>
+    <script type="text/javascript" src="static/app/view/issuablereebills/IssuableReebills.js"></script>
+    <script type="text/javascript" src="static/app/view/journal/JournalEntries.js"></script>
+    <script type="text/javascript" src="static/app/view/journal/NoteForm.js"></script>
+    <script type="text/javascript" src="static/app/view/metersandregisters/UploadIntervalMeter.js"></script>
+    <script type="text/javascript" src="static/app/view/metersandregisters/UtilityBillRegisters.js"></script>
+    <script type="text/javascript" src="static/app/view/payments/Payments.js"></script>
+    <script type="text/javascript" src="static/app/view/ratestructures/RateStructures.js"></script>
+    <script type="text/javascript" src="static/app/view/reebillcharges/ReebillCharges.js"></script>
+    <script type="text/javascript" src="static/app/view/reebills/Reebills.js"></script>
+    <script type="text/javascript" src="static/app/view/reebills/SequentialAccountInformation.js"></script>
+    <script type="text/javascript" src="static/app/view/reebills/ReeBillVersions.js"></script>
+    <script type="text/javascript" src="static/app/view/reports/Reconciliations.js"></script>
+    <script type="text/javascript" src="static/app/view/utilitybills/UploadUtilityBill.js"></script>
+    <script type="text/javascript" src="static/app/view/utilitybills/UtilityBills.js"></script>
+    <script type="text/javascript" src="static/app/view/Viewport.js"></script>
+
+    <!-- Controllers -->
+    <script type="text/javascript" src="static/app/controller/Accounts.js"></script>
+    <script type="text/javascript" src="static/app/controller/Charges.js"></script>
+    <script type="text/javascript" src="static/app/controller/IssuableReebills.js"></script>
+    <script type="text/javascript" src="static/app/controller/Journal.js"></script>
+    <script type="text/javascript" src="static/app/controller/Payments.js"></script>
+    <script type="text/javascript" src="static/app/controller/RateStructures.js"></script>
+    <script type="text/javascript" src="static/app/controller/ReebillCharges.js"></script>
+    <script type="text/javascript" src="static/app/controller/Reebills.js"></script>
+    <script type="text/javascript" src="static/app/controller/TabPanel.js"></script>
+    <script type="text/javascript" src="static/app/controller/UtilityBills.js"></script>
+    <script type="text/javascript" src="static/app/controller/UtilityBillRegisters.js"></script>
+    <script type="text/javascript" src="static/app/controller/Viewer.js"></script>
+    
+    <!-- Main Application -->
+    <script type="text/javascript" src="static/app/app.js"></script>
+
+</head>
+
+<body>
+
+</body>
+</html>
