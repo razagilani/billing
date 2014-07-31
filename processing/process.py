@@ -157,16 +157,18 @@ class Process(object):
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
         self.compute_utility_bill(utilbill_id)
 
-    def update_charge(self, utilbill_id, rsi_binding, fields):
-        """Modify the charge given by 'rsi_binding' in the given utility
-        bill by setting key-value pairs to match the dictionary 'fields'."""
+    def update_charge(self, charge_id, fields):
+        """Modify the charge given by charge_id
+        by setting key-value pairs to match the dictionary 'fields'."""
         session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
-        self.compute_utility_bill(utilbill_id)
+        self.compute_utility_bill(charge.utilbill_id)
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
+        return charge
 
     def delete_charge(self, utilbill_id, rsi_binding):
         """Delete the charge given by 'rsi_binding' in the given utility
