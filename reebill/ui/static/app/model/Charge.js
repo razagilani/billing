@@ -19,9 +19,13 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'utilbill_id'}
     ],
 
+//  Maps forumlas to their quantitites so they can be shown in the FormulaInput
+//  Null means the FormulaInput should be disabled
     formulaMappings: {
         'quantity': 'quantity_formula',
-        'rate': 'rate_formula'
+        'rate': 'rate_formula',
+        'shared': null,
+        'has_charge': null,
     },
 
     getFormulaKey: function(originalKey){
