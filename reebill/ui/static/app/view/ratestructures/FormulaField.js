@@ -3,6 +3,7 @@ Ext.define('ReeBill.view.FormulaField', {
     alias: 'widget.formulaField',
 
     fieldLabel: 'Formula:',
+    labelWidth: 60,
     width: 600,
 
     lastRecord: null,
