@@ -10,31 +10,39 @@ Ext.define('ReeBill.view.JournalEntries', {
         stripeRows: true,
         getRowClass: function(record) {
 
-        }
+        },
+        enableTextSelection: true
     },
     
     columns: [{
         xtype: 'datecolumn', 
         dataIndex: 'date',
         header: 'Date',
-        width: 150,
+        width: 170,
+        flex: 0,
         format: 'Y-m-d H:i:s'
     },{
         header: 'User',
         sortable: true,
-        dataIndex: 'user'
+        dataIndex: 'user',
+        width: 100,
+        flex: 0
     },{
         header: 'Account',
         sortable: true,
-        dataIndex: 'account'
+        dataIndex: 'account',
+        width: 80,
+        flex: 0
     },{
         header: 'Sequence',
         sortable: true,
-        dataIndex: 'sequence'
+        dataIndex: 'sequence',
+        width: 90,
+        flex: 0
     },{
         header: 'Event',
         sortable: true,
         dataIndex: 'event',
-        width: 600
+        flex: 1
     }]
 });

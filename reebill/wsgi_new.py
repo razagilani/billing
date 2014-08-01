@@ -758,6 +758,13 @@ class PaymentsResource(RESTResource):
         return True, {}
 
 
+class JournalRessource(RESTResource):
+
+    def handle_get(self, account, *vpath, **params):
+        journal_entries = self.journal_dao.load_entries(account)
+        return True, {'rows': journal_entries,  'results': len(journal_entries)}
+
+
 class BillToolBridge(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
@@ -768,6 +775,7 @@ class BillToolBridge(WebResource):
     payments = PaymentsResource()
     reebillcharges = ReebillChargesResource()
     reebillversions = ReebillVersionsRessource()
+    journal = JournalRessource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
