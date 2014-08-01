@@ -216,10 +216,21 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 "Error in quantity formula: name 'x' is not defined")
 
 
-    def test_compute_charges_with_cycle(self):
-        '''Test computing charges whose dependencies form a cycle.
-        All such charges should have errors.
+    def test_compute_charges_empty(self):
+        '''Compute utility bill with no charges.
         '''
+        # irrelevant fields are omitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [],
+        }
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        utilbill.compute_charges(RateStructure(rates=[]), utilbill_doc)
+        self.assertEqual([], utilbill.charges)
+
+    def test_compute_charges_independent(self):
         # irrelevant fields are omitted from this document
         utilbill_doc = {
             'charges': [],
@@ -229,6 +240,45 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                     'quantity': 150,
                 }]
             }],
+        }
+
+        rs = RateStructure(rates=[
+            # circular dependency between A and B: A depends on B's "quantity"
+            # and B depends on A's "rate", which is not allowed even though
+            # theoretically both could be computed.
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='REG_TOTAL.quantity',
+                quantity_units='kWh',
+                rate='1',
+            ),
+            RateStructureItem(
+                rsi_binding='B',
+                quantity='2',
+                quantity_units='kWh',
+                rate='3',
+            ),
+        ])
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        Session().add(utilbill)
+        utilbill.refresh_charges(rs.rates)
+        utilbill.compute_charges(rs, utilbill_doc)
+
+        self.assert_charge_values(150, 1,
+                utilbill.get_charge_by_rsi_binding('A'))
+        self.assert_charge_values(2, 3,
+                utilbill.get_charge_by_rsi_binding('B'))
+
+    def test_compute_charges_with_cycle(self):
+        '''Test computing charges whose dependencies form a cycle.
+        All such charges should have errors.
+        '''
+        # irrelevant fields are omitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [],
         }
 
         rs = RateStructure(rates=[
