@@ -66,7 +66,6 @@ Ext.define('ReeBill.controller.TabPanel', {
 
         this.getMetersTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
         this.getRateStructuresTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
-        this.getChargesTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
 
         this.getReebillChargesTab().setDisabled(!reebillSelections || !reebillSelections.length);
     }
