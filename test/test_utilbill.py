@@ -26,9 +26,7 @@ class UtilBillTest(TestCaseWithSetup):
     def setUp(self):
         init_config('tstsettings.cfg')
         init_model()
-        self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
-
 
     def test_compute(self):
 
@@ -113,14 +111,13 @@ class UtilBillTest(TestCaseWithSetup):
                 rate='1 / 0',
             ),
         ]
-
         session = Session()
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                                      'nobody@example.com', 'FB Test Utility',
                                      'FB Test Rate Class', Address(), Address()),
                             UtilBill.Complete, 'gas', 'utility', 'rate class',
-                            Address(), Address(), period_start=date(2000,1,1),
-                            period_end=date(2000,2,1))
+                            Address(), Address(), period_start=date(2000, 1, 1),
+                            period_end=date(2000, 2, 1))
         session.add(utilbill)
         session.flush()
         register = Register(utilbill, "ABCDEF description", 150, 'therms',
@@ -221,172 +218,4 @@ class UtilBillTest(TestCaseWithSetup):
                 'Error in rate formula: division by zero')
         assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
-
-
-    def test_register_editing(self):
-        '''So far, regression test for bug 59517110 in which it was possible to
-        create registers with the same identifier. Should be expanded to test
-        all aspects of editing meter/register data.
-        '''
-        # utility bill with empty "meters" list
-        utilbill_doc = {
-            'account': '12345', 'service': 'gas', 'utility': 'washgas',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "won't be loaded from the db anyway",
-            'charges': [
-                {'rsi_binding': 'LINEAR', 'quantity': 0, 'group': 'All '
-                                                                  'Charges'},
-            ],
-            'meters': [],
-            'billing_address': {}, # addresses are irrelevant
-            'service_address': {},
-        }
-        
-        # add a register; check default values of fields
-        mongo.new_register(utilbill_doc)
-        self.assertEquals([{
-            'prior_read_date': date(2000,1,1),
-            'present_read_date': date(2000,2,1),
-            'identifier': 'Insert meter ID here',
-            'registers': [{
-                'identifier': 'Insert register ID here',
-                'register_binding': 'Insert register binding here',
-                'quantity': 0,
-                'quantity_units': 'therms',
-                'type': 'total',
-                'description': 'Insert description',
-            }],
-        }], utilbill_doc['meters'])
-
-        # update meter ID
-        new_meter_id, new_reg_id = mongo.update_register(
-                utilbill_doc, 'Insert meter ID here',
-                'Insert register ID here', meter_id='METER')
-        self.assertEqual('METER', new_meter_id)
-        self.assertEqual('Insert register ID here', new_reg_id)
-        self.assertEqual([{
-            'prior_read_date': date(2000,1,1),
-            'present_read_date': date(2000,2,1),
-            'identifier': 'METER',
-            'registers': [{
-                'identifier': 'Insert register ID here',
-                'register_binding': 'Insert register binding here',
-                'quantity': 0,
-                'quantity_units': 'therms',
-                'type': 'total',
-                'description': 'Insert description',
-            }],
-        }], utilbill_doc['meters'])
-
-        # update register ID
-        new_meter_id, new_reg_id = mongo.update_register(
-                utilbill_doc, 'METER', 'Insert register ID here',
-                register_id='REGISTER')
-        self.assertEqual('METER', new_meter_id)
-        self.assertEqual('REGISTER', new_reg_id)
-        self.assertEqual([{
-            'prior_read_date': date(2000,1,1),
-            'present_read_date': date(2000,2,1),
-            'identifier': 'METER',
-            'registers': [{
-                'identifier': 'REGISTER',
-                'register_binding': 'Insert register binding here',
-                'quantity': 0,
-                'quantity_units': 'therms',
-                'type': 'total',
-                'description': 'Insert description',
-            }],
-        }], utilbill_doc['meters'])
-
-        # create new register with default values; since its meter ID is
-        # different, there are 2 meters
-        mongo.new_register(utilbill_doc)
-        self.assertEquals([
-            {
-                'prior_read_date': date(2000,1,1),
-                'present_read_date': date(2000,2,1),
-                'identifier': 'METER',
-                'registers': [{
-                    'identifier': 'REGISTER',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                }],
-            },
-            {
-                'prior_read_date': date(2000,1,1),
-                'present_read_date': date(2000,2,1),
-                'identifier': 'Insert meter ID here',
-                'registers': [{
-                    'identifier': 'Insert register ID here',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                }],
-            },
-        ], utilbill_doc['meters'])
-
-        # update meter ID of 2nd register so both registers are inside the same
-        # meter
-        new_meter_id, new_reg_id = mongo.update_register(
-                utilbill_doc, 'Insert meter ID here',
-                'Insert register ID here', meter_id='METER')
-        self.assertEqual('METER', new_meter_id)
-        self.assertEqual('Insert register ID here', new_reg_id)
-        self.assertEqual([{
-            'prior_read_date': date(2000,1,1),
-            'present_read_date': date(2000,2,1),
-            'identifier': 'METER',
-            'registers': [
-                {
-                    'identifier': 'REGISTER',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                },{
-                    'identifier': 'Insert register ID here',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                },
-            ],
-        }], utilbill_doc['meters'])
-
-        # can't set both meter ID and register ID the same as another register
-        self.assertRaises(ValueError, mongo.update_register, utilbill_doc,
-                'METER', 'Insert register ID here', register_id='REGISTER')
-
-        # update "quantity" of register
-        mongo.update_register(utilbill_doc, 'METER', 'REGISTER',
-                quantity=123.45)
-        self.assertEqual([{
-            'prior_read_date': date(2000,1,1),
-            'present_read_date': date(2000,2,1),
-            'identifier': 'METER',
-            'registers': [
-                {
-                    'identifier': 'REGISTER',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 123.45,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                },{
-                    'identifier': 'Insert register ID here',
-                    'register_binding': 'Insert register binding here',
-                    'quantity': 0,
-                    'quantity_units': 'therms',
-                    'type': 'total',
-                    'description': 'Insert description',
-                },
-            ],
-        }], utilbill_doc['meters'])
 
