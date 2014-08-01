@@ -10,11 +10,7 @@ Ext.define('ReeBill.store.JournalEntries', {
     idProperty: '_id',
 
 	proxy: {
-		type: 'ajax',
-
-        extraParams: {
-            xaction: 'read'
-        },
+		type: 'rest',
 
         pageParam: false,
         startParam: false,
@@ -23,12 +19,26 @@ Ext.define('ReeBill.store.JournalEntries', {
 
         simpleSortMode: true,
 
-        url: 'http://'+window.location.host+'/rest/journal',
+        url: 'http://'+window.location.host+'/reebill/journal',
 		reader: {
 			type: 'json',
 			root: 'rows',
 			totalProperty: 'results'
-		}
+		},
+
+        listeners:{
+            exception: function (proxy, response, operation) {
+                Ext.getStore('JournalEntries').rejectChanges();
+                Ext.MessageBox.show({
+                    title: "Server error - " + response.status + " - " + response.statusText,
+                    msg:  response.responseText,
+                    icon: Ext.MessageBox.ERROR,
+                    buttons: Ext.Msg.OK,
+                    cls: 'messageBoxOverflow'
+                });
+            },
+            scope: this
+        },
 	},
 
     sorters: [{

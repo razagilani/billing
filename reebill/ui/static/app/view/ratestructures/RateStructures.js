@@ -113,6 +113,7 @@ Ext.define('ReeBill.view.RateStructures', {
         dataIndex: 'has_charge',
         sortable: true,
         width: 100,
+        flex: 0,
         renderer: checkboxRenderer
     },{
         header: 'Group',

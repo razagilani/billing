@@ -47,7 +47,7 @@ Ext.define('ReeBill.controller.Journal', {
             params: {
                 account: selectedAccount.get('account'),
                 sequence: null
-            },            
+            },
             success: function() {
                 scope.getNoteForm().getForm().reset();
             },
@@ -70,6 +70,7 @@ Ext.define('ReeBill.controller.Journal', {
     handleActivate: function() {
         var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
         var account = null;
+        var store = this.getJournalEntriesStore();
 
         if (selectedAccount.length) {
             account = selectedAccount[0].get('account');
@@ -82,11 +83,8 @@ Ext.define('ReeBill.controller.Journal', {
         if (!account)
             return;
 
-        this.getJournalEntriesStore().load({
-            params: {
-                account: account
-            }
-        });
+        store.getProxy().setExtraParam('account', account);
+        store.reload();
     }
 
 });
