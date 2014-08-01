@@ -5,20 +5,13 @@ init_logging()
 
 
 import unittest
-from datetime import date, datetime, timedelta
-import MySQLdb
-import sqlalchemy
+from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
-import pymongo
 from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.processing import mongo
-from billing.util import dateutils
-from billing.processing.session_contextmanager import DBSession
 from billing.exc import NoSuchBillException
-from billing.test import utils, example_data
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -39,39 +32,16 @@ class StateTest(TestCaseWithSetup):
         init_model()
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        #self._clear_tables(mysql_connection)
-
-        # insert one customer (not relying on StateDB)
-        # c = mysql_connection.cursor()
-        # c.execute('''insert into customer
-        #         (name, account, discountrate, latechargerate,
-        #         utilbill_template_id, bill_email_recipient) values
-        #         ('Test Customer', 99999, .12, .34,
-        #         '000000000000000000000000', 'example@example.com')''')
-        # mysql_connection.commit()
-
-        #session = Session()
-
         blank_address = Address()
         customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', 'FB Test Utility Name',
                             'FB Test Rate Class', blank_address, blank_address)
         self.session.add(customer)
         self.session.commit()
-        #init_config('tstsettings.cfg')
-        #init_model()
-
         self.state_db = state.StateDB()
-        # self.reebill_dao = mongo.ReebillDAO(self.state_db,
-        #         pymongo.Connection(billdb_config['host'],
-        #         int(billdb_config['port']))[billdb_config['database']])
-
-        #self.session = Session()
 
     def tearDown(self):
         self.session.commit()
-
         # clear out tables in mysql test database (not relying on StateDB)
         #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         #self._clear_tables(mysql_connection)
