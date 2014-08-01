@@ -311,18 +311,8 @@ class RESTResource(WebResource):
         if (sequence, version) != (None, None):
             raise IssuedBillError('Issued reebills cannot be modified')
 
-class AccountsListResource(RESTResource):
-
-    def handle_get(self, *vpath, **params):
-        accounts = self.state_db.listAccounts()
-        rows = [{'account': account, 'name': full_name} for account,
-                full_name in zip(accounts,
-                self.process.full_names_of_accounts(accounts))]
-        return True, {'rows': rows, 'results': len(rows)}
-
 
 class AccountsResource(RESTResource):
-    list = AccountsListResource()
 
     def handle_get(self, start, limit, filtername=None, *vpath, **params):
 

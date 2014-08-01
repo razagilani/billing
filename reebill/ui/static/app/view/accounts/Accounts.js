@@ -18,11 +18,11 @@ Ext.define('ReeBill.view.Accounts', {
         {header: 'Account', dataIndex: 'account'},
         {header: 'Codename', dataIndex: 'codename'},        
         {header: 'Casual Name', dataIndex: 'casualname'},        
-        {header: 'Primus Name', dataIndex: 'primusname'},        
+        {header: 'Primus Name', dataIndex: 'primusname'},
         {header: 'Utility Service Address', dataIndex: 'utilityserviceaddress'},        
         {header: 'Last Issued', dataIndex: 'lastissuedate'},        
         {header: 'Days Since Utility Bill', dataIndex: 'dayssince'},        
-        {header: 'Last Event', dataIndex: 'lastevent', width: 350}
+        {header: 'Last Event', dataIndex: 'lastevent', width: 350},
     ],
 
     bbar: {
