@@ -254,6 +254,14 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 quantity_units='kWh',
                 rate='0',
             ),
+            # D depends on A, which has a circular dependency with B. it should
+            # not be computable because A is not computable.
+            RateStructureItem(
+                rsi_binding='D',
+                quantity='A.total',
+                quantity_units='kWh',
+                rate='0',
+            ),
         ])
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
@@ -268,6 +276,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 "Error in rate formula: name 'A' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
                 "Error in quantity formula: name 'C' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
+            "Error in quantity formula: name 'A' is not defined")
 
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
