@@ -38,13 +38,13 @@ Ext.Ajax.request({
             ],
             
             stores: [
-                'Accounts', 'AccountsReeValue', 'AccountTemplates', 'IssuableReebills',
+                'Accounts', 'AccountTemplates', 'IssuableReebills',
                 'JournalEntries', 'Payments', 'RateStructures', 'Reconciliations', 'ReebillCharges', 'Reebills', 
                 'Services', 'Timestamps', 'Units', 'UtilityBills', 'UtilityBillRegisters', 'ReeBillVersions'
             ],
 
             models: [
-                'Account', 'AccountReeValue', 'AccountTemplate', 'Charge',
+                'Account', 'AccountTemplate', 'Charge',
                 'IssuableReebill', 'JournalEntry', 'Payment', 'Reconciliation',
                 'Reebill', 'ReebillCharge', 'UtilityBill', 'UtilityBillRegister'
             ],
