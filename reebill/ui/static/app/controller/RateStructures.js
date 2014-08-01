@@ -33,6 +33,9 @@ Ext.define('ReeBill.controller.RateStructures', {
     },{
         ref: 'groupTextField',
         selector: 'groupTextField'
+    },{
+        ref: 'roundRuleField',
+        selector: 'roundRuleTextField'
     }],
 
     init: function() {
@@ -46,7 +49,7 @@ Ext.define('ReeBill.controller.RateStructures', {
                 cellclick: this.handleCellClick
             },
             '#rateStructureGridView': {
-                refresh: this.updateGroupTextField
+                refresh: this.updateTextFields
             },
             'panel[name=rateStructuresTab]': {
                 activate: this.handleActivate
@@ -65,6 +68,9 @@ Ext.define('ReeBill.controller.RateStructures', {
             },
             'groupTextField':{
                 specialkey: this.handleGroupTextFieldEnter
+            },
+            'roundRuleTextField':{
+                specialkey: this.handleRoundRuleFieldEnter
             }
         });
 
@@ -78,6 +84,7 @@ Ext.define('ReeBill.controller.RateStructures', {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var field = this.getFormulaField();
         var groupTextField = this.getGroupTextField();
+        var roundRuleField = this.getRoundRuleField();
 
         if (!selectedBill.length)
             return;
@@ -88,8 +95,10 @@ Ext.define('ReeBill.controller.RateStructures', {
         store.getProxy().extraParams = params;
         store.load();
 
+        // Disable Text Fields on Activate
         field.setDisabled(true);
         groupTextField.setDisabled(true);
+        roundRuleField.setDisabled(true);
     },
 
     /**
@@ -119,6 +128,7 @@ Ext.define('ReeBill.controller.RateStructures', {
 
         if (e.getKey() == e.ENTER) {
             record.set(formulaIndex, field.getValue());
+            this.getRateStructuresGrid().focus();
         }
         console.log(record, formulaIndex, field.getValue());
     },
@@ -132,6 +142,20 @@ Ext.define('ReeBill.controller.RateStructures', {
 
         if (e.getKey() == e.ENTER) {
             selected.set('group', field.getValue());
+            this.getRateStructuresGrid().focus();
+        }
+    },
+
+    /**
+     * Handle a special key press in the GroupTextField
+     */
+    handleRoundRuleFieldEnter: function(f, e, eOpts) {
+        var field = this.getRoundRuleField();
+        var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
+
+        if (e.getKey() == e.ENTER) {
+            selected.set('roundrule', field.getValue());
+            this.getRateStructuresGrid().focus();
         }
     },
 
@@ -145,21 +169,26 @@ Ext.define('ReeBill.controller.RateStructures', {
 
         // Set group in GroupTextField
         if(hasSelections && selected !== undefined){
-            this.updateGroupTextField();
+            this.updateTextFields();
         }
      },
 
     /**
-     * Update the GroupTextField
+     * Update the GroupTextField & RoundRuleTextField
      */
-    updateGroupTextField: function(){
+    updateTextFields: function(){
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
 
         if(hasSelections && selected !== undefined){
             var groupTextField = this.getGroupTextField();
+            var roundRuleField = this.getRoundRuleField();
+
             groupTextField.setDisabled(false);
             groupTextField.setValue(selected.get('group'));
+
+            roundRuleField.setDisabled(false);
+            roundRuleField.setValue(selected.get('roundrule'));
         }
     },
 

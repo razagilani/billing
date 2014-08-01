@@ -111,16 +111,6 @@ Ext.define('ReeBill.view.RateStructures', {
             return (record.get('error') ? record.get('error') : value)
         }
     },{
-        header: 'Round Rule',
-        sortable: true,
-        dataIndex: 'round_rule',
-        editor: {
-            xtype: 'textfield',
-            allowBlank: false
-        },
-        flex: 0,
-        width: 100
-    },{
         header: 'Has Charge',
         dataIndex: 'has_charge',
         sortable: true,
@@ -171,6 +161,9 @@ Ext.define('ReeBill.view.RateStructures', {
         },'-',{
             xtype: 'groupTextField',
             name: 'groupTextField'
+        },'-',{
+            xtype: 'roundRuleTextField',
+            name: 'roundRuleTextField'
         }]
     }]
 });
