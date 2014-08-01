@@ -27,6 +27,11 @@
     color: blue;
 }
 
+.ratestructure-grid-error{
+    font-weight: bold;
+    color: red;
+}
+
 .messageBoxOverflow .x-box-inner .x-box-inner {
     overflow: auto;
 }
