@@ -12,6 +12,9 @@ Ext.define('ReeBill.controller.Journal', {
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
     },{
+        ref: 'reebillsGrid',
+        selector: 'grid[id=reebillsGrid]'
+    },{
         ref: 'journalEntriesGrid',
         selector: 'grid[id=journalEntriesGrid]'
     }],    
@@ -32,29 +35,37 @@ Ext.define('ReeBill.controller.Journal', {
                 click: this.handleNoteReset
             }
         });
+
+        this.getJournalEntriesStore().on({
+            add: this.handleNoteReset,
+            scope: this
+        });
     },
 
     /**
      * Handle the submit button being clicked.
      */
     handleSubmit: function() {
-        var scope = this;
+        var me = this;
+        var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection()[0];
+        var selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection()[0];
+        var content = this.getNoteForm().getForm().getFields().getAt(0).getValue();
+        var account = null;
+        var sequence = null;
 
-        var selectedAccount = scope.getAccountsGrid().getSelectionModel().getSelection()[0];
+        if(selectedAccount !== undefined){
+            account = selectedAccount.get('account');
+        }
+        if(selectedReebill !== undefined){
+            sequence = selectedReebill.get('sequence');
+        }
 
-        this.getNoteForm().getForm().submit({
-            url: 'http://'+window.location.host+'/rest/save_journal_entry',
-            params: {
-                account: selectedAccount.get('account'),
-                sequence: null
-            },
-            success: function() {
-                scope.getNoteForm().getForm().reset();
-            },
-            failure: function(form, action) {
-                Ext.Msg.alert('Error', 'Error uploading note.')
-            }
-        }); 
+        var store = this.getJournalEntriesStore();
+        store.add({
+            account: account,
+            sequence: sequence,
+            msg: content
+        })
     },
 
     /**
