@@ -73,19 +73,18 @@ Ext.define('ReeBill.view.RateStructures', {
         flex: 0,
         width: 150
     },{
+        xtype: 'templatecolumn',
         header: 'Quantity',
         id: 'quantity',
         sortable: true,
-        dataIndex: 'quantity',
+        dataIndex: 'quantity_formula',
         editor: {
             xtype: 'textfield',
             allowBlank: false
         },
         flex: 1,
         width: 250,
-        renderer: function(value, metaData, record){
-            return (record.get('error') ? record.get('error') : value)
-        }
+        tpl: '{[values.error ? values.error : values.quantity]}'
     },{
         header: 'Units',
         sortable: true,
@@ -97,9 +96,10 @@ Ext.define('ReeBill.view.RateStructures', {
         flex: 0,
         width: 70
     },{
+        xtype: 'templatecolumn',
         header: 'Rate',
         sortable: true,
-        dataIndex: 'rate',
+        dataIndex: 'rate_formula',
         editor: {
             xtype: 'textfield',
             allowBlank: false
@@ -107,9 +107,7 @@ Ext.define('ReeBill.view.RateStructures', {
         flex: 1,
         width: 250,
         allowBlank: false,
-        renderer: function(value, metaData, record){
-            return (record.get('error') ? record.get('error') : value)
-        }
+        tpl: '{[values.error ? values.error : values.rate]}'
     },{
         header: 'Has Charge',
         dataIndex: 'has_charge',
