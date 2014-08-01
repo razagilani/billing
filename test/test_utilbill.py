@@ -20,6 +20,17 @@ from processing.state import UtilBill, Customer, Session, Charge, Address
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
+    # function to check error state of a charge
+    def assert_error(self, c, error_message):
+        '''Assert that the Charge 'c' has None for its quantity/rate/total
+        and 'error_message' in its 'error' field.
+        '''
+        self.assertIsNone(c.quantity)
+        self.assertIsNone(c.rate)
+        self.assertIsNone(c.total)
+        self.assertIsNotNone(c.error)
+        self.assertEqual(error_message, c.error)
+
     def test_compute(self):
         utilbill_doc = {
             'account': '12345', 'service': 'gas', 'utility': 'utility',
@@ -154,14 +165,6 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             return next(c.total for c in utilbill.charges
                     if c.rsi_binding == rsi_binding)
 
-        # function to check error state of a charge
-        def assert_error(c, error_message):
-            self.assertIsNone(c.quantity)
-            self.assertIsNone(c.rate)
-            self.assertIsNone(c.total)
-            self.assertIsNotNone(c.error)
-            self.assertEqual(error_message, c.error)
-
         # 'raise_exception' argument validates that all charges were computed
         # without errors. if this argument is given, all the charges without
         # errors still be correct, and the exception raised only after computing
@@ -174,11 +177,14 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
         # check "total" for each of the charges in the utility bill at the
@@ -189,11 +195,14 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
@@ -207,11 +216,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(
+            utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
@@ -225,13 +236,66 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        assert_error(utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
+
+    def test_compute_charges_with_cycle(self):
+        # irrelevant fields are ommitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [{
+                'registers': [{
+                    'register_binding': 'REG_TOTAL',
+                    'quantity': 150,
+                }]
+            }],
+        }
+
+        rs = RateStructure(rates=[
+            # circular dependency between A and B: A depends on B's "quantity"
+            # and B depends on A's "rate", which is not allowed even though
+            # theoretically both could be computed.
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='B.quantity',
+                quantity_units='kWh',
+                rate='0',
+            ),
+            RateStructureItem(
+                rsi_binding='B',
+                quantity='0',
+                quantity_units='kWh',
+                rate='A.rate',
+            ),
+            # C depends on itself
+            RateStructureItem(
+                rsi_binding='C',
+                quantity='C.total',
+                quantity_units='kWh',
+                rate='0',
+            ),
+        ])
+        session = Session()
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        session.add(utilbill)
+        utilbill.refresh_charges(rs.rates)
+        utilbill.compute_charges(rs, utilbill_doc)
+
+        self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
+                "Error in quantity formula: name 'B' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
+                "Error in rate formula: name 'A' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
+                "Error in quantity formula: name 'C' is not defined")
 
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
