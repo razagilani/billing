@@ -24,14 +24,20 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertIsNotNone(c.error)
         self.assertEqual(error_message, c.error)
 
-    def assert_charge_values(self, quantity, rate, total, c):
+    def assert_charge_values(self, quantity, rate, c):
+        '''Assert that the charge 'c' has the given quantity and rate,
+        total = quantity * rate, and no error.
+        '''
         self.assertEqual(quantity, c.quantity)
         self.assertEqual(rate, c.rate)
-        self.assertEqual(total, c.total)
+        self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
 
     def test_compute(self):
-        # irrelevant fields are ommitted from this document
+        '''Test computing a variety of charges (including charges with
+        formula errors) with different register quantities as input.
+        '''
+        # irrelevant fields are omitted from this document
         utilbill_doc = {
             'charges': [],
             'meters': [{
@@ -141,12 +147,12 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # all the charges
         with self.assertRaises(RSIError):
             utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
-        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
-        self.assert_charge_values(310, 0.1, 31, get('LINEAR_PLUS_CONSTANT'))
-        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
-        self.assert_charge_values(50, 0.2, 10, get('BLOCK_2'))
-        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
-        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(310, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
@@ -161,13 +167,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # register quantity of 150 therms. there should not be a charge for
         # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
         # structure.
-        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
-        self.assert_charge_values(450, 0.1, 45, get('LINEAR'))
-        self.assert_charge_values(310, 0.1, 31, get('LINEAR_PLUS_CONSTANT'))
-        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
-        self.assert_charge_values(50, 0.2, 10, get('BLOCK_2'))
-        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
-        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(450, 0.1, get('LINEAR'))
+        self.assert_charge_values(310, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
         self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
         self.assert_error(get('DIV_BY_ZERO_ERROR'),
@@ -178,13 +184,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
         utilbill.compute_charges(uprs, utilbill_doc)
-        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
-        self.assert_charge_values(750, 0.1, 75, get('LINEAR'))
-        self.assert_charge_values(510, 0.1, 51, get('LINEAR_PLUS_CONSTANT'))
-        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
-        self.assert_charge_values(150, 0.2, 30, get('BLOCK_2'))
-        self.assert_charge_values(50, 0.1, 5, get('BLOCK_3'))
-        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(750, 0.1, get('LINEAR'))
+        self.assert_charge_values(510, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(150, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(50, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
         self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
         self.assert_error(get('DIV_BY_ZERO_ERROR'),
@@ -195,13 +201,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
         utilbill.compute_charges(uprs, utilbill_doc)
-        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
-        self.assert_charge_values(0, 0.1, 0, get('LINEAR'))
-        self.assert_charge_values(10, 0.1, 1, get('LINEAR_PLUS_CONSTANT'))
-        self.assert_charge_values(0, 0.3, 0, get('BLOCK_1'))
-        self.assert_charge_values(0, 0.2, 0, get('BLOCK_2'))
-        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
-        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(0, 0.1, get('LINEAR'))
+        self.assert_charge_values(10, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(0, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(0, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
         self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
         self.assert_error(get('DIV_BY_ZERO_ERROR'),
@@ -211,7 +217,10 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_compute_charges_with_cycle(self):
-        # irrelevant fields are ommitted from this document
+        '''Test computing charges whose dependencies form a cycle.
+        All such charges should have errors.
+        '''
+        # irrelevant fields are omitted from this document
         utilbill_doc = {
             'charges': [],
             'meters': [{
