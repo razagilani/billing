@@ -8,6 +8,7 @@ Ext.define('ReeBill.view.UploadUtilityBill', {
     bodyPadding: 15,
     titleCollapse: true,
     floatable: false,
+    collapsed: true,
     
     defaults: {
         anchor: '100%'
