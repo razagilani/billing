@@ -642,14 +642,13 @@ class ReeBill(Base):
             else:
                 break
 
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+        # charges that don't depend on other charges can be evaluated before
+        # ones that do.
         evaluation_order = list(independent_rsi_numbers)
 
         evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
-        assert len(evaluation_order) == len(rsis)
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
