@@ -1,6 +1,9 @@
 Ext.define('ReeBill.model.UtilityBill', {
     extend: 'Ext.data.Model',
     fields: [
+        {name: 'action'}, // Allows for other actions besides CRUD (e.g. 'render')
+        {name: 'action_value'}, // Additional data associated with the action
+        // Model data
         {name: 'id'},
         {name: 'name'},
         {name: 'account'},

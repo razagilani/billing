@@ -468,10 +468,12 @@ class ReebillsResource(RESTResource):
         row = cherrypy.request.json
         r = self.state_db.get_reebill_by_id(reebill_id)
         sequence, account = r.sequence, r.customer.account
+        action = row.pop('action')
+        action_value = row.pop('action_value')
         # Initialize the return value to the client
         rtn = None
 
-        if row['action'] == 'bindree':
+        if action == 'bindree':
             if self.config.get('runtime', 'integrate_skyline_backend') is False:
                 raise ValueError("OLTP is not integrated")
             if self.config.get('runtime', 'integrate_nexus') is False:
@@ -483,7 +485,7 @@ class ReebillsResource(RESTResource):
                 account, sequence, r.version)
             rtn = reebill.column_dict()
 
-        elif row['action'] == 'render':
+        elif action == 'render':
             if not self.config.get('billimages', 'show_reebill_images'):
                 raise RenderError('Render does nothing because reebill'
                                   ' images have been turned off.')
@@ -496,11 +498,11 @@ class ReebillsResource(RESTResource):
             )
             rtn = row
 
-        elif row['action'] == 'mail':
-            if not row['action_value']:
+        elif action == 'mail':
+            if not action_value:
                 raise ValueError("Got no value for row['action_value']")
 
-            recipients = row['action_value']
+            recipients = action_value
             recipient_list = [rec.strip() for rec in recipients.split(',')]
 
             self.process.mail_reebills(account, [int(sequence)], recipient_list)
@@ -511,18 +513,18 @@ class ReebillsResource(RESTResource):
                     cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
-        elif row['action'] == 'compute':
+        elif action == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
             rtn = rb.column_dict()
 
-        elif row['action'] == 'newversion':
+        elif action == 'newversion':
             rb = self.process.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
                     account, sequence, version)
             rtn = rb.column_dict()
 
-        elif not row['action']:
+        elif not action:
             # Regular PUT request. In this case this means updated
             # Sequential Account Information
 
@@ -619,21 +621,37 @@ class UtilBillResource(RESTResource):
         return True, {'success': 'true'}
 
     def handle_put(self, utilbill_id, *vpath, **params):
-        # convert JSON key/value pairs into arguments for
-        # Process.update_utilbill_metadata below
-        update_args = {}
-        for k, v in cherrypy.request.json.iteritems():
-            if k in ('period_start', 'period_end'):
-                update_args[k] = datetime.strptime(
-                    v, ISO_8601_DATE).date()
-            elif k == 'service':
-                update_args[k] = v.lower()
-            elif k in ('total_charges', 'utility', 'rate_class', 'processed'):
-                update_args[k] = v
+        row = cherrypy.request.json
+        action = row.pop('action')
+        action_value = row.pop('action_value')
+        result= {}
 
-        self.process.update_utilbill_metadata(utilbill_id, **update_args)
+        if action == 'regenerate_charges':
+            ub = self.process.compute_utility_bill(utilbill_id)
+            result = ub.column_dict()
 
-        return True, {}
+        elif action == '':
+            # convert JSON key/value pairs into arguments for
+            # Process.update_utilbill_metadata below
+            update_args = {}
+            for k, v in row.iteritems():
+                if k in ('period_start', 'period_end'):
+                    update_args[k] = datetime.strptime(
+                        v, ISO_8601_DATE).date()
+                elif k == 'service':
+                    update_args[k] = v.lower()
+                elif k in ('total_charges', 'utility',
+                           'rate_class', 'processed'):
+                    update_args[k] = v
+
+            result = self.process.update_utilbill_metadata(
+                utilbill_id, **update_args).column_dict()
+
+        # Reset the action parameters, so the client can coviniently submit
+        # the same action again
+        result['action'] = ''
+        result['action_value'] = ''
+        return True, {'rows': result, 'results': 1}
 
     def handle_delete(self, utilbill_id, account, *vpath, **params):
         utilbill, deleted_path = self.process.delete_utility_bill_by_id(
