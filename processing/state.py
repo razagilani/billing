@@ -1047,26 +1047,37 @@ class UtilBill(Base):
                     independent_rsi_numbers.discard(other_rsi_num)
                     independent_rsi_numbers.discard(this_rsi_num)
 
+        # 'evaluation_order' now contains only the indices of charges that don't
+        # have dependencies. topological sort the dependency graph to find an
+        # evaluation order that works for the charges that do have dependencies.
+        while True:
+            try:
+                sorted_graph = tsort.topological_sort(dependency_graph)
+            except tsort.GraphError as g:
+                cycle = g.args[1]
+                # remove these RSIs from the graph and make it independent
+                # of the others
+                for i in cycle:
+                    independent_rsi_numbers.add(i)
+                    for j, k in dependency_graph:
+                        if i in (j, k):
+                            dependency_graph.remove((j, k))
+                # if the graph contains a cycle, provide a more comprehensible
+                # error message with the charge numbers converted back to names
+                #names_in_cycle = ', '.join(rsis[i].rsi_binding for i in cycle)
+                # raise RSIError('Circular dependency: %s' % names_in_cycle)
+                # # TODO set error field for each charge instead
+            else:
+                break
+
         # charges that don't depend on other charges can be evaluated before ones
         # that do.
         evaluation_order = list(independent_rsi_numbers)
 
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        try:
-            evaluation_order.extend(tsort.topological_sort(dependency_graph))
-        except tsort.GraphError as g:
-            # if the graph contains a cycle, provide a more comprehensible error
-            # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(rsis[i].rsi_binding for i in g.args[1])
-            raise RSIError('Circular dependency: %s' % names_in_cycle)
-
+        evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
         all_charges = {charge.rsi_binding: charge for charge in self.charges}
-
-        assert len(evaluation_order) == len(rsis)
 
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
