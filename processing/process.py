@@ -167,7 +167,7 @@ class Process(object):
             .filter(Charge.id == charge_id).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
-        self.compute_utility_bill(charge.utilbill_id)
+        self.compute_utility_bill(charge.utilbill.id)
         charge = session.query(Charge)\
             .filter(Charge.id == charge_id).one()
         return charge
