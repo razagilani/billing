@@ -21,17 +21,8 @@ Ext.define('ReeBill.view.AccountForm', {
         },
         collapsible: false,
         items: [{
-            xtype: 'combo',
+            xtype: 'accountsCombo',
             name: 'template_account',
-            store: 'AccountTemplates',
-            fieldLabel: 'Based on',
-            displayField: 'name',
-            valueField: 'account',
-            typeAhead: true,
-            triggerAction: 'all',
-            emptyText:'Select...',
-            selectOnFocus:true,
-            allowBlank: false
         },{
             xtype: 'textfield',
             fieldLabel: 'Account',

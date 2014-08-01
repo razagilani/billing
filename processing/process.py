@@ -1283,36 +1283,6 @@ class Process(object):
         name_dicts = sorted(all_accounts_all_names.iteritems())
         return name_dicts
 
-    def full_names_of_accounts(self, accounts):
-        '''Given a list of account numbers (as strings), returns a list
-        containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus" (sorted by
-        account). Names that do not exist for a given account are skipped.'''
-        # get list of customer name dictionaries sorted by their billing account
-        name_dicts = self.all_names_of_accounts(accounts)
-        result = []
-        for account, all_names in name_dicts:
-            res = account + ' - '
-            # Only include the names that exist in Nexus
-            names = [all_names[name] for name in
-                ('codename', 'casualname', 'primus')
-                if all_names.get(name)]
-            res += '/'.join(names)
-            if len(names) > 0:
-                res += ' - '
-            #Append utility and rate_class from the last utilbill for the
-            #account if one exists as per
-            #https://www.pivotaltracker.com/story/show/58027082
-            try:
-                last_utilbill = self.state_db.get_last_utilbill(account)
-            except NoSuchBillException:
-                #No utilbill found, just don't append utility info
-                pass
-            else:
-                res += "%s: %s" %(last_utilbill.utility,
-                last_utilbill.rate_class)
-            result.append(res)
-        return result
 
     def get_all_utilbills_json(self, account, start, limit):
         # result is a list of dictionaries of the form {account: account
@@ -1581,15 +1551,6 @@ class Process(object):
             return int(row['account'])<20000
         def filter_brokeragecustomers(row):
             return int(row['account'])>=20000
-        # Function to format the "Utility Service Address" grid column
-        def format_service_address(service_address, account):
-            try:
-                return '%(street)s, %(city)s, %(state)s' % service_address
-            except KeyError as e:
-                self.logger.error(('Utility bill service address for %s '
-                        'lacks key "%s": %s') % (
-                                account, e.message, service_address))
-                return '?'
 
         statuses = self.state_db.retrieve_status_days_since(sortcol,
                 sort_reverse)
@@ -1614,9 +1575,9 @@ class Process(object):
             }
             if sortcol=='utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(status.account)
-                    service_address=format_service_address(service_address,
-                                                            status.account)
+                     status.ub = self.state_db.get_last_real_utilbill(
+                         status.account, datetime.utcnow())
+                     service_address = str(status.ub.service_address)
                 except NoSuchBillException:
                     service_address = ''
                 new_record['utilityserviceaddress']=service_address
@@ -1640,15 +1601,17 @@ class Process(object):
             row['lastevent']=self.journal_dao.last_event_summary(row['account'])
             if sortcol != 'utilityserviceaddress':
                 try:
-                    service_address = self.get_service_address(row['account'])
-                    service_address=format_service_address(service_address,
-                                                            row['account'])
+                     status.ub = self.state_db.get_last_real_utilbill(
+                         status.account, datetime.utcnow())
+                     service_address = str(status.ub.service_address)
                 except NoSuchBillException:
                     service_address = ''
                 row['utilityserviceaddress']=service_address
-            elif sortcol != 'lastissuedate':
+            if sortcol != 'lastissuedate':
                 last_reebill = self.state_db.get_last_reebill(
                      row['account'], issued_only=True)
-                row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+                row['lastissuedate'] = last_reebill.issue_date if \
+                     last_reebill else ''
+                row['lastrateclass'] = status.ub.rate_class if status.ub else ''
 
         return total_length, rows
