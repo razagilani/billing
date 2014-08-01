@@ -127,21 +127,6 @@ Ext.define('ReeBill.view.Viewport', {
                         region: 'center'                        
                     }]
                 },{
-                    xtype: 'panel',
-                    name: 'chargesTab',
-                    title: 'Charges',
-                    layout: 'border',
-                    disabled: true,
-                    defaults: {
-                        collapsible: true,
-                        split: true
-                    },
-                    items: [{
-                        xtype: 'charges',
-                        id: 'chargesGrid',
-                        region: 'center'
-                    }]
-                },{
                     xtype: 'payments',
                     id: 'paymentsGrid',
                     disabled: true
