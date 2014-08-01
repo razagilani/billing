@@ -764,6 +764,14 @@ class JournalRessource(RESTResource):
         journal_entries = self.journal_dao.load_entries(account)
         return True, {'rows': journal_entries,  'results': len(journal_entries)}
 
+    def handle_post(self,  *vpath, **params):
+        account = cherrypy.request.json['account']
+        sequence = cherrypy.request.json['sequence']
+        sequence = sequence if sequence else None
+        message = cherrypy.request.json['msg']
+        note = journal.Note.save_instance(cherrypy.session['user'], account,
+                                          message, sequence=sequence)
+        return True, {'rows': note.to_dict(), 'results': 1}
 
 class BillToolBridge(WebResource):
     accounts = AccountsResource()

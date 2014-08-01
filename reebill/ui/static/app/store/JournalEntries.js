@@ -4,7 +4,7 @@ Ext.define('ReeBill.store.JournalEntries', {
     model: 'ReeBill.model.JournalEntry',
 
     autoLoad: false,
-    disableCaching: true,
+    autoSync: true,
     remoteSort: false,
 
     idProperty: '_id',

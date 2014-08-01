@@ -130,6 +130,7 @@ class Note(Event):
         if sequence is not None:
             result.sequence = sequence
         result.save()
+        return result
 
     def __str__(self):
         return 'Note: %s' % (self.msg)
@@ -141,7 +142,10 @@ class Note(Event):
         result = super(Note, self).to_dict()
         if hasattr(self, 'sequence'):
             result.update({'sequence': self.sequence})
-        result.update({'msg': self.msg})
+        result.update({
+            'msg': self.msg,
+            'event': str(self)
+        })
         return result
 
 class UtilBillDeletedEvent(Event):
