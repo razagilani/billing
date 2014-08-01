@@ -2,20 +2,13 @@
 included in it.
 '''
 from datetime import date
-from StringIO import StringIO
-
-import dateutil
-from bson import ObjectId
 
 from billing.exc import RSIError
-from processing.session_contextmanager import DBSession
 from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import NoRSIError
-import example_data
-from processing.state import UtilBill, Customer, Session, Charge, Address
+from processing.state import UtilBill, Customer, Session, Address
 
 
 class UtilBillTest(TestCaseWithSetup, utils.TestCase):
@@ -31,45 +24,26 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assertIsNotNone(c.error)
         self.assertEqual(error_message, c.error)
 
+    def assert_charge_values(self, quantity, rate, total, c):
+        self.assertEqual(quantity, c.quantity)
+        self.assertEqual(rate, c.rate)
+        self.assertEqual(total, c.total)
+        self.assertEqual(None, c.error)
+
     def test_compute(self):
+        # irrelevant fields are ommitted from this document
         utilbill_doc = {
-            'account': '12345', 'service': 'gas', 'utility': 'utility',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "rate class",
-            'charges': [
-                {'rsi_binding': 'CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR_PLUS_CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_1', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_2', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_3', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'REFERENCES_ANOTHER', 'quantity': 0,
-                        'group': 'All Charges'},
-            ],
+            'charges': [],
             'meters': [{
-                'present_read_date': date(2000,2,1),
-                'prior_read_date': date(2000,1,1),
-                'identifier': 'ABCDEF',
                 'registers': [{
-                    'identifier': 'GHIJKL',
                     'register_binding': 'REG_TOTAL',
                     'quantity': 150,
-                    'quantity_units': 'therms',
                 }]
             }],
-            'billing_address': {}, # addresses are irrelevant
-            'service_address': {},
         }
 
         # rate structure document containing some common RSI types
         uprs = RateStructure(
-            id=ObjectId(),
             rates=[
                 RateStructureItem(
                     rsi_binding='CONSTANT',
@@ -152,18 +126,14 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 ),
             ]
         )
-        session = Session()
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
                 'gas', 'utility', 'rate class', Address(), Address())
-        session.add(utilbill)
+        Session().add(utilbill)
         utilbill.refresh_charges(uprs.rates)
         utilbill.compute_charges(uprs, utilbill_doc)
 
-        # function to get the "total" value of a charge from its name
-        def the_charge_named(rsi_binding):
-            return next(c.total for c in utilbill.charges
-                    if c.rsi_binding == rsi_binding)
+        get = utilbill.get_charge_by_rsi_binding
 
         # 'raise_exception' argument validates that all charges were computed
         # without errors. if this argument is given, all the charges without
@@ -171,12 +141,12 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # all the charges
         with self.assertRaises(RSIError):
             utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
-        self.assertDecimalAlmostEqual(31,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
+        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
+        self.assert_charge_values(310, 0.1, 31, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, 10, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
@@ -188,61 +158,55 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 "Error in quantity formula: name 'x' is not defined")
 
         # check "total" for each of the charges in the utility bill at the
-        # register quantity of 150 therms. there should not be a charge for # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate # structure. self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT')) self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(31,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        # register quantity of 150 therms. there should not be a charge for
+        # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
+        # structure.
+        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
+        self.assert_charge_values(450, 0.1, 45, get('LINEAR'))
+        self.assert_charge_values(310, 0.1, 31, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, 10, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
         utilbill.compute_charges(uprs, utilbill_doc)
-        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
-        self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(51,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
+        self.assert_charge_values(750, 0.1, 75, get('LINEAR'))
+        self.assert_charge_values(510, 0.1, 51, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, 30, get('BLOCK_1'))
+        self.assert_charge_values(150, 0.2, 30, get('BLOCK_2'))
+        self.assert_charge_values(50, 0.1, 5, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        self.assert_error(
-            utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
         utilbill.compute_charges(uprs, utilbill_doc)
-        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(1,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+        self.assert_charge_values(100, 0.4, 40, get('CONSTANT'))
+        self.assert_charge_values(0, 0.1, 0, get('LINEAR'))
+        self.assert_charge_values(10, 0.1, 1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(0, 0.3, 0, get('BLOCK_1'))
+        self.assert_charge_values(0, 0.2, 0, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, 0, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, 5, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
                 'Error in rate formula: division by zero')
-        self.assert_error(
-                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
 
 
@@ -282,11 +246,10 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 rate='0',
             ),
         ])
-        session = Session()
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
                 'gas', 'utility', 'rate class', Address(), Address())
-        session.add(utilbill)
+        Session().add(utilbill)
         utilbill.refresh_charges(rs.rates)
         utilbill.compute_charges(rs, utilbill_doc)
 
