@@ -78,6 +78,10 @@ Ext.define('ReeBill.controller.RateStructures', {
             write: this.handleActivate,
             scope: this
         });
+        this.getRateStructuresStore().on({
+            write: this.handleRowSelect,
+            scope: this
+        });
     },
 
     /**
@@ -186,12 +190,19 @@ Ext.define('ReeBill.controller.RateStructures', {
         if(hasSelections && selected !== undefined){
             var groupTextField = this.getGroupTextField();
             var roundRuleField = this.getRoundRuleField();
+            var formulaField = this.getFormulaField();
 
             groupTextField.setDisabled(false);
             groupTextField.setValue(selected.get('group'));
 
             roundRuleField.setDisabled(false);
             roundRuleField.setValue(selected.get('roundrule'));
+
+            if(formulaField.lastRecord && formulaField.lastDataIndex &&
+                formulaField.lastRecord.get('id') === selected.get('id')){
+                    var formulaIndex = selected.getFormulaKey(formulaField.lastDataIndex);
+                    formulaField.setValue(selected.get(formulaIndex));
+            }
         }
     },
 
