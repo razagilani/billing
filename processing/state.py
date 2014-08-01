@@ -1054,37 +1054,27 @@ class UtilBill(Base):
                         # unknown variable in RSI formula: leave the RSI in
                         # 'independent_rsi_numbers'
                         continue
+
+                    # if this_rsi_num can be added to the graph without creating
+                    # a cycle, add it. otherwise skip it. if the  graph is
+                    # sorted successfully, 'sorted_graph' will be used below
+                    try:
+                        sorted_graph = tsort.topological_sort(dependency_graph
+                                + [(other_rsi_num, this_rsi_num)])
+                    except tsort.GraphError as g:
+                        continue
+
                     # a pair (x,y) means x precedes y, i.e. y depends on x
                     dependency_graph.append((other_rsi_num, this_rsi_num))
                     independent_rsi_numbers.discard(other_rsi_num)
                     independent_rsi_numbers.discard(this_rsi_num)
 
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        # if there's a cycle, remove charges in the cycle and try again,
-        # repeating until the graph has no cycles.
-        while True:
-            try:
-                sorted_graph = tsort.topological_sort(dependency_graph)
-            except tsort.GraphError as g:
-                cycle = g.args[1]
-                # remove these RSIs from the graph and make it independent
-                # of the others. when they're computed they'll have an
-                # "unknown identifier" error.
-                for i in cycle:
-                    independent_rsi_numbers.add(i)
-                    for j, k in dependency_graph:
-                        if i in (j, k):
-                            dependency_graph.remove((j, k))
-            else:
-                break
-
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+        # charges that don't depend on other charges can be evaluated at any
+        # time. if there are charges that depend on other charges, they have
+        # to be evaluated in the order described by 'sorted_graph'
         evaluation_order = list(independent_rsi_numbers)
-
-        evaluation_order.extend(sorted_graph)
+        if dependency_graph != []:
+            evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
         all_charges = {charge.rsi_binding: charge for charge in self.charges}
