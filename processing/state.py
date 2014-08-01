@@ -844,8 +844,9 @@ class UtilBill(Base):
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
         """
-        for charge in self.charges:
-            charge.validate_formulas(self.bindings)
+        if raise_exception:
+            for charge in self.charges:
+                charge.validate_formulas(self.bindings)
         context = {r.register_binding: BindingEvaluation(r.quantity) for r in
                    self.registers}
         for charge in self.ordered_charges():

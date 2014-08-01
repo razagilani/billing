@@ -1,6 +1,9 @@
 '''Unit tests for the UtilBill class and other code that will eventually be
 included in it.
 '''
+from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+init_logging()
+from billing import init_config, init_model
 from datetime import date
 from StringIO import StringIO
 
@@ -10,144 +13,129 @@ from bson import ObjectId
 from billing.exc import RSIError
 from processing.session_contextmanager import DBSession
 from billing.test import utils
-from billing.processing.rate_structure2 import RateStructure, RateStructureItem
+#from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import NoRSIError
 import example_data
-from processing.state import UtilBill, Customer, Session, Charge
+from billing.processing.state import UtilBill, Customer, Session, Charge, Address, \
+    Register
 
+class UtilBillTest(TestCaseWithSetup):
 
-class UtilBillTest(TestCaseWithSetup, utils.TestCase):
+    def setUp(self):
+        init_config('tstsettings.cfg')
+        init_model()
+        self.session = Session()
+        TestCaseWithSetup.truncate_tables(self.session)
+
 
     def test_compute(self):
-        utilbill_doc = {
-            'account': '12345', 'service': 'gas', 'utility': 'utility',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "rate class",
-            'charges': [
-                {'rsi_binding': 'CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR_PLUS_CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_1', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_2', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_3', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'REFERENCES_ANOTHER', 'quantity': 0,
-                        'group': 'All Charges'},
-            ],
-            'meters': [{
-                'present_read_date': date(2000,2,1),
-                'prior_read_date': date(2000,1,1),
-                'identifier': 'ABCDEF',
-                'registers': [{
-                    'identifier': 'GHIJKL',
-                    'register_binding': 'REG_TOTAL',
-                    'quantity': 150,
-                    'quantity_units': 'therms',
-                }]
-            }],
-            'billing_address': {}, # addresses are irrelevant
-            'service_address': {},
-        }
 
-        # rate structure document containing some common RSI types
-        uprs = RateStructure(
-            id=ObjectId(),
-            rates=[
-                RateStructureItem(
-                    rsi_binding='CONSTANT',
-                    quantity='100',
-                    quantity_units='dollars',
-                    rate='0.4',
-                ),
-                RateStructureItem(
-                  rsi_binding='LINEAR',
-                  quantity='REG_TOTAL.quantity * 3',
-                  quantity_units='therms',
-                  rate='0.1',
-                ),
-                RateStructureItem(
-                  rsi_binding='LINEAR_PLUS_CONSTANT',
-                  quantity='REG_TOTAL.quantity * 2 + 10',
-                  quantity_units='therms',
-                  rate='0.1',
-                ),
-                RateStructureItem(
-                  rsi_binding='BLOCK_1',
-                  quantity='min(100, REG_TOTAL.quantity)',
-                  quantity_units='therms',
-                  rate='0.3',
-                ),
-                RateStructureItem(
-                  rsi_binding='BLOCK_2',
-                  quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
-                  quantity_units='therms',
-                  rate='0.2',
-                ),
-                RateStructureItem(
-                  rsi_binding='BLOCK_3',
-                  quantity='max(0, REG_TOTAL.quantity - 200)',
-                  quantity_units='therms',
-                  rate='0.1',
-                ),
-                RateStructureItem(
-                    rsi_binding='REFERENCES_ANOTHER',
-                    # TODO also try "total" here
-                    quantity='REFERENCED_BY_ANOTHER.quantity + '
-                             'REFERENCED_BY_ANOTHER.rate',
-                    quantity_units='therms',
-                    rate='1',
-                ),
-                RateStructureItem(
-                  rsi_binding='NO_CHARGE_FOR_THIS_RSI',
-                  quantity='1',
-                  quantity_units='therms',
-                  rate='1',
-                ),
-                # this RSI has no charge associated with it, but is used to
-                # provide identifiers in the formula of the "REFERENCES_ANOTHER"
-                # RSI in 'uprs'
-                RateStructureItem(
-                    rsi_binding='REFERENCED_BY_ANOTHER',
-                    quantity='2',
-                    quantity_units='therms',
-                    rate='3',
-                ),
-                RateStructureItem(
-                    rsi_binding='SYNTAX_ERROR',
-                    quantity='5 + ',
-                    quantity_units='therms',
-                    rate='1',
-                ),
-                RateStructureItem(
-                    rsi_binding='DIV_BY_ZERO_ERROR',
-                    quantity='1',
-                    quantity_units='therms',
-                    rate='1 / 0',
-                ),
-                # shows that quantity formula error takes priority over rate
-                # formula error
-                RateStructureItem(
-                    rsi_binding='UNKNOWN_IDENTIFIER',
-                    quantity='x * 2',
-                    quantity_units='therms',
-                    rate='1 / 0',
-                ),
-            ]
-        )
+        rates = [
+            dict(
+                rsi_binding='CONSTANT',
+                quantity='100',
+                quantity_units='dollars',
+                rate='0.4',
+            ),
+            dict(
+              rsi_binding='LINEAR',
+              quantity='REG_TOTAL.quantity * 3',
+              quantity_units='therms',
+              rate='0.1',
+            ),
+            dict(
+              rsi_binding='LINEAR_PLUS_CONSTANT',
+              quantity='REG_TOTAL.quantity * 2 + 10',
+              quantity_units='therms',
+              rate='0.1',
+            ),
+            dict(
+              rsi_binding='BLOCK_1',
+              quantity='min(100, REG_TOTAL.quantity)',
+              quantity_units='therms',
+              rate='0.3',
+            ),
+            dict(
+              rsi_binding='BLOCK_2',
+              quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
+              quantity_units='therms',
+              rate='0.2',
+            ),
+            dict(
+              rsi_binding='BLOCK_3',
+              quantity='max(0, REG_TOTAL.quantity - 200)',
+              quantity_units='therms',
+              rate='0.1',
+            ),
+            dict(
+                rsi_binding='REFERENCES_ANOTHER',
+                # TODO also try "total" here
+                quantity='REFERENCED_BY_ANOTHER.quantity + '
+                         'REFERENCED_BY_ANOTHER.rate',
+                quantity_units='therms',
+                rate='1',
+            ),
+            dict(
+              rsi_binding='NO_CHARGE_FOR_THIS_RSI',
+              quantity='1',
+              quantity_units='therms',
+              rate='1',
+            ),
+            # this RSI has no charge associated with it, but is used to
+            # provide identifiers in the formula of the "REFERENCES_ANOTHER"
+            # RSI in 'uprs'
+            dict(
+                rsi_binding='REFERENCED_BY_ANOTHER',
+                quantity='2',
+                quantity_units='therms',
+                rate='3',
+            ),
+            dict(
+                rsi_binding='SYNTAX_ERROR',
+                quantity='5 + ',
+                quantity_units='therms',
+                rate='1',
+            ),
+            dict(
+                rsi_binding='DIV_BY_ZERO_ERROR',
+                quantity='1',
+                quantity_units='therms',
+                rate='1 / 0',
+            ),
+            # shows that quantity formula error takes priority over rate
+            # formula error
+            dict(
+                rsi_binding='UNKNOWN_IDENTIFIER',
+                quantity='x * 2',
+                quantity_units='therms',
+                rate='1 / 0',
+            ),
+        ]
+
         session = Session()
-        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
-                'nobody@example.com'), UtilBill.Complete,
-                'gas', 'utility', 'rate class')
+        utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
+                                     'nobody@example.com', 'FB Test Utility',
+                                     'FB Test Rate Class', Address(), Address()),
+                            UtilBill.Complete, 'gas', 'utility', 'rate class',
+                            Address(), Address(), period_start=date(2000,1,1),
+                            period_end=date(2000,2,1))
         session.add(utilbill)
-        utilbill.refresh_charges(uprs.rates)
-        utilbill.compute_charges(uprs, utilbill_doc)
+        session.flush()
+        register = Register(utilbill, "ABCDEF description", 150, 'therms',
+                 "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL")
+        session.add(register)
+
+        for rdct in rates:
+            print rdct, type(rdct)
+            session.add(Charge(utilbill, "Insert description here", "",
+                               0.0, rdct['quantity_units'], 0.0,
+                               rdct['rsi_binding'], 0.0,
+                               rate_formula=rdct['rate'],
+                               quantity_formula=rdct['quantity']))
+        session.flush()
+        utilbill.compute_charges()
 
         # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
@@ -167,7 +155,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         # errors still be correct, and the exception raised only after computing
         # all the charges
         with self.assertRaises(RSIError):
-            utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
+            utilbill.compute_charges(raise_exception=True)
         self.assertDecimalAlmostEqual(31,
                 the_charge_named('LINEAR_PLUS_CONSTANT'))
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
@@ -197,8 +185,10 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
-        utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
-        utilbill.compute_charges(uprs, utilbill_doc)
+        charge = session.query(Charge).filter_by(utilbill=utilbill).\
+            filter_by(rsi_binding="CONSTANT").one()
+        charge.quantity_formula = '250'
+        utilbill.compute_charges()
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(51,
@@ -215,8 +205,8 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
-        utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
-        utilbill.compute_charges(uprs, utilbill_doc)
+        charge.quantity_formula = '0'
+        utilbill.compute_charges()
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
         self.assertDecimalAlmostEqual(1,
