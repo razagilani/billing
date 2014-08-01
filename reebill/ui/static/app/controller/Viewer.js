@@ -16,10 +16,10 @@ Ext.define('ReeBill.controller.Viewer', {
         
         this.control({
             'grid[id=utilityBillsGrid]': {
-                selectionchange: this.handleUtilityBillSelect
+//                selectionchange: this.handleUtilityBillSelect
             },
             'grid[id=reebillsGrid]': {
-                selectionchange: this.handleReebillSelect
+//                selectionchange: this.handleReebillSelect
             }
         });
     },
