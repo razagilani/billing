@@ -682,13 +682,11 @@ class ReeBill(Base):
     def get_total_actual_charges(self):
         '''Returns sum of "actual" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.a_total for charge in self.charges)
 
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.h_total for charge in self.charges)
 
     def get_charge_by_rsi_binding(self, binding):
