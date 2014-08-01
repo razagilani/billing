@@ -633,8 +633,7 @@ class ReeBill(Base):
         except tsort.GraphError as g:
             # if the graph contains a cycle, provide a more comprehensible error
             # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
+            names_in_cycle = ', '.join(rsis[i].rsi_binding for i in g.args[1])
             raise RSIError('Circular dependency: %s' % names_in_cycle)
 
         assert len(evaluation_order) == len(rsis)
@@ -1060,8 +1059,7 @@ class UtilBill(Base):
         except tsort.GraphError as g:
             # if the graph contains a cycle, provide a more comprehensible error
             # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
+            names_in_cycle = ', '.join(rsis[i].rsi_binding for i in g.args[1])
             raise RSIError('Circular dependency: %s' % names_in_cycle)
 
         assert len(evaluation_order) == len(rsis)
