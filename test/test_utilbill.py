@@ -18,8 +18,7 @@ class UtilBillTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
 
-    def test_compute(self):
-
+    def insert_test_data(self):
         rates = [
             dict(
                 rsi_binding='CONSTANT',
@@ -122,6 +121,10 @@ class UtilBillTest(TestCaseWithSetup):
                                quantity_formula=rdct['quantity']))
         session.flush()
         utilbill.compute_charges()
+        return utilbill, register
+
+    def test_compute(self):
+        utilbill, register = self.insert_test_data()
         # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
             return next(c.total for c in utilbill.charges
@@ -205,4 +208,3 @@ class UtilBillTest(TestCaseWithSetup):
                 'Error in rate formula: division by zero')
         assert_error(utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
-
