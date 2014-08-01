@@ -1,26 +1,44 @@
 Ext.define('ReeBill.view.RateStructures', {
     extend: 'Ext.grid.Panel',
 
+    requires: [
+        'Ext.grid.*',
+        'Ext.data.*',
+        'Ext.dd.*'
+    ],
+
     alias: 'widget.rateStructures',    
     store: 'RateStructures',
     preventHeader: true,
     
-    plugins: [
-        Ext.create('Ext.grid.plugin.CellEditing', {
-            clicksToEdit: 2
-        })
-    ],
+    plugins: [{
+        ptype: 'cellediting',
+        clicksToEdit: 2
+    }],
 
     features: [{
+        ftype: 'grouping',
+        groupHeaderTpl: 'Charge Group: {name} ({rows.length} Item{[values.rows.length > 1 ? "s" : ""]})',
+        hideGroupedHeader: true
+    }, {
         ftype: 'summary'
     }],
 
     viewConfig: {
         trackOver: false,
         stripeRows: true,
+        itemId: 'rateStructureGridView',
         getRowClass: function(record) {
             if (record.get('error')){
                 return 'ratestructure-grid-error';
+            }
+        },
+        plugins:[{
+            ptype: 'gridviewdragdrop',
+        }],
+        listeners: {
+            drop: function(node, data, overModel, dropPosition, eOpts) {
+                data.records[0].set('group', overModel.get('group'));
             }
         }
     },
@@ -148,8 +166,11 @@ Ext.define('ReeBill.view.RateStructures', {
             action: 'regenerateRateStructure',
             iconCls: 'silk-wrench'
         },'-',{
-        xtype: 'formulaField',
-        name: 'formulaField',
+            xtype: 'formulaField',
+            name: 'formulaField',
+        },'-',{
+            xtype: 'groupTextField',
+            name: 'groupTextField'
         }]
     }]
 });

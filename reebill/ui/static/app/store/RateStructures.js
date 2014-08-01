@@ -6,6 +6,8 @@ Ext.define('ReeBill.store.RateStructures', {
     autoLoad: false,
     autoSync: true,
 
+    groupField: 'group',
+
 	proxy: {
 		type: 'rest',
 
@@ -32,5 +34,10 @@ Ext.define('ReeBill.store.RateStructures', {
             },
             scope: this
         }
-	}
+	},
+
+    sorters: [{
+        property: 'group',
+        direction: 'ASC'
+    }]
 });
