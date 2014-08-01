@@ -895,7 +895,8 @@ class UtilBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
-        return sum(charge.total for charge in self.charges)
+        return sum(charge.total for charge in self.charges
+                        if charge.total is not None)
 
     def column_dict(self):
         the_dict = super(UtilBill, self).column_dict()
