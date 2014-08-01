@@ -7,6 +7,7 @@ Ext.define('ReeBill.store.Accounts', {
 
     remoteSort: true,
     remoteFilter: true,
+    pageSize: 10000,
 
     sorters: [],
 
