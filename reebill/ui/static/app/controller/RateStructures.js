@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.RateStructures', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'RateStructures'
+        'RateStructures', 'UtilityBills'
     ],
     
     views:[
@@ -74,6 +74,10 @@ Ext.define('ReeBill.controller.RateStructures', {
             }
         });
 
+        this.getUtilityBillsStore().on({
+            write: this.handleActivate,
+            scope: this
+        });
     },
 
     /**
@@ -81,19 +85,19 @@ Ext.define('ReeBill.controller.RateStructures', {
      */
     handleActivate: function() {
         var store = this.getRateStructuresStore();
-        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var field = this.getFormulaField();
         var groupTextField = this.getGroupTextField();
         var roundRuleField = this.getRoundRuleField();
 
-        if (!selectedBill.length)
+        if (!selectedBill)
             return;
 
         var params = {
-            utilbill_id: selectedBill[0].get('id')
+            utilbill_id: selectedBill.get('id')
         }
         store.getProxy().extraParams = params;
-        store.load();
+        store.reload();
 
         // Disable Text Fields on Activate
         field.setDisabled(true);
@@ -130,7 +134,6 @@ Ext.define('ReeBill.controller.RateStructures', {
             record.set(formulaIndex, field.getValue());
             this.getRateStructuresGrid().focus();
         }
-        console.log(record, formulaIndex, field.getValue());
     },
 
     /**
@@ -223,22 +226,11 @@ Ext.define('ReeBill.controller.RateStructures', {
      */
     handleRegenerate: function() {
         var store = this.getRateStructuresStore(),
-            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
 
-        if (!selectedBill || !selectedBill.length)
+        if (!selectedBill)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/regenerate_rs',
-            params: {
-                utilbill_id: selectedBill[0].get('id')
-            },
-            success: function(response) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    store.reload();
-                }
-            },
-        });
+        selectedBill.set('action', 'regenerate_charges');
     }
 });

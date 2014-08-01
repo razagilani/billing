@@ -299,6 +299,7 @@ class Process(object):
         self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
                 utilbill.service)
         self.compute_utility_bill(utilbill.id)
+        return  utilbill
 
     def get_reebill_metadata_json(self, account):
         """Returns data describing all reebills for the given account, as list
@@ -653,6 +654,7 @@ class Process(object):
             except Exception as e:
                 self.logger.error("Error when computing reebill %s: %s" % (
                         reebill, e))
+        return utilbill
 
 
     def compute_reebill(self, account, sequence, version='max'):
