@@ -30,6 +30,9 @@ Ext.define('ReeBill.controller.RateStructures', {
     },{
         ref: 'formulaField',
         selector: 'formulaField'
+    },{
+        ref: 'groupTextField',
+        selector: 'groupTextField'
     }],
 
     init: function() {
@@ -41,6 +44,9 @@ Ext.define('ReeBill.controller.RateStructures', {
             'grid[id=rateStructuresGrid]': {
                 selectionchange: this.handleRowSelect,
                 cellclick: this.handleCellClick
+            },
+            '#rateStructureGridView': {
+                refresh: this.updateGroupTextField
             },
             'panel[name=rateStructuresTab]': {
                 activate: this.handleActivate
@@ -56,8 +62,12 @@ Ext.define('ReeBill.controller.RateStructures', {
             },
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
+            },
+            'groupTextField':{
+                specialkey: this.handleGroupTextFieldEnter
             }
         });
+
     },
 
     /**
@@ -67,6 +77,7 @@ Ext.define('ReeBill.controller.RateStructures', {
         var store = this.getRateStructuresStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
         var field = this.getFormulaField();
+        var groupTextField = this.getGroupTextField();
 
         if (!selectedBill.length)
             return;
@@ -78,6 +89,7 @@ Ext.define('ReeBill.controller.RateStructures', {
         store.load();
 
         field.setDisabled(true);
+        groupTextField.setDisabled(true);
     },
 
     /**
@@ -97,7 +109,7 @@ Ext.define('ReeBill.controller.RateStructures', {
     },
 
     /**
-     * Handle the panel being activated.
+     * Handle a special key press in the Formula Field
      */
     handleFormulaFieldEnter: function(f, e, eOpts) {
         var field = this.getFormulaField();
@@ -112,13 +124,44 @@ Ext.define('ReeBill.controller.RateStructures', {
     },
 
     /**
+     * Handle a special key press in the GroupTextField
+     */
+    handleGroupTextFieldEnter: function(f, e, eOpts) {
+        var field = this.getGroupTextField();
+        var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
+
+        if (e.getKey() == e.ENTER) {
+            selected.set('group', field.getValue());
+        }
+    },
+
+    /**
      * Handle the row selection.
      */
     handleRowSelect: function() {
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
-
+        var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
         this.getRemoveRateStructure().setDisabled(!hasSelections);
+
+        // Set group in GroupTextField
+        if(hasSelections && selected !== undefined){
+            this.updateGroupTextField();
+        }
      },
+
+    /**
+     * Update the GroupTextField
+     */
+    updateGroupTextField: function(){
+        var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
+        var selected = this.getRateStructuresGrid().getSelectionModel().getSelection()[0];
+
+        if(hasSelections && selected !== undefined){
+            var groupTextField = this.getGroupTextField();
+            groupTextField.setDisabled(false);
+            groupTextField.setValue(selected.get('group'));
+        }
+    },
 
     /**
      * Handle the new button being clicked.
