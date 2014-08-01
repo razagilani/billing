@@ -63,9 +63,6 @@ Ext.define('ReeBill.view.Viewport', {
                         xtype: 'accounts',
                         id: 'accountsGrid'
                     },{
-                        xtype: 'accountsReeValue',
-                        id: 'accountsReeValueGrid'
-                    },{
                         xtype: 'accountForm',
                         id: 'newAccountForm'
                     }]
@@ -188,13 +185,15 @@ Ext.define('ReeBill.view.Viewport', {
                     xtype: 'panel',
                     name: 'reportsTab',
                     title: 'Reports',
-                    layout: 'accordion',
-                    defaults: {
-                        collapsible: true
-                    },
+                    layout: 'border',
                     items: [{
                         xtype: 'reconciliations',
-                        id: 'reconciliationsGrid'
+                        id: 'reconciliationsGrid',
+                        region: 'center'
+                    },{
+                        xtype: 'exports',
+                        id: 'exportsGrid',
+                        region: 'north'
                     }]
                 }]
             }]
