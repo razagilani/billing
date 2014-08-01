@@ -141,9 +141,10 @@ class Process(object):
         self.compute_utility_bill(utilbill_id)
         return register
 
-    def delete_register(self, session, register_id):
+    def delete_register(self, register_id):
         self.logger.info("Running Process.delete_register %s" %
                          register_id)
+        session = Session()
         register = session.query(Register).filter(
             Register.id == register_id).one()
         session.delete(register)
