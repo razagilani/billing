@@ -19,7 +19,9 @@ Ext.define('ReeBill.view.RateStructures', {
         trackOver: false,
         stripeRows: true,
         getRowClass: function(record) {
-
+            if (record.get('error')){
+                return 'ratestructure-grid-error';
+            }
         }
     },
 
@@ -62,7 +64,10 @@ Ext.define('ReeBill.view.RateStructures', {
             allowBlank: false
         },
         flex: 1,
-        width: 250
+        width: 250,
+        renderer: function(value, metaData, record){
+            return (record.get('error') ? record.get('error') : value)
+        }
     },{
         header: 'Units',
         sortable: true,
@@ -83,7 +88,10 @@ Ext.define('ReeBill.view.RateStructures', {
         },
         flex: 1,
         width: 250,
-        allowBlank: false
+        allowBlank: false,
+        renderer: function(value, metaData, record){
+            return (record.get('error') ? record.get('error') : value)
+        }
     },{
         header: 'Round Rule',
         sortable: true,
