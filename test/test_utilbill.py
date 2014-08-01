@@ -5,19 +5,8 @@ from billing.test.setup_teardown import init_logging, TestCaseWithSetup
 init_logging()
 from billing import init_config, init_model
 from datetime import date
-from StringIO import StringIO
-
-import dateutil
-from bson import ObjectId
-
 from billing.exc import RSIError
-from processing.session_contextmanager import DBSession
-from billing.test import utils
-#from billing.processing.rate_structure2 import RateStructure, RateStructureItem
-from billing.processing import mongo
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.exc import NoRSIError
-import example_data
 from billing.processing.state import UtilBill, Customer, Session, Charge, Address, \
     Register
 
@@ -26,6 +15,7 @@ class UtilBillTest(TestCaseWithSetup):
     def setUp(self):
         init_config('tstsettings.cfg')
         init_model()
+        self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
 
     def test_compute(self):
@@ -125,7 +115,6 @@ class UtilBillTest(TestCaseWithSetup):
         session.add(register)
 
         for rdct in rates:
-            print rdct, type(rdct)
             session.add(Charge(utilbill, "Insert description here", "",
                                0.0, rdct['quantity_units'], 0.0,
                                rdct['rsi_binding'], 0.0,
@@ -133,7 +122,6 @@ class UtilBillTest(TestCaseWithSetup):
                                quantity_formula=rdct['quantity']))
         session.flush()
         utilbill.compute_charges()
-
         # function to get the "total" value of a charge from its name
         def the_charge_named(rsi_binding):
             return next(c.total for c in utilbill.charges
@@ -158,6 +146,7 @@ class UtilBillTest(TestCaseWithSetup):
         self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
         self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
         self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
+        ch = the_charge_named('REFERENCES_ANOTHER')
         self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
         assert_error(utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
@@ -182,9 +171,7 @@ class UtilBillTest(TestCaseWithSetup):
                 "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
-        charge = session.query(Charge).filter_by(utilbill=utilbill).\
-            filter_by(rsi_binding="CONSTANT").one()
-        charge.quantity_formula = '250'
+        register.quantity = 250
         utilbill.compute_charges()
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
@@ -202,7 +189,7 @@ class UtilBillTest(TestCaseWithSetup):
                 "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
-        charge.quantity_formula = '0'
+        register.quantity = 0
         utilbill.compute_charges()
         self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
         self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))

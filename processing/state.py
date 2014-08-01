@@ -818,7 +818,12 @@ class UtilBill(Base):
 
     def ordered_charges(self):
         """Sorts the charges by their evaluation order"""
-        depends = {c.rsi_binding: c.formula_variables() for c in self.charges}
+        depends = {}
+        for c in self.charges:
+            try:
+                depends[c.rsi_binding] = c.formula_variables()
+            except SyntaxError:
+                depends[c.rsi_binding] = set()
         dependency_graph = []
         independent_bindings = set(depends.keys())
 
@@ -835,7 +840,7 @@ class UtilBill(Base):
             order.extend(sortresult)
         except tsort.GraphError as g:
             raise RSIError('Circular dependency: %s' % ', '.join(g.args[1]))
-        return sorted(self.charges, key=lambda c: order.index(c.rsi_binding))
+        return sorted(self.charges, key=lambda x: order.index(x.rsi_binding))
 
     def compute_charges(self, raise_exception=False):
         """Computes and updates the quantity, rate, and total attributes of
@@ -1039,9 +1044,13 @@ class Charge(Base):
         try:
             return eval(formula, {}, context)
         except Exception as e:
-            raise FormulaError(('Error when computing %s for RSI "%s" %s: '
-                                '%s') % (name, formula, self.rsi_binding, e))
-
+            if type(e) == SyntaxError:
+                message = 'Syntax error in %s formula'
+            else:
+                message = 'Error in %s formula: '
+                message += 'division by zero' if type(e) == ZeroDivisionError \
+                    else e.message
+            raise FormulaError(message % name)
 
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
