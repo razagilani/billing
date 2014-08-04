@@ -5,6 +5,7 @@ import os
 from operator import attrgetter
 
 import mongoengine
+from mongoengine.document import MapReduceDocument
 
 from billing.util.dateutils import ISO_8601_DATE
 
@@ -36,6 +37,27 @@ class JournalDAO(object):
         result = [dict(e.to_dict(), event=e.description()) for e in
                 Event.objects(**query)]
         return result
+
+    def get_all_last_events(self):
+        map_f ='''
+            function () {emit(this._id, this)}
+        '''
+        reduce_f = '''
+            function (key, values) {
+                var d = values[0];
+                for ( var i=1; i<values.length; i++ ) {
+                    if ( values[i].date > d.date){
+                        d = values[i];
+                    }
+                }
+                return d;
+            }
+        '''
+
+        for doc in  list(Event.objects.map_reduce(map_f, reduce_f, 'inline')):
+            print doc.key, doc.value, type(doc.value)
+            print Event.objects.from_json(doc.value)
+        #qs = mongoengine.QuerySet(Event, 'journal').exec_js(js_code)
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.

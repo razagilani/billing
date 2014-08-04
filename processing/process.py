@@ -1547,22 +1547,24 @@ class Process(object):
           issued bill, Days since then and the last event) and the length
           of the list """
         #Various filter functions used below to filter the resulting rows
-        def filter_reebillcustomers(row):
-            return int(row['account'])<20000
-        def filter_brokeragecustomers(row):
-            return int(row['account'])>=20000
+        # def filter_reebillcustomers(row):
+        #     return int(row['account'])<20000
+        # def filter_brokeragecustomers(row):
+        #     return int(row['account'])>=20000
+
+        print self.journal_dao.get_all_last_events()
+        return
 
         statuses = self.state_db.retrieve_status_days_since(sortcol,
                 sort_reverse)
         name_dicts = self.nexus_util.all_names_for_accounts(
                 [s.account for s in statuses])
+        bill_data = self.state_db.get_accounts_grid_data()
 
-        rows = []
-        # To make this for loop faster we only include nexus data, status data
-        # and data for the column that is sorted. After that we filter and limit
-        # the rows for pagination and only after that we add all missing fields
+        rows_dict = {}
+
         for status in statuses:
-            new_record = {
+            rows_dict[status.account] = {
                 'account': status.account,
                 'codename': name_dicts[status.account]['codename'] if
                        'codename' in name_dicts[status.account] else '',
@@ -1573,45 +1575,24 @@ class Process(object):
                 'dayssince': status.dayssince,
                 'provisionable': False
             }
-            if sortcol=='utilityserviceaddress':
-                try:
-                     status.ub = self.state_db.get_last_real_utilbill(
-                         status.account, datetime.utcnow())
-                     service_address = str(status.ub.service_address)
-                except NoSuchBillException:
-                    service_address = ''
-                new_record['utilityserviceaddress']=service_address
-            elif sortcol=='lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(status.account,
-                        issued_only=True)
-                new_record['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
-            rows.append(new_record)
 
-        #Apply filters
-        if filtername=="reebillcustomers":
-            rows=filter(filter_reebillcustomers, rows)
-        elif filtername=="brokeragecustomers":
-            rows=filter(filter_brokeragecustomers, rows)
-        rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
-        total_length=len(rows)
-        rows = rows[start:start+limit]
+        for account, _, _, issue_date, rate_class, service_address in bill_data:
+            issue_date = issue_date if issue_date else ''
+            rate_class = rate_class if rate_class else ''
+            service_address = service_address if service_address else ''
+            rows_dict[account]['lastissuedate'] = issue_date
+            rows_dict[account]['utilityserviceaddress'] = service_address
+            rows_dict[account]['lastrateclass'] = rate_class
 
-        # Add all missing fields
-        for row in rows:
-            row['lastevent']=self.journal_dao.last_event_summary(row['account'])
-            if sortcol != 'utilityserviceaddress':
-                try:
-                     status.ub = self.state_db.get_last_real_utilbill(
-                         status.account, datetime.utcnow())
-                     service_address = str(status.ub.service_address)
-                except NoSuchBillException:
-                    service_address = ''
-                row['utilityserviceaddress']=service_address
-            if sortcol != 'lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(
-                     row['account'], issued_only=True)
-                row['lastissuedate'] = last_reebill.issue_date if \
-                     last_reebill else ''
-                row['lastrateclass'] = status.ub.rate_class if status.ub else ''
 
-        return total_length, rows
+
+        # #Apply filters
+        # if filtername=="reebillcustomers":
+        #     rows=filter(filter_reebillcustomers, rows)
+        # elif filtername=="brokeragecustomers":
+        #     rows=filter(filter_brokeragecustomers, rows)
+        # rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
+        # total_length=len(rows)
+
+        rows = list(rows_dict.itervalues())
+        return len(rows), rows
