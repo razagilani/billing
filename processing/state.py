@@ -1039,8 +1039,13 @@ class Charge(Base):
                                          formula_name, self.rsi_binding,
                                          formula))
 
-    def _evaluate_formula(self, formula, name, context):
-        """Evaluates the formula in the specified context"""
+    @staticmethod
+    def _evaluate_formula(formula, name, context):
+        """Evaluates the formula in the specified context
+        :param formula: a `quantity_formula` or `rate_formula`
+        :param name: the formula name (i.e. rate / charge) for exception message
+        :param context: map of binding name to `BindingEvaluation`
+        """
         try:
             return eval(formula, {}, context)
         except Exception as e:

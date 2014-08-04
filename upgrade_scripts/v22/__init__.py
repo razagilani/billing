@@ -47,7 +47,7 @@ def copy_registers_from_mongo():
                                mongo_register.get('register_binding', ""),
                                None, #active_periods does not exist in Mongo
                                mongo_meter.get('identifier', "")))
-    log.info('Commiting to database')
+    log.info('Committing to database')
     s.commit()
 
 def upgrade():
