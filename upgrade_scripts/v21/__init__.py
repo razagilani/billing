@@ -49,7 +49,7 @@ def copy_charges_from_mongo():
                          mongo_charge.get('rate', 0),
                          mongo_charge.get('rsi_binding', ""),
                          mongo_charge.get('total', 0)))
-    log.info('Commiting to database')
+    log.info('Committing to database')
     s.commit()
 
 def upgrade():
