@@ -57,7 +57,7 @@ Base = declarative_base(cls=Base)
 
 _schema_revision = '39efff02706c'
 def check_schema_revision(schema_revision=_schema_revision):
-    """Checks to see whether the database schema revision matches the 
+    """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
     """
     s = Session()
@@ -129,7 +129,7 @@ class Address(Base):
                     self.postal_code)
 
     def __repr__(self):
-        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+        return 'Address<(%s, %s, %s, %s, %s)' % (self.addressee, self.street,
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
@@ -599,7 +599,7 @@ class ReeBill(Base):
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
-    many-to-many relationship between "utilbill" and "reebill".''' 
+    many-to-many relationship between "utilbill" and "reebill".'''
     __tablename__ = 'utilbill_reebill'
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
@@ -1020,7 +1020,7 @@ class Charge(Base):
                  rate, rsi_binding, total, quantity_formula="", rate_formula="",
                  has_charge=False, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
-        
+
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
         :param group: The charge group
@@ -1333,12 +1333,12 @@ class StateDB(object):
     def increment_version(self, account, sequence):
         '''Creates a new reebill with version number 1 greater than the highest
         existing version for the given account and sequence.
-        
+
         The utility bill(s) of the new version are the same as those of its
         predecessor, but utility bill, UPRS, and document_ids are cleared
         from the utilbill_reebill table, meaning that the new reebill's
         utilbill/UPRS documents are the current ones.
-        
+
         Returns the new state.ReeBill object.'''
         # highest existing version must be issued
         session = Session()
@@ -1416,6 +1416,47 @@ class StateDB(object):
         if max_sequence is None:
             max_sequence = 0
         return max_sequence
+
+    def get_accounts_grid_data(self):
+        '''Returns the Account of every customer,
+        the Sequence, Version and Issue date of the highest-sequence,
+        highest-version issued ReeBill object,
+        and the rate class and service address of the latest (i.e. last-ending)
+        utility bill for each customer.
+        This is a way of speeding up the AccountsGrid in the UI
+        '''
+        session = Session()
+        sequence_sq = session.query(
+            ReeBill.customer_id, func.max(
+                ReeBill.sequence).label('max_sequence'))\
+            .group_by(ReeBill.customer_id).subquery()
+        version_sq = session.query(
+            ReeBill.customer_id, ReeBill.sequence, ReeBill.issue_date,
+            func.max(ReeBill.version).label('max_version'))\
+            .group_by(ReeBill.sequence, ReeBill.customer_id)\
+            .subquery()
+        utilbill_sq = session.query(
+            UtilBill.customer_id,
+            func.max(UtilBill.period_end).label('max_period_end'))\
+        .group_by(UtilBill.customer_id)\
+        .subquery()
+
+        q = session.query(Customer.account,
+                          sequence_sq.c.max_sequence,
+                          version_sq.c.max_version,
+                          version_sq.c.issue_date,
+                          UtilBill.rate_class,
+                          Address)\
+        .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
+        .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
+                   sequence_sq.c.max_sequence == version_sq.c.sequence))\
+        .outerjoin(utilbill_sq, Customer.id == utilbill_sq.c.customer_id)\
+        .outerjoin(UtilBill, and_(
+            UtilBill.customer_id == utilbill_sq.c.customer_id,
+            UtilBill.period_end == utilbill_sq.c.max_period_end))\
+        .outerjoin(Address, UtilBill.service_address_id == Address.id)
+
+        return q.all()
 
     def get_last_reebill(self, account, issued_only=False):
         '''Returns the highest-sequence, highest-version ReeBill object for the
@@ -1497,7 +1538,7 @@ class StateDB(object):
         # NOTE: with the old database schema (one reebill row for all versions)
         # this method returned False when the 'version' argument was higher
         # than max_version. that was probably the wrong behavior, even though
-        # test_state:StateTest.test_versions tested for it. 
+        # test_state:StateTest.test_versions tested for it.
         session = Session()
         try:
             if version == 'max':

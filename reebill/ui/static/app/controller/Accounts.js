@@ -53,7 +53,7 @@ Ext.define('ReeBill.controller.Accounts', {
         }
 
         if (!this.getAccountsStore().getCount())
-            this.getAccountsStore().load();
+            this.getAccountsStore().loadPage(1);
     },
 
     /**
