@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import sys
 import os
 
 import reportlab
@@ -13,6 +12,7 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 from billing.processing import mongo
@@ -32,9 +32,7 @@ def format_for_display(x, places=2):
     0s to that many places.
     '''
     return ('%%.%sf' % places) % round_for_display(x, places)
-#
-# Globals
-#
+
 defaultPageSize = letter
 PAGE_HEIGHT=letter[1]; PAGE_WIDTH=letter[0]
 Title = "Skyline Bill"
@@ -99,10 +97,6 @@ class ReebillRenderer:
         self.template_directory = config['template_directory']
         self.default_template = config['default_template']
         self.current_template = self.default_template
-
-        # set default templates
-        #self.default_backgrounds = config['default_backgrounds'].split()
-        #if len(self.default_backgrounds) != 2: raise ValueError("default_backgrounds not specified") 
 
         #self.teva_backgrounds = config['teva_backgrounds'].split()
         self.teva_accounts = config['teva_accounts'].split()
@@ -395,9 +389,7 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-        total_utility_charges = mongo.total_of_all_charges(utilbill_doc)
+        total_utility_charges = reebill.get_total_actual_charges()
         utilitycharges = [
             [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
@@ -437,7 +429,7 @@ class ReebillRenderer:
             [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(manual_adjustments)), styles['BillFieldRight'])],
             [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(other_adjustments)), styles['BillFieldRight'])]
         ]
-        
+
         t = Table(adjustments, [180,85])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
         Elements.append(t)
@@ -552,10 +544,10 @@ class ReebillRenderer:
             ('BOX', (2,2), (2,-1), 0.25, colors.black),
             ('BOX', (3,2), (3,-1), 0.25, colors.black),
             ('BOX', (4,2), (5,-1), 0.25, colors.black),
-            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('TOPPADDING', (0,0), (-1,-1), 0),
             ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-            ('RIGHTPADDING', (4,2), (4,-1), 2), 
-            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('RIGHTPADDING', (4,2), (4,-1), 2),
+            ('LEFTPADDING', (5,2), (5,-1), 1),
             ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
             ('FONTSIZE', (0,0), (-1,0), 10),
             ('FONT', (0,1),(-1,-1), 'Inconsolata'),
