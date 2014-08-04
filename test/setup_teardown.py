@@ -68,7 +68,6 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def insert_data():
         session = Session()
-        db = pymongo.Connection('localhost')['test']
         TestCaseWithSetup.truncate_tables(session)
         #Customer Addresses
         fa_ba1 = Address('Test Customer 1 Billing',
@@ -283,10 +282,6 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     def tearDown(self):
         '''Clears out databases.'''
-        # clear out mongo test database
-        mongo_connection = pymongo.Connection('localhost', 27017)
-        mongo_connection.drop_database('test')
-
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
         self.session.commit()
