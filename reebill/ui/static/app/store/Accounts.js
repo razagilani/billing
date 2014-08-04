@@ -5,11 +5,7 @@ Ext.define('ReeBill.store.Accounts', {
 
     autoLoad: false,
 
-    remoteSort: true,
-    remoteFilter: true,
     pageSize: 10000,
-
-    sorters: [],
 
 	proxy: {
 		type: 'rest',
@@ -38,5 +34,10 @@ Ext.define('ReeBill.store.Accounts', {
             },
             scope: this
         }
-	}
+	},
+
+    sorters: [{
+        property: 'account',
+        direction: 'DESC'
+    }],
 });
