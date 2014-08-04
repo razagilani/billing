@@ -540,12 +540,6 @@ class Process(object):
 
         session = Session()
 
-        # NOTE 'total' does not yet go into the utility bill document in Mongo
-
-        # get & save end date of last bill (before uploading a new bill which
-        # may come later)
-        original_last_end = self.state_db.last_utilbill_end_date(account)
-
         # find an existing utility bill that will provide rate class and
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
@@ -580,15 +574,11 @@ class Process(object):
         if bill_to_replace is not None:
             session.delete(bill_to_replace)
 
-        # create new UtilBill document (it does not have any mongo document
-        # _ids yet but these are created below)
-        # NOTE SQLAlchemy automatically adds this UtilBill to the session, so
-        # calling session.add() is superfluous; see
-        # https://www.pivotaltracker.com/story/show/26147819
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
-            period_start=begin_date, period_end=end_date,
-            total_charges=total, date_received=datetime.utcnow().date(),
-            billing_address=billing_address, service_address=service_address)
+                period_start=begin_date, period_end=end_date,
+                total_charges=total, date_received=datetime.utcnow().date(),
+                billing_address=billing_address,
+                service_address=service_address)
         session.add(new_utilbill)
         session.flush()
 
@@ -597,14 +587,10 @@ class Process(object):
             # string from CherryPy, and pass those to BillUpload to upload
             # the file (so BillUpload can stay independent of CherryPy)
             upload_result = self.billupload.upload(new_utilbill, account,
-                                                   bill_file, file_name)
+                    bill_file, file_name)
             if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (account,
                     new_utilbill.id, file_name))
-
-        # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
-        # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
-        # which has no documents)
 
         if state < UtilBill.Hypothetical:
             doc, uprs = self._generate_docs_for_new_utility_bill(new_utilbill)
@@ -620,33 +606,11 @@ class Process(object):
                     if charge.rsi_binding not in valid_bindings:
                         continue
                     new_utilbill.charges.append(Charge(new_utilbill,
-                                                       charge.description,
-                                                       charge.group,
-                                                       charge.quantity,
-                                                       charge.quantity_units,
-                                                       charge.rate,
-                                                       charge.rsi_binding,
-                                                       charge.total))
-
-        # if begin_date does not match end date of latest existing bill, create
-        # hypothetical bills to cover the gap
-        # NOTE hypothetical bills are not created if the gap is small enough
-        if original_last_end is not None and begin_date > original_last_end \
-                and begin_date - original_last_end > \
-                timedelta(days=MAX_GAP_DAYS):
-            self.state_db.fill_in_hypothetical_utilbills(account,
-                    service, utility, rate_class, original_last_end,
-                    begin_date)
-
-        # utility bill should be computed, but any error that happens when
-        # computing it should be ignored to prevent apparent failure to upload
-        # the bill. TODO: see Pivotal 72645700
-        try:
+                            charge.description, charge.group,
+                            charge.quantity, charge.quantity_units,
+                            charge.rate, charge.rsi_binding, charge.total))
+        if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
-        except Exception as e:
-            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
-                    new_utilbill.id, e, traceback.format_exc()))
-
         return new_utilbill
 
     def get_service_address(self, account):
