@@ -130,8 +130,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                     quantity_units='therms',
                     rate='1 / 0',
                 ),
-            ]
-        )
+        ])
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
                 'gas', 'utility', 'rate class', Address(), Address())
@@ -148,11 +147,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         with self.assertRaises(RSIError):
             utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
         self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(450, .1, get('LINEAR'))
         self.assert_charge_values(310, 0.1, get('LINEAR_PLUS_CONSTANT'))
         self.assert_charge_values(100, 0.3, get('BLOCK_1'))
         self.assert_charge_values(50, 0.2, get('BLOCK_2'))
         self.assert_charge_values(0, 0.1, get('BLOCK_3'))
         self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(2, 3, get('REFERENCED_BY_ANOTHER'))
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
                 'Syntax error in quantity formula')
@@ -162,6 +163,10 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
                 "Error in quantity formula: name 'x' is not defined")
+
+        # TODO enable when bug #76318266 is fixed
+        # self.assertEqual(40 + 45 + 31 + 30 + 10 + 0 + 5 + 6,
+        #         utilbill.total_charge())
 
         # check "total" for each of the charges in the utility bill at the
         # register quantity of 150 therms. there should not be a charge for
@@ -229,6 +234,7 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 'gas', 'utility', 'rate class', Address(), Address())
         utilbill.compute_charges(RateStructure(rates=[]), utilbill_doc)
         self.assertEqual([], utilbill.charges)
+        self.assertEqual(0, utilbill.total_charge())
 
     def test_compute_charges_independent(self):
         # irrelevant fields are omitted from this document
@@ -258,6 +264,13 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 quantity_units='kWh',
                 rate='3',
             ),
+            # this has an error
+            RateStructureItem(
+                rsi_binding='C',
+                quantity='1/0',
+                quantity_units='kWh',
+                rate='x + y',
+            ),
         ])
         utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
                 'nobody@example.com'), UtilBill.Complete,
@@ -270,6 +283,9 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                 utilbill.get_charge_by_rsi_binding('A'))
         self.assert_charge_values(2, 3,
                 utilbill.get_charge_by_rsi_binding('B'))
+        self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
+                'Error in quantity formula: division by zero')
+        self.assertEqual(150 + 6, utilbill.total_charge())
 
     def test_compute_charges_with_cycle(self):
         '''Test computing charges whose dependencies form a cycle.

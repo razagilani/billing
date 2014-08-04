@@ -1106,7 +1106,11 @@ class UtilBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
-        return sum(charge.total for charge in self.charges)
+        """Returns sum of all charges' totals, excluding charges that have
+        errors.
+        """
+        return sum(charge.total for charge in self.charges
+                if charge.total is not None)
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
