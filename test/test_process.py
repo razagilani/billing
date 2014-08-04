@@ -268,11 +268,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # new it's path are the same.
         self.process.update_utilbill_metadata(utilbill.id,
                                               period_start=date(2013, 1, 2))
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual(date(2013, 1, 2), utilbill.period_start)
-        self.assertEqual(date(2013, 1, 2), doc['start'])
-        for meter in doc['meters']:
-            self.assertEqual(date(2013, 1, 2), meter['prior_read_date'])
+
         # check that file really exists at the expected path
         # (get_utilbill_file_path also checks for existence)
         bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
@@ -280,45 +277,32 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # change end date
         self.process.update_utilbill_metadata(utilbill.id,
                                               period_end=date(2013, 2, 2))
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual(date(2013, 2, 2), utilbill.period_end)
-        self.assertEqual(date(2013, 2, 2), doc['end'])
-        for meter in doc['meters']:
-            self.assertEqual(date(2013, 2, 2), meter['present_read_date'])
 
         # change service
         self.process.update_utilbill_metadata(utilbill.id,
                                               service='electricity')
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual('electricity', utilbill.service)
-        self.assertEqual('electricity', doc['service'])
 
         # change "total" aka "total_charges"
         self.process.update_utilbill_metadata(utilbill.id,
                                               total_charges=200)
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual(200, utilbill.total_charges)
         # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
         # change utility name
         self.process.update_utilbill_metadata(utilbill.id,
                                               utility='BGE')
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual('BGE', utilbill.utility)
-        self.assertEqual('BGE', doc['utility'])
 
         # change rate class
         self.process.update_utilbill_metadata(utilbill.id,
                                               rate_class='something else')
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual('something else', utilbill.rate_class)
-        self.assertEqual('something else', doc['rate_class'])
 
         # change processed state
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual(False, utilbill.processed)
         self.process.update_utilbill_metadata(utilbill.id, processed=True)
-        doc = self.process.get_utilbill_doc(utilbill.id)
         self.assertEqual(True, utilbill.processed)
 
         # even when the utility bill is attached to an issued reebill, only
@@ -327,16 +311,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                             start_date=date(2013, 1, 1))
         self.process.issue('99999', 1)
         self.process.update_utilbill_metadata(utilbill.id, service='water')
-        editable_doc = self.process.get_utilbill_doc(utilbill.id)
-        frozen_doc = self.process.get_utilbill_doc(utilbill.id,
-                                                   reebill_sequence=reebill.sequence,
-                                                   reebill_version=reebill.version)
-        assert 'sequence' not in editable_doc and 'version' not in editable_doc
-        assert frozen_doc['sequence'] == 1 and frozen_doc['version'] == 0
-        self.assertNotEqual(editable_doc, frozen_doc)
-        self.assertEqual('electricity', frozen_doc['service'])
-        self.assertEqual('water', utilbill.service)
-        self.assertEqual('water', editable_doc['service'])
 
 
     def test_get_late_charge(self):
