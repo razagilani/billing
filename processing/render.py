@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
-import os  
-from decimal import *
+import os
+
 import reportlab
 from pyPdf import PdfFileWriter, PdfFileReader
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
@@ -12,15 +12,11 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont  
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
 from billing.processing import mongo
 
-# TODO render should not depend on BillUpload--move this function out to its
-# own file
-from billing.processing.billupload import create_directory_if_necessary
-
-sys.stdout = sys.stderr
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
@@ -100,7 +96,6 @@ class ReebillRenderer:
     def __init__(self, config, state_db, reebill_dao, logger):
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
-        self.temp_directory = config['temp_directory']
         self.template_directory = config['template_directory']
         self.default_template = config['default_template']
         self.current_template = self.default_template
@@ -118,9 +113,6 @@ class ReebillRenderer:
 
         # global reebill logger for reporting errors
         self.logger = logger
-
-        # create temp directory if it doesn't exist
-        create_directory_if_necessary(self.temp_directory, self.logger)
 
         #
         #  Load Fonts
