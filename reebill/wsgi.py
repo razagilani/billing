@@ -681,10 +681,6 @@ class ReeBillWSGI(object):
     @db_commit
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.get('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'code':2, 'errors': {'reason':
-                    ('"Render" does nothing because reebill images have '
-                    'been turned off.'), 'details': ''}})
         self.renderer.render(account, sequence,
             self.config.get("billdb", "billpath")+ "%s" % account,
             "%s_%.4d.pdf" % (account, sequence), False )
