@@ -967,13 +967,9 @@ class UtilBill(Base):
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
             session.add(Charge(utilbill=self,
-                               description=rsi.description,
-                               group=rsi.group,
-                               quantity=0,
-                               quantity_units=rsi.quantity_units,
-                               rate=0,
-                               rsi_binding=rsi.rsi_binding,
-                               total=0))
+                    description=rsi.description, group=rsi.group,
+                    quantity=0, quantity_units=rsi.quantity_units,
+                    rate=0, rsi_binding=rsi.rsi_binding, total=0))
 
     def compute_charges(self, uprs, utilbill_doc, raise_exception=False):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
@@ -990,7 +986,7 @@ class UtilBill(Base):
 
         rsi_bindings = set(rsi['rsi_binding'] for rsi in uprs.rates)
         for c in (x for x in self.charges if x.rsi_binding not in rsi_bindings):
-            raise NoRSIError('No rate structure item for "%s"' % c)
+            raise NoRSIError('No rate structure item for "%s"' % c.rsi_binding)
 
         # This code temporary until utilbill_doc stops holding RSIs
         # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
