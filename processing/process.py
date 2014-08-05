@@ -99,35 +99,6 @@ class Process(object):
         return self.reebill_dao.load_doc_for_utilbill(utilbill,
                 reebill=reebill)
 
-    def get_rs_doc(self, utilbill_id, rs_type, reebill_sequence=None,
-            reebill_version=None):
-        '''Loads and returns a rate structure document of type 'rs_type'
-        ("uprs" only) for the utility bill given by 'utilbill_id' (MySQL
-        id). If the sequence and version of an issued reebill are given, the
-        document returned will be the frozen version for the issued reebill.
-        '''
-        # NOTE this method is in Process because it uses both databases; is
-        # there a better place to put it?
-
-        if rs_type == 'uprs':
-            load_method = self.rate_structure_dao.load_uprs_for_utilbill
-        else:
-            raise ValueError(('Unknown "rs_type": expected "uprs", '
-                    'got "%s"') % rs_type)
-
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-
-        if reebill_sequence is None:
-            assert reebill_version is None
-            # load editable utility bill document
-            return load_method(utilbill)
-
-        # otherwise, load frozen utility bill document for the given reebill
-        reebill = self.state_db.get_reebill(utilbill.customer.account,
-                reebill_sequence, version=reebill_version)
-        assert reebill.issued == True
-        return load_method(utilbill, reebill=reebill)
-
     def get_utilbill_charges_json(self, utilbill_id,
                     reebill_sequence=None, reebill_version=None):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -486,8 +457,8 @@ class Process(object):
             reebill.billing_address.addressee = ba_addressee
         if ba_street is not None:
             reebill.billing_address.street = ba_street
-        if ba_street is not None:
-            reebill.billing_address.street = ba_street
+        if ba_state is not None:
+            reebill.billing_address.state = ba_state
         if ba_city is not None:
             reebill.billing_address.city = ba_city
         if ba_postal_code is not None:
@@ -1114,14 +1085,6 @@ class Process(object):
                     new_reebill, e))
         return new_reebill
 
-    def new_versions(self, account, sequence):
-        '''Creates new versions of all reebills for 'account' starting at
-        'sequence'. Any reebills that already have an unissued version are
-        skipped. Returns a list of the new reebill objects.'''
-        sequences = range(sequence, self.state_db.last_sequence(account) + 1)
-        return [self.new_version(account, s) for s in sequences if
-                self.state_db.is_issued(account, s)]
-
     def new_version(self, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
@@ -1209,9 +1172,6 @@ class Process(object):
             adjustment = latest_version.total - prev_version.total
             result.append((seq, max_version, adjustment))
         return result
-
-    def get_unissued_correction_sequences(self, account):
-        return [c[0] for c in self.get_unissued_corrections(account)]
 
     def issue_corrections(self, account, target_sequence):
         '''Applies adjustments from all unissued corrections for 'account' to
