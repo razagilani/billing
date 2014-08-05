@@ -246,60 +246,38 @@ class UtilBillTest(TestCaseWithSetup):
     def test_compute_charges_empty(self):
         '''Compute utility bill with no charges.
         '''
-        # irrelevant fields are omitted from this document
-        utilbill_doc = {
-            'charges': [],
-            'meters': [],
-        }
-        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
-                'nobody@example.com'), UtilBill.Complete,
+        customer = Customer('someone', '99999', 0.3, 0.1,
+                'nobody@example.com', 'utility', 'rate class',
+                Address(), Address())
+        utilbill = UtilBill(customer, UtilBill.Complete,
                 'gas', 'utility', 'rate class', Address(), Address())
-        utilbill.compute_charges(RateStructure(rates=[]), utilbill_doc)
+        utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
         self.assertEqual(0, utilbill.total_charge())
 
     def test_compute_charges_independent(self):
-        # irrelevant fields are omitted from this document
-        utilbill_doc = {
-            'charges': [],
-            'meters': [{
-                'registers': [{
-                    'register_binding': 'REG_TOTAL',
-                    'quantity': 150,
-                }]
-            }],
-        }
-
-        rs = RateStructure(rates=[
-            # circular dependency between A and B: A depends on B's "quantity"
-            # and B depends on A's "rate", which is not allowed even though
-            # theoretically both could be computed.
-            RateStructureItem(
-                rsi_binding='A',
-                quantity='REG_TOTAL.quantity',
-                quantity_units='kWh',
-                rate='1',
-            ),
-            RateStructureItem(
-                rsi_binding='B',
-                quantity='2',
-                quantity_units='kWh',
-                rate='3',
-            ),
+        customer = Customer('someone', '99999', 0.3, 0.1,
+                'nobody@example.com', 'utility', 'rate class',
+                Address(), Address())
+        utilbill = UtilBill(customer, UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
+        utilbill.registers = [Register(utilbill, '', 150,
+                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.charges = [
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'A', 0,
+                    quantity_formula='REG_TOTAL.quantity',
+                    rate_formula='1'),
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'B', 0,
+                    quantity_formula='2',
+                    rate_formula='3'),
             # this has an error
-            RateStructureItem(
-                rsi_binding='C',
-                quantity='1/0',
-                quantity_units='kWh',
-                rate='x + y',
-            ),
-        ])
-        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
-                'nobody@example.com'), UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address())
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+                    quantity_formula='1/0',
+                    rate_formula='x + y'),
+        ]
         Session().add(utilbill)
-        utilbill.refresh_charges(rs.rates)
-        utilbill.compute_charges(rs, utilbill_doc)
+        utilbill.compute_charges()
 
         self.assert_charge_values(150, 1,
                 utilbill.get_charge_by_rsi_binding('A'))
@@ -313,50 +291,34 @@ class UtilBillTest(TestCaseWithSetup):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
-        # irrelevant fields are omitted from this document
-        utilbill_doc = {
-            'charges': [],
-            'meters': [],
-        }
-
-        rs = RateStructure(rates=[
+        customer = Customer('someone', '99999', 0.3, 0.1,
+                'nobody@example.com', 'utility', 'rate class',
+                Address(), Address())
+        utilbill = UtilBill(customer, UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
+        utilbill.charges = [
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
             # theoretically both could be computed.
-            RateStructureItem(
-                rsi_binding='A',
-                quantity='B.quantity',
-                quantity_units='kWh',
-                rate='0',
-            ),
-            RateStructureItem(
-                rsi_binding='B',
-                quantity='0',
-                quantity_units='kWh',
-                rate='A.rate',
-            ),
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'A', 0,
+                    quantity_formula='B.quantity',
+                    rate_formula='0'),
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'B', 0,
+                    quantity_formula='0',
+                    rate_formula='A.rate'),
             # C depends on itself
-            RateStructureItem(
-                rsi_binding='C',
-                quantity='C.total',
-                quantity_units='kWh',
-                rate='0',
-            ),
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+                    quantity_formula='0',
+                    rate_formula='C.total'),
             # D depends on A, which has a circular dependency with B. it should
             # not be computable because A is not computable.
-            RateStructureItem(
-                rsi_binding='D',
-                quantity='A.total',
-                quantity_units='kWh',
-                rate='0',
-            ),
-        ])
-        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
-                'nobody@example.com'), UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address())
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'D', 0,
+                    quantity_formula='A.total',
+                    rate_formula='0'),
+        ]
         Session().add(utilbill)
-        utilbill.refresh_charges(rs.rates)
-        utilbill.compute_charges(rs, utilbill_doc)
+        utilbill.compute_charges()
 
         self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
                 "Error in quantity formula: name 'B' is not defined")
@@ -365,4 +327,4 @@ class UtilBillTest(TestCaseWithSetup):
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
                 "Error in quantity formula: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
-            "Error in quantity formula: name 'A' is not defined")
+                "Error in quantity formula: name 'A' is not defined")
