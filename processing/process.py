@@ -468,8 +468,8 @@ class Process(object):
             reebill.service_address.addressee = sa_addressee
         if sa_street is not None:
             reebill.service_address.street = sa_street
-        if sa_street is not None:
-            reebill.service_address.street = sa_street
+        if sa_state is not None:
+            reebill.service_address.state = sa_state
         if sa_city is not None:
             reebill.service_address.city = sa_city
         if sa_postal_code is not None:
