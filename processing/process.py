@@ -457,8 +457,8 @@ class Process(object):
             reebill.billing_address.addressee = ba_addressee
         if ba_street is not None:
             reebill.billing_address.street = ba_street
-        if ba_street is not None:
-            reebill.billing_address.street = ba_street
+        if ba_state is not None:
+            reebill.billing_address.state = ba_state
         if ba_city is not None:
             reebill.billing_address.city = ba_city
         if ba_postal_code is not None:
