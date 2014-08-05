@@ -50,14 +50,6 @@ sys.stdout = sys.stderr
 MAX_GAP_DAYS = 10
 
 class Process(object):
-    """ Class with a variety of utility procedures for processing bills.
-        The idea here is that this class is instantiated with the data
-        access objects it needs, and then ReeBills (why not just references
-        to them?) are passed in and returned.  
-    """
-
-    config = None
-
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
             nexus_util, bill_mailer, renderer, ree_getter,
             splinter=None, logger=None):
@@ -82,9 +74,6 @@ class Process(object):
         reebill are given, the document returned will be the frozen version for
         the issued reebill.
         '''
-        # NOTE this method is in Process because it uses both databases; is
-        # there a better place to put it?
-
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
         if reebill_sequence is None:
@@ -266,12 +255,6 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
-        # save period dates for use in moving the utility bill file at the end
-        # of this method
-        old_start, old_end = utilbill.period_start, utilbill.period_end
-
-        # load Mongo document
-
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -281,9 +264,6 @@ class Process(object):
         # for total charges, it doesn't matter whether a reebill exists
         if total_charges is not None:
             utilbill.total_charges = total_charges
-
-        # for service and period dates, a reebill must be updated if it does
-        # exist
 
         if service is not None:
             doc['service'] = service
@@ -364,19 +344,6 @@ class Process(object):
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
         for reebill, total_charge in q:
-            # load utility bill document for this reebill:
-            # use "frozen" document's id in utilbill_reebill table if present,
-            # otherwise "current" id in utility bill table
-            # TODO loading utility bill document from Mongo should be
-            # unnecessary when "actual" versions of each reebill charge are
-            # moved to MySQL
-            frozen_doc_id = reebill._utilbill_reebills[0].document_id
-            current_doc_id = reebill.utilbills[0].document_id
-            if frozen_doc_id is None:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(current_doc_id)
-            else:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(frozen_doc_id)
-
             the_dict = {
                 'id': reebill.sequence,
                 'sequence': reebill.sequence,
@@ -616,8 +583,8 @@ class Process(object):
             return None
         except MultipleResultsFound:
             raise NotUniqueException(("Can't upload a bill for dates %s, %s "
-                    "because there are already %s of them") % (begin_date,
-                    end_date, len(list(existing_bills))))
+                    "because there are already %s of them") % (start, end,
+                    len(list(existing_bills))))
 
         # now there is one existing bill with the same dates. if state is
         # "more final" than an existing non-final bill that matches this
@@ -728,14 +695,7 @@ class Process(object):
                 i += 1
             else:
                 doc['charges'].pop(i)
-
-        # TODO add a charge for every RSI that doesn't have a charge, i.e.
-        # the ones whose value in 'valid_bindings' is False.
-        # we can't do this yet because we don't know what group it goes in.
-        # see https://www.pivotaltracker.com/story/show/43797365
-
         return doc, uprs
-
 
     def delete_utility_bill_by_id(self, utilbill_id):
         '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -746,11 +706,8 @@ class Process(object):
         utility bill cannot be deleted.
         '''
         session = Session()
-        # load utilbill to get its dates and service
         utilbill = session.query(state.UtilBill) \
                 .filter(state.UtilBill.id == utilbill_id).one()
-        # delete it & get new path (will be None if there was never
-        # a utility bill file or the file could not be found)
         _, deleted_path = self.delete_utility_bill(utilbill)
         return utilbill, deleted_path
 
@@ -1391,12 +1348,8 @@ class Process(object):
             },
         })
         self.reebill_dao.save_utilbill(utilbill_doc)
-
         return new_customer
 
-
-# keys above for which null values should be allowed in corresponding MySQL #
-# column
     def issue(self, account, sequence, issue_date=None):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default), and the due date to 30 days from
@@ -1777,8 +1730,6 @@ class Process(object):
             dirname, basename = os.path.split(the_path)
             self.renderer.render_max_version(reebill.customer.account,
                     reebill.sequence,
-                    # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
-                    # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
                     dirname, basename, True)
 
         # "the last element" (???)
