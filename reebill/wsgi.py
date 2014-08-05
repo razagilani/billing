@@ -1123,25 +1123,6 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
-    def get_reebill_services(self, account, sequence, **args):
-        # TODO: delete this? is it ever used?
-        '''Returns the utililty services associated with the reebill given by
-        account and sequence, and a list of which services are suspended
-        (usually empty). Used to show service suspension checkboxes in
-        "Sequential Account Information".'''
-        sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        if reebill is None:
-            raise Exception('No reebill found for %s-%s' % (account, sequence))
-        # TODO: 40161259 must return success field
-        return self.dumps({
-            'services': [],
-            'suspended_services': reebill.suspended_services
-        })
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
     @db_commit
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):

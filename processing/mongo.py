@@ -1,6 +1,5 @@
 from datetime import date, datetime
 import copy
-from itertools import chain
 
 import bson # part of pymongo package
 from sqlalchemy.orm.exc import NoResultFound
@@ -219,8 +218,7 @@ def meter_read_period(utilbill_doc):
 
 class MongoReebill(object):
     @classmethod
-    def get_reebill_doc_for_utilbills(cls, account, sequence, version,
-                discount_rate, late_charge_rate, utilbill_docs):
+    def get_reebill_doc_for_utilbills(cls, account, sequence, version):
         '''Returns a newly-created MongoReebill object having the given account
         number, discount rate, late charge rate, and list of utility bill
         documents. Hypothetical charges are the same as the utility bill's
@@ -228,17 +226,13 @@ class MongoReebill(object):
         Note that the utility bill document _id is not changed; the caller is
         responsible for properly duplicating utility bill documents.
         '''
-        assert len(utilbill_docs) == 1
-        reebill_doc = {
-            "_id" : {
-                "account" : account,
-                "sequence" : sequence,
-                "version" : version,
-            },
-        }
-        return MongoReebill(reebill_doc, utilbill_docs)
+        return MongoReebill({"_id" : {
+            "account" : account,
+            "sequence" : sequence,
+            "version" : version,
+        }})
 
-    def __init__(self, reebill_data, utilbill_dicts):
+    def __init__(self, reebill_data):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
@@ -455,8 +449,7 @@ class ReebillDAO(object):
 
         # convert types in reebill document
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
-
-        return MongoReebill(mongo_doc, [])
+        return MongoReebill(mongo_doc)
 
     def load_reebills_for(self, account, version='max'):
         sequences = self.state_db.listSequences(account)

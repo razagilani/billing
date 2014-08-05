@@ -998,8 +998,7 @@ class Process(object):
         # the utility bills. discount rate and late charge rate are set to the
         # "current" values for the customer in MySQL.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                new_sequence, 0, customer.get_discount_rate(),
-                customer.get_late_charge_rate(), new_utilbill_docs)
+                new_sequence, 0)
 
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0,
