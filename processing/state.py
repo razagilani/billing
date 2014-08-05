@@ -114,7 +114,7 @@ class Address(Base):
             'street': self.street,
             'city': self.city,
             'state': self.state,
-            'postalcode': self.postal_code,
+            'postal_code': self.postal_code,
         }
 
     @classmethod
@@ -606,38 +606,45 @@ class ReeBill(Base):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
-            for identifier in rsi.get_identifiers():
-                if identifier in identifiers:
-                    continue
-                try:
-                    other_rsi_num = rsi_numbers[identifier]
-                except KeyError:
-                    # TODO might want to validate identifiers before computing
-                    # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI '
-                            '"%s": %s') % (rsi.rsi_binding, identifier))
-                # a pair (x,y) means x precedes y, i.e. y depends on x
-                dependency_graph.append((other_rsi_num, this_rsi_num))
-                independent_rsi_numbers.discard(other_rsi_num)
-                independent_rsi_numbers.discard(this_rsi_num)
+            try:
+                this_rsi_identifiers = list(rsi.get_identifiers())
+            except FormulaSyntaxError:
+                # if this RSI has a syntax error, its number will remain in
+                # 'independent_rsi_numbers' because it's independent of others
+                pass
+            else:
+                for identifier in this_rsi_identifiers:
+                    if identifier in identifiers:
+                        continue
+                    try:
+                        other_rsi_num = rsi_numbers[identifier]
+                    except KeyError:
+                        # unknown variable in RSI formula: leave the RSI in
+                        # 'independent_rsi_numbers'
+                        continue
 
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+                    # if this_rsi_num can be added to the graph without creating
+                    # a cycle, add it. otherwise skip it. if the  graph is
+                    # sorted successfully, 'sorted_graph' will be used below
+                    try:
+                        sorted_graph = tsort.topological_sort(dependency_graph
+                                                              + [(other_rsi_num, this_rsi_num)])
+                    except tsort.GraphError as g:
+                        continue
+
+                    # a pair (x,y) means x precedes y, i.e. y depends on x
+                    dependency_graph.append((other_rsi_num, this_rsi_num))
+                    independent_rsi_numbers.discard(other_rsi_num)
+                    independent_rsi_numbers.discard(this_rsi_num)
+
+        # charges that don't depend on other charges can be evaluated at any
+        # time. if there are charges that depend on other charges, they have
+        # to be evaluated in the order described by 'sorted_graph'
         evaluation_order = list(independent_rsi_numbers)
-
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        try:
-            evaluation_order.extend(tsort.topological_sort(dependency_graph))
-        except tsort.GraphError as g:
-            # if the graph contains a cycle, provide a more comprehensible error
-            # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
-            raise RSIError('Circular dependency: %s' % names_in_cycle)
-
+        if dependency_graph != []:
+            evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
+
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
@@ -682,13 +689,11 @@ class ReeBill(Base):
     def get_total_actual_charges(self):
         '''Returns sum of "actual" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.a_total for charge in self.charges)
 
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.h_total for charge in self.charges)
 
     def get_charge_by_rsi_binding(self, binding):
@@ -962,13 +967,9 @@ class UtilBill(Base):
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
             session.add(Charge(utilbill=self,
-                               description=rsi.description,
-                               group=rsi.group,
-                               quantity=0,
-                               quantity_units=rsi.quantity_units,
-                               rate=0,
-                               rsi_binding=rsi.rsi_binding,
-                               total=0))
+                    description=rsi.description, group=rsi.group,
+                    quantity=0, quantity_units=rsi.quantity_units,
+                    rate=0, rsi_binding=rsi.rsi_binding, total=0))
 
     def compute_charges(self, uprs, utilbill_doc, raise_exception=False):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
@@ -985,7 +986,7 @@ class UtilBill(Base):
 
         rsi_bindings = set(rsi['rsi_binding'] for rsi in uprs.rates)
         for c in (x for x in self.charges if x.rsi_binding not in rsi_bindings):
-            raise NoRSIError('No rate structure item for "%s"' % c)
+            raise NoRSIError('No rate structure item for "%s"' % c.rsi_binding)
 
         # This code temporary until utilbill_doc stops holding RSIs
         # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
@@ -1045,32 +1046,30 @@ class UtilBill(Base):
                         # unknown variable in RSI formula: leave the RSI in
                         # 'independent_rsi_numbers'
                         continue
+
+                    # if this_rsi_num can be added to the graph without creating
+                    # a cycle, add it. otherwise skip it. if the  graph is
+                    # sorted successfully, 'sorted_graph' will be used below
+                    try:
+                        sorted_graph = tsort.topological_sort(dependency_graph
+                                + [(other_rsi_num, this_rsi_num)])
+                    except tsort.GraphError as g:
+                        continue
+
                     # a pair (x,y) means x precedes y, i.e. y depends on x
                     dependency_graph.append((other_rsi_num, this_rsi_num))
                     independent_rsi_numbers.discard(other_rsi_num)
                     independent_rsi_numbers.discard(this_rsi_num)
 
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+        # charges that don't depend on other charges can be evaluated at any
+        # time. if there are charges that depend on other charges, they have
+        # to be evaluated in the order described by 'sorted_graph'
         evaluation_order = list(independent_rsi_numbers)
-
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        try:
-            evaluation_order.extend(tsort.topological_sort(dependency_graph))
-        except tsort.GraphError as g:
-            # if the graph contains a cycle, provide a more comprehensible error
-            # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
-            raise RSIError('Circular dependency: %s' % names_in_cycle)
-
+        if dependency_graph != []:
+            evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
         all_charges = {charge.rsi_binding: charge for charge in self.charges}
-
-        assert len(evaluation_order) == len(rsis)
 
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
@@ -1103,7 +1102,11 @@ class UtilBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
-        return sum(charge.total for charge in self.charges)
+        """Returns sum of all charges' totals, excluding charges that have
+        errors.
+        """
+        return sum(charge.total for charge in self.charges
+                if charge.total is not None)
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.

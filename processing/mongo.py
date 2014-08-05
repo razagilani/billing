@@ -1,52 +1,16 @@
-#!/usr/bin/env python
-import sys
 from datetime import date, datetime
-import pymongo
-import bson # part of pymongo package
-from operator import itemgetter
-import itertools as it
 import copy
-from copy import deepcopy
 from itertools import chain
-from collections import defaultdict
-import tsort
+
+import bson # part of pymongo package
+from sqlalchemy.orm.exc import NoResultFound
+
 from billing.util.mongo_utils import bson_convert, format_query, check_error
-from billing.util.dictutils import dict_merge
 from billing.util.dateutils import date_to_datetime
 from billing.processing.state import Customer, UtilBill
 from billing.exc import NoSuchBillException, \
-    NotUniqueException, IssuedBillError, MongoError, FormulaError, RSIError, \
-    NoRSIError
-import pprint
-from sqlalchemy.orm.exc import NoResultFound
-pp = pprint.PrettyPrinter(indent=1).pprint
-sys.stdout = sys.stderr
+    NotUniqueException, IssuedBillError, MongoError
 
-# utility bill-to-reebill address schema converters
-# also remember that utilbill and reebill use different names for these
-
-def utilbill_billing_address_to_reebill_address(billing_address):
-    '''Transforms Rich's utility bill billing address schema to his reebill
-    address schema (which is the same for both kinds of addresses).'''
-    return {
-        ('ba_postal_code' if key == 'postalcode'
-            else ('ba_street1' if key == 'street'
-                else 'ba_' + key)): value
-        for (key, value) in billing_address.iteritems()
-    }
-
-def utilbill_service_address_to_reebill_address(service_address):
-    '''Transforms Rich's utility bill service address schema to his reebill
-    address schema (which is the same for both kinds of addresses).'''
-    return {
-        ('sa_postal_code' if key == 'postalcode'
-            else ('sa_street1' if key == 'street'
-                else 'sa_' + key)): value
-        for (key, value) in service_address.iteritems()
-    }
-
-
-# type-conversion functions
 
 def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     # TODO combine this into python_convert(), and include the ancestor_key
@@ -244,17 +208,6 @@ def update_register(utilbill_doc, original_meter_id, original_register_id,
     return meter['identifier'], register['identifier']
 
 
-# TODO make this a method of a utility bill document class when one exists
-def get_charges_json(utilbill_doc):
-    '''Returns list of dictionaries describing charges for use in web browser.
-    '''
-    return [dict_merge(c, {'id': c['rsi_binding']})
-            for c in utilbill_doc['charges']]
-
-# TODO make this a method of a utility bill document class when one exists
-def get_service_address(utilbill_doc):
-    return utilbill_doc['service_address']
-
 # TODO rename to get_meter_read_period
 # TODO make this a method of a utility bill document class when one exists
 def meter_read_period(utilbill_doc):
@@ -263,86 +216,6 @@ def meter_read_period(utilbill_doc):
     assert len(utilbill_doc['meters']) >= 1
     meter = utilbill_doc['meters'][0]
     return meter['prior_read_date'], meter['present_read_date']
-
-# TODO make this a method of a utility bill document class when one exists
-def set_meter_read_period(utilbill_doc, start, end):
-    '''Sets the period dates of the first (i.e. only) meter in this bill.
-    '''
-    assert len(utilbill_doc['meters']) >= 1
-    meter = utilbill_doc['meters'][0]
-    meter['prior_read_date'], meter['present_read_date'] = start, end
-
-# TODO make this a method of a utility bill document class when one exists
-def refresh_charges(utilbill_doc, uprs):
-    '''Replaces charges in the utility bill document with newly-created ones
-    based on the Rate Structure Items in 'uprs'. A charge is created
-    for every RSI. The charges are computed according to the rate structures.
-    '''
-    utilbill_doc['charges'] = [{
-        'rsi_binding': rsi.rsi_binding,
-        'quantity': 0,
-        'quantity_units': rsi.quantity_units,
-        'rate': 0,
-        'total': 0,
-        'description': rsi.description,
-        'group': rsi.group,
-    } for rsi in sorted(uprs.rates, key=itemgetter('rsi_binding'))
-            if rsi.has_charge]
-
-def _validate_charges(utilbill_doc, rate_structure):
-    '''Raises a NoRSIError if any charge in 'utilbill_doc doesn't correspond to
-    a RateStructureItem in 'rate_structure'.
-    '''
-    rsi_bindings = set(rsi['rsi_binding'] for rsi in rate_structure.rates)
-    for charge in utilbill_doc['charges']:
-        if charge['rsi_binding'] not in rsi_bindings:
-            raise NoRSIError('No rate structure item for "%s"' %
-                           charge['rsi_binding'])
-
-def _get_charge_by_rsi_binding(utilbill_doc, rsi_binding):
-    matches = [c for c in utilbill_doc['charges']
-            if c['rsi_binding'] ==  rsi_binding]
-    assert len(matches) == 1
-    return matches[0]
-
-def update_charge(utilbill_doc, rsi_binding, fields):
-    '''Modify the charge given by 'rsi_binding' by setting key-value pairs
-    to match the dictionary 'fields'.
-    '''
-    charge = _get_charge_by_rsi_binding(utilbill_doc, rsi_binding)
-    charge.update(fields)
-
-def delete_charge(utilbill_doc, rsi_binding):
-    for charge in utilbill_doc['charges']:
-        if charge['rsi_binding'] == rsi_binding:
-            utilbill_doc['charges'].remove(charge)
-            return
-    raise ValueError('RSI binding "%s" not found' % rsi_binding)
-
-# TODO make this a method of a utility bill document class when one exists
-# (if it doesn't go away first)
-def add_charge(utilbill_doc, group_name):
-    '''Add a new charge to the given utility bill with charge group "group_name"
-    and default value for all its fields.
-    '''
-    utilbill_doc['charges'].append({
-        'rsi_binding': 'RSI binding required',
-        'description': 'description required',
-        'quantity': 0,
-        'quantity_units': 'kWh',
-        'rate': 0,
-        'total': 0,
-        'group': group_name,
-    })
-
-# TODO make this a method of a utility bill document class when one exists
-def total_of_all_charges(utilbill_doc):
-    '''Returns sum of "total" fields of all charges in the utility bill.
-    '''
-    # TODO: use method on SQLAlchemy UtilBill object to return this (or None
-    # for a hypothetical utility bill). It can't be done here because 'state'
-    # is not stored in the Mongo document.
-    return sum(charge.get('total', 0) for charge in utilbill_doc['charges'])
 
 class MongoReebill(object):
 
@@ -392,9 +265,7 @@ class MongoReebill(object):
         Note that the utility bill document _id is not changed; the caller is
         responsible for properly duplicating utility bill documents.
         '''
-        # NOTE currently only one utility bill is allowed
         assert len(utilbill_docs) == 1
-        utilbill = utilbill_docs[0]
 
         reebill_doc = {
             "_id" : {
@@ -410,55 +281,6 @@ class MongoReebill(object):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
-        self._utilbills = copy.deepcopy(utilbill_dicts)
-
-    def compute_charges(self, uprs):
-        '''Recomputes hypothetical versions of all charges based on the
-        associated utility bill.
-        '''
-        # process rate structures for all services
-        utilbill_doc = self._utilbills[0]
-        compute_all_charges(utilbill_doc, uprs)
-
-        # TODO temporary hack: duplicate the utility bill, set its register
-        # quantities to the hypothetical values, recompute it, and then
-        # copy all the charges back into the reebill
-        hypothetical_utilbill = deepcopy(self._utilbills[0])
-
-        # these three generators iterate through "actual registers" of the
-        # real utility bill (describing conventional energy usage), "shadow
-        # registers" of the reebill (describing renewable energy usage
-        # offsetting conventional energy), and "hypothetical registers" in
-        # the copy of the utility bill (which will be set to the sum of the
-        # other two).
-        actual_registers = chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])
-        shadow_registers = chain.from_iterable(u['shadow_registers']
-                for u in self.reebill_dict['utilbills'])
-        hypothetical_registers = chain.from_iterable(m['registers'] for m
-                in hypothetical_utilbill['meters'])
-
-        # set the quantity of each "hypothetical register" to the sum of
-        # the corresponding "actual" and "shadow" registers.
-        for h_register in hypothetical_registers:
-            a_register = next(r for r in actual_registers
-                    if r['register_binding'] ==
-                    h_register['register_binding'])
-            s_register = next(r for r in shadow_registers
-                    if r['register_binding'] ==
-                    h_register['register_binding'])
-            h_register['quantity'] = a_register['quantity'] + \
-                    s_register['quantity']
-
-        # compute the charges of the hypothetical utility bill
-        compute_all_charges(hypothetical_utilbill, uprs)
-
-        # copy the charges from there into the reebill
-        self.reebill_dict['utilbills'][0]['hypothetical_charges'] = \
-                hypothetical_utilbill['charges']
-
-    # TODO should _id fields even have setters? they're never supposed to
-    # change.
     @property
     def account(self):
         return self.reebill_dict['_id']['account']
@@ -480,32 +302,6 @@ class MongoReebill(object):
     def version(self, value):
         self.reebill_dict['_id']['version'] = int(value)
     
-    def get_all_shadow_registers_json(self):
-        '''Given a utility bill document, returns a list of dictionaries describing
-        registers of all meters.'''
-        assert len(self.reebill_dict['utilbills']) == 1
-        result = []
-        for register in self.reebill_dict['utilbills'][0]['shadow_registers']:
-                result.append({
-                    'measure': register['measure'],
-                    'register_binding': register['register_binding'],
-                    'quantity': register['quantity']
-                })
-        return result
-
-    @property
-    def services(self):
-        '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
-
-    @property
-    def suspended_services(self):
-        '''Returns list of services for which billing is suspended (e.g.
-        because the customer has switched to a different fuel for part of the
-        year). Utility bills for this service should be ignored in the attach
-        operation.'''
-        return self.reebill_dict.get('suspended_services', [])
-
 class ReebillDAO(object):
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -513,49 +309,6 @@ class ReebillDAO(object):
         self.state_db = state_db
         self.reebills_collection = database['reebills']
         self.utilbills_collection = database['utilbills']
-
-    def _get_version_query(self, account, sequence, specifier):
-        '''Returns the version part of a Mongo query for a reebill based on the
-        "version specifier": .'''
-
-        # TODO
-        if isinstance(specifier, date):
-            raise NotImplementedError
-
-        raise ValueError('Unknown version specifier "%s"' % specifier)
-
-    def load_utilbills(self, **kwargs):
-        '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.
-
-        kwargs (any of these added will be added to the query:
-        account
-        service
-        utility
-        start
-        end
-        sequence
-        version
-        '''
-        #check individually for each allowed key in case extra things get thrown into kwargs
-        query = {}
-        if kwargs.has_key('account'):
-            query.update({'account': kwargs['account']})
-        if kwargs.has_key('utility'):
-            query.update({'utility': kwargs['utility']})
-        if kwargs.has_key('service'):
-            query.update({'service': kwargs['service']})
-        if kwargs.has_key('start'):
-            query.update({'start': date_to_datetime(kwargs['start'])})
-        if kwargs.has_key('end'):
-            query.update({'end': date_to_datetime(kwargs['end'])})
-        if kwargs.has_key('sequence'):
-            query.update({'sequence': kwargs['sequence']})
-        if kwargs.has_key('version'):
-            query.update({'version': kwargs['version']})
-        cursor = self.utilbills_collection.find(query, sort=[('start',
-                pymongo.ASCENDING)])
-        return list(cursor)
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
@@ -575,7 +328,6 @@ class ReebillDAO(object):
             'account': account,
             'utility': utility,
             'service': service,
-            # querying for None datetimes should work
             'start': date_to_datetime(start) \
                     if isinstance(start, date) else None,
             'end': date_to_datetime(end) \
@@ -651,7 +403,6 @@ class ReebillDAO(object):
                 reebill.document_id_for_utilbill(utilbill))
 
     def delete_doc_for_statedb_utilbill(self, utilbill_row):
-        # TODO add reebill argument here like above?
         '''Deletes the Mongo utility bill document corresponding to the given
         state.UtilBill object.'''
         if utilbill_row._utilbill_reebills != []:
@@ -696,15 +447,10 @@ class ReebillDAO(object):
                         reebill_doc['_id']['account'],
                         reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
-
-
-            # convert types
             utilbill_doc = convert_datetimes(utilbill_doc)
-
             result.append(utilbill_doc)
 
         return result
-
 
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the a
@@ -712,11 +458,6 @@ class ReebillDAO(object):
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
-        # NOTE not using context manager here because it commits the
-        # transaction when the session exits! this method should be usable
-        # inside other transactions.
-        session = self.state_db.session()
-
         assert isinstance(account, basestring)
         assert isinstance(sequence, long) or isinstance(sequence, int)
         assert isinstance(version, basestring) or isinstance(version, long) \
@@ -756,13 +497,9 @@ class ReebillDAO(object):
         # load utility bills
         utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
 
-        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
-        return mongo_reebill
+        return MongoReebill(mongo_doc, utilbill_docs)
 
     def load_reebills_for(self, account, version='max'):
-        if not account: return None
-        # NOTE not using context manager (see comment in load_reebill)
-        session = self.state_db.session()
         sequences = self.state_db.listSequences(account)
         return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
