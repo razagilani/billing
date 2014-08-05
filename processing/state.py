@@ -966,6 +966,8 @@ class UtilBill(Base):
         self.charges = []
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
+            if rsi.has_charge == False:
+                continue
             session.add(Charge(utilbill=self,
                     description=rsi.description, group=rsi.group,
                     quantity=0, quantity_units=rsi.quantity_units,
