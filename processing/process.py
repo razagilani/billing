@@ -1075,11 +1075,11 @@ class Process(object):
 
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0,
-                utilbills=new_utilbills,
-                billing_address=Address(**new_utilbill_docs[0]
-                        ['billing_address']),
-                service_address=Address(**new_utilbill_docs[0]
-                        ['service_address']))
+                              utilbills=new_utilbills,
+                              billing_address=Address.from_other(
+                                new_utilbills[0].billing_address),
+                              service_address=Address.from_other(
+                                new_utilbills[0].service_address))
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
