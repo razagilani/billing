@@ -316,6 +316,9 @@ class UtilBillTest(TestCaseWithSetup):
             Charge(utilbill, '', '', 0, 'kWh', 0, 'D', 0,
                     quantity_formula='A.total',
                     rate_formula='0'),
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'E', 0,
+                    quantity_formula='2',
+                    rate_formula='3'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
@@ -328,3 +331,4 @@ class UtilBillTest(TestCaseWithSetup):
                 "Error in quantity formula: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                 "Error in quantity formula: name 'A' is not defined")
+        self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
