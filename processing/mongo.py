@@ -218,43 +218,6 @@ def meter_read_period(utilbill_doc):
     return meter['prior_read_date'], meter['present_read_date']
 
 class MongoReebill(object):
-
-    @classmethod
-    def _get_utilbill_subdoc(cls, utilbill_doc):
-        '''Returns a a dictionary that is the subdocument of a reebill document
-        representing the "hypothetical" version of the given utility bill
-        document.'''
-        return {
-            # the "id" field in the reebill subdocument identifies which
-            # utility bill it is associated with; this should match the the
-            # value in the "document_id" column of the row of the
-            # utilbill_reebill table in MySQL representing the association
-            # between this reebill and the utility bill, and the "_id" of the
-            # corresponding utility bill document.
-            'id': utilbill_doc['_id'],
-
-            # subdocuments corresponding to the the registers in the meters
-            # of the utility bill: for now, all registers get included,
-            # but in the future this could change.
-            'shadow_registers': [{
-                # 'register_binding' matches up this subdocument with a
-                # utility bill register
-                'register_binding': r['register_binding'],
-                # hypothetical quantity of the corresponding utility bill
-                # register
-                'quantity': 0,
-                # OLAP measure name that will be used for determining the
-                # hypothetical quantity above
-                'measure': 'Energy Sold'
-            } for r in chain.from_iterable(m['registers']
-                    for m in utilbill_doc['meters'])],
-
-            # hypothetical charges are the same as actual (on the utility
-            # bill); they will not reflect the renewable energy quantity until
-            # computed
-            'hypothetical_charges': utilbill_doc['charges'],
-        }
-
     @classmethod
     def get_reebill_doc_for_utilbills(cls, account, sequence, version,
                 discount_rate, late_charge_rate, utilbill_docs):
@@ -266,14 +229,12 @@ class MongoReebill(object):
         responsible for properly duplicating utility bill documents.
         '''
         assert len(utilbill_docs) == 1
-
         reebill_doc = {
             "_id" : {
                 "account" : account,
                 "sequence" : sequence,
                 "version" : version,
             },
-            "utilbills" : [cls._get_utilbill_subdoc(u) for u in utilbill_docs],
         }
         return MongoReebill(reebill_doc, utilbill_docs)
 
@@ -281,6 +242,7 @@ class MongoReebill(object):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
+
     @property
     def account(self):
         return self.reebill_dict['_id']['account']
@@ -494,10 +456,7 @@ class ReebillDAO(object):
         # convert types in reebill document
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-        # load utility bills
-        utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
-
-        return MongoReebill(mongo_doc, utilbill_docs)
+        return MongoReebill(mongo_doc, [])
 
     def load_reebills_for(self, account, version='max'):
         sequences = self.state_db.listSequences(account)

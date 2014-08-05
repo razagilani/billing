@@ -1457,7 +1457,6 @@ class Process(object):
         # utility bill and replace the old utility bill document with the new one
         reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
                 reebill.sequence, version=reebill.version)
-        reebill_doc.reebill_dict['utilbills'][0]['id'] = new_id
         reebill._utilbill_reebills[0].document_id = new_id
         self.reebill_dao.save_reebill(reebill_doc)
 

@@ -85,7 +85,7 @@ class RenewableEnergyGetter(object):
                                                      reebill.sequence, reebill.version)
         utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
                 reebill.utilbills[0])
-        start, end = mongo.meter_read_period(utilbill_doc)
+        start, end = reebill.get_period()
         # get hourly "energy sold" values during this period
         for reading in reebill.readings:
 
