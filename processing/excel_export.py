@@ -109,8 +109,9 @@ class Exporter(object):
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
             for charge in actual_charges:
-                column_name = '%s: %s' % (charge.group, charge.description)
-                total = charge.total
+                column_name = '%s: %s' % (charge['group'],
+                        charge.get('description', 'Error: No Description Found!'))
+                total = charge.get('total', 0)
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
@@ -327,8 +328,7 @@ class Exporter(object):
                 # iterate the payments and find the ones that apply.
                 if period_start and period_end:
                     applicable_payments = filter(
-                        lambda x: period_start <= x.date_applied.date() <
-                                  period_end,
+                        lambda x: period_start <= x.date_applied < period_end,
                         payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,

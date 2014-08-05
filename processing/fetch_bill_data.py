@@ -81,8 +81,7 @@ class RenewableEnergyGetter(object):
         energy-sold values; use use_olap=False to get them directly from OLTP.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
-        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
+        utilbill = reebill.utilbill
         start, end = reebill.get_period()
         # get hourly "energy sold" values during this period
         for reading in reebill.readings:
@@ -109,8 +108,8 @@ class RenewableEnergyGetter(object):
                     total += timeseries[index]
                 return total
 
-            results = self._usage_data_to_virtual_register(
-                    utilbill_doc, energy_function)
+            results = self._usage_data_to_virtual_register(utilbill,
+                energy_function)
             for binding, quantity in results:
                 assert isinstance(binding, basestring)
                 assert isinstance(quantity, (float, int))
@@ -291,8 +290,8 @@ class RenewableEnergyGetter(object):
                 result += energy_function(day, hour_range)
         return result
 
-    def _usage_data_to_virtual_register(self, utilbill_doc, energy_function,
-                verbose=False):
+
+    def _usage_data_to_virtual_register(self, utilbill, energy_function, verbose=False):
         '''Gets energy quantities from 'energy_function' and returns new
         renewable energy register readings as a list of (register binding,
         quantity) pairs. The caller should put these values in the
@@ -314,13 +313,16 @@ class RenewableEnergyGetter(object):
                 # time-of-use registers
                 # TODO make this a method of MongoReebill
                 hour_ranges = None
-                if 'active_periods_weekday' in register:
+                if register.active_periods not in [None, []]:
                     # a tou register should have all 3 active_periods_... keys
-                    assert 'active_periods_weekend' in register
-                    assert 'active_periods_holiday' in register
+                    for k in ['active_periods_weekday',
+                              'active_periods_weekend',
+                              'active_periods_holiday']:
+                        assert k in register.active_periods
                     hour_ranges = map(tuple,
-                        register['active_periods_' + holidays.get_day_type(day)])
-                elif register.get('type') == 'total':
+                        register.active_periods['active_periods_%s' %\
+                                                holidays.get_day_type(day)])
+                elif register.reg_type == 'total':
                     # For non-TOU registers, only insert renewable energy if the
                     # register dictionary has the key "type" and its value is
                     # "total". Every non-TOU utility bill should have exactly one
@@ -350,11 +352,8 @@ class RenewableEnergyGetter(object):
             return total_energy
 
         result = []
-        for meter in utilbill_doc['meters']:
-            for register in meter['registers']:
-                hypothetical_quantity = get_renewable_energy_for_register(
-                        register, meter['prior_read_date'],
-                        meter['present_read_date'])
-                result.append((register['register_binding'],
-                               hypothetical_quantity))
+        for register in utilbill.registers:
+            hypothetical_quantity = get_renewable_energy_for_register(register,
+                utilbill.period_start, utilbill.period_end)
+            result.append((register.register_binding, hypothetical_quantity))
         return result

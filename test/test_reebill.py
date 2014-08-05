@@ -48,8 +48,7 @@ class ReebillTest(unittest.TestCase):
 
         reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                 utilbills=[utilbill])
-
-        reebill.update_readings_from_document(utilbill_doc)
+        reebill.update_readings_from_utilasdlfasldjfasdf()
         self.assertEqual(1, len(reebill.readings))
         reading = reebill.readings[0]
         self.assertEqual(100, reading.conventional_quantity)

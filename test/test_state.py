@@ -1,19 +1,17 @@
-#!/usr/bin/python
+from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+init_logging()
+
+
+
+
 import unittest
-from datetime import date, datetime, timedelta
-import MySQLdb
-import sqlalchemy
+from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
-import pymongo
 from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.processing import mongo
-from billing.util import dateutils
-from billing.processing.session_contextmanager import DBSession
 from billing.exc import NoSuchBillException
-from billing.test import utils, example_data
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -24,48 +22,29 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(utils.TestCase):
-    def _clear_tables(self, db_connection):
-        c = db_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from reebill")
-        # clearing out utilbill_reebill should not be necessary because it
-        # should cascade deletion from reebill
-        c.execute("delete from utilbill_reebill")
-        c.execute("delete from utilbill")
-        c.execute("delete from customer")
-        db_connection.commit()
+class StateTest(TestCaseWithSetup):
+
+
 
     def setUp(self):
         # clear out database
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        self._clear_tables(mysql_connection)
-
-        # insert one customer (not relying on StateDB)
-        c = mysql_connection.cursor()
-        c.execute('''insert into customer
-                (name, account, discountrate, latechargerate,
-                utilbill_template_id, bill_email_recipient) values
-                ('Test Customer', 99999, .12, .34,
-                '000000000000000000000000', 'example@example.com')''')
-        mysql_connection.commit()
-
         init_config('tstsettings.cfg')
         init_model()
-
-        self.state_db = state.StateDB()
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(billdb_config['host'],
-                int(billdb_config['port']))[billdb_config['database']])
-
         self.session = Session()
+        TestCaseWithSetup.truncate_tables(self.session)
+        blank_address = Address()
+        customer = Customer('Test Customer', 99999, .12, .34,
+                            'example@example.com', 'FB Test Utility Name',
+                            'FB Test Rate Class', blank_address, blank_address)
+        self.session.add(customer)
+        self.session.commit()
+        self.state_db = state.StateDB()
 
     def tearDown(self):
         self.session.commit()
-
         # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        self._clear_tables(mysql_connection)
+        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        #self._clear_tables(mysql_connection)
 
     def test_trim_hypothetical_utilbills(self):
         account, service = '99999', 'gas'
@@ -84,8 +63,8 @@ class StateTest(utils.TestCase):
         # to simplify the utility-bill-creation API
         def create_bill(start, end, state):
             self.session.add(UtilBill(customer, state, 'gas',
-                    'washgas', 'DC Non Residential Non Heat',
-                    period_start=start, period_end=end,
+                    'washgas', 'DC Non Residential Non Heat', Address(),
+                    Address(), period_start=start, period_end=end,
                     date_received=today, billing_address=Address(),
                     service_address=Address()))
 
@@ -161,9 +140,11 @@ class StateTest(utils.TestCase):
 
         # adding versions of bills for other accounts should have no effect
         self.session.add(Customer('someone', '11111', 0.5, 0.1,
-                'id goes here', 'customer1@example.com'))
+                'customer1@example.com', 'FB Test Utility',
+                'FB Test Rate Class', Address(), Address()))
         self.session.add(Customer('someone', '22222', 0.5, 0.1,
-                'id goes here', 'customer2@example.com'))
+                'customer2@example.com', 'FB Test Utility',
+                'FB Test Rate Class', Address(), Address()))
         self.state_db.new_reebill('11111', 1)
         self.state_db.new_reebill('11111', 2)
         self.state_db.new_reebill('22222', 1)
@@ -336,11 +317,10 @@ class StateTest(utils.TestCase):
         customer = self.session.query(Customer).one()
 
         self.assertEqual(None, self.state_db.get_last_reebill('99999'))
-
+        empty_address = Address()
         utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1), billing_address = Address(),
-                service_address = Address())
+                'DC Non Residential Non Heat', empty_address, empty_address,
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         reebill = ReeBill(customer, 1, 0, utilbills=[utilbill])
         self.session.add(utilbill)
         self.session.add(reebill)
@@ -355,14 +335,12 @@ class StateTest(utils.TestCase):
         self.assertRaises(NoSuchBillException,
                 self.state_db.get_last_real_utilbill, '99999',
                 date(2001,1,1))
-        a = Address()
-        self.session.add(a)
-        self.session.flush()
 
         # one bill
+        empty_address = Address()
         gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
-                'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1), billing_address=a, service_address=a)
+                'DC Non Residential Non Heat', empty_address, empty_address,
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
         self.session.add(gas_bill_1)
 
         self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
@@ -374,8 +352,8 @@ class StateTest(utils.TestCase):
 
         # two bills
         electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
-                'whatever', period_start=date(2000,1,2),
-                period_end=date(2000,2,2), billing_address=a, service_address=a)
+                'whatever', empty_address, empty_address,
+                period_start=date(2000,1,2), period_end=date(2000,2,2))
         self.assertEqual(electric_bill,
                 self.state_db.get_last_real_utilbill('99999', date(2000, 3, 1)))
         self.assertEqual(electric_bill,
