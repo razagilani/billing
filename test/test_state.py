@@ -65,7 +65,8 @@ class StateTest(TestCaseWithSetup):
             self.session.add(UtilBill(customer, state, 'gas',
                     'washgas', 'DC Non Residential Non Heat', Address(),
                     Address(), period_start=start, period_end=end,
-                    date_received=today))
+                    date_received=today, billing_address=Address(),
+                    service_address=Address()))
 
         # when there are only Hypothetical utility bills,
         # trim_hypothetical_utilbills should remove all of them
@@ -295,8 +296,9 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
         # update feb 1: move it to mar 1
-        self.state_db.update_payment(q.id, datetime(2012,3,1),
-                    'new description', 200)
+        q.date_applied = datetime(2012,3,1)
+        q.description = 'new description'
+        q.credit = 200
         payments = self.state_db.find_payment(acc, datetime(2012,1,16),
                 datetime(2012,3,2))
         self.assertEqual(1, len(payments))

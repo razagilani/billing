@@ -1417,13 +1417,13 @@ function reeBillReady() {
                         Ext.getCmp('ba_street').setValue(jsonData['billing_address']['street']);
                         Ext.getCmp('ba_city').setValue(jsonData['billing_address']['city']);
                         Ext.getCmp('ba_state').setValue(jsonData['billing_address']['state']);
-                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postalcode']);
+                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['postal_code']);
 
                         Ext.getCmp('sa_addressee').setValue(jsonData['service_address']['addressee']);
                         Ext.getCmp('sa_street').setValue(jsonData['service_address']['street']);
                         Ext.getCmp('sa_city').setValue(jsonData['service_address']['city']);
                         Ext.getCmp('sa_state').setValue(jsonData['service_address']['state']);
-                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postalcode']);
+                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['postal_code']);
 
                         accountInfoFormPanel.doLayout();
                     } 
@@ -3198,12 +3198,10 @@ function reeBillReady() {
         root: 'rows',
         idProperty: 'id',
         fields: [
-            //{name: 'date_received', type: 'datetime',
-                //dateFormat: Date.patterns['ISO8601Long']},
             {name: 'date_received', type: 'date',
                 // server formats datetimes like "2011-09-12T00:00:00" and this matches the "c" format, but ext-js doesn't accept it this way
                 dateFormat: "c"},
-            {name: 'date_applied', type: 'date', dateFormat: 'Y-m-d'},
+            {name: 'date_applied', type: 'date', dateFormat: "c"},
             {name: 'description'},
             {name: 'credit'},
             {name: 'editable'} // not visible in grid
@@ -3256,10 +3254,10 @@ function reeBillReady() {
                 header: 'Date Applied',
                 sortable: true,
                 dataIndex: 'date_applied',
-                format: 'Y-m-d',
+                format: Date.patterns['ISO8601Long'],
                 editor: new Ext.form.DateField({
                     allowBlank: false,
-                    format: 'Y-m-d',
+                    format: Date.patterns['ISO8601Long'],
                }),
             }),
             {
@@ -5198,11 +5196,7 @@ function reeBillReady() {
                 editor: new Ext.form.TextField(),
                 renderer: function(v, params, record)
                 {
-                    if (Ext.isEmpty(record.data.processed))
-                    {
-                        return "No";
-                    }
-                    else if (record.data.mailto)
+                    if (record.data.processed)
                     {
                         return "Yes";
                     }

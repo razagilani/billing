@@ -1,6 +1,5 @@
 '''Provides example data to be used in tests.
 '''
-
 charge_fields = [
         dict(rate='23.14',
             rsi_binding='PUC',

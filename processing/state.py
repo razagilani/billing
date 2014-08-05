@@ -142,8 +142,22 @@ class Address(Base):
             'street': self.street,
             'city': self.city,
             'state': self.state,
-            'postalcode': self.postal_code,
+            'postal_code': self.postal_code,
         }
+
+    @classmethod
+    def from_other(cls, other_address):
+        """Constructs a new :class:`.Address` instance whose attributes are
+        copied from the given `other_address`.
+        :param other_address: An :class:`.Address` instance from which to
+         copy attributes.
+        """
+        assert isinstance(other_address, cls)
+        return cls(other_address.addressee,
+                   other_address.street,
+                   other_address.city,
+                   other_address.state,
+                   other_address.postal_code)
 
 
 class Customer(Base):
@@ -222,7 +236,7 @@ class ReeBill(Base):
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
-    issue_date = Column(Date)
+    issue_date = Column(DateTime)
 
     # new fields from Mongo
     ree_charge = Column(Float, nullable=False)
@@ -514,6 +528,7 @@ class ReeBill(Base):
                 update=False, raise_exception=True)
         self.replace_charges_with_context_evaluations(context)
 
+
     def document_id_for_utilbill(self, utilbill):
         '''Returns the id (string) of the "frozen" utility bill document in
         Mongo corresponding to the given utility bill which is attached to this
@@ -541,13 +556,11 @@ class ReeBill(Base):
     def get_total_actual_charges(self):
         '''Returns sum of "actual" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.a_total for charge in self.charges)
 
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.h_total for charge in self.charges)
 
     def get_service_address_formatted(self):
@@ -865,7 +878,11 @@ class UtilBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
-        return sum(charge.total for charge in self.charges)
+        """Returns sum of all charges' totals, excluding charges that have
+        errors.
+        """
+        return sum(charge.total for charge in self.charges
+                if charge.total is not None)
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -1108,7 +1125,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     date_received = Column(DateTime, nullable=False)
-    date_applied = Column(Date, nullable=False)
+    date_applied = Column(DateTime, nullable=False)
     description = Column(String)
     credit = Column(Float)
 
@@ -1127,8 +1144,8 @@ class Payment(Base):
         assert isinstance(date_received, datetime)
         assert isinstance(date_applied, date)
         self.customer = customer
-        self.date_received = date_received  # datetime
-        self.date_applied = date_applied  # date
+        self.date_received = date_received
+        self.date_applied = date_applied
         self.description = description
         self.credit = credit
 
@@ -1228,7 +1245,6 @@ class StateDB(object):
         were created were created (highest existing account number + 1--we're
         assuming accounts will be integers, even though we always store them as
         strings).'''
-        session = Session()
         last_account = max(map(int, self.listAccounts()))
         return last_account + 1
 
@@ -1436,16 +1452,18 @@ class StateDB(object):
         session.add(new_reebill)
         return new_reebill
 
-    def issue(self, account, sequence, issue_date=datetime.utcnow()):
+    def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
         '''
-        session = Session()
         reebill = self.get_reebill(account, sequence)
+        if issue_date is None:
+            issue_date = datetime.utcnow()
         if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
         reebill.issued = 1
+        reebill.processed = 1
         reebill.issue_date = issue_date
 
     def is_issued(self, account, sequence, version='max',
@@ -1546,7 +1564,6 @@ class StateDB(object):
     def reebills(self, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
         in MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1556,7 +1573,6 @@ class StateDB(object):
     def reebill_versions(self, include_unissued=True):
         '''Generates (account, sequence, version) tuples for all reebills in
         MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1682,7 +1698,6 @@ class StateDB(object):
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
-        session = Session()
         return UtilBillLoader(session).get_last_real_utilbill(account, end,
                 service=service, utility=utility, rate_class=rate_class,
                 processed=processed)
@@ -1705,19 +1720,6 @@ class StateDB(object):
                 description, credit)
         session.add(new_payment)
         return new_payment
-
-    def update_payment(self, oid, date_applied, description, credit):
-        '''Sets the date_applied, description, and credit of the payment with
-        id 'oid'.'''
-        session = Session()
-        payment = session.query(Payment).filter(Payment.id == oid).one()
-        if isinstance(date_applied, basestring):
-            payment.date_applied = datetime.strptime(date_applied,
-                "%Y-%m-%dT%H:%M:%S").date()
-        else:
-            payment.date_applied = date_applied
-        payment.description = description
-        payment.credit = credit
 
     def delete_payment(self, oid):
         '''Deletes the payment with id 'oid'.'''

@@ -12,7 +12,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session
-from processing.state import Charge, UtilBill, Address
+from processing.state import Charge, UtilBill, Address, ReeBill
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -52,9 +52,17 @@ def copy_charges_from_mongo():
     log.info('Committing to database')
     s.commit()
 
+def set_processed():
+    s= Session()
+    for reebill in s.query(ReeBill).all():
+        reebill.processed = reebill.issued
+    log.info("Committing updates to ReeBill.processed to databases")
+    s.commit()
+
 def upgrade():
     log.info('Beginning upgrade to version 21')
     alembic_upgrade('3147aa982e03')
     init_model()
     copy_charges_from_mongo()
+    set_processed()
     log.info('Upgrade to version 21 complete')

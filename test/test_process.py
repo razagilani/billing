@@ -357,7 +357,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # based on the customer's failure to pay bill1 by its due date,
         # i.e. 30 days after the issue date.
         self.process.issue(acc, bill1.sequence,
-                issue_date=date(2000, 4, 1))
+                    issue_date=datetime(2000, 4, 1))
         self.assertEqual(date(2000, 5, 1), bill1.due_date)
         self.assertEqual(50, bill1.balance_due)
 
@@ -424,7 +424,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.compute_reebill(acc, 1, version=1)
         self.assertEqual(25, bill1_1.ree_charge)
         self.assertEqual(25, bill1_1.balance_due)
-        self.process.issue(acc, 1, issue_date=date(2013, 3, 15))
+        self.process.issue(acc, 1, issue_date=datetime(2013, 3,  15))
         late_charge_source_amount = bill1_1.balance_due
 
         self.process.new_version(acc, 1)
@@ -1004,8 +1004,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         assert one.ree_charge == 50
         assert one.balance_due == 50
         self.process.issue(acc, 1,
-                           issue_date=datetime.utcnow().date() - timedelta(
-                               40))
+                issue_date=datetime.utcnow() - timedelta(40))
 
         # 2nd reebill, which will get a late charge from the 1st
         two = self.process.roll_reebill(acc)
@@ -1029,8 +1028,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # add a payment of $30 30 days ago (10 days after 1st reebill was
         # issued). the late fee above is now wrong; it should be 50% of
         # the unpaid $20 instead of 50% of the entire $50.
-        self.process.create_payment(acc, datetime.utcnow().date()
-                - timedelta(30), 'backdated payment', 30)
+        self.process.create_payment(acc, datetime.utcnow() - timedelta(30),
+                        'backdated payment', 30)
 
         # now a new version of the 2nd reebill should have a different late
         # charge: $10 instead of $50.
@@ -1081,7 +1080,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                   start_date=date(2013, 4, 4))
 
         self.process.compute_reebill(account, 1)
-        self.process.issue(account, 1)
+        self.process.issue(account, 1,
+                    issue_date=datetime(2013,5,1))
         # delete register from the 2nd utility bill
         id_2 = self.process.get_all_utilbills_json(
                 account, 0, 30)[0][0]['id']
@@ -1099,7 +1099,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual([{
             'sequence': 1,
             'version': 0,
-            'issue_date': datetime.utcnow().date()
+                'issue_date': datetime(2013,5,1),
         }], utilbill_data[1]['reebills'])
         self.assertEqual([{
             'sequence': 2,
@@ -1120,14 +1120,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # addresses should be preserved from one reebill document to the
         # next
         billing_address = {
-            u"postalcode" : u"12345",
+            u"postal_code" : u"12345",
             u"city" : u"Test City",
             u"state" : u"XX",
             u"addressee" : u"Test Customer 1 Billing",
             u"street" : u"123 Test Street"
         }
         service_address = {
-            u"postalcode" : u"12345",
+            u"postal_code" : u"12345",
             u"city" : u"Test City",
             u"state" : u"XX",
             u"addressee" : u"Test Customer 1 Service",
@@ -1369,7 +1369,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         '''Tests issuing of reebills.'''
         acc = '99999'
         # two utilbills, with reebills
-        session = self.session
         self.process.upload_utility_bill(acc, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO('january 2012'),
@@ -1395,26 +1394,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertRaises(BillStateError, self.process.issue, acc, 2)
 
         # issue one
-        self.process.issue(acc, 1)
+        self.process.issue(acc, 1, issue_date=datetime(2013,4,1))
 
-        # re-load from mongo to see updated issue date, due date,
-        # recipients
         self.assertEquals(True, one.issued)
+        self.assertEquals(True, one.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 1))
-        self.assertEquals(datetime.utcnow().date(), one.issue_date)
-        self.assertEquals(one.issue_date + timedelta(30), one.due_date)
+        self.assertEquals(datetime(2013,4,1), one.issue_date)
+        self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
         self.assertEquals('example@example.com', one.email_recipient)
 
         customer = self.state_db.get_customer(acc)
         customer.bill_email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue two
-        self.process.issue(acc, 2)
+        self.process.issue(acc, 2, issue_date=datetime(2013,5,1,12))
 
         # re-load from mongo to see updated issue date and due date
+        self.assertEquals(True, two.issued)
+        self.assertEquals(True, two.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
-        self.assertEquals(datetime.utcnow().date(), two.issue_date)
-        self.assertEquals(two.issue_date + timedelta(30), two.due_date)
+        self.assertEquals(datetime(2013,5,1,12), two.issue_date)
+        self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
         self.assertEquals('test1@example.com, test2@exmaple.com',
                           two.email_recipient)
 
@@ -1429,7 +1429,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.upload_utility_bill(acc, 'gas', date(2000, 1, 1),
                     date(2000, 2, 1), StringIO('january 2000'), 'january.pdf')
         self.process.roll_reebill(acc, start_date=date(2000, 1, 1))
-        self.process.issue(acc, 1, date(2000, 2, 15))
+        self.process.issue(acc, 1, datetime(2000, 2, 15))
 
         # two more utility bills and reebills
         self.process.upload_utility_bill(acc, 'gas', date(2000, 2, 1),
@@ -1455,8 +1455,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual(0, three.balance_due)
 
         # issue #2 and #3
-        self.process.issue(acc, 2, date(2000, 5, 15))
-        self.process.issue(acc, 3, date(2000, 5, 15))
+        self.process.issue(acc, 2, datetime(2000, 5, 15))
+        self.process.issue(acc, 3, datetime(2000, 5, 15))
 
         # #2 is still correct, and #3 should be too because it was
         # automatically recomputed before issuing
@@ -1537,20 +1537,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
         self.process.bind_renewable_energy(acc, 1)
         self.process.compute_reebill(acc, 1)
-        self.process.issue(acc, 1)
+        self.process.issue(acc, 1, issue_date=datetime(2012,3,15))
         self.assertEqual([{
                               'id': 1,
                               'sequence': 1,
                               'max_version': 0,
                               'issued': True,
-                              'issue_date': datetime.utcnow().date(),
+                                  'issue_date': datetime(2012,3,15),
                               'actual_total': 0.,
                               'hypothetical_total': 10,
                               'payment_received': 0.,
                               'period_start': date(2012, 1, 1),
                               'period_end': date(2012, 2, 1),
                               'prior_balance': 0.,
-                              'processed': False,
+                              'processed': True,
                               'ree_charges': 8.8,
                               'ree_value': 10,
                               'services': [],
@@ -1767,8 +1767,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                             }, utilbill_data, 'id',
                                             'charges')
         #doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
-        #doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
-
         # TODO enable these assertions when upload_utility_bill stops
         # ignoring them; currently they are set to match the template's
         # values regardless of the arguments to upload_utility_bill, and
@@ -1907,21 +1905,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'corrections': '(never issued)',
              }], reebill_data, 'id')
 
-        self.process.issue(account, 1, issue_date=date(2013, 2, 15))
+        self.process.issue(account, 1, issue_date=datetime(2013, 2, 15))
         reebill_data = self.process.get_reebill_metadata_json(account)
         self.assertDocumentsEqualExceptKeys([{
              'id': 1,
              'sequence': 1,
              'max_version': 0,
              'issued': True,
-             'issue_date': date(2013,2,15),
+             'issue_date': datetime(2013,2,15),
              'actual_total': 0.,
              'hypothetical_total': energy_quantity,
              'payment_received': 0.,
              'period_start': date(2013,1,1),
              'period_end': date(2013,2,1),
              'prior_balance': 0.,
-             'processed': False,
+             'processed': True,
              'ree_charges': energy_quantity * .5,
              'ree_value': energy_quantity,
              'services': [],
@@ -1970,14 +1968,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'sequence': 1L,
             'max_version': 0L,
             'issued': True,
-            'issue_date': date(2013,2,15),
+                'issue_date': datetime(2013,2,15),
             'actual_total': 0,
             'hypothetical_total': energy_quantity,
             'payment_received': 0.0,
             'period_start': date(2013,1,1),
             'period_end': date(2013,2,1),
             'prior_balance': 0,
-            'processed': False,
+            'processed': True,
             'ree_charges': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],
