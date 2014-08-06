@@ -2,7 +2,7 @@ from billing.test import utils
 from billing.processing.state import Charge, UtilBill, Customer, Address
 from billing.exc import FormulaSyntaxError, FormulaError
 from datetime import date
-from processing.state import BindingEvaluation
+from processing.state import Evaluation
 
 builtins = ['__import__', 'abs', 'all', 'any', 'apply', 'bin', 'callable',
             'chr', 'cmp', 'coerce', 'compile', 'delattr', 'dir', 'divmod',
@@ -37,9 +37,9 @@ class ChargeUnitTests(utils.TestCase):
                                   shared=False,
                                   roundrule="rounding")
         self.charge = Charge(**self.charge_params)
-        self.context = {'SOME_VAR': BindingEvaluation(quantity=2, rate=3),
-                        'OTHER_VAR': BindingEvaluation(quantity=4, rate=5),
-                        'ERROR': BindingEvaluation(error="uh oh")}
+        self.context = {'SOME_VAR': Evaluation(quantity=2, rate=3),
+                        'OTHER_VAR': Evaluation(quantity=4, rate=5),
+                        'ERROR': Evaluation(error="uh oh")}
 
     def test_is_builtin(self):
         for builtin_function_name in builtins:
@@ -79,7 +79,7 @@ class ChargeUnitTests(utils.TestCase):
                       ('asdf', None, "Error in x formula: name 'asdf' "
                                      "is not defined"),
                       ('ERROR.value', None, "Error in x formula: "
-                                            "'BindingEvaluation' object has no "
+                                            "'Evaluation' object has no "
                                             "attribute 'value'")]
         for formula, expected_result, expected_error_message in test_cases:
             try:

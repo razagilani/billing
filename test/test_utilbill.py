@@ -328,7 +328,7 @@ class UtilBillTest(TestCaseWithSetup):
         self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
                 "Error in rate formula: name 'A' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
-                "Error in quantity formula: name 'C' is not defined")
+                "Error in rate formula: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                 "Error in quantity formula: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))

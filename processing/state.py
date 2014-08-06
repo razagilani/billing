@@ -71,28 +71,38 @@ def check_schema_revision(schema_revision=_schema_revision):
     log.debug('Verified database at schema revision %s' % current_revision)
 
 
-class BindingEvaluation(object):
-    """A data structure to serve as both the evaluation context of a charge
-    formula, as well as the result of charge formula evaluation."""
+class Evaluation(object):
+    """A data structure to hold inputs for calculating charges. It can hold
+    the value of a `Register` or the result of evaluating a `Charge`.
+    """
+    def __init__(self, quantity):
+        self.quantity = quantity
 
+class ChargeEvaluation(Evaluation):
+    """An `Evaluation to store the result of evaluating a `Charge`.
+    """
     def __init__(self, quantity=None, rate=None, error=None):
-        """Construct a new `BindingEvaluation`."""
+        super(ChargeEvaluation, self).__init__(quantity)
         assert quantity is None or isinstance(quantity, (float, int))
         assert rate is None or isinstance(rate, (float, int))
+
+        # when there's an error, quantity and rate should both be None
+        if None in (quantity, rate):
+            assert error is not None
+            quantity = rate = None
+            self.total = None
+        else:
+            assert error is None
+            self.total = quantity * rate
+
         self.quantity = quantity
         self.rate = rate
         self.error = error
-        if quantity is not None and rate is not None:
-            assert error is None
-            self.total = quantity * rate
-        else:
-            self.total = None
 
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
     reebills.
     """
-
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
@@ -497,8 +507,8 @@ class ReeBill(Base):
         return total_therms
 
     def replace_charges_with_context_evaluations(self, context):
-        """Replace the ReeBill charges with data from each `BindingEvaluation`.
-        :param context: a dictionary of binding: `BindingEvaluation`
+        """Replace the ReeBill charges with data from each `Evaluation`.
+        :param context: a dictionary of binding: `Evaluation`
         """
         for binding in set([r.register_binding for r in self.readings]):
             del context[binding]
@@ -521,7 +531,7 @@ class ReeBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
-        context = {r.register_binding: BindingEvaluation(r.hypothetical_quantity)
+        context = {r.register_binding: Evaluation(r.hypothetical_quantity)
                    for r in self.readings}
         for charge in self.utilbill.ordered_charges():
             context[charge.rsi_binding] = charge.evaluate(context,
@@ -830,7 +840,10 @@ class UtilBill(Base):
         )
 
     def ordered_charges(self):
-        """Sorts the charges by their evaluation order"""
+        """Sorts the charges by their evaluation order. Any charge that is
+        part part of a cycle is put at the start of the list so it will get
+        an error when evaluated.
+        """
         depends = {}
         for c in self.charges:
             try:
@@ -847,12 +860,18 @@ class UtilBill(Base):
                 independent_bindings.discard(binding)
                 independent_bindings.discard(depended_binding)
 
-        order = list(independent_bindings)
-        try:
-            sortresult = tsort.topological_sort(dependency_graph)
-            order.extend(sortresult)
-        except tsort.GraphError as g:
-            raise RSIError('Circular dependency: %s' % ', '.join(g.args[1]))
+        while True:
+            try:
+                sortresult = tsort.topological_sort(dependency_graph)
+            except tsort.GraphError as g:
+                circular_bindings = set(g.args[1])
+                independent_bindings.update(circular_bindings)
+                dependency_graph = [(a, b) for a, b in dependency_graph
+                                    if b not in circular_bindings]
+            else:
+                break
+        order = list(independent_bindings) + [x for x in sortresult
+                if x not in independent_bindings]
         return sorted(self.charges, key=lambda x: order.index(x.rsi_binding))
 
     def compute_charges(self, raise_exception=False):
@@ -865,11 +884,17 @@ class UtilBill(Base):
         if raise_exception:
             for charge in self.charges:
                 charge.validate_formulas(self.bindings)
-        context = {r.register_binding: BindingEvaluation(r.quantity) for r in
+
+        # TODO registers don't have 'quantity'
+        context = {r.register_binding: Evaluation(r.quantity) for r in
                    self.registers}
-        for charge in self.ordered_charges():
-            context[charge.rsi_binding] = charge.evaluate(context,
-                raise_exception=raise_exception, update=True)
+        sorted_charges = self.ordered_charges()
+        for charge in sorted_charges:
+            evaluation = charge.evaluate(context,
+                    raise_exception=raise_exception, update=True)
+            # only charges that do not have errors get added to 'context'
+            if evaluation.error is None:
+                context[charge.rsi_binding] = evaluation
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
@@ -1061,7 +1086,7 @@ class Charge(Base):
         """Evaluates the formula in the specified context
         :param formula: a `quantity_formula` or `rate_formula`
         :param name: the formula name (i.e. rate / charge) for exception message
-        :param context: map of binding name to `BindingEvaluation`
+        :param context: map of binding name to `Evaluation`
         """
         try:
             return eval(formula, {}, context)
@@ -1082,24 +1107,24 @@ class Charge(Base):
 
     def evaluate(self, context, update=False, raise_exception=False):
         """Evaluates the quantity and rate formulas and returns a
-        `BindingEvaluation` instance
-        :param context: map of binding name to `BindingEvaluation`
+        `Evaluation` instance
+        :param context: map of binding name to `Evaluation`
         :param update: if true, set charge attributes to formula evaluations
         :param raise_exception: Raises an exception if the charge could not be
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
-        :returns: a `BindingEvaluation`
+        :returns: a `Evaluation`
         """
         try:
             quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
-                context)
+                    context)
             rate = self._evaluate_formula(self.rate_formula, 'rate', context)
-            evaluation = BindingEvaluation(quantity, rate)
-        except Exception as exception:
+        except FormulaError as exception:
             if raise_exception:
-                raise exception
-            evaluation = BindingEvaluation(error=exception.message)
-
+                raise
+            evaluation = ChargeEvaluation(error=exception.message)
+        else:
+            evaluation = ChargeEvaluation(quantity, rate)
         if update:
             self.quantity = evaluation.quantity
             self.rate = evaluation.rate
