@@ -94,7 +94,7 @@ class ChargeEvaluation(Evaluation):
 
         self.quantity = quantity
         self.rate = rate
-        self.error = exception
+        self.exception = exception
 
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
@@ -531,7 +531,10 @@ class ReeBill(Base):
         context = {r.register_binding: Evaluation(r.hypothetical_quantity)
                    for r in self.readings}
         for charge in self.utilbill.ordered_charges():
-            context[charge.rsi_binding] = charge.evaluate(context, update=False)
+            evaluation = charge.evaluate(context, update=False)
+            if evaluation.exception is not None:
+                raise evaluation.exception
+            context[charge.rsi_binding] = evaluation
         self.replace_charges_with_context_evaluations(context)
 
 
@@ -884,10 +887,10 @@ class UtilBill(Base):
         for charge in sorted_charges:
             evaluation = charge.evaluate(context, update=True)
             # only charges that do not have errors get added to 'context'
-            if evaluation.error is None:
+            if evaluation.exception is None:
                 context[charge.rsi_binding] = evaluation
             elif exception is None:
-                exception = evaluation.error
+                exception = evaluation.exception
 
         # all charges should be computed before the exception is raised
         if raise_exception and exception:
@@ -1140,10 +1143,10 @@ class Charge(Base):
             self.quantity = evaluation.quantity
             self.rate = evaluation.rate
             self.total = evaluation.total
-            if evaluation.error is None:
+            if evaluation.exception is None:
                 self.error is None
             else:
-                self.error = evaluation.error.message
+                self.error = evaluation.exception.message
         return evaluation
 
 class Payment(Base):
