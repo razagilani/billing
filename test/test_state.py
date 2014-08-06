@@ -65,8 +65,7 @@ class StateTest(TestCaseWithSetup):
             self.session.add(UtilBill(customer, state, 'gas',
                     'washgas', 'DC Non Residential Non Heat', Address(),
                     Address(), period_start=start, period_end=end,
-                    date_received=today, billing_address=Address(),
-                    service_address=Address()))
+                    date_received=today))
 
         # when there are only Hypothetical utility bills,
         # trim_hypothetical_utilbills should remove all of them
