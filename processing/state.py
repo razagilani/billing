@@ -923,14 +923,15 @@ class Register(Base):
     quantity_units = Column(String(255), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
+    # "reg_type" field seems to be unused (though "type" values include
+    # "total", "tou", "demand", and "")
     reg_type = Column(String(255), nullable=False)
     register_binding = Column(String(255), nullable=False)
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
     utilbill = relationship("UtilBill", backref=backref('registers',
-        order_by=id,
-        cascade="all"))
+            order_by=id, cascade="all"))
 
     def __init__(self, utilbill, description, quantity, quantity_units,
                  identifier, estimated, reg_type, register_binding,
