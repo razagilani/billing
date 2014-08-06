@@ -256,7 +256,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         }, self.state_db, self.reebill_dao,
                 logger)
 
-        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao, logger)
+        ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,

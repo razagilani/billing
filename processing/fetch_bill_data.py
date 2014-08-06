@@ -1,4 +1,3 @@
-#!/usr/bin/python
 '''
 Code for accumulating Skyline-generated energy into "shadow" registers in
 meters of reebills.
@@ -7,9 +6,8 @@ import sys
 from datetime import date, datetime,timedelta
 import csv
 from bisect import bisect_left
-import skyliner
+
 from skyliner.sky_handlers import cross_range
-from billing.processing import mongo
 from billing.util import dateutils, holidays
 from billing.util.dateutils import date_to_datetime, timedelta_in_hours
 from billing.exc import MissingDataError, RegisterError
@@ -17,9 +15,8 @@ from billing.exc import MissingDataError, RegisterError
 
 class RenewableEnergyGetter(object):
 
-    def __init__(self, splinter, reebill_dao, logger):
+    def __init__(self, splinter, logger):
         self._splinter = splinter
-        self._reebill_dao = reebill_dao
         self._logger = logger
 
     def get_billable_energy_timeseries(self, install, start, end,
@@ -131,11 +128,8 @@ class RenewableEnergyGetter(object):
         energy_function = self.get_interval_meter_data_source(csv_file,
                 timestamp_column=timestamp_column, energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
-        utilbill_doc = self._reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-
-        results = self._usage_data_to_virtual_register(
-                utilbill_doc, energy_function)
+        results = self._usage_data_to_virtual_register(reebill.utilbill,
+                energy_function)
         for binding, quantity in results:
             reebill.set_renewable_energy_reading(binding, quantity)
 
@@ -301,8 +295,6 @@ class RenewableEnergyGetter(object):
         range (pair of integers in [0,23]) to a float representing energy used
         during that time. (Energy is measured in therms, even if it's gas.)
         '''
-        # TODO move this helper function somewhere else, e.g. utility bill
-        # document class
         def get_renewable_energy_for_register(register, start, end):
             total_energy = 0.0
 
@@ -311,16 +303,9 @@ class RenewableEnergyGetter(object):
                 # shadow register is the entire day for normal registers, or
                 # periods given by 'active_periods_weekday/weekend/holiday' for
                 # time-of-use registers
-                # TODO make this a method of MongoReebill
-                hour_ranges = None
-                if register.active_periods not in [None, []]:
-                    # a tou register should have all 3 active_periods_... keys
-                    for k in ['active_periods_weekday',
-                              'active_periods_weekend',
-                              'active_periods_holiday']:
-                        assert k in register.active_periods
+                if register.get_active_periods() not in (None, {}):
                     hour_ranges = map(tuple,
-                        register.active_periods['active_periods_%s' %\
+                        register.get_active_periods()['active_periods_%s' %\
                                                 holidays.get_day_type(day)])
                 elif register.reg_type == 'total':
                     # For non-TOU registers, only insert renewable energy if the

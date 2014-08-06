@@ -2,23 +2,20 @@
 Utility functions to interact with state database
 """
 import ast
-from collections import defaultdict
-from copy import deepcopy
 from datetime import timedelta, datetime, date
-from itertools import groupby, chain
-from operator import attrgetter, itemgetter
 import logging
+import json
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.ext.declarative.api import declarative_base
-from sqlalchemy.orm import mapper, sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
-from sqlalchemy import func, not_
+from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
@@ -26,9 +23,9 @@ from alembic.migration import MigrationContext
 
 from billing.exc import IssuedBillError, NoSuchBillException,\
         RegisterError, FormulaSyntaxError
-
-from billing.exc import NoRSIError, FormulaError, RSIError
+from billing.exc import FormulaError
 from exc import DatabaseError
+
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -957,6 +954,22 @@ class Register(Base):
         self.register_binding = register_binding
         self.active_periods = active_periods
         self.meter_identifier = meter_identifier
+
+    def get_active_periods(self):
+        """Return a dictionary describing "active periods" of this register.
+        For a time-of-use register, this dictionary should have the keys
+        "active_periods_weekday", "active_periods_weekend",
+        and "active_periods_holiday". For a non-time-of-use register will
+        have an empty dictionary.
+        """
+        if self.active_periods == '':
+            return {}
+        result = json.loads(self.active_periods)
+        for key in ['active_periods_weekday',
+                'active_periods_weekend',
+                'active_periods_holiday']:
+            assert key in result
+        return result
 
 
 class Charge(Base):
