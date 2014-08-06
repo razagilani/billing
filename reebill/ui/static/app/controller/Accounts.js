@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.Accounts', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Accounts'
+        'Accounts', 'AccountsMemory'
     ],
     
     refs: [{
@@ -44,16 +44,17 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
+        var memoryStore = this.getAccountsMemoryStore();
+        var accountsStore = this.getAccountsStore();
         // Add the configurable default sort the first time through.
-        if (!this.getAccountsStore().sorters.length) {
-            this.getAccountsStore().sorters.add({
-                property: config.defaultAccountSortField,
-                direction: config.defaultAccountSortDir
-            });
-        }
+//        if (!this.getAccountsMemoryStore().sorters.length) {
+//            this.getAccountsMemoryStore().sorters.add({
+//                property: config.defaultAccountSortField,
+//                direction: config.defaultAccountSortDir
+//            });
+//        }
 
-        if (!this.getAccountsStore().getCount())
-            this.getAccountsStore().loadPage(1);
+
     },
 
     /**
@@ -62,7 +63,7 @@ Ext.define('ReeBill.controller.Accounts', {
     handleFilter: function() {
         var filter = this.getAccountsFilter().getValue();
 
-        this.getAccountsStore().loadPage(1, {
+        this.getAccountsMemoryStore().loadPage(1, {
             params: {
                 filtername: filter
             }
