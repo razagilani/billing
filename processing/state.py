@@ -1142,10 +1142,8 @@ class Charge(Base):
             self.quantity = evaluation.quantity
             self.rate = evaluation.rate
             self.total = evaluation.total
-            if evaluation.exception is None:
-                self.error is None
-            else:
-                self.error = evaluation.exception.message
+            self.error = None if evaluation.exception is None else \
+                evaluation.exception.message
         return evaluation
 
 class Payment(Base):

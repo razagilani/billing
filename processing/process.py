@@ -676,9 +676,7 @@ class Process(object):
 
     def refresh_charges(self, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
-        ones based on its rate structures. A charge is created for every Rate
-        Structure Item in the UPRS. The charges are computed according to the
-        rate structure.
+        ones based on its rate structures.
         '''
         self.state_db.get_utilbill_by_id(utilbill_id).compute_charges()
 
