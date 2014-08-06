@@ -10,7 +10,7 @@ Ext.define('ReeBill.store.AccountsMemory', {
 
     pageSize: 25,
     proxy: {
-        type: 'pagingmemory',
+        type: 'memory',
         enablePaging: true,
     },
 
