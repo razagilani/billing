@@ -276,16 +276,16 @@ class TestCaseWithSetup(test_utils.TestCase):
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
-        TestCaseWithSetup.insert_data()
-
-
         self.session = Session()
+        self.truncate_tables(self.session)
+        TestCaseWithSetup.insert_data()
 
     def tearDown(self):
         '''Clears out databases.'''
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
         self.session.commit()
+        self.truncate_tables(self.session)
         Session.remove()
 
 
