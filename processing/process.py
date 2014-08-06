@@ -1552,9 +1552,6 @@ class Process(object):
         # def filter_brokeragecustomers(row):
         #     return int(row['account'])>=20000
 
-        print self.journal_dao.get_all_last_events()
-        return
-
         statuses = self.state_db.retrieve_status_days_since(sortcol,
                 sort_reverse)
         name_dicts = self.nexus_util.all_names_for_accounts(
@@ -1579,12 +1576,15 @@ class Process(object):
         for account, _, _, issue_date, rate_class, service_address in bill_data:
             issue_date = issue_date if issue_date else ''
             rate_class = rate_class if rate_class else ''
-            service_address = service_address if service_address else ''
+            service_address = str(service_address) if service_address else ''
             rows_dict[account]['lastissuedate'] = issue_date
             rows_dict[account]['utilityserviceaddress'] = service_address
             rows_dict[account]['lastrateclass'] = rate_class
 
-
+        events = self.journal_dao.get_all_last_events()
+        for account, last_event in events:
+            if account in rows_dict:
+                rows_dict[account]['lastevent'] = last_event
 
         # #Apply filters
         # if filtername=="reebillcustomers":
