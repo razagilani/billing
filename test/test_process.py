@@ -971,19 +971,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         self.process.add_charge(u1.id)
         self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
-            quantity=100,
-            quantity_units='therms', rate=1,
-            total=100, group='All Charges'))
+            quantity_formula="REG_TOTAL.quantity",
+            quantity_units='therms', rate_formula='1',
+            group='All Charges'))
 
-        raise NotImplementedError()
-        """Not Implemented because test is not using process"""
-        u1_uprs = self.rate_structure_dao.load_uprs_for_utilbill(u1)
-        u1_uprs.rates = [RateStructureItem(
-            rsi_binding='THE_CHARGE',
-            quantity='REG_TOTAL.quantity',
-            rate='1',
-        )]
-        u1_uprs.save()
         self.process.update_utilbill_metadata(u1.id,
                                               processed=True)
 
@@ -998,7 +989,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # TODO don't use current date in a test!
         one = self.process.roll_reebill(acc,
                                         start_date=date(2012, 1, 1))
-        one_doc = self.reebill_dao.load_reebill(acc, 1)
+
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
