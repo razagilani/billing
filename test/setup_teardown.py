@@ -58,6 +58,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                   "utilbill", "customer", "address"]:
             session.execute("delete from %s" % t)
 
+    @staticmethod
     def init_logging():
         """Setup NullHandlers for test and root loggers.
         """
