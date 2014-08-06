@@ -847,7 +847,7 @@ class Process(object):
             new_reebill.replace_readings_from_utility_bill_registers(utilbill)
         else:
             new_reebill.update_readings_from_reebill(last_reebill_row.readings)
-
+            new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
 
