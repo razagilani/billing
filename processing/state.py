@@ -1003,8 +1003,7 @@ class Charge(Base):
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(255))
 
-    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id,
-        cascade="all"))
+    utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
 
     @staticmethod
     def is_builtin(var):

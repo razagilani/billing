@@ -553,12 +553,11 @@ class Process(object):
             if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (account,
                     new_utilbill.id, file_name))
-
+        session.flush()
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
             for register in predecessor.registers if predecessor else []:
-                new_utilbill.charges = []
                 session.add(Register(new_utilbill, register.description,
                                      0, register.quantity_units,
                                      register.identifier, False,
@@ -566,9 +565,9 @@ class Process(object):
                                      register.register_binding,
                                      register.active_periods,
                                      register.meter_identifier))
+        session.flush()
         if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
-
         return new_utilbill
 
     def get_service_address(self, account):
@@ -695,7 +694,7 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
         reebill.compute_charges()
-        actual_total = reebill.utilbill.total_charge()
+        actual_total = reebill.get_total_actual_charges()
 
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total

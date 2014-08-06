@@ -356,15 +356,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # issue first reebill, so a later bill can have a late charge
         # based on the customer's failure to pay bill1 by its due date,
         # i.e. 30 days after the issue date.
-        self.process.issue(acc, bill1.sequence,
-                    issue_date=datetime(2000, 4, 1))
+        self.process.issue(acc, bill1.sequence, issue_date=datetime(2000, 4, 1))
         self.assertEqual(date(2000, 5, 1), bill1.due_date)
         self.assertEqual(50, bill1.balance_due)
-
         # create 2nd utility bill and reebill
-        u2 = self.process.upload_utility_bill(acc, 'gas',
-                date(2000, 2, 1), date(2000, 3, 1),
-                StringIO('February 2000'), 'february.pdf')
+        u2 = self.process.upload_utility_bill(acc, 'gas', date(2000, 2, 1),
+                    date(2000, 3, 1), StringIO('February 2000'), 'february.pdf')
+        self.session.flush()
+
         self.process.update_utilbill_metadata(u2.id, processed=True)
         bill2 = self.process.roll_reebill(acc)
         self.process.update_sequential_account_info(acc, 2,
