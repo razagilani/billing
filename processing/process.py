@@ -168,12 +168,11 @@ class Process(object):
         session.delete(register)
         self.compute_utility_bill(utilbill_id)
 
-    def add_charge(self, utilbill_id, group_name):
-        """Add a new charge to the given utility bill with charge group
-        "group_name" and default values for all its fields."""
+    def add_charge(self, utilbill_id):
+        """Add a new charge to the given utility bill."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
+        utilbill.charges.append(Charge(utilbill, "", "", 0, "", 0, "", 0))
         self.compute_utility_bill(utilbill_id)
 
 
