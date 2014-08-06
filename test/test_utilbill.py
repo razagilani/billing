@@ -1,25 +1,18 @@
 '''Unit tests for the UtilBill class and other code that will eventually be
 included in it.
 '''
-from billing.test.setup_teardown import init_logging, TestCaseWithSetup
-init_logging()
-from billing import init_config, init_model
+from unittest import TestCase
 from datetime import date
-from billing.exc import RSIError
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.state import UtilBill, Customer, Session, Charge, Address, \
-    Register
 
-class UtilBillTest(TestCaseWithSetup):
+from billing.exc import RSIError
+from billing.processing.state import UtilBill, Customer, Session, Charge,\
+    Address, Register
+
+class UtilBillTest(TestCase):
 
     def setUp(self):
-        init_config('tstsettings.cfg')
-        init_model()
-        self.session = Session()
-        TestCaseWithSetup.truncate_tables(self.session)
+        pass
 
-    
-    # function to check error state of a charge
     def assert_error(self, c, error_message):
         '''Assert that the Charge 'c' has None for its quantity/rate/total
         and 'error_message' in its 'error' field.
@@ -39,9 +32,17 @@ class UtilBillTest(TestCaseWithSetup):
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
 
-
-    def insert_test_data(self):
-        rates = [
+    def test_compute(self):
+        utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
+                'nobody@example.com', 'FB Test Utility',
+                'FB Test Rate Class', Address(), Address()),
+                UtilBill.Complete, 'gas', 'utility', 'rate class',
+                Address(), Address(), period_start=date(2000, 1, 1),
+                period_end=date(2000, 2, 1))
+        register = Register(utilbill, "ABCDEF description", 150, 'therms',
+                "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL")
+        utilbill.registers = [register]
+        charges = [
             dict(
                 rsi_binding='CONSTANT',
                 quantity='100',
@@ -49,34 +50,34 @@ class UtilBillTest(TestCaseWithSetup):
                 rate='0.4',
             ),
             dict(
-              rsi_binding='LINEAR',
-              quantity='REG_TOTAL.quantity * 3',
-              quantity_units='therms',
-              rate='0.1',
+                rsi_binding='LINEAR',
+                quantity='REG_TOTAL.quantity * 3',
+                quantity_units='therms',
+                rate='0.1',
             ),
             dict(
-              rsi_binding='LINEAR_PLUS_CONSTANT',
-              quantity='REG_TOTAL.quantity * 2 + 10',
-              quantity_units='therms',
-              rate='0.1',
+                rsi_binding='LINEAR_PLUS_CONSTANT',
+                quantity='REG_TOTAL.quantity * 2 + 10',
+                quantity_units='therms',
+                rate='0.1',
             ),
             dict(
-              rsi_binding='BLOCK_1',
-              quantity='min(100, REG_TOTAL.quantity)',
-              quantity_units='therms',
-              rate='0.3',
+                rsi_binding='BLOCK_1',
+                quantity='min(100, REG_TOTAL.quantity)',
+                quantity_units='therms',
+                rate='0.3',
             ),
             dict(
-              rsi_binding='BLOCK_2',
-              quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
-              quantity_units='therms',
-              rate='0.2',
+                rsi_binding='BLOCK_2',
+                quantity='min(200, max(0, REG_TOTAL.quantity - 100))',
+                quantity_units='therms',
+                rate='0.2',
             ),
             dict(
-              rsi_binding='BLOCK_3',
-              quantity='max(0, REG_TOTAL.quantity - 200)',
-              quantity_units='therms',
-              rate='0.1',
+                rsi_binding='BLOCK_3',
+                quantity='max(0, REG_TOTAL.quantity - 200)',
+                quantity_units='therms',
+                rate='0.1',
             ),
             dict(
                 rsi_binding='REFERENCES_ANOTHER',
@@ -87,10 +88,10 @@ class UtilBillTest(TestCaseWithSetup):
                 rate='1',
             ),
             dict(
-              rsi_binding='NO_CHARGE_FOR_THIS_RSI',
-              quantity='1',
-              quantity_units='therms',
-              rate='1',
+                rsi_binding='NO_CHARGE_FOR_THIS_RSI',
+                quantity='1',
+                quantity_units='therms',
+                rate='1',
             ),
             # this RSI has no charge associated with it, but is used to
             # provide identifiers in the formula of the "REFERENCES_ANOTHER"
@@ -122,43 +123,10 @@ class UtilBillTest(TestCaseWithSetup):
                 rate='1 / 0',
             ),
         ]
-        session = Session()
-        utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
-                                     'nobody@example.com', 'FB Test Utility',
-                                     'FB Test Rate Class', Address(), Address()),
-                            UtilBill.Complete, 'gas', 'utility', 'rate class',
-                            Address(), Address(), period_start=date(2000, 1, 1),
-                            period_end=date(2000, 2, 1))
-        session.add(utilbill)
-        session.flush()
-        register = Register(utilbill, "ABCDEF description", 150, 'therms',
-                 "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL")
-        session.add(register)
-
-        for rdct in rates:
-            session.add(Charge(utilbill, "Insert description here", "",
-                               0.0, rdct['quantity_units'], 0.0,
-                               rdct['rsi_binding'], 0.0,
-                               rate_formula=rdct['rate'],
-                               quantity_formula=rdct['quantity']))
-        session.flush()
-        utilbill.compute_charges()
-        return utilbill, register
-
-    def test_compute(self):
-        utilbill, register = self.insert_test_data()
-        # function to get the "total" value of a charge from its name
-        def the_charge_named(rsi_binding):
-            return next(c.total for c in utilbill.charges
-                    if c.rsi_binding == rsi_binding)
-
-        # function to check error state of a charge
-        def assert_error(c, error_message):
-            self.assertIsNone(c.quantity)
-            self.assertIsNone(c.rate)
-            self.assertIsNone(c.total)
-            self.assertIsNotNone(c.error)
-            self.assertEqual(error_message, c.error)
+        utilbill.charges = [Charge(utilbill, "Insert description here", "",
+                0.0, c['quantity_units'], 0.0, c['rsi_binding'], 0.0,
+                rate_formula=c['rate'], quantity_formula=c['quantity'])
+                for c in charges]
 
         get = utilbill.get_charge_by_rsi_binding
 
