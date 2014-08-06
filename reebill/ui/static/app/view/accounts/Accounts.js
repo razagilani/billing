@@ -3,7 +3,7 @@ Ext.define('ReeBill.view.Accounts', {
 
     title: 'Accounts Processing Status',
     alias: 'widget.accounts',   
-    store: 'Accounts',
+    store: 'AccountsMemory',
     
     viewConfig: {
         trackOver: false,
@@ -28,7 +28,7 @@ Ext.define('ReeBill.view.Accounts', {
     bbar: {
         xtype: 'pagingtoolbar',
         pageSize: 25,
-        store: 'Accounts',
+        store: 'AccountsMemory',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}',
         items: ['->',{

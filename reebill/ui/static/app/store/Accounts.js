@@ -3,9 +3,7 @@ Ext.define('ReeBill.store.Accounts', {
 
     model: 'ReeBill.model.Account',
 
-    autoLoad: false,
-
-    pageSize: 10000,
+    autoLoad: true,
 
 	proxy: {
 		type: 'rest',
@@ -35,6 +33,28 @@ Ext.define('ReeBill.store.Accounts', {
             scope: this
         }
 	},
+
+    // Keep the memory store in sync
+    listeners:{
+        load: function(store, records, successful, eOpts){
+            var memoryStore = Ext.getStore('AccountsMemory');
+            memoryStore.getProxy().data = records;
+            memoryStore.loadPage(1);
+        },
+        add: function( store, records, index, eOpts ){
+            allRecords = store.getRange();
+            var memoryStore = Ext.getStore('AccountsMemory');
+            memoryStore.getProxy().data = allRecords;
+            memoryStore.reload()
+        },
+        remove: function( store, records, index, eOpts ){
+            allRecords = store.getRange();
+            var memoryStore = Ext.getStore('AccountsMemory');
+            memoryStore.getProxy().data = allRecords;
+            memoryStore.reload()
+        },
+        scope: this
+    },
 
     sorters: [{
         property: 'account',
