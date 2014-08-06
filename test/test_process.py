@@ -867,7 +867,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             p.refresh_charges(ub.id)  #creates charges
             p.compute_utility_bill(ub.id)  #updates charge values
 
-        for seq, reg_tot, strd in [(1, 100, base_date), (2, 200, None),
+        for seq, reg_tot, strd in [(1, 100, base_date),
+                                   (2, 200, None),
                                    (3, 300, None)]:
             rb = p.roll_reebill(acc, start_date=strd)
             p.update_sequential_account_info(acc, seq, discount_rate=0.5)
