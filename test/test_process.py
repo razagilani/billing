@@ -967,7 +967,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               StringIO('January 2012'),
                                               'january.pdf')
 
-        self.process.add_charge(u1.id, "")
+        self.process.add_charge(u1.id)
         self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
             quantity=100,
             quantity_units='therms', rate=1,
@@ -1717,9 +1717,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # error in its formula. it should now raise an RSIError.
         # (computing a utility bill doesn't raise an exception by default, but
         # computing a reebill based on the utility bill does.)
-        self.process.add_charge(utilbill_id, 'NEW_CHARGE')
-        self.process.update_charge(utilbill_id, 'NEW_CHARGE', {
-            'quantity': '1 + ',
+        self.process.add_charge(utilbill_id)
+        self.process.update_charge(utilbill_id, '', {
+            'quantity_formula': '1 + ',
+            'RSI_BINDING': 'some_rsi'
         })
         with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)

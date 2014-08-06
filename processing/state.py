@@ -965,7 +965,7 @@ class Register(Base):
         and "active_periods_holiday". For a non-time-of-use register will
         have an empty dictionary.
         """
-        if self.active_periods == '':
+        if self.active_periods in ('', None):
             return {}
         result = json.loads(self.active_periods)
         for key in ['active_periods_weekday',
@@ -1106,13 +1106,12 @@ class Charge(Base):
         """
         try:
             return eval(formula, {}, context)
+        except SyntaxError:
+            raise FormulaSyntaxError('Syntax error in %s formula' % name)
         except Exception as e:
-            if type(e) == SyntaxError:
-                message = 'Syntax error in %s formula'
-            else:
-                message = 'Error in %s formula: '
-                message += 'division by zero' if type(e) == ZeroDivisionError \
-                    else e.message
+            message = 'Error in %s formula: '
+            message += 'division by zero' if type(e) == ZeroDivisionError \
+                else e.message
             raise FormulaError(message % name)
 
     def formula_variables(self):
