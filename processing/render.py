@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-import sys
-import os  
-from decimal import *
+import os
+
 import reportlab
 from pyPdf import PdfFileWriter, PdfFileReader
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
@@ -12,15 +11,12 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont  
+from reportlab.pdfbase.ttfonts import TTFont
+
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
 from billing.processing import mongo
 
-# TODO render should not depend on BillUpload--move this function out to its
-# own file
-from billing.processing.billupload import create_directory_if_necessary
-
-sys.stdout = sys.stderr
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
@@ -36,9 +32,7 @@ def format_for_display(x, places=2):
     0s to that many places.
     '''
     return ('%%.%sf' % places) % round_for_display(x, places)
-#
-# Globals
-#
+
 defaultPageSize = letter
 PAGE_HEIGHT=letter[1]; PAGE_WIDTH=letter[0]
 Title = "Skyline Bill"
@@ -100,14 +94,9 @@ class ReebillRenderer:
     def __init__(self, config, state_db, reebill_dao, logger):
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
-        self.temp_directory = config['temp_directory']
         self.template_directory = config['template_directory']
         self.default_template = config['default_template']
         self.current_template = self.default_template
-
-        # set default templates
-        #self.default_backgrounds = config['default_backgrounds'].split()
-        #if len(self.default_backgrounds) != 2: raise ValueError("default_backgrounds not specified") 
 
         #self.teva_backgrounds = config['teva_backgrounds'].split()
         self.teva_accounts = config['teva_accounts'].split()
@@ -118,9 +107,6 @@ class ReebillRenderer:
 
         # global reebill logger for reporting errors
         self.logger = logger
-
-        # create temp directory if it doesn't exist
-        create_directory_if_necessary(self.temp_directory, self.logger)
 
         #
         #  Load Fonts
@@ -403,9 +389,7 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-        total_utility_charges = mongo.total_of_all_charges(utilbill_doc)
+        total_utility_charges = reebill.get_total_actual_charges()
         utilitycharges = [
             [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
@@ -445,7 +429,7 @@ class ReebillRenderer:
             [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(manual_adjustments)), styles['BillFieldRight'])],
             [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(format_for_display(other_adjustments)), styles['BillFieldRight'])]
         ]
-        
+
         t = Table(adjustments, [180,85])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
         Elements.append(t)
@@ -529,15 +513,13 @@ class ReebillRenderer:
 
         # Load registers and match up shadow registers to actual registers
         assert len(reebill.utilbills)==1
-        shadow_registers = reebill_document.get_all_shadow_registers_json()
         utilbill_doc=self.reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
-        actual_registers = mongo.get_all_actual_registers_json(
-           utilbill_doc)
-        for s_register in shadow_registers:
+        actual_registers = mongo.get_all_actual_registers_json(utilbill_doc)
+        for s_register in reebill.readings:
             total = 0
             for a_register in actual_registers:
-                if s_register['register_binding'] == a_register['binding']:
-                    shadow_total = s_register['quantity']
+                if s_register.register_binding == a_register['binding']:
+                    shadow_total = s_register.renewable_quantity
                     utility_total = a_register['quantity']
                     total += (utility_total + shadow_total)
                     measuredUsage.append([
@@ -548,10 +530,6 @@ class ReebillRenderer:
                         round_for_display(total),
                         a_register['quantity_units']
                     ])
-
-
-
-
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550
@@ -566,10 +544,10 @@ class ReebillRenderer:
             ('BOX', (2,2), (2,-1), 0.25, colors.black),
             ('BOX', (3,2), (3,-1), 0.25, colors.black),
             ('BOX', (4,2), (5,-1), 0.25, colors.black),
-            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('TOPPADDING', (0,0), (-1,-1), 0),
             ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-            ('RIGHTPADDING', (4,2), (4,-1), 2), 
-            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('RIGHTPADDING', (4,2), (4,-1), 2),
+            ('LEFTPADDING', (5,2), (5,-1), 1),
             ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
             ('FONTSIZE', (0,0), (-1,0), 10),
             ('FONT', (0,1),(-1,-1), 'Inconsolata'),
