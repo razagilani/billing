@@ -1,3 +1,4 @@
+import json
 import unittest
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
@@ -10,7 +11,8 @@ import os
 
 from sqlalchemy.orm.exc import NoResultFound
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address, Customer, Charge
+from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address, Customer, Charge, \
+    Register, Session
 from os.path import realpath, join, dirname
 
 from skyliner.sky_handlers import cross_range
@@ -2126,31 +2128,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # modify registers of this utility bill so they are TOU
         u = self.session.query(UtilBill).join(Customer).\
                 filter_by(account='99999').one()
-        doc = self.reebill_dao.load_doc_for_utilbill(u)
-        doc['meters'][0]['registers'] = [{
-            'register_binding': 'REG_TOTAL',
-            'description': 'normal register',
-            'identifier': 'test1',
-            'quantity': 0,
-            # use BTU to avoid unit conversion
-            'quantity_units': 'btu',
-            # this appears to be unused (though "type" values include
-            # "total", "tou", "demand", and "")
-            'type': 'total',
-        },{
-            'register_binding': 'TOU',
-            'description': 'time-of-use register',
-            'identifier': 'test2',
-            'quantity': 0,
-            'quantity_units': 'btu',
-            # NOTE these hour ranges are inclusive at both ends
+        active_periods_str = json.dumps({
             'active_periods_weekday': [[9, 9]],
             'active_periods_weekend': [[11, 11]],
-            'active_periods_holiday': [[13, 13]],
-            'type': 'tou',
-        }]
-        self.reebill_dao.save_utilbill(doc)
-
+            'active_periods_holiday': [[13, 13]]
+        })
+        u.registers = [
+            Register(u, 'normal register', 0, 'btu','test1', False,
+                    'total', 'REG_TOTAL', None, ''),
+            Register(u, 'time-of-use register', 0, 'btu','test2', False,
+                    'tou', 'TOU', active_periods_str, ''),
+        ]
         self.process.roll_reebill(account, start_date=date(2000,1,1))
 
         # the total energy consumed over the 3 non-0 days is
