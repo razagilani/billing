@@ -176,6 +176,7 @@ class Process(object):
         utilbill.charges.append(Charge(utilbill, "", group_name, 0, "", 0, "", 0))
         self.compute_utility_bill(utilbill_id)
 
+
     def update_charge(self, utilbill_id, rsi_binding, fields):
         """Modify the charge given by 'rsi_binding' in the given utility
         bill by setting key-value pairs to match the dictionary 'fields'."""
@@ -689,17 +690,6 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         utilbill.compute_charges()
-
-        # also try to compute documents of any unissued reebills associated
-        # with this utility bill
-        for reebill in (ur.reebill for ur in utilbill._utilbill_reebills if not
-                ur.reebill.issued):
-            try:
-                self.compute_reebill(reebill.customer.account,
-                    reebill.sequence, version=reebill.version)
-            except Exception as e:
-                self.logger.error("Error when computing reebill %s: %s" % (
-                        reebill, e))
 
 
     def compute_reebill(self, account, sequence, version='max'):
