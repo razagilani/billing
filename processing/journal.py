@@ -6,6 +6,7 @@ from operator import attrgetter
 
 import mongoengine
 from mongoengine.document import MapReduceDocument
+from bson import ObjectId
 
 from billing.util.dateutils import ISO_8601_DATE
 
@@ -39,25 +40,33 @@ class JournalDAO(object):
         return result
 
     def get_all_last_events(self):
-        map_f ='''
-            function () {emit(this._id, this)}
+        """ Uses a mongo map reduce operation to retireve the latest event for
+        all acocunts. Returns a list of tuples containing 'Account',  'String
+        representation of the event' for each of the events.
+        """
+        map_f = '''
+            function () {emit(this.account, this)}
         '''
         reduce_f = '''
             function (key, values) {
-                var d = values[0];
-                for ( var i=1; i<values.length; i++ ) {
-                    if ( values[i].date > d.date){
-                        d = values[i];
+                var item = values[0];
+                for ( var i=1; i < values.length; i++ ) {
+                    if ( values[i].date > item.date){
+                        item = values[i];
                     }
                 }
-                return d;
+                return item;
             }
         '''
-
-        for doc in  list(Event.objects.map_reduce(map_f, reduce_f, 'inline')):
-            print doc.key, doc.value, type(doc.value)
-            print Event.objects.from_json(doc.value)
-        #qs = mongoengine.QuerySet(Event, 'journal').exec_js(js_code)
+        finalize_f = '''
+            function(key, redcedVal){
+                return redcedVal._id;
+            }
+        '''
+        ids = [ObjectId(mrdoc.value['str']) for mrdoc in
+               Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
+        return [(e.account, str(e)) for e in Event.objects.in_bulk(
+            ids).itervalues()]
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
