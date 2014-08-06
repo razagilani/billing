@@ -930,8 +930,7 @@ class Register(Base):
     active_periods = Column(String(2048))
     meter_identifier = Column(String(255), nullable=False)
 
-    utilbill = relationship("UtilBill", backref=backref('registers',
-            order_by=id, cascade="all"))
+    utilbill = relationship("UtilBill", backref='registers')
 
     def __init__(self, utilbill, description, quantity, quantity_units,
                  identifier, estimated, reg_type, register_binding,

@@ -5,26 +5,17 @@ from datetime import date, datetime, timedelta
 import pprint
 import os
 from os.path import realpath, join, dirname
-from datetime import date, datetime, timedelta
-import pprint
-import os
 
 from sqlalchemy.orm.exc import NoResultFound
-from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Reading, Address, Customer, Charge, \
-    Register, Session
-from os.path import realpath, join, dirname
 
 from skyliner.sky_handlers import cross_range
-from processing.state import ReeBillCharge
-
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill
+from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
+# TODO this should not be used anymore
 from billing.processing.mongo import NoSuchBillException
-from billing.exc import BillStateError, NoRSIError, RSIError, \
-    FormulaSyntaxError
+from billing.exc import BillStateError, FormulaSyntaxError
 from billing.test import utils
 
 
@@ -2124,12 +2115,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'active_periods_weekend': [[11, 11]],
             'active_periods_holiday': [[13, 13]]
         })
-        u.registers = [
-            Register(u, 'normal register', 0, 'btu','test1', False,
-                    'total', 'REG_TOTAL', None, ''),
-            Register(u, 'time-of-use register', 0, 'btu','test2', False,
-                    'tou', 'TOU', active_periods_str, ''),
-        ]
+        self.session.add(Register(u, 'time-of-use register', 0, 'btu',
+                'test2', False, 'tou', 'TOU', active_periods_str, ''))
         self.process.roll_reebill(account, start_date=date(2000,1,1))
 
         # the total energy consumed over the 3 non-0 days is
@@ -2137,12 +2124,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # when only the hours 9, 11, and 13 are included, the total is just
         # 9 + 11 + 13 = 33.
         total_renewable_btu = 23 * 24 / 2. * 3
+        total_renewable_therms = total_renewable_btu / 1e5
         tou_renewable_btu = 9 + 11 + 13
 
         # check reading of the reebill corresponding to the utility register
         total_reading, tou_reading = self.session.query(ReeBill).one().readings
-        self.assertEqual('btu', total_reading.unit)
-        self.assertEqual(total_renewable_btu, total_reading.renewable_quantity)
+        self.assertEqual('therms', total_reading.unit)
+        self.assertEqual(total_renewable_therms,
+                total_reading.renewable_quantity)
         self.assertEqual('btu', tou_reading.unit)
         self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
