@@ -41,7 +41,7 @@ class ChargeUnitTests(utils.TestCase):
         self.charge = Charge(**self.charge_params)
         self.context = {'SOME_VAR': ChargeEvaluation(quantity=2, rate=3),
                         'OTHER_VAR': ChargeEvaluation(quantity=4, rate=5),
-                        'ERROR': ChargeEvaluation(error="uh oh")}
+                        'ERROR': ChargeEvaluation(exception="uh oh")}
 
     def test_is_builtin(self):
         for builtin_function_name in builtins:
@@ -119,15 +119,7 @@ class ChargeUnitTests(utils.TestCase):
         self.assertEqual(self.charge.rate, 6)
         self.assertEqual(self.charge.total, 24)
 
-    def test_evaluate_does_not_raise_on_good_input_raise_exception_true(self):
-        Charge.evaluate(self.charge, self.context, raise_exception=True)
-
     def test_evaluate_does_not_raise_on_bad_input_raise_exception_false(self):
         self.charge.quantity_formula = '^)%I$#*4'
         Charge.evaluate(self.charge, self.context)
-
-    def test_evaluate_does_raise_on_bad_input_raise_exception_true(self):
-        self.charge.quantity_formula = '^)%I$#*4'
-        self.assertRaises(FormulaError, Charge.evaluate, self.charge,
-                          self.context, raise_exception=True)
 
