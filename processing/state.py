@@ -1723,6 +1723,7 @@ class StateDB(object):
         end date is before/on 'end', optionally with the given service,
         utility, rate class, and 'processed' status.
         '''
+        session = Session()
         return UtilBillLoader(session).get_last_real_utilbill(account, end,
                 service=service, utility=utility, rate_class=rate_class,
                 processed=processed)
