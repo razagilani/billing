@@ -379,7 +379,7 @@ class ReeBill(Base):
         corresponding utility bill register quantity."""
         s = Session.object_session(self)
         for reading, register in s.query(Reading, Register).join(Register,
-                        Reading.register_binding == Register.register_binding). \
+                Reading.register_binding == Register.register_binding). \
                 filter(Reading.reebill_id == self.id). \
                 filter(Register.utilbill_id == self.utilbill.id).all():
             reading.conventional_quantity = register.quantity
@@ -410,8 +410,9 @@ class ReeBill(Base):
         utilbill_register_bindings = [r.register_binding for r in
                                       self.utilbill.registers]
         self.readings = [Reading(r.register_binding, r.measure, 0,
-            0, r.aggregate_function, r.unit) for r in reebill_readings
-                         if r.register_binding in utilbill_register_bindings]
+                0, r.aggregate_function, r.unit) for r in reebill_readings
+                if r.register_binding in utilbill_register_bindings]
+        session.flush()
 
     def get_renewable_energy_reading(self, register_binding):
         assert isinstance(register_binding, basestring)
