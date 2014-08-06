@@ -12,6 +12,8 @@ from billing.processing.state import UtilBill, ReeBill, Customer
 from billing.exc import *
 
 import pprint
+from util.dateutils import date_to_datetime
+
 pformat = pprint.PrettyPrinter().pformat
 
 LOG_FILE_NAME = 'xls_export.log'
@@ -327,9 +329,13 @@ class Exporter(object):
 
                 # iterate the payments and find the ones that apply.
                 if period_start and period_end:
+                    # TODO i don't know who wrote this or why, but it looks
+                    # like trouble. converted to use datetimes without
+                    # changing the behavior.
                     applicable_payments = filter(
-                        lambda x: period_start <= x.date_applied < period_end,
-                        payments)
+                        lambda x: date_to_datetime(period_start) <= \
+                                x.date_applied <  date_to_datetime(period_end),
+                                payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
                     # where a payment may be applicable more than ones)
