@@ -328,7 +328,8 @@ class Exporter(object):
                 # iterate the payments and find the ones that apply.
                 if period_start and period_end:
                     applicable_payments = filter(
-                        lambda x: period_start <= x.date_applied < period_end,
+                        lambda x: period_start <= x.date_applied.date() <
+                                  period_end,
                         payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
