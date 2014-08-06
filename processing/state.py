@@ -18,6 +18,7 @@ from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
@@ -31,7 +32,6 @@ from exc import DatabaseError
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
-
 log = logging.getLogger(__name__)
 
 Session = scoped_session(sessionmaker())
@@ -54,7 +54,7 @@ Base = declarative_base(cls=Base)
 
 _schema_revision = '39efff02706c'
 def check_schema_revision(schema_revision=_schema_revision):
-    """Checks to see whether the database schema revision matches the 
+    """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
     """
     s = Session()
@@ -136,7 +136,7 @@ class Address(Base):
                     self.postal_code)
 
     def __repr__(self):
-        return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
+        return 'Address<(%s, %s, %s, %s, %s)' % (self.addressee, self.street,
                 self.city, self.state, self.postal_code)
 
     def __str__(self):
@@ -582,9 +582,46 @@ class ReeBill(Base):
         return next(c for c in self.charges if c.rsi_binding == binding)
 
 
+    def column_dict(self):
+        period_start , period_end = self.get_period()
+        the_dict = super(ReeBill, self).column_dict()
+        the_dict.update({
+            'account': self.customer.account,
+            'hypothetical_total': self.get_total_hypothetical_charges(),
+            'billing_address': self.billing_address.column_dict(),
+            'service_address': self.service_address.column_dict(),
+            'period_start': period_start,
+            'period_end': period_end,
+            # TODO: is this used at all? does it need to be populated?
+            'services': []
+        })
+
+        if self.version > 0:
+            if self.issued:
+                the_dict['corrections'] = str(self.version)
+            else:
+                the_dict['corrections'] = '#%s not issued' % self.version
+        else:
+            the_dict['corrections'] = '-' if self.issued else '(never ' \
+                                                                 'issued)'
+
+        # wrong energy unit can make this method fail causing the reebill
+        # grid to not load; see
+        # https://www.pivotaltracker.com/story/show/59594888
+        try:
+            the_dict['ree_quantity'] = self.get_total_renewable_energy()
+        except (ValueError, StopIteration) as e:
+            self.logger.error("Error when getting renewable energy "
+                    "quantity for reebill %s:\n%s" % (
+                    self.id, traceback.format_exc()))
+            the_dict['ree_quantity'] = 'ERROR: %s' % e.message
+
+        return the_dict
+
+
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
-    many-to-many relationship between "utilbill" and "reebill".''' 
+    many-to-many relationship between "utilbill" and "reebill".'''
     __tablename__ = 'utilbill_reebill'
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
@@ -748,7 +785,6 @@ class UtilBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
 
-
     @property
     def bindings(self):
         """Returns all bindings across both charges and registers"""
@@ -909,6 +945,20 @@ class UtilBill(Base):
         return sum(charge.total for charge in self.charges
                 if charge.total is not None)
 
+    def column_dict(self):
+        the_dict = super(UtilBill, self).column_dict()
+        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
+        the_dict.update({
+            'account': self.customer.account,
+            'service': 'Unknown' if self.service is None
+                                else self.service.capitalize(),
+            'computed_total': self.total_charge() if self.state <
+                                UtilBill.Hypothetical else None,
+            'reebills': reebills,
+            'state': self.state_name()
+        })
+        return the_dict
+
 class Register(Base):
     """A register reading on a utility bill"""
 
@@ -1033,7 +1083,7 @@ class Charge(Base):
                  rate, rsi_binding, total, quantity_formula="", rate_formula="",
                  has_charge=False, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
-        
+
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
         :param group: The charge group
@@ -1297,6 +1347,9 @@ class StateDB(object):
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
                 ReeBill.id == reebill.id).all()
 
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
+
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
@@ -1337,12 +1390,12 @@ class StateDB(object):
     def increment_version(self, account, sequence):
         '''Creates a new reebill with version number 1 greater than the highest
         existing version for the given account and sequence.
-        
+
         The utility bill(s) of the new version are the same as those of its
         predecessor, but utility bill, UPRS, and document_ids are cleared
         from the utilbill_reebill table, meaning that the new reebill's
         utilbill/UPRS documents are the current ones.
-        
+
         Returns the new state.ReeBill object.'''
         # highest existing version must be issued
         session = Session()
@@ -1420,6 +1473,47 @@ class StateDB(object):
         if max_sequence is None:
             max_sequence = 0
         return max_sequence
+
+    def get_accounts_grid_data(self):
+        '''Returns the Account of every customer,
+        the Sequence, Version and Issue date of the highest-sequence,
+        highest-version issued ReeBill object,
+        and the rate class and service address of the latest (i.e. last-ending)
+        utility bill for each customer.
+        This is a way of speeding up the AccountsGrid in the UI
+        '''
+        session = Session()
+        sequence_sq = session.query(
+            ReeBill.customer_id, func.max(
+                ReeBill.sequence).label('max_sequence'))\
+            .group_by(ReeBill.customer_id).subquery()
+        version_sq = session.query(
+            ReeBill.customer_id, ReeBill.sequence, ReeBill.issue_date,
+            func.max(ReeBill.version).label('max_version'))\
+            .group_by(ReeBill.sequence, ReeBill.customer_id)\
+            .subquery()
+        utilbill_sq = session.query(
+            UtilBill.customer_id,
+            func.max(UtilBill.period_end).label('max_period_end'))\
+        .group_by(UtilBill.customer_id)\
+        .subquery()
+
+        q = session.query(Customer.account,
+                          sequence_sq.c.max_sequence,
+                          version_sq.c.max_version,
+                          version_sq.c.issue_date,
+                          UtilBill.rate_class,
+                          Address)\
+        .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
+        .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
+                   sequence_sq.c.max_sequence == version_sq.c.sequence))\
+        .outerjoin(utilbill_sq, Customer.id == utilbill_sq.c.customer_id)\
+        .outerjoin(UtilBill, and_(
+            UtilBill.customer_id == utilbill_sq.c.customer_id,
+            UtilBill.period_end == utilbill_sq.c.max_period_end))\
+        .outerjoin(Address, UtilBill.service_address_id == Address.id)
+
+        return q.all()
 
     def get_last_reebill(self, account, issued_only=False):
         '''Returns the highest-sequence, highest-version ReeBill object for the
@@ -1503,7 +1597,7 @@ class StateDB(object):
         # NOTE: with the old database schema (one reebill row for all versions)
         # this method returned False when the 'version' argument was higher
         # than max_version. that was probably the wrong behavior, even though
-        # test_state:StateTest.test_versions tested for it. 
+        # test_state:StateTest.test_versions tested for it.
         session = Session()
         try:
             if version == 'max':
