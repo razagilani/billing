@@ -286,7 +286,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         '''Clears out databases.'''
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
-        self.session.commit()
+        self.session.rollback()
         self.truncate_tables(self.session)
         Session.remove()
 
