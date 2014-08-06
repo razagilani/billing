@@ -534,8 +534,7 @@ class ReeBill(Base):
         context = {r.register_binding: Evaluation(r.hypothetical_quantity)
                    for r in self.readings}
         for charge in self.utilbill.ordered_charges():
-            context[charge.rsi_binding] = charge.evaluate(context,
-                update=False, raise_exception=True)
+            context[charge.rsi_binding] = charge.evaluate(context, update=False)
         self.replace_charges_with_context_evaluations(context)
 
 
