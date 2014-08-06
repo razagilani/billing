@@ -81,23 +81,23 @@ class Evaluation(object):
 class ChargeEvaluation(Evaluation):
     """An `Evaluation to store the result of evaluating a `Charge`.
     """
-    def __init__(self, quantity=None, rate=None, error=None):
+    def __init__(self, quantity=None, rate=None, exception=None):
         super(ChargeEvaluation, self).__init__(quantity)
         assert quantity is None or isinstance(quantity, (float, int))
         assert rate is None or isinstance(rate, (float, int))
 
         # when there's an error, quantity and rate should both be None
         if None in (quantity, rate):
-            assert error is not None
+            assert exception is not None
             quantity = rate = None
             self.total = None
         else:
-            assert error is None
+            assert exception is None
             self.total = quantity * rate
 
         self.quantity = quantity
         self.rate = rate
-        self.error = error
+        self.error = exception
 
 class Address(Base):
     """Table representing both "billing addresses" and "service addresses" in
@@ -881,20 +881,21 @@ class UtilBill(Base):
         computed. Otherwise silently sets the error attribute of the charge
         to the exception message.
         """
-        if raise_exception:
-            for charge in self.charges:
-                charge.validate_formulas(self.bindings)
-
-        # TODO registers don't have 'quantity'
         context = {r.register_binding: Evaluation(r.quantity) for r in
                    self.registers}
         sorted_charges = self.ordered_charges()
+        exception = None
         for charge in sorted_charges:
-            evaluation = charge.evaluate(context,
-                    raise_exception=raise_exception, update=True)
+            evaluation = charge.evaluate(context, update=True)
             # only charges that do not have errors get added to 'context'
             if evaluation.error is None:
                 context[charge.rsi_binding] = evaluation
+            elif exception is None:
+                exception = evaluation.error
+
+        # all charges should be computed before the exception is raised
+        if raise_exception and exception:
+            raise exception
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
@@ -1105,7 +1106,7 @@ class Charge(Base):
         return set(Charge.get_variable_names(self.quantity_formula) +
                    Charge.get_variable_names(self.rate_formula))
 
-    def evaluate(self, context, update=False, raise_exception=False):
+    def evaluate(self, context, update=False):
         """Evaluates the quantity and rate formulas and returns a
         `Evaluation` instance
         :param context: map of binding name to `Evaluation`
@@ -1120,29 +1121,18 @@ class Charge(Base):
                     context)
             rate = self._evaluate_formula(self.rate_formula, 'rate', context)
         except FormulaError as exception:
-            if raise_exception:
-                raise
-            evaluation = ChargeEvaluation(error=exception.message)
+            evaluation = ChargeEvaluation(exception=exception)
         else:
             evaluation = ChargeEvaluation(quantity, rate)
         if update:
             self.quantity = evaluation.quantity
             self.rate = evaluation.rate
             self.total = evaluation.total
-            self.error = evaluation.error
+            if evaluation.error is None:
+                self.error is None
+            else:
+                self.error = evaluation.error.message
         return evaluation
-
-    def validate_formulas(self, valid_bindings):
-        """Validates that the quantity_formula and rate_formula both parse
-        and reference only bindings contained within `valid_bindings`.
-        :param valid_bindings:
-        """
-        self._validate_formula_parses(self.quantity_formula, 'quantity')
-        self._validate_formula_parses(self.rate_formula, 'rate')
-        for variable in self.formula_variables():
-            if variable not in valid_bindings:
-                raise FormulaError(('Unknown variable in formula of RSI '
-                                    '"%s": %s') % (self.rsi_binding, variable))
 
 class Payment(Base):
     __tablename__ = 'payment'
