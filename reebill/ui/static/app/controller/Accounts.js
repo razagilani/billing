@@ -44,30 +44,18 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var memoryStore = this.getAccountsMemoryStore();
-        var accountsStore = this.getAccountsStore();
-        // Add the configurable default sort the first time through.
-//        if (!this.getAccountsMemoryStore().sorters.length) {
-//            this.getAccountsMemoryStore().sorters.add({
-//                property: config.defaultAccountSortField,
-//                direction: config.defaultAccountSortDir
-//            });
-//        }
-
-
     },
 
     /**
      * Handle the filter being changed.
      */
     handleFilter: function() {
+        // We're filtering every record, so we have to use AccountsStore
+        // and not AccountsMemoryStore
+        var accountsStore = this.getAccountsStore();
         var filter = this.getAccountsFilter().getValue();
-
-        this.getAccountsMemoryStore().loadPage(1, {
-            params: {
-                filtername: filter
-            }
-        });
+        console.log(filter);
+        accountsStore.filter(filter);
     },
 
     /**

@@ -39,14 +39,7 @@ Ext.define('ReeBill.view.Accounts', {
             width: 400,
             value: '',
             editable: false,
-            store: new Ext.data.Store({
-                fields: ['label', 'value'],
-                data: [
-                    {label: 'No filter', value: ''},
-                    {label: 'All ReeBill Customers', value: 'reebillcustomers'},
-                    {label: 'All P&G Customers', value: 'brokeragecustomers'}
-                ]
-            }),
+            store: 'AccountsFilter',
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'label',

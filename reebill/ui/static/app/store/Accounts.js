@@ -42,22 +42,26 @@ Ext.define('ReeBill.store.Accounts', {
             memoryStore.loadPage(1);
         },
         add: function( store, records, index, eOpts ){
-            allRecords = store.getRange();
+            var allRecords = store.getRange();
             var memoryStore = Ext.getStore('AccountsMemory');
             memoryStore.getProxy().data = allRecords;
             memoryStore.reload()
         },
         remove: function( store, records, index, eOpts ){
-            allRecords = store.getRange();
+            var allRecords = store.getRange();
             var memoryStore = Ext.getStore('AccountsMemory');
             memoryStore.getProxy().data = allRecords;
             memoryStore.reload()
         },
+        filterchange: function( store, filters, eOpts){
+            console.log('filterchange');
+            var allRecords = store.getRange();
+            var memoryStore = Ext.getStore('AccountsMemory');
+            memoryStore.getProxy().data = allRecords;
+            memoryStore.loadPage(1);
+            store.clearFilter(true);
+        },
         scope: this
-    },
+    }
 
-    sorters: [{
-        property: 'account',
-        direction: 'DESC'
-    }],
 });
