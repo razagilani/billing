@@ -30,7 +30,7 @@ from billing.processing import mongo
 from billing.processing.rate_structure2 import RateStructure
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Reading, Session
+    UtilBillLoader, ReeBillCharge, Address, Charge, Reading, Session, Payment
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -50,14 +50,6 @@ sys.stdout = sys.stderr
 MAX_GAP_DAYS = 10
 
 class Process(object):
-    """ Class with a variety of utility procedures for processing bills.
-        The idea here is that this class is instantiated with the data
-        access objects it needs, and then ReeBills (why not just references
-        to them?) are passed in and returned.  
-    """
-
-    config = None
-
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
             nexus_util, bill_mailer, renderer, ree_getter,
             splinter=None, logger=None):
@@ -82,9 +74,6 @@ class Process(object):
         reebill are given, the document returned will be the frozen version for
         the issued reebill.
         '''
-        # NOTE this method is in Process because it uses both databases; is
-        # there a better place to put it?
-
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
         if reebill_sequence is None:
@@ -98,35 +87,6 @@ class Process(object):
         assert reebill.issued == True
         return self.reebill_dao.load_doc_for_utilbill(utilbill,
                 reebill=reebill)
-
-    def get_rs_doc(self, utilbill_id, rs_type, reebill_sequence=None,
-            reebill_version=None):
-        '''Loads and returns a rate structure document of type 'rs_type'
-        ("uprs" only) for the utility bill given by 'utilbill_id' (MySQL
-        id). If the sequence and version of an issued reebill are given, the
-        document returned will be the frozen version for the issued reebill.
-        '''
-        # NOTE this method is in Process because it uses both databases; is
-        # there a better place to put it?
-
-        if rs_type == 'uprs':
-            load_method = self.rate_structure_dao.load_uprs_for_utilbill
-        else:
-            raise ValueError(('Unknown "rs_type": expected "uprs", '
-                    'got "%s"') % rs_type)
-
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-
-        if reebill_sequence is None:
-            assert reebill_version is None
-            # load editable utility bill document
-            return load_method(utilbill)
-
-        # otherwise, load frozen utility bill document for the given reebill
-        reebill = self.state_db.get_reebill(utilbill.customer.account,
-                reebill_sequence, version=reebill_version)
-        assert reebill.issued == True
-        return load_method(utilbill, reebill=reebill)
 
     def get_utilbill_charges_json(self, utilbill_id,
                     reebill_sequence=None, reebill_version=None):
@@ -258,9 +218,12 @@ class Process(object):
         return self.state_db.create_payment(account, date_applied, description,
             credit, date_received)
 
-    def update_payment(self, oid, date_applied, description, credit):
-        '''Wrapper to update_payment method in state.py'''
-        self.state_db.update_payment(oid, date_applied, description, credit)
+    def update_payment(self, id, date_applied, description, credit):
+        session = Session()
+        payment = session.query(Payment).filter_by(id=id).one()
+        payment.date_applied = date_applied
+        payment.description = description
+        payment.credit = credit
 
     def delete_payment(self, oid):
         '''Wrapper to delete_payment method in state.py'''
@@ -292,12 +255,6 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
 
-        # save period dates for use in moving the utility bill file at the end
-        # of this method
-        old_start, old_end = utilbill.period_start, utilbill.period_end
-
-        # load Mongo document
-
         # 'load_doc_for_utilbill' should load an editable document always, not
         # one attached to a reebill
         doc = self.reebill_dao.load_doc_for_utilbill(utilbill)
@@ -307,9 +264,6 @@ class Process(object):
         # for total charges, it doesn't matter whether a reebill exists
         if total_charges is not None:
             utilbill.total_charges = total_charges
-
-        # for service and period dates, a reebill must be updated if it does
-        # exist
 
         if service is not None:
             doc['service'] = service
@@ -390,19 +344,6 @@ class Process(object):
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
         for reebill, total_charge in q:
-            # load utility bill document for this reebill:
-            # use "frozen" document's id in utilbill_reebill table if present,
-            # otherwise "current" id in utility bill table
-            # TODO loading utility bill document from Mongo should be
-            # unnecessary when "actual" versions of each reebill charge are
-            # moved to MySQL
-            frozen_doc_id = reebill._utilbill_reebills[0].document_id
-            current_doc_id = reebill.utilbills[0].document_id
-            if frozen_doc_id is None:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(current_doc_id)
-            else:
-                utilbill_doc = self.reebill_dao._load_utilbill_by_id(frozen_doc_id)
-
             the_dict = {
                 'id': reebill.sequence,
                 'sequence': reebill.sequence,
@@ -413,7 +354,7 @@ class Process(object):
                 'issued': bool(reebill.issued),
                 # NOTE SQL sum() over no rows returns NULL, must substitute 0
                 'hypothetical_total': total_charge or 0,
-                'actual_total': mongo.total_of_all_charges(utilbill_doc),
+                'actual_total': reebill.get_total_actual_charges(),
                 'ree_value': reebill.ree_value,
                 'ree_charges': reebill.ree_charge,
                 # invisible columns
@@ -479,13 +420,12 @@ class Process(object):
             reebill.late_charge_rate = late_charge_rate
         if processed is not None:
             reebill.processed = processed
-
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
         if ba_street is not None:
             reebill.billing_address.street = ba_street
-        if ba_street is not None:
-            reebill.billing_address.street = ba_street
+        if ba_state is not None:
+            reebill.billing_address.state = ba_state
         if ba_city is not None:
             reebill.billing_address.city = ba_city
         if ba_postal_code is not None:
@@ -495,8 +435,8 @@ class Process(object):
             reebill.service_address.addressee = sa_addressee
         if sa_street is not None:
             reebill.service_address.street = sa_street
-        if sa_street is not None:
-            reebill.service_address.street = sa_street
+        if sa_state is not None:
+            reebill.service_address.state = sa_state
         if sa_city is not None:
             reebill.service_address.city = sa_city
         if sa_postal_code is not None:
@@ -538,12 +478,6 @@ class Process(object):
 
         session = Session()
 
-        # NOTE 'total' does not yet go into the utility bill document in Mongo
-
-        # get & save end date of last bill (before uploading a new bill which
-        # may come later)
-        original_last_end = self.state_db.last_utilbill_end_date(account)
-
         # find an existing utility bill that will provide rate class and
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
@@ -578,15 +512,11 @@ class Process(object):
         if bill_to_replace is not None:
             session.delete(bill_to_replace)
 
-        # create new UtilBill document (it does not have any mongo document
-        # _ids yet but these are created below)
-        # NOTE SQLAlchemy automatically adds this UtilBill to the session, so
-        # calling session.add() is superfluous; see
-        # https://www.pivotaltracker.com/story/show/26147819
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
-            period_start=begin_date, period_end=end_date,
-            total_charges=total, date_received=datetime.utcnow().date(),
-            billing_address=billing_address, service_address=service_address)
+                period_start=begin_date, period_end=end_date,
+                total_charges=total, date_received=datetime.utcnow().date(),
+                billing_address=billing_address,
+                service_address=service_address)
         session.add(new_utilbill)
         session.flush()
 
@@ -595,14 +525,10 @@ class Process(object):
             # string from CherryPy, and pass those to BillUpload to upload
             # the file (so BillUpload can stay independent of CherryPy)
             upload_result = self.billupload.upload(new_utilbill, account,
-                                                   bill_file, file_name)
+                    bill_file, file_name)
             if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (account,
                     new_utilbill.id, file_name))
-
-        # save 'new_utilbill' in MySQL with _ids from Mongo docs, and save the
-        # 3 mongo docs in Mongo (unless it's a 'Hypothetical' utility bill,
-        # which has no documents)
 
         if state < UtilBill.Hypothetical:
             doc, uprs = self._generate_docs_for_new_utility_bill(new_utilbill)
@@ -618,43 +544,16 @@ class Process(object):
                     if charge.rsi_binding not in valid_bindings:
                         continue
                     new_utilbill.charges.append(Charge(new_utilbill,
-                                                       charge.description,
-                                                       charge.group,
-                                                       charge.quantity,
-                                                       charge.quantity_units,
-                                                       charge.rate,
-                                                       charge.rsi_binding,
-                                                       charge.total))
-
-        # if begin_date does not match end date of latest existing bill, create
-        # hypothetical bills to cover the gap
-        # NOTE hypothetical bills are not created if the gap is small enough
-        if original_last_end is not None and begin_date > original_last_end \
-                and begin_date - original_last_end > \
-                timedelta(days=MAX_GAP_DAYS):
-            self.state_db.fill_in_hypothetical_utilbills(account,
-                    service, utility, rate_class, original_last_end,
-                    begin_date)
-
-        # utility bill should be computed, but any error that happens when
-        # computing it should be ignored to prevent apparent failure to upload
-        # the bill. TODO: see Pivotal 72645700
-        try:
+                            charge.description, charge.group,
+                            charge.quantity, charge.quantity_units,
+                            charge.rate, charge.rsi_binding, charge.total))
+        if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
-        except Exception as e:
-            self.logger.error("Error when computing utility bill %s: %s\n%s" % (
-                    new_utilbill.id, e, traceback.format_exc()))
-
         return new_utilbill
 
     def get_service_address(self, account):
-        '''Finds the last state.Utilbill, loads the mongo document for it,
-        and extracts the service address from it '''
-        utilbill = self.state_db.get_last_real_utilbill(account,
-                datetime.utcnow())
-        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(utilbill)
-        address= mongo.get_service_address(utilbill_doc)
-        return address
+        return self.state_db.get_last_real_utilbill(account,
+                datetime.utcnow()).service_address.to_dict()
 
     def _find_replaceable_utility_bill(self, customer, service, start,
             end, state):
@@ -684,8 +583,8 @@ class Process(object):
             return None
         except MultipleResultsFound:
             raise NotUniqueException(("Can't upload a bill for dates %s, %s "
-                    "because there are already %s of them") % (begin_date,
-                    end_date, len(list(existing_bills))))
+                    "because there are already %s of them") % (start, end,
+                    len(list(existing_bills))))
 
         # now there is one existing bill with the same dates. if state is
         # "more final" than an existing non-final bill that matches this
@@ -699,7 +598,6 @@ class Process(object):
                 " state than %s") % (start, end, state))
 
         return existing_bill
-
 
     def _generate_docs_for_new_utility_bill(self, utilbill):
         '''Returns utility bill doc, UPRS doc for the given
@@ -797,14 +695,7 @@ class Process(object):
                 i += 1
             else:
                 doc['charges'].pop(i)
-
-        # TODO add a charge for every RSI that doesn't have a charge, i.e.
-        # the ones whose value in 'valid_bindings' is False.
-        # we can't do this yet because we don't know what group it goes in.
-        # see https://www.pivotaltracker.com/story/show/43797365
-
         return doc, uprs
-
 
     def delete_utility_bill_by_id(self, utilbill_id):
         '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -815,11 +706,8 @@ class Process(object):
         utility bill cannot be deleted.
         '''
         session = Session()
-        # load utilbill to get its dates and service
         utilbill = session.query(state.UtilBill) \
                 .filter(state.UtilBill.id == utilbill_id).one()
-        # delete it & get new path (will be None if there was never
-        # a utility bill file or the file could not be found)
         _, deleted_path = self.delete_utility_bill(utilbill)
         return utilbill, deleted_path
 
@@ -1110,16 +998,15 @@ class Process(object):
         # the utility bills. discount rate and late charge rate are set to the
         # "current" values for the customer in MySQL.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                new_sequence, 0, customer.get_discount_rate(),
-                customer.get_late_charge_rate(), new_utilbill_docs)
+                new_sequence, 0)
 
         # create reebill row in state database
         new_reebill = ReeBill(customer, new_sequence, 0,
-                utilbills=new_utilbills,
-                billing_address=Address(**new_utilbill_docs[0]
-                        ['billing_address']),
-                service_address=Address(**new_utilbill_docs[0]
-                        ['service_address']))
+                              utilbills=new_utilbills,
+                              billing_address=Address.from_other(
+                                new_utilbills[0].billing_address),
+                              service_address=Address.from_other(
+                                new_utilbills[0].service_address))
 
         # assign Reading objects to the ReeBill based on registers from the
         # utility bill document
@@ -1153,14 +1040,6 @@ class Process(object):
             self.logger.error("Error when computing reebill %s: %s" % (
                     new_reebill, e))
         return new_reebill
-
-    def new_versions(self, account, sequence):
-        '''Creates new versions of all reebills for 'account' starting at
-        'sequence'. Any reebills that already have an unissued version are
-        skipped. Returns a list of the new reebill objects.'''
-        sequences = range(sequence, self.state_db.last_sequence(account) + 1)
-        return [self.new_version(account, s) for s in sequences if
-                self.state_db.is_issued(account, s)]
 
     def new_version(self, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
@@ -1249,9 +1128,6 @@ class Process(object):
             adjustment = latest_version.total - prev_version.total
             result.append((seq, max_version, adjustment))
         return result
-
-    def get_unissued_correction_sequences(self, account):
-        return [c[0] for c in self.get_unissued_corrections(account)]
 
     def issue_corrections(self, account, target_sequence):
         '''Applies adjustments from all unissued corrections for 'account' to
@@ -1471,12 +1347,8 @@ class Process(object):
             },
         })
         self.reebill_dao.save_utilbill(utilbill_doc)
-
         return new_customer
 
-
-# keys above for which null values should be allowed in corresponding MySQL #
-# column
     def issue(self, account, sequence, issue_date=None):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default), and the due date to 30 days from
@@ -1584,7 +1456,6 @@ class Process(object):
         # utility bill and replace the old utility bill document with the new one
         reebill_doc = self.reebill_dao.load_reebill(reebill.customer.account,
                 reebill.sequence, version=reebill.version)
-        reebill_doc.reebill_dict['utilbills'][0]['id'] = new_id
         reebill._utilbill_reebills[0].document_id = new_id
         self.reebill_dao.save_reebill(reebill_doc)
 
@@ -1814,9 +1685,7 @@ class Process(object):
             'total_charges': ub.total_charges,
             # NOTE a type-based conditional is a bad pattern; this will
             # have to go away
-            'computed_total': mongo.total_of_all_charges(
-                    self.reebill_dao.load_doc_for_utilbill(ub))
-                    if ub.state < UtilBill.Hypothetical else None,
+            'computed_total': ub.total_charge(),
             # NOTE the value of 'issue_date' in this JSON object is
             # used by the client to determine whether a frozen utility
             # bill version exists (when issue date == null, the reebill
@@ -1859,8 +1728,6 @@ class Process(object):
             dirname, basename = os.path.split(the_path)
             self.renderer.render_max_version(reebill.customer.account,
                     reebill.sequence,
-                    # self.config.get("billdb", "billpath")+ "%s" % reebill.account,
-                    # "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)),
                     dirname, basename, True)
 
         # "the last element" (???)
@@ -1902,9 +1769,7 @@ class Process(object):
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
-            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
-                    for ub_id in(u.document_id for u in r.utilbills))),
+            'reebill_total': r.get_total_actual_charges(),
             'processed': r.processed,
          } for r in reebills.all()], key=itemgetter('account'))
 
@@ -2008,8 +1873,7 @@ class Process(object):
             journal.ReeBillMailedEvent.save_instance(user, bill['account'],
                                                 bill['sequence'], bill['mailto'])
             issued = issued + 1
-        return {'success': True,
-                'issued': issued}
+        return issued
 
     def get_issuable_processed_reebills_dict(self):
         """ Returns a list of issuable reebill dictionaries containing
@@ -2033,10 +1897,8 @@ class Process(object):
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
-            'reebill_total': sum(mongo.total_of_all_charges(ub_doc)
-                    for ub_doc in(self.reebill_dao._load_utilbill_by_id(ub_id)
-                    for ub_id in(u.document_id for u in r.utilbills))),
-            'processed': r.processed,
+            'reebill_total': r.get_total_actual_charges(),
+            'processed': r.processed
         } for r in reebills.all()], key=itemgetter('account'))
 
         return issuable_processed_reebills

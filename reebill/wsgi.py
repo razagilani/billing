@@ -681,10 +681,6 @@ class ReeBillWSGI(object):
     @db_commit
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.get('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'code':2, 'errors': {'reason':
-                    ('"Render" does nothing because reebill images have '
-                    'been turned off.'), 'details': ''}})
         self.renderer.render(account, sequence,
             self.config.get("billdb", "billpath")+ "%s" % account,
             "%s_%.4d.pdf" % (account, sequence), False )
@@ -698,10 +694,9 @@ class ReeBillWSGI(object):
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_and_mail(cherrypy.session['user'], account,
+        self.process.issue_and_mail(cherrypy.session['user'], account,
                 sequence, recipients, apply_corrections)
-        print result
-        return self.dumps(result)
+        return self.dumps({"success": True})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -711,7 +706,8 @@ class ReeBillWSGI(object):
         apply_corrections = (apply_corrections == 'true')
         result = self.process.issue_processed_and_mail(cherrypy.session['user'],
                 apply_corrections)
-        return self.dumps(result)
+        return self.dumps({"success": True,
+                           "issued": result})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -933,16 +929,11 @@ class ReeBillWSGI(object):
                 'rows': [payment.to_dict() for payment in payments]})
         elif xaction == "update":
             rows = json.loads(kwargs["rows"])
-            # single edit comes in not in a list
             if type(rows) is dict: rows = [rows]
-            # process list of edits
             for row in rows:
-                self.process.update_payment(
-                    row['id'],
-                    row['date_applied'],
-                    row['description'],
-                    row['credit'],
-                )
+                self.process.update_payment(row['id'], datetime.strptime(
+                        row['date_applied'], ISO_8601_DATETIME_WITHOUT_ZONE),
+                        row['description'], float(row['credit']))
             return self.dumps({'success':True})
         elif xaction == "create":
             # date applied is today by default (can be edited later)
@@ -1128,25 +1119,6 @@ class ReeBillWSGI(object):
                 sa_city=sa_city, sa_state=sa_state,
                 sa_postal_code=sa_postal_code)
         return self.dumps({'success': True})
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
-    def get_reebill_services(self, account, sequence, **args):
-        # TODO: delete this? is it ever used?
-        '''Returns the utililty services associated with the reebill given by
-        account and sequence, and a list of which services are suspended
-        (usually empty). Used to show service suspension checkboxes in
-        "Sequential Account Information".'''
-        sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        if reebill is None:
-            raise Exception('No reebill found for %s-%s' % (account, sequence))
-        # TODO: 40161259 must return success field
-        return self.dumps({
-            'services': [],
-            'suspended_services': reebill.suspended_services
-        })
 
     @cherrypy.expose
     @authenticate_ajax
