@@ -4,10 +4,9 @@ Do not access the raw dictionaries directly; instead, call the methods
 get_utilbill_dict, get_reebill, etc.
 '''
 from copy import deepcopy
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from bson.objectid import ObjectId
 from billing.util import dateutils
-from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing.mongo import MongoReebill
@@ -176,127 +175,6 @@ _example_reebill = {
     'late_charges': 12.34,
 	u"message" : null,
 	u"issue_date" : null,
-	u"utilbills" : [
-        {
-            # NOTE: u"id" must be inserted at runtime in get_utilbill_dict() because it
-            # should be different for each instance
-
-            u"ree_charges" : 118.42,
-            u"ree_savings" : 118.42,
-            u"ree_value" : 236.84,
-
-            # 'shadow_registers': [{
-            #     u"quantity_units" : u"therms",
-            #     u"quantity" : 188.20197727,
-            #     u"register_binding" : u"REG_TOTAL",
-            #     u"identifier" : u"M60324",
-            #     u"type" : u"total",
-            #     u"description" : u"Therms"
-            # }],
-
-            u"hypothetical_total" : 980.33,
-            # u"hypothetical_charges" : [
-            #     {
-            #         u"rsi_binding" : u"SYSTEM_CHARGE",
-            #         u"description" : u"System Charge",
-            #         u"quantity" : 1,
-            #         u"processingnote" : u"",
-            #         u"rate" : 11.2,
-            #         u"quantity_units" : u"",
-            #         u"total" : 11.2,
-            #         u"uuid" : u"c9733cca-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"DISTRIBUTION_CHARGE",
-            #         u"description" : u"Distribution charge for all therms",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.2935,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 220.16,
-            #         u"uuid" : u"c9733ed2-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"PGC",
-            #         u"description" : u"Purchased Gas Charge",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.7653,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 574.05,
-            #         u"uuid" : u"c97340da-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"PUC",
-            #         u"quantity_units" : u"kWh",
-            #         u"quantity" : 1,
-            #         u"description" : u"Peak Usage Charge",
-            #         u"rate" : 23.14,
-            #         u"total" : 23.14,
-            #         u"uuid" : u"c97342e2-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"RIGHT_OF_WAY",
-            #         u"description" : u"DC Rights-of-Way Fee",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.03059,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 22.95,
-            #         u"uuid" : u"c97344f4-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"SETF",
-            #         u"description" : u"Sustainable Energy Trust Fund",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.01399,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 10.5,
-            #         u"uuid" : u"c97346f2-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"EATF",
-            #         u"description" : u"DC Energy Assistance Trust Fund",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.006,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 4.5,
-            #         u"uuid" : u"c9734af8-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"SALES_TAX",
-            #         u"description" : u"Sales tax",
-            #         u"quantity" : 924.84,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.06,
-            #         u"quantity_units" : u"dollars",
-            #         u"total" : 55.49,
-            #         u"uuid" : u"c9734f3a-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     },
-            #     {
-            #         u"rsi_binding" : u"DELIVERY_TAX",
-            #         u"description" : u"Delivery tax",
-            #         u"quantity" : 750.10197727,
-            #         u"processingnote" : u"",
-            #         u"rate" : 0.07777,
-            #         u"quantity_units" : u"therms",
-            #         u"total" : 58.34,
-            #         u"uuid" : u"c9735372-2c16-11e1-8c7f-002421e88ffb",
-            #         u'group': 'All Charges',
-            #     }
-            # ],
-        }
-    ],
 	u"payment_received" : 10,
 	u"version" : 0,
 	u"period_end" : ISODate("2011-12-14T00:00:00Z"),
@@ -341,7 +219,6 @@ _example_reebill = {
 		u"renewable_consumed" : 18820197.727
 	},
 	u"balance_due" : 1146.21,
-	#"account" : u"10003", # i think this should not be here
 	u"prior_balance" : 1027.79,
 	u"hypothetical_total" : 980.33,
 	u"balance_forward" : 1027.79,
@@ -436,8 +313,6 @@ def get_reebill(account, sequence, start=date(2011,11,12),
     reebill_dict['period_end'] = end
 
     id = ObjectId()
-    reebill_dict['utilbills'][0]['id'] = id
-
     u = get_utilbill_dict(account, start=start, end=end)
 
     # force utilbill to match the utilbill document
