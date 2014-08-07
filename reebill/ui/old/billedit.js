@@ -6,8 +6,6 @@ var DEFAULT_DIFFERENCE_THRESHOLD = 10;
 var ERROR_MESSAGE_BOX_WIDTH = 630;
 var DEFAULT_ACCOUNT_FILTER = "No filter";
 
-//PDFJS.disableWorker = true;
-
 ///////////////////////////////////////////////////
 //
 //         CUSTOM COMPONENTS
@@ -6170,6 +6168,7 @@ var BILLPDF = function(){
     var initialize = function() {
         rb = {};
         ub = {};
+
         regenerate_bust_cache();
     }
 
