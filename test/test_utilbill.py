@@ -3,15 +3,13 @@ included in it.
 '''
 from unittest import TestCase
 from datetime import date
+from unittest import TestCase
 
 from billing.exc import RSIError
 from billing.processing.state import UtilBill, Customer, Session, Charge,\
     Address, Register
 
 class UtilBillTest(TestCase):
-
-    def setUp(self):
-        pass
 
     def assert_error(self, c, error_message):
         '''Assert that the Charge 'c' has None for its quantity/rate/total

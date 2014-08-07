@@ -1262,8 +1262,7 @@ class Process(object):
                     reebill.sequence)
             dirname, basename = os.path.split(the_path)
             self.renderer.render_max_version(reebill.customer.account,
-                    reebill.sequence,
-                    dirname, basename, True)
+                    reebill.sequence, dirname, basename)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]

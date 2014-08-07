@@ -12,11 +12,9 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 from billing.processing import mongo
-
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
@@ -55,11 +53,9 @@ class SIBillDocTemplate(BaseDocTemplate):
         if self.pageTemplate.id == secondPageName:
             self.canv.saveState()
             self.canv.restoreState()
-        
-        
+
     def handle_pageBegin(self):
         BaseDocTemplate.handle_pageBegin(self)
-
 
 def stringify(d):
     """ convert dictionary values that are None to empty string. """
@@ -97,21 +93,13 @@ class ReebillRenderer:
         self.template_directory = config['template_directory']
         self.default_template = config['default_template']
         self.current_template = self.default_template
-
-        #self.teva_backgrounds = config['teva_backgrounds'].split()
         self.teva_accounts = config['teva_accounts'].split()
-
-
         self.state_db = state_db
 
         # global reebill logger for reporting errors
         self.logger = logger
 
-        #
         #  Load Fonts
-        #
-        # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
-        # TODO make the font directory relocatable
         rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
 
         our_fonts = os.path.join(os.path.join(self.template_directory, 'fonts/'))
@@ -145,8 +133,6 @@ class ReebillRenderer:
                             bold = 'Inconsolata',
                             italic = 'Inconsolata')
 
-
-    # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
     def render(self, account, sequence, outputdir, outputfile, verbose):
 
         # Hack for overriding default template if a teva account
@@ -173,7 +159,7 @@ class ReebillRenderer:
         for input_path in input_paths:
             os.remove(input_path)
  
-    def render_max_version(self, account, sequence, outputdir, outputfile, verbose):
+    def render_max_version(self, account, sequence, outputdir, outputfile):
         # Hack for overriding default template if a teva account
         if (account in self.teva_accounts):
             self.current_template = 'teva'
@@ -182,11 +168,9 @@ class ReebillRenderer:
         max_version = self.state_db.max_version(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence,
                 version=max_version)
-        self.render_version(reebill, reebill_document, outputdir, outputfile,
-                verbose)
+        self.render_version(reebill, reebill_document, outputdir, outputfile)
 
-    def render_version(self, reebill, reebill_document, outputdir,
-                       outputfile, verbose):
+    def render_version(self, reebill, outputdir, outputfile):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -209,9 +193,7 @@ class ReebillRenderer:
         # canvas: x,y,612w,792h w/ origin bottom left
         # 72 dpi
         # frame (x,y,w,h)
-
         #page one frames; divided into three sections:  Summary, graphs, Charge Details
-
         backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
 
         # 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
@@ -266,10 +248,8 @@ class ReebillRenderer:
 
         # build page container for flowables to populate
         firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF])
-        #
 
         # page two frames
-
         # page two background frame
         backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
 
@@ -302,13 +282,9 @@ class ReebillRenderer:
         # for some reasons, if the file path passed in does not exist, SIBillDocTemplate fails silently 
         doc = SIBillDocTemplate("%s/%s" % (outputdir, outputfile), pagesize=letter, showBoundary=0, allowSplitting=0)
         doc.addPageTemplates([firstPage, secondPage])
-
         Elements = []
 
-        #
         # First Page
-        #
-
         # populate backgroundF1
         pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, self.current_template), "page_one.png"),letter[0], letter[1])
         Elements.append(pageOneBackground)
@@ -368,18 +344,15 @@ class ReebillRenderer:
         # spacer so rows can line up with those in summarChargesTableF rows
         periods=reebill.get_period()
         serviceperiod = [
-                [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
-                [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
-            ] + [
-                [
-                    Paragraph(u' service',styles['BillLabelSmRight']),
-                    Paragraph(periods[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
-                    Paragraph(periods[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
-                ]
-            ]
+            [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
+            [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
+        ] + [[
+            Paragraph(u' service',styles['BillLabelSmRight']),
+            Paragraph(periods[0].strftime('%m-%d-%Y'), styles['BillFieldRight']),
+            Paragraph(periods[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
+        ]]
 
         t = Table(serviceperiod, colWidths=[115,63,63])
-
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('RIGHTPADDING', (0,2),(0,-1), 8), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,2), (-1,-1), 0.25, colors.black), ('BOX', (1,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,2),(-1,-1),colors.white)]))
         Elements.append(t)
         Elements.append(UseUpSpace())
@@ -388,13 +361,11 @@ class ReebillRenderer:
         utilitycharges = [
             [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
             [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
-        ]+[
-            [
-                Paragraph(str(format_for_display(reebill.get_total_hypothetical_charges())),styles['BillFieldRight']),
-                Paragraph(str(format_for_display(total_utility_charges)),styles['BillFieldRight']),
-                Paragraph(str(format_for_display(reebill.ree_value)),styles['BillFieldRight'])
-            ]
-        ]
+        ]+[[
+            Paragraph(str(format_for_display(reebill.get_total_hypothetical_charges())),styles['BillFieldRight']),
+            Paragraph(str(format_for_display(total_utility_charges)),styles['BillFieldRight']),
+            Paragraph(str(format_for_display(reebill.ree_value)),styles['BillFieldRight'])
+        ]]
 
         t = Table(utilitycharges, colWidths=[84,84,84])
 
@@ -429,7 +400,6 @@ class ReebillRenderer:
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
         Elements.append(t)
         Elements.append(UseUpSpace())
-
 
         try:
             # populate current charges
@@ -468,8 +438,6 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-
-
         # populate balanceDueFrame
         balanceDue = [
             [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(format_for_display(reebill.balance_due)), styles['BillFieldRight'])]
@@ -480,16 +448,9 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-
-
-
-        #
         # Second Page
-        #
         Elements.append(NextPageTemplate("SecondPage"));
         Elements.append(PageBreak());
-
-
 
         pageTwoBackground = Image(os.path.join(self.template_directory, self.current_template, "page_two.png"), letter[0], letter[1])
         Elements.append(pageTwoBackground)
@@ -497,7 +458,6 @@ class ReebillRenderer:
         #populate measured usage header frame
         Elements.append(Paragraph("Measured renewable and conventional energy.", styles['BillLabel']))
         Elements.append(UseUpSpace())
-
 
         # list of the rows
         measuredUsage = [
@@ -513,14 +473,9 @@ class ReebillRenderer:
             shadow_total = reading.renewable_quantity
             utility_total = reading.conventional_quantity
             total += (utility_total + shadow_total)
-            measuredUsage.append([
-                '',
-                '',
-                round_for_display(shadow_total),
-                utility_total,
-                round_for_display(total),
-                reading.quantity_unit,
-        ])
+            measuredUsage.append([ '', '', round_for_display(shadow_total),
+                    utility_total, round_for_display(total),
+                    reading.quantity_units])
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550
@@ -558,7 +513,6 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-
         Elements.append(Paragraph("Original utility charges prior to renewable energy.", styles['BillLabel']))
         Elements.append(UseUpSpace())
 
@@ -590,16 +544,11 @@ class ReebillRenderer:
             ])
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None,
-            format_for_display(
-                reebill.get_total_hypothetical_charges(),
-                places=2)
-        ])
+                format_for_display(
+                reebill.get_total_hypothetical_charges(), places=2)])
 
         t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
-
-        #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
         t.setStyle(TableStyle([
-            #('INNERGRID', (1,0), (-1,1), 0.25, colors.black), 
             ('BOX', (0,2), (0,-1), 0.25, colors.black),
             ('BOX', (1,2), (1,-1), 0.25, colors.black),
             ('BOX', (2,2), (3,-1), 0.25, colors.black),
@@ -627,7 +576,6 @@ class ReebillRenderer:
         Elements.append(UseUpSpace())
 
         # render the document    
-        #doc.setProgressCallBack(progress)
         doc.build(Elements)
 
 # remove all calculations to helpers

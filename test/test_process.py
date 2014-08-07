@@ -977,10 +977,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
         # (so it's 10 days late)
-        # TODO don't use current date in a test!
-        one = self.process.roll_reebill(acc,
-                                        start_date=date(2012, 1, 1))
-
+        one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
