@@ -1585,12 +1585,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         utilbill_data = self.process.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]
-        self.assertDocumentsEqualExceptKeys({
+        self.assertDictContainsSubset({
             'account': '99999',
             'computed_total': 0,
-            'editable': True,
-            'id': 6469L,
-            'name': '99999 - Example 1/1785 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
@@ -1600,28 +1597,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'state': 'Final',
             'total_charges': 0.0,
             'utility': 'Test Utility Company Template',
-            }, utilbill_data, 'id', 'charges')
+            }, utilbill_data)
 
         # create a reebill
         self.process.roll_reebill('99999', start_date=date(2013,1,1))
 
         utilbill_data = self.process.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]
-        self.assertDocumentsEqualExceptKeys({
+        self.assertDictContainsSubset({'issue_date': None, 'sequence': 1, 'version': 0},
+                                      utilbill_data['reebills'][0])
+
+        self.assertDictContainsSubset({
             'account': '99999',
             'computed_total': 0,
-            'editable': True,
-            'id': 6469L,
-            'name': '99999 - Example 1/1785 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
             'rate_class': 'Test Rate Class Template',
-            'reebills': [{'issue_date': None, 'sequence': 1, 'version': 0}],
             'service': 'Gas', 'state': 'Final',
             'total_charges': 0.0,
             'utility': 'Test Utility Company Template',
-        }, utilbill_data, 'id', 'charges')
+        }, utilbill_data)
 
         billing_address = {
             'addressee': 'Andrew Mellon',
