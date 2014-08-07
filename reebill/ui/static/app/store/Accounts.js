@@ -4,6 +4,7 @@ Ext.define('ReeBill.store.Accounts', {
     model: 'ReeBill.model.Account',
 
     autoLoad: true,
+    autoSync: true,
 
 	proxy: {
 		type: 'rest',
@@ -53,15 +54,23 @@ Ext.define('ReeBill.store.Accounts', {
             memoryStore.getProxy().data = allRecords;
             memoryStore.reload()
         },
-        filterchange: function(store, filters, eOpts){
-            console.log('filterchange', store, filters, eOpts);
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('AccountsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.loadPage(1);
-            store.clearFilter(true);
-        },
         scope: this
-    }
+    },
+
+    getNextAccountNumber: function(){
+        var highestAccNr = 0;
+        this.each(function(record){
+            var accNr = parseInt(record.get('account'));
+            if(accNr > highestAccNr){
+                highestAccNr = accNr;
+            }
+        }, this);
+        return String(highestAccNr+1);
+    },
+
+    sorters: [{
+        property: 'account',
+        direction: 'DESC'
+    }]
 
 });

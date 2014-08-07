@@ -23,6 +23,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'lastevent'},
         {name: 'lastissuedate'},
         {name: 'provisionable'},
-        {name: 'lastrateclass'}
+        {name: 'lastrateclass'},
+        {name: 'name'}
     ]
 });

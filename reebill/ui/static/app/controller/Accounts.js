@@ -38,6 +38,14 @@ Ext.define('ReeBill.controller.Accounts', {
                 change: this.handleFilter
             }
         });
+
+        this.getAccountsStore().on({
+            add: function(){
+                var accountForm = this.getAccountForm(),
+                accoutForm.getForm().reset();
+            },
+            scope: this
+        });
     },
 
     /**
@@ -69,14 +77,9 @@ Ext.define('ReeBill.controller.Accounts', {
      */
     loadNextAccountNumber: function() {
         var newAccountField = this.getAccountForm().down('textfield[name=account]');
+        var store = this.getAccountsStore()
 
-        Ext.Ajax.request({
-            url: 'http://' + window.location.host + '/reebill/get_next_account_number',
-            success: function(response){
-                var jsonData = Ext.JSON.decode(response.responseText);
-                newAccountField.setValue(jsonData['account']);
-            }
-        });
+        newAccountField.setValue(store.getNextAccountNumber());
     },
 
     /**
@@ -86,27 +89,17 @@ Ext.define('ReeBill.controller.Accounts', {
         var accountForm = this.getAccountForm(),
             accountsGrid = this.getAccountsGrid(),
             makeAnotherAccount = accountForm.down('[name=makeAnotherAccount]');
+        var store = this.getAccountsStore()
 
         if (accountForm.getForm().isValid()) {
             var values = accountForm.getForm().getValues();
+            console.log(values);
 
-            accountForm.getForm().submit({
-                url: 'http://' + window.location.host + '/reebill/new_account',
-                success: function(form, action) {
-                    Ext.Msg.alert('Success', 'New account created.');
-
-                    accountForm.getForm().reset();
-                    accountsGrid.getStore().reload();
-
-                    if (!makeAnotherAccount.getValue())
-                        accountsGrid.expand();
-                    else
-                        this.loadNextAccountNumber();
-                },
-                failure: function() {
-                    Ext.Msg.alert('FAILURE', 'New account not created.');
-                }
-            });
+            store.add(values);
+            if (!makeAnotherAccount.getValue())
+                accountsGrid.expand();
+            else
+                this.loadNextAccountNumber();
         }
     },
 
