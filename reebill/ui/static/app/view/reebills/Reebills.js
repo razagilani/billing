@@ -30,41 +30,42 @@ Ext.define('ReeBill.view.Reebills', {
         header: 'Corrections',
         sortable: false,
         dataIndex: 'corrections',
-        width: 90
+        width: 120
     },{
         header: 'Start Date',
         sortable: false,
         dataIndex: 'period_start',
-        width: 90
+        width: 120
     },{
         header: 'End Date',
         sortable: false,
         dataIndex: 'period_end',
-        width: 90
+        width: 120
     },{
         header: 'Issue Date',
         sortable: false,
         dataIndex: 'issue_date',
-        width: 90
+        width: 120
     },{
         header: 'Hypo',
         sortable: false,
         dataIndex: 'hypothetical_total',
-        width: 65,
+        width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
         header: 'Actual',
         sortable: false,
         dataIndex: 'actual_total',
-        width: 65,
+        width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
         header: 'RE&E',
         sortable: false,
         dataIndex: 'ree_quantity',
-        width: 90,
+        width: 120,
+        flex: 1,
         align: 'right',
         renderer: function(value) {
             if (typeof(value) == 'number')
@@ -76,7 +77,7 @@ Ext.define('ReeBill.view.Reebills', {
         header: 'RE&E Value',
         sortable: false,
         dataIndex: 'ree_value',
-        width: 90,
+        width: 120,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     },{
@@ -84,6 +85,7 @@ Ext.define('ReeBill.view.Reebills', {
         sortable: false,
         dataIndex: 'ree_charge',
         align: 'right',
+        width: 120,
         renderer: Ext.util.Format.usMoney
     }],
 

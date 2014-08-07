@@ -14,16 +14,44 @@ Ext.define('ReeBill.view.Accounts', {
         }
     },
     
-    columns: [
-        {header: 'Account', dataIndex: 'account'},
-        {header: 'Codename', dataIndex: 'codename'},        
-        {header: 'Casual Name', dataIndex: 'casualname'},        
-        {header: 'Primus Name', dataIndex: 'primusname'},
-        {header: 'Utility Service Address', dataIndex: 'utilityserviceaddress'},        
-        {header: 'Last Issued', dataIndex: 'lastissuedate'},        
-        {header: 'Days Since Utility Bill', dataIndex: 'dayssince'},        
-        {header: 'Last Event', dataIndex: 'lastevent', width: 350},
-    ],
+    columns: [{
+        header: 'Account',
+        dataIndex: 'account',
+        width: 100
+    },{
+        header: 'Codename',
+        dataIndex: 'codename',
+        width: 120
+    },{
+        header: 'Casual Name',
+        dataIndex: 'casualname',
+        width: 200
+    },{
+        header: 'Primus Name',
+        dataIndex: 'primusname',
+        width: 120
+    },{
+        header: 'Utility Service Address',
+        dataIndex: 'utilityserviceaddress',
+        width: 200
+    },{
+        header: 'Last Issued',
+        dataIndex: 'lastissuedate',
+        width: 120,
+        renderer: function(value) {
+            return Ext.util.Format.date(value, 'Y-m-d');
+        },
+    },{
+        header: 'Days Since',
+        tooltip: 'Days Since Utility Bill',
+        dataIndex: 'dayssince',
+        width: 100
+    },{
+        header: 'Last Event',
+        dataIndex: 'lastevent',
+        width: 350,
+        flex:1
+    }],
 
     bbar: {
         xtype: 'pagingtoolbar',
