@@ -63,6 +63,7 @@ class JournalTest(utils.TestCase):
             'msg': 'hello',
             'sequence': 1,
             'date': datetime.utcnow(),
+            'event': 'Note: hello'
             }, entry.to_dict())
     
     def test_utilbill_deleted(self):
