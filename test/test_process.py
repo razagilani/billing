@@ -1474,8 +1474,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with self.assertRaises(IssuedBillError):
             self.process.delete_reebill(account, 1)
         self.process.delete_reebill(account, 2)
-        with self.assertRaises(NoSuchBillException):
-            self.reebill_dao.load_reebill(account, 2, version=0)
+        with self.assertRaises(NoResultFound):
+            self.state_db.get_reebill(account, 2, version=0)
         self.assertEquals(1, self.session.query(ReeBill).count())
         self.assertEquals([1], self.state_db.listSequences(account))
         self.assertEquals([utilbill], reebill.utilbills)

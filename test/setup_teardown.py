@@ -217,9 +217,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection('localhost', 27017)['test'])
-
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
                 logger=logger)
 
@@ -255,15 +252,13 @@ class TestCaseWithSetup(test_utils.TestCase):
                     'reebill_templates'),
             'default_template': '/dev/null',
             'teva_accounts': '',
-        }, self.state_db, self.reebill_dao,
-                logger)
+        }, self.state_db, logger)
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
-        self.process = Process(self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.nexus_util,
-                bill_mailer, renderer, ree_getter,
-                self.splinter, logger=logger)
+        self.process = Process(self.state_db,  self.rate_structure_dao,
+                self.billupload, self.nexus_util, bill_mailer, renderer,
+                ree_getter, self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='utilbills')
