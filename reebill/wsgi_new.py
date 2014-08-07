@@ -827,6 +827,19 @@ class ReportsResource(WebResource):
                     'attachment; filename=%s.xls'%datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
 
+    @cherrypy.expose
+    @cherrypy.tools.authenticate()
+    def reconciliation(self, start, limit, *vpath, **params):
+        start, limit = int(start), int(limit)
+        with open(os.path.join(
+                self.reconciliation_report_dir,
+                'reconciliation_report.json')) as json_file:
+            items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
+            return self.dumps({
+                'rows': items[start:start+limit],
+                'results': len(items)
+            })
+
 
 class BillToolBridge(WebResource):
     accounts = AccountsResource()
