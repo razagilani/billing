@@ -2,16 +2,14 @@
 included in it.
 '''
 from datetime import date
+from unittest import TestCase
 
 from billing.exc import RSIError
-from billing.test import utils
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
-from billing.test.setup_teardown import TestCaseWithSetup
 from processing.state import UtilBill, Customer, Session, Address
 
-
-class UtilBillTest(TestCaseWithSetup, utils.TestCase):
+class UtilBillTest(TestCase):
 
     # function to check error state of a charge
     def assert_error(self, c, error_message):
