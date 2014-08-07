@@ -326,7 +326,9 @@ class Process(object):
         ).outerjoin(ReeBillCharge)\
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        return [rb.column_dict() for rb in q]
+        return [dict(rb.column_dict().items() +
+                    [('total_error', self.get_total_error(account, rb.sequence))])
+                for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)

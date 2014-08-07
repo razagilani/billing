@@ -589,6 +589,7 @@ class ReeBill(Base):
         the_dict.update({
             'account': self.customer.account,
             'hypothetical_total': self.get_total_hypothetical_charges(),
+            'actual_total': self.get_total_actual_charges(),
             'billing_address': self.billing_address.column_dict(),
             'service_address': self.service_address.column_dict(),
             'period_start': period_start,
