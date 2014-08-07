@@ -207,8 +207,7 @@ class WebResource(object):
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    self.reebill_dao,
-                                                    self.logger)
+                                                    self.reebill_dao)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(

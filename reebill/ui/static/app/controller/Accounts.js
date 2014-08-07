@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.Accounts', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Accounts', 'AccountsMemory'
+        'Accounts', 'AccountsMemory', 'AccountsFilter'
     ],
     
     refs: [{
@@ -44,6 +44,9 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
+        var filter = this.getAccountsFilterStore().getAt(0);
+        var filterCombo = this.getAccountsFilter();
+        filterCombo.select(filter);
     },
 
     /**
@@ -52,10 +55,13 @@ Ext.define('ReeBill.controller.Accounts', {
     handleFilter: function() {
         // We're filtering every record, so we have to use AccountsStore
         // and not AccountsMemoryStore
-        var accountsStore = this.getAccountsStore();
+        var store = this.getAccountsMemoryStore()
+        var allRecords = this.getAccountsStore().getRange();
         var filter = this.getAccountsFilter().getValue();
-        console.log(filter);
-        accountsStore.filter(filter);
+        var filteredRecords = Ext.Array.filter(allRecords, filter.filterFn)
+
+        store.getProxy().data = filteredRecords;
+        store.loadPage(1);
     },
 
     /**
