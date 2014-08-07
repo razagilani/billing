@@ -22,9 +22,7 @@ client = MongoClient(config.get('billdb', 'host'),
     int(config.get('billdb', 'port')))
 db = client[config.get('billdb', 'database')]
 
-s = Session()
-
-def copy_registers_from_mongo():
+def copy_registers_from_mongo(s):
     log.info('Copying registers from Mongo')
     assert s.query(Register).first() is None, "Registers table is not empty"
 
@@ -37,7 +35,7 @@ def copy_registers_from_mongo():
 
         for mongo_meter in mongo_ub['meters']:
             for mongo_register in mongo_meter['registers']:
-                log.debug('Adding register for utilbill id %s' % ub.id)
+                #log.debug('Adding register for utilbill id %s' % ub.id)
                 s.add(Register(ub,
                                mongo_register.get('description', ""),
                                mongo_register.get('quantity', 0),
@@ -49,26 +47,37 @@ def copy_registers_from_mongo():
                                None, #active_periods does not exist in Mongo
                                mongo_meter.get('identifier', "")))
 
-def copy_rsis_from_mongo():
+def copy_rsis_from_mongo(s):
     for u in s.query(UtilBill).all():
-        rs = db.ratestructure.find_one({'_id': u.uprs_document_id})
+        rs = db.ratestructure.find_one({'_id': ObjectId(u.uprs_document_id)})
+        if rs is None:
+            log.error('utilbill id %s: missing RS document with id %s' % (
+                    u.id, u.uprs_document_id))
+            continue
         for charge in u.charges:
-            log.debug('Updating charge id %s for utilbill id %s' % (
-                    charge.id, u.id))
-            rsi = next(r for r in rs['rates'] if r['rsi_binding'] ==
-                    charge.rsi_binding)
+            #log.debug('Updating charge id %s for utilbill id %s' % (
+                    #charge.id, u.id))
+            try:
+                rsi = next(r for r in rs['rates'] if r['rsi_binding'] ==
+                        charge.rsi_binding)
+            except StopIteration:
+                log.error('utilbill id %s charge id %s: no RSI %s' % (
+                    u.id, charge.id, charge.rsi_binding))
+                continue
             charge.quantity_formula = rsi['quantity']
             charge.rate_formula = rsi['rate']
             charge.roundrule = rsi.get('roundrule', '')
-            charge.shared = rsi['shared']
+            charge.shared = rsi.get('shared', True)
+            charge.has_charge = rsi.get('has_charge', True)
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
     alembic_upgrade('39efff02706c')
     log.info('Alembic Upgrade Complete')
     init_model()
-    copy_registers_from_mongo()
-
+    s = Session()
+    copy_registers_from_mongo(s)
+    copy_rsis_from_mongo(s)
     log.info('Committing to database')
     s.commit()
     log.info('Upgrade to version 22 complete')
