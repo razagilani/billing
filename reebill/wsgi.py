@@ -92,6 +92,7 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
+
 def db_commit(method):
     '''Decorator for committing a database transaction when the method returns.
     This should be used only on methods that should be allowed to modify the
@@ -214,7 +215,6 @@ class ReeBillWSGI(object):
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -1316,11 +1316,10 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
 
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax
