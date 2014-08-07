@@ -21,7 +21,7 @@ Ext.define('ReeBill.view.AccountsCombo', {
     ),
 
     valueField: 'account',
-    mode: 'local',
+    queryMode: 'local',
     typeAhead: true,
     triggerAction: 'all',
     emptyText:'Select...',

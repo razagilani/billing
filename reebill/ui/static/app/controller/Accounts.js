@@ -41,8 +41,8 @@ Ext.define('ReeBill.controller.Accounts', {
 
         this.getAccountsStore().on({
             add: function(){
-                var accountForm = this.getAccountForm(),
-                accoutForm.getForm().reset();
+                var accountForm = this.getAccountForm();
+                accountForm.getForm().reset();
             },
             scope: this
         });
