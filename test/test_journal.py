@@ -63,6 +63,7 @@ class JournalTest(utils.TestCase):
             'msg': 'hello',
             'sequence': 1,
             'date': datetime.utcnow(),
+            'event': 'Note: hello'
             }, entry.to_dict())
     
     def test_utilbill_deleted(self):
@@ -260,8 +261,9 @@ class JournalTest(utils.TestCase):
         journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1)
         journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
         description = self.dao.last_event_summary('90001')
-        self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
-                .strftime(ISO_8601_DATE), description)
+        self.assertEqual(
+            ('90001', 'Reebill 90001-1 rolled on ' + datetime.utcnow().date()
+                .strftime(ISO_8601_DATE)), description)
         
     def test_dates(self):
         '''Catches a bug where successive events have the same date:

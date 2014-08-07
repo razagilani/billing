@@ -3,8 +3,7 @@ from copy import deepcopy
 from billing.processing.excel_export import Exporter
 from billing.processing.state import (
     StateDB, ReeBill, Payment, ReeBillCharge, Reading, UtilBill, Address,
-    Charge)
-from billing.processing.mongo import ReebillDAO
+    Charge, Register)
 from datetime import date, datetime
 import unittest
 import mock
@@ -15,8 +14,7 @@ class ExporterTest(unittest.TestCase):
     def setUp(self):
         #Set up the mock
         self.mock_StateDB = mock.create_autospec(StateDB)
-        self.mock_ReebillDAO = mock.create_autospec(ReebillDAO)
-        self.exp = Exporter(self.mock_StateDB, self.mock_ReebillDAO)
+        self.exp = Exporter(self.mock_StateDB)
 
     def test_get_reebill_details_dataset(self):
 
@@ -113,10 +111,20 @@ class ExporterTest(unittest.TestCase):
         u1.period_end = date(2011,12,14)
         u1.charges = [make_charge(x) for x in [3.37, 17.19, 43.7, 164.92,
                 23.14, 430.02, 42.08, 7.87, 11.2]]
+        # replacement for document above
+        register1 = mock.Mock(autospec=Register)
+        register1.description = ''
+        register1.quantity = 561.9
+        register1.quantity_unit = 'therms'
+        register1.estimated = False
+        register1.reg_type = 'total'
+        register1.register_binding = 'REG_TOTAL'
+        register1.active_periods = None
+        u1.registers = [register1]
         u2 = deepcopy(u1)
         u2.period_start = date(2011,12,15)
         u2.period_end = date(2012,01,14)
-        self.mock_ReebillDAO._load_utilbill_by_id.side_effect = [doc, doc]
+        u2.registers = [deepcopy(register1)]
 
         dataset = self.exp.get_energy_usage_sheet([u1, u2])
         correct_data = [('10003', u'DC Non Residential Non Heat', 561.9, u'therms', '2011-11-12', '2011-12-14', 3.37, 17.19, 43.7, 164.92, 23.14, 430.02, 42.08, 7.87, 11.2),

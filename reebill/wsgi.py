@@ -92,6 +92,7 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
+
 def db_commit(method):
     '''Decorator for committing a database transaction when the method returns.
     This should be used only on methods that should be allowed to modify the
@@ -130,9 +131,6 @@ class ReeBillWSGI(object):
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(self.billdb_config['host'],
-                int(self.billdb_config['port']))[self.billdb_config['database']])
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
@@ -196,18 +194,16 @@ class ReeBillWSGI(object):
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
-            dict(self.config.items('reebillrendering')), self.state_db,
-            self.reebill_dao, self.logger)
+                dict(self.config.items('reebillrendering')), self.state_db,
+                self.logger)
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao, self.logger)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
         # create one Process object to use for all related bill processing
-        self.process = process.Process(self.state_db, self.reebill_dao,
-                self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.ree_getter, logger=self
-                .logger)
+        self.process = process.Process(self.state_db,  self.ratestructure_dao,
+                self.billUpload, self.nexus_util, self.bill_mailer,
+                self.renderer, self.ree_getter, logger=self .logger)
 
 
         # determine whether authentication is on or off
@@ -219,7 +215,6 @@ class ReeBillWSGI(object):
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -785,7 +780,7 @@ class ReeBillWSGI(object):
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -812,7 +807,7 @@ class ReeBillWSGI(object):
         else:
             spreadsheet_name = 'all_accounts.xls'
 
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -839,7 +834,7 @@ class ReeBillWSGI(object):
         else:
             spreadsheet_name = 'brokerage_accounts.xls'
 
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -1321,11 +1316,10 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
 
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax

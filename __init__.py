@@ -55,6 +55,8 @@ def init_model(uri=None):
 
     uri = uri if uri else config.get('statedb', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
+    Session.rollback()
+    Session.remove()
     engine = create_engine(uri)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
