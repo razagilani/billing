@@ -1481,23 +1481,16 @@ class Process(object):
         utilbill= self.state_db.get_utilbill_by_id(utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
 
-    def list_account_status(self, start, limit, filtername, sortcol,
-                            sort_reverse):
+    def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
           Casual name, Primus Name, Utility Service Address, Date of last
           issued bill, Days since then and the last event) and the length
-          of the list """
-        #Various filter functions used below to filter the resulting rows
-        # def filter_reebillcustomers(row):
-        #     return int(row['account'])<20000
-        # def filter_brokeragecustomers(row):
-        #     return int(row['account'])>=20000
-
-        statuses = self.state_db.retrieve_status_days_since(sortcol,
-                sort_reverse)
+          of the list for all accounts. If account is given, the only the
+          accounts dictionary is returned """
+        statuses = self.state_db.retrieve_status_days_since(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
                 [s.account for s in statuses])
-        bill_data = self.state_db.get_accounts_grid_data()
+        bill_data = self.state_db.get_accounts_grid_data(account)
 
         rows_dict = {}
 
@@ -1514,26 +1507,21 @@ class Process(object):
                 'provisionable': False
             }
 
-        for account, _, _, issue_date, rate_class, service_address in bill_data:
+        for acc, _, _, issue_date, rate_class, service_address in bill_data:
             issue_date = issue_date if issue_date else ''
             rate_class = rate_class if rate_class else ''
             service_address = str(service_address) if service_address else ''
-            rows_dict[account]['lastissuedate'] = issue_date
-            rows_dict[account]['utilityserviceaddress'] = service_address
-            rows_dict[account]['lastrateclass'] = rate_class
+            rows_dict[acc]['lastissuedate'] = issue_date
+            rows_dict[acc]['utilityserviceaddress'] = service_address
+            rows_dict[acc]['lastrateclass'] = rate_class
 
-        events = self.journal_dao.get_all_last_events()
-        for account, last_event in events:
-            if account in rows_dict:
-                rows_dict[account]['lastevent'] = last_event
-
-        # #Apply filters
-        # if filtername=="reebillcustomers":
-        #     rows=filter(filter_reebillcustomers, rows)
-        # elif filtername=="brokeragecustomers":
-        #     rows=filter(filter_brokeragecustomers, rows)
-        # rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
-        # total_length=len(rows)
+        if account is not None:
+            events = [self.journal_dao.last_event_summary(account)]
+        else:
+            events = self.journal_dao.get_all_last_events()
+        for acc, last_event in events:
+            if acc in rows_dict:
+                rows_dict[acc]['lastevent'] = last_event
 
         rows = list(rows_dict.itervalues())
         return len(rows), rows

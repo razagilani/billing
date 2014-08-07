@@ -313,47 +313,42 @@ class RESTResource(WebResource):
 
 class AccountsResource(RESTResource):
 
-    def handle_get(self, start, limit, filtername=None, *vpath, **params):
-
+    def handle_get(self, *vpath, **params):
         """Handles AJAX request for "Account Processing Status" grid in
         "Accounts" tab."""
-
-        start, limit = int(start), int(limit)
-
-        if filtername is None:
-            filtername = cherrypy.session['user'].preferences.get(
-                'filtername', '')
-
-        sortcol = params.get('sort', None)
-        if not sortcol:
-            sortcol = cherrypy.session['user'].preferences.get(
-                'default_account_sort_field', None)
-        if not sortcol:
-            sortcol = 'account'
-
-        sortdir = params.get('dir', None)
-        if not sortdir:
-            sortdir = cherrypy.session['user'].preferences.get(
-                'default_account_sort_direction', None)
-        if not sortdir:
-            sortdir = "DESC"
-        if sortdir == 'ASC':
-            sortreverse = False
-        else:
-            sortreverse = True
-
-        count, rows = self.process.list_account_status(
-            start, limit, filtername, sortcol, sortreverse)
-
-        cherrypy.session['user'].preferences[
-            'default_account_sort_field'] = sortcol
-        cherrypy.session['user'].preferences[
-            'default_account_sort_direction'] = sortdir
-        cherrypy.session['user'].preferences[
-            'filtername'] = filtername
-        self.user_dao.save_user(cherrypy.session['user'])
-
+        count, rows = self.process.list_account_status()
         return True, {'rows': rows, 'results': count}
+
+    def handle_post(self,*vpath, **params):
+        """ Handles the creation of a new account
+        """
+        row = cherrypy.request.json
+        billing_address = {
+            'addressee': row['ba_addressee'],
+            'street': row['ba_street'],
+            'city': row['ba_city'],
+            'state': row['ba_state'],
+            'postal_code': row['ba_postal_code'],
+        }
+        service_address = {
+            'addressee': row['sa_addressee'],
+            'street': row['sa_street'],
+            'city': row['sa_city'],
+            'state': row['sa_state'],
+            'postal_code': row['sa_postal_code'],
+        }
+
+        self.process.create_new_account(
+            row['account'], row['name'], float(row['discount_rate']),
+            float(row['late_charge_rate']), billing_address,
+            service_address, row['template_account'])
+
+        journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
+                row['account'])
+
+        count, result = self.process.list_account_status(row['account'])
+        print count, result
+        return True, {'rows': result, 'results': count}
 
 
 class IssuableReebills(RESTResource):
