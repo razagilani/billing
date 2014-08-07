@@ -77,11 +77,7 @@ class Process(object):
         by  'utilbill_id' (MySQL id)."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        columns = ['id', 'description', 'error', 'group', 'quantity',
-                   'quantity_units', 'rate', 'rsi_binding', 'total']
-        return [dict([(col, getattr(charge, col)) for col in columns
-                     if hasattr(charge, col)] + [('id', charge.rsi_binding)])
-                for charge in utilbill.charges]
+        return [charge.column_dict() for charge in utilbill.charges]
 
     def get_registers_json(self, utilbill_id):
         """Returns a dictionary of register information for the utility bill
@@ -91,17 +87,7 @@ class Process(object):
         for r in session.query(Register).join(UtilBill,
             Register.utilbill_id == UtilBill.id).\
             filter(UtilBill.id == utilbill_id).all():
-            l.append(dict(meter_id=r.meter_identifier,
-                          register_id=r.id,
-                          service=r.utilbill.service,
-                          type=r.reg_type,
-                          binding=r.register_binding,
-                          description=r.description,
-                          quantity=r.quantity,
-                          quantity_units=r.quantity_units,
-                          id='%s/%s/%s' % (r.utilbill.service,
-                                           r.meter_identifier,
-                                           r.id)))
+            l.append(r.column_dict())
         return l
 
     def new_register(self, utilbill_id, row):
@@ -111,39 +97,28 @@ class Process(object):
         """
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        session.add(Register(utility_bill,
-                             "Insert description",
-                             0,
-                             "therms",
-                             row.get('register_id', "Insert register ID here"),
-                             False,
-                             "total",
-                             "Insert register binding here",
-                             None,
-                             row.get('meter_id', "")))
-    def update_register(self, utilbill_id, orig_meter_id, orig_reg_id, rows):
-        """Updates fields in the register given by 'original_register_id' in
-        the meter given by 'original_meter_id', with the data contained by rows.
+        r = Register(
+            utility_bill,
+            "Insert description",
+            0,
+            "therms",
+            row.get('register_id', "Insert register ID here"),
+            False,
+            "total",
+            "Insert register binding here",
+            None,
+            row.get('meter_id', ""))
+        session.add(r)
+        return r
+    def update_register(self, register_id, rows):
+        """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
+        self.logger.info("Running Process.update_register %s" % register_id)
         session = Session()
-        q = session.query(Register).join(UtilBill,
-                                         Register.utilbill_id == UtilBill.id).\
-            filter(UtilBill.id == utilbill_id)
 
         #Register to be updated
-        register = q.filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
-
-        #Check if a register with target register_id/meter_id already exists
-        target_register_id = rows.get('register_id', orig_reg_id)
-        target_meter_id = rows.get('meter_id', orig_meter_id)
-        target = q.filter(Register.meter_identifier == target_meter_id).\
-            filter(Register.identifier == target_register_id).first()
-        if target and target != register:
-            raise ValueError("There is already a register with id %s and meter"
-                             " id %s" % (target_register_id, target_meter_id))
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
 
         for k in ['description', 'quantity', 'quantity_units',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
@@ -154,16 +129,14 @@ class Process(object):
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(utilbill_id)
+        return register
 
-
-    def delete_register(self, utilbill_id, orig_meter_id, orig_reg_id):
-        self.logger.info("Running Process.delete_register %s %s %s" %
-                         (utilbill_id, orig_meter_id, orig_reg_id))
+    def delete_register(self, register_id):
+        self.logger.info("Running Process.delete_register %s" %
+                         register_id)
         session = Session()
-        register = session.query(Register).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Register.meter_identifier == orig_meter_id).\
-            filter(Register.identifier == orig_reg_id).one()
+        register = session.query(Register).filter(
+            Register.id == register_id).one()
         session.delete(register)
         self.compute_utility_bill(utilbill_id)
 
@@ -171,30 +144,31 @@ class Process(object):
         """Add a new charge to the given utility bill."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        utilbill.charges.append(Charge(utilbill, "", "", 0, "", 0, "", 0))
+        utilbill.charges.append(Charge(utilbill, "New Charge", "", 0, "", 0, "", 0))
         self.compute_utility_bill(utilbill_id)
+        return session.query(Charge).filter_by(id=c.id).one()
 
-
-    def update_charge(self, utilbill_id, rsi_binding, fields):
-        """Modify the charge given by 'rsi_binding' in the given utility
-        bill by setting key-value pairs to match the dictionary 'fields'."""
+    def update_charge(self, charge_id, fields):
+        """Modify the charge given by charge_id
+        by setting key-value pairs to match the dictionary 'fields'."""
         session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
         for k, v in fields.iteritems():
             setattr(charge, k, v)
-        self.compute_utility_bill(utilbill_id)
+        self.compute_utility_bill(charge.utilbill.id)
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
+        return charge
 
-    def delete_charge(self, utilbill_id, rsi_binding):
+    def delete_charge(self, charge_id):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
+        charge = session.query(Charge)\
+            .filter(Charge.id == charge_id).one()
         session.delete(charge)
-        self.compute_utility_bill(utilbill_id)
+        self.compute_utility_bill(charge.utilbill_id)
 
     def get_rsis_json(self, utilbill_id):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
@@ -267,11 +241,11 @@ class Process(object):
         '''Wrapper to delete_payment method in state.py'''
         self.state_db.delete_payment(oid)
 
-    def get_hypothetical_matched_charges(self, account, sequence):
+    def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and
         matches the actual charge to each hypotheitical charge
         TODO: This method has no test coverage!"""
-        reebill = self.state_db.get_reebill(account, sequence)
+        reebill = self.state_db.get_reebill_by_id(reebill_id)
         return [{
             'rsi_binding': reebill_charge.rsi_binding,
             'description': reebill_charge.description,
@@ -317,13 +291,13 @@ class Process(object):
         self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
                 utilbill.service)
         self.compute_utility_bill(utilbill.id)
+        return  utilbill
 
     def get_reebill_metadata_json(self, account):
         """Returns data describing all reebills for the given account, as list
         of JSON-ready dictionaries.
         """
         session = Session()
-        result = []
 
         # this subquery gets (customer_id, sequence, version) for all the
         # reebills whose version is the maximum in their (customer, sequence,
@@ -339,73 +313,20 @@ class Process(object):
         # query ReeBill joined to the above subquery to get only
         # maximum-version bills, and also outer join to ReeBillCharge to get
         # sum of 0 or more charges associated with each reebill
-        q = session.query(ReeBill,
-                # NOTE functions.sum(Reading.renewable_quantity) can't be used
-                # here to get total energy, because of unit conversion. instead
-                # the method ReeBill.get_total_renewable_energy must be used to
-                # calculate it.
-                functions.sum(ReeBillCharge.h_total).label('total_charge')
-                ).join(latest_versions_sq, and_(
+        q = session.query(ReeBill).join(latest_versions_sq, and_(
                 ReeBill.customer_id == latest_versions_sq.c.customer_id,
                 ReeBill.sequence == latest_versions_sq.c.sequence,
                 ReeBill.version == latest_versions_sq.c.max_version)
         ).outerjoin(ReeBillCharge)\
         .order_by(desc(ReeBill.sequence)).group_by(ReeBill.id)
 
-        for reebill, total_charge in q:
-            the_dict = {
-                'id': reebill.sequence,
-                'sequence': reebill.sequence,
-                'issue_date': reebill.issue_date,
-                'period_start': reebill.utilbill.period_start,
-                'period_end': reebill.utilbill.period_end,
-                'max_version': reebill.version,
-                'issued': bool(reebill.issued),
-                # NOTE SQL sum() over no rows returns NULL, must substitute 0
-                'hypothetical_total': total_charge or 0,
-                'actual_total': reebill.get_total_actual_charges(),
-                'ree_value': reebill.ree_value,
-                'ree_charges': reebill.ree_charge,
-                # invisible columns
-                'prior_balance': reebill.prior_balance,
-                'total_error': self.get_total_error(account, reebill.sequence),
-                'balance_due': reebill.balance_due,
-                'processed': reebill.processed,
-                'payment_received': reebill.payment_received,
-                'total_adjustment': reebill.total_adjustment,
-                'balance_forward': reebill.balance_forward,
-                # TODO: is this used at all? does it need to be populated?
-                'services': [],
-            }
-            if reebill.version > 0:
-                if reebill.issued:
-                    the_dict['corrections'] = str(reebill.version)
-                else:
-                    the_dict['corrections'] = '#%s not issued' % reebill.version
-            else:
-                the_dict['corrections'] = '-' if reebill.issued else '(never ' \
-                                                                     'issued)'
-
-            # wrong energy unit can make this method fail causing the reebill
-            # grid to not load; see
-            # https://www.pivotaltracker.com/story/show/59594888
-            try:
-                the_dict['ree_quantity'] = reebill.get_total_renewable_energy()
-            except (ValueError, StopIteration) as e:
-                self.logger.error("Error when getting renewable energy "
-                        "quantity for reebill %s-%s-%s:\n%s" % (
-                        account, reebill.sequence, reebill.version,
-                        traceback.format_exc()))
-                the_dict['ree_quantity'] = 'ERROR: %s' % e.message
-
-            result.append(the_dict)
-        return result
+        return [rb.column_dict() for rb in q]
 
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         return {
-            'billing_address': reebill.billing_address.to_dict(),
-            'service_address': reebill.service_address.to_dict(),
+            'billing_address': reebill.billing_address.column_dict(),
+            'service_address': reebill.service_address.column_dict(),
             'discount_rate': reebill.discount_rate,
             'late_charge_rate': reebill.late_charge_rate,
         }
@@ -431,10 +352,10 @@ class Process(object):
             reebill.processed = processed
         if ba_addressee is not None:
             reebill.billing_address.addressee = ba_addressee
-        if ba_street is not None:
-            reebill.billing_address.street = ba_street
         if ba_state is not None:
             reebill.billing_address.state = ba_state
+        if ba_street is not None:
+            reebill.billing_address.street = ba_street
         if ba_city is not None:
             reebill.billing_address.city = ba_city
         if ba_postal_code is not None:
@@ -442,10 +363,10 @@ class Process(object):
 
         if sa_addressee is not None:
             reebill.service_address.addressee = sa_addressee
-        if sa_street is not None:
-            reebill.service_address.street = sa_street
         if sa_state is not None:
             reebill.service_address.state = sa_state
+        if sa_street is not None:
+            reebill.service_address.street = sa_street
         if sa_city is not None:
             reebill.service_address.city = sa_city
         if sa_postal_code is not None:
@@ -686,6 +607,7 @@ class Process(object):
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         utilbill.compute_charges()
 
+        return utilbill
 
     def compute_reebill(self, account, sequence, version='max'):
         '''Loads, computes, and saves the reebill
@@ -776,6 +698,7 @@ class Process(object):
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
+        return reebill
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
@@ -863,7 +786,7 @@ class Process(object):
     def new_version(self, account, sequence):
         """Creates a new version of the given reebill: duplicates the Reebill,
         re-computes the it, saves it, and increments the max_version number in
-        MySQL. Returns the version number of the new reebill.
+        MySQL. Returns the the new reebill.
         """
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
@@ -892,7 +815,19 @@ class Process(object):
                     reebill.version, reebill.customer.account,
                     reebill.sequence, e, traceback.format_exc()))
 
-        return reebill.version
+        return reebill
+
+    def list_all_versions(self, account, sequence):
+        ''' Returns all Reebills with sequence and account ordered by versions
+            a list of dictionaries
+        '''
+        session = Session()
+        q = session.query(ReeBill).join(Customer).with_lockmode('read')\
+            .filter(Customer.account == account)\
+            .filter(ReeBill.sequence == sequence)\
+            .order_by(desc(ReeBill.version))
+
+        return [rb.column_dict() for rb in q]
 
     def get_unissued_corrections(self, account):
         """Returns [(sequence, max_version, balance adjustment)] of all
@@ -1136,7 +1071,8 @@ class Process(object):
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
 
-    def reebill_report_altitude(self, session):
+    def reebill_report_altitude(self):
+        session = Session()
         rows = []
         total_count = 0
         customer_id = None
@@ -1290,36 +1226,6 @@ class Process(object):
         name_dicts = sorted(all_accounts_all_names.iteritems())
         return name_dicts
 
-    def full_names_of_accounts(self, accounts):
-        '''Given a list of account numbers (as strings), returns a list
-        containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus" (sorted by
-        account). Names that do not exist for a given account are skipped.'''
-        # get list of customer name dictionaries sorted by their billing account
-        name_dicts = self.all_names_of_accounts(accounts)
-        result = []
-        for account, all_names in name_dicts:
-            res = account + ' - '
-            # Only include the names that exist in Nexus
-            names = [all_names[name] for name in
-                ('codename', 'casualname', 'primus')
-                if all_names.get(name)]
-            res += '/'.join(names)
-            if len(names) > 0:
-                res += ' - '
-            #Append utility and rate_class from the last utilbill for the
-            #account if one exists as per
-            #https://www.pivotaltracker.com/story/show/58027082
-            try:
-                last_utilbill = self.state_db.get_last_utilbill(account)
-            except NoSuchBillException:
-                #No utilbill found, just don't append utility info
-                pass
-            else:
-                res += "%s: %s" %(last_utilbill.utility,
-                last_utilbill.rate_class)
-            result.append(res)
-        return result
 
     def get_all_utilbills_json(self, account, start, limit):
         # result is a list of dictionaries of the form {account: account
@@ -1327,43 +1233,7 @@ class Process(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(account,
                 start, limit)
-
-        # this "name" is really not the name in nexus, but Stiles' creative
-        # way to get utilities and rate structures shown in the "Create New
-        # Account" form. luckily it's ignored by all other consumers of this
-        # data.
-        full_names = self.full_names_of_accounts([account])
-        full_name = full_names[0] if full_names else account
-
-        data = [{
-            'id': ub.id,
-            'account': ub.customer.account,
-            'name': full_name,
-            'utility': ub.utility,
-            'rate_class': ub.rate_class,
-            # capitalize service name
-            'service': 'Unknown' if ub.service is None else
-                    ub.service[0].upper() + ub.service[1:],
-            'period_start': ub.period_start,
-            'period_end': ub.period_end,
-            'total_charges': ub.total_charges,
-            # NOTE a type-based conditional is a bad pattern; this will
-            # have to go away
-            'computed_total': ub.total_charge() if \
-                ub.state < UtilBill.Hypothetical else None,
-            # NOTE the value of 'issue_date' in this JSON object is
-            # used by the client to determine whether a frozen utility
-            # bill version exists (when issue date == null, the reebill
-            # is unissued, so there is no frozen version of the utility
-            # bill corresponding to it).
-            'reebills': ub.sequence_version_json(),
-            'state': ub.state_name(),
-            # utility bill rows are always editable (since editing them
-            # should not affect utility bill data in issued reebills)
-            'processed': ub.processed,
-            'editable': True,
-        } for ub in utilbills]
-
+        data = [ub.column_dict() for ub in utilbills]
         return data, total_count
 
     def update_reebill_readings(self, account, sequence):
@@ -1430,14 +1300,14 @@ class Process(object):
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
         issuable_reebills = sorted([{
+            'id': r.id,
             'account': r.customer.account,
             'sequence':r.sequence,
             'util_total': sum(u.total_charges for u in r.utilbills),
             'mailto':r.customer.bill_email_recipient,
             'reebill_total': r.get_total_actual_charges(),
             'processed': r.processed,
-         } for r in reebills.all()], key=itemgetter('account'))
-
+            } for r in reebills.all()], key=itemgetter('account'))
         return issuable_reebills
 
     def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):
@@ -1606,38 +1476,21 @@ class Process(object):
         utilbill= self.state_db.get_utilbill_by_id(utilbill_id)
         return self.billupload.getUtilBillImagePath(utilbill,resolution)
 
-    def list_account_status(self, start, limit, filtername, sortcol,
-                            sort_reverse):
+    def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
           Casual name, Primus Name, Utility Service Address, Date of last
           issued bill, Days since then and the last event) and the length
-          of the list """
-        #Various filter functions used below to filter the resulting rows
-        def filter_reebillcustomers(row):
-            return int(row['account'])<20000
-        def filter_brokeragecustomers(row):
-            return int(row['account'])>=20000
-        # Function to format the "Utility Service Address" grid column
-        def format_service_address(service_address, account):
-            try:
-                return '%(street)s, %(city)s, %(state)s' % service_address
-            except KeyError as e:
-                self.logger.error(('Utility bill service address for %s '
-                        'lacks key "%s": %s') % (
-                                account, e.message, service_address))
-                return '?'
-
-        statuses = self.state_db.retrieve_status_days_since(sortcol,
-                sort_reverse)
+          of the list for all accounts. If account is given, the only the
+          accounts dictionary is returned """
+        statuses = self.state_db.retrieve_status_days_since(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
                 [s.account for s in statuses])
+        bill_data = self.state_db.get_accounts_grid_data(account)
 
-        rows = []
-        # To make this for loop faster we only include nexus data, status data
-        # and data for the column that is sorted. After that we filter and limit
-        # the rows for pagination and only after that we add all missing fields
+        rows_dict = {}
+
         for status in statuses:
-            new_record = {
+            rows_dict[status.account] = {
                 'account': status.account,
                 'codename': name_dicts[status.account]['codename'] if
                        'codename' in name_dicts[status.account] else '',
@@ -1648,43 +1501,22 @@ class Process(object):
                 'dayssince': status.dayssince,
                 'provisionable': False
             }
-            if sortcol=='utilityserviceaddress':
-                try:
-                    service_address = self.get_service_address(status.account)
-                    service_address=format_service_address(service_address,
-                                                            status.account)
-                except NoSuchBillException:
-                    service_address = ''
-                new_record['utilityserviceaddress']=service_address
-            elif sortcol=='lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(status.account,
-                        issued_only=True)
-                new_record['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
-            rows.append(new_record)
 
-        #Apply filters
-        if filtername=="reebillcustomers":
-            rows=filter(filter_reebillcustomers, rows)
-        elif filtername=="brokeragecustomers":
-            rows=filter(filter_brokeragecustomers, rows)
-        rows.sort(key=itemgetter(sortcol), reverse=sort_reverse)
-        total_length=len(rows)
-        rows = rows[start:start+limit]
+        for acc, _, _, issue_date, rate_class, service_address in bill_data:
+            issue_date = issue_date if issue_date else ''
+            rate_class = rate_class if rate_class else ''
+            service_address = str(service_address) if service_address else ''
+            rows_dict[acc]['lastissuedate'] = issue_date
+            rows_dict[acc]['utilityserviceaddress'] = service_address
+            rows_dict[acc]['lastrateclass'] = rate_class
 
-        # Add all missing fields
-        for row in rows:
-            row['lastevent']=self.journal_dao.last_event_summary(row['account'])
-            if sortcol != 'utilityserviceaddress':
-                try:
-                    service_address = self.get_service_address(row['account'])
-                    service_address=format_service_address(service_address,
-                                                            row['account'])
-                except NoSuchBillException:
-                    service_address = ''
-                row['utilityserviceaddress']=service_address
-            elif sortcol != 'lastissuedate':
-                last_reebill = self.state_db.get_last_reebill(
-                     row['account'], issued_only=True)
-                row['lastissuedate'] = last_reebill.issue_date if last_reebill else ''
+        if account is not None:
+            events = [self.journal_dao.last_event_summary(account)]
+        else:
+            events = self.journal_dao.get_all_last_events()
+        for acc, last_event in events:
+            if acc in rows_dict:
+                rows_dict[acc]['lastevent'] = last_event
 
-        return total_length, rows
+        rows = list(rows_dict.itervalues())
+        return len(rows), rows

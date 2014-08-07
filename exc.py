@@ -95,3 +95,7 @@ class MongoError(BillingError):
 
     def __str__(self):
         return str(self.err_dict)
+
+
+class RenderError(Exception):
+    pass

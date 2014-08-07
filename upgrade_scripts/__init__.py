@@ -12,15 +12,12 @@ import importlib
 
 log = logging.getLogger(__name__)
 
-
 def run_upgrade(version):
     """Upgrade to a specified version
-    
     :param version: the version number of the upgrade
     """
     module = importlib.import_module('billing.upgrade_scripts.v%s' % version)
     module.upgrade()
-
 
 def alembic_upgrade(revision_to):
     config = Config("alembic.ini")

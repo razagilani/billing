@@ -230,7 +230,7 @@ class Exporter(object):
             *ds_rows, headers=ds_headers, title=account)
         return dataset
 
-    def export_reebill_details(self, output_file, begin_date=None,
+    def export_reebill_details(self, output_file, account=None, begin_date=None,
                                end_date=None):
         '''
         Writes an Excel spreadsheet to output_file. This Spreadsheet is
@@ -238,8 +238,10 @@ class Exporter(object):
         of all issued reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy
         '''
-
-        accounts = self.state_db.listAccounts()
+        if account is not None:
+            accounts = [account]
+        else:
+            accounts = self.state_db.listAccounts()
         dataset = self.get_export_reebill_details_dataset(
             accounts, begin_date, end_date)
         workbook = tablib.Databook()
@@ -291,6 +293,7 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
+
         ds_rows = []
 
         for account in accounts:
@@ -299,6 +302,7 @@ class Exporter(object):
 
             reebills = self.state_db.listReebills(0, 10000,
                     account, u'sequence', u'ASC')[0]
+
             for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
@@ -355,6 +359,7 @@ class Exporter(object):
                 average_rate_unit_ree=None
                 actual_total = reebill.get_total_actual_charges()
                 hypothetical_total = reebill.get_total_hypothetical_charges()
+
 
                 total_ree = reebill.get_total_renewable_energy()
                 if total_ree != 0:
