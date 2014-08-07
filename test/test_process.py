@@ -539,7 +539,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_upload_utility_bill(self):
-        #Good
+        #Bad
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
@@ -560,25 +560,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                              rate_class='Residential-R')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
-        self.assertDocumentsEqualExceptKeys([{
-                                                 'state': 'Final',
-                                                 'service': 'Electric',
-                                                 'utility': 'pepco',
-                                                 'rate_class': 'Residential-R',
-                                                 'period_start': date(2012,
-                                                                      1, 1),
-                                                 'period_end': date(2012, 2,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 # 'date_received': datetime.utcnow().date(),
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'id': None,
-                                                 'reebills': [],
-                                             }], utilbills_data, 'id',
-                                            'name')
+
+        self.assertDictContainsSubset({
+            'state': 'Final',
+            'service': 'Electric',
+            'utility': 'pepco',
+            'rate_class': 'Residential-R',
+            'period_start': date(2012, 1, 1),
+            'period_end': date(2012, 2, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
 
         # TODO check "meters and registers" data here
         # TODO check "charges" data here
@@ -599,42 +594,33 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         utilbills_data, _ = self.process.get_all_utilbills_json(
                                                                 account, 0,
                                                                 30)
-        self.assertDocumentsEqualExceptKeys([{
-                                                 'state': 'Final',
-                                                 'service': 'Electric',
-                                                 'utility': 'pepco',
-                                                 'rate_class': 'Residential-R',
-                                                 'period_start': date(2012,
-                                                                      2, 1),
-                                                 'period_end': date(2012, 3,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 # 'date_received': datetime.utcnow().date(),
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'id': None,
-                                                 'reebills': [],
-                                             }, {
-                                                 'state': 'Final',
-                                                 'service': 'Electric',
-                                                 'utility': 'pepco',
-                                                 'rate_class': 'Residential-R',
-                                                 'period_start': date(2012,
-                                                                      1, 1),
-                                                 'period_end': date(2012, 2,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 # 'date_received': datetime.utcnow().date(),
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'id': None,
-                                                 'reebills': [],
-                                             }], utilbills_data, 'id',
-                                            'name')
+        dictionaries = [{
+                            'state': 'Final',
+                            'service': 'Electric',
+                            'utility': 'pepco',
+                            'rate_class': 'Residential-R',
+                            'period_start': date(2012, 2, 1),
+                            'period_end': date(2012, 3, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                        }, {
+                            'state': 'Final',
+                            'service': 'Electric',
+                            'utility': 'pepco',
+                            'rate_class': 'Residential-R',
+                            'period_start': date(2012, 1, 1),
+                            'period_end': date(2012, 2, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                        }]
+        for x, y in zip(dictionaries, utilbills_data):
+            self.assertDictContainsSubset(x, y)
 
         # 3rd bill "Skyline estimated", without a file
         self.process.upload_utility_bill(account, 'gas',
@@ -645,57 +631,46 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                          rate_class='DC Non Residential Non Heat')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
-        self.assertDocumentsEqualExceptKeys([{
-                                                 'state': 'Skyline Estimated',
-                                                 'service': 'Gas',
-                                                 'utility': 'washgas',
-                                                 'rate_class': 'DC Non Residential Non Heat',
-                                                 'period_start': date(2012,
-                                                                      3, 1),
-                                                 'period_end': date(2012, 4,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'reebills': [],
-                                             }, {
-                                                 'state': 'Final',
-                                                 'service': 'Electric',
-                                                 'utility': 'pepco',
-                                                 'rate_class': 'Residential-R',
-                                                 'period_start': date(2012,
-                                                                      2, 1),
-                                                 'period_end': date(2012, 3,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 # 'date_received': datetime.utcnow().date(),
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'id': None,
-                                                 'reebills': [],
-                                             }, {
-                                                 'state': 'Final',
-                                                 'service': 'Electric',
-                                                 'utility': 'pepco',
-                                                 'rate_class': 'Residential-R',
-                                                 'period_start': date(2012,
-                                                                      1, 1),
-                                                 'period_end': date(2012, 2,
-                                                                    1),
-                                                 'total_charges': 0,
-                                                 'computed_total': 0,
-                                                 # 'date_received': datetime.utcnow().date(),
-                                                 'processed': 0,
-                                                 'account': '99999',
-                                                 'editable': True,
-                                                 'id': None,
-                                                 'reebills': [],
-                                             }], utilbills_data, 'id',
-                                            'name')
+        dictionaries = [{
+                            'state': 'Skyline Estimated',
+                            'service': 'Gas',
+                            'utility': 'washgas',
+                            'rate_class': 'DC Non Residential Non Heat',
+                            'period_start': date(2012, 3, 1),
+                            'period_end': date(2012, 4,
+                                               1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                        }, {
+                            'state': 'Final',
+                            'service': 'Electric',
+                            'utility': 'pepco',
+                            'rate_class': 'Residential-R',
+                            'period_start': date(2012, 2, 1),
+                            'period_end': date(2012, 3, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                        }, {
+                            'state': 'Final',
+                            'service': 'Electric',
+                            'utility': 'pepco',
+                            'rate_class': 'Residential-R',
+                            'period_start': date(2012, 1, 1),
+                            'period_end': date(2012, 2, 1),
+                            'total_charges': 0,
+                            'computed_total': 0,
+                            'processed': 0,
+                            'account': '99999',
+                            'reebills': [],
+                        }]
+        for x, y in zip(dictionaries, utilbills_data):
+            self.assertDictContainsSubset(x, y)
 
         # 4th bill: utility and rate_class will be taken from the last bill
         # with the same service. the file has no extension.
@@ -714,22 +689,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # will probably go away.
         self.assertEqual(4, count)
         last_utilbill = utilbills_data[0]
-        self.assertDocumentsEqualExceptKeys({
-                                                'state': 'Final',
-                                                'service': 'Electric',
-                                                'utility': 'pepco',
-                                                'rate_class': 'Residential-R',
-                                                'period_start': date(2012,
-                                                                     4, 1),
-                                                'period_end': date(2012, 5,
-                                                                   1),
-                                                'total_charges': 0,
-                                                'computed_total': 0,
-                                                'processed': 0,
-                                                'account': '99999',
-                                                'editable': True,
-                                                'reebills': [],
-                                            }, last_utilbill, 'id', 'name')
+        self.assertDictContainsSubset({
+            'state': 'Final',
+            'service': 'Electric',
+            'utility': 'pepco',
+            'rate_class': 'Residential-R',
+            'period_start': date(2012, 4, 1),
+            'period_end': date(2012, 5, 1),
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': [],
+        }, last_utilbill)
 
         # make sure files can be accessed for these bills (except the
         # estimated one)
