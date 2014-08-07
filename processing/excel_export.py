@@ -234,7 +234,7 @@ class Exporter(object):
             *ds_rows, headers=ds_headers, title=account)
         return dataset
 
-    def export_reebill_details(self, output_file, begin_date=None,
+    def export_reebill_details(self, output_file, account=None, begin_date=None,
                                end_date=None):
         '''
         Writes an Excel spreadsheet to output_file. This Spreadsheet is
@@ -242,8 +242,10 @@ class Exporter(object):
         of all issued reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy
         '''
-
-        accounts = self.state_db.listAccounts()
+        if account is not None:
+            accounts = [account]
+        else:
+            accounts = self.state_db.listAccounts()
         dataset = self.get_export_reebill_details_dataset(
             accounts, begin_date, end_date)
         workbook = tablib.Databook()
