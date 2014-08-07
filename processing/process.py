@@ -145,9 +145,11 @@ class Process(object):
         """Add a new charge to the given utility bill."""
         session = Session()
         utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        utilbill.charges.append(Charge(utilbill, "New Charge", "", 0, "", 0, "", 0))
+        c = Charge(utilbill, "New Charge", "", 0, "", 0, "", 0)
+        utilbill.charges.append(c)
         self.compute_utility_bill(utilbill_id)
-        return session.query(Charge).filter_by(id=c.id).one()
+        session.flush()
+        return c
 
     def update_charge(self, charge_id, fields):
         """Modify the charge given by charge_id
@@ -607,7 +609,6 @@ class Process(object):
         '''
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         utilbill.compute_charges()
-
         return utilbill
 
     def compute_reebill(self, account, sequence, version='max'):
