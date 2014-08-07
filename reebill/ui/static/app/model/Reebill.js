@@ -22,7 +22,7 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'payment_received'},
         {name: 'total_adjustment'},
         {name: 'balance_forward'},
-        {name: 'ree_charges'},
+        {name: 'ree_charge'},
         {name: 'balance_due'},
         {name: 'total_error'},
         {name: 'issued'},
