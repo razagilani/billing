@@ -23,11 +23,10 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 
-    def __init__(self, state_db, reebill_dao, verbose=False):
+    def __init__(self, state_db, verbose=False):
         # objects for database access
         self.state_db = state_db
         self.verbose = verbose
-        self.reebill_dao = reebill_dao
 
     def export_account_charges(self, output_file, account=None,
                                start_date=None, end_date=None):
@@ -170,17 +169,14 @@ class Exporter(object):
         # Initial datasheet rows
         ds_rows = []
         for ub in utilbills:
-
             units = quantity = ''
             account = ub.customer.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
-                ub_doc = self.reebill_dao._load_utilbill_by_id(
-                ub.document_id)
-                for register in mongo.get_all_actual_registers_json(ub_doc):
-                    if register.get('binding', '').lower() == 'reg_total':
-                        units = register.get('quantity_units', '')
-                        quantity = register.get('quantity', '')
+                for register in ub.registers:
+                    if register.rsi_binding.lower() == 'reg_total':
+                        units = register.quantity_units
+                        quantity = register.quantity
             except NoSuchBillException:
                 units = quantity = "ERROR"
             # Create a row
@@ -464,11 +460,7 @@ def main(export_func, filename, account=None):
     logger = logging.getLogger('reebill')
     state_db = state.StateDB(logger=logger)
     billdb_config = dict(config.items("billdb"))
-    reebill_dao = mongo.ReebillDAO(state_db,
-                pymongo.Connection(billdb_config['host'],
-                int(billdb_config['port']))[billdb_config['database']])
-
-    exporter = Exporter(state_db, reebill_dao)
+    exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
         if export_func == 'energy':

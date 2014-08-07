@@ -91,7 +91,7 @@ def concat_pdfs(in_paths, out_path):
         in_file.close()
 
 class ReebillRenderer:
-    def __init__(self, config, state_db, reebill_dao, logger):
+    def __init__(self, config, state_db, logger):
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
         self.template_directory = config['template_directory']
@@ -103,7 +103,6 @@ class ReebillRenderer:
 
 
         self.state_db = state_db
-        self.reebill_dao = reebill_dao
 
         # global reebill logger for reporting errors
         self.logger = logger
@@ -161,8 +160,6 @@ class ReebillRenderer:
         for version in range(max_version + 1):
             reebill = self.state_db.get_reebill(account, sequence,
                     version=version)
-            reebill_document = self.reebill_dao.load_reebill(account, sequence,
-                    version=version)
             self.render_version(reebill, reebill_document, outputdir,
                     outputfile +  '-%s' % version, verbose)
 
@@ -184,8 +181,6 @@ class ReebillRenderer:
             self.current_template = self.default_template
         max_version = self.state_db.max_version(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence,
-                version=max_version)
-        reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
         self.render_version(reebill, reebill_document, outputdir, outputfile,
                 verbose)
@@ -513,23 +508,19 @@ class ReebillRenderer:
 
         # Load registers and match up shadow registers to actual registers
         assert len(reebill.utilbills)==1
-        utilbill_doc=self.reebill_dao.load_doc_for_utilbill(reebill.utilbills[0])
-        actual_registers = mongo.get_all_actual_registers_json(utilbill_doc)
-        for s_register in reebill.readings:
+        for reading in reebill.readings:
             total = 0
-            for a_register in actual_registers:
-                if s_register.register_binding == a_register['binding']:
-                    shadow_total = s_register.renewable_quantity
-                    utility_total = a_register['quantity']
-                    total += (utility_total + shadow_total)
-                    measuredUsage.append([
-                        a_register['meter_id'],
-                        a_register['description'],
-                        round_for_display(shadow_total),
-                        utility_total,
-                        round_for_display(total),
-                        a_register['quantity_units']
-                    ])
+            shadow_total = reading.renewable_quantity
+            utility_total = reading.conventional_quantity
+            total += (utility_total + shadow_total)
+            measuredUsage.append([
+                '',
+                '',
+                round_for_display(shadow_total),
+                utility_total,
+                round_for_display(total),
+                reading.quantity_unit,
+        ])
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550

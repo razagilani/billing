@@ -49,13 +49,12 @@ sys.stdout = sys.stderr
 MAX_GAP_DAYS = 10
 
 class Process(object):
-    def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
+    def __init__(self, state_db, rate_structure_dao, billupload,
             nexus_util, bill_mailer, renderer, ree_getter,
             splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
-        self.reebill_dao = reebill_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
@@ -1244,17 +1243,14 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
-        # TODO replace with new methods
-        utilbill_doc = self.reebill_dao.load_doc_for_utilbill(
-                reebill.utilbills[0])
-        reebill.update_readings_from_document(utilbill_doc)
-        
+        reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
+
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
-        self.ree_getter.update_renewable_readings(self.nexus_util.olap_id(account),
-                                        reebill, use_olap=True)
+        self.ree_getter.update_renewable_readings(
+                self.nexus_util.olap_id(account), reebill, use_olap=True)
 
     def mail_reebills(self, account, sequences, recipient_list):
         all_reebills = [self.state_db.get_reebill(account, sequence)
