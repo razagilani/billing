@@ -23,6 +23,9 @@ Ext.define('ReeBill.controller.Reports', {
     },{
         ref: 'resetAccountDatePicker',
         selector: 'button[action=resetAccountDatePicker]'
+    },{
+        ref: 'export12MonthRevenue',
+        selector: 'button[action=export12MonthRevenue]'
     }],
     
     init: function() {
@@ -48,6 +51,9 @@ Ext.define('ReeBill.controller.Reports', {
             },
             'button[action=resetAccountDatePicker]': {
                 click: this.handleResetAccountDatePicker
+            },
+            'button[action=export12MonthRevenue]': {
+                click: this.handleExport12MonthRevenue
             }
         });
     },
@@ -84,6 +90,16 @@ Ext.define('ReeBill.controller.Reports', {
         dialog.show();
     },
 
+    /**
+     * Handle the Export12MonthRevenue button.
+     */
+    handleExport12MonthRevenue: function() {
+        var dialog = this.getAccountDatePicker();
+        var form = dialog.down('form').getForm();
+        form.baseParams = {type: '12MonthRevenue'};
+        this.handleSubmitAccountDatePicker();
+    },
+
     handleSubmitAccountDatePicker: function() {
         var dialog = this.getAccountDatePicker();
         var formPanel = dialog.down('form');
@@ -91,6 +107,7 @@ Ext.define('ReeBill.controller.Reports', {
         var saveButton = this.getSubmitAccountDatePicker();
         form.submit({
             url: 'http://' + window.location.host + '/reebill/reports',
+            submitEmptyText: false
         });
     },
 
