@@ -5,7 +5,7 @@ Ext.define('ReeBill.store.AccountsFilter', {
         label: 'No filter',
         value: Ext.create('Ext.util.Filter', {
             filterFn: function(item) {
-                return True;},
+                return true;},
             root: 'data'})
     },{
         label: 'All ReeBill Customers',
