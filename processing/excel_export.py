@@ -174,7 +174,7 @@ class Exporter(object):
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
                 for register in ub.registers:
-                    if register.rsi_binding.lower() == 'reg_total':
+                    if register.register_binding.lower() == 'reg_total':
                         units = register.quantity_units
                         quantity = register.quantity
             except NoSuchBillException:

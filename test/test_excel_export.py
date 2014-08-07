@@ -88,21 +88,6 @@ class ExporterTest(unittest.TestCase):
             result.description = ''
             return result
 
-        doc = {
-            'service': 'gas',
-            'meters': [{
-                'identifier': '',
-                'registers': [{
-                    "description" : "Insert description",
-                    "quantity" : 561.9,
-                    "quantity_units" : "therms",
-                    "identifier" : '',
-                    "type" : "total",
-                    "register_binding": "REG_TOTAL"
-                }]
-            }]
-        }
-
         #Setup Mock
         u1 = mock.Mock(autospec=UtilBill)
         u1.customer.account = '10003'
@@ -115,7 +100,7 @@ class ExporterTest(unittest.TestCase):
         register1 = mock.Mock(autospec=Register)
         register1.description = ''
         register1.quantity = 561.9
-        register1.quantity_unit = 'therms'
+        register1.quantity_units = 'therms'
         register1.estimated = False
         register1.reg_type = 'total'
         register1.register_binding = 'REG_TOTAL'
