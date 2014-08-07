@@ -187,6 +187,9 @@ Ext.define('ReeBill.view.Viewport', {
                     title: 'Reports',
                     layout: 'border',
                     items: [{
+                        xtype: 'accountDatePicker',
+                        id: 'accountDatePicker'
+                    },{
                         xtype: 'reconciliations',
                         id: 'reconciliationsGrid',
                         region: 'center'

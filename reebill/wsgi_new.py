@@ -38,7 +38,7 @@ from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
-from billing.processing import mongo, excel_export
+from billing.processing import mongo
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
     rate_structure2 as rs
@@ -49,6 +49,7 @@ from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.session_contextmanager import DBSession
 from billing.exc import Unauthenticated, IssuedBillError, RenderError
+from billing.processing.excel_export import Exporter
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 user_dao = UserDAO(**dict(config.items('usersdb')))
@@ -403,7 +404,7 @@ class IssuableReebills(RESTResource):
         return True, {'row': row, 'results': 1}
 
 
-class ReebillVersionsRessource(RESTResource):
+class ReebillVersionsResource(RESTResource):
 
     def handle_get(self, account, sequence, *vpath, **params):
         result = self.process.list_all_versions(account, sequence)
@@ -653,14 +654,6 @@ class ReebillChargesResource(RESTResource):
         charges = self.process.get_hypothetical_matched_charges(reebill_id)
         return True, {'rows': charges, 'total': len(charges)}
 
-class ChargesResource(RESTResource):
-
-    def handle_get(self, utilbill_id, reebill_sequence=None,
-                   reebill_version=None, *vpath, **params):
-        charges_json = self.process.get_utilbill_charges_json(utilbill_id)
-
-        return True, {'rows': charges_json, 'total': len(charges_json)}
-
 
 class RegistersResource(RESTResource):
 
@@ -742,7 +735,7 @@ class PaymentsResource(RESTResource):
         return True, {}
 
 
-class JournalRessource(RESTResource):
+class JournalResource(RESTResource):
 
     def handle_get(self, account, *vpath, **params):
         journal_entries = self.journal_dao.load_entries(account)
@@ -757,17 +750,95 @@ class JournalRessource(RESTResource):
                                           message, sequence=sequence)
         return True, {'rows': note.to_dict(), 'results': 1}
 
+
+class ReportsResource(WebResource):
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate()
+    def default(self, *vpath, **params):
+        row = cherrypy.request.params
+        print row
+        account = row.get('account', None)
+        account = account if account else None
+        begin_date = row.get('period_start', None)
+        begin_date = datetime.strptime(begin_date, '%d/%m/%Y').date() if \
+            begin_date else None
+        end_date = row.get('period_end', None)
+        end_date = datetime.strptime(end_date, '%d/%m/%Y').date() if \
+            end_date else None
+
+        if row['type'] == 'utilbills':
+            """
+            Responds with an excel spreadsheet containing all actual charges for all
+            utility bills for the given account, or every account (1 per sheet) if
+            'account' is not given, or all utility bills for the account(s) filtered
+            by time, if 'start_date' and/or 'end_date' are given.
+            """
+            if account is not None:
+                spreadsheet_name = account + '.xls'
+            else:
+                spreadsheet_name = 'all_accounts.xls'
+            exporter = Exporter(self.state_db, self.reebill_dao)
+
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_account_charges(buf, account)
+
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+            return buf.getvalue()
+
+        elif row['type'] == 'energy_usage':
+            """
+            Responds with an excel spreadsheet containing all actual charges, total
+            energy and rate structure for all utility bills for the given account,
+            or every account (1 per sheet) if 'account' is not given,
+            """
+            if account is not None:
+                spreadsheet_name = account + '.xls'
+            else:
+                spreadsheet_name = 'brokerage_accounts.xls'
+            exporter = Exporter(self.state_db, self.reebill_dao)
+
+            buf = StringIO()
+            exporter.export_energy_usage(buf, account)
+
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+            return buf.getvalue()
+
+        elif row['type'] == 'reebill_details':
+            """
+            Responds with an excel spreadsheet containing all actual charges, total
+            energy and rate structure for all utility bills for the given account,
+            or every account (1 per sheet) if 'account' is not given,
+            """
+            exporter = Exporter(self.state_db, self.reebill_dao)
+
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_reebill_details(buf, account, begin_date, end_date)
+
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = \
+                    'attachment; filename=%s.xls'%datetime.now().strftime("%Y%m%d")
+            return buf.getvalue()
+
+
 class BillToolBridge(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
     utilitybills = UtilBillResource()
-    charges = ChargesResource()
     registers = RegistersResource()
     ratestructure = RateStructureResource()
     payments = PaymentsResource()
     reebillcharges = ReebillChargesResource()
-    reebillversions = ReebillVersionsRessource()
-    journal = JournalRessource()
+    reebillversions = ReebillVersionsResource()
+    journal = JournalResource()
+    reports = ReportsResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
