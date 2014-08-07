@@ -7,17 +7,13 @@ Ext.define('ReeBill.store.Reconciliations', {
     remoteSort: true,
 
 	proxy: {
-		type: 'ajax',
+		type: 'rest',
 
         simpleSortMode: true,
 
         pageParam: false,
-        
-        extraParams: {
-            xaction: 'read'
-        },
 
-        url: 'http://' + window.location.host + '/reebill/get_reconciliation_data',
+        url: 'http://' + window.location.host + '/reebill/reports/reconciliation',
 		reader: {
 			type: 'json',
 			root: 'rows',
