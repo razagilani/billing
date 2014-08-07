@@ -98,24 +98,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         self.assertEqual(1, len(utilbills_data))
         utilbill_data = utilbills_data[0]
-        self.assertDocumentsEqualExceptKeys({'state': 'Final',
-                                             'service': 'Gas',
-                                             'utility': 'Test Utility Company Template',
-                                             'rate_class': 'Test Rate Class Template',
-                                             'period_start': date(2013, 1,
-                                                                  1),
-                                             'period_end': date(2013, 2,
-                                                                1),
-                                             'total_charges': 0.0,
-                                             'computed_total': 0,
-                                             # 'date_received': datetime.utcnow().date(),
-                                             'processed': 0,
-                                             'account': '88888',
-                                             'editable': True,
-                                             'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
-                                             'reebills': [],
-                                            }, utilbill_data, 'id', 'charges', 'reebills')
-
+        self.assertDictContainsSubset({'state': 'Final',
+                                       'service': 'Gas',
+                                       'utility': 'Test Utility Company Template',
+                                       'rate_class': 'Test Rate Class Template',
+                                       'period_start': date(2013, 1, 1),
+                                       'period_end': date(2013, 2, 1),
+                                       'total_charges': 0.0,
+                                       'computed_total': 0,
+                                       'processed': 0,
+                                       'account': '88888',
+                                       'reebills': [],
+                                      }, utilbill_data)
 
         self.process.add_rsi(utilbill_data['id'])
         self.process.update_rsi(utilbill_data['id'],
@@ -127,30 +121,26 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.roll_reebill('88888', start_date=date(2013, 1, 1))
 
         ubdata = self.process.get_all_utilbills_json('88888', 0, 30)[0][0]
-        self.assertDocumentsEqualExceptKeys({
+        self.assertDictContainsSubset({'issue_date': None, 'sequence': 1,
+                    'version': 0L}, ubdata['reebills'][0])
+        self.assertDictContainsSubset({
             'account': '88888',
             'computed_total': 0,
-            'editable': True,
-            'id': 6469L,
-            'name': '88888 - Example 2/1786 Massachusetts Ave. - Test Utility Company Template: Test Rate Class Template',
             'period_end': date(2013, 2, 1),
             'period_start': date(2013, 1, 1),
             'processed': 0,
             'rate_class': 'Test Rate Class Template',
-            'reebills': [{'issue_date': None, 'sequence': 1,
-                    'version': 0L}],
             'service': 'Gas',
             'state': 'Final',
             'total_charges': 0.0,
             'utility': 'Test Utility Company Template',
-        }, ubdata, 'id', 'charges')
+        }, ubdata)
 
-        reebill_data = self.process.get_reebill_metadata_json('88888')
-        self.assertEqual([{
-            'id': 1,
+        reebill_data = self.process.get_reebill_metadata_json('88888')[0]
+        self.assertDictContainsSubset({
             'sequence': 1,
-            'max_version': 0,
-            'issued': False,
+            'version': 0,
+            'issued': 0,
             'issue_date': None,
             'actual_total': 0.,
             'hypothetical_total': 10,
@@ -158,7 +148,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013, 1, 1),
             'period_end': date(2013, 2, 1),
             'prior_balance': 0.,
-            'processed': False,
+            'processed': 0,
             'ree_charge': 4.,
             'ree_value': 10.,
             'services': [],
@@ -168,10 +158,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'balance_due': 4.,
             'balance_forward': 0.,
             'corrections': '(never issued)',
-        }], reebill_data)
+        }, reebill_data)
 
-        reebill_charges = self.process.get_hypothetical_matched_charges(
-                '88888', 1)
+        reebill_charges = self.process.get_hypothetical_matched_charges(reebill_data['id'])
         self.assertEqual([{
             'actual_quantity': 0,
             'actual_rate': 1,
