@@ -516,9 +516,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # ##############################################################
         # check that each hypothetical charge was computed correctly:
         self.process.roll_reebill(account, start_date=date(2012, 1, 1))
-        self.process.compute_reebill(account, 1)
-        reebill_charges = self.process.get_hypothetical_matched_charges(
-                account, 1)
+        reebill = self.process.compute_reebill(account, 1)
+        reebill_charges = \
+            self.process.get_hypothetical_matched_charges(reebill.id)
         def get_h_total(rsi_binding):
             charge = next(c for c in reebill_charges
                     if c['rsi_binding'] == rsi_binding)
