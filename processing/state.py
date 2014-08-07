@@ -1474,12 +1474,13 @@ class StateDB(object):
             max_sequence = 0
         return max_sequence
 
-    def get_accounts_grid_data(self):
+    def get_accounts_grid_data(self, account=None):
         '''Returns the Account of every customer,
         the Sequence, Version and Issue date of the highest-sequence,
         highest-version issued ReeBill object,
         and the rate class and service address of the latest (i.e. last-ending)
-        utility bill for each customer.
+        utility bill for each customer. If account is given, the query is
+        filtered by it.
         This is a way of speeding up the AccountsGrid in the UI
         '''
         session = Session()
@@ -1512,6 +1513,9 @@ class StateDB(object):
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)
+
+        if account is not None:
+            q = q.filter(Customer.account == account)
 
         return q.all()
 
@@ -1891,10 +1895,13 @@ class StateDB(object):
             Payment.date_received).all()
         return payments
 
-    def retrieve_status_days_since(self, sort_col, sort_order):
+    def retrieve_status_days_since(self, account=None):
         # SQLAlchemy query to get account & dates for all utilbills
+        # If Account is given, only the status for this account is returned
         session = Session()
         entityQuery = session.query(StatusDaysSince)
+        if account is not None:
+            entityQuery = entityQuery.filter(StatusDaysSince.account == account)
         lockmodeQuery = entityQuery.with_lockmode("read")
         return lockmodeQuery.all()
 

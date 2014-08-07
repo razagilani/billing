@@ -28,8 +28,8 @@ class JournalDAO(object):
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        return '%s on %s' % (str(last_entry),
-                last_entry.date.strftime(ISO_8601_DATE))
+        return (account, '%s on %s' % (str(last_entry),
+                last_entry.date.strftime(ISO_8601_DATE)))
 
     def load_entries(self, account=None):
         '''Returns a list of dictionaries describing all entries for all
@@ -65,8 +65,9 @@ class JournalDAO(object):
         '''
         ids = [ObjectId(mrdoc.value['str']) for mrdoc in
                Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
-        return [(e.account, str(e)) for e in Event.objects.in_bulk(
-            ids).itervalues()]
+        return [(e.account, '%s on %s' % (
+            str(e), e.date.strftime(ISO_8601_DATE))) for e in
+            Event.objects.in_bulk(ids).itervalues()]
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
