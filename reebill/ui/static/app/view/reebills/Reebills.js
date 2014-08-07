@@ -82,7 +82,7 @@ Ext.define('ReeBill.view.Reebills', {
     },{
         header: 'RE&E Charges',
         sortable: false,
-        dataIndex: 'ree_charges',
+        dataIndex: 'ree_charge',
         align: 'right',
         renderer: Ext.util.Format.usMoney
     }],
