@@ -1015,10 +1015,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # 1st reebill, with a balance of 100, issued 40 days ago and unpaid
         # (so it's 10 days late)
-        # TODO don't use current date in a test!
-        one = self.process.roll_reebill(acc,
-                                        start_date=date(2012, 1, 1))
-        one_doc = self.reebill_dao.load_reebill(acc, 1)
+        one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
         # TODO control amount of renewable energy given by mock_skyliner
         # so there's no need to replace that value with a known one here
         one.set_renewable_energy_reading('REG_TOTAL', 100 * 1e5)
@@ -1512,8 +1509,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         with self.assertRaises(IssuedBillError):
             self.process.delete_reebill(account, 1)
         self.process.delete_reebill(account, 2)
-        with self.assertRaises(NoSuchBillException):
-            self.reebill_dao.load_reebill(account, 2, version=0)
+        with self.assertRaises(NoResultFound):
+            self.state_db.get_reebill(account, 2, version=0)
         self.assertEquals(1, self.session.query(ReeBill).count())
         self.assertEquals([1], self.state_db.listSequences(account))
         self.assertEquals([utilbill], reebill.utilbills)
