@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill id="10000" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+	<ub:car>
+		<ub:accountnumber>3091 4490 03</ub:accountnumber>
+		<ub:serviceaddress>
+			<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+			<ub:street>8616 Baltimore Ave</ub:street>
+			<ub:city>College Park</ub:city>
+			<ub:state>MD</ub:state>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee>College Park Car Wash</ub:addressee>
+			<ub:street>7106 Ridgewood Ave</ub:street>
+			<ub:city>Chevy Chase</ub:city>
+			<ub:state>MD</ub:state>
+			<ub:country/>
+			<ub:postalcode>20815-5148</ub:postalcode>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
+	<ub:skylinebill>
+		<ub:billperiodbegin>2009-10-30</ub:billperiodbegin>
+		<ub:billperiodend>2009-12-07</ub:billperiodend>
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:paymentreceived>0.0</ub:paymentreceived>
+		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:actualservicecharges>3189.60</ub:actualservicecharges>
+		<ub:hypotheticalservicecharges>3199.16</ub:hypotheticalservicecharges>
+		<ub:energycharges>8.13</ub:energycharges>
+		<ub:customersavings>1.43</ub:customersavings>
+		<ub:currentcharges>8.13</ub:currentcharges>
+		<ub:totaldue>8.13</ub:totaldue>
+		<ub:duedate>2009-01-15</ub:duedate>
+		<ub:issued>2009-12-21</ub:issued>
+	</ub:skylinebill>
+	<ub:summary service="Gas">
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:previouspayment>
+			<ub:payee/>
+			<ub:amount>0.0</ub:amount>
+		</ub:previouspayment>
+		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:billperiodbegin>2009-10-30</ub:billperiodbegin>
+		<ub:billperiodend>2009-12-03</ub:billperiodend>
+		<ub:issuedate>2009-12-08</ub:issuedate>
+		<ub:currentcharges>513.29</ub:currentcharges>
+		<ub:hypotheticalcharges>521.00</ub:hypotheticalcharges>
+		<ub:skylinecharges>6.55</ub:skylinecharges>
+		<ub:totaldue>0.0</ub:totaldue>
+		<ub:duedate>2009-12-29</ub:duedate>
+		<ub:latepayment>
+			<ub:penalty/>
+			<ub:amount>0.0</ub:amount>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:summary service="Electric">
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:previouspayment>
+			<ub:payee/>
+			<ub:amount>0.0</ub:amount>
+		</ub:previouspayment>
+		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:billperiodbegin>2009-11-06</ub:billperiodbegin>
+		<ub:billperiodend>2009-12-07</ub:billperiodend>
+		<ub:issuedate>2009-12-09</ub:issuedate>
+		<ub:currentcharges>2676.31</ub:currentcharges>
+		<ub:hypotheticalcharges>2678.16</ub:hypotheticalcharges>
+		<ub:skylinecharges>1.58</ub:skylinecharges>
+		<ub:totaldue>0.0</ub:totaldue>
+		<ub:duedate>2009-12-31</ub:duedate>
+		<ub:latepayment>
+			<ub:penalty/>
+			<ub:amount>0.00</ub:amount>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:details service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">300.0</ub:quantity>
+					<ub:rate units="dollars">0.3007</ub:rate>
+					<ub:total>90.21</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">24.8</ub:quantity>
+					<ub:rate units="dollars">0.2</ub:rate>
+					<ub:total>4.96</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>36.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">131.42</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>7.89</ub:total>
+					<ub:processingnote>Sales tax on Usage and  System Charge</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Gross Receipts Surcharge</ub:description>
+					<ub:total>0.05</ub:total>
+					<ub:processingnote>Computation unknown</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy Tax</ub:description>
+					<ub:quantity units="Therms">324.8</ub:quantity>
+					<ub:rate units="dollars">0.0829060</ub:rate>
+					<ub:total>26.93</ub:total>
+				</ub:charge>
+				<ub:total>166.29</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Usage Block 1</ub:description>
+					<ub:quantity units="Therms">300</ub:quantity>
+					<ub:rate units="dollars">0.300700</ub:rate>
+					<ub:total>90.21</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Usage Block 2</ub:description>
+					<ub:quantity units="Therms">30.45</ub:quantity>
+					<ub:rate units="dollars">0.2</ub:rate>
+					<ub:total>6.09</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>36.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax</ub:description>
+					<ub:quantity units="dollars">132.55</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>7.95</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Gross Receipts Surcharge</ub:description>
+					<ub:total>0.05</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy Tax</ub:description>
+					<ub:quantity units="Therms">330.45</ub:quantity>
+					<ub:rate units="dollars">0.0829060</ub:rate>
+					<ub:total>27.40</ub:total>
+				</ub:charge>
+				<ub:total>167.95</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">324.8</ub:quantity>
+					<ub:rate units="dollars">.99</ub:rate>
+					<ub:total>321.55</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing</ub:description>
+					<ub:quantity units="Therms">324.8</ub:quantity>
+					<ub:rate units="dollars">0.01790</ub:rate>
+					<ub:total>5.81</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax</ub:description>
+					<ub:quantity units="dollars">327.36</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>19.64</ub:total>
+					<ub:processingnote>Tax on Supply Service, Balancing</ub:processingnote>
+				</ub:charge>
+				<ub:total>347.00</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">330.45</ub:quantity>
+					<ub:rate units="dollars">.99</ub:rate>
+					<ub:total>327.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing</ub:description>
+					<ub:quantity units="Therms">330.45</ub:quantity>
+					<ub:rate units="dollars">0.01790</ub:rate>
+					<ub:total>5.92</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax</ub:description>
+					<ub:quantity units="dollars">333.07</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>19.98</ub:total>
+				</ub:charge>
+				<ub:total>353.05</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="hypothetical">521.00</ub:total>
+		<ub:total type="actual">513.29</ub:total>
+	</ub:details>
+	<ub:details service="Electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+			<ub:rateineffect>Winter</ub:rateineffect>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>36.26</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On-Peak Energy</ub:description>
+					<ub:quantity units="kWh">4240</ub:quantity>
+					<ub:rate units="dollars">0.0111556</ub:rate>
+					<ub:total>47.30</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Int-Peak Energy</ub:description>
+					<ub:quantity units="kWh">3360</ub:quantity>
+					<ub:rate units="dollars">0.0111547</ub:rate>
+					<ub:total>37.48</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">12000</ub:quantity>
+					<ub:rate units="dollars">0.0111558</ub:rate>
+					<ub:total>133.87</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Maximum Demand</ub:description>
+					<ub:quantity units="KWD">75.2</ub:quantity>
+					<ub:total>72.06</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Franchise tax (delivery) </ub:description>
+					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:rate units="dollars">0.0006200</ub:rate>
+					<ub:total>12.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Universal Service Charge</ub:description>
+					<ub:total>20.59</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Environmental surcharge</ub:description>
+					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:rate units="dollars">0.0001550</ub:rate>
+					<ub:total>3.04</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Gross receipts tax</ub:description>
+					<ub:quantity units="dollars">362.75</ub:quantity>
+					<ub:rate units="percent">2.040800</ub:rate>
+					<ub:total>7.40</ub:total>
+					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universale service charge; md env surcharge</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy</ub:description>
+					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:rate units="dollars">0.0080900</ub:rate>
+					<ub:total>158.56</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Administrative charge</ub:description>
+					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:rate units="dollars">-0.0006920</ub:rate>
+					<ub:total>-13.56</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">353.83</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>21.23</ub:total>
+					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 21.23/6% = 353.83</ub:processingnote>
+				</ub:charge>
+				<ub:total>536.38</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>36.26</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>On-Peak Energy</ub:description>
+					<ub:quantity units="kWh">4249.31</ub:quantity>
+					<ub:rate units="dollars">0.0111556</ub:rate>
+					<ub:total>47.40</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Int-Peak Energy</ub:description>
+					<ub:quantity units="kWh">3362.38</ub:quantity>
+					<ub:rate units="dollars">0.0111547</ub:rate>
+					<ub:total>37.51</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">12003.35</ub:quantity>
+					<ub:rate units="dollars">0.0111558</ub:rate>
+					<ub:total>133.91</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Maximum Demand</ub:description>
+					<ub:quantity units="KWD">75.2</ub:quantity>
+					<ub:total>72.06</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Franchise tax (delivery) </ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">0.0006200</ub:rate>
+					<ub:total>12.16</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Universal Service Charge</ub:description>
+					<ub:total>20.59</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Environmental surcharge tax</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">0.0001550</ub:rate>
+					<ub:total>3.04</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Gross receipts tax</ub:description>
+					<ub:quantity units="dollars">362.93</ub:quantity>
+					<ub:rate units="percent">2.040800</ub:rate>
+					<ub:total>7.41</ub:total>
+					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universal service charge; md env surcharge</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy tax</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">0.0080900</ub:rate>
+					<ub:total>158.59</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Administrative credit</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">-0.0006920</ub:rate>
+					<ub:total>-13.57</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">353.83</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>21.23</ub:total>
+					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 21.23/6% = 353.83</ub:processingnote>
+				</ub:charge>
+				<ub:total>536.59</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Total Use</ub:description>
+					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:rate units="dollars">0.130</ub:rate>
+					<ub:total>2018.80</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">2018.80</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>121.13</ub:total>
+					<ub:processingnote>Tax on Total Use</ub:processingnote>
+				</ub:charge>
+				<ub:total>2139.93</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Total Use</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">0.103</ub:rate>
+					<ub:total>2020.35</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales Tax</ub:description>
+					<ub:quantity units="dollars">2020.35</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>121.22</ub:total>
+					<ub:processingnote>Tax on Total Use</ub:processingnote>
+				</ub:charge>
+				<ub:total>2141.57</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="hypothetical">2678.16</ub:total>
+		<ub:total type="actual">2676.31</ub:total>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>324.8</ub:quantity>
+		</ub:usage>
+		<ub:total>324.8</ub:total>
+	</ub:billableusage>
+	<ub:billableusage service="Electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total kWh</ub:description>
+			<ub:quantity>19600</ub:quantity>
+		</ub:usage>
+		<ub:total>19600</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>All</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>All</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:priorreading>14868</ub:priorreading>
+				<ub:presentreading>15188</ub:presentreading>
+				<ub:factor>1.015</ub:factor>
+				<ub:total>324.8</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>All</ub:identifier>
+				<ub:description>Skyline Generated Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>5.65</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>5.65</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:measuredusage service="Electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:nextreaddate>2010-01-08</ub:nextreaddate>
+			<ub:identifier>All</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>All</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>20672</ub:priorreading>
+				<ub:presentreading>20916</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>19520</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>All</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>15.04</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>15.04</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+</ub:utilitybill>

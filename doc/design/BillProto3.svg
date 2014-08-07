@@ -1,0 +1,2264 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   sodipodi:docname="BillProto3.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape">
+  <defs
+     id="defs4">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       id="perspective10" />
+    <clipPath
+       id="clipPath3698"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3700"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3624"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3626"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3608"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3610"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3582"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3584"
+         d="M 32.0889,783.173 L 69.7256,783.173 L 69.7256,613.837 L 32.0889,613.837 L 32.0889,783.173 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3566"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3568"
+         d="M 42.8911,769.507 L 87.4966,769.507 L 87.4966,635.168 L 42.8911,635.168 L 42.8911,769.507 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3550"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3552"
+         d="M 7.69385,766.506 L 32.0889,766.506 L 32.0889,639.838 L 7.69385,639.838 L 7.69385,766.506 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3534"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3536"
+         d="M 20.5884,782.84 L 56.1343,782.84 L 56.1343,662.838 L 20.5884,662.838 L 20.5884,782.84 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3518"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3520"
+         d="M 24,753.321 L 587.4,753.321 L 587.4,30.0244 L 24,30.0244 L 24,753.321 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3510"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3512"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3490"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3492"
+         d="M 388.39,126.654 L 517.172,126.654 L 517.172,198.405 L 388.39,198.405 L 388.39,126.654 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3478"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3480"
+         d="M 550.618,61.381 L 562.595,61.381 L 562.595,74.835 L 550.618,74.835 L 550.618,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3466"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3468"
+         d="M 533.147,61.381 L 545.622,61.381 L 545.622,74.835 L 533.147,74.835 L 533.147,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3454"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3456"
+         d="M 515.677,61.381 L 528.151,61.381 L 528.151,74.835 L 515.677,74.835 L 515.677,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3442"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3444"
+         d="M 499.201,61.381 L 510.178,61.381 L 510.178,74.835 L 499.201,74.835 L 499.201,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3430"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3432"
+         d="M 481.729,61.381 L 493.71,61.381 L 493.71,74.835 L 481.729,74.835 L 481.729,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3418"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3420"
+         d="M 465.259,61.381 L 475.242,61.381 L 475.242,74.835 L 465.259,74.835 L 465.259,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3406"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3408"
+         d="M 447.79,61.381 L 458.273,61.381 L 458.273,74.835 L 447.79,74.835 L 447.79,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3394"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3396"
+         d="M 428.822,61.381 L 442.799,61.381 L 442.799,74.835 L 428.822,74.835 L 428.822,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3382"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3384"
+         d="M 412.348,61.381 L 424.331,61.381 L 424.331,74.835 L 412.348,74.835 L 412.348,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3370"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3372"
+         d="M 394.379,61.381 L 408.355,61.381 L 408.355,74.835 L 394.379,74.835 L 394.379,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3358"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3360"
+         d="M 378.409,61.381 L 389.387,61.381 L 389.387,74.835 L 378.409,74.835 L 378.409,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3346"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3348"
+         d="M 361.435,61.381 L 371.918,61.381 L 371.918,74.835 L 361.435,74.835 L 361.435,61.381 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3334"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3336"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3322"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3324"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3310"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3312"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3298"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3300"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3286"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3288"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3274"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3276"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3262"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3264"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3250"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3252"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3238"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3240"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3226"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3228"
+         d="M 332.984,57.394 L 572.577,57.394 L 572.577,200.896 L 332.984,200.896 L 332.984,57.394 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3204"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3206"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3192"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3194"
+         d="M 371.842,292.074 L 541.741,292.074 L 541.741,373.556 L 371.842,373.556 L 371.842,292.074 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3180"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3182"
+         d="M 321.988,293.637 L 372.905,293.637 L 372.905,316.929 L 321.988,316.929 L 321.988,293.637 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3168"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3170"
+         d="M 545.799,224.813 L 559.057,224.813 L 559.057,235.399 L 545.799,235.399 L 545.799,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3156"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3158"
+         d="M 529.358,224.813 L 542.612,224.813 L 542.612,235.399 L 529.358,235.399 L 529.358,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3144"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3146"
+         d="M 512.383,224.813 L 525.642,224.813 L 525.642,235.399 L 512.383,235.399 L 512.383,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3132"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3134"
+         d="M 496.474,224.813 L 508.675,224.813 L 508.675,235.399 L 496.474,235.399 L 496.474,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3120"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3122"
+         d="M 479.507,224.813 L 492.23,224.813 L 492.23,235.399 L 479.507,235.399 L 479.507,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3108"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3110"
+         d="M 463.591,224.813 L 474.727,224.813 L 474.727,235.399 L 463.591,235.399 L 463.591,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3096"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3098"
+         d="M 447.151,224.813 L 458.291,224.813 L 458.291,235.399 L 447.151,235.399 L 447.151,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3084"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3086"
+         d="M 428.589,224.813 L 443.438,224.813 L 443.438,235.399 L 428.589,235.399 L 428.589,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3072"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3074"
+         d="M 413.21,224.813 L 425.939,224.813 L 425.939,235.399 L 413.21,235.399 L 413.21,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3060"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3062"
+         d="M 395.176,224.813 L 410.026,224.813 L 410.026,235.399 L 395.176,235.399 L 395.176,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3048"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3050"
+         d="M 380.326,224.813 L 391.996,224.813 L 391.996,235.399 L 380.326,235.399 L 380.326,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3036"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3038"
+         d="M 363.888,224.813 L 375.023,224.813 L 375.023,235.399 L 363.888,235.399 L 363.888,224.813 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3024"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3026"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3012"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3014"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath3000"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path3002"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2988"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2990"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2976"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2978"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2964"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2966"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2952"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2954"
+         d="M 315.624,220.576 L 570.193,220.576 L 570.193,373.049 L 315.624,373.049 L 315.624,220.576 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2932"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2934"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2920"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2922"
+         d="M 116.585,288.049 L 295.722,288.049 L 295.722,368.771 L 116.585,368.771 L 116.585,288.049 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2908"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2910"
+         d="M 183.976,210.131 L 208.12,210.131 L 208.12,221.34 L 183.976,221.34 L 183.976,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2896"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2898"
+         d="M 43.024,274.04 L 96.931,274.04 L 96.931,320.001 L 43.024,320.001 L 43.024,274.04 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2884"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2886"
+         d="M 281.12,214.616 L 297.972,214.616 L 297.972,233.681 L 281.12,233.681 L 281.12,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2872"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2874"
+         d="M 263.144,214.616 L 279.999,214.616 L 279.999,233.681 L 263.144,233.681 L 263.144,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2860"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2862"
+         d="M 245.741,214.616 L 262.026,214.616 L 262.026,233.681 L 245.741,233.681 L 245.741,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2848"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2850"
+         d="M 227.776,214.616 L 244.617,214.616 L 244.617,233.681 L 227.776,233.681 L 227.776,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2836"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2838"
+         d="M 209.803,214.616 L 226.652,214.616 L 226.652,233.681 L 209.803,233.681 L 209.803,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2824"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2826"
+         d="M 192.397,214.616 L 208.681,214.616 L 208.681,233.681 L 192.397,233.681 L 192.397,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2812"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2814"
+         d="M 174.432,214.616 L 191.272,214.616 L 191.272,233.681 L 174.432,233.681 L 174.432,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2800"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2802"
+         d="M 158.702,214.616 L 171.619,214.616 L 171.619,233.681 L 158.702,233.681 L 158.702,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2788"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2790"
+         d="M 140.735,214.616 L 153.649,214.616 L 153.649,233.681 L 140.735,233.681 L 140.735,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2776"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2778"
+         d="M 122.764,214.616 L 135.68,214.616 L 135.68,233.681 L 122.764,233.681 L 122.764,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2764"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2766"
+         d="M 105.356,214.616 L 118.273,214.616 L 118.273,233.681 L 105.356,233.681 L 105.356,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2752"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2754"
+         d="M 87.387,214.616 L 100.301,214.616 L 100.301,233.681 L 87.387,233.681 L 87.387,214.616 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2740"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2742"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2728"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2730"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2716"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2718"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2704"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2706"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2692"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2694"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2680"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2682"
+         d="M 43.024,210.131 L 312.567,210.131 L 312.567,371.572 L 43.024,371.572 L 43.024,210.131 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2664"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2666"
+         d="M 89.072,239.842 L 303.019,239.842 L 303.019,353.637 L 89.072,353.637 L 89.072,239.842 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2644"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2646"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2624"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2626"
+         d="M 242.504,77.231 L 300.844,77.231 L 300.844,106.507 L 242.504,106.507 L 242.504,77.231 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2614"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2616"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2602"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2604"
+         d="M 242.504,91.867 L 271.011,91.867 L 271.011,121.146 L 242.504,121.146 L 242.504,91.867 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2592"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2594"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2580"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2582"
+         d="M 70.612,108.266 L 259.552,108.266 L 259.552,196.1 L 70.612,196.1 L 70.612,108.266 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2560"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2562"
+         d="M 70.612,108.266 L 259.552,108.266 L 259.552,196.1 L 70.612,196.1 L 70.612,108.266 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2548"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2550"
+         d="M 129.804,33.313 L 155.659,33.313 L 155.659,74.789 L 129.804,74.789 L 129.804,33.313 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2536"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2538"
+         d="M 170.244,52.22 L 196.098,52.22 L 196.098,140.055 L 170.244,140.055 L 170.244,52.22 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2472"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2474"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2446"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2448"
+         d="M 18.5552,759.412 L 594.555,759.412 L 594.555,19.9395 L 18.5552,19.9395 L 18.5552,759.412 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2438"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2440"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <clipPath
+       id="clipPath2418"
+       clipPathUnits="userSpaceOnUse">
+      <path
+         id="path2420"
+         d="M 0,792 L 612,792 L 612,0 L 0,0 L 0,792 z" />
+    </clipPath>
+    <inkscape:perspective
+       id="perspective2410"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective4387"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.979899"
+     inkscape:cx="369.01911"
+     inkscape:cy="868.21915"
+     inkscape:document-units="px"
+     inkscape:current-layer="g2412"
+     showgrid="true"
+     inkscape:window-width="1920"
+     inkscape:window-height="1140"
+     inkscape:window-x="-4"
+     inkscape:window-y="-4"
+     showguides="true"
+     inkscape:guide-bbox="true">
+    <inkscape:grid
+       type="xygrid"
+       id="grid6095" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       transform="matrix(1.25,0,0,-1.25,-7.5,1027.3622)"
+       inkscape:label="EmeraldCity Bill Template Page (tm)"
+       id="g2412">
+      <g
+         id="g2414"
+         transform="translate(0,30.4)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath2418)"
+           id="g2416">
+          <g
+             transform="translate(635.1777,-9.2549)"
+             id="g2422">
+            <path
+               id="path2424"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L -626,0 C -626,0 -626,802.095 -626,802.975 C -622.54,806.973 -593.991,803.335 -588.69,803.367 C -568.11,803.495 -547.529,803.547 -526.948,803.535 C -469.767,803.5 -412.586,802.974 -355.405,802.974 L -60.97,802.974 L 0,802.974 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(635.1777,-9.2549)"
+             id="g2426">
+            <path
+               id="path2428"
+               style="fill:none;stroke:#ffffff;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+               d="M 0,0 L -626,0 C -626,0 -626,802.095 -626,802.975 C -622.54,806.973 -593.991,803.335 -588.69,803.367 C -568.11,803.495 -547.529,803.547 -526.948,803.535 C -469.767,803.5 -412.586,802.974 -355.405,802.974 L -60.97,802.974 L 0,802.974 L 0,0 z" />
+          </g>
+          <text
+             id="text2430"
+             transform="matrix(1,0,0,-1,146.6792,641.8257)">
+            <tspan
+               id="tspan2432"
+               sodipodi:role="line"
+               y="0"
+               x="0 3.346 12.558 21.77 31.416 38.43 45.919998 52.877998 56.223999 65.870003 75.082001"
+               style="font-size:14px;font-variant:normal;font-weight:normal;font-stretch:normal;writing-mode:lr-tb;fill:#231f20;fill-opacity:1;fill-rule:nonzero;stroke:none;font-family:Myriad Pro;-inkscape-font-specification:MyriadPro-Regular">INNOVATIONS</tspan>
+          </text>
+        </g>
+      </g>
+      <g
+         id="g2434"
+         transform="translate(0,30.4)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath2438)"
+           id="g2436">
+          <g
+             id="g2442">
+            <g
+               id="g2444" />
+            <g
+               id="g2450">
+              <g
+                 id="g2452"
+                 clip-path="url(#clipPath2446)">
+                <g
+                   id="g2454"
+                   transform="translate(594.5547,746.9976)">
+                  <path
+                     id="path2456"
+                     style="fill:#5a8e46;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                     d="M 0,0 L 0,-714.644 C 0,-721.502 -5.555,-727.058 -12.414,-727.058 L -563.585,-727.058 C -570.444,-727.058 -576,-721.502 -576,-714.644 L -576,0 C -576,6.859 -570.444,12.414 -563.585,12.414 L -12.414,12.414 C -5.555,12.414 0,6.859 0,0" />
+                </g>
+              </g>
+            </g>
+          </g>
+          <g
+             transform="translate(594.5547,32.3535)"
+             id="g2458">
+            <path
+               id="path2460"
+               style="fill:none;stroke:#5a8e46;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+               d="M 0,0 C 0,-6.858 -5.555,-12.414 -12.414,-12.414 L -563.585,-12.414 C -570.444,-12.414 -576,-6.858 -576,0 L -576,714.644 C -576,721.503 -570.444,727.058 -563.585,727.058 L -12.414,727.058 C -5.555,727.058 0,721.503 0,714.644 L 0,0 z" />
+          </g>
+        </g>
+      </g>
+      <g
+         transform="translate(9e-4,822.4)"
+         id="g2462"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <path
+           id="path2464"
+           style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+           d="M 0,0 L 0,-277.012 L 0,-308 L 98.53,-308 L 98.53,0 L 0,0 z" />
+      </g>
+      <g
+         id="g3506"
+         transform="translate(0,31.208122)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath3510)"
+           id="g3508">
+          <g
+             id="g3514">
+            <g
+               id="g3516" />
+            <g
+               id="g3522">
+              <g
+                 id="g3524"
+                 clip-path="url(#clipPath3518)">
+                <g
+                   id="g3526"
+                   transform="translate(587.4004,741.1787)">
+                  <path
+                     id="path3528"
+                     style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                     d="M 0,0 L 0,-699.012 C 0,-705.721 -5.434,-711.154 -12.143,-711.154 L -551.258,-711.154 C -557.967,-711.154 -563.4,-705.721 -563.4,-699.012 L -563.4,0 C -563.4,6.708 -557.967,12.142 -551.258,12.142 L -12.143,12.142 C -5.434,12.142 0,6.708 0,0" />
+                </g>
+              </g>
+            </g>
+          </g>
+          <g
+             id="g4354"
+             transform="translate(0,-48)">
+            <g
+               id="g3530">
+              <g
+                 id="g3532" />
+              <g
+                 id="g3538">
+                <g
+                   style="opacity:0.77000397"
+                   clip-path="url(#clipPath3534)"
+                   id="g3540">
+                  <g
+                     transform="translate(56.1343,772.1729)"
+                     id="g3542">
+                    <path
+                       d="M 0,0 L 0,-109.334 L -26.486,-102.002 L -35.546,10.667 L 0,0 z"
+                       style="fill:#098137;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                       id="path3544" />
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g
+               id="g3546">
+              <g
+                 id="g3548" />
+              <g
+                 id="g3554">
+                <g
+                   style="opacity:0.869995"
+                   clip-path="url(#clipPath3550)"
+                   id="g3556">
+                  <g
+                     transform="translate(7.6938,766.5059)"
+                     id="g3558">
+                    <path
+                       d="M 0,0 L 16.03,-125.003 L 24.395,-126.668 L 24.395,-9.667 L 0,0 z"
+                       style="fill:#11ab4a;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                       id="path3560" />
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g
+               id="g3562">
+              <g
+                 id="g3564" />
+              <g
+                 id="g3570">
+                <g
+                   style="opacity:0.869995"
+                   clip-path="url(#clipPath3566)"
+                   id="g3572">
+                  <g
+                     transform="translate(42.8911,635.1685)"
+                     id="g3574">
+                    <path
+                       d="M 0,0 L 0,120.67 L 44.605,134.339 L 23.348,8.001 L 0,0 z"
+                       style="fill:#11ab4a;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                       id="path3576" />
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g
+               id="g3578">
+              <g
+                 id="g3580" />
+              <g
+                 id="g3586">
+                <g
+                   style="opacity:0.77000397"
+                   clip-path="url(#clipPath3582)"
+                   id="g3588">
+                  <g
+                     transform="translate(32.0889,772.1729)"
+                     id="g3590">
+                    <path
+                       d="M 0,0 L 0,-158.336 L 22.998,-150.337 L 37.637,11 L 0,0 z"
+                       style="fill:#6ec72d;fill-opacity:1;fill-rule:nonzero;stroke:none"
+                       id="path3592" />
+                  </g>
+                </g>
+              </g>
+            </g>
+          </g>
+          <g
+             transform="translate(-29.9448,512.7314)"
+             id="g3594">
+            <path
+               id="path3596"
+               style="fill:#5a8e46;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0,15.244 11.074,27.602 24.735,27.602 L 29.264,27.602 C 42.925,27.602 54,15.244 54,0 L 54,-214.573 C 54,-229.818 42.925,-242.175 29.264,-242.175 L 24.735,-242.175 C 11.074,-242.175 0,-229.818 0,-214.573 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(-30.6665,507.5488)"
+             id="g3598">
+            <path
+               id="path3600"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0,14.178 9.98,25.671 22.292,25.671 L 26.374,25.671 C 38.686,25.671 48.667,14.178 48.667,0 L 48.667,-199.555 C 48.667,-213.73 38.686,-225.223 26.374,-225.223 L 22.292,-225.223 C 9.98,-225.223 0,-213.73 0,-199.555 L 0,0 z" />
+          </g>
+          <path
+             id="path3602"
+             style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+             d="M -34.447,-5 L 17.887,-5 L 17.887,308 L -34.447,308 L -34.447,-5 z" />
+        </g>
+      </g>
+      <rect
+         style="opacity:1;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5734"
+         width="356.87805"
+         height="51.506916"
+         x="220.57439"
+         y="-734.33643"
+         transform="scale(1,-1)"
+         ry="10.909647"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <g
+         id="g3604"
+         style="fill:#ffffff"
+         transform="translate(0,72)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath3608)"
+           id="g3606"
+           style="fill:#ffffff">
+          <text
+             id="text3612"
+             transform="matrix(1,0,0,-1,103.4692,726.04)"
+             style="fill:#ffffff">
+            <tspan
+               id="tspan3614"
+               sodipodi:role="line"
+               y="0"
+               x="0 16.796 31.122 43.653999 52.026001 64.557999 78.884003 87.334 100.36 113.386 128.05 133.562 146.45799 158.782 171.28799 177.37199 191.802 206.336 216.632 222.144 230.75 245.17999 253.422 267.69601 282.022 296.556 310.98599 316.49799 333.29401 341.53601 354.56201 367.58801 382.01801 387.53 400.32199 414.75201 427.77802 436.07199 450.60599"
+               style="font-size:26px;font-variant:normal;font-weight:normal;font-stretch:normal;writing-mode:lr-tb;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;font-family:Myriad Pro;-inkscape-font-specification:MyriadPro-Regular">Guaranteed Savings through Green Energy</tspan>
+          </text>
+          <text
+             id="text3616"
+             transform="matrix(1,0,0,-1,568.6465,736.04)"
+             style="fill:#ffffff">
+            <tspan
+               id="tspan3618"
+               sodipodi:role="line"
+               y="0"
+               x="0 3.3670001"
+               style="font-size:7px;font-variant:normal;font-weight:normal;font-stretch:normal;writing-mode:lr-tb;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;font-family:Myriad Pro;-inkscape-font-specification:MyriadPro-Regular">TM</tspan>
+          </text>
+        </g>
+      </g>
+      <g
+         id="g3620"
+         transform="translate(-103.4,30.885714)"
+         style="fill:#00743c;fill-opacity:1"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath3624)"
+           id="g3622"
+           style="fill:#00743c;fill-opacity:1">
+          <g
+             transform="translate(114.8818,769.332)"
+             id="g3628"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3630"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0.936,-0.576 2.304,-1.056 3.744,-1.056 C 5.88,-1.056 7.128,0.072 7.128,1.704 C 7.128,3.216 6.265,4.08 4.081,4.92 C 1.44,5.856 -0.192,7.225 -0.192,9.504 C -0.192,12.025 1.896,13.897 5.041,13.897 C 6.697,13.897 7.896,13.513 8.617,13.105 L 8.041,11.401 C 7.513,11.689 6.433,12.169 4.968,12.169 C 2.76,12.169 1.92,10.849 1.92,9.745 C 1.92,8.232 2.904,7.488 5.136,6.625 C 7.873,5.568 9.265,4.248 9.265,1.872 C 9.265,-0.624 7.417,-2.809 3.6,-2.809 C 2.04,-2.809 0.336,-2.329 -0.528,-1.752 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(127.002,782.9648)"
+             id="g3632"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3634"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 2.088,0 L 2.088,-7.8 L 2.16,-7.8 C 2.592,-7.176 3.024,-6.601 3.432,-6.072 L 8.376,0 L 10.969,0 L 5.112,-6.864 L 11.425,-16.177 L 8.953,-16.177 L 3.624,-8.232 L 2.088,-10.009 L 2.088,-16.177 L 0,-16.177 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(143.4419,766.7876)"
+             id="g3636"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3638"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 0,6.865 L -5.112,16.177 L -2.736,16.177 L -0.456,11.713 C 0.168,10.489 0.648,9.505 1.152,8.377 L 1.2,8.377 C 1.656,9.433 2.208,10.489 2.833,11.713 L 5.161,16.177 L 7.537,16.177 L 2.112,6.889 L 2.112,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(152.6577,782.9648)"
+             id="g3640"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3642"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 2.088,0 L 2.088,-14.425 L 9,-14.425 L 9,-16.177 L 0,-16.177 L 0,0 z" />
+          </g>
+          <path
+             id="path3644"
+             style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+             d="M 166.073,766.788 L 163.985,766.788 L 163.985,782.965 L 166.073,782.965 L 166.073,766.788 z" />
+          <g
+             transform="translate(169.7212,766.7876)"
+             id="g3646"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3648"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 0,16.177 L 2.28,16.177 L 7.464,7.993 C 8.665,6.097 9.601,4.393 10.369,2.736 L 10.417,2.76 C 10.225,4.92 10.177,6.889 10.177,9.409 L 10.177,16.177 L 12.145,16.177 L 12.145,0 L 10.033,0 L 4.896,8.208 C 3.768,10.009 2.688,11.857 1.872,13.609 L 1.8,13.585 C 1.92,11.545 1.968,9.601 1.968,6.913 L 1.968,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(193.8896,774.3721)"
+             id="g3650"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3652"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L -6.289,0 L -6.289,-5.833 L 0.72,-5.833 L 0.72,-7.584 L -8.376,-7.584 L -8.376,8.593 L 0.36,8.593 L 0.36,6.841 L -6.289,6.841 L -6.289,1.729 L 0,1.729 L 0,0 z" />
+          </g>
+          <path
+             id="path3654"
+             style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+             d="M 115.629,753.987 L 114.41,753.987 L 114.41,763.428 L 115.629,763.428 L 115.629,753.987 z" />
+          <g
+             transform="translate(117.7563,753.9873)"
+             id="g3656"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3658"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 0,9.441 L 1.331,9.441 L 4.356,4.665 C 5.057,3.558 5.603,2.563 6.051,1.597 L 6.08,1.611 C 5.967,2.872 5.939,4.02 5.939,5.491 L 5.939,9.441 L 7.088,9.441 L 7.088,0 L 5.855,0 L 2.858,4.791 C 2.199,5.841 1.569,6.92 1.093,7.942 L 1.051,7.928 C 1.121,6.738 1.149,5.603 1.149,4.034 L 1.149,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(126.9683,753.9873)"
+             id="g3660"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3662"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 0,9.441 L 1.331,9.441 L 4.356,4.665 C 5.057,3.558 5.603,2.563 6.051,1.597 L 6.08,1.611 C 5.967,2.872 5.939,4.02 5.939,5.491 L 5.939,9.441 L 7.088,9.441 L 7.088,0 L 5.855,0 L 2.858,4.791 C 2.199,5.841 1.569,6.92 1.093,7.942 L 1.051,7.928 C 1.121,6.738 1.149,5.603 1.149,4.034 L 1.149,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(136.9229,758.6519)"
+             id="g3664"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3666"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0,-2.017 1.092,-3.824 3.012,-3.824 C 4.944,-3.824 6.037,-2.045 6.037,0.098 C 6.037,1.975 5.057,3.936 3.025,3.936 C 1.008,3.936 0,2.073 0,0 M 7.326,0.154 C 7.326,-3.096 5.351,-4.819 2.941,-4.819 C 0.448,-4.819 -1.303,-2.886 -1.303,-0.028 C -1.303,2.97 0.56,4.931 3.082,4.931 C 5.659,4.931 7.326,2.956 7.326,0.154" />
+          </g>
+          <g
+             transform="translate(147.8994,753.9873)"
+             id="g3668"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3670"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L -3.082,9.441 L -1.765,9.441 L -0.294,4.791 C 0.112,3.516 0.462,2.367 0.714,1.261 L 0.742,1.261 C 1.009,2.354 1.401,3.544 1.821,4.776 L 3.418,9.441 L 4.721,9.441 L 1.345,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(157.4629,757.9092)"
+             id="g3672"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3674"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L -0.924,2.718 C -1.135,3.334 -1.274,3.895 -1.415,4.44 L -1.443,4.44 C -1.583,3.88 -1.737,3.306 -1.919,2.732 L -2.843,0 L 0,0 z M -3.096,-0.952 L -4.076,-3.922 L -5.337,-3.922 L -2.129,5.519 L -0.658,5.519 L 2.563,-3.922 L 1.261,-3.922 L 0.252,-0.952 L -3.096,-0.952 z" />
+          </g>
+          <g
+             transform="translate(162.123,762.3916)"
+             id="g3676"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3678"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L -2.872,0 L -2.872,1.037 L 4.118,1.037 L 4.118,0 L 1.233,0 L 1.233,-8.404 L 0,-8.404 L 0,0 z" />
+          </g>
+          <path
+             id="path3680"
+             style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+             d="M 168.507,753.987 L 167.288,753.987 L 167.288,763.428 L 168.507,763.428 L 168.507,753.987 z" />
+          <g
+             transform="translate(171.377,758.6519)"
+             id="g3682"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3684"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0,-2.017 1.092,-3.824 3.012,-3.824 C 4.944,-3.824 6.037,-2.045 6.037,0.098 C 6.037,1.975 5.057,3.936 3.025,3.936 C 1.008,3.936 0,2.073 0,0 M 7.326,0.154 C 7.326,-3.096 5.351,-4.819 2.941,-4.819 C 0.448,-4.819 -1.303,-2.886 -1.303,-0.028 C -1.303,2.97 0.56,4.931 3.082,4.931 C 5.659,4.931 7.326,2.956 7.326,0.154" />
+          </g>
+          <g
+             transform="translate(180.2803,753.9873)"
+             id="g3686"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3688"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 L 0,9.441 L 1.331,9.441 L 4.356,4.665 C 5.057,3.558 5.603,2.563 6.051,1.597 L 6.08,1.611 C 5.967,2.872 5.939,4.02 5.939,5.491 L 5.939,9.441 L 7.088,9.441 L 7.088,0 L 5.855,0 L 2.857,4.791 C 2.199,5.841 1.569,6.92 1.093,7.942 L 1.051,7.928 C 1.121,6.738 1.149,5.603 1.149,4.034 L 1.149,0 L 0,0 z" />
+          </g>
+          <g
+             transform="translate(189.3242,755.4722)"
+             id="g3690"
+             style="fill:#00743c;fill-opacity:1">
+            <path
+               id="path3692"
+               style="fill:#00743c;fill-opacity:1;fill-rule:nonzero;stroke:none"
+               d="M 0,0 C 0.546,-0.336 1.345,-0.616 2.185,-0.616 C 3.432,-0.616 4.16,0.042 4.16,0.995 C 4.16,1.877 3.656,2.381 2.381,2.872 C 0.84,3.418 -0.112,4.216 -0.112,5.547 C -0.112,7.018 1.106,8.11 2.941,8.11 C 3.908,8.11 4.608,7.886 5.029,7.648 L 4.692,6.653 C 4.384,6.822 3.754,7.102 2.899,7.102 C 1.611,7.102 1.121,6.332 1.121,5.687 C 1.121,4.805 1.695,4.37 2.998,3.866 C 4.595,3.25 5.407,2.479 5.407,1.092 C 5.407,-0.364 4.328,-1.639 2.101,-1.639 C 1.19,-1.639 0.196,-1.359 -0.308,-1.022 L 0,0 z" />
+          </g>
+        </g>
+      </g>
+      <g
+         id="g3694"
+         transform="translate(0,62.4)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <g
+           clip-path="url(#clipPath3698)"
+           id="g3696">
+          <text
+             id="text3702"
+             transform="matrix(1,0,0,-1,108.4072,708.6523)">
+            <tspan
+               id="tspan3704"
+               sodipodi:role="line"
+               y="0"
+               x="0 4.9299998 10.28 15.62 20.34 22.73 29.309999 34.23 36.349998 38.740002 45.32 51.900002 58.790001 63.799999 69.150002 74.120003 76.510002 83.400002 89.980003 94.910004 135.19 140.32001 145.45 150.58 155.71001 157.83 162.96001 168.09 171.39999 176.95 179.07001 184 188.97 191.09 197.67 206.13 248.53 253.46001 258.38 263.97 270.85999 277.44 284.10001 286.22 291.09 295.42001 302.31 309.20001 314.57999 354.5 362.39001 368.51001 373.44 379.95999 382.35001 388.92999 395.39001 400.09 406.98001 413.56 415.63 417.75 424.41 430.20999 432.32999 437.45999 442.59 447.72 452.85001"
+               style="font-size:10px;font-variant:normal;font-weight:normal;font-stretch:normal;writing-mode:lr-tb;fill:#808080;fill-opacity:1;fill-rule:nonzero;stroke:none;font-family:Myriad Pro;-inkscape-font-specification:MyriadPro-Regular">SKYLINE INNOVATIONS 2451 18th ST NW SECOND FLOOR WASHINGTON, DC 20009</tspan>
+          </text>
+        </g>
+      </g>
+      <path
+         style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:1,6;stroke-dashoffset:0"
+         d="M -17.172593,346.26555 L 768.72609,346.26555"
+         id="path4395"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"
+         transform="matrix(0.8,0,0,-0.8,6,821.88976)" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="126.14411"
+         y="-719.59436"
+         id="text5167"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5169"
+           x="126.14411"
+           y="-719.59436"
+           style="font-size:10;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Utility Service One</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="125.56013"
+         y="-706.11865"
+         id="text5171"
+         sodipodi:linespacing="125%"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5173"
+           x="125.56013"
+           y="-706.11865"
+           style="font-size:10px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Utility Service Two</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="118.03942"
+         y="-692.64301"
+         id="text5175"
+         sodipodi:linespacing="125%"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5177"
+           x="118.03942"
+           y="-692.64301"
+           style="font-size:10;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Utility Service Three</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="241.63359"
+         y="-737.47754"
+         id="text5290"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5292"
+           x="241.63359"
+           y="-737.47754"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">From</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="301.76996"
+         y="-736.91174"
+         id="text5294"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5296"
+           x="301.76996"
+           y="-736.91174"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">To</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5302"
+         width="66.910225"
+         height="11.991554"
+         x="355.88501"
+         y="-729.71478"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="357.47086"
+         y="-720.43823"
+         id="text5304"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5306"
+           x="357.47086"
+           y="-720.43823"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$1,876.00</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5310"
+         width="66.910225"
+         height="11.991554"
+         x="355.88501"
+         y="-715.89246"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="357.47086"
+         y="-706.59912"
+         id="text5312"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5314"
+           x="357.47086"
+           y="-706.59912"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$4,921.50</tspan></text>
+      <g
+         id="g2806"
+         transform="translate(6.4,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.07019"
+           x="355.88501"
+           height="11.991554"
+           width="66.910225"
+           id="rect5318"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5320"
+           y="-692.76001"
+           x="357.47086"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.76001"
+             x="357.47086"
+             id="tspan5322"
+             sodipodi:role="line">   $10.25</tspan></text>
+      </g>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5354"
+         width="66.910225"
+         height="11.991554"
+         x="429.10129"
+         y="-729.71478"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="430.68713"
+         y="-720.43823"
+         id="text5356"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5358"
+           x="430.68713"
+           y="-720.43823"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">  $700.50</tspan></text>
+      <rect
+         style="opacity:1;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5736"
+         width="81.295334"
+         height="87.095634"
+         x="496.31406"
+         y="-704.38342"
+         ry="10.909647"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5362"
+         width="66.910225"
+         height="11.991554"
+         x="429.10129"
+         y="-715.89246"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="430.68713"
+         y="-706.59912"
+         id="text5364"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5366"
+           x="430.68713"
+           y="-706.59912"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$1,332.75</tspan></text>
+      <g
+         id="g2811"
+         transform="translate(0,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.07013"
+           x="429.10129"
+           height="11.991554"
+           width="66.910225"
+           id="rect5370"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5372"
+           y="-692.75995"
+           x="430.68713"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.75995"
+             x="430.68713"
+             id="tspan5374"
+             sodipodi:role="line">    $1.09</tspan></text>
+      </g>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5380"
+         width="70.546776"
+         height="11.991554"
+         x="500.78253"
+         y="-729.73102"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="502.36838"
+         y="-720.45447"
+         id="text5382"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5384"
+           x="502.36838"
+           y="-720.45447"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$1,175.50</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5388"
+         width="70.950836"
+         height="11.991554"
+         x="500.78253"
+         y="-715.90869"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="502.36838"
+         y="-706.61536"
+         id="text5390"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5392"
+           x="502.36838"
+           y="-706.61536"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$3,588.75</tspan></text>
+      <g
+         id="g2816"
+         transform="translate(-4.8,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.08643"
+           x="500.78253"
+           height="11.991554"
+           width="71.152863"
+           id="rect5396"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5398"
+           y="-692.77625"
+           x="502.36838"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.77625"
+             x="502.36838"
+             id="tspan5400"
+             sodipodi:role="line">    $9.16</tspan></text>
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="359.83911"
+         y="-737.78101"
+         id="text5402"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5404"
+           x="359.83911"
+           y="-737.78101"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Without Skyline</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="437.52243"
+         y="-737.13464"
+         id="text5406"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5408"
+           x="437.52243"
+           y="-737.13464"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">With Skyline</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5414"
+         width="71.758957"
+         height="11.991554"
+         x="500.65259"
+         y="-678.03992"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="502.23843"
+         y="-668.76337"
+         id="text5416"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5418"
+           x="502.23843"
+           y="-668.76337"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$4,773.41</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5422"
+         width="71.960991"
+         height="11.991554"
+         x="500.65259"
+         y="-664.21759"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="502.23843"
+         y="-654.92426"
+         id="text5424"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5426"
+           x="502.23843"
+           y="-654.92426"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">  $716.01CR</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5430"
+         width="71.556923"
+         height="11.991554"
+         x="500.65259"
+         y="-650.39532"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="502.23843"
+         y="-641.08514"
+         id="text5432"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5434"
+           x="502.23843"
+           y="-641.08514"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$4,057.40</tspan></text>
+      <rect
+         style="opacity:1;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5738"
+         width="79.37307"
+         height="64.934189"
+         x="306.93112"
+         y="-678.49597"
+         ry="10.909647"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <rect
+         style="opacity:1;fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-width:0.5;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5742"
+         width="254.14233"
+         height="17.820211"
+         x="323.77066"
+         y="-631.66339"
+         ry="5.1814775"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <g
+         id="g5809"
+         transform="translate(221.5594,-2.020305)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <rect
+           transform="scale(1,-1)"
+           y="-632.81842"
+           x="279.01819"
+           height="11.991554"
+           width="71.960991"
+           id="rect5486"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5488"
+           y="-623.50824"
+           x="280.60403"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-623.50824"
+             x="280.60403"
+             id="tspan5490"
+             sodipodi:role="line">$1,121.99CR</tspan></text>
+      </g>
+      <text
+         sodipodi:linespacing="125%"
+         transform="scale(1,-1)"
+         id="text5492"
+         y="-621.80646"
+         x="429.3913"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold"
+           y="-621.80646"
+           x="429.3913"
+           id="tspan5494"
+           sodipodi:role="line">Balance Forward</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="416.74362"
+         y="-669.88989"
+         id="text5436"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5438"
+           x="416.74362"
+           y="-669.88989"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Green Energy Value</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="441.73972"
+         y="-656.74469"
+         id="text5440"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5442"
+           x="441.73972"
+           y="-656.74469"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Your Savings</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="430.61472"
+         y="-642.00964"
+         id="text5444"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5446"
+           x="430.61472"
+           y="-642.00964"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Skyline Charges</tspan></text>
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect5534"
+         width="71.960991"
+         height="11.991554"
+         x="500.37329"
+         y="-607.52539"
+         transform="scale(1,-1)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87" />
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="501.95914"
+         y="-598.21521"
+         id="text5536"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5538"
+           x="501.95914"
+           y="-598.21521"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New Bold">$2,935.41</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="422.57236"
+         y="-597.99689"
+         id="text5540"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5542"
+           x="422.57236"
+           y="-597.99689"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Balance Due</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="105.83233"
+         y="-645.7843"
+         id="text5652"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan5654"
+           x="105.83233"
+           y="-645.7843"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Bill Issued: </tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="150.75514"
+         y="-645.16101"
+         id="text5667"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan5669"
+           x="150.75514"
+           y="-645.16101"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="111.31247"
+         y="-633.44141"
+         id="text5671"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan5673"
+           x="111.31247"
+           y="-633.44141"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Due Date: </tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="151.43533"
+         y="-632.81812"
+         id="text5675"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan5677"
+           x="151.43533"
+           y="-632.81812"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="372.80405"
+         y="-748.45776"
+         id="text5679"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5681"
+           x="372.80405"
+           y="-748.45776"
+           style="font-size:10;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Your Utility Charges</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="522.00867"
+         y="-737.56445"
+         id="text5851"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5853"
+           x="522.00867"
+           y="-737.56445"
+           style="font-size:10;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Value</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="518.52625"
+         y="-749.31171"
+         id="text5855"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87"><tspan
+           sodipodi:role="line"
+           id="tspan5857"
+           x="518.52625"
+           y="-749.31171"
+           style="font-size:10px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Skyline</tspan></text>
+      <g
+         id="g5986"
+         transform="translate(23.885719,-1.616244)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <rect
+           transform="scale(1,-1)"
+           y="-674.34583"
+           x="290.30347"
+           height="11.991554"
+           width="66.910225"
+           id="rect5450"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <rect
+           transform="scale(1,-1)"
+           y="-646.70123"
+           x="290.30347"
+           height="11.991554"
+           width="66.910225"
+           id="rect5466"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5452"
+           y="-665.06946"
+           x="291.88925"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-665.06946"
+             x="291.88925"
+             id="tspan5454"
+             sodipodi:role="line">$105.12</tspan></text>
+        <rect
+           transform="scale(1,-1)"
+           y="-660.52368"
+           x="290.30341"
+           height="11.991554"
+           width="66.910225"
+           id="rect5458"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5460"
+           y="-651.23035"
+           x="291.88925"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-651.23035"
+             x="291.88925"
+             id="tspan5462"
+             sodipodi:role="line">$900.00CR</tspan></text>
+        <text
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5468"
+           y="-637.39124"
+           x="291.88925"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-637.39124"
+             x="291.88925"
+             id="tspan5470"
+             sodipodi:role="line">$327.11CR</tspan></text>
+        <rect
+           transform="scale(1,-1)"
+           y="-632.28149"
+           x="289.86514"
+           height="11.991554"
+           width="66.910225"
+           id="rect5976"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5978"
+           y="-622.9715"
+           x="291.45093"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-622.9715"
+             x="291.45093"
+             id="tspan5980"
+             sodipodi:role="line">  $0.00</tspan></text>
+      </g>
+      <g
+         id="g6000"
+         transform="translate(20.685719,-1.616244)"
+         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+         inkscape:export-xdpi="205.87"
+         inkscape:export-ydpi="205.87">
+        <text
+           xml:space="preserve"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="232.83519"
+           y="-665.58997"
+           id="text5472"
+           transform="scale(1,-1)"
+           sodipodi:linespacing="125%"><tspan
+             sodipodi:role="line"
+             id="tspan5474"
+             x="232.83519"
+             y="-665.58997"
+             style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Prior Balance</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="246.69066"
+           y="-652.56287"
+           id="text5476"
+           transform="scale(1,-1)"
+           sodipodi:linespacing="125%"><tspan
+             sodipodi:role="line"
+             id="tspan5478"
+             x="246.69066"
+             y="-652.56287"
+             style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Payments</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="236.03441"
+           y="-637.94592"
+           id="text5480"
+           transform="scale(1,-1)"
+           sodipodi:linespacing="125%"><tspan
+             sodipodi:role="line"
+             id="tspan5482"
+             x="236.03441"
+             y="-637.94592"
+             style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Adjustments</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="251.0247"
+           y="-623.52618"
+           id="text5982"
+           transform="scale(1,-1)"
+           sodipodi:linespacing="125%"><tspan
+             sodipodi:role="line"
+             id="tspan5984"
+             x="251.0247"
+             y="-623.52618"
+             style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Late Fee</tspan></text>
+      </g>
+      <g
+         id="g2826"
+         transform="translate(3.2,-1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-729.73889"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5179"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5185"
+           y="-720.43823"
+           x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-720.43823"
+             x="227.7711"
+             id="tspan5187"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2821"
+         transform="translate(3.2,0)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-715.89978"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5200"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5202"
+           y="-706.59912"
+           x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-706.59912"
+             x="227.7711"
+             id="tspan5204"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2796"
+         transform="translate(3.2,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.06067"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5208"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5210"
+           y="-692.76001"
+           x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.76001"
+             x="227.7711"
+             id="tspan5212"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2801"
+         transform="translate(0,1.6)">
+        <g
+           id="g2841">
+          <rect
+             style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect5256"
+             width="53.220379"
+             height="12.006146"
+             x="283.13376"
+             y="-702.06067"
+             transform="scale(1,-1)"
+             inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+             inkscape:export-xdpi="205.87"
+             inkscape:export-ydpi="205.87" />
+          <text
+             xml:space="preserve"
+             style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+             x="284.74368"
+             y="-692.76001"
+             id="text5258"
+             transform="scale(1,-1)"
+             sodipodi:linespacing="125%"
+             inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+             inkscape:export-xdpi="205.87"
+             inkscape:export-ydpi="205.87"><tspan
+               sodipodi:role="line"
+               id="tspan5260"
+               x="284.74368"
+               y="-692.76001"
+               style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
+        </g>
+      </g>
+      <g
+         id="g2836">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-715.89978"
+           x="283.13376"
+           height="12.006146"
+           width="53.220379"
+           id="rect5248"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5250"
+           y="-706.59912"
+           x="284.74368"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-706.59912"
+             x="284.74368"
+             id="tspan5252"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2831"
+         transform="translate(0,-1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-729.73889"
+           x="283.13376"
+           height="12.006146"
+           width="53.220379"
+           id="rect5240"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5242"
+           y="-720.43823"
+           x="284.74368"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-720.43823"
+             x="284.74368"
+             id="tspan5244"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="100.39404"
+         y="-658.77252"
+         id="text6077"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan6079"
+           x="100.39404"
+           y="-658.77252"
+           style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Bill Number: </tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         x="150.92497"
+         y="-658.14923"
+         id="text6081"
+         transform="scale(1,-1)"
+         sodipodi:linespacing="125%"><tspan
+           sodipodi:role="line"
+           id="tspan6083"
+           x="150.92497"
+           y="-658.14923"
+           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">443</tspan></text>
+    </g>
+  </g>
+</svg>
