@@ -109,6 +109,7 @@ class Process(object):
             None,
             row.get('meter_id', ""))
         session.add(r)
+        session.flush()
         return r
 
     def update_register(self, register_id, rows):
@@ -138,7 +139,9 @@ class Process(object):
         session = Session()
         register = session.query(Register).filter(
             Register.id == register_id).one()
+        utilbill_id = register.utilbill_id
         session.delete(register)
+        session.commit()
         self.compute_utility_bill(utilbill_id)
 
     def add_charge(self, utilbill_id):

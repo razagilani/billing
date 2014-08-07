@@ -1045,15 +1045,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # REG_TOTAL and OTHER
         id_1 = self.process.get_all_utilbills_json(
                 account, 0, 30)[0][0]['id']
-        self.process.new_register(id_1, {'meter_id': 'M60324',
-                                         'register_id': 'R'})
-        self.process.update_register(id_1,
-                'M60324', 'R', {'binding': 'OTHER'})
+        register = self.process.new_register(id_1, {'meter_id': 'M60324',
+                                            'register_id': 'R'})
+        self.process.update_register(register.id, {'register_binding': 'OTHER'})
 
         # 2nd utility bill should have the same registers as the first
-        self.process.upload_utility_bill(account, 'gas',
-                date(2013, 5, 2), date(2013, 6, 3), StringIO('May 2013'),
-                'may.pdf')
+        utilbill = self.process.upload_utility_bill(account, 'gas',
+                    date(2013, 5, 2), date(2013, 6, 3), StringIO('May 2013'),
+                    'may.pdf')
 
         # create reebill based on first utility bill
         reebill1 = self.process.roll_reebill(account,
@@ -1065,7 +1064,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # delete register from the 2nd utility bill
         id_2 = self.process.get_all_utilbills_json(
                 account, 0, 30)[0][0]['id']
-        self.process.delete_register(id_2, 'M60324', 'R')
+
+        register = filter(lambda x: x.identifier == 'R' and
+                                    x.meter_identifier == 'M60324',
+                          utilbill.registers)[0]
+        self.process.delete_register(register.id)
 
         # 2nd reebill should NOT have a reading corresponding to the
         # additional register, which was removed
@@ -1076,16 +1079,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual(reebill1.readings[0].measure, reebill2.readings[0].measure)
         self.assertEqual(reebill1.readings[0].aggregate_function,
                 reebill2.readings[0].aggregate_function)
-        self.assertEqual([{
+        self.assertDictContainsSubset({
             'sequence': 1,
             'version': 0,
                 'issue_date': datetime(2013,5,1),
-        }], utilbill_data[1]['reebills'])
-        self.assertEqual([{
+        }, utilbill_data[1]['reebills'][0])
+        self.assertDictContainsSubset({
             'sequence': 2,
             'version': 0,
             'issue_date': None,
-        }], utilbill_data[0]['reebills'])
+        }, utilbill_data[0]['reebills'][0])
 
         # the 1st reebill has a reading for both the "REG_TOTAL" register
         # and the "OTHER" register, for a total of 200 therms of renewable
@@ -1115,12 +1118,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         }
         account_info = self.process.get_sequential_account_info(
                 account, 1)
-        self.assertEqual({
-            'discount_rate': 0.12,
-            'late_charge_rate': 0.34,
-            'billing_address': billing_address,
-            'service_address': service_address,
-        }, account_info)
+        self.assertDictContainsSubset(billing_address, account_info['billing_address'])
+        self.assertDictContainsSubset(service_address, account_info['service_address'])
+        self.assertEqual(account_info['discount_rate'], 0.12)
+        self.assertEqual(account_info['late_charge_rate'], 0.34)
 
         # add two more utility bills: a Hypothetical one, then a Complete one
         self.process.upload_utility_bill(account, 'gas',
