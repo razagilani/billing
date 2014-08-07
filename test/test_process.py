@@ -959,8 +959,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               StringIO('January 2012'),
                                               'january.pdf')
 
-        self.process.add_charge(u1.id)
-        self.process.update_charge(u1.id, "", dict(rsi_binding='THE_CHARGE',
+        charge = self.process.add_charge(u1.id)
+        self.process.update_charge(charge.id, dict(rsi_binding='THE_CHARGE',
             quantity_formula="REG_TOTAL.quantity",
             quantity_units='therms', rate_formula='1',
             group='All Charges'))
