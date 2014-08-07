@@ -759,7 +759,6 @@ class ReportsResource(WebResource):
         row = cherrypy.request.params
         print row
         account = row.get('account', None)
-        account = account if account else None
         begin_date = row.get('period_start', None)
         begin_date = datetime.strptime(begin_date, '%d/%m/%Y').date() if \
             begin_date else None
@@ -805,7 +804,8 @@ class ReportsResource(WebResource):
             exporter.export_energy_usage(buf, account)
 
             cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+            cherrypy.response.headers['Content-Disposition'] = \
+                'attachment; filename=%s' % spreadsheet_name
 
             return buf.getvalue()
 
@@ -827,6 +827,19 @@ class ReportsResource(WebResource):
                     'attachment; filename=%s.xls'%datetime.now().strftime("%Y%m%d")
             return buf.getvalue()
 
+        elif row['type'] == '12MonthRevenue':
+            """Responds with the data from the estimated revenue report
+             in the form of an Excel spreadsheet."""
+            spreadsheet_name =  'estimated_revenue.xls'
+
+            with open(os.path.join(self.estimated_revenue_report_dir,
+                                   'estimated_revenue_report.xls')) as xls_file:
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = \
+                    'attachment; filename=%s' % spreadsheet_name
+
+                return xls_file.read()
+
     @cherrypy.expose
     @cherrypy.tools.authenticate()
     def reconciliation(self, start, limit, *vpath, **params):
@@ -838,6 +851,18 @@ class ReportsResource(WebResource):
             return self.dumps({
                 'rows': items[start:start+limit],
                 'results': len(items)
+            })
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate()
+    def estimated_revenue(self, start, limit, *vpath, **params):
+        start, limit = int(start), int(limit)
+        with open(os.path.join(self.estimated_revenue_report_dir,
+                               'estimated_revenue_report.json')) as json_file:
+            items = ju.loads(json_file.read())['rows']
+            return self.dumps({
+                'rows': items[start:start+limit],
+                'results': len(items) # total number of items
             })
 
 
