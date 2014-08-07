@@ -1864,10 +1864,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.process.bind_renewable_energy(account, 1)
             self.process.compute_reebill(account, 1)
             reebill_data = self.process.get_reebill_metadata_json(account)
-            self.assertDocumentsEqualExceptKeys([{
-                 'sequence': 1,
-                 'max_version': 0,
-                 'issued': False,
+            self.assertDictContainsSubset({
+                'sequence': 1,
+                 'version': 0,
+                 'issued': 0,
                  'issue_date': None,
                  'actual_total': 0.,
                  'hypothetical_total': energy_quantity,
@@ -1884,16 +1884,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'ree_quantity': energy_quantity,
                  'balance_due': energy_quantity * .5,
                  'balance_forward': 0.,
-                 'corrections': '(never issued)',
-             }], reebill_data, 'id')
+                 'corrections': '(never issued)'}, reebill_data[0])
 
         self.process.issue(account, 1, issue_date=datetime(2013, 2, 15))
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertDocumentsEqualExceptKeys([{
-             'id': 1,
+        self.assertDictContainsSubset({
              'sequence': 1,
-             'max_version': 0,
-             'issued': True,
+             'version': 0,
+             'issued': 1,
              'issue_date': datetime(2013,2,15),
              'actual_total': 0.,
              'hypothetical_total': energy_quantity,
@@ -1901,7 +1899,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              'period_start': date(2013,1,1),
              'period_end': date(2013,2,1),
              'prior_balance': 0.,
-             'processed': True,
+             'processed': 1,
              'ree_charge': energy_quantity * .5,
              'ree_value': energy_quantity,
              'services': [],
@@ -1911,7 +1909,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              'balance_due': energy_quantity * .5,
              'balance_forward': 0.0,
              'corrections': '-',
-         }], reebill_data)
+         }, reebill_data[0])
 
         # add a payment so payment_received is not 0
         self.process.create_payment(account, date(2013,2,17),
@@ -1923,10 +1921,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                     discount_rate=0.2)
         self.process.compute_reebill(account, 2)
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertDocumentsEqualExceptKeys([{
+        dictionaries = [{
             'sequence': 2,
-            'max_version': 0L,
-            'issued': False,
+            'version': 0L,
+            'issued': 0,
             'issue_date': None,
             'actual_total': 0,
             'hypothetical_total': energy_quantity,
@@ -1934,7 +1932,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013,2,1),
             'period_end': date(2013,3,1),
             'prior_balance': energy_quantity * .5,
-            'processed': False,
+            'processed': 0,
             'ree_charge': energy_quantity * .8,
             'ree_value': energy_quantity,
             'services': [],
@@ -1948,8 +1946,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'corrections': '(never issued)',
         },{
             'sequence': 1L,
-            'max_version': 0L,
-            'issued': True,
+            'version': 0L,
+            'issued': 1,
                 'issue_date': datetime(2013,2,15),
             'actual_total': 0,
             'hypothetical_total': energy_quantity,
@@ -1957,7 +1955,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013,1,1),
             'period_end': date(2013,2,1),
             'prior_balance': 0,
-            'processed': True,
+            'processed': 1,
             'ree_charge': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],
@@ -1967,7 +1965,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'balance_due': energy_quantity * .5,
             'balance_forward': 0.0,
             'corrections': '-',
-        }], reebill_data, 'id')
+        }]
+
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+
         # make a correction on reebill #1: payment does not get applied to
         # #1, and does get applied to #2
         # NOTE because #1-1 is unissued, its utility bill document should
@@ -1976,10 +1978,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.compute_reebill(account, 1)
         self.process.compute_reebill(account, 2)
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertDocumentsEqualExceptKeys([{
+        dictionaries = [{
             'sequence': 2,
-            'max_version': 0,
-            'issued': False,
+            'version': 0,
+            'issued': 0,
             'issue_date': None,
             'actual_total': 0,
             'hypothetical_total': energy_quantity,
@@ -1987,7 +1989,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013,2,1),
             'period_end': date(2013,3,1),
             'prior_balance': energy_quantity * .5,
-            'processed': False,
+            'processed': 0,
             'ree_charge': energy_quantity * .8,
             'ree_value': energy_quantity,
             'services': [],
@@ -2001,8 +2003,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'corrections': '(never issued)',
         },{
             'sequence': 1,
-            'max_version': 1,
-            'issued': False,
+            'version': 1,
+            'issued': 0,
             'issue_date': None,
             'actual_total': 0,
             'hypothetical_total': energy_quantity,
@@ -2010,7 +2012,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_start': date(2013,1,1),
             'period_end': date(2013,2,1),
             'prior_balance': 0,
-            'processed': False,
+            'processed': 0,
             'ree_charge': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],
@@ -2020,7 +2022,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'balance_due': energy_quantity * .5,
             'balance_forward': 0,
             'corrections': '#1 not issued',
-        }], reebill_data, 'id')
+        }]
+
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+
 
     def test_payment_application(self):
         """Test that payments are applied to reebills according their "date
