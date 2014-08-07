@@ -110,6 +110,7 @@ class Process(object):
             row.get('meter_id', ""))
         session.add(r)
         return r
+
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
         """
@@ -128,7 +129,7 @@ class Process(object):
                               (k, register.id, val))
             setattr(register, k, val)
         self.logger.debug("Commiting changes to register %s" % register.id)
-        self.compute_utility_bill(utilbill_id)
+        self.compute_utility_bill(register.utilbill_id)
         return register
 
     def delete_register(self, register_id):
