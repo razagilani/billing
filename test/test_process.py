@@ -1491,19 +1491,19 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.bind_renewable_energy(acc, 1)
         self.process.compute_reebill(acc, 1)
         self.process.issue(acc, 1, issue_date=datetime(2012,3,15))
-        self.assertEqual([{
-                              'id': 1,
+        reebill_metadata = self.process.get_reebill_metadata_json('99999')
+        self.assertDictContainsSubset({
                               'sequence': 1,
-                              'max_version': 0,
-                              'issued': True,
-                                  'issue_date': datetime(2012,3,15),
+                              'version': 0,
+                              'issued': 1,
+                              'issue_date': datetime(2012,3,15),
                               'actual_total': 0.,
                               'hypothetical_total': 10,
                               'payment_received': 0.,
                               'period_start': date(2012, 1, 1),
                               'period_end': date(2012, 2, 1),
                               'prior_balance': 0.,
-                              'processed': True,
+                              'processed': 1,
                               'ree_charge': 8.8,
                               'ree_value': 10,
                               'services': [],
@@ -1513,8 +1513,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               'balance_due': 8.8,
                               'balance_forward': 0,
                               'corrections': '-',
-                          }],
-                         self.process.get_reebill_metadata_json('99999'))
+                          }, reebill_metadata[0])
 
         # create 2nd reebill, leaving it unissued
         self.process.ree_getter.quantity = 0
@@ -1525,21 +1524,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.new_version(acc, 1)
         self.process.compute_reebill(acc, 2)
 
-        self.assertEqual([{
+        for x, y in zip([{
                           'actual_total': 0,
                           'balance_due': 17.6,
                           'balance_forward': 17.6,
                           'corrections': '(never issued)',
                           'hypothetical_total': 0,
-                          'id': 2,
                           'issue_date': None,
-                          'issued': False,
-                          'max_version': 0,
+                          'issued': 0,
+                          'version': 0,
                           'payment_received': 0.0,
                           'period_end': date(2012, 3, 1),
                           'period_start': date(2012, 2, 1),
                           'prior_balance': 8.8,
-                          'processed': False,
+                          'processed': 0,
                           'ree_charge': 0.0,
                           'ree_quantity': 0,
                           'ree_value': 0,
@@ -1553,15 +1551,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           'balance_forward': 0,
                           'corrections': '#1 not issued',
                           'hypothetical_total': 20.0,
-                          'id': 1,
                           'issue_date': None,
-                          'issued': False,
-                          'max_version': 1,
+                          'issued': 0,
+                          'version': 1,
                           'payment_received': 0.0,
                           'period_end': date(2012, 2, 1),
                           'period_start': date(2012, 1, 1),
                           'prior_balance': 0,
-                          'processed': False,
+                          'processed': 0,
                           'ree_charge': 17.6,
                           'ree_quantity': 20,
                           'ree_value': 20,
@@ -1569,8 +1566,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           'services': [],
                           'total_adjustment': 0,
                           'total_error': 8.8,
-                      }],
-                     self.process.get_reebill_metadata_json('99999'))
+                      }], self.process.get_reebill_metadata_json('99999')):
+            self.assertDictContainsSubset(x, y)
+
 
     def test_create_first_reebill(self):
         '''Test creating the first utility bill and reebill for an account,
