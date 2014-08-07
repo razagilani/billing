@@ -1698,8 +1698,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # error in its formula. it should now raise an RSIError.
         # (computing a utility bill doesn't raise an exception by default, but
         # computing a reebill based on the utility bill does.)
-        self.process.add_charge(utilbill_id)
-        self.process.update_charge(utilbill_id, '', {
+        charge = self.process.add_charge(utilbill_id)
+        self.process.update_charge(charge.id, {
             'quantity_formula': '1 + ',
             'RSI_BINDING': 'some_rsi'
         })
@@ -1709,13 +1709,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # delete the new version
         self.process.delete_reebill(account, 1)
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertEquals(0, reebill_data[0]['max_version'])
+        self.assertEquals(0, reebill_data[0]['version'])
 
         # try to create a new version again: it should succeed, even though
         # there was a KeyError due to a missing RSI when computing the bill
         self.process.new_version(account, 1)
         reebill_data = self.process.get_reebill_metadata_json(account)
-        self.assertEquals(1, reebill_data[0]['max_version'])
+        self.assertEquals(1, reebill_data[0]['version'])
 
 
     def test_compute_utility_bill(self):
