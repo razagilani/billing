@@ -19,6 +19,11 @@ Ext.define('ReeBill.view.Exports', {
             text: 'Export Utility Bills to XLS',
             iconCls: 'silk-application-go',
             action: 'exportUtilityBills'
+        },{
+            xtype: 'button',
+            text: '12 Month Estimated Revenue',
+            iconCls: 'silk-application-go',
+            action: 'export12MonthRevenue'
         }]
     }],
 
