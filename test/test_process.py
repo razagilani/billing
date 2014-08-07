@@ -735,21 +735,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # when utilbill is attached to reebill, deletion should fail
         self.process.roll_reebill(account, start_date=start)
         reebills_data = self.process.get_reebill_metadata_json(account)
-        self.assertEqual([{
+        self.assertDictContainsSubset({
                               'actual_total': 0,
                               'balance_due': 0.0,
                               'balance_forward': 0,
                               'corrections': '(never issued)',
                               'hypothetical_total': 0,
-                              'id': 1,
                               'issue_date': None,
-                              'issued': False,
-                              'max_version': 0,
+                              'issued': 0,
+                              'version': 0,
                               'payment_received': 0.0,
                               'period_end': date(2012, 2, 1),
                               'period_start': date(2012, 1, 1),
                               'prior_balance': 0,
-                              'processed': False,
+                              'processed': 0,
                               'ree_charge': 0.0,
                               'ree_quantity': 22.602462036826545,
                               'ree_value': 0,
@@ -757,7 +756,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               'services': [],
                               'total_adjustment': 0,
                               'total_error': 0.0
-                          }], reebills_data)
+                          }, reebills_data[0])
         self.assertRaises(ValueError,
                           self.process.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
@@ -778,6 +777,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertRaises(ValueError,
                           self.process.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
     def test_get_service_address(self):
         account = '99999'
         self.process.upload_utility_bill(account, 'gas',
