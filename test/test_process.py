@@ -1701,25 +1701,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 utility='washgas', rate_class='some rate structure')
         utilbill_data = self.process.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]
-        self.assertDocumentsEqualExceptKeys({
-                                                'account': '99999',
-                                                'computed_total': 0,
-                                                'editable': True,
-                                                'id': 6469L,
-                                                'name': '99999 - Example 1/1785 Massachusetts Ave. - washgas: some rate structure',
-                                                'period_end': date(2013, 7,
-                                                                   8),
-                                                'period_start': date(2013,
-                                                                     5, 6),
-                                                'processed': 0,
-                                                'rate_class': 'some rate structure',
-                                                'reebills': [],
-                                                'service': 'Gas',
-                                                'state': 'Final',
-                                                'total_charges': 0.0,
-                                                'utility': 'washgas',
-                                            }, utilbill_data, 'id',
-                                            'charges')
+        self.assertDictContainsSubset({
+                                          'account': '99999',
+                                          'computed_total': 0,
+                                          'period_end': date(2013, 7, 8),
+                                          'period_start': date(2013, 5, 6),
+                                          'processed': 0,
+                                          'rate_class': 'some rate structure',
+                                          'reebills': [],
+                                          'service': 'Gas',
+                                          'state': 'Final',
+                                          'total_charges': 0.0,
+                                          'utility': 'washgas',
+                                      }, utilbill_data)
+
         #doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
         # TODO enable these assertions when upload_utility_bill stops
         # ignoring them; currently they are set to match the template's
@@ -1769,29 +1764,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # check charges
         # NOTE if the commented-out lines are added below the test will
         # fail, because the charges are missing those keys.
-        self.assertEqual([
+        for x, y in zip([
                              {
                                  'rsi_binding': 'A',
                                  'quantity': 2,
-                                 'id': 'A',
                                  'quantity_units': 'kWh',
                                  'rate': 3,
                                  'total': 6,
                                  'description': 'UPRS only',
                                  'group': 'All Charges',
-                 'error': None,
+                                 'error': None,
                              }, {
                                  'rsi_binding': 'B',
-                                 'id': 'B',
                                  'quantity': 6,
                                  'quantity_units': 'therms',
                                  'rate': 7,
                                  'total': 42,
                                  'description': 'not shared',
                                  'group': 'All Charges',
-                 'error': None,
+                                 'error': None,
                              },
-                         ], charges)
+                         ], charges):
+            self.assertDictContainsSubset(x, y)
 
 
     def test_compute_reebill(self):
