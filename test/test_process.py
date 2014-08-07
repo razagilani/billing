@@ -159,7 +159,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_end': date(2013, 2, 1),
             'prior_balance': 0.,
             'processed': False,
-            'ree_charges': 4.,
+            'ree_charge': 4.,
             'ree_value': 10.,
             'services': [],
             'total_adjustment': 0.,
@@ -789,7 +789,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               'period_start': date(2012, 1, 1),
                               'prior_balance': 0,
                               'processed': False,
-                              'ree_charges': 0.0,
+                              'ree_charge': 0.0,
                               'ree_quantity': 22.602462036826545,
                               'ree_value': 0,
                               'sequence': 1,
@@ -853,8 +853,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           'rate': '1',
                           'group': 'All Charges'})
 
-            p.update_register(ub.id, 'M60324', 'M60324',
-                              {'quantity': 100})
+            p.update_register(ub.registers[0].id, {'quantity': 100})
 
             p.refresh_charges(ub.id)  #creates charges
             p.compute_utility_bill(ub.id)  #updates charge values
@@ -895,7 +894,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         p.compute_reebill(acc, 1, version=1)
 
         d = reebill_data(1)
-        self.assertEqual(d['ree_charges'], 25.0,
+        self.assertEqual(d['ree_charge'], 25.0,
                          "Charges for reebill seq 1 should be updated to 25")
 
         #Update the discount rate for reebill sequence 3
@@ -905,7 +904,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         p.bind_renewable_energy(acc, 3)
         p.compute_reebill(acc, 3)
         d = reebill_data(3)
-        self.assertEqual(d['ree_charges'], 225.0,
+        self.assertEqual(d['ree_charge'], 225.0,
                          "Charges for reebill seq 3 should be updated to 225")
 
         # there should be 2 adjustments: -25 for the first bill, and +75
@@ -936,7 +935,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         four = reebill_data(4)
         self.assertEqual(four['prior_balance'] - four['payment_received'] +
                          four['total_adjustment'], four['balance_forward'])
-        self.assertEquals(four['balance_forward'] + four['ree_charges'],
+        self.assertEquals(four['balance_forward'] + four['ree_charge'],
                           four['balance_due'])
 
         self.assertTrue(reebill_data(1)['issued'])
@@ -1532,7 +1531,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                               'period_end': date(2012, 2, 1),
                               'prior_balance': 0.,
                               'processed': True,
-                              'ree_charges': 8.8,
+                              'ree_charge': 8.8,
                               'ree_value': 10,
                               'services': [],
                               'total_adjustment': 0.,
@@ -1568,7 +1567,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           'period_start': date(2012, 2, 1),
                           'prior_balance': 8.8,
                           'processed': False,
-                          'ree_charges': 0.0,
+                          'ree_charge': 0.0,
                           'ree_quantity': 0,
                           'ree_value': 0,
                           'sequence': 2,
@@ -1590,7 +1589,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           'period_start': date(2012, 1, 1),
                           'prior_balance': 0,
                           'processed': False,
-                          'ree_charges': 17.6,
+                          'ree_charge': 17.6,
                           'ree_quantity': 20,
                           'ree_value': 20,
                           'sequence': 1,
@@ -1876,7 +1875,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                  'period_end': date(2013,2,1),
                  'prior_balance': 0.,
                  'processed': False,
-                 'ree_charges': energy_quantity * .5,
+                 'ree_charge': energy_quantity * .5,
                  'ree_value': energy_quantity,
                  'services': [],
                  'total_adjustment': 0.,
@@ -1902,7 +1901,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
              'period_end': date(2013,2,1),
              'prior_balance': 0.,
              'processed': True,
-             'ree_charges': energy_quantity * .5,
+             'ree_charge': energy_quantity * .5,
              'ree_value': energy_quantity,
              'services': [],
              'total_adjustment': 0.,
@@ -1935,7 +1934,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_end': date(2013,3,1),
             'prior_balance': energy_quantity * .5,
             'processed': False,
-            'ree_charges': energy_quantity * .8,
+            'ree_charge': energy_quantity * .8,
             'ree_value': energy_quantity,
             'services': [],
             'total_adjustment': 0,
@@ -1958,7 +1957,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_end': date(2013,2,1),
             'prior_balance': 0,
             'processed': True,
-            'ree_charges': energy_quantity * .5,
+            'ree_charge': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],
             'total_adjustment': 0,
@@ -1988,7 +1987,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_end': date(2013,3,1),
             'prior_balance': energy_quantity * .5,
             'processed': False,
-            'ree_charges': energy_quantity * .8,
+            'ree_charge': energy_quantity * .8,
             'ree_value': energy_quantity,
             'services': [],
             'total_adjustment': 0,
@@ -2011,7 +2010,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'period_end': date(2013,2,1),
             'prior_balance': 0,
             'processed': False,
-            'ree_charges': energy_quantity * .5,
+            'ree_charge': energy_quantity * .5,
             'ree_value': energy_quantity,
             'services': [],
             'total_adjustment': 0,
