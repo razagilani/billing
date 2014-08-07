@@ -32,12 +32,12 @@ Ext.define('ReeBill.view.IssuableReebills', {
     columns: [{
         header: 'Account',
         dataIndex: 'account',
-        width: 75,
+        width: 120,
         sortable: true
     },{
         header: 'Sequence',
         dataIndex: 'sequence',
-        width: 75,
+        width: 120,
         sortable: false
     },{
         header: 'Recipients',
@@ -45,6 +45,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
         groupable: false,
         dataIndex: 'mailto',
         width: 250,
+        flex: 1,
         editor: {
             xtype: 'textfield'
         },
@@ -63,15 +64,16 @@ Ext.define('ReeBill.view.IssuableReebills', {
     },{
         header: 'Computed Total',
         dataIndex: 'reebill_total',
-        width: 140,
+        width: 175,
         sortable: false,
         renderer: Ext.util.Format.usMoney
     },{
         header: '$ Difference',
         dataIndex: 'difference',
-        width: 125,
+        width: 175,
         sortable: true,
         groupable: false,
+        align: 'right',
         renderer: function(v, params, record) {
             return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
         },
