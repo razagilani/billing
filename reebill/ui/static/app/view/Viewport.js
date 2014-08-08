@@ -206,6 +206,9 @@ Ext.define('ReeBill.view.Viewport', {
                             id: 'estimatedRevenueGrid',
                         },]
                     }]
+                },{
+                    xtype: 'preferencesPanel',
+                    name: 'preferencesPanel'
                 }]
             }]
         };
