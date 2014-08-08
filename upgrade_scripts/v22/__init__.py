@@ -64,6 +64,9 @@ def copy_rsis_from_mongo(s):
                 log.error('utilbill id %s charge id %s: no RSI %s %s' % (
                         u.id, charge.id, charge.rsi_binding,
                         [r['rsi_binding'] for r in rs['rates']]))
+                # a utility bill with messed-up formulas should not be used for
+                # generating new bills' charges
+                u.processed = False
                 continue
             charge.quantity_formula = rsi['quantity']
             charge.rate_formula = rsi['rate']
