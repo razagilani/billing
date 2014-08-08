@@ -171,7 +171,7 @@ class ReebillRenderer:
                 version=max_version)
         reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
-        self.render_version(reebill, reebill_document, outputdir, outputfile)
+        self.render_version(reebill, outputdir, outputfile)
 
     def render_version(self, reebill, outputdir, outputfile):
         styles = getSampleStyleSheet()

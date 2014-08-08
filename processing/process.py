@@ -848,6 +848,7 @@ class Process(object):
             reading.conventional_quantity = register['quantity']
 
         uprs = self.rate_structure_dao.load_uprs_for_utilbill(reebill.utilbill)
+        reebill.utilbill.compute_charges(uprs, utilbill_document)
         reebill.compute_charges(uprs, self.reebill_dao)
         actual_total = reebill.utilbill.total_charge()
 
