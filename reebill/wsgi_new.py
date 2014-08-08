@@ -108,7 +108,6 @@ class WebResource(object):
         # create a NexusUtil
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'))
-
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
 
@@ -121,12 +120,6 @@ class WebResource(object):
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(
-            self.state_db,
-            pymongo.Connection(
-                self.billdb_config['host'],
-                int(self.billdb_config['port'])
-            )[self.billdb_config['database']])
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
@@ -197,22 +190,21 @@ class WebResource(object):
             )
 
         self.integrate_skyline_backend = self.config.get(
-            'runtime',
-            'integrate_skyline_backend')
+            'runtime', 'integrate_skyline_backend')
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
             dict(self.config.items('reebillrendering')), self.state_db,
-            self.reebill_dao, self.logger)
+            self.logger)
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    self.reebill_dao)
+                                                    self.logger)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
-            self.state_db, self.reebill_dao, self.ratestructure_dao,
+            self.state_db, self.ratestructure_dao,
             self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
             self.ree_getter, logger=self.logger)
 
@@ -506,7 +498,7 @@ class ReebillsResource(RESTResource):
             rb = self.process.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, sequence, version)
+                    rb.customer.account, rb.sequence, rb.version)
             rtn = rb.column_dict()
 
         elif not action:

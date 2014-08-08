@@ -70,20 +70,17 @@ Ext.define('ReeBill.view.UtilityBills', {
             allowBlank: false
         },
         width: 100,
-        renderer: function(value) {
-            return Ext.util.Format.number(value, '0,0.00');
-        },
+        renderer: Ext.util.Format.usMoney
     },{
         header: 'Calculated',
         dataIndex: 'computed_total',
         width: 100,
-        renderer: function(value) {
-            return Ext.util.Format.number(value, '0,0.00');
-        },
+        renderer: Ext.util.Format.usMoney
     },{
-        header: 'Reebill Sequence/Version',
+        header: 'RB Seq./Vers.',
+        tooltip: 'Reebill Sequence/Version',
         dataIndex: 'reebills',
-        width: 150,
+        width: 120,
         renderer: function(value, metaData, record) {
             var result = '';
             var reebills = record.get('reebills');
@@ -105,7 +102,7 @@ Ext.define('ReeBill.view.UtilityBills', {
     },{
         header: 'Processed',
         dataIndex: 'processed',
-        width: 80,
+        width: 100,
         tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
         renderer: function(value) {
             return value ? 'Yes' : 'No';                    
@@ -129,7 +126,8 @@ Ext.define('ReeBill.view.UtilityBills', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 125
+        width: 125,
+        flex: 1
     }],
 
     dockedItems: [{
