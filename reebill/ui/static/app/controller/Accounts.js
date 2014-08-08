@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.Accounts', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Accounts', 'AccountsMemory', 'AccountsFilter'
+        'Accounts', 'AccountsMemory', 'AccountsFilter', 'Preferences'
     ],
     
     refs: [{
@@ -40,9 +40,38 @@ Ext.define('ReeBill.controller.Accounts', {
         });
 
         this.getAccountsStore().on({
+            load: function(store, records, successful, eOpts ){
+                store.initialLoad = true;
+            },
             add: function(){
                 var accountForm = this.getAccountForm();
                 accountForm.getForm().reset();
+            },
+            scope: this
+        });
+
+        // Set up sorting
+        this.getPreferencesStore().on({
+            load: function(store, records, successful, eOpts ){
+                store.initialLoad = true;
+                var memStore = this.getAccountsMemoryStore();
+                var sortColumn = store.getAt(store.find('key', 'default_account_sort_field')).get('value');
+                var sortDir = store.getAt(store.find('key', 'default_account_sort_direction')).get('value');
+                memStore.sort({property: sortColumn, direction: sortDir});
+            },
+            scope: this
+        });
+
+        this.getAccountsMemoryStore().on({
+            load: function(store, records, successful, eOpts ){
+                var prefStore = this.getPreferencesStore();
+                var accountsStore = this.getAccountsStore();
+                if(prefStore.initialLoad && accountsStore.initialLoad){
+                    var sortColumnRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_field'));
+                    var sortDirRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_direction'));
+                    sortColumnRec.set('value', store.sorters.items[0].property);
+                    sortDirRec.set('value', store.sorters.items[0].direction);
+                }
             },
             scope: this
         });
@@ -52,6 +81,7 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
+        var prefStore = this.getPreferencesStore();
         var filter = this.getAccountsFilterStore().getAt(0);
         var filterCombo = this.getAccountsFilter();
         filterCombo.select(filter);
