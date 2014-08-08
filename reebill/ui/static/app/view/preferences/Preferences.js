@@ -11,6 +11,7 @@ Ext.define('ReeBill.view.Preferences', {
     items: [{
         xtype: 'fieldset',
         title: 'User Preferences',
+        name: 'preferencesfieldset',
         defaults: {
             anchor: '100%',
             labelWidth: 200
