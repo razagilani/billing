@@ -23,15 +23,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },{
         ref: 'utilbillToggleProcessed',
         selector: 'button[action=utilbillToggleProcessed]'
-//    },{
-//        ref: 'utilbillDla',
-//        selector: 'button[action=utilbillDla]'
-//    },{
-//        ref: 'utilbillSlice',
-//        selector: 'button[action=utilbillSlice]'
-//    },{
-//        ref: 'utilbillResults',
-//        selector: 'button[action=utilbillResults]'
     }],    
     
     init: function() {
@@ -60,15 +51,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
             },
             'button[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
-            },
-            'button[action=utilbillDla]': {
-                click: this.handleDla
-            },
-            'button[action=utilbillSlice]': {
-                click: this.handleSlice
-            },
-            'button[action=utilbillResults]': {
-                click: this.handleResults
             }
         });
 
@@ -84,9 +66,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         this.getUtilbillCompute().setDisabled(!hasSelections);
         this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
-//        this.getUtilbillDla().setDisabled(!hasSelections);
-//        this.getUtilbillSlice().setDisabled(!hasSelections);
-//        this.getUtilbillResults().setDisabled(!hasSelections);
 
         var hasReebill = false;
         Ext.each(recs, function(rec) {
@@ -229,117 +208,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         var rec = selected[0];
         rec.set('processed', !rec.get('processed'));
-    },
-
-//    /**
-//     * Handle the layout button being clicked.
-//     */
-//    handleDla: function() {
-//        var scope = this,
-//            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-//
-//        if (!selected || selected.length != 1)
-//            return;
-//
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/addImagetoDLA',
-//
-//            params: {
-//                utilbill_id: selected[0].get('id')
-//            },
-//            success: function(response, request) {
-//                var jsonData = Ext.JSON.decode(response.responseText);
-//                if (jsonData.success) {
-//                    scope.getUtilityBillsStore().reload();
-//                }
-//            },
-//        });
-//
-//    },
-//
-//    /**
-//     * Handle the identify button being clicked.
-//     */
-//    handleSlice: function() {
-//        var scope = this,
-//            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-//
-//        if (!selected || selected.length != 1)
-//            return;
-//
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/dlasliceimage',
-//            params: {
-//                utilbill_id: selected[0].get('id')
-//            },
-//            success: function(response, request) {
-//                var jsonData = Ext.JSON.decode(response.responseText);
-//                if (jsonData.success) {
-//                    Ext.MessageBox.alert('Status',
-//                        'Task created, press the \'results\' button to see if an answer has been submitted.');
-//
-//                    scope.getUtilityBillsStore().reload();
-//                }
-//            },
-//        });
-//
-//    },
-//
-//    /**
-//     * Handle the results button being clicked.
-//     */
-//    handleResults: function() {
-//        var scope = this,
-//            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-//
-//        if (!selected || selected.length != 1)
-//            return;
-//
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/dlagetresults',
-//            params: {
-//                utilbill_id: selected[0].get('id')
-//            },
-//            success: function(response, request) {
-//                var jsonData = Ext.JSON.decode(response.responseText);
-//                if (jsonData.success) {
-//                    var msg = '';
-//
-//                    for (var i=0; i < jsonData.results.length; i++) {
-//                        msg += ("Question: "+jsonData.results[i].question+"<br>"+
-//                                     "Answer: "+jsonData.results[i]["Answer.answer"]+"<br>"+
-//                                     "Task Status: "+jsonData.results[i].hitstatus+"<br>"+
-//                                     "============================<br>")
-//                    }
-//
-//                    Ext.MessageBox.alert('Data', msg)
-//
-//                    scope.getUtilityBillsStore().reload();
-//                }
-//            },
-//        });
-//    },
-
-    /**
-     * Reload the version number 
-     */
-    refreshVersionNumbers: function(recs) {
-//        var store = this.getReeBillVersionsStore();
-//        store.removeAll();
-//        store.add({sequence: '', version: '', issue_date: ''});
-//
-//        if (recs && recs[0]) {
-//            var rec = recs[0];
-//            var reebills = rec.get('reebills');
-//            if (reebills && reebills.length) {
-//                Ext.each(reebills, function(reebill) {
-//                    if (reebill && reebill.issue_date)
-//                        store.add(reebill);
-//                });
-//            }
-//        }
-//
-//        store.commitChanges();
     }
 
 });
