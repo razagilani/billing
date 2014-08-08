@@ -148,7 +148,7 @@ class ReebillRenderer:
             reebill = self.state_db.get_reebill(account, sequence,
                     version=version)
             self.render_version(reebill, outputdir,
-                    outputfile +  '-%s' % version, verbose)
+                    outputfile +  '-%s' % version)
 
         # concatenate version pdfs
         input_paths = ['%s-%s' % (os.path.join(outputdir, outputfile), v)
@@ -477,8 +477,7 @@ class ReebillRenderer:
             utility_total = reading.conventional_quantity
             total += (utility_total + shadow_total)
             measuredUsage.append([ '', '', round_for_display(shadow_total),
-                    utility_total, round_for_display(total),
-                    reading.quantity_units])
+                    utility_total, round_for_display(total), reading.unit])
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550
