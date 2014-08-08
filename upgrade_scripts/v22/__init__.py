@@ -62,7 +62,8 @@ def copy_rsis_from_mongo(s):
                         charge.rsi_binding)
             except StopIteration:
                 log.error('utilbill id %s charge id %s: no RSI %s' % (
-                    u.id, charge.id, charge.rsi_binding))
+                        u.id, charge.id, charge.rsi_binding))
+                log.error([r['rsi_binding'] for r in rs['rates']])
                 continue
             charge.quantity_formula = rsi['quantity']
             charge.rate_formula = rsi['rate']
