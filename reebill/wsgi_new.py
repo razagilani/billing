@@ -756,6 +756,11 @@ class PreferencesResource(RESTResource):
         self.user_dao.save_user(cherrypy.session['user'])
         return True, {'rows': row,  'results': 1}
 
+    def handle_post(self, *vpath, **params):
+        row = cherrypy.request.json
+        cherrypy.session['user'].preferences[row['key']] = row['value']
+        self.user_dao.save_user(cherrypy.session['user'])
+        return True, {'rows': row,  'results': 1}
 
 class ReportsResource(WebResource):
 

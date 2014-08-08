@@ -41,7 +41,8 @@ Ext.define('ReeBill.controller.Accounts', {
 
         this.getAccountsStore().on({
             load: function(store, records, successful, eOpts ){
-                store.initialLoad = true;
+                var memoryStore = this.getAccountsMemoryStore();
+                memoryStore.loadPage(1);
             },
             add: function(){
                 var accountForm = this.getAccountForm();
@@ -50,23 +51,57 @@ Ext.define('ReeBill.controller.Accounts', {
             scope: this
         });
 
-        // Set up sorting
+        // Set up sorting & filtering
         this.getPreferencesStore().on({
             load: function(store, records, successful, eOpts ){
-                store.initialLoad = true;
+                // Update the store for sorts
                 var memStore = this.getAccountsMemoryStore();
                 var sortColumn = store.getAt(store.find('key', 'default_account_sort_field')).get('value');
                 var sortDir = store.getAt(store.find('key', 'default_account_sort_direction')).get('value');
                 memStore.sort({property: sortColumn, direction: sortDir});
+                memStore.loadPage(1);
+
+                // Update the filter combofield for filters
+                var filterCombo = this.getAccountsFilter();
+                var filterPrefRecId = store.find('key', 'filtername')
+                if( filterPrefRecId !== -1){
+                    filterCombo.setValue(
+                        store.getAt(filterPrefRecId).get('value'));
+                }else {
+                    filterCombo.setValue('none')
+                }
             },
             scope: this
         });
 
         this.getAccountsMemoryStore().on({
+            beforeload: function(store, operation, eOpts){
+                var prefStore = this.getPreferencesStore();
+                var accountsStore = this.getAccountsStore();
+                if(prefStore.getRange().length && accountsStore.getRange().length){
+                    // Filter
+                    var filterStore = this.getAccountsFilterStore();
+                    var allRecords = accountsStore.getRange();
+
+                    // Find the correct filter record
+                    var filterRecordId = prefStore.find('key', 'filtername');
+                    if (filterRecordId !== -1){
+                        var filtername = prefStore.getAt(filterRecordId).get('value');
+                    }else{
+                        var filtername = 'none'
+                    }
+                    var filter = filterStore.getAt(filterStore.find('value', filtername));
+
+                    // apply the filter
+                    var filteredRecords = Ext.Array.filter(allRecords, filter.get('filter').filterFn)
+                    store.getProxy().data = filteredRecords;
+                }
+            },
             load: function(store, records, successful, eOpts ){
                 var prefStore = this.getPreferencesStore();
                 var accountsStore = this.getAccountsStore();
-                if(prefStore.initialLoad && accountsStore.initialLoad){
+                if(prefStore.getRange().length && accountsStore.getRange().length){
+                    // Sort
                     var sortColumnRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_field'));
                     var sortDirRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_direction'));
                     sortColumnRec.set('value', store.sorters.items[0].property);
@@ -81,25 +116,24 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var prefStore = this.getPreferencesStore();
-        var filter = this.getAccountsFilterStore().getAt(0);
-        var filterCombo = this.getAccountsFilter();
-        filterCombo.select(filter);
     },
 
     /**
      * Handle the filter being changed.
      */
-    handleFilter: function() {
+    handleFilter: function( combo, newValue, oldValue, eOpts) {
         // We're filtering every record, so we have to use AccountsStore
         // and not AccountsMemoryStore
-        var store = this.getAccountsMemoryStore()
-        var allRecords = this.getAccountsStore().getRange();
+        var memStore = this.getAccountsMemoryStore()
+        var prefStore = this.getPreferencesStore();
         var filter = this.getAccountsFilter().getValue();
-        var filteredRecords = Ext.Array.filter(allRecords, filter.filterFn)
-
-        store.getProxy().data = filteredRecords;
-        store.loadPage(1);
+        var filterPrefRecId = prefStore.find('key', 'filtername')
+        if( filterPrefRecId !== -1){
+            var prefRec = prefStore.getAt(filterPrefRecId).set('value', newValue);
+        }else{
+            prefStore.add({key: 'filtername', value: newValue});
+        }
+        memStore.loadPage(1);
     },
 
     /**
