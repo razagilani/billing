@@ -328,8 +328,7 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleCreateNext: function() {
          var store = this.getReebillsStore();
-         store.add({issued:false});
-
+         store.insert(0, {issued:false});
      },
 
      /**

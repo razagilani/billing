@@ -4,7 +4,6 @@ Ext.define('ReeBill.store.Reebills', {
     model: 'ReeBill.model.Reebill',
 
     autoLoad: false,
-    remoteSort: true,
     autoSync: true,
 
 	proxy: {
