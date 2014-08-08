@@ -16,26 +16,28 @@ Ext.define('ReeBill.view.Reconciliations', {
     columns: [{
         header: 'Account',
         dataIndex: 'account',
-        width: 80
+        width: 120
     },{
         header: 'Sequence',
         dataIndex: 'sequence',
-        width: 80
+        width: 120
     },{
         header: 'Bill Energy (therms)',
         dataIndex: 'bill_therms',
-        width: 150
+        width: 200
     },{
         header: 'OLAP Energy (therms)',
         dataIndex: 'olap_therms',
-        width: 150
+        width: 200
     },{
         header: 'OLTP Energy (therms)',
         dataIndex: 'oltp_therms',
-        width: 150
+        width: 200
     },{
         header: 'Errors (see reconcilation log for details)',
-        dataIndex: 'errors'
+        dataIndex: 'errors',
+        width: 200,
+        flex: 1
     }],
 
     bbar: {

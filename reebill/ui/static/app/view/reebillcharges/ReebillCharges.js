@@ -37,35 +37,43 @@ Ext.define('ReeBill.view.ReebillCharges', {
     },{
         header: 'Description',
         dataIndex: 'description',
-        width: 150
+        width: 150,
+        flex: 1
     },{
         header: 'Actual Quantity',
-        dataIndex: 'actual_quantity'
+        dataIndex: 'actual_quantity',
+        width: 150
     },{
         header: 'Hypo Quantity',
-        dataIndex: 'quantity'
+        dataIndex: 'quantity',
+        width: 150
     },{
         header: 'Units',
-        dataIndex: 'quantity_units'
+        dataIndex: 'quantity_units',
+        width: 120
     },{
         header: 'Actual Rate',
-        dataIndex: 'actual_rate'
+        dataIndex: 'actual_rate',
+        width: 120
     },{
         header: 'Hypo Rate',
-        dataIndex: 'rate'
+        dataIndex: 'rate',
+        width: 120
     },{
         header: 'Actual Total', 
         dataIndex: 'actual_total',
         align: 'right',
         summaryType: 'sum',
         summaryRenderer: function(value) { return '<b>' + Ext.util.Format.usMoney(value) + '</b>'},
-        renderer: Ext.util.Format.usMoney
+        renderer: Ext.util.Format.usMoney,
+        width: 120
     },{
         header: 'Hypo Total', 
         dataIndex: 'total',
         align: 'right',
         summaryType: 'sum',
         summaryRenderer: function(value) { return '<b>' + Ext.util.Format.usMoney(value) + '</b>'},
-        renderer: Ext.util.Format.usMoney
+        renderer: Ext.util.Format.usMoney,
+        width: 120
     }]
 });

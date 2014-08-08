@@ -46,12 +46,12 @@ Ext.define('ReeBill.view.RateStructures', {
     forceFit: true,
     
     columns: [{
+        xtype: 'checkcolumn',
         header: 'Shared',
         dataIndex: 'shared',
         sortable: true,
         width: 65,
-        flex: 0,
-        renderer: checkboxRenderer
+        flex: 0
     },{
         header: 'RSI Binding',
         sortable: true,
@@ -109,12 +109,12 @@ Ext.define('ReeBill.view.RateStructures', {
         allowBlank: false,
         tpl: '{[values.error ? values.error : values.rate]}'
     },{
+        xtype: 'checkcolumn',
         header: 'Has Charge',
         dataIndex: 'has_charge',
         sortable: true,
         width: 100,
-        flex: 0,
-        renderer: checkboxRenderer
+        flex: 0
     },{
         header: 'Group',
         dataIndex: 'group',
@@ -166,13 +166,3 @@ Ext.define('ReeBill.view.RateStructures', {
         }]
     }]
 });
-
-/**
- * Renders a checkbox 
- */
-function checkboxRenderer(val) {
-    if (val)
-        return '<div style="text-align: center;"><img class="x-grid-checkcolumn x-grid-checkcolumn-checked" src="data:image/gif;;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="></div>';
-
-    return '<div style="text-align: center;"><img class="x-grid-checkcolumn" src="data:image/gif;;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="></div>';
-}

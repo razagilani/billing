@@ -36,7 +36,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 100,
+        width: 150,
     },{
         header: 'Register ID',
         dataIndex: 'identifier',
@@ -45,7 +45,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 100,
+        width: 150,
     },{
         header: 'Type',
         dataIndex: 'reg_type',
@@ -54,7 +54,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 70,
+        width: 100,
     },{
         header: 'RSI Binding',
         dataIndex: 'register_binding',
@@ -63,7 +63,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 100,
+        width: 200,
     },{
         header: 'Quantity',
         dataIndex: 'quantity',
@@ -72,11 +72,11 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 70,
+        width: 150,
     },{
         header: 'Units',
         dataIndex: 'quantity_units',
-        width: 70,
+        width: 100,
         sortable: true,
         editor: {
             xtype: 'combo',
@@ -96,7 +96,8 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         editor: {
             xtype: 'textfield',
             allowBlank: false
-        }
+        },
+        flex: 1
     }],
 
     dockedItems: [{

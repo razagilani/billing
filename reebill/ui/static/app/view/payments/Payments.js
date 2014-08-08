@@ -45,7 +45,8 @@ Ext.define('ReeBill.view.Payments', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 300
+        width: 300,
+        flex: 1
     },{
         header: 'Credit',
         sortable: true,
@@ -54,7 +55,8 @@ Ext.define('ReeBill.view.Payments', {
             xtype: 'numberfield',
             allowBlank: false
         },
-        width: 125
+        width: 125,
+        renderer: Ext.util.Format.usMoney
     }],
 
     dockedItems: [{
