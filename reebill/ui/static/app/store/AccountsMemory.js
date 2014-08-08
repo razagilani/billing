@@ -12,10 +12,5 @@ Ext.define('ReeBill.store.AccountsMemory', {
     proxy: {
         type: 'memory',
         enablePaging: true,
-    },
-
-    sorters: [{
-        property: 'account',
-        direction: 'DESC'
-    }],
+    }
 });
