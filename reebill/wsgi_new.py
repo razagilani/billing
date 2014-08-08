@@ -498,7 +498,7 @@ class ReebillsResource(RESTResource):
             rb = self.process.new_version(account, sequence)
 
             journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, sequence, version)
+                    rb.customer.account, rb.sequence, rb.version)
             rtn = rb.column_dict()
 
         elif not action:
