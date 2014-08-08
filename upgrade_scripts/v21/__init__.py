@@ -60,7 +60,7 @@ def set_processed():
 
 def upgrade():
     log.info('Beginning upgrade to version 21')
-    #alembic_upgrade('3147aa982e03')
+    alembic_upgrade('3147aa982e03')
     init_model()
     copy_charges_from_mongo()
     set_processed()

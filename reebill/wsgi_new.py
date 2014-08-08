@@ -743,6 +743,20 @@ class JournalResource(RESTResource):
         return True, {'rows': note.to_dict(), 'results': 1}
 
 
+class PreferencesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        rows = [{'key': k, 'value': v} for k, v in cherrypy.session[
+            'user'].preferences.items()]
+        return True, {'rows': rows,  'results': len(rows)}
+
+    def handle_put(self, *vpath, **params):
+        row = cherrypy.request.json
+        cherrypy.session['user'].preferences[row['key']] = row['value']
+        self.user_dao.save_user(cherrypy.session['user'])
+        return True, {'rows': row,  'results': 1}
+
+
 class ReportsResource(WebResource):
 
     @cherrypy.expose
@@ -869,6 +883,7 @@ class BillToolBridge(WebResource):
     reebillversions = ReebillVersionsResource()
     journal = JournalResource()
     reports = ReportsResource()
+    preferences = PreferencesResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
