@@ -60,8 +60,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the row selection.
      */
     handleRowSelect: function(combo, recs) {
-        this.refreshVersionNumbers(recs);
-
         var hasSelections = recs.length > 0;
 
         this.getUtilbillCompute().setDisabled(!hasSelections);
