@@ -310,8 +310,17 @@ Ext.define('ReeBill.controller.Reebills', {
 
          var selected = selections[0];
 
-         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Creating new versions; please wait' });
+         var waitMask = new Ext.LoadMask(Ext.getBody(),
+             { msg: 'Creating new version. Please wait...' });
          selected.set('action', 'newversion');
+         waitMask.show();
+
+         // We have to releoad the store, because the new version will be a
+         // completely new Reebill, with a new id
+         Ext.Function.defer(function(){
+             store.reload();
+             waitMask.hide();
+         }, 1000, this);
      },
 
      /**
