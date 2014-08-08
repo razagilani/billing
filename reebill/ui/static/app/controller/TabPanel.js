@@ -40,7 +40,10 @@ Ext.define('ReeBill.controller.TabPanel', {
         
         this.control({
             'grid[id=accountsGrid]': {
-                selectionchange: this.setTabs
+                selectionchange: function(){
+                    this.handleAccountSelect();
+                    this.setTabs();
+                }
             },
             'grid[id=utilityBillsGrid]': {
                 selectionchange: this.setTabs
@@ -50,6 +53,10 @@ Ext.define('ReeBill.controller.TabPanel', {
             }
         });
 
+    },
+
+    handleAccountSelect: function(){
+        this.getUtilityBillsGrid().getSelectionModel().deselectAll();
     },
 
     /**
