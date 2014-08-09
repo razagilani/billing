@@ -63,13 +63,8 @@ Ext.define('ReeBill.controller.Accounts', {
 
                 // Update the filter combofield for filters
                 var filterCombo = this.getAccountsFilter();
-                var filterPrefRecId = store.find('key', 'filtername')
-                if( filterPrefRecId !== -1){
-                    filterCombo.setValue(
-                        store.getAt(filterPrefRecId).get('value'));
-                }else {
-                    filterCombo.setValue('none')
-                }
+                var filterPrefRec = store.getOrCreate('filtername', 'none');
+                filterCombo.setValue(filterPrefRec.get('value'));
             },
             scope: this
         });
@@ -84,13 +79,10 @@ Ext.define('ReeBill.controller.Accounts', {
                     var allRecords = accountsStore.getRange();
 
                     // Find the correct filter record
-                    var filterRecordId = prefStore.find('key', 'filtername');
-                    if (filterRecordId !== -1){
-                        var filtername = prefStore.getAt(filterRecordId).get('value');
-                    }else{
-                        var filtername = 'none'
-                    }
-                    var filter = filterStore.getAt(filterStore.find('value', filtername));
+                    var filterRecord = prefStore.getOrCreate('filtername', 'none')
+                    var filter = filterStore.getAt(
+                        filterStore.find('value',
+                            filterRecord.get('value')));
 
                     // apply the filter
                     var filteredRecords = Ext.Array.filter(allRecords, filter.get('filter').filterFn)
@@ -127,12 +119,7 @@ Ext.define('ReeBill.controller.Accounts', {
         var memStore = this.getAccountsMemoryStore()
         var prefStore = this.getPreferencesStore();
         var filter = this.getAccountsFilter().getValue();
-        var filterPrefRecId = prefStore.find('key', 'filtername')
-        if( filterPrefRecId !== -1){
-            var prefRec = prefStore.getAt(filterPrefRecId).set('value', newValue);
-        }else{
-            prefStore.add({key: 'filtername', value: newValue});
-        }
+        var filterPrefRec = prefStore.setOrCreate('filtername', newValue);
         memStore.loadPage(1);
     },
 
