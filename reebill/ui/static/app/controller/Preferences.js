@@ -26,7 +26,7 @@ Ext.define('ReeBill.controller.Preferences', {
         
         this.control({
             'button[action=resetPreferences]': {
-                click: this.hanldeResetPreferences
+                click: this.handleResetPreferences
             },
             'button[action=submitPreferences]': {
                 click: this.handleSubmitPreferences
@@ -34,7 +34,7 @@ Ext.define('ReeBill.controller.Preferences', {
         });
 
         this.getPreferencesStore().on({
-            load: this.hanldeResetPreferences,
+            load: this.handleResetPreferences,
             scope: this
         });
     },
@@ -42,16 +42,29 @@ Ext.define('ReeBill.controller.Preferences', {
     /**
      * Handle the panel being reset.
      */
-    hanldeResetPreferences: function() {
+    handleResetPreferences: function() {
         var store = this.getPreferencesStore();
-        var values = this.getPreferencesPanel();
-        console.log(store, panel, panel.getForm().getValues())
+        var panel = this.getPreferencesPanel();
+        var fields = panel.getForm().getFields();
+        fields.each(function(field){
+            var name = field.getName();
+            var val = field.getValue();
+            var prefRec = store.getOrCreate(name, val);
+            field.setValue(prefRec.get('value'));
+        });
     },
 
     /**
      * Handle the submit button clicked
      */
     handleSubmitPreferences: function() {
-
+        var store = this.getPreferencesStore();
+        var panel = this.getPreferencesPanel();
+        var fields = panel.getForm().getFields();
+        fields.each(function(field){
+            var name = field.getName();
+            var val = field.getValue();
+            store.setOrCreate(name, val);
+        });
     }
 });
