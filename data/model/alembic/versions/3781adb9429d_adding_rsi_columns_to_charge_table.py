@@ -16,9 +16,9 @@ from sqlalchemy.dialects import mysql
 
 def upgrade():
     op.add_column(u'charge', sa.Column('has_charge', sa.Boolean(), nullable=False))
-    op.add_column(u'charge', sa.Column('quantity_formula', sa.String(length=255), nullable=False))
-    op.add_column(u'charge', sa.Column('rate_formula', sa.String(length=255), nullable=False))
-    op.add_column(u'charge', sa.Column('roundrule', sa.String(length=255), nullable=True))
+    op.add_column(u'charge', sa.Column('quantity_formula', sa.String(length=1000), nullable=False))
+    op.add_column(u'charge', sa.Column('rate_formula', sa.String(length=1000), nullable=False))
+    op.add_column(u'charge', sa.Column('roundrule', sa.String(length=1000), nullable=True))
     op.add_column(u'charge', sa.Column('shared', sa.Boolean(), nullable=False))
 
 def downgrade():
