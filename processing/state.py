@@ -1048,11 +1048,11 @@ class Charge(Base):
     # either this or quantity and rate should be null at any given time,
     # never both or neither.
 
-    quantity_formula = Column(String(255), nullable=False)
-    rate_formula = Column(String(255), nullable=False)
+    quantity_formula = Column(String(1000), nullable=False)
+    rate_formula = Column(String(1000), nullable=False)
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
-    roundrule = Column(String(255))
+    roundrule = Column(String(1000))
 
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id))
 
