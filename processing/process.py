@@ -1488,33 +1488,24 @@ class Process(object):
           issued bill, Days since then and the last event) and the length
           of the list for all accounts. If account is given, the only the
           accounts dictionary is returned """
-        statuses = self.state_db.retrieve_status_days_since(account)
+        grid_data = self.state_db.get_accounts_grid_data(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
-                [s.account for s in statuses])
-        bill_data = self.state_db.get_accounts_grid_data(account)
+            [row[0] for row in grid_data])
 
         rows_dict = {}
-
-        for status in statuses:
-            rows_dict[status.account] = {
-                'account': status.account,
-                'codename': name_dicts[status.account]['codename'] if
-                       'codename' in name_dicts[status.account] else '',
-                'casualname': name_dicts[status.account]['casualname'] if
-                       'casualname' in name_dicts[status.account] else '',
-                'primusname': name_dicts[status.account]['primus'] if
-                'primus' in name_dicts[status.account] else '',
-                'dayssince': status.dayssince,
-                'provisionable': False
+        for acc, _, _, issue_date, rate_class, service_address, dayssince in \
+                grid_data:
+            rows_dict[acc] ={
+                'account': acc,
+                'codename': name_dicts[acc].get('codename', ''),
+                'casualname': name_dicts[acc].get('casualname', ''),
+                'primusname': name_dicts[acc].get('primus', ''),
+                'dayssince': dayssince,
+                'provisionable': False,
+                'lastissuedate': issue_date if issue_date else '',
+                'lastrateclass': rate_class if rate_class else '',
+                'utilityserviceaddress': str(service_address) if service_address else ''
             }
-
-        for acc, _, _, issue_date, rate_class, service_address in bill_data:
-            issue_date = issue_date if issue_date else ''
-            rate_class = rate_class if rate_class else ''
-            service_address = str(service_address) if service_address else ''
-            rows_dict[acc]['lastissuedate'] = issue_date
-            rows_dict[acc]['utilityserviceaddress'] = service_address
-            rows_dict[acc]['lastrateclass'] = rate_class
 
         if account is not None:
             events = [self.journal_dao.last_event_summary(account)]
