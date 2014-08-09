@@ -34,7 +34,6 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         sortable: false,
         editor: {
             xtype: 'textfield',
-            allowBlank: false
         },
         width: 150,
     },{
@@ -43,7 +42,6 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         sortable: false,
         editor: {
             xtype: 'textfield',
-            allowBlank: false
         },
         width: 150,
     },{
