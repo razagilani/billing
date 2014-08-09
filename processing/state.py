@@ -1348,9 +1348,6 @@ class StateDB(object):
         return session.query(UtilBill).filter(ReeBill.utilbills.any(),
                 ReeBill.id == reebill.id).all()
 
-    def get_reebill_by_id(self, session, rbid):
-        return session.query(ReeBill).filter(ReeBill.id == rbid).one()
-
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
@@ -1479,9 +1476,10 @@ class StateDB(object):
         '''Returns the Account of every customer,
         the Sequence, Version and Issue date of the highest-sequence,
         highest-version issued ReeBill object,
-        and the rate class and service address of the latest (i.e. last-ending)
-        utility bill for each customer. If account is given, the query is
-        filtered by it.
+        the rate class and service address of the latest (i.e. last-ending)
+        utility bill for each customer,
+        and the days since the last utilbill was issued. If account is given,
+        the query is filtered by it.
         This is a way of speeding up the AccountsGrid in the UI
         '''
         session = Session()
@@ -1505,7 +1503,8 @@ class StateDB(object):
                           version_sq.c.max_version,
                           version_sq.c.issue_date,
                           UtilBill.rate_class,
-                          Address)\
+                          Address,
+                          StatusDaysSince.dayssince)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
                    sequence_sq.c.max_sequence == version_sq.c.sequence))\
@@ -1513,7 +1512,8 @@ class StateDB(object):
         .outerjoin(UtilBill, and_(
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
-        .outerjoin(Address, UtilBill.service_address_id == Address.id)
+        .outerjoin(Address, UtilBill.service_address_id == Address.id)\
+        .join(StatusDaysSince, StatusDaysSince.account == Customer.account)
 
         if account is not None:
             q = q.filter(Customer.account == account)
@@ -1895,16 +1895,6 @@ class StateDB(object):
             .filter(Customer.account == account).order_by(
             Payment.date_received).all()
         return payments
-
-    def retrieve_status_days_since(self, account=None):
-        # SQLAlchemy query to get account & dates for all utilbills
-        # If Account is given, only the status for this account is returned
-        session = Session()
-        entityQuery = session.query(StatusDaysSince)
-        if account is not None:
-            entityQuery = entityQuery.filter(StatusDaysSince.account == account)
-        lockmodeQuery = entityQuery.with_lockmode("read")
-        return lockmodeQuery.all()
 
 
 class UtilBillLoader(object):
