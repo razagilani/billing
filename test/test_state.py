@@ -397,6 +397,94 @@ class StateTest(TestCaseWithSetup):
         self.assertRaises(NoSuchBillException,
                 self.state_db.get_last_real_utilbill, '99999', date(2000,3,1))
 
+    def test_get_accounts_grid_data(self):
+        empty_address = Address()
+        fake_address = Address('Addressee', 'Street', 'City', 'ST', '12345')
+        # Create 2 customers
+        customer1 = self.session.query(Customer).one()
+        customer2 = Customer('Test Customer', 99998, .12, .34,
+                            'example@example.com', 'FB Test Utility Name',
+                            'FB Test Rate Class', empty_address, empty_address)
+        self.session.add(customer2)
+        self.session.commit()
+
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data(),
+            [('99999', None, None, None, None, None, None),
+             ('99998', None, None, None, None, None, None)])
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data('99998'),
+            [('99998', None, None, None, None, None, None)])
+
+        # Attach two utilitybills with out addresses but with rate class to one
+        # of the customers, and one utilbill with empty rateclass but with
+        # address to the other customer
+        gas_bill_1 = UtilBill(customer1, 0, 'gas', 'washgas',
+                'DC Non Residential Non Heat', empty_address, empty_address,
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
+        gas_bill_2 = UtilBill(customer1, 0, 'gas', 'washgas',
+                'DC Non Residential Non Heat', empty_address, empty_address,
+                period_start=date(2000,3,1), period_end=date(2000,4,1))
+        gas_bill_3 = UtilBill(customer2, 0, 'gas', 'washgas',
+                '', fake_address, fake_address,
+                period_start=date(2000,3,1), period_end=date(2000,4,1))
+        self.session.add(gas_bill_1)
+        self.session.add(gas_bill_2)
+        self.session.add(gas_bill_3)
+        self.session.commit()
+
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data(),[
+                ('99999', None, None, None, 'DC Non Residential Non Heat',
+                    empty_address, None),
+                ('99998', None, None, None, '',
+                    fake_address, None)])
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data('99998'),
+            [('99998', None, None, None, '', fake_address, None)]
+        )
+
+        # Now Attach a reebill to one and issue it , and a utilbill with a
+        # different rateclass to the other
+        reebill = ReeBill(customer1, 1, 0, utilbills=[gas_bill_1])
+        gas_bill_4 = UtilBill(customer2, 0, 'gas', 'washgas',
+                'New Rateclass', fake_address, fake_address,
+                period_start=date(2000, 5, 1), period_end=date(2000, 6, 1))
+        issue_date = datetime(2014, 8, 9, 21, 6, 6)
+
+        self.session.add(gas_bill_4)
+        self.session.add(reebill)
+        self.state_db.issue('99999', 1, issue_date)
+        self.session.commit()
+
+        #TODO: Figure out what days since is actually supposed to be
+        # see https://www.pivotaltracker.com/story/show/76652548
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data(), [
+                ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
+                    empty_address, 5303L),
+                ('99998', None, None, None, 'New Rateclass', fake_address, None)]
+        )
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data('99998'),
+            [('99998', None, None, None, 'New Rateclass', fake_address, None)]
+        )
+
+        # Create another reebill, but don't issue it. The data should not change
+        reebill_2 = ReeBill(customer1, 2, 0, utilbills=[gas_bill_2])
+        self.session.add(reebill_2)
+        self.session.commit()
+
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data(), [
+                ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
+                    empty_address, 5303L),
+                ('99998', None, None, None, 'New Rateclass', fake_address, None)]
+        )
+        self.assertEqual(
+            self.state_db.get_accounts_grid_data('99998'),
+            [('99998', None, None, None, 'New Rateclass', fake_address, None)]
+        )
 
 if __name__ == '__main__':
     unittest.main()

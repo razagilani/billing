@@ -1486,10 +1486,12 @@ class StateDB(object):
         sequence_sq = session.query(
             ReeBill.customer_id, func.max(
                 ReeBill.sequence).label('max_sequence'))\
+            .filter(ReeBill.issued == 1)\
             .group_by(ReeBill.customer_id).subquery()
         version_sq = session.query(
             ReeBill.customer_id, ReeBill.sequence, ReeBill.issue_date,
             func.max(ReeBill.version).label('max_version'))\
+            .filter(ReeBill.issued == 1)\
             .group_by(ReeBill.sequence, ReeBill.customer_id)\
             .subquery()
         utilbill_sq = session.query(
@@ -1513,7 +1515,8 @@ class StateDB(object):
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
-        .join(StatusDaysSince, StatusDaysSince.account == Customer.account)
+        .join(StatusDaysSince, StatusDaysSince.account == Customer.account)\
+        .order_by(desc(Customer.account))
 
         if account is not None:
             q = q.filter(Customer.account == account)
