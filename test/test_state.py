@@ -425,8 +425,7 @@ class StateTest(TestCaseWithSetup):
                 processed=True)
         gas_bill_2 = UtilBill(customer1, 0, 'gas', 'washgas',
                 'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000, 3, 1), period_end=date(2000, 4, 1),
-                processed=True)
+                period_start=date(2000, 3, 1), period_end=date(2000, 4, 1))
         gas_bill_3 = UtilBill(customer2, 0, 'gas', 'washgas',
                 '', fake_address, fake_address,
                 period_start=date(2000, 4, 1), period_end=date(2000, 5, 1),
@@ -439,7 +438,7 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),[
                 ('99999', None, None, None, 'DC Non Residential Non Heat',
-                    empty_address, date(2000, 4, 1)),
+                    empty_address, date(2000, 2, 1)),
                 ('99998', None, None, None, '',
                     fake_address, date(2000, 5, 1))])
         self.assertEqual(
@@ -464,7 +463,7 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
                 ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
-                    empty_address, date(2000, 4, 1)),
+                    empty_address, date(2000, 2, 1)),
                 ('99998', None, None, None, 'New Rateclass', fake_address,
                  date(2000, 6, 1))]
         )
@@ -482,7 +481,7 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
                 ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
-                    empty_address, date(2000, 4, 1)),
+                    empty_address, date(2000, 2, 1)),
                 ('99998', None, None, None, 'New Rateclass', fake_address,
                  date(2000, 6, 1))]
         )
