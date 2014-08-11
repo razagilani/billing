@@ -117,23 +117,25 @@ def upgrade():
     uri = config.get('statedb', 'uri')
     engine = create_engine(uri)
     connection = engine.connect()
-    trans = connection.begin()
+    transaction = connection.begin()
 
-    initial_customer_data = read_initial_customer_data(connection)
-    alembic_upgrade(connection, '39efff02706c')
-    log.info('Alembic Upgrade Complete')
+    try:
+        initial_customer_data = read_initial_customer_data(connection)
+        alembic_upgrade(connection, '39efff02706c')
+        log.info('Alembic Upgrade Complete')
+        init_model(schema_revision='39efff02706c')
+        s = Session(bind=connection)
 
-    init_model()
-    s = Session(bind=connection)
+        set_fb_attributes(initial_customer_data, s)
+        copy_registers_from_mongo(s)
+        copy_rsis_from_mongo(s)
+    except:
+        transaction.rollback()
+        raise
 
-    set_fb_attributes(initial_customer_data, s)
-    copy_registers_from_mongo(s)
-    copy_rsis_from_mongo(s)
-    log.info('Exiting')
 
+    transaction.rollback()
 
-    trans.rollback()
-    exit()
     #log.info('Committing to database')
     #s.commit()
     #log.info('Upgrade to version 22 complete')
