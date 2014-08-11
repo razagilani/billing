@@ -16,6 +16,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
+from sqlalchemy.sql.sqltypes import Enum
 from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
@@ -165,6 +166,40 @@ class Address(Base):
                    other_address.city,
                    other_address.state,
                    other_address.postal_code)
+
+
+class Company(Base):
+    __tablename__ = 'company'
+
+    id = Column(Integer, primary_key=True)
+    address_id = Column(Integer, ForeignKey('address.id'))
+
+    name = Column(Integer)
+    discriminator = Column(String(50))
+    service = Column(Enum('gas', 'electric', name='company_service'))
+    address = relationship("Address")
+
+    def __init__(self, name, address, service):
+        self.name = name
+        self.address = address
+        self.service = service
+
+    __mapper_args__ = {'polymorphic_on': discriminator}
+
+
+class Supplier(Company):
+    __mapper_args__ = {'polymorphic_identity': 'supplier'}
+
+
+class Utility(Company):
+    __mapper_args__ = {'polymorphic_identity': 'utility'}
+
+    #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
+
+    def __init__(self, name, address, service, rate_classes=[]):
+        """Construct a :class:`Utility` instance"""
+        assert rate_classes == []
+        super(Utility, self).__init__(name, address, service)
 
 
 class Customer(Base):
