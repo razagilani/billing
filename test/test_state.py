@@ -421,13 +421,16 @@ class StateTest(TestCaseWithSetup):
         # address to the other customer
         gas_bill_1 = UtilBill(customer1, 0, 'gas', 'washgas',
                 'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
+                period_start=date(2000, 1, 1), period_end=date(2000, 2, 1),
+                processed=True)
         gas_bill_2 = UtilBill(customer1, 0, 'gas', 'washgas',
                 'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000,3,1), period_end=date(2000,4,1))
+                period_start=date(2000, 3, 1), period_end=date(2000, 4, 1),
+                processed=True)
         gas_bill_3 = UtilBill(customer2, 0, 'gas', 'washgas',
                 '', fake_address, fake_address,
-                period_start=date(2000,3,1), period_end=date(2000,4,1))
+                period_start=date(2000, 4, 1), period_end=date(2000, 5, 1),
+                processed=True)
         self.session.add(gas_bill_1)
         self.session.add(gas_bill_2)
         self.session.add(gas_bill_3)
@@ -436,12 +439,12 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),[
                 ('99999', None, None, None, 'DC Non Residential Non Heat',
-                    empty_address, None),
+                    empty_address, date(2000, 4, 1)),
                 ('99998', None, None, None, '',
-                    fake_address, None)])
+                    fake_address, date(2000, 5, 1))])
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, '', fake_address, None)]
+            [('99998', None, None, None, '', fake_address, date(2000, 5, 1))]
         )
 
         # Now Attach a reebill to one and issue it , and a utilbill with a
@@ -449,7 +452,8 @@ class StateTest(TestCaseWithSetup):
         reebill = ReeBill(customer1, 1, 0, utilbills=[gas_bill_1])
         gas_bill_4 = UtilBill(customer2, 0, 'gas', 'washgas',
                 'New Rateclass', fake_address, fake_address,
-                period_start=date(2000, 5, 1), period_end=date(2000, 6, 1))
+                period_start=date(2000, 5, 1), period_end=date(2000, 6, 1),
+                processed=True)
         issue_date = datetime(2014, 8, 9, 21, 6, 6)
 
         self.session.add(gas_bill_4)
@@ -462,12 +466,14 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
                 ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
-                    empty_address, 5303L),
-                ('99998', None, None, None, 'New Rateclass', fake_address, None)]
+                    empty_address, date(2000, 4, 1)),
+                ('99998', None, None, None, 'New Rateclass', fake_address,
+                 date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, 'New Rateclass', fake_address, None)]
+            [('99998', None, None, None, 'New Rateclass', fake_address,
+              date(2000, 6, 1))]
         )
 
         # Create another reebill, but don't issue it. The data should not change
@@ -478,12 +484,14 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
                 ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
-                    empty_address, 5303L),
-                ('99998', None, None, None, 'New Rateclass', fake_address, None)]
+                    empty_address, date(2000, 4, 1)),
+                ('99998', None, None, None, 'New Rateclass', fake_address,
+                 date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, 'New Rateclass', fake_address, None)]
+            [('99998', None, None, None, 'New Rateclass', fake_address,
+              date(2000, 6, 1))]
         )
 
 if __name__ == '__main__':
