@@ -5,8 +5,6 @@ Ext.define('ReeBill.store.Payments', {
 
     autoLoad: false,
     autoSync: true,
-    remoteSort: true,
-    remoteFilter: true,
 
 	proxy: {
 		type: 'rest',
@@ -33,5 +31,11 @@ Ext.define('ReeBill.store.Payments', {
             },
             scope: this
         },
-    }
+    },
+
+
+    sorters: [{
+        property: 'date_received',
+        direction: 'DESC'
+    }]
 });
