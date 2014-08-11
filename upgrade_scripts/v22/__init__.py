@@ -40,24 +40,34 @@ db = client[config.get('billdb', 'database')]
 #     return Session
 
 
-def read_initial_customer_data(connection):
+def read_initial_customer_data(session):
     log.info('Reading initial customers data before schema migration')
     meta = MetaData()
-    s = Table('customer', meta, autoload=True, autoload_with=connection)
-    result = connection.execute(select([s]))
-    return {row['id']: row for row in result}
+    customer_table = Table('customer', meta, autoload=True,
+        autoload_with=session.connection())
+    result = session.execute(select([customer_table]))
+    print result.keys()
+    return {row['document_id']: row for row in result}
 
 def set_fb_attributes(initial_customer_data, session):
     utilbill_map = {ub.id: ub for ub in session.query(UtilBill).all()}
     for customer in session.query(Customer).all():
         template_utilbill_id = \
             initial_customer_data[customer.id]['utilbill_template_id']
-        template_utilbill = utilbill_map[template_utilbill_id]
+        log.debug('Looking up fb attributes for customer id %s having template'
+                  ' utilbill id "%s"' % (customer.id, template_utilbill_id))
+        try:
+            template_utilbill = utilbill_map[template_utilbill_id]
+        except KeyError:
+            log.error('Unable to locate template utilbill with id "%s"' %
+                      template_utilbill_id)
+            continue
 
         customer.fb_billing_address = template_utilbill.billing_address
         customer.fb_service_address = template_utilbill.service_address
         customer.fb_rate_class = template_utilbill.rate_class
         customer.fb_utility_name = template_utilbill.utility
+    exit()
 
 def copy_registers_from_mongo(s):
     log.info('Copying registers from Mongo')
@@ -113,14 +123,31 @@ def copy_rsis_from_mongo(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
+    log.info('Upgrading to schema revision 39efff02706c')
+    alembic_upgrade('39efff02706c')
+    log.info('Alembic Upgrade Complete')
+    init_model(schema_revision='39efff02706c')
+    session = Session()
 
-    uri = config.get('statedb', 'uri')
-    engine = create_engine(uri)
-    connection = engine.connect()
-    transaction = connection.begin()
+    log.info('Reading initial customer info')
+    initial_customer_data = read_initial_customer_data(session)
+    log.info('Setting fb attributes')
+    set_fb_attributes(initial_customer_data, session)
+    log.info('Copying registers from mongo')
+    copy_registers_from_mongo(session)
+    log.info('Copying RSIs from mongo')
+    copy_rsis_from_mongo(session)
+    log.info('Committing to database')
+    session.commit()
+
+    log.info('Upgrading to schema revision 2e47f4f18a8b')
+    alembic_upgrade('2e47f4f18a8b')
+    log.info('Upgrade to version 22 complete')
+
+    """
+
 
     try:
-        initial_customer_data = read_initial_customer_data(connection)
         alembic_upgrade(connection, '39efff02706c')
         log.info('Alembic Upgrade Complete')
         init_model(schema_revision='39efff02706c')
@@ -139,3 +166,4 @@ def upgrade():
     #log.info('Committing to database')
     #s.commit()
     #log.info('Upgrade to version 22 complete')
+    """
