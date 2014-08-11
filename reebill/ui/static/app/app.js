@@ -33,7 +33,7 @@ Ext.Ajax.request({
             autoCreateViewport: true,
             
             controllers: [
-                'Accounts', 'IssuableReebills', 'Journal', 'Payments', 'RateStructures', 'Reports', 'Preferences',
+                'BottomBar', 'Accounts', 'IssuableReebills', 'Journal', 'Payments', 'RateStructures', 'Reports', 'Preferences',
                 'ReebillCharges', 'Reebills', 'TabPanel', 'UtilityBillRegisters', 'UtilityBills', 'Viewer'
             ],
             

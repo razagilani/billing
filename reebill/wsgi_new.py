@@ -757,6 +757,8 @@ class PreferencesResource(RESTResource):
     def handle_get(self, *vpath, **params):
         rows = [{'key': k, 'value': v} for k, v in cherrypy.session[
             'user'].preferences.items()]
+        rows.append({'key': 'username', 'value': cherrypy.session[
+            'user'].username})
         return True, {'rows': rows,  'results': len(rows)}
 
     def handle_put(self, *vpath, **params):

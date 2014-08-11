@@ -209,6 +209,39 @@ Ext.define('ReeBill.view.Viewport', {
                 },{
                     xtype: 'preferencesPanel',
                     name: 'preferencesPanel'
+                }],
+
+                dockedItems: [{
+                    xtype: 'toolbar',
+                    dock: 'bottom',
+
+                    items:["Logged in as :",
+                    {
+                        xtype: 'tbtext',
+                        name: 'userTBLabel',
+                        text: 'Username'
+                    },{
+                        text: 'Logout',
+                        handler: function(){
+                            window.location.pathname = 'reebill/logout';
+                        }
+                    },'->',{
+                        xtype: 'tbtext',
+                        name: 'revisionTBLabel',
+                        text: 'Revision String'
+                    },'->',{
+                        xtype: 'tbtext',
+                        name: 'accountTBLabel',
+                        text: 'No Account Selected'
+                    },{
+                        xtype: 'tbtext',
+                        name: 'ubSequenceTBLabel',
+                        text: ''
+                    },{
+                        xtype: 'tbtext',
+                        name: 'rbSequenceVersionTBLabel',
+                        text: ''
+                    }]
                 }]
             }]
         };
