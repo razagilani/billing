@@ -723,7 +723,8 @@ class PaymentsResource(RESTResource):
         )
         return True, {"rows": row, 'results': 1}
 
-    def handle_delete(self, account, *vpath, **params):
+    def handle_delete(self, payment_id, *vpath, **params):
+        self.process.delete_payment(payment_id)
         return True, {}
 
 

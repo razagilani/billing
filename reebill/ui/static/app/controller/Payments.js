@@ -28,9 +28,7 @@ Ext.define('ReeBill.controller.Payments', {
             'grid[id=paymentsGrid]': {
                 activate: this.handleActivate,
                 selectionchange: this.handleRowSelect,
-                beforeedit: this.handleBeforeEdit,
-                edit: this.handleEdit
-            },
+                beforeedit: this.handleBeforeEdit            },
             'button[action=newPayment]': {
                 click: this.handleNew
             },
@@ -85,60 +83,21 @@ Ext.define('ReeBill.controller.Payments', {
     },
 
     /**
-     * Handle the edit of a row.
-     */
-//    handleEdit: function(editor, e) {
-//        var updated = e.record,
-//            store = this.getPaymentsStore(),
-//            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
-//
-//        var updateProperties = Object.getOwnPropertyNames(updated.modified);
-//
-//        if (!updated || updateProperties.length === 0)
-//            return;
-//
-//        var updatedData = Ext.clone(updated.data);
-//        updatedData.date_applied = Ext.util.Format.date(updatedData.date_applied, 'Y-m-d') + 'T00:00:00';
-//
-//        var params =  {
-//            xaction: 'update',
-//            account: selectedAccount[0].get('account'),
-//            rows: JSON.stringify(updatedData),
-//            sequence: '',
-//            service: this.getServiceForCharges().getValue() || ''
-//        };
-//
-//        Ext.Ajax.request({
-//            url: 'http://'+window.location.host+'/rest/payment',
-//            method: 'POST',
-//            params: params,
-//            success: function(response, request) {
-//                var jsonData = Ext.JSON.decode(response.responseText);
-//                if (jsonData.success) {
-//                    store.reload();
-//                } else {
-//                    Ext.Msg.alert('Error', jsonData.errors.details);
-//                }
-//            }
-//        });
-//    },
-
-    /**
      * Handle the delete button being clicked.
      */
     handleDelete: function() {
         var store = this.getPaymentsStore(),
             selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
-            selectedPayment = this.getPaymentsGrid().getSelectionModel().getSelection();;
+            selectedPayment = this.getPaymentsGrid().getSelectionModel().getSelection()[0];
 
-        if (!selectedAccount || !selectedAccount.length || !selectedPayment || !selectedPayment.length)
+        if (!selectedAccount || !selectedAccount.length || !selectedPayment)
             return;
 
         Ext.Msg.confirm('Confirm deletion',
             'Are you sure you want to delete the selected Payment(s)?',
             function(answer) {
                 if (answer == 'yes') {
-                    store.remove(selected)
+                    store.remove(selectedPayment);
                 }
             });
     }    
