@@ -43,8 +43,16 @@ Ext.define('ReeBill.view.Accounts', {
         },
     },{
         header: 'Days Since',
-        tooltip: 'Days Since Utility Bill',
-        dataIndex: 'dayssince',
+        tooltip: 'Days Since Last Issued Utility Bill',
+        dataIndex: 'lastperiodend',
+        renderer: function(value){
+            if(value === null){
+                return;
+            }
+            var d = new Date();
+            return Math.round((d-value)/(1000*60*60*24));
+        },
+        align: 'right',
         width: 100
     },{
         header: 'Last Event',
