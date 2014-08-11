@@ -380,6 +380,8 @@ class Process(object):
         if sa_postal_code is not None:
             reebill.service_address.postal_code = sa_postal_code
 
+        return reebill
+
     def upload_utility_bill(self, account, service, begin_date,
             end_date, bill_file, file_name, utility=None, rate_class=None,
             total=0, state=UtilBill.Complete):

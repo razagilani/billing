@@ -490,6 +490,14 @@ class ReebillsResource(RESTResource):
                     cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
+        elif action == 'setProcessed':
+            if action_value is None:
+                raise ValueError("Got no value for row['action_value']")
+
+            rb = self.process.update_sequential_account_info(
+                account, sequence, processed=action_value)
+            rtn = rb.column_dict()
+
         elif action == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
             rtn = rb.column_dict()
@@ -515,7 +523,7 @@ class ReebillsResource(RESTResource):
             assert discount_rate >= 0 and discount_rate <= 1
             assert late_charge_rate >= 0 and late_charge_rate <= 1
 
-            self.process.update_sequential_account_info(
+            rb = self.process.update_sequential_account_info(
                 account, sequence,
                 discount_rate=discount_rate,
                 late_charge_rate=late_charge_rate,
@@ -526,7 +534,7 @@ class ReebillsResource(RESTResource):
                 sa_city=sa['city'], sa_state=sa['state'],
                 sa_postal_code=sa['postal_code'])
 
-            rtn = row
+            rtn = rb.column_dict()
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
