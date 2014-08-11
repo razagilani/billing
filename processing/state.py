@@ -176,13 +176,11 @@ class Company(Base):
 
     name = Column(Integer)
     discriminator = Column(String(50))
-    service = Column(Enum('gas', 'electric', name='company_service'))
     address = relationship("Address")
 
-    def __init__(self, name, address, service):
+    def __init__(self, name, address):
         self.name = name
         self.address = address
-        self.service = service
 
     __mapper_args__ = {'polymorphic_on': discriminator}
 
