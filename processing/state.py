@@ -1227,23 +1227,25 @@ class Payment(Base):
         self.description = description
         self.credit = credit
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'date_received': self.date_received,
-            'date_applied': self.date_applied,
-            'description': self.description,
-            'credit': self.credit,
-            # the client uses this field to determine if users should be
-            # allowed to edit this payment
-            'editable': datetime.utcnow() - self.date_received \
-                        < timedelta(hours=24)
-        }
+    def is_editable(self):
+        """ Returns True or False depending on whether the payment should be
+        editable. Payments should be editable as long as date_received is
+        within one day of today (ignoring seconds or microseconds)
+        """
+        today = datetime.utcnow()
+        if (today-self.date_received).days <= 1:
+            return True
+        return False
 
     def __repr__(self):
         return '<Payment(%s, received=%s, applied=%s, %s, %s)>' \
                % (self.customer.account, self.date_received, \
                   self.date_applied, self.description, self.credit)
+
+    def column_dict(self):
+        the_dict = super(Payment, self).column_dict()
+        the_dict.update(editable=self.is_editable())
+        return the_dict
 
 
 # NOTE this is a view
@@ -1849,6 +1851,7 @@ class StateDB(object):
         new_payment = Payment(customer, date_received, date_applied,
                 description, credit)
         session.add(new_payment)
+        session.flush()
         return new_payment
 
     def delete_payment(self, oid):
