@@ -461,8 +461,6 @@ class StateTest(TestCaseWithSetup):
         self.state_db.issue('99999', 1, issue_date)
         self.session.commit()
 
-        #TODO: Figure out what days since is actually supposed to be
-        # see https://www.pivotaltracker.com/story/show/76652548
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
                 ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
