@@ -146,8 +146,8 @@ class ReebillRenderer:
         for version in range(max_version + 1):
             reebill = self.state_db.get_reebill(account, sequence,
                     version=version)
-            self.render_version(reebill, reebill_document, outputdir,
-                    outputfile +  '-%s' % version, verbose)
+            self.render_version(reebill, outputdir,
+                    outputfile +  '-%s' % version)
 
         # concatenate version pdfs
         input_paths = ['%s-%s' % (os.path.join(outputdir, outputfile), v)
@@ -168,7 +168,7 @@ class ReebillRenderer:
         max_version = self.state_db.max_version(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence,
                 version=max_version)
-        self.render_version(reebill, reebill_document, outputdir, outputfile)
+        self.render_version(reebill, outputdir, outputfile)
 
     def render_version(self, reebill, outputdir, outputfile):
         styles = getSampleStyleSheet()
@@ -474,8 +474,7 @@ class ReebillRenderer:
             utility_total = reading.conventional_quantity
             total += (utility_total + shadow_total)
             measuredUsage.append([ '', '', round_for_display(shadow_total),
-                    utility_total, round_for_display(total),
-                    reading.quantity_units])
+                    utility_total, round_for_display(total), reading.unit])
         measuredUsage.append([None, None, None, None, None, None])
 
         # total width 550
