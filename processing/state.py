@@ -53,7 +53,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '39efff02706c'
+_schema_revision = '1a174da18305'
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
