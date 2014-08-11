@@ -36,6 +36,9 @@ Ext.define('ReeBill.controller.Reebills', {
         ref: 'createNextButton',
         selector: 'button[action=createNext]'
     },{
+        ref: 'toggleReebillProcessedButton',
+        selector: 'button[action=toggleReebillProcessed]'
+    },{
         ref: 'sequentialAccountInformationForm',
         selector: 'panel[id=sequentialAccountInformationForm]'
     },{
@@ -87,6 +90,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
+            },
+            'button[action=toggleReebillProcessed]': {
+                click: this.handleToggleReebillProcessed
             },
             'combo[name=reeBillVersions]': {
                 change: this.loadSequentialAccountInformation,
@@ -151,6 +157,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getDeleteReebillButton().setDisabled(issued);
         this.getBindREOffsetButton().setDisabled(issued);
         this.getComputeReebillButton().setDisabled(issued);
+        this.getToggleReebillProcessedButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
@@ -292,6 +299,27 @@ Ext.define('ReeBill.controller.Reebills', {
 
          var selected = selections[0];
          selected.set('action', 'render');
+     },
+
+     /**
+       * Handle the toggle processed button.
+       */
+     handleToggleReebillProcessed: function(){
+         var store = this.getReebillsStore();
+
+         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+         if (!selections.length)
+             return;
+
+         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
+         if (!selectedAccounts.length)
+             return;
+
+         var selected = selections[0];
+         selected.beginEdit();
+         selected.set('action', 'setProcessed');
+         selected.set('action_value', !selected.get('processed'));
+         selected.endEdit();
      },
 
      /**
