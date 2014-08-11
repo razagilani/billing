@@ -45,7 +45,7 @@ def init_logging(path='settings.cfg'):
     log.debug('Initialized logging')
 
 
-def init_model(uri=None, connection=None):
+def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
     """
     from billing.processing.state import Session, Base, check_schema_revision
@@ -61,7 +61,7 @@ def init_model(uri=None, connection=None):
     engine = create_engine(uri)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
-    check_schema_revision()
+    check_schema_revision(schema_revision=schema_revision)
     log.debug('Initialized sqlalchemy model')
 
 def initialize():
