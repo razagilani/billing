@@ -19,7 +19,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'casualname'},
         {name: 'primusname'},
         {name: 'utilityserviceaddress'},
-        {name: 'dayssince'},
+        {name: 'lastperiodend', type:'date'},
         {name: 'lastevent'},
         {name: 'lastissuedate'},
         {name: 'provisionable'},
