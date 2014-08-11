@@ -25,12 +25,12 @@ Ext.define('ReeBill.view.Reebills', {
         header: 'Sequence',
         sortable: true,
         dataIndex: 'sequence',
-        width: 100
+        width: 90
     },{
         header: 'Corrections',
         sortable: false,
         dataIndex: 'corrections',
-        width: 120
+        width: 100
     },{
         header: 'Start Date',
         sortable: false,
@@ -45,7 +45,17 @@ Ext.define('ReeBill.view.Reebills', {
         header: 'Issue Date',
         sortable: false,
         dataIndex: 'issue_date',
-        width: 120
+        width: 100,
+        renderer: function(value) {
+            return Ext.util.Format.date(value, 'Y-m-d');
+        }
+    },{
+        header: 'Processed',
+        dataIndex: 'processed',
+        width: 100,
+        renderer: function(value) {
+            return value ? 'Yes' : 'No';
+        }
     },{
         header: 'Hypo',
         sortable: false,
