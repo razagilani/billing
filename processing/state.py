@@ -1247,26 +1247,6 @@ class Payment(Base):
         the_dict.update(editable=self.is_editable())
         return the_dict
 
-
-# NOTE this is a view
-class StatusDaysSince(Base):
-    __tablename__ = 'status_days_since'
-
-    # NOTE it seems that SQLAlchemy requires at least one column to be
-    # identified as a "primary key" even though the table doesn't really have a
-    # primary key in the db.
-    account = Column(String, primary_key=True)
-    dayssince = Column(Integer)
-
-    def __init__(self, account, dayssince):
-        self.account = account
-        self.dayssince = dayssince
-
-    def __repr__(self):
-        return '<StatusDaysSince(%s, %s)>' \
-               % (self.account, self.dayssince)
-
-
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
 
@@ -1478,10 +1458,9 @@ class StateDB(object):
         '''Returns the Account of every customer,
         the Sequence, Version and Issue date of the highest-sequence,
         highest-version issued ReeBill object,
-        the rate class and service address of the latest (i.e. last-ending)
-        utility bill for each customer,
-        and the days since the last utilbill was issued. If account is given,
-        the query is filtered by it.
+        the rate class, the service address, and the period_end of the latest
+        (i.e. last-ending & processed) utility bill for each customer,
+        If account is given, the query is filtered by it.
         This is a way of speeding up the AccountsGrid in the UI
         '''
         session = Session()
@@ -1499,6 +1478,7 @@ class StateDB(object):
         utilbill_sq = session.query(
             UtilBill.customer_id,
             func.max(UtilBill.period_end).label('max_period_end'))\
+        .filter(UtilBill.processed == 1)\
         .group_by(UtilBill.customer_id)\
         .subquery()
 
@@ -1508,7 +1488,7 @@ class StateDB(object):
                           version_sq.c.issue_date,
                           UtilBill.rate_class,
                           Address,
-                          StatusDaysSince.dayssince)\
+                          UtilBill.period_end)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
                    sequence_sq.c.max_sequence == version_sq.c.sequence))\
@@ -1517,7 +1497,6 @@ class StateDB(object):
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
-        .join(StatusDaysSince, StatusDaysSince.account == Customer.account)\
         .order_by(desc(Customer.account))
 
         if account is not None:
