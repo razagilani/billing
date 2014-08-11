@@ -7,13 +7,16 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+from sqlalchemy.engine import create_engine
+from sqlalchemy.sql.schema import MetaData, Table
+from sqlalchemy.sql import select
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session, Charge
 from billing.processing.rate_structure2 import RateStructureDAO
-from processing.state import Register, UtilBill, Address
+from processing.state import Register, UtilBill, Address, Customer
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -21,6 +24,40 @@ log = logging.getLogger(__name__)
 client = MongoClient(config.get('billdb', 'host'),
     int(config.get('billdb', 'port')))
 db = client[config.get('billdb', 'database')]
+
+
+
+# def previous_session():
+#     from state_from_v21 import Session, Base, check_schema_revision
+#     from sqlalchemy import create_engine
+#
+#     uri = config.get('statedb', 'uri')
+#     log.debug('Intializing v21 sqlalchemy model with uri %s' % uri)
+#     engine = create_engine(uri)
+#     Session.configure(bind=engine)
+#     Base.metadata.bind = engine
+#     check_schema_revision()
+#     return Session
+
+
+def read_initial_customer_data(connection):
+    log.info('Reading initial customers data before schema migration')
+    meta = MetaData()
+    s = Table('customer', meta, autoload=True, autoload_with=connection)
+    result = connection.execute(select([s]))
+    return {row['id']: row for row in result}
+
+def set_fb_attributes(initial_customer_data, session):
+    utilbill_map = {ub.id: ub for ub in session.query(UtilBill).all()}
+    for customer in session.query(Customer).all():
+        template_utilbill_id = \
+            initial_customer_data[customer.id]['utilbill_template_id']
+        template_utilbill = utilbill_map[template_utilbill_id]
+
+        customer.fb_billing_address = template_utilbill.billing_address
+        customer.fb_service_address = template_utilbill.service_address
+        customer.fb_rate_class = template_utilbill.rate_class
+        customer.fb_utility_name = template_utilbill.utility
 
 def copy_registers_from_mongo(s):
     log.info('Copying registers from Mongo')
@@ -76,12 +113,27 @@ def copy_rsis_from_mongo(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
-    alembic_upgrade('39efff02706c')
+
+    uri = config.get('statedb', 'uri')
+    engine = create_engine(uri)
+    connection = engine.connect()
+    trans = connection.begin()
+
+    initial_customer_data = read_initial_customer_data(connection)
+    alembic_upgrade(connection, '39efff02706c')
     log.info('Alembic Upgrade Complete')
+
     init_model()
-    s = Session()
+    s = Session(bind=connection)
+
+    set_fb_attributes(initial_customer_data, s)
     copy_registers_from_mongo(s)
     copy_rsis_from_mongo(s)
-    log.info('Committing to database')
-    s.commit()
-    log.info('Upgrade to version 22 complete')
+    log.info('Exiting')
+
+
+    trans.rollback()
+    exit()
+    #log.info('Committing to database')
+    #s.commit()
+    #log.info('Upgrade to version 22 complete')
