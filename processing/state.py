@@ -796,10 +796,10 @@ class UtilBill(Base):
         nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
+    utility_id = Column(Integer, ForeignKey('company.id'))
 
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
-    utility = Column(String, nullable=False)
     rate_class = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
@@ -822,6 +822,7 @@ class UtilBill(Base):
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
+    utility = relationship('Utility')
 
     @property
     def bindings(self):
