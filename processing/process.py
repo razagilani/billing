@@ -1237,7 +1237,7 @@ class Process(object):
         return name_dicts
 
 
-    def get_all_utilbills_json(self, account, start, limit):
+    def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
