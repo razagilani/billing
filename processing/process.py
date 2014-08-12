@@ -27,7 +27,8 @@ import bson
 from billing.processing import journal
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, Payment
+    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
+    Payment, Utility
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
@@ -279,7 +280,7 @@ class Process(object):
             utilbill.service = service
 
         if utility is not None:
-            utilbill.utility = utility
+            utilbill.utility = self.state_db.get_create_utility(utility)
 
         if rate_class is not None:
             utilbill.rate_class = rate_class
@@ -434,7 +435,7 @@ class Process(object):
 
             q = session.query(UtilBill).\
                 filter_by(rate_class=customer.fb_rate_class).\
-                filter_by(utility=customer.fb_utility_name).\
+                filter_by(utility=customer.fb_utility).\
                 filter_by(processed=True).\
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
@@ -454,8 +455,8 @@ class Process(object):
             billing_address = customer.fb_billing_address
             service_address = customer.fb_service_address
 
-        utility = utility if utility else getattr(predecessor, 'utility', "")
-
+        utility = self.state_db.get_create_utility(utility) if utility else \
+            getattr(predecessor, 'utility', None)
         rate_class = rate_class if rate_class else \
             getattr(predecessor, 'rate_class', "")
 
@@ -1243,7 +1244,8 @@ class Process(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(account,
                 start, limit)
-        data = [ub.column_dict() for ub in utilbills]
+        data = [dict(ub.column_dict().items() + [('utility', ub.utility.name)])
+                for ub in utilbills]
         return data, total_count
 
     def update_reebill_readings(self, account, sequence):
