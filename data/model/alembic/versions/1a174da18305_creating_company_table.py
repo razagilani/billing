@@ -8,7 +8,7 @@ Create Date: 2014-08-11 13:39:35.672182
 
 # revision identifiers, used by Alembic.
 revision = '1a174da18305'
-down_revision = '39efff02706c'
+down_revision = '2e47f4f18a8b'
 
 from alembic import op
 import sqlalchemy as sa
@@ -19,9 +19,8 @@ def upgrade():
     op.create_table('company',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('address_id', sa.Integer(), nullable=True),
-    sa.Column('name', sa.Integer(), nullable=True),
+    sa.Column('name', sa.String(length=255), nullable=True),
     sa.Column('discriminator', sa.String(length=50), nullable=True),
-    sa.Column('service', sa.Enum('gas', 'electric', name='company_service'), nullable=True),
     sa.ForeignKeyConstraint(['address_id'], ['address.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

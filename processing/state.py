@@ -53,7 +53,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '2e47f4f18a8b'
+_schema_revision = '18a02dea5969'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -175,7 +175,7 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
 
-    name = Column(Integer)
+    name = Column(String)
     discriminator = Column(String(50))
     address = relationship("Address")
 
@@ -195,16 +195,18 @@ class Utility(Company):
 
     #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
 
-    def __init__(self, name, address, service, rate_classes=[]):
+    def __init__(self, name, address, rate_classes=[]):
         """Construct a :class:`Utility` instance"""
         assert rate_classes == []
-        super(Utility, self).__init__(name, address, service)
+        super(Utility, self).__init__(name, address)
 
 
 class Customer(Base):
     __tablename__ = 'customer'
 
     id = Column(Integer, primary_key=True)
+    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+
     account = Column(String, nullable=False)
     name = Column(String)
     discountrate = Column(Float(asdecimal=False), nullable=False)
@@ -212,7 +214,6 @@ class Customer(Base):
     bill_email_recipient = Column(String, nullable=False)
 
     # "fb_" = to be assigned to the customer's first-created utility bill
-    fb_utility_name = Column(String(255), nullable=False)
     fb_rate_class = Column(String(255), nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False, )
@@ -224,6 +225,7 @@ class Customer(Base):
     fb_service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_service_address_id==Address.id')
 
+    fb_utility = relationship('Utility')
 
     def get_discount_rate(self):
         return self.discountrate
