@@ -14,7 +14,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session, Company, Customer, Utility, \
-    Address
+    Address, UtilBill
 
 log = logging.getLogger(__name__)
 
@@ -36,13 +36,19 @@ utility_names = ['Pepco',
                  'PG&E']
 
 
-def read_initial_customer_data(session):
+def read_initial_table_data(table_name, session):
     meta = MetaData()
-    customer_table = Table('customer', meta, autoload=True,
+    table = Table(table_name, meta, autoload=True,
         autoload_with=session.connection())
-    result = session.execute(select([customer_table]))
+    result = session.execute(select([table]))
     return {row['id']: row for row in result}
 
+# def read_initial_customer_data(session):
+#     meta = MetaData()
+#     customer_table = Table('customer', meta, autoload=True,
+#         autoload_with=session.connection())
+#     result = session.execute(select([customer_table]))
+#     return {row['id']: row for row in result}
 
 def create_utilities(session):
     for utility_name in utility_names:
@@ -51,7 +57,7 @@ def create_utilities(session):
         session.add(utility_company)
     session.flush()
 
-def migrate_customer_fb_utilbill(customer_data, session):
+def migrate_customer_fb_utility(customer_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for customer in session.query(Customer).all():
         fb_utility_name = customer_data[customer.id]['fb_utility_name'].lower()
@@ -64,6 +70,19 @@ def migrate_customer_fb_utilbill(customer_data, session):
                       (fb_utility_name, customer.id))
 
 
+def migrate_utilbill_utility(utilbill_data, session):
+    company_map = {c.name.lower(): c for c in session.query(Company).all()}
+    for utility_bill in session.query(UtilBill).all():
+        utility_name = utilbill_data[utility_bill.id]['utility'].lower()
+        log.debug('Setting utility to %s for utilbill id %s' %
+                  (utility_name, utility_bill.id))
+        try:
+            utility_bill.utility = company_map[utility_name]
+        except KeyError:
+            log.error("Could not locate company with name '%s' for utilbill %s"
+                      % (utility_name, utility_bill.id))
+
+
 def upgrade():
     log.info('Beginning upgrade to version 23')
 
@@ -74,14 +93,17 @@ def upgrade():
 
     session = Session()
     log.info('Reading initial customers data')
-    customer_data = read_initial_customer_data(session)
+    customer_data = read_initial_table_data('customer', session)
+    utilbill_data = read_initial_table_data('utilbill', session)
     log.info('Creating utilities')
     create_utilities(session)
     log.info('Migrating customer fb utilbill')
-    migrate_customer_fb_utilbill(customer_data, session)
+    migrate_customer_fb_utility(customer_data, session)
+    log.info('Migration utilbill utility')
+    migrate_utilbill_utility(utilbill_data, session)
     log.info('Committing to database')
-    session.commit()
+    #session.commit()
 
     log.info('Upgrading schema to revision 18a02dea5969')
-    alembic_upgrade('18a02dea5969')
+    #alembic_upgrade('18a02dea5969')
     log.info('Upgrade to version 23 complete')

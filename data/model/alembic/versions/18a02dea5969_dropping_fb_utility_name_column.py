@@ -16,9 +16,13 @@ from sqlalchemy.dialects import mysql
 
 def upgrade():
     op.drop_column('customer', 'fb_utility_name')
+    op.drop_column('utilbill', 'utility')
 
 
 def downgrade():
     op.add_column('customer', sa.Column('fb_utility_name',
                                         mysql.VARCHAR(length=255),
                                         nullable=False))
+    op.add_column('utilbill', sa.Column('utility',
+                                         mysql.VARCHAR(length=24),
+                                         nullable=False))

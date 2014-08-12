@@ -17,8 +17,8 @@ from sqlalchemy.dialects import mysql
 
 def upgrade():
     op.add_column('customer', sa.Column('fb_utility_id', sa.Integer(), nullable=True))
-
+    op.add_column('utilbill', sa.Column('utility_id', sa.Integer(), nullable=True))
 
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')
-
+    op.drop_column('customer', 'utility_id')

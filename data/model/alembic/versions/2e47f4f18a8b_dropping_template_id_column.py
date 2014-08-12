@@ -18,7 +18,6 @@ def upgrade():
     op.drop_column(u'customer', 'utilbill_template_id')
 
 
-
 def downgrade():
     op.add_column(u'customer', sa.Column('utilbill_template_id',
                                          mysql.VARCHAR(length=24), nullable=False))
