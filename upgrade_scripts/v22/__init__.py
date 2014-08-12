@@ -7,6 +7,7 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+from bson.errors import InvalidId
 from sqlalchemy.engine import create_engine
 from sqlalchemy.sql.schema import MetaData, Table
 from sqlalchemy.sql import select
@@ -22,22 +23,8 @@ from bson.objectid import ObjectId
 log = logging.getLogger(__name__)
 
 client = MongoClient(config.get('billdb', 'host'),
-    int(config.get('billdb', 'port')))
+                    int(config.get('billdb', 'port')))
 db = client[config.get('billdb', 'database')]
-
-
-
-# def previous_session():
-#     from state_from_v21 import Session, Base, check_schema_revision
-#     from sqlalchemy import create_engine
-#
-#     uri = config.get('statedb', 'uri')
-#     log.debug('Intializing v21 sqlalchemy model with uri %s' % uri)
-#     engine = create_engine(uri)
-#     Session.configure(bind=engine)
-#     Base.metadata.bind = engine
-#     check_schema_revision()
-#     return Session
 
 
 def read_initial_customer_data(session):
@@ -46,28 +33,44 @@ def read_initial_customer_data(session):
     customer_table = Table('customer', meta, autoload=True,
         autoload_with=session.connection())
     result = session.execute(select([customer_table]))
-    print result.keys()
-    return {row['document_id']: row for row in result}
+    return {row['id']: row for row in result}
 
 def set_fb_attributes(initial_customer_data, session):
-    utilbill_map = {ub.id: ub for ub in session.query(UtilBill).all()}
     for customer in session.query(Customer).all():
-        template_utilbill_id = \
-            initial_customer_data[customer.id]['utilbill_template_id']
+        template_id = \
+            str(initial_customer_data[customer.id]['utilbill_template_id'])
         log.debug('Looking up fb attributes for customer id %s having template'
-                  ' utilbill id "%s"' % (customer.id, template_utilbill_id))
+                  ' utilbill document id "%s"' % (customer.id, template_id))
+
         try:
-            template_utilbill = utilbill_map[template_utilbill_id]
-        except KeyError:
+            template_ub = db.utilbills.find_one({"_id": ObjectId(template_id)})
+        except InvalidId:
+            template_ub = None
+
+        if template_ub is None:
             log.error('Unable to locate template utilbill with id "%s"' %
-                      template_utilbill_id)
+                      template_id)
             continue
 
-        customer.fb_billing_address = template_utilbill.billing_address
-        customer.fb_service_address = template_utilbill.service_address
-        customer.fb_rate_class = template_utilbill.rate_class
-        customer.fb_utility_name = template_utilbill.utility
-    exit()
+        a = template_ub['billing_address']
+        customer.fb_billing_address = Address(a['addressee'], a['street'],
+                                        a['city'], a['state'], a['postal_code'])
+        log.debug('Added fb_billing_address %s for customer id %s' %
+                  (a, customer.id))
+
+        a = template_ub['service_address']
+        customer.fb_service_address = Address(a['addressee'], a['street'],
+                                        a['city'], a['state'], a['postal_code'])
+        log.debug('Added fb_service_address %s for customer id %s' %
+                  (a, customer.id))
+
+        customer.fb_rate_class = template_ub['rate_class']
+        log.debug('Adding fb_rate_class %s for customer id %s' %
+                  (template_ub['rate_class'], customer.id))
+
+        customer.fb_utility_name = template_ub['utility']
+        log.debug('Adding fb_utility_name %s for customer id %s' %
+                  (template_ub['utility'], customer.id))
 
 def copy_registers_from_mongo(s):
     log.info('Copying registers from Mongo')
@@ -123,12 +126,14 @@ def copy_rsis_from_mongo(s):
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
+
     log.info('Upgrading to schema revision 39efff02706c')
     alembic_upgrade('39efff02706c')
     log.info('Alembic Upgrade Complete')
-    init_model(schema_revision='39efff02706c')
-    session = Session()
 
+    init_model(schema_revision='39efff02706c')
+
+    session = Session()
     log.info('Reading initial customer info')
     initial_customer_data = read_initial_customer_data(session)
     log.info('Setting fb attributes')
@@ -137,33 +142,10 @@ def upgrade():
     copy_registers_from_mongo(session)
     log.info('Copying RSIs from mongo')
     copy_rsis_from_mongo(session)
-    log.info('Committing to database')
+    log.info('Committing data migration to database')
     session.commit()
 
     log.info('Upgrading to schema revision 2e47f4f18a8b')
     alembic_upgrade('2e47f4f18a8b')
+
     log.info('Upgrade to version 22 complete')
-
-    """
-
-
-    try:
-        alembic_upgrade(connection, '39efff02706c')
-        log.info('Alembic Upgrade Complete')
-        init_model(schema_revision='39efff02706c')
-        s = Session(bind=connection)
-
-        set_fb_attributes(initial_customer_data, s)
-        copy_registers_from_mongo(s)
-        copy_rsis_from_mongo(s)
-    except:
-        transaction.rollback()
-        raise
-
-
-    transaction.rollback()
-
-    #log.info('Committing to database')
-    #s.commit()
-    #log.info('Upgrade to version 22 complete')
-    """
