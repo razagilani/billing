@@ -1043,6 +1043,7 @@ class Process(object):
                         service_address['state'],
                         service_address['postal_code']))
         session.add(new_customer)
+        session.flush()
         return new_customer
 
     def issue(self, account, sequence, issue_date=None):
