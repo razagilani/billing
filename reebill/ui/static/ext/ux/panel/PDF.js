@@ -22,7 +22,7 @@ Ext.define('Ext.ux.panel.PDF',{
      * Disable workers to avoid yet another cross-origin issue(workers need the URL of
      * the script to be loaded, and currently do not allow cross-origin scripts)
      */
-    disableWorker: true,
+    disableWorker: false,
 
     /**
      * @cfg{Boolean} disableTextLayer
@@ -35,11 +35,11 @@ Ext.define('Ext.ux.panel.PDF',{
      * @cfg{String} loadingMessage
      * The text displayed when loading the PDF.
      */
-    loadingMessage: 'Loading PDF, please wait...',
+    loadingMessage: '<div style="position: absolute; top: 200px; width: 100%; text-align: center">Loading PDF, please wait...</div>',
 
-    pdfNotFoundMessage: 'PDF Not Found!',
+    pdfNotFoundMessage: '<div style="position: absolute; top: 200px; width: 100%; text-align: center">PDF NOT FOUND</div>',
 
-    noSrcMessage: 'No PDF loaded',
+    noSrcMessage: '<div style="position: absolute; top: 200px; width: 100%; text-align: center">No PDF selected</div>',
 
     textRenderDelay: 20,
 
@@ -82,35 +82,25 @@ Ext.define('Ext.ux.panel.PDF',{
 
         me.callParent(arguments);
 
-        me.on('afterrender', function(){
-            if (!this.src)
-                return; 
-            
-            me.loader = new Ext.LoadMask(me.child('#pdfPageContainer'),{
-                msg: me.loadingMessage
-            });
-            me.loader.show();
-        }, me,{
-            single: true
-        });
-
         if(me.disableWorker){
             PDFJS.disableWorker = true;
+        }else{
+            PDFJS.workerSrc = 'static/ext/lib/pdf.js/pdf.worker.js'
         }
-
     },
 
     onLoad: function(){
         var me = this;
-
-        if(!!me.src){
-            me.getDocument();
-        }
+        me.getDocument();
     },
 
     onResize: function(){
         var me = this;
-        me.renderDoc();
+        if(me.src !== '') {
+            me.renderDoc(me);
+        }else{
+            me.getDocument();
+        }
     },
 
     setSrc: function(src, regenBustCache){
@@ -119,11 +109,18 @@ Ext.define('Ext.ux.panel.PDF',{
     },
     
     getDocument: function(regenBustCache){
-        console.log('getDocument' + regenBustCache);
         var me = this;
+        console.log('getDocument', regenBustCache, me.src);
 
         if(me._bustCache === undefined || regenBustCache === true){
             me._makeBustCache();
+        }
+
+        if(me.src === ''){
+            me.canvasLayer.innerHTML = me.noSrcMessage;
+            return
+        }else{
+            me.canvasLayer.innerHTML = me.loadingMessage;
         }
 
         // Function to asyncronoulsy parse pages from the PDF
@@ -131,41 +128,40 @@ Ext.define('Ext.ux.panel.PDF',{
             me._pdfDoc.getPage(p).then(function (page) {
                 me._pages[page.pageNumber-1] = page;
                 page.getTextContent().then(function (textContent) {
-                    console.log(textContent)
                     me._content[page.pageNumber-1] = textContent;
                     if (page.pageNumber < me._pdfDoc.numPages) {
                         getPage(page.pageNumber+1);
                     }else{
                         // Clear the PDF to free up memory
-                        //console.log(me._content)
-                        //me.renderDoc();
+                        me._pdfDoc = {};
+                        me.renderDoc(me);
                     }
                 });
             });
         };
 
 
-        if(!!me.src){
-            PDFJS.getDocument(me.src + '?_bc=' + me._bustCache).then(
-            //success
-            function(pdfDoc){
-                me._pdfDoc = pdfDoc;
-                me._pages = []
-                me._content = []
-                getPage(1);
-            },
-            //failure
-            function(message, exception) {
-                    console.log(message, exception);
-            });
-        }
+        PDFJS.getDocument(me.src + '?_bc=' + me._bustCache).then(
+        //success
+        function(pdfDoc){
+            me._pdfDoc = pdfDoc;
+            me._pages = []
+            me._content = []
+            getPage(1);
+        },
+        //failure
+        function(message, exception) {
+            console.log(message, exception);
+            if(message.lastIndexOf('Missing PDF', 0) === 0){
+                me.canvasLayer.innerHTML = me.pdfNotFoundMessage;
+            }
+        });
         return me;
     },
 
-    renderDoc: function(){
-        console.log('renderDoc', this);
-        var me = this;
-        var panelWidth =  me.getWidth() - 20;
+    renderDoc: function(scope){
+        var me = scope;
+        var panelWidth =  me.width;
 
         if(!me._pdfDoc) {
             return;
@@ -173,7 +169,7 @@ Ext.define('Ext.ux.panel.PDF',{
 
         if(panelWidth > 0) {
             while (me.textLayerDiv.lastChild) {
-                me.textLayerDiv.removeChild(me.pageContainer.lastChild);
+                me.textLayerDiv.removeChild(me.textLayerDiv.lastChild);
             }
             while (me.canvasLayer.lastChild) {
                 me.canvasLayer.removeChild(me.canvasLayer.lastChild);
@@ -188,16 +184,15 @@ Ext.define('Ext.ux.panel.PDF',{
     },
 
     _renderPage: function(page, content){
-        console.log('_renderPage ', page, content);
         var me = this;
-        var panelWidth =  me.getWidth() - 20;
+        var panelWidth =  me.width;
         var scale = (panelWidth) / page.getViewport(1.0).width;
         var viewport = page.getViewport(scale);
         var canvas = document.createElement('canvas');
 
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        canvas.style.top = (page.pageNumber - 1) * viewport.height;
+        canvas.style.top = (page.pageNumber - 1) * viewport.height  + 'px';
         me.canvasLayer.appendChild(canvas);
         var context = canvas.getContext('2d');
 
@@ -205,18 +200,21 @@ Ext.define('Ext.ux.panel.PDF',{
             canvasContext: context,
             viewport: viewport
         }).then(function(){
-            me._makeAsyncRenderTextFunc(page, viewport, content)();
+            me._makeAsyncRenderTextFunc(page, content)();
         });
     },
 
-    _renderText: function(page, viewport, content){
-        console.log('_renderText', page, viewport, content, typeof(content));
+    _renderText: function(page, content){
         var me = this;
+        var panelWidth =  me.width;
+        var scale = (panelWidth) / page.getViewport(1.0).width;
+        var viewport = page.getViewport(scale);
         var textLayerSubDiv = document.createElement('div');
-        textLayerSubDiv.style.height = viewport.height;
-        textLayerSubDiv.style.width = viewport.width;
-        textLayerSubDiv.style.top = (page.pageNumber - 1) * viewport.height;
+
         textLayerSubDiv.className = 'textLayer';
+        textLayerSubDiv.style.height = viewport.height + 'px';
+        textLayerSubDiv.style.width = viewport.width + 'px';
+        textLayerSubDiv.style.top = ((page.pageNumber - 1) * viewport.height)  + 'px';
 
         var textLayer = new TextLayerBuilder({textLayerDiv: textLayerSubDiv,
                 pageIndex: page.pageNumber, viewport: viewport,
@@ -226,17 +224,16 @@ Ext.define('Ext.ux.panel.PDF',{
     },
 
     _makeAsyncRenderPageFunc: function(page, content){
-        console.log('_makeAsyncRenderPageFunc', page, content);
         var me = this;
         return function(){
             setTimeout(function() {me._renderPage(page, content);}, 0);
         };
     },
 
-    _makeAsyncRenderTextFunc: function(page, viewport, content){
+    _makeAsyncRenderTextFunc: function(page, content){
         var me = this;
         return function(){
-            setTimeout(function() {me._renderText(page, viewport, content);},
+            setTimeout(function() {me._renderText(page, content);},
                     page.pageNumber * me.textRenderDelay);
         };
     },
