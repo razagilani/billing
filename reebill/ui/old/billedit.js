@@ -5274,7 +5274,7 @@ function reeBillReady() {
         id: 'issueReebillBtn',
         iconCls: 'icon-mail',
         text: 'Issue',
-        disabled: false,
+        disabled: true,
         handler: function()
         {
             var r = issuableGrid.getSelectionModel().getSelected();
