@@ -626,6 +626,7 @@ class Process(object):
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
+        reebill.utilbill.compute_charges(uprs, utilbill_document)
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
         reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
