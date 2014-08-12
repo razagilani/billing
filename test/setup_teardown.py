@@ -1,4 +1,24 @@
+import sys
+import logging
 
+def init_logging():
+    """Initialize logging to debug before we import anything else"""
+
+    ch = logging.StreamHandler(sys.stderr)  #Log to stdout
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
+    rootlogger = logging.getLogger('root')
+    rootlogger.setLevel(logging.DEBUG)
+    rootlogger.addHandler(ch)
+
+    for logger_name in ['test', 'reebill']:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = True
+
+init_logging()
 
 from os.path import realpath, join, dirname
 import unittest
@@ -11,10 +31,12 @@ import MySQLdb
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import UnboundExecutionError
 from billing import init_config, init_model
+from billing.test import utils as test_utils
 from billing.processing import mongo
 from billing.processing import rate_structure2
 from billing.processing.process import Process
-from billing.processing.state import StateDB, Customer, Session
+from billing.processing.state import StateDB, Customer, Session, UtilBill, \
+    Register, Address
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
@@ -26,9 +48,17 @@ import logging
 
 
 
-class TestCaseWithSetup(unittest.TestCase):
+class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
+
+    @staticmethod
+    def truncate_tables(session):
+        for t in ["charge", "register", "payment", "reebill",
+                  "utilbill", "customer", "address", "reading",
+                  "reebill_charge", "utilbill_reebill"]:
+            session.execute("delete from %s" % t)
+        session.commit()
 
     @staticmethod
     def init_logging():
@@ -38,29 +68,139 @@ class TestCaseWithSetup(unittest.TestCase):
         testlogger.addHandler(logging.NullHandler())
         testlogger.propagate = False
 
-        rootlogger = logging.getLogger('root')
-        rootlogger.addHandler(logging.NullHandler())
-        rootlogger.propagate = False
-
     @staticmethod
     def insert_data():
         session = Session()
-        session.execute("delete from charge")
-        session.execute("delete from payment")
-        session.execute("delete from reebill")
-        session.execute("delete from utilbill")
-        session.execute("delete from customer")
+        TestCaseWithSetup.truncate_tables(session)
+        #Customer Addresses
+        fa_ba1 = Address('Test Customer 1 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        fa_sa1 = Address('Test Customer 1 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        fa_ba2 = Address('Test Customer 2 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        fa_sa2 = Address('Test Customer 2 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        #Utility Bill Addresses
+        ub_sa1 = Address('Test Customer 2 UB 1 Service',
+                         '123 Test Street',
+                         'Test City',
+                         'XX',
+                         '12345')
+        ub_ba1 = Address('Test Customer 2 UB 1 Billing',
+                         '123 Test Street',
+                         'Test City',
+                         'XX',
+                         '12345')
+        ub_sa2 = Address('Test Customer 2 UB 2 Service',
+                         '123 Test Street',
+                         'Test City',
+                         'XX',
+                         '12345')
+        ub_ba2 = Address('Test Customer 2 UB 2 Billing',
+                         '123 Test Street',
+                         'Test City',
+                         'XX',
+                         '12345')
+
+        session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
+                         ub_sa2, ub_ba2])
+        session.flush()
+
         session.add(Customer('Test Customer', '99999', .12, .34,
-                            '000000000000000000000001', 'example@example.com'))
+                             'example@example.com', 'Test Utility Company Template',
+                             'Test Rate Class Template', fa_ba1, fa_sa1))
+
+        #Template Customer aka "Template Account" in UI
+        c2 = Customer('Test Customer 2', '100000', .12, .34,
+                             'example2@example.com', 'Test Utility Company Template',
+                             'Test Rate Class Template', fa_ba2, fa_sa2)
+        session.add(c2)
+
+        u1 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
+                             'Test Rate Class Template',  ub_ba1, ub_sa1,
+                             account_number='Acct123456',
+                             period_start=date(2012, 1, 1),
+                             period_end=date(2012, 1, 31),
+                             total_charges=50.00,
+                             date_received=date(2011, 2, 3),
+                             processed=True)
+
+        u2 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
+                             'Test Rate Class Template', ub_ba2, ub_sa2,
+                             account_number='Acct123456',
+                             period_start=date(2012, 2, 1),
+                             period_end=date(2012, 2, 28),
+                             total_charges=65.00,
+                             date_received=date(2011, 3, 3),
+                             processed=True)
+
+        u1r1 = Register(u1, "test description", 123.45, "therms", "M60324",
+                      False, "total", "REG_TOTAL", None, "M60324")
+        u2r1 = Register(u2, "test description", 123.47, "therms", "M60324",
+                      False, "total", "REG_TOTAL", None, "M60324")
+
+        session.add_all([u1r1, u2r1])
         session.commit()
 
-        # insert template utilbill document for the customer in Mongo
-        db = pymongo.Connection('localhost')['test']
-        utilbill = example_data.get_utilbill_dict('99999',
-                start=date(1900,01,01), end=date(1900,02,01),
-                utility='washgas', service='gas')
-        utilbill['_id'] = ObjectId('000000000000000000000001')
-        db.utilbills.save(utilbill)
+        #Utility BIll with no Rate structures
+        c4ba = Address('Test Customer 1 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        c4sa = Address('Test Customer 1 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
+                             'example2@example.com', 'Other Utility',
+                             'Other Rate Class', c4ba, c4sa)
+
+        ub_sa = Address('Test Customer 3 UB 1 Service',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        ub_ba = Address('Test Customer 3 UB 1 Billing',
+                     '123 Test Street',
+                     'Test City',
+                     'XX',
+                     '12345')
+        u = UtilBill(c4, UtilBill.Complete, 'gas', 'Other Utility',
+                         'Other Rate Class',  ub_ba, ub_sa,
+                         account_number='Acct123456',
+                         period_start=date(2012, 1, 1),
+                         period_end=date(2012, 1, 31),
+                         total_charges=50.00,
+                         date_received=date(2011, 2, 3),
+                         processed=True)
+        session.add(u)
+
+    def init_dependencies(self):
+        """Configure connectivity to various other systems and databases.
+        """
+        from billing import config
+
+        self.state_db = StateDB(Session, logger)
+        self.billupload = BillUpload(config, logger)
+        mock_install_1 = MockSkyInstall(name='example-1')
+        mock_install_2 = MockSkyInstall(name='example-2')
+        self.splinter = MockSplinter(deterministic=True,
+                installs=[mock_install_1, mock_install_2])
 
     def init_dependencies(self):
         """Configure connectivity to various other systems and databases.
@@ -76,9 +216,6 @@ class TestCaseWithSetup(unittest.TestCase):
         mock_install_2 = MockSkyInstall(name='example-2')
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
-
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection('localhost', 27017)['test'])
 
         self.rate_structure_dao = rate_structure2.RateStructureDAO(
                 logger=logger)
@@ -97,6 +234,12 @@ class TestCaseWithSetup(unittest.TestCase):
                 'casualname': 'Example 2',
                 'primus': '1786 Massachusetts Ave.',
             },
+            {
+                'billing': '100000',
+                'olap': 'example-3',
+                'casualname': 'Example 3',
+                'primus': '1787 Massachusetts Ave.',
+            },
         ])
 
         bill_mailer = Mailer({
@@ -109,15 +252,13 @@ class TestCaseWithSetup(unittest.TestCase):
                     'reebill_templates'),
             'default_template': '/dev/null',
             'teva_accounts': '',
-        }, self.state_db, self.reebill_dao,
-                logger)
+        }, self.state_db, logger)
 
-        ree_getter = RenewableEnergyGetter(self.splinter, self.reebill_dao, logger)
+        ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
-        self.process = Process(self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.nexus_util,
-                bill_mailer, renderer, ree_getter,
-                self.splinter, logger=logger)
+        self.process = Process(self.state_db,  self.rate_structure_dao,
+                self.billupload, self.nexus_util, bill_mailer, renderer,
+                ree_getter, self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='utilbills')
@@ -128,24 +269,20 @@ class TestCaseWithSetup(unittest.TestCase):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil."""
-        TestCaseWithSetup.init_logging()
         init_config('tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
-        TestCaseWithSetup.insert_data()
-
         self.session = Session()
+        self.truncate_tables(self.session)
+        TestCaseWithSetup.insert_data()
 
     def tearDown(self):
         '''Clears out databases.'''
-        # clear out mongo test database
-        mongo_connection = pymongo.Connection('localhost', 27017)
-        mongo_connection.drop_database('test')
-
         # this helps avoid a "lock wait timeout exceeded" error when a test
         # fails to commit the SQLAlchemy session
-        self.session.commit()
+        self.session.rollback()
+        self.truncate_tables(self.session)
         Session.remove()
 
 
