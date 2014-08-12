@@ -1320,6 +1320,7 @@ class Process(object):
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
                 new_id, 'example@example.com')
         session.add(new_customer)
+        session.flush()
 
         # save utilbill document template in Mongo with new account, _id,
         # addresses, and "total"
