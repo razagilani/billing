@@ -17,7 +17,7 @@ Ext.define('ReeBill.view.RateStructures', {
     }],
 
     features: [{
-        ftype: 'grouping',
+        ftype: 'groupingsummary',
         groupHeaderTpl: 'Charge Group: {name} ({rows.length} Item{[values.rows.length > 1 ? "s" : ""]})',
         hideGroupedHeader: true
     }, {
@@ -39,6 +39,7 @@ Ext.define('ReeBill.view.RateStructures', {
         listeners: {
             drop: function(node, data, overModel, dropPosition, eOpts) {
                 data.records[0].set('group', overModel.get('group'));
+                Ext.getStore('RateStructures').group('group', 'ASC');
             }
         }
     },
@@ -51,7 +52,6 @@ Ext.define('ReeBill.view.RateStructures', {
         dataIndex: 'shared',
         sortable: true,
         width: 65,
-        flex: 0
     },{
         header: 'RSI Binding',
         sortable: true,
@@ -61,7 +61,6 @@ Ext.define('ReeBill.view.RateStructures', {
             allowBlank: false
         },
         width: 180,
-        flex: 0
     },{
         header: 'Description',
         sortable: true,
@@ -70,7 +69,6 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        flex: 0,
         width: 150
     },{
         xtype: 'templatecolumn',
@@ -93,7 +91,6 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        flex: 0,
         width: 70
     },{
         xtype: 'templatecolumn',
@@ -114,7 +111,6 @@ Ext.define('ReeBill.view.RateStructures', {
         dataIndex: 'has_charge',
         sortable: true,
         width: 100,
-        flex: 0
     },{
         header: 'Group',
         dataIndex: 'group',
@@ -123,11 +119,10 @@ Ext.define('ReeBill.view.RateStructures', {
             xtype: 'textfield',
             allowBlank: false
         },
-        flex: 0,
         width: 90
     },{
         header: 'Total',
-        width: 90,
+        width: 110,
         sortable: true,
         dataIndex: 'total',
         summaryType: 'sum',
