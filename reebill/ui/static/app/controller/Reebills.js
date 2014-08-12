@@ -50,6 +50,9 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'reeBillVersions',
         selector: 'reeBillVersions'
+    },{
+        ref: 'reebillViewer',
+        selector: 'pdfpanel[name=reebillViewer]'
     }],
     
     init: function() {
@@ -287,6 +290,7 @@ Ext.define('ReeBill.controller.Reebills', {
       * Handle the render pdf button.
       */
      handleRenderPdf: function() {
+         var me = this;
          var store = this.getReebillsStore();
 
          var selections = this.getReebillsGrid().getSelectionModel().getSelection();
@@ -298,7 +302,15 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
+         store.suspendAutoSync();
          selected.set('action', 'render');
+         store.sync({callback: function(){
+             console.log('called')
+             var viewer = me.getReebillViewer();
+              // Rerequest the document and regenerate the bust cache param
+             viewer.getDocument(true);
+         }});
+         store.resumeAutoSync();
      },
 
      /**
