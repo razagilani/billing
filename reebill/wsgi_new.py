@@ -554,28 +554,10 @@ class ReebillsResource(RESTResource):
         return True, {}
 
 
-class UtilBillLastEndDateResource(RESTResource):
-
-    def handle_get(self, account,*vpath, **params):
-        the_date = self.state_db.last_utilbill_end_date(account)
-        # (https://www.pivotaltracker.com/story/show/23569087)
-        # Date is interpreted as a datetime in the client with 12AM UTC set as
-        # its time. This has the effect of the date displayed being off by
-        # one day. To fix this we convert to a date time and set it to the
-        # end of the dat
-        if the_date:
-            the_date = datetime(the_date.year, the_date.month, the_date.day,
-                                23, 59, 59)
-        return True, {'date': the_date}
-
-
 class UtilBillResource(RESTResource):
-    last_end_date = UtilBillLastEndDateResource()
 
-    def handle_get(self, account, start, limit, *vpath, **params):
-        start, limit = int(start), int(limit)
-        rows, total_count = self.process.get_all_utilbills_json(
-            account, start, limit)
+    def handle_get(self, account, *vpath, **params):
+        rows, total_count = self.process.get_all_utilbills_json(account)
         return True, {'rows': rows, 'results': total_count}
 
     def handle_post(self, *vpath, **params):
@@ -612,6 +594,10 @@ class UtilBillResource(RESTResource):
         result= {}
 
         if action == 'regenerate_charges':
+            ub = self.process.compute_utility_bill(utilbill_id)
+            result = ub.column_dict()
+
+        elif action == 'compute':
             ub = self.process.compute_utility_bill(utilbill_id)
             result = ub.column_dict()
 

@@ -54,6 +54,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
             }
         });
 
+        this.getUtilityBillsStore().on({
+            load: this.initalizeUploadForm,
+            scope: this
+        });
     },
 
     /**
@@ -84,10 +88,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
         if (!selected || !selected.length)
             return;
 
-        this.initalizeUploadForm();
-
         store.getProxy().setExtraParam('account', selected[0].get('account'));
-        store.loadPage(1);
+        store.reload();
     },
 
     /**
@@ -99,27 +101,16 @@ Ext.define('ReeBill.controller.UtilityBills', {
             accountField = form.down('[name=account]'),
             startDateField = form.down('[name=begin_date]'),
             endDateField = form.down('[name=end_date]');
+        var store = this.getUtilityBillsStore();
 
         form.getForm().reset();
 
         if (!selected || !selected.length)
             return;
-
+        var lastEndDate = store.getLastEndDate();
         accountField.setValue(selected[0].get('account'));
-
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/reebill/utilitybills/last_end_date',
-            method: 'GET',
-            params: { 
-                account: selected[0].get('account')
-            },
-            success: function(response){
-                var jsonData = Ext.JSON.decode(response.responseText);
-                var dt = new Date(jsonData['date'])
-                startDateField.setValue(dt);
-                endDateField.setValue(Ext.Date.add(dt, Ext.Date.MONTH, 1));
-            }
-        });
+        startDateField.setValue(lastEndDate);
+        endDateField.setValue(Ext.Date.add(lastEndDate, Ext.Date.MONTH, 1));
     },
 
     /**
@@ -153,23 +144,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleCompute: function() {
         var scope = this,
-            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
 
-        if (!selected || !selected.length)
+        if (!selected)
             return;
 
-        Ext.Ajax.request({
-            url: 'http://'+window.location.host+'/rest/compute_utility_bill',
-            params: { 
-                utilbill_id: selected[0].get('id')
-            },
-            success: function(response, request) {
-                var jsonData = Ext.JSON.decode(response.responseText);
-                if (jsonData.success) {
-                    scope.getUtilityBillsStore().reload();
-                }
-            },
-        });
+        selected.set('action', 'compute');
     },
 
     /**
@@ -178,10 +158,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleDelete: function() {
         var scope = this,
             store = this.getUtilityBillsStore(),
-            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection(),
-            selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
+            selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
 
-        if (!selected || !selected.length)
+        if (!selected)
             return;
 
         Ext.Msg.confirm('Confirm deletion',
@@ -198,14 +177,12 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleToggleProcessed: function() {
         var grid = this.getUtilityBillsGrid(),
-            selected = grid.getSelectionModel().getSelection();
+            selected = grid.getSelectionModel().getSelection()[0];
 
-        console.log(selected);
-        if (!selected || selected.length != 1)
+        if (!selected)
             return;
 
-        var rec = selected[0];
-        rec.set('processed', !rec.get('processed'));
+        selected.set('processed', !selected.get('processed'));
     }
 
 });
