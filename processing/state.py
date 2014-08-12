@@ -52,11 +52,12 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '39efff02706c'
-def check_schema_revision(schema_revision=_schema_revision):
+_schema_revision = '2e47f4f18a8b'
+def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
     """
+    schema_revision = schema_revision or _schema_revision
     s = Session()
     conn = s.connection()
     context = MigrationContext.configure(conn)

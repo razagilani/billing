@@ -15,7 +15,6 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.drop_column(u'customer', 'utilbill_template_id')
     op.add_column(u'customer', sa.Column('fb_billing_address_id', sa.Integer(), nullable=False))
     op.add_column(u'customer', sa.Column('fb_rate_class', sa.String(length=255), nullable=False))
     op.add_column(u'customer', sa.Column('fb_service_address_id', sa.Integer(), nullable=False))
@@ -23,8 +22,6 @@ def upgrade():
 
 
 def downgrade():
-    op.add_column(u'customer', sa.Column('utilbill_template_id',
-                                         mysql.VARCHAR(length=24), nullable=False))
     op.drop_column(u'customer', 'fb_utility_name')
     op.drop_column(u'customer', 'fb_service_address_id')
     op.drop_column(u'customer', 'fb_rate_class')
