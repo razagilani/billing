@@ -506,6 +506,8 @@ class ReeBillWSGI(object):
             'state': sa_state,
             'postal_code': sa_postal_code,
         }
+        discount_rate = float(discount_rate)
+        late_charge_rate = float(late_charge_rate)
 
         self.process.create_new_account(account, name, discount_rate,
                 late_charge_rate, billing_address,

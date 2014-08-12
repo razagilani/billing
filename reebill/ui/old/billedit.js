@@ -6261,6 +6261,7 @@ var BILLPDF = function(){
     };
 
     var renderText = function(prefix, page, viewport, content){
+        console.log('')
         var textlayerelem = document.getElementById(prefix + '-canvas-text-layer');
         var textLayerDiv = document.createElement('div');
         textLayerDiv.style.height = viewport.height;

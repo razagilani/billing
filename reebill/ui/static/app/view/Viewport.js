@@ -33,7 +33,6 @@ Ext.define('ReeBill.view.Viewport', {
                 name: 'reebillViewer',
                 collapsible: true,
                 collapsed: true,
-                pageScale: 0.5,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
             },{
