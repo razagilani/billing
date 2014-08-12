@@ -5486,6 +5486,7 @@ function reeBillReady() {
 
     issuablePanel.on('activate', function(panel) {
         issuableStore.reload();
+        issueReebillButton.setDisabled(true);
     });
 
 
