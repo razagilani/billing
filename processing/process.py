@@ -626,7 +626,7 @@ class Process(object):
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
-        reebill.utilbill.compute_charges(uprs, utilbill_document)
+        reebill.utilbill.compute_charges()
         hypothetical_total = reebill.get_total_hypothetical_charges()
         reebill.ree_value = hypothetical_total - actual_total
         reebill.ree_charge = reebill.ree_value * (1 - reebill.discount_rate)
@@ -1237,7 +1237,7 @@ class Process(object):
         return name_dicts
 
 
-    def get_all_utilbills_json(self, account, start, limit):
+    def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
