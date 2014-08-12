@@ -29,15 +29,23 @@ Ext.define('ReeBill.controller.Viewer', {
      */
     handleUtilityBillSelect: function(sm, selections) {
         var bill = selections[0];
+        if(bill === undefined){
+            return
+        }
         var viewer = this.getUtilityBillViewer();
+        viewer.expand();
         viewer.setSrc(window.location.origin + '/utilitybills/' + bill.get('account') + '/' + bill.get('id') + '.pdf');
+
     },
 
     /**
      * Handle the selection of a reebill.
      */
-    handleReebillSelect: function() {
+    handleReebillSelect: function(sm, selections) {
         var bill = selections[0];
+        if(bill === undefined){
+            return
+        }
         var s = bill.get('sequence') + '';
         while (s.length < 4) {
             s = '0' + s;
