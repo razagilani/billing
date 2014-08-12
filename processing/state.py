@@ -240,7 +240,7 @@ class Customer(Base):
         self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
-                 bill_email_recipient, fb_utility_name, fb_rate_class,
+                 bill_email_recipient, fb_utility, fb_rate_class,
                  fb_billing_address, fb_service_address):
         """Construct a new :class:`.Customer`.
         :param name: The name of the customer.
@@ -249,9 +249,8 @@ class Customer(Base):
         :param late_charge_rate:
         :param bill_email_recipient: The customer receiving email
         address for skyline-generated bills
-        :fb_utility_name: The "first bill utility name" to be assigned
-         as the name of the utility company on the first `UtilityBill`
-         associated with this customer.
+        :fb_utility: The :class:`.Utility` to be assigned to the the first
+        `UtilityBill` associated with this customer.
         :fb_rate_class": "first bill rate class" (see fb_utility_name)
         :fb_billing_address: (as previous)
         :fb_service address: (as previous)
@@ -261,7 +260,7 @@ class Customer(Base):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
         self.bill_email_recipient = bill_email_recipient
-        self.fb_utility_name = fb_utility_name
+        self.fb_utility = fb_utility
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
@@ -1354,6 +1353,14 @@ class StateDB(object):
             .filter(UtilBill.service == service) \
             .filter(UtilBill.period_start == start) \
             .filter(UtilBill.period_end == end).one()
+
+    def get_create_utility(self, utility_name):
+        session = Session()
+        try:
+            utility = session.query(Utility).filter_by(name=utility_name).one()
+        except NoResultFound:
+            utility = Utility(utility_name, Address('', '', '', '', ''))
+        return utility
 
     def get_utilbill_by_id(self, ubid):
         session = Session()

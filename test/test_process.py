@@ -227,7 +227,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                                     1)
         assert utilbill.period_end == doc['period_end'] == date(2013, 2, 1)
         assert utilbill.service == doc['service'] == 'Gas'
-        assert utilbill.utility == doc['utility'] == 'Test Utility Company Template'
+        assert utilbill.utility.name == doc['utility'] == 'Test Utility Company Template'
         assert utilbill.total_charges == 100
         assert utilbill.rate_class == doc['rate_class'] == 'Test Rate Class Template'
 
@@ -275,7 +275,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # change utility name
         self.process.update_utilbill_metadata(utilbill.id,
                                               utility='BGE')
-        self.assertEqual('BGE', utilbill.utility)
+        self.assertEqual('BGE', utilbill.utility.name)
 
         # change rate class
         self.process.update_utilbill_metadata(utilbill.id,
@@ -1679,6 +1679,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # create reebill and utility bill
         # NOTE Process._generate_docs_for_new_utility_bill requires utility
         # and rate_class arguments to match those of the template
+
         self.process.upload_utility_bill('99999', 'gas', date(2013, 5, 6),
                 date(2013, 7, 8), StringIO('A Water Bill'), 'waterbill.pdf',
                 utility='washgas', rate_class='some rate structure')

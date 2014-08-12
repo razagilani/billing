@@ -7,7 +7,7 @@ from unittest import TestCase
 
 from billing.exc import RSIError
 from billing.processing.state import UtilBill, Customer, Session, Charge,\
-    Address, Register
+    Address, Register, Utility
 
 class UtilBillTest(TestCase):
 
@@ -222,11 +222,12 @@ class UtilBillTest(TestCase):
         self.assertEqual(0, utilbill.total_charge())
 
     def test_compute_charges_independent(self):
+        utility = Utility('utility', Address())
         customer = Customer('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'rate class',
+                'nobody@example.com', utility, 'rate class',
                 Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address(),
+                'gas', utility, 'rate class', Address(), Address(),
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', 150,
                 'kWh', '', False, "total", "REG_TOTAL", '', '')]
@@ -257,11 +258,12 @@ class UtilBillTest(TestCase):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
+        utility = Utility('utility', Address())
         customer = Customer('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'rate class',
+                'nobody@example.com', utility, 'rate class',
                 Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address(),
+                'gas', utility, 'rate class', Address(), Address(),
                 period_start=date(2000,1,1), period_end=date(2000,2,1))
         utilbill.charges = [
             # circular dependency between A and B: A depends on B's "quantity"

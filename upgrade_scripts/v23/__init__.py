@@ -43,13 +43,6 @@ def read_initial_table_data(table_name, session):
     result = session.execute(select([table]))
     return {row['id']: row for row in result}
 
-# def read_initial_customer_data(session):
-#     meta = MetaData()
-#     customer_table = Table('customer', meta, autoload=True,
-#         autoload_with=session.connection())
-#     result = session.execute(select([customer_table]))
-#     return {row['id']: row for row in result}
-
 def create_utilities(session):
     for utility_name in utility_names:
         empty_address = Address('', '', '', '', '')
@@ -102,8 +95,8 @@ def upgrade():
     log.info('Migration utilbill utility')
     migrate_utilbill_utility(utilbill_data, session)
     log.info('Committing to database')
-    #session.commit()
+    session.commit()
 
     log.info('Upgrading schema to revision 18a02dea5969')
-    #alembic_upgrade('18a02dea5969')
+    alembic_upgrade('18a02dea5969')
     log.info('Upgrade to version 23 complete')
