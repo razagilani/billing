@@ -3,7 +3,7 @@ Ext.define('ReeBill.view.UtilityBills', {
 
     title: 'Utility Bills',
     alias: 'widget.utilityBills',    
-    store: 'UtilityBills',
+    store: 'UtilityBillsMemory',
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -170,7 +170,7 @@ Ext.define('ReeBill.view.UtilityBills', {
     bbar: {
         xtype: 'pagingtoolbar',
         pageSize: 25,
-        store: 'UtilityBills',
+        store: 'UtilityBillsMemory',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}'
     }

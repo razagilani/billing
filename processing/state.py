@@ -53,11 +53,12 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '1a174da18305'
-def check_schema_revision(schema_revision=_schema_revision):
+_schema_revision = '2e47f4f18a8b'
+def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
     """
+    schema_revision = schema_revision or _schema_revision
     s = Session()
     conn = s.connection()
     context = MigrationContext.configure(conn)
@@ -1491,8 +1492,9 @@ class StateDB(object):
         '''Returns the Account of every customer,
         the Sequence, Version and Issue date of the highest-sequence,
         highest-version issued ReeBill object,
-        the rate class, the service address, and the period_end of the latest
-        (i.e. last-ending & processed) utility bill for each customer,
+        the rate class, the service address of the latest
+        (i.e. last-ending ) utility bill for each customer, and the period_end
+        of the latest *processed* utility bill
         If account is given, the query is filtered by it.
         This is a way of speeding up the AccountsGrid in the UI
         '''
@@ -1511,6 +1513,11 @@ class StateDB(object):
         utilbill_sq = session.query(
             UtilBill.customer_id,
             func.max(UtilBill.period_end).label('max_period_end'))\
+        .group_by(UtilBill.customer_id)\
+        .subquery()
+        processed_utilbill_sq = session.query(
+            UtilBill.customer_id,
+            func.max(UtilBill.period_end).label('max_period_end_processed'))\
         .filter(UtilBill.processed == 1)\
         .group_by(UtilBill.customer_id)\
         .subquery()
@@ -1521,7 +1528,7 @@ class StateDB(object):
                           version_sq.c.issue_date,
                           UtilBill.rate_class,
                           Address,
-                          UtilBill.period_end)\
+                          processed_utilbill_sq.c.max_period_end_processed)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
                    sequence_sq.c.max_sequence == version_sq.c.sequence))\
@@ -1530,6 +1537,8 @@ class StateDB(object):
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
+        .outerjoin(processed_utilbill_sq,
+                   Customer.id == processed_utilbill_sq.c.customer_id)\
         .order_by(desc(Customer.account))
 
         if account is not None:

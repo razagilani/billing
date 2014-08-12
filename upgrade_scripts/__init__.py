@@ -9,6 +9,9 @@ import logging
 from alembic.config import Config
 from alembic.command import upgrade
 import importlib
+from alembic.environment import EnvironmentContext
+from alembic.script import ScriptDirectory
+from alembic.util import CommandError
 
 log = logging.getLogger(__name__)
 
@@ -22,3 +25,4 @@ def run_upgrade(version):
 def alembic_upgrade(revision_to):
     config = Config("alembic.ini")
     upgrade(config, revision_to)
+
