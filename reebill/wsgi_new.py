@@ -980,34 +980,35 @@ class BillToolBridge(WebResource):
         return config_dict
 
 
+cherrypy_conf = {
+    '/': {
+        'tools.sessions.on': True,
+        'tools.staticdir.root': os.path.dirname(
+            os.path.realpath(__file__))+'/ui'
+    },
+    '/login.html': {
+        'tools.staticfile.on': True,
+        'tools.staticfile.filename': os.path.dirname(
+            os.path.realpath(__file__))+"/ui/login.html"
+    },
+    '/index.html': {
+        'tools.staticfile.on': True,
+        'tools.staticfile.filename': os.path.dirname(
+            os.path.realpath(__file__))+"/ui/index.html"
+    },
+    '/static': {
+        'tools.staticdir.on': True,
+        'tools.staticdir.dir': 'static'
+    }
+
+}
+
 if __name__ == '__main__':
     bridge = BillToolBridge()
-    local_conf = {
-        '/': {
-            'tools.sessions.on': True,
-            'tools.staticdir.root': os.path.dirname(
-                os.path.realpath(__file__))+'/ui'
-        },
-        '/login.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.dirname(
-                os.path.realpath(__file__))+"/ui/login.html"
-        },
-        '/index.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.dirname(
-                os.path.realpath(__file__))+"/ui/index.html"
-        },
-        '/static': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': 'static'
-        }
-
-    }
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
         'server.socket_port': bridge.config.get("http", "socket_port")})
-    cherrypy.quickstart(bridge, "/reebill", config=local_conf)
+    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
@@ -1023,4 +1024,4 @@ else:
         cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
     bridge = BillToolBridge()
-    application = cherrypy.Application(bridge, script_name=None, config=None)
+    application = cherrypy.Application(bridge, script_name=None, config=cherrypy_conf)

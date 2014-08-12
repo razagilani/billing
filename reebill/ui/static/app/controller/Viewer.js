@@ -16,10 +16,10 @@ Ext.define('ReeBill.controller.Viewer', {
         
         this.control({
             'grid[id=utilityBillsGrid]': {
-//                selectionchange: this.handleUtilityBillSelect
+                selectionchange: this.handleUtilityBillSelect
             },
             'grid[id=reebillsGrid]': {
-//                selectionchange: this.handleReebillSelect
+                selectionchange: this.handleReebillSelect
             }
         });
     },
@@ -28,19 +28,22 @@ Ext.define('ReeBill.controller.Viewer', {
      * Handle the selection of a utility bill.
      */
     handleUtilityBillSelect: function(sm, selections) {
+        var bill = selections[0];
         var viewer = this.getUtilityBillViewer();
-        viewer.setSrc('http://www.scala-lang.org/docu/files/ScalaByExample.pdf');
-
-        if (viewer.getCollapsed())
-            viewer.toggleCollapse();
+        viewer.setSrc(window.location.origin + '/utilitybills/' + bill.get('account') + '/' + bill.get('id') + '.pdf');
     },
 
     /**
      * Handle the selection of a reebill.
      */
     handleReebillSelect: function() {
+        var bill = selections[0];
+        var s = bill.get('sequence') + '';
+        while (s.length < 4) {
+            s = '0' + s;
+        }
         var viewer = this.getReebillViewer();
-        viewer.setSrc('http://www.scala-lang.org/docu/files/ScalaByExample.pdf');
+        viewer.setSrc(window.location.origin + '/reebills/' + bill.get('account') + '/' + bill.get('account') + '_' + s + '.pdf');
     }
 
 });
