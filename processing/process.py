@@ -1309,15 +1309,8 @@ class Process(object):
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
-        issuable_reebills = sorted([{
-            'id': r.id,
-            'account': r.customer.account,
-            'sequence':r.sequence,
-            'util_total': sum(u.total_charges for u in r.utilbills),
-            'mailto':r.customer.bill_email_recipient,
-            'reebill_total': r.get_total_actual_charges(),
-            'processed': r.processed,
-            } for r in reebills.all()], key=itemgetter('account'))
+        issuable_reebills = sorted([
+            r.column_dict() for r in reebills.all()], key=itemgetter('account'))
         return issuable_reebills
 
     def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):
@@ -1382,8 +1375,9 @@ class Process(object):
 
             unissued_corrections = self.get_unissued_corrections(bill['account'])
             if len(unissued_corrections) > 0 and not apply_corrections:
-                return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
+                return {
+                    'unissued_corrections': [c[0] for c in
+                                             unissued_corrections],
                     'adjustment': sum(c[2] for c in unissued_corrections)}
 
             # The user has confirmed to issue unissued corrections.

@@ -17,7 +17,6 @@ Ext.define('ReeBill.view.IssuableReebills', {
 
     features: [{
         ftype: 'groupingsummary',
-        groupHeaderTpl: '{[values.children[0].get("matching")==true?"Reebill"+(values.rows.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rows.length>1?"s":"")+" without Matching Totals"]}',
         hideGroupedHeader: true
     }],
 
@@ -57,13 +56,13 @@ Ext.define('ReeBill.view.IssuableReebills', {
         }
     },{
         header: 'Total From Utility Bill',
-        dataIndex: 'util_total',
+        dataIndex: 'utilbill_total',
         width: 175,
         sortable: false,
         renderer: Ext.util.Format.usMoney
     },{
         header: 'Computed Total',
-        dataIndex: 'reebill_total',
+        dataIndex: 'actual_total',
         width: 175,
         sortable: false,
         renderer: Ext.util.Format.usMoney
@@ -74,9 +73,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
         sortable: true,
         groupable: false,
         align: 'right',
-        renderer: function(v, params, record) {
-            return Ext.util.Format.usMoney(record.data.util_total - record.data.reebill_total);
-        },
+        renderer: Ext.util.Format.usMoney
     }],
 
     dockedItems: [{
