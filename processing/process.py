@@ -140,34 +140,55 @@ class Process(object):
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
         session = Session()
-        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        c = Charge(utilbill, "New Charge", "", 0, "", 0, "", 0)
-        utilbill.charges.append(c)
-        self.compute_utility_bill(utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+        charge = Charge(utilbill=utilbill,
+                        description="New Charge - Insert description here",
+                        group="",
+                        quantity=0.0,
+                        quantity_units="",
+                        rate=0.0,
+                        rsi_binding="New RSI #%s" % n,
+                        total=0.0)
+        session.add(charge)
         session.flush()
-        return c
-
-    def update_charge(self, charge_id, fields):
-        """Modify the charge given by charge_id
-        by setting key-value pairs to match the dictionary 'fields'."""
-        session = Session()
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
-        for k, v in fields.iteritems():
-            setattr(charge, k, v)
-        self.compute_utility_bill(charge.utilbill.id)
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
+        self.compute_utility_bill(utilbill_id)
         return charge
 
-    def delete_charge(self, charge_id):
+    def update_charge(self, fields, charge_id=None, utilbill_id=None,
+                      rsi_binding=None):
+        """Modify the charge given by charge_id
+        by setting key-value pairs to match the dictionary 'fields'."""
+        assert charge_id or utilbill_id and rsi_binding
+        session = Session()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+                    if charge_id else \
+                session.query(Charge).\
+                    filter(Charge.utilbill_id == utilbill_id).\
+                    filter(Charge.rsi_binding == rsi_binding).one()
+        for k, v in fields.iteritems():
+            setattr(charge, k, v)
+        session.flush()
+        self.refresh_charges(charge.utilbill.id)
+        self.compute_utility_bill(charge.utilbill.id)
+        return charge
+
+    def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
+        assert charge_id or utilbill_id and rsi_binding
         session = Session()
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+                    if charge_id else \
+                session.query(Charge).\
+                    filter(Charge.utilbill_id == utilbill_id).\
+                    filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
         self.compute_utility_bill(charge.utilbill_id)
+        session.expire(charge.utilbill)
 
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
