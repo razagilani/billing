@@ -896,7 +896,8 @@ class ReeBillWSGI(object):
                 # "id" field contains the old rsi_binding, which is used
                 # to look up the RSI; "rsi_binding" field contains the
                 # new one that will replace it (if there is one)
-                rsi_binding = self.process.update_rsi(utilbill_id, id, row)
+                rsi_binding = self.process.update_charge(row,
+                                utilbill_id=utilbill_id, rsi_binding=id)
 
                 # re-add "id" field which was removed above (using new
                 # rsi_binding)
@@ -904,16 +905,16 @@ class ReeBillWSGI(object):
                 row['id'] = rsi_binding
 
         if xaction == "create":
-            self.process.add_rsi(utilbill_id)
+            self.process.add_charge(utilbill_id)
 
         if xaction == "destroy":
             if type(rows) is unicode: rows = [rows]
             for row in rows:
-                self.process.delete_rsi(utilbill_id, row)
+                self.process.delete_charge(utilbill_id, row)
 
-        rsis_json = self.process.get_rsis_json(utilbill_id)
-        return json.dumps({'success': True, 'rows': rsis_json,
-                'total':len(rsis_json)})
+        charges_json = self.process.get_utilbill_charges_json(utilbill_id)
+        return json.dumps({'success': True, 'rows': charges_json,
+                'total':len(charges_json)})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1143,7 +1144,8 @@ class ReeBillWSGI(object):
             assert isinstance(row, dict)
 
             rsi_binding = row.pop('id')
-            self.process.update_charge(utilbill_id, rsi_binding, row)
+            self.process.update_charge(row, utilbill_id=utilbill_id,
+                                       rsi_binding=rsi_binding)
 
         if xaction == "create":
             row = json.loads(kwargs["rows"])[0]
@@ -1153,7 +1155,8 @@ class ReeBillWSGI(object):
 
         if xaction == "destroy":
             rsi_binding = json.loads(kwargs["rows"])[0]
-            self.process.delete_charge(utilbill_id, rsi_binding)
+            self.process.delete_charge(utilbill_id=utilbill_id,
+                                       rsi_binding=rsi_binding)
 
         charges_json = self.process.get_utilbill_charges_json(utilbill_id)
         return self.dumps({'success': True, 'rows': charges_json,
