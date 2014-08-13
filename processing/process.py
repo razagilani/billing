@@ -65,13 +65,6 @@ class Process(object):
         self.logger = logger
         self.journal_dao = journal.JournalDAO()
 
-    def get_utilbill_doc(self, utilbill_id, reebill_sequence=None,
-            reebill_version=None):
-        raise DeprecationWarning
-
-    def get_rs_doc(self, utilbill_id, rs_type, reebill_sequence=None,
-            reebill_version=None):
-        raise DeprecationWarning
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
