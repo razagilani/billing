@@ -1283,7 +1283,7 @@ class Process(object):
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
                 return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
+                    'unissued_corrections': [c[0] for c in unissued_corrections],
                     'adjustment': sum(c[2] for c in unissued_corrections)}
 
         # The user has confirmed to issue unissued corrections.
