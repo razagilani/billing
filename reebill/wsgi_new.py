@@ -385,7 +385,8 @@ class IssuableReebills(RESTResource):
             # corrections if 'unissued_corrections' are returned
             result = self.process.issue_processed_and_mail(cherrypy.session['user'],
                      apply_corrections)
-            if result is not None
+            if result is not None:
+                row.update(result)
         elif action == '':
             # Handle email address update
             self.process.update_bill_email_recipient(
