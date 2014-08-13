@@ -383,9 +383,13 @@ class IssuableReebills(RESTResource):
         if action == 'issuemail':
             # We know wether the client has been informed about unissued
             # corrections if 'unissued_corrections' are returned
-            result = self.process.issue_processed_and_mail(cherrypy.session['user'],
-                     apply_corrections)
-            if result is not None:
+            result = self.process.issue_and_mail(
+                cherrypy.session['user'],
+                row['account'],
+                row['sequence'],
+                row['mailto'],
+                bool(row['unissued_corrections']))
+            if isinstance(result, dict):
                 row.update(result)
         elif action == '':
             # Handle email address update
