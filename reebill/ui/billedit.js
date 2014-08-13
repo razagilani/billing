@@ -5356,7 +5356,7 @@ function reeBillReady() {
 
 
     var issueProcessedDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/issue_processed_and_mail',
+        url: 'http://'+location.host+'/reebill/issue_processed_and_mail'
     });
     issueProcessedDataConn.autoAbort = false;
     issueProcessedDataConn.disableCaching = true;
