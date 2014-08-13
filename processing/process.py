@@ -176,60 +176,6 @@ class Process(object):
         session.delete(charge)
         self.compute_utility_bill(charge.utilbill_id)
 
-    def get_rsis_json(self, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        return [{'rsi_binding': c.rsi_binding,
-                 'quantity_formula': c.quantity_formula,
-                 'rate_formula': c.rate_formula,
-                 'has_charge': c.has_charge,
-                 'shared': c.shared,
-                 'roundrule': c.roundrule} for c in utilbill.charges]
-
-    def add_rsi(self, utilbill_id):
-        session = Session()
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
-        n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
-            n += 1
-        session.add(Charge(utilbill = utilbill,
-                            description = "Insert description here",
-                            group = "",
-                            quantity = 0.0,
-                            quantity_units = "",
-                            rate = 0.0,
-                            rsi_binding = "New RSI #%s" % n,
-                            total = 0.0))
-        session.flush()
-        self.compute_utility_bill(utilbill_id)
-
-    def update_rsi(self, utilbill_id, rsi_binding, fields):
-        """Modify the charge given by `rsi_binding` in the given utility
-        bill by setting attributes to match the dictionary `fields`.
-        """
-        session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
-
-        for k, v in fields.iteritems():
-            if k in ['quantity', 'rate']:
-                k = '%s_formula' % k  # we renamed these
-            setattr(charge, k, v)
-        self.refresh_charges(utilbill_id)
-        self.compute_utility_bill(utilbill_id)
-        return charge
-
-    def delete_rsi(self, utilbill_id, rsi_binding):
-        session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
-        session.delete(charge)
-        session.commit()
-        #test_rs_prediction fails without this commit; I believe the commit
-        #should be moved to inside test_rs_prediction
-
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
         '''Wrapper to create_payment method in state.py'''
