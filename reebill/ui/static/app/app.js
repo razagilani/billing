@@ -45,7 +45,7 @@ Ext.Ajax.request({
 
             models: [
                 'Account', 'Charge', 'EstimatedRevenue', 'Preference',
-                'IssuableReebill', 'JournalEntry', 'Payment', 'Reconciliation',
+                'JournalEntry', 'Payment', 'Reconciliation',
                 'Reebill', 'ReebillCharge', 'UtilityBill', 'UtilityBillRegister'
             ],
             

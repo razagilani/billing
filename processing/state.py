@@ -20,6 +20,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
+import traceback
 from alembic.migration import MigrationContext
 
 from billing.exc import IssuedBillError, NoSuchBillException,\
@@ -589,12 +590,14 @@ class ReeBill(Base):
         the_dict = super(ReeBill, self).column_dict()
         the_dict.update({
             'account': self.customer.account,
+            'mailto': self.customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
             'billing_address': self.billing_address.column_dict(),
             'service_address': self.service_address.column_dict(),
             'period_start': period_start,
             'period_end': period_end,
+            'utilbill_total': sum(u.total_charge() for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': []
         })
@@ -607,16 +610,16 @@ class ReeBill(Base):
         else:
             the_dict['corrections'] = '-' if self.issued else '(never ' \
                                                                  'issued)'
-
         # wrong energy unit can make this method fail causing the reebill
         # grid to not load; see
         # https://www.pivotaltracker.com/story/show/59594888
         try:
             the_dict['ree_quantity'] = self.get_total_renewable_energy()
         except (ValueError, StopIteration) as e:
-            self.logger.error("Error when getting renewable energy "
-                    "quantity for reebill %s:\n%s" % (
-                    self.id, traceback.format_exc()))
+            log.error(
+                "Error when getting renewable energy "
+                "quantity for reebill %s:\n%s" % (
+                self.id, traceback.format_exc()))
             the_dict['ree_quantity'] = 'ERROR: %s' % e.message
 
         return the_dict

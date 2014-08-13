@@ -54,6 +54,8 @@ from billing.processing.excel_export import Exporter
 pp = pprint.PrettyPrinter(indent=4).pprint
 user_dao = UserDAO(**dict(config.items('usersdb')))
 
+cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
+
 
 def authenticate():
     try:
@@ -297,6 +299,7 @@ class RESTResource(WebResource):
             else:
                 raise cherrypy.HTTPError(404, "Not Found")
 
+
         return self.dumps(return_value)
 
     def check_modifiable(self, sequence, version):
@@ -349,50 +352,47 @@ class IssuableReebills(RESTResource):
     def handle_get(self, start, limit, sort='account', dir='DESC',
                    *vpath, **params):
         start, limit = int(start), int(limit)
-        try:
-            allowable_diff = cherrypy.session['user'].preferences[
-                'difference_threshold']
-        except KeyError:
-            allowable_diff = UserDAO.default_user.preferences[
-                'difference_threshold']
-
         issuable_reebills = self.process.get_issuable_reebills_dict()
-        for reebill_info in issuable_reebills:
-            reebill_info['difference'] = abs(
-                reebill_info['reebill_total'] - reebill_info['util_total'])
-            reebill_info['matching'] = (reebill_info['difference'] <
-                                        allowable_diff)
 
-        issuable_reebills.sort(key=lambda d: d[sort],
-                               reverse=(dir == 'DESC'))
-        issuable_reebills.sort(key=lambda d: d['matching'], reverse=True)
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
 
     def handle_delete(self, reebill_id, *vpath, **params):
         # Issues and mails the ReeBill
         # Issuing is like Deleting from issuables
-        r = self.state_db.get_reebill_by_id(reebill_id)
-        account, sequence = r.customer.account, r.sequence
-        self.process.compute_reebill(account, sequence)
-        self.process.issue(account, sequence)
-        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                                                 account, sequence, 0)
+        row = cherrypy.request.json
+        val = self.process.issue_and_mail(
+            cherrypy.session['user'],
+            row['account'],
+            row['sequence'],
+            row['mailto'],
+            bool(row['apply_corrections'])
+        )
 
-        # Let's mail!
-        # Recepients can be a comma seperated list of email addresses
-        recipient_list = [rec.strip() for rec in recipients.split(',')]
-        self.process.mail_reebills(account, [sequence], recipient_list)
-        journal.ReeBillMailedEvent.save_instance(
-            cherrypy.session['user'], account, sequence, recipients)
-
-        return True, {}
+        if val is None:
+            return True, {}
+        else:
+            row.update(val)
+            cherrypy.response.status = '409 Conflict'
+            return False, row
 
     def handle_put(self, reebill_id, *vpath, **params):
-        # Handle email address update
         row = cherrypy.request.json
-        self.process.update_bill_email_recipient(
-            row['account'], row['sequence'], row['mailto'])
+        action = row['action']
+
+        if action == 'issuemail':
+            # We know wether the client has been informed about unissued
+            # corrections if 'unissued_corrections' are returned
+            result = self.process.issue_processed_and_mail(cherrypy.session['user'],
+                     apply_corrections)
+            if result is not None
+        elif action == '':
+            # Handle email address update
+            self.process.update_bill_email_recipient(
+                row['account'], row['sequence'], row['mailto'])
+
+        row['action'] = ''
+        row['action_value'] = ''
         return True, {'row': row, 'results': 1}
 
 
@@ -403,7 +403,6 @@ class ReebillVersionsResource(RESTResource):
         return True, {'rows': result, 'results': len(result)}
 
 class ReebillsResource(RESTResource):
-    issuable = IssuableReebills()
 
     def handle_get(self, account, start, limit, sort='account', dir='DESC',
                    *vpath, **params):
@@ -886,6 +885,7 @@ class BillToolBridge(WebResource):
     journal = JournalResource()
     reports = ReportsResource()
     preferences = PreferencesResource()
+    issuable = IssuableReebills()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
@@ -970,7 +970,8 @@ cherrypy_conf = {
     '/': {
         'tools.sessions.on': True,
         'tools.staticdir.root': os.path.dirname(
-            os.path.realpath(__file__))+'/ui'
+            os.path.realpath(__file__))+'/ui',
+        'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
     },
     '/login.html': {
         'tools.staticfile.on': True,
