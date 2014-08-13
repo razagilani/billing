@@ -65,7 +65,12 @@ Ext.define('ReeBill.controller.IssuableReebills', {
 
         // Issueing the Reebill is like removing it from the 'IssuableReebills'
         // list
-        store.remove(selected);
+        store.suspendAutoSync();
+        selected.set('action', 'issuemail')
+        store.sync({success: function(a,b,c){
+            console.log('success')
+        }})
+        store.resumeAutoSync();
 
     }
 

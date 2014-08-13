@@ -35,6 +35,27 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'manual_adjustment'},
         {name: 'billing_address'},
         {name: 'service_address'},
-        {name: 'processed'}
+        {name: 'processed'},
+        // Data for Issuable Reebills
+        {name: 'mailto'},
+        {name: 'utilbill_total'},
+        {name: 'reebill_total'},
+        {name: 'difference', convert: function(value, record){
+            return Math.abs(record.get('actual_total') - record.get('utilbill_total'))
+        }},
+        {name: 'group', type: 'string', convert: function(value, record){
+            if(record.get('issued') === 1){
+                return 'Processed Reebills'
+            }
+
+            var store = Ext.getStore('Preferences')
+            var threshold = Math.abs(store.getAt(
+                store.find('key', 'difference_threshold')).get('value'))
+
+            var diff = record.get('difference')
+            return diff < threshold ? 'Reebills with matching Totals' : 'Reebills without matching Totals'
+        }},
+        {name: 'adjustment'},
+        {name: 'unissued_corrections'}
     ]
 });
