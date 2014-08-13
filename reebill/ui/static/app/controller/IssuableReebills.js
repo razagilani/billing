@@ -60,15 +60,23 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var selections = this.getIssuableReebillsGrid().getSelectionModel().getSelection();
         if (!selections.length)
             return;
+
         var selected = selections[0];
         var store = this.getIssuableReebillsStore();
 
-        // Issueing the Reebill is like removing it from the 'IssuableReebills'
-        // list
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        waitMask.show();
+
         store.suspendAutoSync();
-        selected.set('action', 'issuemail')
-        store.sync({success: function(a,b,c){
-            console.log('success')
+        selected.set('action', 'issuemail');
+        store.sync({success: function(){
+            var corrections = selected.get('unissued_corrections');
+            console.log(corrections, Boolean(corrections), typeof(corrections));
+
+            waitMask.hide();
+        },
+        failure:function(){
+            waitMask.hide();
         }})
         store.resumeAutoSync();
 
