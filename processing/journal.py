@@ -5,6 +5,8 @@ import os
 from operator import attrgetter
 
 import mongoengine
+from mongoengine.document import MapReduceDocument
+from bson import ObjectId
 
 from billing.util.dateutils import ISO_8601_DATE
 
@@ -26,8 +28,8 @@ class JournalDAO(object):
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        return '%s on %s' % (str(last_entry),
-                last_entry.date.strftime(ISO_8601_DATE))
+        return (account, '%s on %s' % (str(last_entry),
+                last_entry.date.strftime(ISO_8601_DATE)))
 
     def load_entries(self, account=None):
         '''Returns a list of dictionaries describing all entries for all
@@ -36,6 +38,36 @@ class JournalDAO(object):
         result = [dict(e.to_dict(), event=e.description()) for e in
                 Event.objects(**query)]
         return result
+
+    def get_all_last_events(self):
+        """ Uses a mongo map reduce operation to retireve the latest event for
+        all acocunts. Returns a list of tuples containing 'Account',  'String
+        representation of the event' for each of the events.
+        """
+        map_f = '''
+            function () {emit(this.account, this)}
+        '''
+        reduce_f = '''
+            function (key, values) {
+                var item = values[0];
+                for ( var i=1; i < values.length; i++ ) {
+                    if ( values[i].date > item.date){
+                        item = values[i];
+                    }
+                }
+                return item;
+            }
+        '''
+        finalize_f = '''
+            function(key, redcedVal){
+                return redcedVal._id;
+            }
+        '''
+        ids = [ObjectId(mrdoc.value['str']) for mrdoc in
+               Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
+        return [(e.account, '%s on %s' % (
+            str(e), e.date.strftime(ISO_8601_DATE))) for e in
+            Event.objects.in_bulk(ids).itervalues()]
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
@@ -130,6 +162,7 @@ class Note(Event):
         if sequence is not None:
             result.sequence = sequence
         result.save()
+        return result
 
     def __str__(self):
         return 'Note: %s' % (self.msg)
@@ -141,7 +174,10 @@ class Note(Event):
         result = super(Note, self).to_dict()
         if hasattr(self, 'sequence'):
             result.update({'sequence': self.sequence})
-        result.update({'msg': self.msg})
+        result.update({
+            'msg': self.msg,
+            'event': str(self)
+        })
         return result
 
 class UtilBillDeletedEvent(Event):
