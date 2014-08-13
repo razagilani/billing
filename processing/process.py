@@ -154,6 +154,11 @@ class Process(object):
                         rsi_binding="New RSI #%s" % n,
                         total=0.0)
         session.add(charge)
+        registers = utilbill.registers
+        charge.quantity_formula = '' if len(registers) == 0 else \
+            ('%s.quantity' % 'REG_TOTAL' if any([register.identifier ==
+                'REG_TOTAL' for register in registers]) else \
+            registers[0].identifier)
         session.flush()
         self.compute_utility_bill(utilbill_id)
         return charge
@@ -169,6 +174,7 @@ class Process(object):
                 session.query(Charge).\
                     filter(Charge.utilbill_id == utilbill_id).\
                     filter(Charge.rsi_binding == rsi_binding).one()
+
         for k, v in fields.iteritems():
             setattr(charge, k, v)
         session.flush()
