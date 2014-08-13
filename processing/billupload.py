@@ -160,7 +160,7 @@ def create_directory_if_necessary(path, logger):
     '''Creates the directory at 'path' if it does not exist and can be
     created.  If it cannot be created, logs the error using 'logger' and raises
     an exception.'''
-    # TODO logging should be handled by BillToolBridge; just raise an exception
+    # TODO logging should be handled by ReeBillWSGI; just raise an exception
     # here and let BTB catch it and log it
     try:
         os.makedirs(path)

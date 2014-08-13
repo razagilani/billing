@@ -1,67 +1,53 @@
-'''Unit tests for what will be the class wrapping a utility bill
-document, when there finally is one.
+'''Unit tests for the UtilBill class and other code that will eventually be
+included in it.
 '''
 from datetime import date
-from StringIO import StringIO
-import dateutil
-from bson import ObjectId
-from decimal import Decimal
 from unittest import TestCase
-from processing.session_contextmanager import DBSession
-from billing.test import example_data
-from billing.test import utils
+
+from billing.exc import RSIError
 from billing.processing.rate_structure2 import RateStructure, RateStructureItem
 from billing.processing import mongo
-from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.exceptions import NoRSIError
+from processing.state import UtilBill, Customer, Session, Address
 
-import example_data
+class UtilBillTest(TestCase):
 
+    # function to check error state of a charge
+    def assert_error(self, c, error_message):
+        '''Assert that the Charge 'c' has None for its quantity/rate/total
+        and 'error_message' in its 'error' field.
+        '''
+        self.assertIsNone(c.quantity)
+        self.assertIsNone(c.rate)
+        self.assertIsNone(c.total)
+        self.assertIsNotNone(c.error)
+        self.assertEqual(error_message, c.error)
 
-
-class UtilBillTest(TestCaseWithSetup, utils.TestCase):
+    def assert_charge_values(self, quantity, rate, c):
+        '''Assert that the charge 'c' has the given quantity and rate,
+        total = quantity * rate, and no error.
+        '''
+        self.assertEqual(quantity, c.quantity)
+        self.assertEqual(rate, c.rate)
+        self.assertEqual(quantity * rate, c.total)
+        self.assertEqual(None, c.error)
 
     def test_compute(self):
-        # make a utility bill document from scratch to ensure full control over
-        # its contents
+        '''Test computing a variety of charges (including charges with
+        formula errors) with different register quantities as input.
+        '''
+        # irrelevant fields are omitted from this document
         utilbill_doc = {
-            'account': '12345', 'service': 'gas', 'utility': 'washgas',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "won't be loaded from the db anyway",
-            'charges': [
-                {'rsi_binding': 'CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'LINEAR_PLUS_CONSTANT', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_1', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_2', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'BLOCK_3', 'quantity': 0,
-                        'group': 'All Charges'},
-                {'rsi_binding': 'REFERENCES_ANOTHER', 'quantity': 0,
-                        'group': 'All Charges'},
-            ],
+            'charges': [],
             'meters': [{
-                'present_read_date': date(2000,2,1),
-                'prior_read_date': date(2000,1,1),
-                'identifier': 'ABCDEF',
                 'registers': [{
-                    'identifier': 'GHIJKL',
                     'register_binding': 'REG_TOTAL',
                     'quantity': 150,
-                    'quantity_units': 'therms',
                 }]
             }],
-            'billing_address': {}, # addresses are irrelevant
-            'service_address': {},
         }
 
         # rate structure document containing some common RSI types
         uprs = RateStructure(
-            id=ObjectId(),
             rates=[
                 RateStructureItem(
                     rsi_binding='CONSTANT',
@@ -121,61 +107,241 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
                     quantity='2',
                     quantity_units='therms',
                     rate='3',
-                )
-            ]
-        )
+                ),
+                RateStructureItem(
+                    rsi_binding='SYNTAX_ERROR',
+                    quantity='5 + ',
+                    quantity_units='therms',
+                    rate='1',
+                ),
+                RateStructureItem(
+                    rsi_binding='DIV_BY_ZERO_ERROR',
+                    quantity='1',
+                    quantity_units='therms',
+                    rate='1 / 0',
+                ),
+                # shows that quantity formula error takes priority over rate
+                # formula error
+                RateStructureItem(
+                    rsi_binding='UNKNOWN_IDENTIFIER',
+                    quantity='x * 2',
+                    quantity_units='therms',
+                    rate='1 / 0',
+                ),
+        ])
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        Session().add(utilbill)
+        utilbill.refresh_charges(uprs.rates)
+        utilbill.compute_charges(uprs, utilbill_doc)
 
-        mongo.compute_all_charges(utilbill_doc, uprs)
+        get = utilbill.get_charge_by_rsi_binding
 
-        # function to get the "total" value of a charge from its name
-        def the_charge_named(rsi_binding):
-            return next(c['total'] for c in utilbill_doc['charges']
-                    if c['rsi_binding'] == rsi_binding)
+        # 'raise_exception' argument validates that all charges were computed
+        # without errors. if this argument is given, all the charges without
+        # errors still be correct, and the exception raised only after computing
+        # all the charges
+        with self.assertRaises(RSIError):
+            utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(450, .1, get('LINEAR'))
+        self.assert_charge_values(310, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
+        self.assert_charge_values(2, 3, get('REFERENCED_BY_ANOTHER'))
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        self.assert_error(
+                utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
+
+        # TODO enable when bug #76318266 is fixed
+        # self.assertEqual(40 + 45 + 31 + 30 + 10 + 0 + 5 + 6,
+        #         utilbill.total_charge())
 
         # check "total" for each of the charges in the utility bill at the
-        # register quantity of 150 therms. there should not be a charge for # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate # structure. self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT')) self.assertDecimalAlmostEqual(45, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(31,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(10, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assertRaises(StopIteration, the_charge_named,
-                'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(161,
-                mongo.total_of_all_charges(utilbill_doc))
+        # register quantity of 150 therms. there should not be a charge for
+        # NO_CHARGE_FOR_THIS_RSI even though that RSI was in the rate
+        # structure.
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(450, 0.1, get('LINEAR'))
+        self.assert_charge_values(310, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(50, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
 
         # try a different quantity: 250 therms
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 250
-        mongo.compute_all_charges(utilbill_doc, uprs)
-        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
-        self.assertDecimalAlmostEqual(75, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(51,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(30, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assertRaises(StopIteration, the_charge_named,
-                'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(236,
-                mongo.total_of_all_charges(utilbill_doc))
+        utilbill.compute_charges(uprs, utilbill_doc)
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(750, 0.1, get('LINEAR'))
+        self.assert_charge_values(510, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(100, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(150, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(50, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
 
         # and another quantity: 0
         utilbill_doc['meters'][0]['registers'][0]['quantity'] = 0
-        mongo.compute_all_charges(utilbill_doc, uprs)
-        self.assertDecimalAlmostEqual(40, the_charge_named('CONSTANT'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('LINEAR'))
-        self.assertDecimalAlmostEqual(1,
-                the_charge_named('LINEAR_PLUS_CONSTANT'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_1'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_2'))
-        self.assertDecimalAlmostEqual(0, the_charge_named('BLOCK_3'))
-        self.assertDecimalAlmostEqual(5, the_charge_named('REFERENCES_ANOTHER'))
-        self.assertRaises(StopIteration, the_charge_named,
-                'NO_CHARGE_FOR_THIS_RSI')
-        self.assertDecimalAlmostEqual(46,
-                mongo.total_of_all_charges(utilbill_doc))
+        utilbill.compute_charges(uprs, utilbill_doc)
+        self.assert_charge_values(100, 0.4, get('CONSTANT'))
+        self.assert_charge_values(0, 0.1, get('LINEAR'))
+        self.assert_charge_values(10, 0.1, get('LINEAR_PLUS_CONSTANT'))
+        self.assert_charge_values(0, 0.3, get('BLOCK_1'))
+        self.assert_charge_values(0, 0.2, get('BLOCK_2'))
+        self.assert_charge_values(0, 0.1, get('BLOCK_3'))
+        self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
+        self.assert_error(get('SYNTAX_ERROR'),
+                'Syntax error in quantity formula')
+        self.assert_error(get('DIV_BY_ZERO_ERROR'),
+                'Error in rate formula: division by zero')
+        self.assert_error(get('UNKNOWN_IDENTIFIER'),
+                "Error in quantity formula: name 'x' is not defined")
+
+
+    def test_compute_charges_empty(self):
+        '''Compute utility bill with no charges.
+        '''
+        # irrelevant fields are omitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [],
+        }
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        utilbill.compute_charges(RateStructure(rates=[]), utilbill_doc)
+        self.assertEqual([], utilbill.charges)
+        self.assertEqual(0, utilbill.total_charge())
+
+    def test_compute_charges_independent(self):
+        # irrelevant fields are omitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [{
+                'registers': [{
+                    'register_binding': 'REG_TOTAL',
+                    'quantity': 150,
+                }]
+            }],
+        }
+
+        rs = RateStructure(rates=[
+            # circular dependency between A and B: A depends on B's "quantity"
+            # and B depends on A's "rate", which is not allowed even though
+            # theoretically both could be computed.
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='REG_TOTAL.quantity',
+                quantity_units='kWh',
+                rate='1',
+            ),
+            RateStructureItem(
+                rsi_binding='B',
+                quantity='2',
+                quantity_units='kWh',
+                rate='3',
+            ),
+            # this has an error
+            RateStructureItem(
+                rsi_binding='C',
+                quantity='1/0',
+                quantity_units='kWh',
+                rate='x + y',
+            ),
+        ])
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        Session().add(utilbill)
+        utilbill.refresh_charges(rs.rates)
+        utilbill.compute_charges(rs, utilbill_doc)
+
+        self.assert_charge_values(150, 1,
+                utilbill.get_charge_by_rsi_binding('A'))
+        self.assert_charge_values(2, 3,
+                utilbill.get_charge_by_rsi_binding('B'))
+        self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
+                'Error in quantity formula: division by zero')
+        self.assertEqual(150 + 6, utilbill.total_charge())
+
+    def test_compute_charges_with_cycle(self):
+        '''Test computing charges whose dependencies form a cycle.
+        All such charges should have errors.
+        '''
+        # irrelevant fields are omitted from this document
+        utilbill_doc = {
+            'charges': [],
+            'meters': [],
+        }
+
+        rs = RateStructure(rates=[
+            # circular dependency between A and B: A depends on B's "quantity"
+            # and B depends on A's "rate", which is not allowed even though
+            # theoretically both could be computed.
+            RateStructureItem(
+                rsi_binding='A',
+                quantity='B.quantity',
+                quantity_units='kWh',
+                rate='0',
+            ),
+            RateStructureItem(
+                rsi_binding='B',
+                quantity='0',
+                quantity_units='kWh',
+                rate='A.rate',
+            ),
+            # C depends on itself
+            RateStructureItem(
+                rsi_binding='C',
+                quantity='C.total',
+                quantity_units='kWh',
+                rate='0',
+            ),
+            # D depends on A, which has a circular dependency with B. it should
+            # not be computable because A is not computable.
+            RateStructureItem(
+                rsi_binding='D',
+                quantity='A.total',
+                quantity_units='kWh',
+                rate='0',
+            ),
+        ])
+        utilbill = UtilBill(Customer('someone', '99999', 0.3, 0.1, None,
+                'nobody@example.com'), UtilBill.Complete,
+                'gas', 'utility', 'rate class', Address(), Address())
+        Session().add(utilbill)
+        utilbill.refresh_charges(rs.rates)
+        utilbill.compute_charges(rs, utilbill_doc)
+
+        self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
+                "Error in quantity formula: name 'B' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
+                "Error in rate formula: name 'A' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
+                "Error in quantity formula: name 'C' is not defined")
+        self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
+            "Error in quantity formula: name 'A' is not defined")
 
     def test_register_editing(self):
         '''So far, regression test for bug 59517110 in which it was possible to
@@ -344,277 +510,3 @@ class UtilBillTest(TestCaseWithSetup, utils.TestCase):
             ],
         }], utilbill_doc['meters'])
 
-    def test_regression_63401058(self):
-        '''Regression test for bug 63401058, in which calculating the charges
-        of a bill failed because RSI formulas were evaluated in the wrong
-        order. This was due to iterating over a dictionary using rsi_bindings,
-        where the order was dependendent on the hashes of those strings in
-        the dictionary.
-        '''
-        # simplified version of the actual utility bill
-        utilbill_doc = {
-            "_id" : ObjectId("52b455467eb49a52d23d105d"),
-            "account" : "10056",
-            "billing_address" : {
-                "city" : "Columbia",
-                "state" : "MD",
-                "addressee" : "Equity Mgmt",
-                "street" : "8975 Guilford Rd Ste 100",
-                "postal_code" : "21046"
-            },
-            "charges" : [
-                {
-                    "rsi_binding" : "SUPPLY_COMMODITY",
-                    "uuid" : "a1107f8e-3044-11e3-8b17-1231390e8112",
-                    "quantity" : 396.8,
-                    "rate_units" : "dollars",
-                    "rate" : 0.747,
-                    "quantity_units" : "therms",
-                    "total" : 296.41,
-                    "description" : "Commodity",
-                    'group': 'Generation/Supply',
-                },
-                {
-                    "rsi_binding" : "MD_SUPPLY_SALES_TAX",
-                    "uuid" : "a11083ee-3044-11e3-8b17-1231390e8112",
-                    "quantity" : 296.41,
-                    "rate_units" : "percent",
-                    "processingnote" : "",
-                    "rate" : 0.06,
-                    "quantity_units" : "dollars",
-                    "total" : 17.79,
-                    "description" : "MD Sales tax commodity",
-                    'group': 'Generation/Supply',
-                }
-            ],
-            "end" : dateutil.parser.parse("2013-12-16T00:00:00Z"), "meters" : [
-                {
-                    "present_read_date" : dateutil.parser.parse("2013-12-16T00:00:00Z"),
-                    "registers" : [
-                        {
-                            "description" : "Therms",
-                            "quantity" : 0,
-                            "quantity_units" : "therms",
-                            "identifier" : "T37110",
-                            "type" : "total",
-                            "register_binding" : "REG_TOTAL"
-                        }
-                    ],
-                    "prior_read_date" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
-                    "identifier" : "T37110"
-                }
-            ],
-            "rate_class" : "GROUP METER APT HEAT/COOL",
-            "service" : "gas",
-            "service_address" : {
-                "city" : "District Heights",
-                "state" : "MD",
-                "addressee" : "Equity Mgmt",
-                "postal_code" : "20747",
-                "street" : "3747 Donnell Dr"
-            },
-            "start" : dateutil.parser.parse("2013-11-14T00:00:00Z"),
-            "total" : 510.26,
-            "utility" : "washgas"
-        }
-
-        # simplified version of document with _id 52b455467eb49a52d23d105c
-        # (originally this was a CPRS with an empty UPRS)
-        uprs =  RateStructure.from_json('''{
-            "_cls" : "RateStructure",
-            "type" : "UPRS",
-            "rates" : [
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "SYSTEM_CHARGE",
-                    "quantity" : "1"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "ENERGY_FIRST_BLOCK",
-                    "quantity" : "1"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "ENERGY_SECOND_BLOCK",
-                    "quantity" : "1"
-                },
-                {
-                    "rsi_binding" : "ENERGY_REMAINDER_BLOCK",
-                    "rate_units" : "dollars",
-                    "rate" : "1",
-                    "quantity_units" : "therms",
-                    "quantity" : "1"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "SALES_TAX",
-                    "quantity" : "SYSTEM_CHARGE.total"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "MD_GROSS_RECEIPTS_SURCHARGE",
-                    "quantity" : "1"
-                },
-                {
-                    "rate" : ".061316872",
-                    "rsi_binding" : "PG_COUNTY_ENERGY_TAX",
-                    "quantity" : "1"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "SUPPLY_COMMODITY",
-                    "quantity" : "REG_TOTAL.quantity"
-                },
-                {
-                    "rate" : "1",
-                    "rsi_binding" : "MD_SUPPLY_SALES_TAX",
-                    "quantity" : "SUPPLY_COMMODITY.total "
-                }
-            ]
-        }''')
-
-        # this should not raise an exception
-        mongo.compute_all_charges(utilbill_doc, uprs)
-
-
-    def test_compute_charge_without_rsi(self):
-        '''Check that compute_charges raises a NoRSIError when attempting to
-        compute charges for a bill containing a charge without a
-        corresponding RSI.
-        '''
-        utilbill_doc = {
-            'account': '12345', 'service': 'gas', 'utility': 'washgas',
-            'start': date(2000,1,1), 'end': date(2000,2,1),
-            'rate_class': "won't be loaded from the db anyway",
-            'charges': [
-                # a charge with no corrseponding RSI
-                {'rsi_binding': 'NO_RSI', 'quantity': 0, 'group': 'All '
-                                                                  'Charges'}
-            ],
-            'meters': [{
-                'present_read_date': date(2000,2,1),
-                'prior_read_date': date(2000,1,1),
-                'identifier': 'ABCDEF',
-                'registers': [{
-                    'identifier': 'GHIJKL',
-                    'register_binding': 'REG_TOTAL',
-                    'quantity': 150,
-                    'quantity_units': 'therms',
-                }]
-            }],
-            'billing_address': {}, # addresses are irrelevant
-            'service_address': {},
-        }
-
-        # rate structures are empty
-        uprs = RateStructure(
-            id=ObjectId(),
-            rates=[]
-        )
-        cprs = RateStructure(
-            id=ObjectId(),
-            rates=[]
-        )
-
-        # compute_all_charges should raise a KeyError if not all charges have
-        # an RSI
-        self.assertRaises(NoRSIError, mongo.compute_all_charges, utilbill_doc,
-                uprs)
-
-    def test_get_service_address(self):
-        utilbill_doc = example_data.get_utilbill_dict('10003')
-        address = mongo.get_service_address(utilbill_doc)
-        self.assertEqual(address['postal_code'],'20010')
-        self.assertEqual(address['city'],'Washington')
-        self.assertEqual(address['state'],'DC')
-        self.assertEqual(address['addressee'],'Monroe Towers')
-        self.assertEqual(address['street'],'3501 13TH ST NW #WH')
-
-    def test_refresh_charges(self):
-        account = '99999'
-        with DBSession(self.state_db) as session:
-            self.process.upload_utility_bill(session, account, 'gas',
-                date(2013,1,1), date(2013,2,1), StringIO('January 2013'),
-                'january.pdf')
-
-            utilbill = self.process.get_all_utilbills_json(session,
-                    account, 0, 30)[0][0]
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'],'New RSI #1', {
-                    'rsi_binding': 'NEW_1',
-                    'description':'a charge for this will be added',
-                    'quantity': '1',
-                    'rate': '2',
-                    'quantity_units':'dollars'
-                })
-            new_rsi = self.process.add_rsi(session, utilbill['id'])
-            self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'NEW_2',
-                    'description':'a charge for this will be added too',
-                    'quantity': '5',
-                    'rate': '6',
-                    'quantity_units':'therms',
-                    'shared': False
-                })
-
-
-            self.process.refresh_charges(session, utilbill['id'])
-            charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-            self.assertEqual([
-                {
-                    'rsi_binding': 'NEW_1',
-                    'id': 'NEW_1',
-                    'description': 'a charge for this will be added',
-                    'quantity': 1,
-                    'quantity_units': 'dollars',
-                    'rate': 2,
-                    'total': 2,
-                    'group': '',
-                },
-                {
-                    'rsi_binding': 'NEW_2',
-                    'id': 'NEW_2',
-                    'description': 'a charge for this will be added too',
-                    'quantity': 5,
-                    'quantity_units': 'therms',
-                    'rate': 6,
-                    'total': 30,
-                    'group': '',
-                },
-            ], charges)
-
-        # TODO move the stuff below into a unit test (in test_utilbill.py)
-        # when there's any kind of exception in computing the bill, the new
-        # set of charges should still get saved, and the exception should be
-        # re-raised
-        new_rsi = self.process.add_rsi(session, utilbill['id'])
-        self.process.update_rsi(session, utilbill['id'], 'New RSI #1', {
-                    'rsi_binding': 'BAD',
-                    'description':"quantity formula can't be computed",
-                    'quantity': 'WTF',
-                    'rate': '1',
-                    'quantity_units':'whatever',
-                })
-
-        from billing.processing.exceptions import RSIError
-        with self.assertRaises(RSIError) as e:
-            self.process.refresh_charges(session, utilbill['id'])
-        charges = self.process.get_utilbill_charges_json(session, utilbill['id'])
-        self.assertEqual([{
-            'rsi_binding': 'BAD',
-            'id': 'BAD',
-            'description': "quantity formula can't be computed",
-            'quantity_units': 'whatever',
-            # quantity, rate, total are all 0 when not computable
-            'quantity': 0,
-            'rate': 0,
-            'total': 0,
-            'group': '',
-        }], [charges[0]])
-
-        # TODO test that document is still saved after any kind of Exception--
-        # i'm not sure how to do this because the code should be (and is)
-        # written so that there are no known ways to trigger unexpected
-        # exceptions. in a real unit test, mongo.compute_charges could be
-        # replaced with a mock that did this.

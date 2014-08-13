@@ -3,7 +3,7 @@
 reebills to the same quantities in OLAP.
 
 This should be run by cron to generate a static JSON file, which can be loaded
-by BillToolBridge and returned for display in an Ext-JS grid in the browser.
+by ReeBillWSGI and returned for display in an Ext-JS grid in the browser.
 
 With our current configuration, the command to run it is:
 python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod

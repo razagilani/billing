@@ -6,7 +6,7 @@ from bson import ObjectId
 from mongoengine import DoesNotExist
 from billing.processing.rate_structure2 import RateStructure, \
     RateStructureItem, RateStructureDAO
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
 class RSITest(unittest.TestCase):
@@ -77,12 +77,13 @@ class RSITest(unittest.TestCase):
             # is being used, so 3/4 = .75, not 0
             rate='3 / 4 - R2.quantity',
         )
-        quantity, rate = rsi.compute_charge({
+        quantity, rate, error = rsi.compute_charge({
             'R1': { 'quantity': 2, 'rate': 1, },
             'R2': { 'quantity': 0.5, 'rate': 10, }
         })
         self.assertEqual(3, quantity)
         self.assertEqual(0.25, rate)
+        self.assertEqual(None, error)
 
     def test_compute_charge_errors(self):
         bad_rsi = RateStructureItem(
@@ -92,26 +93,36 @@ class RSITest(unittest.TestCase):
             rate='0',
         )
         # invalid syntax: FormulaSyntaxError
-        self.assertRaises(FormulaSyntaxError, bad_rsi.compute_charge, {})
+        #self.assertRaises(FormulaSyntaxError, bad_rsi.compute_charge, {})
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
 
         # unknown identifier: generic FormulaError
         bad_rsi.quantity = '1 + x.quantity'
-        self.assertRaises(FormulaError, bad_rsi.compute_charge, {})
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaError)
+        self.assertNotIsInstance(error, FormulaSyntaxError)
 
         # quantity formula can't be empty
         bad_rsi.quantity = ''
-        with self.assertRaises(FormulaSyntaxError) as context:
-            bad_rsi.compute_charge({})
-        self.assertEqual("A quantity formula can't be empty",
-                context.exception.message)
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
+        self.assertEqual("quantity formula can't be empty", error.message)
 
         # rate formula can't be empty
         bad_rsi.quantity = '1'
         bad_rsi.rate = ''
-        with self.assertRaises(FormulaSyntaxError) as e:
-                bad_rsi.compute_charge({})
-        self.assertEqual("A quantity formula can't be empty",
-                context.exception.message)
+        quantity, rate, error = bad_rsi.compute_charge({})
+        self.assertIsNone(quantity)
+        self.assertIsNone(rate)
+        self.assertIsInstance(error, FormulaSyntaxError)
+        self.assertEqual("rate formula can't be empty", error.message)
 
 class RateStructureTest(unittest.TestCase):
 
@@ -140,18 +151,18 @@ class RateStructureTest(unittest.TestCase):
             quantity_units='therms',
             rate='4',
         )
-        self.uprs = RateStructure(type='UPRS', rates=[self.a, self.b_1])
-        self.cprs = RateStructure(type='CPRS', rates=[self.b_2, self.c])
+        self.uprs = RateStructure(rates=[self.a, self.b_1])
 
     def test_combine(self):
         # 2nd RateStructure overrides the first, so b_2 is in the combination
         # (note that order of RSIs within a RateStructure does not matter,
         # so they are compared as sets)
-        result = RateStructure.combine(self.uprs, self.cprs)
+        other_rs = RateStructure(rates=[self.b_2, self.c])
+        result = RateStructure.combine(self.uprs, other_rs)
         self.assertEqual(set([self.a, self.b_2, self.c]), set(result.rates))
 
         # if the order of the arguments is reversed, b_1 is in the combination
-        result = RateStructure.combine(self.cprs, self.uprs)
+        result = RateStructure.combine(other_rs, self.uprs)
         self.assertEqual(set([self.a, self.b_1, self.c]), set(result.rates))
 
     def test_add_update_rsi(self):
