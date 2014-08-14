@@ -19,7 +19,6 @@ class alembic(Schema):
     script_location = Directory()
 
 class runtime(Schema):
-    integrate_skyline_backend = StringBool()
     integrate_nexus = StringBool()
     sessions_key = String()
     mock_skyliner = StringBool()

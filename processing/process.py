@@ -682,10 +682,7 @@ class Process(object):
         and computes the bill by default. This behavior can be modified by
         adjusting the appropriate parameters.
         'start_date': must be given for the first reebill.
-        'integrate_skyline_backend': this must be True to get renewable energy
-                                     data.
-        'skip_compute': for tests that want to check for correct default
-                        values before the bill was computed"""
+        """
         session = Session()
 
         customer = self.state_db.get_customer(account)
