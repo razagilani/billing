@@ -10,7 +10,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
 from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Register
+from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
+    Charge
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 # TODO this should not be used anymore
@@ -42,12 +43,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                     'gas', begin_date, end_date,
                                                     StringIO('a utility bill'),
                                                     'filename.pdf')
-        self.process.add_rsi(utilbill.id)
-        self.process.update_rsi(utilbill.id, 'New RSI #1', {
+        self.process.add_charge(utilbill.id)
+        self.process.update_charge({
             'rsi_binding': 'A',
-            'quantity': 'REG_TOTAL.quantity',
-            'rate': '1'
-        })
+            'quantity_formula': 'REG_TOTAL.quantity',
+            'rate_formula': '1'
+        }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(utilbill.id)  #creates charges
         self.process.compute_utility_bill(utilbill.id)  #updates charge values
 
@@ -111,10 +112,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                        'reebills': [],
                                       }, utilbill_data)
 
-        self.process.add_rsi(utilbill_data['id'])
-        self.process.update_rsi(utilbill_data['id'],
-                'New RSI #1', {'quantity': 'REG_TOTAL.quantity',
-                'rate': '1', 'rsi_binding': 'A', 'description':'a'})
+        self.process.add_charge(utilbill_data['id'])
+        self.process.update_charge({'quantity_formula': 'REG_TOTAL.quantity',
+                                    'rate_formula': '1', 'rsi_binding': 'A',
+                                    'description':'a'},
+                                    utilbill_id=utilbill_data['id'],
+                                    rsi_binding='New RSI #1')
         self.process.refresh_charges(utilbill_data['id'])
 
         self.process.ree_getter = MockReeGetter(10)
@@ -306,14 +309,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         u = self.process.upload_utility_bill(acc, 'gas',
                 date(2000, 1, 1), date(2000, 2, 1),
                 StringIO('January 2000'), 'january.pdf')
-        self.process.add_rsi(u.id)
-        self.process.update_rsi(u.id, 'New RSI #1', {
+        self.process.add_charge(u.id)
+        self.process.update_charge({
             'rsi_binding': 'THE_CHARGE',
-            'quantity': 'REG_TOTAL.quantity',
+            'quantity_formula': 'REG_TOTAL.quantity',
             'quantity_units': 'therms',
-            'rate': '1',
+            'rate_formula': '1',
             'group': 'All Charges',
-        })
+        }, utilbill_id=u.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(u.id)
         self.process.update_utilbill_metadata(u.id, processed=True)
 
@@ -467,8 +470,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # the user would manually add RSIs and charges when processing the
         # first bill for a given rate structure.)
         for fields in example_data.charge_fields:
-            self.process.add_rsi(utilbill_id)
-            self.process.update_rsi(utilbill_id, "New RSI #1", fields)
+            self.process.add_charge(utilbill_id)
+            self.process.update_charge(fields, utilbill_id=utilbill_id,
+                                       rsi_binding="New RSI #1")
         self.process.refresh_charges(utilbill_id)
 
         # ##############################################################
@@ -806,13 +810,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                        StringIO('a utility bill'),
                                        'filename.pdf')
 
-            p.add_rsi(ub.id)  #creates an RSI with binding 'New RSI #1'
-            p.update_rsi(ub.id,  #update the just-created RSI
-                         'New RSI #1',
-                         {'rsi_binding': 'THE_CHARGE',
-                          'quantity': 'REG_TOTAL.quantity',
-                          'rate': '1',
-                          'group': 'All Charges'})
+            p.add_charge(ub.id)  #creates a charge with rsi_binding 'New RSI #1'
+            #update the just-created charge
+            p.update_charge({'rsi_binding': 'THE_CHARGE',
+                          'quantity_formula': 'REG_TOTAL.quantity',
+                          'rate_formula': '1',
+                          'group': 'All Charges'}, utilbill_id=ub.id,
+                         rsi_binding='New RSI #1')
 
             p.update_register(ub.registers[0].id, {'quantity': 100})
 
@@ -921,10 +925,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                               'january.pdf')
 
         charge = self.process.add_charge(u1.id)
-        self.process.update_charge(charge.id, dict(rsi_binding='THE_CHARGE',
+        self.process.update_charge(dict(rsi_binding='THE_CHARGE',
             quantity_formula="REG_TOTAL.quantity",
             quantity_units='therms', rate_formula='1',
-            group='All Charges'))
+            group='All Charges'), charge_id=charge.id)
 
         self.process.update_utilbill_metadata(u1.id,
                                               processed=True)
@@ -1212,43 +1216,43 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # insert some RSIs into them. A gets only one
         # RSI, SYSTEM_CHARGE, while B and C get two others,
         # DISTRIBUTION_CHARGE and PGC.
-        self.process.add_rsi(id_a)
-        self.process.add_rsi(id_a)
-        self.process.update_rsi(id_a, 'New RSI #1', {
+        self.process.add_charge(id_a)
+        self.process.add_charge(id_a)
+        self.process.update_charge({
            'rsi_binding': 'SYSTEM_CHARGE',
             'description': 'System Charge',
-            'quantity': '1',
-            'rate': '11.2',
+            'quantity_formula': '1',
+            'rate_formula': '11.2',
             'shared': True,
             'group': 'A',
-        })
-        self.process.update_rsi(id_a, 'New RSI #2', {
+        }, utilbill_id=id_a, rsi_binding='New RSI #1')
+        self.process.update_charge({
            'rsi_binding': 'NOT_SHARED',
            'description': 'System Charge',
-           'quantity': '1',
-           'rate': '3',
+           'quantity_formula': '1',
+           'rate_formula': '3',
            'shared': False,
            'group': 'B',
-        })
+        }, utilbill_id=id_a, rsi_binding='New RSI #2')
         for i in (id_b, id_c):
-           self.process.add_rsi(i)
-           self.process.add_rsi(i)
-           self.process.update_rsi(i, 'New RSI #1', {
+           self.process.add_charge(i)
+           self.process.add_charge(i)
+           self.process.update_charge({
                'rsi_binding': 'DISTRIBUTION_CHARGE',
                'description': 'Distribution charge for all therms',
-               'quantity': '750.10197727',
-               'rate': '220.16',
+               'quantity_formula': '750.10197727',
+               'rate_formula': '220.16',
                'shared': True,
                'group': 'C',
-           })
-           self.process.update_rsi(i, 'New RSI #2', {
+           }, utilbill_id=i, rsi_binding='New RSI #1')
+           self.process.update_charge({
                'rsi_binding': 'PGC',
                'description': 'Purchased Gas Charge',
-               'quantity': '750.10197727',
-               'rate': '0.7563',
+               'quantity_formula': '750.10197727',
+               'rate_formula': '0.7563',
                'shared': True,
                'group': 'D',
-           })
+           }, utilbill_id=i, rsi_binding='New RSI #2')
 
         # create utility bill and reebill #2 for A
         self.process.upload_utility_bill(acc_a,
@@ -1260,7 +1264,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # initially there will be no RSIs in A's 2nd utility bill, because
         # there are no "processed" utility bills yet.
-        self.assertEqual([], self.process.get_rsis_json(id_a_2))
+        self.assertEqual([], self.process.get_utilbill_charges_json(id_a_2))
 
         # when the other bills have been marked as "processed", they should
         # affect the new one.
@@ -1275,22 +1279,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # un-shared RSIs always get copied from each bill to its successor.
         self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC', 'NOT_SHARED']),
                 set(r['rsi_binding'] for r in
-                    self.process.get_rsis_json(id_a_2)))
+                    self.process.get_utilbill_charges_json(id_a_2)))
 
         # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
         # a new bill is rolled, the UPRS it gets depends on whether it's
         # closer to B/C-1 or to A-2.
-        self.process.delete_rsi(id_a_2, 'DISTRIBUTION_CHARGE')
-        self.process.delete_rsi(id_a_2, 'PGC')
-        self.process.delete_rsi(id_a_2, 'NOT_SHARED')
-        self.process.add_rsi(id_a_2)
-        self.process.update_rsi(id_a_2, 'New RSI #1', {
+        self.process.delete_charge(utilbill_id=id_a_2, rsi_binding='DISTRIBUTION_CHARGE')
+        self.process.delete_charge(utilbill_id=id_a_2, rsi_binding='PGC')
+        self.process.delete_charge(utilbill_id=id_a_2, rsi_binding='NOT_SHARED')
+        self.session.flush()
+        self.process.add_charge(id_a_2)
+        self.process.update_charge({
            'rsi_binding': 'RIGHT_OF_WAY',
            'description': 'DC Rights-of-Way Fee',
-           'quantity': '750.10197727',
-           'rate': '0.03059',
+           'quantity_formula': '750.10197727',
+           'rate_formula': '0.03059',
            'shared': True
-        })
+        }, utilbill_id=id_a_2, rsi_binding='New RSI #1')
 
         # create B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
         # the latter are more numerous, but A-1 should outweigh them
@@ -1299,7 +1304,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 date(2000,2,5), date(2000,3,5), StringIO('February 2000 B'),
                'february-b.pdf', total=0, state=UtilBill.Complete)
         self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
-               self.process.get_rsis_json(id_a_2)))
+               self.process.get_utilbill_charges_json(id_a_2)))
 
     def test_rs_prediction_processed(self):
         '''Tests that rate structure prediction includes all and only utility
@@ -1654,10 +1659,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # (computing a utility bill doesn't raise an exception by default, but
         # computing a reebill based on the utility bill does.)
         charge = self.process.add_charge(utilbill_id)
-        self.process.update_charge(charge.id, {
+        self.process.update_charge({
             'quantity_formula': '1 + ',
             'RSI_BINDING': 'some_rsi'
-        })
+        }, charge_id=charge.id)
         with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)
 
@@ -1719,26 +1724,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # add some RSIs to the UPRS, and charges to match
 
-        self.process.add_rsi(utilbill_data['id'])
-        self.process.update_rsi(utilbill_data['id'],'New RSI #1', {
-            'rsi_binding': 'A',
-            'description':'UPRS only',
-            'quantity': '2',
-            'rate': '3',
-            'group': 'All Charges',
-            'quantity_units':'kWh'
-        })
+        self.process.add_charge(utilbill_data['id'])
+        self.process.update_charge({
+                'rsi_binding': 'A',
+                'description':'UPRS only',
+                'quantity_formula': '2',
+                'rate_formula': '3',
+                'group': 'All Charges',
+                'quantity_units':'kWh'
+            },
+            utilbill_id=utilbill_data['id'],
+            rsi_binding='New RSI #1')
 
-        self.process.add_rsi(utilbill_data['id'])
-        self.process.update_rsi(utilbill_data['id'],'New RSI #1', {
-            'rsi_binding': 'B',
-            'description':'not shared',
-            'quantity': '6',
-            'rate': '7',
-            'quantity_units':'therms',
-            'group': 'All Charges',
-            'shared': False
-        })
+        self.process.add_charge(utilbill_data['id'])
+        self.process.update_charge({
+                'rsi_binding': 'B',
+                'description':'not shared',
+                'quantity_formula': '6',
+                'rate_formula': '7',
+                'quantity_units':'therms',
+                'group': 'All Charges',
+                'shared': False
+            }, utilbill_id=utilbill_data['id'], rsi_binding='New RSI #1')
 
         # compute_utility_bill should update the document to match
         self.process.compute_utility_bill(utilbill_data['id'])
@@ -1792,11 +1799,12 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                          'february.pdf')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
         id_2, id_1 = (obj['id'] for obj in utilbills_data)
-        self.process.add_rsi(id_1)
-        self.process.update_rsi(id_1, 'New RSI #1',
-                                {'rsi_binding': 'THE_CHARGE',
-                                 'quantity': 'REG_TOTAL.quantity',
-                                 'rate': '1', })
+        self.process.add_charge(id_1)
+        self.process.update_charge({'rsi_binding': 'THE_CHARGE',
+                                    'quantity_formula': 'REG_TOTAL.quantity',
+                                    'rate_formula': '1'},
+                                    utilbill_id=id_1,
+                                    rsi_binding='New RSI #1')
         self.process.refresh_charges(id_1)
         self.process.update_utilbill_metadata(id_1, processed=True)
         self.process.regenerate_uprs(id_2)

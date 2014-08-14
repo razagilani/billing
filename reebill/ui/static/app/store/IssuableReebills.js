@@ -1,7 +1,7 @@
 Ext.define('ReeBill.store.IssuableReebills', {
     extend: 'Ext.data.Store',
 
-    model: 'ReeBill.model.IssuableReebill',
+    model: 'ReeBill.model.Reebill',
 
     autoLoad: false,
     autoSync: true,
@@ -9,13 +9,16 @@ Ext.define('ReeBill.store.IssuableReebills', {
     remoteGroup: false,
     remoteSort: true,
 
-    groupField: 'matching',
+    groupField: 'group',
 
 	proxy: {
         type: 'rest',
-        url: 'http://'+window.location.host+'/reebill/reebills/issuable',
+        url: 'http://'+window.location.host+'/reebill/issuable',
 
-        pageParam: false,        
+        pageParam: false,
+        sortParam: false,
+        groupParam: false,
+        directionParam: false,
 
         simpleSortMode: true,
 

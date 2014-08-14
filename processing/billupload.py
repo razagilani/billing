@@ -64,7 +64,7 @@ class BillUpload(object):
         finally:
             the_file.close()
 
-        new_file_name=str(utilbill.id)+os.path.splitext(file_name)[1]
+        new_file_name=str(utilbill.id)+'.pdf'
         save_file_path = os.path.join(self.save_directory, account, new_file_name)
 
         # create the save directory if it doesn't exist

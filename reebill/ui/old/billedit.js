@@ -5274,7 +5274,7 @@ function reeBillReady() {
         id: 'issueReebillBtn',
         iconCls: 'icon-mail',
         text: 'Issue',
-        disabled: false,
+        disabled: true,
         handler: function()
         {
             var r = issuableGrid.getSelectionModel().getSelected();
@@ -5484,6 +5484,7 @@ function reeBillReady() {
 
     issuablePanel.on('activate', function(panel) {
         issuableStore.reload();
+        issueReebillButton.setDisabled(true);
     });
 
 

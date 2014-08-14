@@ -66,13 +66,6 @@ class Process(object):
         self.logger = logger
         self.journal_dao = journal.JournalDAO()
 
-    def get_utilbill_doc(self, utilbill_id, reebill_sequence=None,
-            reebill_version=None):
-        raise DeprecationWarning
-
-    def get_rs_doc(self, utilbill_id, rs_type, reebill_sequence=None,
-            reebill_version=None):
-        raise DeprecationWarning
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
@@ -148,88 +141,61 @@ class Process(object):
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
         session = Session()
-        utilbill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        c = Charge(utilbill, "New Charge", "", 0, "", 0, "", 0)
-        utilbill.charges.append(c)
-        self.compute_utility_bill(utilbill_id)
-        session.flush()
-        return c
-
-    def update_charge(self, charge_id, fields):
-        """Modify the charge given by charge_id
-        by setting key-value pairs to match the dictionary 'fields'."""
-        session = Session()
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
-        for k, v in fields.iteritems():
-            setattr(charge, k, v)
-        self.compute_utility_bill(charge.utilbill.id)
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
-        return charge
-
-    def delete_charge(self, charge_id):
-        """Delete the charge given by 'rsi_binding' in the given utility
-        bill."""
-        session = Session()
-        charge = session.query(Charge)\
-            .filter(Charge.id == charge_id).one()
-        session.delete(charge)
-        self.compute_utility_bill(charge.utilbill_id)
-
-    def get_rsis_json(self, utilbill_id):
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        return [{'rsi_binding': c.rsi_binding,
-                 'quantity_formula': c.quantity_formula,
-                 'rate_formula': c.rate_formula,
-                 'has_charge': c.has_charge,
-                 'shared': c.shared,
-                 'roundrule': c.roundrule} for c in utilbill.charges]
-
-    def add_rsi(self, utilbill_id):
-        session = Session()
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
         all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
         n = 1
         while ('New RSI #%s' % n) in all_rsi_bindings:
             n += 1
-        session.add(Charge(utilbill = utilbill,
-                            description = "Insert description here",
-                            group = "",
-                            quantity = 0.0,
-                            quantity_units = "",
-                            rate = 0.0,
-                            rsi_binding = "New RSI #%s" % n,
-                            total = 0.0))
+        charge = Charge(utilbill=utilbill,
+                        description="New Charge - Insert description here",
+                        group="",
+                        quantity=0.0,
+                        quantity_units="",
+                        rate=0.0,
+                        rsi_binding="New RSI #%s" % n,
+                        total=0.0)
+        session.add(charge)
+        registers = utilbill.registers
+        charge.quantity_formula = '' if len(registers) == 0 else \
+            ('%s.quantity' % 'REG_TOTAL' if any([register.identifier ==
+                'REG_TOTAL' for register in registers]) else \
+            registers[0].identifier)
         session.flush()
-        self.compute_utility_bill(utilbill_id)
-
-    def update_rsi(self, utilbill_id, rsi_binding, fields):
-        """Modify the charge given by `rsi_binding` in the given utility
-        bill by setting attributes to match the dictionary `fields`.
-        """
-        session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
-
-        for k, v in fields.iteritems():
-            if k in ['quantity', 'rate']:
-                k = '%s_formula' % k  # we renamed these
-            setattr(charge, k, v)
-        self.refresh_charges(utilbill_id)
         self.compute_utility_bill(utilbill_id)
         return charge
 
-    def delete_rsi(self, utilbill_id, rsi_binding):
+    def update_charge(self, fields, charge_id=None, utilbill_id=None,
+                      rsi_binding=None):
+        """Modify the charge given by charge_id
+        by setting key-value pairs to match the dictionary 'fields'."""
+        assert charge_id or utilbill_id and rsi_binding
         session = Session()
-        charge = session.query(Charge).join(UtilBill).\
-            filter(UtilBill.id == utilbill_id).\
-            filter(Charge.rsi_binding == rsi_binding).one()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+                    if charge_id else \
+                session.query(Charge).\
+                    filter(Charge.utilbill_id == utilbill_id).\
+                    filter(Charge.rsi_binding == rsi_binding).one()
+
+        for k, v in fields.iteritems():
+            setattr(charge, k, v)
+        session.flush()
+        self.refresh_charges(charge.utilbill.id)
+        self.compute_utility_bill(charge.utilbill.id)
+        return charge
+
+    def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
+        """Delete the charge given by 'rsi_binding' in the given utility
+        bill."""
+        assert charge_id or utilbill_id and rsi_binding
+        session = Session()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+                    if charge_id else \
+                session.query(Charge).\
+                    filter(Charge.utilbill_id == utilbill_id).\
+                    filter(Charge.rsi_binding == rsi_binding).one()
         session.delete(charge)
-        session.commit()
-        #test_rs_prediction fails without this commit; I believe the commit
-        #should be moved to inside test_rs_prediction
+        self.compute_utility_bill(charge.utilbill_id)
+        session.expire(charge.utilbill)
 
     def create_payment(self, account, date_applied, description,
             credit, date_received=None):
@@ -1044,6 +1010,7 @@ class Process(object):
                         service_address['state'],
                         service_address['postal_code']))
         session.add(new_customer)
+        session.flush()
         return new_customer
 
     def issue(self, account, sequence, issue_date=None):
@@ -1310,15 +1277,8 @@ class Process(object):
                 .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
                 .filter(ReeBill.sequence==min_sequence.c.sequence)
 
-        issuable_reebills = sorted([{
-            'id': r.id,
-            'account': r.customer.account,
-            'sequence':r.sequence,
-            'util_total': sum(u.total_charges for u in r.utilbills),
-            'mailto':r.customer.bill_email_recipient,
-            'reebill_total': r.get_total_actual_charges(),
-            'processed': r.processed,
-            } for r in reebills.all()], key=itemgetter('account'))
+        issuable_reebills = sorted([
+            r.column_dict() for r in reebills.all()], key=itemgetter('account'))
         return issuable_reebills
 
     def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):
@@ -1331,7 +1291,7 @@ class Process(object):
         unissued_corrections = self.get_unissued_corrections(account)
         if len(unissued_corrections) > 0 and not apply_corrections:
                 return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
+                    'unissued_corrections': [c[0] for c in unissued_corrections],
                     'adjustment': sum(c[2] for c in unissued_corrections)}
 
         # The user has confirmed to issue unissued corrections.
@@ -1383,8 +1343,9 @@ class Process(object):
 
             unissued_corrections = self.get_unissued_corrections(bill['account'])
             if len(unissued_corrections) > 0 and not apply_corrections:
-                return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
+                return {
+                    'unissued_corrections': [c[0] for c in
+                                             unissued_corrections],
                     'adjustment': sum(c[2] for c in unissued_corrections)}
 
             # The user has confirmed to issue unissued corrections.
