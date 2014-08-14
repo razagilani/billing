@@ -189,9 +189,6 @@ class ReeBillWSGI(object):
                 },
             )
 
-        self.integrate_skyline_backend = self.config.get('runtime',
-                'integrate_skyline_backend')
-
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
                 dict(self.config.items('reebillrendering')), self.state_db,

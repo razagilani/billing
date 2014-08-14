@@ -191,9 +191,6 @@ class WebResource(object):
                 },
             )
 
-        self.integrate_skyline_backend = self.config.get(
-            'runtime', 'integrate_skyline_backend')
-
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
             dict(self.config.items('reebillrendering')), self.state_db,
@@ -455,8 +452,6 @@ class ReebillsResource(RESTResource):
         rtn = None
 
         if action == 'bindree':
-            if self.config.get('runtime', 'integrate_skyline_backend') is False:
-                raise ValueError("OLTP is not integrated")
             if self.config.get('runtime', 'integrate_nexus') is False:
                 raise ValueError("Nexus is not integrated")
 
