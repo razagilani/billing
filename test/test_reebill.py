@@ -43,7 +43,8 @@ class ReebillTest(unittest.TestCase):
         # check that there are the same group names and rsi_bindings in
         # reebill charges as utility bill charges
         self.assertEqual(
-            set((c.rsi_binding, c.description) for c in utilbill.charges),
+            set((c.rsi_binding, c.description) for c in utilbill.charges if
+                c.has_charge),
             set((c.rsi_binding, c.description) for c in reebill.charges)
         )
 
