@@ -6,7 +6,8 @@ from datetime import date, datetime, timedelta
 
 from mock import Mock
 
-from billing.processing.state import ReeBill, Customer, UtilBill, Address
+from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
+    Register
 
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
@@ -54,25 +55,22 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 class FetchTest(unittest.TestCase):
     def setUp(self):
         customer = Customer('someone', '12345', 0.5, 0.1,
-                '000000000000000000000000', 'example@example.com')
+                '000000000000000000000000', 'example@example.com',
+                'DC Non Residential Non Heat', Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                 'DC Non Residential Non Heat', Address(), Address(),
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill_doc = example_data.get_utilbill_dict('12345',
-                start=date(2000,1,1), end=date(2000,2,1), utility='washgas',
-                service='gas')
+        utilbill.registers = [Register(utilbill, '', 0, 'therms', False,
+                '', 'total', 'REG_TOTAL', '', '')]
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
-        self.reebill.update_readings_from_document(utilbill_doc)
-        reebill_dao = Mock()
-        reebill_dao.load_doc_for_utilbill.return_value = utilbill_doc
+        self.reebill.replace_readings_from_utility_bill_registers(utilbill)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                reebill_dao, None)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, None)
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
