@@ -808,6 +808,7 @@ class UtilBill(Base):
     total_charges = Column(Float)
     date_received = Column(DateTime)
     account_number = Column(String, nullable=False)
+    sha256_hexdigest = Column(String(64))
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
