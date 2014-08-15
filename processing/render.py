@@ -87,7 +87,7 @@ def concat_pdfs(in_paths, out_path):
         in_file.close()
 
 class ReebillRenderer:
-    def __init__(self, config, state_db, reebill_dao, logger):
+    def __init__(self, config, state_db, logger):
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
         self.template_directory = config['template_directory']
@@ -95,7 +95,6 @@ class ReebillRenderer:
         self.current_template = self.default_template
         self.teva_accounts = config['teva_accounts'].split()
         self.state_db = state_db
-        self.reebill_dao = reebill_dao
 
         # global reebill logger for reporting errors
         self.logger = logger
@@ -168,8 +167,6 @@ class ReebillRenderer:
             self.current_template = self.default_template
         max_version = self.state_db.max_version(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence,
-                version=max_version)
-        reebill_document = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
         self.render_version(reebill, outputdir, outputfile)
 
