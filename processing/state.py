@@ -519,10 +519,11 @@ class ReeBill(Base):
         charge_dct = {c.rsi_binding: c for c in self.utilbill.charges}
         for binding, evaluation in context.iteritems():
             charge = charge_dct[binding]
-            session.add(ReeBillCharge(self, binding,
-                charge.description, charge.group, charge.quantity,
-                evaluation.quantity, charge.quantity_units, charge.rate,
-                evaluation.rate, charge.total, evaluation.total))
+            if charge.has_charge:
+                session.add(ReeBillCharge(self, binding,
+                    charge.description, charge.group, charge.quantity,
+                    evaluation.quantity, charge.quantity_units, charge.rate,
+                    evaluation.rate, charge.total, evaluation.total))
 
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
@@ -1091,7 +1092,7 @@ class Charge(Base):
 
     def __init__(self, utilbill, description, group, quantity, quantity_units,
                  rate, rsi_binding, total, quantity_formula="", rate_formula="",
-                 has_charge=False, shared=False, roundrule=""):
+                 has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
