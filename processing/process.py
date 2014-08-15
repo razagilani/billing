@@ -683,10 +683,7 @@ class Process(object):
         and computes the bill by default. This behavior can be modified by
         adjusting the appropriate parameters.
         'start_date': must be given for the first reebill.
-        'integrate_skyline_backend': this must be True to get renewable energy
-                                     data.
-        'skip_compute': for tests that want to check for correct default
-                        values before the bill was computed"""
+        """
         session = Session()
 
         customer = self.state_db.get_customer(account)
@@ -1306,7 +1303,7 @@ class Process(object):
                 raise
             for cor in unissued_corrections:
                 journal.ReeBillIssuedEvent.save_instance(
-                    session['user'],account, sequence,
+                    user,account, sequence,
                     self.state_db.max_version(account, cor),
                     applied_sequence=cor[0])
         try:
@@ -1327,6 +1324,7 @@ class Process(object):
         self.mail_reebills(account, [sequence], recipient_list)
         journal.ReeBillMailedEvent.save_instance(user, account, sequence,
             recipients)
+        return {'success': True}
 
     def issue_processed_and_mail(self, user, apply_corrections):
         ''' issues all reebills that are marked as processeed and sends confirmation emails
