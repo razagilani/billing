@@ -1467,12 +1467,12 @@ class ReeBillWSGI(object):
             # delete each utility bill, and log the deletion in the journal
             # with the path where the utility bill file was moved
             for utilbill_id in ids:
-                utilbill, deleted_path = self.process\
+                utilbill = self.process\
                         .delete_utility_bill_by_id(utilbill_id)
                 journal.UtilBillDeletedEvent.save_instance(
                         cherrypy.session['user'], account,
                         utilbill.period_start, utilbill.period_end,
-                        utilbill.service, deleted_path)
+                        utilbill.service, utilbill.sha256_hexdigest)
             return self.dumps({'success': True})
 
     @cherrypy.expose

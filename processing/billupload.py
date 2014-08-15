@@ -48,47 +48,38 @@ class BillUpload(object):
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
         self.reebill_directory = self.config.get('billdb', 'billpath')
 
-    def upload(self, utilbill, file):
-        '''
-        Uploads the file 'the_file'
-        :param file:
-        '''
+    @staticmethod
+    def compute_hexdigest(data):
+        return hashlib.sha256().update(data).hexdigest()
 
-        data = file.read()
-        except Exception as e:
-            self.logger.error('unable to read utilbill file: %s' % str(e))
-            raise
-        finally:
-            the_file.close()
-
-        sha256_hexdigest = hashlib.sha256().update(data).hexdigest()
+    @staticmethod
+    def get_amazon_bucket():
         connection = S3Connection(config.get('aws_s3', 'access_key_id'),
                                   config.get('aws_s3', 'access_key_secret'))
-        bucket = connection.get_bucket('reebill-dev')
+        return connection.get_bucket(config.get('aws_s3', 'bucket'))
 
+    @staticmethod
+    def upload_to_s3(key_name, data):
+        """Uploads the data to the key given by key_name"""
+        key = BillUpload.get_amazon_bucket().new_key(key_name)
+        key.set_contents_from_string(data)
 
+    @staticmethod
+    def upload_utilbill_file_to_s3(utilbill, file):
+        '''Uploads the file to amazon s3
+        :param utilbill: a :class:`billing.process.state.UtilBill`
+        :param file: a RawIO file
+        '''
+        file_data = file.read()
+        utilbill.sha256_hexdigest = BillUpload.compute_hexdigest(file_data)
+        full_key_name = os.path.join('utilbill', utilbill.sha256_hexdigest)
+        BillUpload.upload_to_s3(full_key_name, file_data)
 
-        new_file_name=str(utilbill.id)+'.pdf'
-        save_file_path = os.path.join(self.save_directory, account, new_file_name)
-
-        # create the save directory if it doesn't exist
-        create_directory_if_necessary(os.path.join(self.save_directory,
-                account), self.logger)
-
-        # write the file in SAVE_DIRECTORY
-        # (overwrite if it's already there)
-        save_file = None
-        try:
-            save_file = open(save_file_path, 'w')
-            save_file.write(data)
-        except Exception as e:
-            self.logger.error('unable to write "%s": %s' \
-                    % (save_file_path, str(e)))
-            raise
-        finally:
-            if save_file is not None:
-                save_file.close()
-        return True
+    @staticmethod
+    def delete_utilbill_file_from_s3(utilbill):
+        key_name = os.path.join('utilbill', utilbill.sha256_hexdigest)
+        key = BillUpload.get_amazon_bucket().get_key(key_name)
+        key.delete()
 
     def get_utilbill_file_path(self, utilbill, extension=None):
         '''Returns the path to the file containing the utility bill for the
@@ -133,25 +124,6 @@ class BillUpload(object):
         # if extension is provided, this is the path of a file that may not
         # (yet) exist
         return path_without_extension + extension
-
-    def delete_utilbill_file(self, utilbill):
-        '''Deletes the utility bill file given by account and period, by moving
-        it to 'utilbill_trash_dir'. The path to the new file is returned.'''
-        # TODO due to multiple services, utility bills cannot be uniquely
-        # identified by account and period
-        # see https://www.pivotaltracker.com/story/show/30079049
-        path = self.get_utilbill_file_path(utilbill)
-        deleted_file_name = 'deleted_utilbill_%s_%s' % (
-                utilbill.customer.account, uuid1())
-        new_path = os.path.join(self.utilbill_trash_dir, deleted_file_name)
-        
-        # create trash directory if it doesn't exist yet
-        create_directory_if_necessary(self.utilbill_trash_dir, self.logger)
-
-        # move the file
-        shutil.move(path, new_path)
-
-        return new_path
 
     def get_reebill_file_path(self, account, sequence):
         '''Return the path for the PDF file of the reebill given by account,
