@@ -191,9 +191,6 @@ class WebResource(object):
                 },
             )
 
-        self.integrate_skyline_backend = self.config.get(
-            'runtime', 'integrate_skyline_backend')
-
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
             dict(self.config.items('reebillrendering')), self.state_db,
@@ -434,8 +431,6 @@ class ReebillsResource(RESTResource):
         rtn = None
 
         if action == 'bindree':
-            if self.config.get('runtime', 'integrate_skyline_backend') is False:
-                raise ValueError("OLTP is not integrated")
             if self.config.get('runtime', 'integrate_nexus') is False:
                 raise ValueError("Nexus is not integrated")
 
@@ -663,7 +658,7 @@ class RateStructureResource(RESTResource):
 
     def handle_put(self, charge_id, *vpath, **params):
         row = cherrypy.request.json
-        c = self.process.update_charge(charge_id, row)
+        c = self.process.update_charge(row, charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 
     def handle_post(self, utilbill_id, *vpath, **params):
