@@ -603,12 +603,12 @@ class UtilBillResource(RESTResource):
         return True, {'rows': result, 'results': 1}
 
     def handle_delete(self, utilbill_id, account, *vpath, **params):
-        utilbill, deleted_path = self.process.delete_utility_bill_by_id(
+        utilbill = self.process.delete_utility_bill_by_id(
             utilbill_id)
         journal.UtilBillDeletedEvent.save_instance(
             cherrypy.session['user'], account,
             utilbill.period_start, utilbill.period_end,
-            utilbill.service, deleted_path)
+            utilbill.service, utilbill.sha256_hexdigest)
         return True, {}
 
 

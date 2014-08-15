@@ -442,15 +442,7 @@ class Process(object):
         session.flush()
 
         if bill_file is not None:
-            # if there is a file, get the Python file object and name
-            # string from CherryPy, and pass those to BillUpload to upload
-            # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billupload.upload(new_utilbill, account,
-                    bill_file)
-            if not upload_result:
-                raise IOError('File upload failed: %s %s %s' % (account,
-                    new_utilbill.id, file_name))
-        session.flush()
+            self.billupload.upload_utilbill_file_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
@@ -531,11 +523,7 @@ class Process(object):
         if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 
-        try:
-            path = self.billupload.delete_utilbill_file(utility_bill)
-        except IOError:
-            # file never existed or could not be found
-            path = None
+        self.billupload.delete_utilbill_file_from_s3()
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -545,8 +533,7 @@ class Process(object):
         self.state_db.trim_hypothetical_utilbills(utility_bill.customer.account,
                                                   utility_bill.service)
         session.delete(utility_bill)
-
-        return utility_bill, path
+        return utility_bill
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
