@@ -436,7 +436,7 @@ class Process(object):
                 Address.from_other(billing_address),
                 Address.from_other(service_address),
                 period_start=begin_date, period_end=end_date,
-                total_charges=total, date_received=datetime.utcnow().date())
+                target_total=total, date_received=datetime.utcnow().date())
         session.add(new_utilbill)
         session.flush()
 
@@ -1066,7 +1066,7 @@ class Process(object):
 
             row = {}
 
-            actual_total = reebill.utilbill.total_charge()
+            actual_total = reebill.utilbill.get_total_charges()
             hypothetical_total = reebill.get_total_hypothetical_charges()
             total_ree = reebill.get_total_renewable_energy()
 

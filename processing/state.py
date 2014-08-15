@@ -596,7 +596,7 @@ class ReeBill(Base):
             'service_address': self.service_address.column_dict(),
             'period_start': period_start,
             'period_end': period_end,
-            'utilbill_total': sum(u.total_charge() for u in self.utilbills),
+            'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
             'services': []
         })
@@ -770,7 +770,12 @@ class UtilBill(Base):
     rate_class = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
-    total_charges = Column(Float)
+
+    # optional, total of charges seen in PDF: user knows the bill was processed
+    # correctly when the calculated total matches this number
+    # TODO: rename the column to match
+    target_total = Column(Float, name='total_charges')
+
     date_received = Column(DateTime)
     account_number = Column(String, nullable=False)
 
@@ -832,7 +837,7 @@ class UtilBill(Base):
     def __init__(self, customer, state, service, utility, rate_class,
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
-                 total_charges=0, date_received=None, processed=False,
+                 target_total=0, date_received=None, processed=False,
                  reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
@@ -847,7 +852,7 @@ class UtilBill(Base):
         self.service_address = service_address
         self.period_start = period_start
         self.period_end = period_end
-        self.total_charges = total_charges
+        self.target_total = target_total
         self.date_received = date_received
         self.account_number = account_number
         self.processed = processed
@@ -943,7 +948,7 @@ class UtilBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
-    def total_charge(self):
+    def get_total_charges(self):
         """Returns sum of all charges' totals, excluding charges that have
         errors.
         """
@@ -957,7 +962,8 @@ class UtilBill(Base):
             'account': self.customer.account,
             'service': 'Unknown' if self.service is None
                                 else self.service.capitalize(),
-            'computed_total': self.total_charge() if self.state <
+            'total_charges': self.target_total,
+            'computed_total': self.get_total_charges() if self.state <
                                 UtilBill.Hypothetical else None,
             'reebills': reebills,
             'state': self.state_name()
