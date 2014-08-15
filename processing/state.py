@@ -539,6 +539,7 @@ class ReeBill(Base):
                 raise evaluation.exception
             context[charge.rsi_binding] = evaluation
         self.replace_charges_with_context_evaluations(context)
+            if rsi.has_charge:
 
 
     def document_id_for_utilbill(self, utilbill):
