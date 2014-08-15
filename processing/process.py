@@ -350,7 +350,7 @@ class Process(object):
         return reebill
 
     def upload_utility_bill(self, account, service, begin_date,
-            end_date, bill_file, file_name, utility=None, rate_class=None,
+            end_date, bill_file, utility=None, rate_class=None,
             total=0, state=UtilBill.Complete):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
@@ -446,7 +446,7 @@ class Process(object):
             # string from CherryPy, and pass those to BillUpload to upload
             # the file (so BillUpload can stay independent of CherryPy)
             upload_result = self.billupload.upload(new_utilbill, account,
-                    bill_file, file_name)
+                    bill_file)
             if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (account,
                     new_utilbill.id, file_name))

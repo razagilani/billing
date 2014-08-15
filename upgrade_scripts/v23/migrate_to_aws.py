@@ -1,6 +1,4 @@
 
-
-
 from billing import config
 import os
 import boto
@@ -9,22 +7,7 @@ from billing.processing.state import UtilBill
 import hashlib, logging
 from processing.billupload import BillUpload
 
-# connection = S3Connection('AKIAJVT5YEOCCNGKKE3Q',
-#                           'DFXNb7yeG3toqb9OFMs2wMwJ/76CVSyJz2ICl5Hc')
-#
-# bucket = connection.get_bucket('reebill-dev')
-#
-# bucket_directory = 'utilbill'
-#
-# file_to_upload = 'requirements.txt'
-#
-#
-# keyname = 'somekeyname'
-# full_key_name = os.path.join(bucket_directory, keyname)
-# k = bucket.new_key(full_key_name)
-# k.set_contents_from_filename(file_to_upload)
-# print 'all done'
-
+log = logging.getLogger(__name__)
 
 
 def get_hash(file_name):
@@ -35,31 +18,24 @@ def get_hash(file_name):
     return res
 
 
-# def upload_utilbill_bill_to_aws(local_file_path, type, bucket):
-#     """
-#     :param local_file_path: the path to the utilbill or reebille
-#     :param type: string either 'utilbill' or 'reebill'
-#     :param bucket: a :class:`boto.s3.bucket.Bucket`
-#     """
-#     pass
-
-log = logging.getLogger(__name__)
-
 def upload_utilbills_to_aws(session):
-
-    # connection = S3Connection(config.get('aws_s3', 'access_key_id'),
-    #                           config.get('aws_s3', 'access_key_secret'))
-    # bucket = connection.get_bucket('reebill-dev')
-    # utilbill_path = config.get('billdb', 'utilitybillpath')
-
-    #for utilbill in os.path.walk(utilbill_path)
-    #Upload Utilbills
+    """
+    Uploads utilbills to AWS
+    """
+    connection = S3Connection(config.get('aws_s3', 'access_key_id'),
+                              config.get('aws_s3', 'access_key_secret'))
+    bucket = connection.get_bucket('reebill-dev')
     bu = BillUpload(config, log)
     for utilbill in session.query(UtilBill).all():
         try:
             local_file_path = bu.get_utilbill_file_path(utilbill)
+            sha256_hexdigest = get_hash(local_file_path)
         except IOError:
+            log.error('Local pdf file for utilbill id %s not found' % \
+                      utilbill.id)
             continue
-        #upload_bill_to_aws(local_file_path)
-
-
+        log.debug('Uploading pdf for utilbill id %s file path %s hexdigest %s'
+                  % (utilbill.id, local_file_path, sha256_hexdigest))
+        full_key_name = os.path.join('utilbill', sha256_hexdigest)
+        key = bucket.new_key(full_key_name)
+        key.set_contents_from_filename(local_file_path)
