@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import hashlib
+from boto.s3.connection import S3Connection
 import os
 import sys
 import errno
@@ -6,6 +8,7 @@ from uuid import uuid1
 import re
 from glob import glob
 import shutil
+from billing import config
 
 sys.stdout = sys.stderr
 
@@ -45,24 +48,25 @@ class BillUpload(object):
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
         self.reebill_directory = self.config.get('billdb', 'billpath')
 
-    def upload(self, utilbill, account, the_file, file_name):
+    def upload(self, utilbill, file):
         '''
-        Uploads the file 'the_file' (whose name is 'file_name') to the
-        location [SAVE_DIRECTORY]/[account]/[utilbill.id].[extension].
+        Uploads the file 'the_file'
+        :param file:
         '''
-        # check account name (validate_account just checks it against a regex)
-        # TODO: check that it's really an existing account against nexus
-        if not validate_account(account):
-            raise ValueError('invalid account name: "%s"' % account)
-        # read whole file in one chunk
-        try:
-            data = the_file.read()
+
+        data = file.read()
         except Exception as e:
-            self.logger.error('unable to read "%s": %s' % \
-                    (file_name, str(e)))
+            self.logger.error('unable to read utilbill file: %s' % str(e))
             raise
         finally:
             the_file.close()
+
+        sha256_hexdigest = hashlib.sha256().update(data).hexdigest()
+        connection = S3Connection(config.get('aws_s3', 'access_key_id'),
+                                  config.get('aws_s3', 'access_key_secret'))
+        bucket = connection.get_bucket('reebill-dev')
+
+
 
         new_file_name=str(utilbill.id)+'.pdf'
         save_file_path = os.path.join(self.save_directory, account, new_file_name)

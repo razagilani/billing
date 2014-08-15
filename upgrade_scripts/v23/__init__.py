@@ -81,13 +81,6 @@ def migrate_utilbill_utility(utilbill_data, session):
 def upgrade():
     log.info('Beginning upgrade to version 23')
 
-    log.info('Uploading utilbills to AWS')
-    init_model()
-    session = Session()
-    upload_utilbills_to_aws(session)
-    exit()
-
-
     log.info('Upgrading schema to revision fc9faca7a7f')
     alembic_upgrade('fc9faca7a7f')
 
@@ -97,15 +90,21 @@ def upgrade():
     log.info('Reading initial customers data')
     customer_data = read_initial_table_data('customer', session)
     utilbill_data = read_initial_table_data('utilbill', session)
+
     log.info('Creating utilities')
     create_utilities(session)
+
     log.info('Migrating customer fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
+
     log.info('Migration utilbill utility')
     migrate_utilbill_utility(utilbill_data, session)
+
+    log.info('Uploading utilbills to AWS')
+    upload_utilbills_to_aws(session)
+
     log.info('Committing to database')
     session.commit()
-
 
     log.info('Upgrading schema to revision 18a02dea5969')
     alembic_upgrade('18a02dea5969')
