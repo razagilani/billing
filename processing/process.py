@@ -1338,7 +1338,7 @@ class Process(object):
                 raise
             for cor in unissued_corrections:
                 journal.ReeBillIssuedEvent.save_instance(
-                    session['user'],account, sequence,
+                    user,account, sequence,
                     self.state_db.max_version(account, cor),
                     applied_sequence=cor[0])
         try:
@@ -1359,6 +1359,7 @@ class Process(object):
         self.mail_reebills(account, [sequence], recipient_list)
         journal.ReeBillMailedEvent.save_instance(user, account, sequence,
             recipients)
+        return {'success': True}
 
     def issue_processed_and_mail(self, user, apply_corrections):
         ''' issues all reebills that are marked as processeed and sends confirmation emails

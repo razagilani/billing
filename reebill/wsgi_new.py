@@ -357,49 +357,28 @@ class IssuableReebills(RESTResource):
         return True, {'rows': issuable_reebills[start:start+limit],
                       'results': len(issuable_reebills)}
 
-    def handle_delete(self, reebill_id, *vpath, **params):
-        # Issues and mails the ReeBill
-        # Issuing is like Deleting from issuables
-        row = cherrypy.request.json
-        val = self.process.issue_and_mail(
-            cherrypy.session['user'],
-            row['account'],
-            row['sequence'],
-            row['mailto'],
-            bool(row['apply_corrections'])
-        )
-
-        if val is None:
-            return True, {}
-        else:
-            row.update(val)
-            cherrypy.response.status = '409 Conflict'
-            return False, row
-
     def handle_put(self, reebill_id, *vpath, **params):
         row = cherrypy.request.json
-        action = row['action']
-
-        if action == 'issuemail':
-            # We know wether the client has been informed about unissued
-            # corrections if 'unissued_corrections' are returned
-            result = self.process.issue_and_mail(
-                cherrypy.session['user'],
-                row['account'],
-                row['sequence'],
-                row['mailto'],
-                bool(row['unissued_corrections']))
-            if isinstance(result, dict):
-                row.update(result)
-        elif action == '':
-            # Handle email address update
-            self.process.update_bill_email_recipient(
-                row['account'], row['sequence'], row['mailto'])
+        # Handle email address update
+        self.process.update_bill_email_recipient(
+            row['account'], row['sequence'], row['mailto'])
 
         row['action'] = ''
         row['action_value'] = ''
         return True, {'row': row, 'results': 1}
 
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    def issue_and_mail(self, *vpath, **params):
+        params = cherrypy.request.params
+        print params
+        result = self.process.issue_and_mail(
+            cherrypy.session['user'],
+            params['account'],
+            params['sequence'],
+            params['mailto'],
+            params['apply_corrections'] == 'true')
+        return self.dumps(result)
 
 class ReebillVersionsResource(RESTResource):
 

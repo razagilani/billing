@@ -53,10 +53,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         this.getIssueButton().setDisabled(disabled);
     },
 
-    /**
-     * Handle the issue button.
-     */
-    handleIssue: function() {
+    makeIssueRequest: function(url){
         var me = this;
         var selections = me.getIssuableReebillsGrid().getSelectionModel().getSelection();
         if (!selections.length)
@@ -68,50 +65,68 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
         waitMask.show();
 
-        store.suspendAutoSync();
-        selected.set('action', 'issuemail');
-        store.sync({
-            success: function(batch, options){
-            console.log(batch, options, batch[0])
-            var selected = me.getIssuableReebillsGrid().getSelectionModel().getSelection()[0];
-            var corrections = selected.get('unissued_corrections');
-            var adjustment = selected.get('adjustment');
-            if(corrections){
-                Ext.MessageBox.confirm(
-                    'Corrections must be applied',
-                    'Corrections from reebills ' + corrections +
-                    ' will be applied to this bill as an adjusment of $'
-                    + adjustment + '. Are you sure you want to issue it?',
-                    function(answer){
-                        if(answer == 'yes'){
-                            store.suspendAutoSync();
-                            selected.set('action', 'issuemail');
-                            store.sync({success: function(){
-                                // Silently remove the record from the store
-                                // since it was issued successfully
-                                store.remove(selected, true)
-                                waitMask.hide();
-                            },
-                            failure: function(){
-                                waitMask.hide();
-                            }});
-                            store.resumeAutoSync();
-                        }
-                    });
-            }else{
-                // Silently remove the record from the store
-                // since it was issued successfully
-                //store.remove(selected, true)
-                waitMask.hide();
-            }
-            console.log(corrections, Boolean(corrections),
-                typeof(corrections), adjustment,
-                typeof(adjustment), selected);
-        },
-        failure:function(){
+        var failureFunc = function(response){
             waitMask.hide();
-        }})
-        store.resumeAutoSync();
+            Ext.MessageBox.show({
+                title: "Server error - " + response.status + " - " + response.statusText,
+                msg:  response.responseText,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+        };
+        var successFunc = function(response){
+            store.reload();
+            waitMask.hide();
+        }
+        Ext.Ajax.request({
+            url: url,
+            params: {
+                account: selected.get('account'),
+                sequence: selected.get('sequence'),
+                mailto: selected.get('mailto'),
+                apply_corrections: false
+            },
+            success: function(response){
+                waitMask.hide();
+                var obj = Ext.JSON.decode(response.responseText);
+                if (obj.unissued_corrections.length){
+                    Ext.MessageBox.confirm(
+                        'Corrections must be applied',
+                        'Corrections from reebills ' + obj.unissued_corrections +
+                        ' will be applied to this bill as an adjusment of $'
+                        + obj.adjustment + '. Are you sure you want to issue it?',
+                        function(answer){
+                            if(answer == 'yes'){
+                                waitMask.show();
+                                Ext.Ajax.request({
+                                    url: url,
+                                    params: {
+                                        account: selected.get('account'),
+                                        sequence: selected.get('sequence'),
+                                        mailto: selected.get('mailto'),
+                                        apply_corrections: true
+                                    },
+                                    failure: failureFunc,
+                                    success: successFunc
+                                });
+                            }
+                        }
+                    );
+                }else {
+                    successFunc();
+                }
+            },
+            failure: failureFunc
+        });
+    },
+
+    /**
+     * Handle the issue button.
+     */
+    handleIssue: function() {
+        var me = this;
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail')
     }
 
 });
