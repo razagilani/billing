@@ -152,6 +152,14 @@ pre.code{
     font-style: italic;
     color: red;
 }
+.reebill-grid-processed {
+    font-style: italic;
+    color: green;
+}
+.charge-error {
+    color: red;
+    font-style: bold;
+}
 
 /* styles for utilbill grid rows */
 .utilbill-grid-processed {

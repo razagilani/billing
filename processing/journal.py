@@ -1,23 +1,19 @@
 #!/usr/bin/python
-import sys
 import datetime
-import uuid
-import copy
-import operator
-import pymongo
-import mongoengine
 import ConfigParser
 import os
 from operator import attrgetter
+
+import mongoengine
+
 from billing.util.dateutils import ISO_8601_DATE
-from billing.processing.state import StateDB
-from billing.processing.session_contextmanager import DBSession
+
 
 # list of event types proposed but not used yet:
 # ReeBillUsagePeriodUpdated
 # ReeBillBillingPeriodUpdated
 # ReeBillRateStructureModified
-# PaymentEntered
+# PaymentEnteredG
 # TODO add utility bill uploaded?
 
 class JournalDAO(object):
@@ -56,7 +52,7 @@ class Event(mongoengine.Document):
         # all Event documents are associated with the database of the
         # MongoEngine connection whose "alias" is "journal", which should be
         # created by calling mongoengine.connect(alias='journal') in
-        # BillToolBridge.__init__. if a class other than BTB wants to use the
+        # ReeBillWSGI.__init__. if a class other than BTB wants to use the
         # journal, it must call mongoengine.connect(alias='journal') itself.
         'db_alias': 'journal',
 
@@ -193,7 +189,7 @@ class UtilBillDeletedEvent(Event):
 ###############################################################################
 # reebill events
 
-# TODO rename to ReeBillEvent (requires db upgrade because of MongoEngine
+# TODO rename to ReeBillEvent (requires db upgrade_cli because of MongoEngine
 # "_cls" and "_types" keys)
 class SequenceEvent(Event):
     meta = {'db_alias': 'journal'}
@@ -358,26 +354,3 @@ class NewReebillVersionEvent(VersionEvent):
     def name(self):
         return 'New version'
 
-def main():
-    config = ConfigParser.RawConfigParser()
-    config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reebill.cfg'))
-
-    journal_config = dict(config.items('journaldb'))
-    mongoengine.connect(journal_config['database'],
-            host=journal_config['host'], port=int(journal_config['port']),
-            alias='journal')
-    dao = JournalDAO()
-
-    #statedb_config = dict(config.items('statedb'))
-    #state_db = StateDB(**statedb_config)
-
-    #with DBSession(state_db) as session:
-        #for account in state_db.listAccounts(session):
-            #for entry in dao.load_entries(account):
-                #print str(entry)
-
-    for entry in sorted(Event.objects, key=attrgetter('date'), reverse=True):
-        print '%s %10s    %s' % (entry.date.strftime('%Y-%m-%d %I:%M:%S %p'), entry.user, entry)
-
-if __name__ == '__main__':
-    main()
