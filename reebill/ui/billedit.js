@@ -2770,8 +2770,7 @@ function reeBillReady() {
             align : 'stretch',
         },
         items: [
-            chargesUBVersionMenu,
-            aChargesGrid,
+            aChargesGrid
         ]
     });
 
