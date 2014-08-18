@@ -1,23 +1,20 @@
-from itertools import chain
 from StringIO import StringIO
 import csv
 import random
 import unittest
-import sqlalchemy
-import pymongo
+from datetime import date, datetime, timedelta
+
 from mock import Mock
-from billing.processing.state import ReeBill, Customer, UtilBill, Session
+
+from billing.processing.state import ReeBill, Customer, UtilBill, Address
+
 from skyliner.sky_handlers import cross_range
-from billing.processing import mongo
 from billing.util import dateutils
-from billing.processing import state
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
+from billing.util.dateutils import date_to_datetime
 
-import pprint
-pp = pprint.PrettyPrinter().pprint
 
 def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
     '''Writes a sample CSV to csv_file with file with random energy values
@@ -56,24 +53,18 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        self.state_db = state.StateDB(Session)
-        reebill_dao = mongo.ReebillDAO(None,
-                pymongo.Connection('localhost', 27017)['skyline-dev'])
-
         customer = Customer('someone', '12345', 0.5, 0.1,
-                            '000000000000000000000000', 'example@example.com')
+                '000000000000000000000000', 'example@example.com')
         utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-                'DC Non Residential Non Heat', period_start=date(2000,1,1),
+                'DC Non Residential Non Heat', Address(), Address(),
+                period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill_doc = example_data.get_utilbill_dict('12345',
                 start=date(2000,1,1), end=date(2000,2,1), utility='washgas',
                 service='gas')
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
         self.reebill.update_readings_from_document(utilbill_doc)
-        self.reebill_doc = example_data.get_reebill('12345', 1,
-                start=date(2000,1,1), end=date(2000,1,1))
         reebill_dao = Mock()
-        reebill_dao.load_reebill.return_value = self.reebill_doc
         reebill_dao.load_doc_for_utilbill.return_value = utilbill_doc
 
         mock_install_1 = MockSkyInstall(name='example-1')
@@ -177,8 +168,6 @@ class FetchTest(unittest.TestCase):
     def test_fetch_interval_meter_data(self):
         '''Realistic test of loading interval meter data with an entire utility
         bill date range. Tests lack of errors but not correctness.'''
-        # reebill = example_data.get_reebill('10002', 21)
-
         # generate example csv file whose time range exactly matches the bill
         # period
         csv_file = StringIO()
@@ -191,8 +180,9 @@ class FetchTest(unittest.TestCase):
 
 
     def test_fetch_oltp_data(self):
-        '''Put energy in a bill with a simple "total" register, and make sure the
-        register contains the right amount of energy.'''
+        '''Put energy in a bill with a simple "total" register, and make sure
+        the register contains the right amount of energy.
+        '''
         # create mock skyliner objects
         monguru = self.splinter.get_monguru()
         install = self.splinter.get_install_obj_for('example-1')
@@ -203,8 +193,6 @@ class FetchTest(unittest.TestCase):
         # get total REE for all hours in the reebill's meter read period,
         # according to 'monguru'
         total_btu = 0
-        #for hour in cross_range(*reebill.meter_read_period('gas')):
-        from billing.util.dateutils import date_to_datetime
         for hour in cross_range(*(date_to_datetime(d) for d in self.reebill\
                 .get_period())):
             day = date(hour.year, hour.month, hour.day)
@@ -215,6 +203,3 @@ class FetchTest(unittest.TestCase):
         # BTU).
         self.assertAlmostEqual(total_btu,
                 self.reebill.get_total_renewable_energy() * 100000)
-
-if __name__ == '__main__':
-    unittest.main()
