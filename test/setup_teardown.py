@@ -271,7 +271,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
         self.process = Process(self.state_db,  self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer, renderer,
+                self.nexus_util, bill_mailer, renderer,
                 ree_getter, self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,

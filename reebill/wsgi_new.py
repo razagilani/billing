@@ -203,8 +203,8 @@ class WebResource(object):
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
-            self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
+            self.state_db, self.ratestructure_dao, self.nexus_util,
+            self.bill_mailer, self.renderer,
             self.ree_getter, logger=self.logger)
 
         # determine whether authentication is on or off

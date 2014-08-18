@@ -5,6 +5,7 @@ import ast
 from datetime import timedelta, datetime, date
 import logging
 import json
+from billing import config
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
@@ -826,6 +827,16 @@ class UtilBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
     utility = relationship('Utility')
+
+    @property
+    def pdf_url(self):
+        return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
+               (config.get('aws_s3', 'bucket'), self.sha256_hexdigest)
+
+    def column_dict(self):
+        return dict(super(UtilBill, self).column_dict().items() +
+                    [('utility', self.utility.name),
+                     ('pdf_url', self.pdf_url())])
 
     @property
     def bindings(self):
