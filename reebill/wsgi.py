@@ -1,7 +1,3 @@
-'''
-File: wsgi.py
-'''
-from os.path import dirname, realpath, join
 from os.path import dirname, realpath, join
 
 from billing import init_config, init_model, init_logging
@@ -13,7 +9,6 @@ init_model()
 from billing import config
 
 import sys
-import pprint
 
 import traceback
 import json
@@ -44,9 +39,7 @@ from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing.exceptions import Unauthenticated, IssuedBillError
-
-pp = pprint.PrettyPrinter(indent=4).pprint
+from billing.exc import Unauthenticated, IssuedBillError
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -108,12 +101,17 @@ def db_commit(method):
     def wrapper(btb_instance, *args, **kwargs):
         # because of the thread-local session, there's no need to do anything
         # before the method starts.
-        return method(btb_instance, *args, **kwargs)
+        try:
+            result = method(btb_instance, *args, **kwargs)
+        except:
+            Session().rollback()
+            raise
         Session().commit()
+        return result
     return wrapper
 
 class ReeBillWSGI(object):
-    def __init__(self, config, Session):
+    def __init__(self, config):
         self.config = config        
         self.logger = logging.getLogger('reebill')
 
@@ -153,7 +151,6 @@ class ReeBillWSGI(object):
                 host=journal_config['host'], port=int(journal_config['port']),
                 alias='journal')
         self.journal_dao = journal.JournalDAO()
-
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
@@ -514,6 +511,8 @@ class ReeBillWSGI(object):
             'state': sa_state,
             'postal_code': sa_postal_code,
         }
+        discount_rate = float(discount_rate)
+        late_charge_rate = float(late_charge_rate)
 
         self.process.create_new_account(account, name, discount_rate,
                 late_charge_rate, billing_address,
@@ -564,13 +563,17 @@ class ReeBillWSGI(object):
     @authenticate_ajax
     @json_exception
     @db_commit
+    def update_readings(self, account, sequence, **kwargs):
+        self.process.update_reebill_readings(account, sequence)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def bindree(self, account, sequence, **kwargs):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
-        if self.config.get('runtime', 'integrate_skyline_backend') is False:
-            raise ValueError("OLTP is not integrated")
-        if self.config.get('runtime', 'integrate_nexus') is False:
-            raise ValueError("Nexus is not integrated")
         sequence = int(sequence)
         self.process.bind_renewable_energy(account, sequence)
         reebill = self.state_db.get_reebill(account, sequence)
@@ -634,6 +637,17 @@ class ReeBillWSGI(object):
     @authenticate_ajax
     @json_exception
     @db_commit
+    def mark_reebill_processed(self, account, sequence , processed, **kwargs):
+        '''Takes a reebill id and a processed-flag and applies that flag to the reebill '''
+        account, processed, sequence = int(account), bool(int(processed)), int(sequence)
+        self.process.update_sequential_account_info(account, sequence,
+                processed=processed)
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @authenticate_ajax
+    @json_exception
+    @db_commit
     def compute_utility_bill(self, utilbill_id, **args):
         self.process.compute_utility_bill(utilbill_id)
         return self.dumps({'success': True})
@@ -669,13 +683,9 @@ class ReeBillWSGI(object):
     @db_commit
     def render(self, account, sequence, **args):
         sequence = int(sequence)
-        if not self.config.get('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'code':2, 'errors': {'reason':
-                    ('"Render" does nothing because reebill images have '
-                    'been turned off.'), 'details': ''}})
         self.renderer.render(account, sequence,
             self.config.get("billdb", "billpath")+ "%s" % account,
-            "%.5d_%.4d.pdf" % (account, sequence), False )
+            "%s_%.4d.pdf" % (account, sequence), False )
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -686,19 +696,48 @@ class ReeBillWSGI(object):
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_and_mail(cherrypy.session['user'], account,
+        unissued_corrections = self.process.get_unissued_corrections(account)
+        if len(unissued_corrections) > 0 and not apply_corrections:
+                return self.dumps({'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)})
+        self.process.issue_and_mail(account,
                 sequence, recipients, apply_corrections)
-        return self.dumps(result)
+        for cor in unissued_corrections:
+            journal.ReeBillIssuedEvent.save_instance(
+                cherrypy.session['user'],account, sequence,
+                self.state_db.max_version(account, cor[0]),
+                applied_sequence=cor[0])
+        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                            account, sequence, 0)
+        journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                account, sequence,recipients)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
+        print apply_corrections
         apply_corrections = (apply_corrections == 'true')
-        self.process.issue_processed_and_mail(cherrypy.session['user'],
-                apply_corrections)
-        return self.dumps({'success': True})
+        unissued_processed = self.process.get_issuable_processed_reebills_dict()
+        result = self.process.issue_processed_and_mail(apply_corrections)
+        for bill in unissued_processed:
+            unissued_corrections = self.process.get_unissued_corrections(
+                bill['account'])
+            for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'],
+                    self.state_db.max_version(bill['account'], cor),
+                    applied_sequence=cor[0])
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], 0)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], bill['mailto'])
+        return self.dumps({'success': True,
+                           'issued': result})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -912,6 +951,7 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
+    @db_commit
     def payment(self, xaction, account, **kwargs):
         if xaction == "read":
             payments = self.state_db.payments(account)
@@ -919,20 +959,15 @@ class ReeBillWSGI(object):
                 'rows': [payment.to_dict() for payment in payments]})
         elif xaction == "update":
             rows = json.loads(kwargs["rows"])
-            # single edit comes in not in a list
             if type(rows) is dict: rows = [rows]
-            # process list of edits
             for row in rows:
-                self.process.update_payment(
-                    row['id'],
-                    row['date_applied'],
-                    row['description'],
-                    row['credit'],
-                )
+                self.process.update_payment(row['id'], datetime.strptime(
+                        row['date_applied'], ISO_8601_DATETIME_WITHOUT_ZONE),
+                        row['description'], float(row['credit']))
             return self.dumps({'success':True})
         elif xaction == "create":
             # date applied is today by default (can be edited later)
-            today = datetime.utcnow().date()
+            today = datetime.utcnow()
             new_payment = self.process.create_payment(account,
                     today, "New Entry", 0)
             # Payment object lacks "id" until row is inserted in database
@@ -1118,25 +1153,6 @@ class ReeBillWSGI(object):
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
-    def get_reebill_services(self, account, sequence, **args):
-        # TODO: delete this? is it ever used?
-        '''Returns the utililty services associated with the reebill given by
-        account and sequence, and a list of which services are suspended
-        (usually empty). Used to show service suspension checkboxes in
-        "Sequential Account Information".'''
-        sequence = int(sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        if reebill is None:
-            raise Exception('No reebill found for %s-%s' % (account, sequence))
-        # TODO: 40161259 must return success field
-        return self.dumps({
-            'services': [],
-            'suspended_services': reebill.suspended_services
-        })
-
-    @cherrypy.expose
-    @authenticate_ajax
-    @json_exception
     @db_commit
     def actualCharges(self, utilbill_id, xaction, reebill_sequence=None,
             reebill_version=None, **kwargs):
@@ -1185,10 +1201,10 @@ class ReeBillWSGI(object):
         if not xaction == "read":
             raise NotImplementedError('Cannot create, edit or destroy charges'
                                       ' from this grid.')
-            charges=self.process.get_hypothetical_matched_charges(
-                    account, sequence)
-            return self.dumps({'success': True, 'rows': charges,
-                               'total':len(charges)})
+        charges=self.process.get_hypothetical_matched_charges(
+                account, sequence)
+        return self.dumps({'success': True, 'rows': charges,
+                           'total':len(charges)})
 
 
     @cherrypy.expose
@@ -1535,7 +1551,7 @@ if __name__ == '__main__':
     class Root(object):
         pass
     root = Root()
-    root.reebill = ReeBillWSGI(config, Session)
+    root.reebill = ReeBillWSGI(config)
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
@@ -1562,5 +1578,5 @@ else:
         'tools.sessions.timeout': 240
     })
 
-    bridge = ReeBillWSGI(config, Session)
+    bridge = ReeBillWSGI(config)
     application = cherrypy.Application(bridge, script_name=None, config=None)

@@ -7,11 +7,12 @@ from sqlalchemy.orm.exc import NoResultFound
 import pymongo
 from billing import init_config, init_model
 from billing.processing import state
-from billing.processing.state import Customer, UtilBill, ReeBill, Session
+from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
+    Address
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import NoSuchBillException
+from billing.exc import NoSuchBillException
 from billing.test import utils, example_data
 
 billdb_config = {
@@ -85,7 +86,8 @@ class StateTest(utils.TestCase):
             self.session.add(UtilBill(customer, state, 'gas',
                     'washgas', 'DC Non Residential Non Heat',
                     period_start=start, period_end=end,
-                    date_received=today))
+                    date_received=today, billing_address=Address(),
+                    service_address=Address()))
 
         # when there are only Hypothetical utility bills,
         # trim_hypothetical_utilbills should remove all of them
@@ -289,7 +291,7 @@ class StateTest(utils.TestCase):
                 date(2012,2,1))
         p = payments[0]
         self.assertEqual(1, len(payments))
-        self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
+        self.assertEqual((acc, datetime(2012,1,15), 'payment 1', 100),
                 (p.customer.account, p.date_applied, p.description,
                 p.credit))
         self.assertDatetimesClose(datetime.utcnow(), p.date_received)
@@ -307,26 +309,27 @@ class StateTest(utils.TestCase):
                 date(2012,3,1))
         self.assertEqual(1, len(payments))
         q = payments[0]
-        self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
+        self.assertEqual((acc, datetime(2012,2,1), 'payment 2', 150),
                 (q.customer.account, q.date_applied, q.description,
                 q.credit))
         self.assertEqual(sorted([p, q]), sorted(self.state_db.payments(acc)))
 
         # update feb 1: move it to mar 1
-        self.state_db.update_payment(q.id, date(2012,3,1),
-                    'new description', 200)
-        payments = self.state_db.find_payment(acc, date(2012,1,16),
-                date(2012,3,2))
+        q.date_applied = datetime(2012,3,1)
+        q.description = 'new description'
+        q.credit = 200
+        payments = self.state_db.find_payment(acc, datetime(2012,1,16),
+                datetime(2012,3,2))
         self.assertEqual(1, len(payments))
         q = payments[0]
-        self.assertEqual((acc, date(2012,3,1), 'new description', 200),
+        self.assertEqual((acc, datetime(2012,3,1), 'new description', 200),
                 (q.customer.account, q.date_applied, q.description,
                 q.credit))
 
         # delete jan 15
         self.state_db.delete_payment(p.id)
         self.assertEqual([q], self.state_db.find_payment(acc,
-                date(2012,1,1), date(2012,4,1)))
+                datetime(2012,1,1), datetime(2012,4,1)))
 
 
     def test_get_last_reebill(self):
@@ -336,7 +339,8 @@ class StateTest(utils.TestCase):
 
         utilbill = UtilBill(customer, 0, 'gas', 'washgas',
                 'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+                period_end=date(2000,2,1), billing_address = Address(),
+                service_address = Address())
         reebill = ReeBill(customer, 1, 0, utilbills=[utilbill])
         self.session.add(utilbill)
         self.session.add(reebill)
@@ -351,11 +355,14 @@ class StateTest(utils.TestCase):
         self.assertRaises(NoSuchBillException,
                 self.state_db.get_last_real_utilbill, '99999',
                 date(2001,1,1))
+        a = Address()
+        self.session.add(a)
+        self.session.flush()
 
         # one bill
         gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
                 'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1))
+                period_end=date(2000,2,1), billing_address=a, service_address=a)
         self.session.add(gas_bill_1)
 
         self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
@@ -368,7 +375,7 @@ class StateTest(utils.TestCase):
         # two bills
         electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
                 'whatever', period_start=date(2000,1,2),
-                period_end=date(2000,2,2))
+                period_end=date(2000,2,2), billing_address=a, service_address=a)
         self.assertEqual(electric_bill,
                 self.state_db.get_last_real_utilbill('99999', date(2000, 3, 1)))
         self.assertEqual(electric_bill,
