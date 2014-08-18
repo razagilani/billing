@@ -1784,11 +1784,6 @@ class Process(object):
         # a confirmation message
         session = Session()
         unissued_corrections = self.get_unissued_corrections(account)
-        if len(unissued_corrections) > 0 and not apply_corrections:
-                return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
-                    'adjustment': sum(c[2] for c in unissued_corrections)}
-
         # The user has confirmed to issue unissued corrections.
         # Let's issue
         if len(unissued_corrections) > 0:
@@ -1814,7 +1809,7 @@ class Process(object):
         recipient_list = [rec.strip() for rec in recipients.split(',')]
         self.mail_reebills(account, [sequence], recipient_list)
 
-    def issue_processed_and_mail(self, user, apply_corrections):
+    def issue_processed_and_mail(self, apply_corrections):
         ''' issues all reebills that are marked as processeed and sends confirmation emails
         for each one of the issued reebills
         '''
@@ -1828,11 +1823,6 @@ class Process(object):
             # a confirmation message
 
             unissued_corrections = self.get_unissued_corrections(bill['account'])
-            if len(unissued_corrections) > 0 and not apply_corrections:
-                return {'success': False,
-                    'corrections': [c[0] for c in unissued_corrections],
-                    'adjustment': sum(c[2] for c in unissued_corrections)}
-
             # The user has confirmed to issue unissued corrections.
             # Let's issue
             if len(unissued_corrections) > 0:
@@ -1844,11 +1834,6 @@ class Process(object):
                             bill['account'], bill['sequence'],
                             e.__class__.__name__),) + e.args
                     raise
-                for cor in unissued_corrections:
-                    journal.ReeBillIssuedEvent.save_instance(
-                        user, bill['account'], bill['sequence'],
-                        self.state_db.max_version(bill['account'], cor),
-                        applied_sequence=cor[0])
             try:
                 self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
@@ -1856,14 +1841,11 @@ class Process(object):
                 e.args = ('Error when issuing reebill %s-%s: %s' %(
                         bill['account'], bill['sequence'], e.__class__.__name__),) + e.args
                 raise
-            journal.ReeBillIssuedEvent.save_instance(user, bill['account'], bill['sequence'], 0)
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                    recipient_list)
-            journal.ReeBillMailedEvent.save_instance(user, bill['account'],
-                                                bill['sequence'], bill['mailto'])
             issued = issued + 1
         return issued
 
