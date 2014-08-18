@@ -650,13 +650,14 @@ class ReeBill(Base):
             rsi = rsis[rsi_number]
             quantity, rate, error = rsi.compute_charge(identifiers)
             total = quantity * rate
-            ac = acs[rsi.rsi_binding]
-            quantity_units = ac.quantity_units \
-                    if ac.quantity_units is not None else ''
-            self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
-                    ac.description, ac.group, ac.quantity,
-                    quantity, quantity_units, ac.rate, rate, ac.total,
-                    total))
+            if rsi.has_charge:
+                ac = acs[rsi.rsi_binding]
+                quantity_units = ac.quantity_units \
+                        if ac.quantity_units is not None else ''
+                self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
+                        ac.description, ac.group, ac.quantity,
+                        quantity, quantity_units, ac.rate, rate, ac.total,
+                        total))
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate
             identifiers[rsi.rsi_binding]['total'] = total
@@ -977,7 +978,6 @@ class UtilBill(Base):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
         the :class:`.UtilityBill` according to the formulas in the RSIs in the
         given rate structures.
-        :param uprs: A uprs from MongoDB
         :param utillbill_doc: The utilbill_doc from mongodb. Needed for meters
         :param raise_exception: if True, raises an RSIError if any charge could
         not be computed.
@@ -1096,6 +1096,7 @@ class UtilBill(Base):
                 identifiers[rsi.rsi_binding]['quantity'] = quantity
                 identifiers[rsi.rsi_binding]['rate'] = rate
                 identifiers[rsi.rsi_binding]['total'] = total
+        assert len(self.charges) == sum(1 for r in uprs.rates if r.has_charge)
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this

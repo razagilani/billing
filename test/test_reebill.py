@@ -1,7 +1,6 @@
 import unittest
 from datetime import date
 
-from bson import ObjectId
 from mock import Mock
 
 from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
@@ -20,13 +19,24 @@ class ReebillTest(unittest.TestCase):
         customer = Customer('someone', '11111', 0.5, 0.1, '',
             'example@example.com')
 
-        uprs = RateStructure(rates=[RateStructureItem(
-            rsi_binding='A',
-            description='a',
-            quantity='REG_TOTAL.quantity',
-            rate='2',
-            group='All Charges',
-        )])
+        uprs = RateStructure(rates=[
+            RateStructureItem(
+                rsi_binding='A',
+                description='a',
+                quantity='REG_TOTAL.quantity',
+                rate='2',
+                group='All Charges',
+            ),
+            # no charge for this RSI
+            RateStructureItem(
+                rsi_binding='B',
+                description='b',
+                quantity='1',
+                rate='1',
+                group='All Charges',
+                has_charge=False,
+            )
+        ])
 
         # only fields that are actually used are included in this document
         utilbill_doc = {
