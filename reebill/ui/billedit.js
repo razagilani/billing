@@ -5399,6 +5399,40 @@ function reeBillReady() {
                             issuableGrid.setDisabled(false);
                             utilbillGridStore.reload({callback: refreshUBVersionMenus});
                         }
+                        else if (o.success !== true && o.corrections != undefined) {
+                        var result = Ext.Msg.confirm('Corrections must be applied',
+                                                     'Corrections from reebills ' + o.corrections +
+                                                     ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        issueDataConn.request({
+                                            params: {
+                                                account: r.data.account,
+                                                sequence: r.data.sequence,
+                                                recipients: r.data.mailto,
+                                                apply_corrections: true
+                                            },
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true) {
+                                                    Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                                            },
+                                            failure: function() {
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            }
+                                        });
+                                    }
+                                    else{
+                                        issuableGrid.setDisabled(false);
+                                    }
+                                });
+                        }
                         else {
                             issuableStore.reload();
                             issuableGrid.setDisabled(false);
