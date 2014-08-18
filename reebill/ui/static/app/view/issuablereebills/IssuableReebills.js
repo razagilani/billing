@@ -81,10 +81,15 @@ Ext.define('ReeBill.view.IssuableReebills', {
         xtype: 'toolbar',
         items: [{        
             xtype: 'button',
-            text: 'Issue',
+            text: 'Issue Selected ReeBill',
             action: 'issue',
             iconCls: 'silk-email-go',
             disabled: true
+        },{
+            xtype: 'button',
+            text: 'Issue All Processed ReeBills',
+            action: 'issueprocessed',
+            iconCls: 'silk-email-go',
         }]
     }],
 
