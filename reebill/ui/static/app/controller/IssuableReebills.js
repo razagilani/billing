@@ -11,7 +11,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },{
         ref: 'issueButton',
         selector: 'button[action=issue]'
-    }],    
+    },{
+        ref: 'issueProcessedButton',
+        selector: 'button[action=issueprocessed]'
+    }],
 
     init: function() {
         this.application.on({
@@ -25,6 +28,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             },
             'button[action=issue]': {
                 click: this.handleIssue
+            },
+            'button[action=issueprocessed]': {
+                click: this.handleIssueProcessed
             }
         });
     },
@@ -53,17 +59,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         this.getIssueButton().setDisabled(disabled);
     },
 
-    makeIssueRequest: function(url){
+    makeIssueRequest: function(url, billRecord){
         var me = this;
-        var selections = me.getIssuableReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
-
-        var selected = selections[0];
         var store = me.getIssuableReebillsStore();
-
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        waitMask.show();
+        var params = {}
 
         var failureFunc = function(response){
             waitMask.hide();
@@ -82,14 +82,20 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 waitMask.hide();
             }, 1000);
         }
-        Ext.Ajax.request({
-            url: url,
-            params: {
+
+        if(billRecord !== undefined){
+            params = {
                 account: selected.get('account'),
                 sequence: selected.get('sequence'),
                 mailto: selected.get('mailto'),
                 apply_corrections: false
-            },
+            }
+        }
+
+        waitMask.show();
+        Ext.Ajax.request({
+            url: url,
+            params: params,
             success: function(response){
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
@@ -102,14 +108,12 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         function(answer){
                             if(answer == 'yes'){
                                 waitMask.show();
+                                if(params.apply_corrections !== undefined){
+                                    params.apply_corrections = true;
+                                }
                                 Ext.Ajax.request({
                                     url: url,
-                                    params: {
-                                        account: selected.get('account'),
-                                        sequence: selected.get('sequence'),
-                                        mailto: selected.get('mailto'),
-                                        apply_corrections: true
-                                    },
+                                    params: params,
                                     failure: failureFunc,
                                     success: successFunc
                                 });
@@ -129,7 +133,18 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      */
     handleIssue: function() {
         var me = this;
+        var selections = me.getIssuableReebillsGrid().getSelectionModel().getSelection();
+
+        if (!selections.length)
+            return;
+
+        var selected = selections[0];
         me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail')
+    },
+
+    handleIssueProcessed: function(){
+        var me = this;
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
     }
 
 });
