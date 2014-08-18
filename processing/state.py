@@ -1003,6 +1003,7 @@ class UtilBill(Base):
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
                      ('utility', self.utility.name),
+                     ('state', self.state_name()),
                      ('pdf_url', self.pdf_url)])
 
 class Register(Base):

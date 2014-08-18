@@ -700,7 +700,7 @@ class Process(object):
                     .filter(UtilBill.customer == customer)\
                     .filter(not_(UtilBill._utilbill_reebills.any()))\
                     .filter(UtilBill.service == utilbill.service)\
-                    .filter(UtilBill.utility == utilbill.utility)\
+                    .filter(UtilBill.utility_id == utilbill.utility_id)\
                     .filter(UtilBill.period_start >= utilbill.period_end)\
                     .order_by(UtilBill.period_end).first()
                 if successor is None:
