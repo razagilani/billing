@@ -9,10 +9,10 @@ from bson import ObjectId
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, ListField, EmbeddedDocumentField
 from mongoengine import DateTimeField, BooleanField
-from billing.processing.exceptions import FormulaError, FormulaSyntaxError, \
+from billing.exc import FormulaError, FormulaSyntaxError, \
     NoSuchBillException
 
-# minimum normlized score for an RSI to get included in a probable UPRS
+# minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
 RSI_PRESENCE_THRESHOLD = 0.5
 
@@ -22,15 +22,6 @@ def manhattan_distance(p1, p2):
     delta_begin = abs(p1[0] - p2[0]).days
     delta_end = abs(p1[1] - p2[1]).days
     return delta_begin + delta_end
-
-def gaussian(height, center, fwhm):
-    def result(x):
-        sigma =  fwhm / 2 * sqrt(2 * log(2))
-        return height * exp(- (x - center)**2 / (2 * sigma**2))
-    return result
-
-def exp_weight(a, b):
-    return lambda x: a**(x * b)
 
 def exp_weight_with_min(a, b, minimum):
     '''Exponentially-decreasing weight function with a minimum value so it's
@@ -68,6 +59,20 @@ class RateStructureItem(EmbeddedDocument):
 
     group = StringField(required=True, default='')
 
+    @classmethod
+    def duplicate(cls, other):
+        return RateStructureItem(
+            rsi_binding=other.rsi_binding,
+            description=other.description,
+            shared=other.shared,
+            has_charge=other.has_charge,
+            quantity=other.quantity,
+            quantity_units=other.quantity_units,
+            rate=other.rate,
+            round_rule=other.round_rule,
+            group=other.group,
+        )
+
     def __init__(self, *args, **kwargs):
         super(RateStructureItem, self).__init__(*args, **kwargs)
 
@@ -98,14 +103,11 @@ class RateStructureItem(EmbeddedDocument):
         def parse_formula(name):
             formula = getattr(self, name)
             if formula == '':
-                raise FormulaSyntaxError("%s %s formula can't be empty" % (
-                    self.rsi_binding, name))
+                raise FormulaSyntaxError("%s formula can't be empty" % name)
             try:
                 return ast.parse(getattr(self, name))
             except SyntaxError:
-                raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                                         '"%s":\n%s' % (name, self.rsi_binding,
-                getattr(self, name)))
+                raise FormulaSyntaxError('Syntax error in %s formula' % name)
         return parse_formula('quantity'), parse_formula('rate')
 
     def get_identifiers(self):
@@ -139,8 +141,10 @@ class RateStructureItem(EmbeddedDocument):
         '''Evaluates this RSI's "quantity" and "rate" formulas, given the
         readings of registers in 'register_quantities' (a dictionary mapping
         register names to dictionaries containing keys "quantity" and "rate"),
-        and returns ( quantity  result, rate result). Raises FormulaSyntaxError
-        if either of the formulas could not be parsed.
+        and returns (quantity result, rate result, error). 'error' is an
+        Exception describing any error that occurred.
+
+        Raises FormulaSyntaxError if either of the formulas could not be parsed.
         '''
         # validate argument types to avoid more confusing errors below
         assert all(
@@ -151,7 +155,10 @@ class RateStructureItem(EmbeddedDocument):
                 for k, v in register_quantities.iteritems())
 
         # check syntax
-        self._parse_formulas()
+        try:
+            self._parse_formulas()
+        except FormulaSyntaxError as e:
+            return None, None, e
 
         # identifiers in RSI formulas end in ".quantity", ".rate", or ".total";
         # the only way to evaluate these as Python code is to turn each of the
@@ -171,9 +178,11 @@ class RateStructureItem(EmbeddedDocument):
             try:
                 return eval(formula, {}, register_quantities)
             except Exception as e:
-                raise FormulaError(('Error when computing %s for RSI "%s": '
-                                    '%s') % (name, self.rsi_binding, e))
-        return compute('quantity'), compute('rate')
+                raise FormulaError(('Error in %s formula: %s') % (name, e))
+        try:
+            return compute('quantity'), compute('rate'), None
+        except FormulaError as e:
+            return None, None, e
 
     def to_dict(self):
         '''String representation of this RateStructureItem to send as JSON to
@@ -213,14 +222,14 @@ class RateStructure(Document):
             default=[])
 
     @classmethod
-    def combine(cls, uprs, cprs):
+    def combine(cls, a, b):
         '''Returns a RateStructure object not corresponding to any Mongo
-        document, containing RSIs from the two RateStructures 'uprs' and
-        'cprs'. Do not save this object in the database!
+        document, containing RSIs from the two RateStructures 'a' and 'b'.
+        'b' overrides 'a'.
         '''
-        combined_dict = uprs.rsis_dict()
-        combined_dict.update(cprs.rsis_dict())
-        return RateStructure(type='UPRS', rates=combined_dict.values())
+        combined_dict = a.rsis_dict()
+        combined_dict.update(b.rsis_dict())
+        return RateStructure(rates=combined_dict.values())
 
     def rsis_dict(self):
         '''Returns a dictionary mapping RSI binding strings to
@@ -243,8 +252,6 @@ class RateStructure(Document):
         '''Document.validate() is overridden to make sure a RateStructure
         without unique rsi_bindings can't be saved.'''
         self._check_rsi_uniqueness()
-        # TODO also check that 'type' is "UPRS" or "CPRS"
-
         return super(RateStructure, self).validate(clean=clean)
 
     def add_rsi(self):
@@ -377,16 +384,7 @@ class RateStructureDAO(object):
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
             if normalized_weight >= threshold:
-                rsi_dict = closest_occurrence[binding][1]
-                rate, quantity = 0, 0
-                try:
-                    rate = rsi_dict.rate
-                    quantity = closest_occurrence[binding][1].quantity
-                except KeyError:
-                    if self.logger:
-                        self.logger.error('malformed RSI: %s' % rsi_dict)
-                result.append(RateStructureItem(rsi_binding=binding, rate=rate,
-                    quantity=quantity))
+                result.append(RateStructureItem.duplicate(closest_occurrence[binding][1]))
         return result
 
     def get_predicted_rate_structure(self, utilbill, utilbill_loader):
@@ -401,11 +399,11 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.
         '''
-        result = RateStructure(type='UPRS',
+        result = RateStructure(
                 rates=self._get_probable_shared_rsis(utilbill_loader,
                 utilbill.utility, utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
-                ignore=lambda rs:rs.id == utilbill.uprs_document_id))
+                ignore=lambda rs:rs.id == ObjectId(utilbill.uprs_document_id)))
         result.id = ObjectId()
 
         # add any RSIs from the predecessor's UPRS that are not already there
