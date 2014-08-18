@@ -1776,7 +1776,7 @@ class Process(object):
 
         return issuable_reebills
 
-    def issue_and_mail(self, user, account, sequence, recipients, apply_corrections):
+    def issue_and_mail(self, account, sequence, recipients, apply_corrections):
         '''issues a reebill and sends out a confirmation email'''
         # If there are unissued corrections and the user has not confirmed
         # to issue them, we will return a list of those corrections and the
@@ -1799,11 +1799,6 @@ class Process(object):
                 e.args = ('Error when issuing reebill %s-%s: %s' %(
                             account, sequence, e.__class__.__name__),) + e.args
                 raise
-            for cor in unissued_corrections:
-                journal.ReeBillIssuedEvent.save_instance(
-                    session['user'],account, sequence,
-                    self.state_db.max_version(account, cor),
-                    applied_sequence=cor[0])
         try:
             self.compute_reebill(account, sequence)
             #mark issued bills as processed
@@ -1814,14 +1809,10 @@ class Process(object):
             e.args = ('Error when issuing reebill %s-%s: %s' %(
                             account, sequence, e.__class__.__name__),) + e.args
             raise
-        journal.ReeBillIssuedEvent.save_instance(user,
-                                                 account, sequence, 0)
         # Let's mail!
         # Recepients can be a comma seperated list of email addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
         self.mail_reebills(account, [sequence], recipient_list)
-        journal.ReeBillMailedEvent.save_instance(user, account, sequence,
-            recipients)
 
     def issue_processed_and_mail(self, user, apply_corrections):
         ''' issues all reebills that are marked as processeed and sends confirmation emails

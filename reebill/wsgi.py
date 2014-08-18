@@ -696,8 +696,18 @@ class ReeBillWSGI(object):
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
+        unissued_corrections = self.process.get_unissued_corrections(account)
         self.process.issue_and_mail(cherrypy.session['user'], account,
                 sequence, recipients, apply_corrections)
+        for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'],account, sequence,
+                    self.state_db.max_version(account, cor),
+                    applied_sequence=cor[0])
+        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                                account, sequence, 0)
+        journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                    account, sequence,recipients)
         return self.dumps({"success": True})
 
     @cherrypy.expose
