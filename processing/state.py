@@ -22,10 +22,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.processing.exceptions import IssuedBillError, NoSuchBillException,\
-        RegisterError
+from billing.exc import IssuedBillError, NoSuchBillException,\
+        RegisterError, FormulaSyntaxError
 
-from billing.processing.exceptions import NoRSIError, FormulaError, RSIError
+from billing.exc import NoRSIError, FormulaError, RSIError
 from exc import DatabaseError
 
 
@@ -50,8 +50,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base(cls=Base)
 
-
-_schema_revision = '4f2f8e2f7cd'
+_schema_revision = '3147aa982e03'
 
 def check_schema_revision(schema_revision=_schema_revision):
     """Checks to see whether the database schema revision matches the 
@@ -103,7 +102,7 @@ class Address(Base):
 
     def __repr__(self):
         return 'Address<(%s, %s, %s)' % (self.addressee, self.street,
-                                         self.city, self.state, self.postal_code)
+                self.city, self.state, self.postal_code)
 
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
@@ -115,8 +114,22 @@ class Address(Base):
             'street': self.street,
             'city': self.city,
             'state': self.state,
-            'postalcode': self.postal_code,
+            'postal_code': self.postal_code,
         }
+
+    @classmethod
+    def from_other(cls, other_address):
+        """Constructs a new :class:`.Address` instance whose attributes are
+        copied from the given `other_address`.
+        :param other_address: An :class:`.Address` instance from which to
+         copy attributes.
+        """
+        assert isinstance(other_address, cls)
+        return cls(other_address.addressee,
+                   other_address.street,
+                   other_address.city,
+                   other_address.state,
+                   other_address.postal_code)
 
 
 class Customer(Base):
@@ -165,7 +178,7 @@ class ReeBill(Base):
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
-    issue_date = Column(Date)
+    issue_date = Column(DateTime)
 
     # new fields from Mongo
     ree_charge = Column(Float, nullable=False)
@@ -220,7 +233,7 @@ class ReeBill(Base):
     # and for UtilBill,
     #     creator=lambda r: UtilbillReebill(self, r)
     # but this will not actually work because 'self' is not available in class
-    # # scope; there is no instance of UtilBill or ReeBill at the time this
+    # scope; there is no instance of UtilBill or ReeBill at the time this
     # code is executed. it also does not work to move the code into __init__
     # and assign the 'utilbills' attribute to a particular ReeBill instance
     # or vice versa. there may be a way to make SQLAlchemy do this (maybe by
@@ -421,47 +434,6 @@ class ReeBill(Base):
 
         return total_therms
 
-    def compute_charges(self, uprs, reebill_dao):
-        """Updates `quantity`, `rate`, and `total` attributes all charges in
-        the :class:`.Reebill` according to the formulas in the RSIs in the
-        given rate structures.
-        :param uprs: A uprs from MongoDB
-        :parm reebill_dao:
-        """
-        session = Session.object_session(self)
-        for r in self.readings:
-            session.delete(r)
-        self.readings = [Reading(reg_dict['register_binding'], 'Energy Sold',
-                reg_dict['quantity'], 0, '', reg_dict['quantity_units'])
-                for reg_dict in chain.from_iterable(
-                (r for r in m['registers']) for m in utilbill_doc['meters'])]
-        return None
-
-    def update_readings_from_reebill(self, reebill_readings, utilbill_doc):
-        '''Updates the set of Readings associated with this ReeBill to match
-        the list of registers in the given reebill_readings. Readings that do not
-        have a register binding that matches a register in 'utilbill_doc' are
-        ignored.
-        '''
-        session = Session.object_session(self)
-        for r in self.readings:
-            session.delete(r)
-        utilbill_register_bindings = {r['register_binding']
-                for r in chain.from_iterable(m['registers']
-                for m in utilbill_doc['meters'])}
-        self.readings = [Reading(r.register_binding, r.measure, 0,
-                0, r.aggregate_function, r.unit) for r in reebill_readings
-                if r.register_binding in utilbill_register_bindings]
-
-    def get_renewable_energy_reading(self, register_binding):
-        assert isinstance(register_binding, basestring)
-        try:
-            reading = next(r for r in self.readings
-                           if r.register_binding == register_binding)
-        except StopIteration:
-            raise ValueError('Unknown register binding "%s"' % register_binding)
-        return reading.renewable_quantity
-
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
@@ -471,6 +443,15 @@ class ReeBill(Base):
         except StopIteration:
             raise RegisterError('Unknown register binding "%s"' % binding)
         return result
+
+    def get_renewable_energy_reading(self, register_binding):
+        assert isinstance(register_binding, basestring)
+        try:
+            reading = next(r for r in self.readings
+                           if r.register_binding == register_binding)
+        except StopIteration:
+            raise ValueError('Unknown register binding "%s"' % register_binding)
+        return reading.renewable_quantity
 
     def set_renewable_energy_reading(self, register_binding, new_quantity):
         assert isinstance(register_binding, basestring)
@@ -561,8 +542,10 @@ class ReeBill(Base):
 
         utilbill = self.utilbill
 
+        # raise exception if any utility bill charges could not be computed; it
+        # doesn't make sense to base a reebill on a broken utility bill
         utilbill_doc = reebill_dao.load_doc_for_utilbill(utilbill)
-        utilbill.compute_charges(uprs, utilbill_doc)
+        utilbill.compute_charges(uprs, utilbill_doc, raise_exception=True)
 
         #[MN]:This code temporary until utilbill_doc stops storing register data
         # We duplicate the utilbill and update its register quantities,
@@ -623,54 +606,58 @@ class ReeBill(Base):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
-            for identifier in rsi.get_identifiers():
-                if identifier in identifiers:
-                    continue
-                try:
-                    other_rsi_num = rsi_numbers[identifier]
-                except KeyError:
-                    # TODO might want to validate identifiers before computing
-                    # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI '
-                            '"%s": %s') % (rsi.rsi_binding, identifier))
-                # a pair (x,y) means x precedes y, i.e. y depends on x
-                dependency_graph.append((other_rsi_num, this_rsi_num))
-                independent_rsi_numbers.discard(other_rsi_num)
-                independent_rsi_numbers.discard(this_rsi_num)
+            try:
+                this_rsi_identifiers = list(rsi.get_identifiers())
+            except FormulaSyntaxError:
+                # if this RSI has a syntax error, its number will remain in
+                # 'independent_rsi_numbers' because it's independent of others
+                pass
+            else:
+                for identifier in this_rsi_identifiers:
+                    if identifier in identifiers:
+                        continue
+                    try:
+                        other_rsi_num = rsi_numbers[identifier]
+                    except KeyError:
+                        # unknown variable in RSI formula: leave the RSI in
+                        # 'independent_rsi_numbers'
+                        continue
 
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+                    # if this_rsi_num can be added to the graph without creating
+                    # a cycle, add it. otherwise skip it. if the  graph is
+                    # sorted successfully, 'sorted_graph' will be used below
+                    try:
+                        sorted_graph = tsort.topological_sort(dependency_graph
+                                                              + [(other_rsi_num, this_rsi_num)])
+                    except tsort.GraphError as g:
+                        continue
+
+                    # a pair (x,y) means x precedes y, i.e. y depends on x
+                    dependency_graph.append((other_rsi_num, this_rsi_num))
+                    independent_rsi_numbers.discard(other_rsi_num)
+                    independent_rsi_numbers.discard(this_rsi_num)
+
+        # charges that don't depend on other charges can be evaluated at any
+        # time. if there are charges that depend on other charges, they have
+        # to be evaluated in the order described by 'sorted_graph'
         evaluation_order = list(independent_rsi_numbers)
-
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        try:
-            evaluation_order.extend(tsort.topological_sort(dependency_graph))
-        except tsort.GraphError as g:
-            # if the graph contains a cycle, provide a more comprehensible error
-            # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
-            raise RSIError('Circular dependency: %s' % names_in_cycle)
-
+        if dependency_graph != []:
+            evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
-        all_charges = {charge.rsi_binding: charge for charge in self.charges}
-
-        assert len(evaluation_order) == len(rsis)
         acs = {charge.rsi_binding: charge for charge in utilbill.charges}
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
-            quantity, rate = rsi.compute_charge(identifiers)
+            quantity, rate, error = rsi.compute_charge(identifiers)
             total = quantity * rate
-            ac = acs[rsi.rsi_binding]
-            quantity_units = ac.quantity_units \
-                    if ac.quantity_units is not None else ''
-            self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
-                    ac.description, ac.group, ac.quantity,
-                    quantity, quantity_units, ac.rate, rate, ac.total,
-                    total))
+            if rsi.has_charge:
+                ac = acs[rsi.rsi_binding]
+                quantity_units = ac.quantity_units \
+                        if ac.quantity_units is not None else ''
+                self.charges.append(ReeBillCharge(self, rsi.rsi_binding,
+                        ac.description, ac.group, ac.quantity,
+                        quantity, quantity_units, ac.rate, rate, ac.total,
+                        total))
             identifiers[rsi.rsi_binding]['quantity'] = quantity
             identifiers[rsi.rsi_binding]['rate'] = rate
             identifiers[rsi.rsi_binding]['total'] = total
@@ -703,23 +690,19 @@ class ReeBill(Base):
     def get_total_actual_charges(self):
         '''Returns sum of "actual" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.a_total for charge in self.charges)
 
     def get_total_hypothetical_charges(self):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
-        assert len(self.utilbills) == 1
         return sum(charge.h_total for charge in self.charges)
-
-    def get_service_address_formatted(self):
-        return str(self.service_address)
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first ReeBillCharge object found belonging to this
         ReeBill whose 'rsi_binding' matches 'binding'.
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
+
 
 class UtilbillReebill(Base):
     '''Class corresponding to the "utilbill_reebill" table which represents the
@@ -768,11 +751,9 @@ class ReeBillCharge(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
     rsi_binding = Column(String, nullable=False)
     description = Column(String, nullable=False)
-
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
     group = Column(String, name='group_name', nullable=False)
-
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     quantity_unit = Column(String, nullable=False)
@@ -834,8 +815,9 @@ class Reading(Base):
         self.unit = unit
 
     def __hash__(self):
-        return hash(self.register_binding + self.measure + str(self.conventional_quantity) +
-                    str(self.renewable_quantity) + self.aggregate_function + self.unit)
+        return hash(self.register_binding + self.measure +
+                str(self.conventional_quantity) + str(self.renewable_quantity)
+                + self.aggregate_function + self.unit)
 
     def __eq__(self, other):
         return all([
@@ -856,6 +838,11 @@ class UtilBill(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    billing_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+    service_address_id = Column(Integer, ForeignKey('address.id'),
+        nullable=False)
+
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
     utility = Column(String, nullable=False)
@@ -877,6 +864,11 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+    billing_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.billing_address_id==Address.id')
+    service_address = relationship('Address', uselist=False, cascade='all',
+        primaryjoin='UtilBill.service_address_id==Address.id')
+
 
     @classmethod
     def validate_utilbill_period(self, start, end):
@@ -911,8 +903,9 @@ class UtilBill(Base):
     }
 
     def __init__(self, customer, state, service, utility, rate_class,
-            account_number='', period_start=None, period_end=None, doc_id=None,
-            uprs_id=None, total_charges=0, date_received=None,  processed=False,
+            billing_address, service_address, account_number='',
+            period_start=None, period_end=None, doc_id=None, uprs_id=None,
+            total_charges=0, date_received=None,  processed=False,
             reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
@@ -931,6 +924,8 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.billing_address = billing_address
+        self.service_address = service_address
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
@@ -957,22 +952,6 @@ class UtilBill(Base):
             key=lambda element: (element['sequence'], element['version'])
         )
 
-    # TODO: this is no longer used; client receives JSON and renders it as a
-    # string
-    def sequence_version_string(self):
-        '''Returns a string describing sequences and versions of reebills
-        attached to this utility bill, consisting of sequences followed by a
-        comma-separated list of versions of that sequence, e.g. "1-0,1,2, 2-0".
-        '''
-        # group _utilbill_reebills by sequence, sorted by version within each
-        # group
-        groups = groupby(sorted(self._utilbill_reebills,
-                key=lambda x: (x.reebill.sequence, x.reebill.version)),
-                key=attrgetter('reebill.sequence'))
-        return ', '.join('%s-%s' % (sequence,
-                ','.join(str(ur.reebill.version) for ur in group))
-                for (sequence, group) in groups)
-
     def refresh_charges(self, rates):
         """Replaces the `charges` list on the :class:`.UtilityBill` based
         on the specified rates.
@@ -981,29 +960,27 @@ class UtilBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             assert Session.object_session(charge) is session
-            # TODO: charge disappears from session here, but not from
-            # self.charges.
             session.delete(charge)
             session.flush()
-        # inserting this line makes the the test pass, but why is it necessary?
-        #self.charges = []
+        # TODO: despite deleting the charges above, they do not seem to go away
+        # unless this line is here
+        self.charges = []
 
         for rsi in sorted(rates, key=attrgetter('rsi_binding')):
+            if rsi.has_charge == False:
+                continue
             session.add(Charge(utilbill=self,
-                               description=rsi.description,
-                               group=rsi.group,
-                               quantity=0,
-                               quantity_units=rsi.quantity_units,
-                               rate=0,
-                               rsi_binding=rsi.rsi_binding,
-                               total=0))
+                    description=rsi.description, group=rsi.group,
+                    quantity=0, quantity_units=rsi.quantity_units,
+                    rate=0, rsi_binding=rsi.rsi_binding, total=0))
 
-    def compute_charges(self, uprs, utilbill_doc):
+    def compute_charges(self, uprs, utilbill_doc, raise_exception=False):
         """Updates `quantity`, `rate`, and `total` attributes all charges in
         the :class:`.UtilityBill` according to the formulas in the RSIs in the
         given rate structures.
-        :param uprs: A uprs from MongoDB
-        :parm utillbill_doc: The utilbill_doc from mongodb. Needed for meters
+        :param utillbill_doc: The utilbill_doc from mongodb. Needed for meters
+        :param raise_exception: if True, raises an RSIError if any charge could
+        not be computed.
         """
         uprs.validate()
         rate_structure = uprs
@@ -1011,7 +988,7 @@ class UtilBill(Base):
 
         rsi_bindings = set(rsi['rsi_binding'] for rsi in uprs.rates)
         for c in (x for x in self.charges if x.rsi_binding not in rsi_bindings):
-            raise NoRSIError('No rate structure item for "%s"' % c)
+            raise NoRSIError('No rate structure item for "%s"' % c.rsi_binding)
 
         # This code temporary until utilbill_doc stops holding RSIs
         # identifiers in RSI formulas are of the form "NAME.{quantity,rate,total}"
@@ -1055,47 +1032,53 @@ class UtilBill(Base):
             # identifier, and its name does not occur in 'identifiers' above
             # (which contains only register names), add the tuple (this
             # charge's number, that charge's number) to 'dependency_graph'.
-            for identifier in rsi.get_identifiers():
-                if identifier in identifiers:
-                    continue
-                try:
-                    other_rsi_num = rsi_numbers[identifier]
-                except KeyError:
-                    # TODO might want to validate identifiers before computing
-                    # for clarity
-                    raise FormulaError(('Unknown variable in formula of RSI '
-                            '"%s": %s') % (rsi.rsi_binding, identifier))
-                # a pair (x,y) means x precedes y, i.e. y depends on x
-                dependency_graph.append((other_rsi_num, this_rsi_num))
-                independent_rsi_numbers.discard(other_rsi_num)
-                independent_rsi_numbers.discard(this_rsi_num)
+            try:
+                this_rsi_identifiers = list(rsi.get_identifiers())
+            except FormulaSyntaxError:
+                # if this RSI has a syntax error, its number will remain in
+                # 'independent_rsi_numbers' because it's independent of others
+                pass
+            else:
+                for identifier in this_rsi_identifiers:
+                    if identifier in identifiers:
+                        continue
+                    try:
+                        other_rsi_num = rsi_numbers[identifier]
+                    except KeyError:
+                        # unknown variable in RSI formula: leave the RSI in
+                        # 'independent_rsi_numbers'
+                        continue
 
-        # charges that don't depend on other charges can be evaluated before ones
-        # that do.
+                    # if this_rsi_num can be added to the graph without creating
+                    # a cycle, add it. otherwise skip it. if the  graph is
+                    # sorted successfully, 'sorted_graph' will be used below
+                    try:
+                        sorted_graph = tsort.topological_sort(dependency_graph
+                                + [(other_rsi_num, this_rsi_num)])
+                    except tsort.GraphError as g:
+                        continue
+
+                    # a pair (x,y) means x precedes y, i.e. y depends on x
+                    dependency_graph.append((other_rsi_num, this_rsi_num))
+                    independent_rsi_numbers.discard(other_rsi_num)
+                    independent_rsi_numbers.discard(this_rsi_num)
+
+        # charges that don't depend on other charges can be evaluated at any
+        # time. if there are charges that depend on other charges, they have
+        # to be evaluated in the order described by 'sorted_graph'
         evaluation_order = list(independent_rsi_numbers)
-
-        # 'evaluation_order' now contains only the indices of charges that don't
-        # have dependencies. topological sort the dependency graph to find an
-        # evaluation order that works for the charges that do have dependencies.
-        try:
-            evaluation_order.extend(tsort.topological_sort(dependency_graph))
-        except tsort.GraphError as g:
-            # if the graph contains a cycle, provide a more comprehensible error
-            # message with the charge numbers converted back to names
-            names_in_cycle = ', '.join(all_rsis[i]['rsi_binding'] for i in
-                    g.args[1])
-            raise RSIError('Circular dependency: %s' % names_in_cycle)
-
+        if dependency_graph != []:
+            evaluation_order.extend(sorted_graph)
         assert len(evaluation_order) == len(rsis)
 
         all_charges = {charge.rsi_binding: charge for charge in self.charges}
 
-        assert len(evaluation_order) == len(rsis)
-
         for rsi_number in evaluation_order:
             rsi = rsis[rsi_number]
-            quantity, rate = rsi.compute_charge(identifiers)
-            total = quantity * rate
+            quantity, rate, error = rsi.compute_charge(identifiers)
+            if raise_exception and error is not None:
+                raise error
+            total = quantity * rate if error is None else None
             try:
                 charge = all_charges[rsi.rsi_binding]
             except KeyError:
@@ -1105,23 +1088,36 @@ class UtilBill(Base):
                 charge.quantity = quantity
                 charge.rate = rate
                 charge.total = total
+                charge.error = None if error is None else error.message
 
-            identifiers[rsi.rsi_binding]['quantity'] = quantity
-            identifiers[rsi.rsi_binding]['rate'] = rate
-            identifiers[rsi.rsi_binding]['total'] = total
+            # quantity/rate/total of this charge can only be used as identifiers
+            # in other charges if there was no error
+            if error is None:
+                identifiers[rsi.rsi_binding]['quantity'] = quantity
+                identifiers[rsi.rsi_binding]['rate'] = rate
+                identifiers[rsi.rsi_binding]['total'] = total
+        assert len(self.charges) == sum(1 for r in uprs.rates if r.has_charge)
+
+    def get_charge_by_rsi_binding(self, binding):
+        '''Returns the first Charge object found belonging to this
+        ReeBill whose 'rsi_binding' matches 'binding'.
+        '''
+        return next(c for c in self.charges if c.rsi_binding == binding)
 
     def total_charge(self):
-        return sum(charge.total for charge in self.charges)
+        """Returns sum of all charges' totals, excluding charges that have
+        errors.
+        """
+        return sum(charge.total for charge in self.charges
+                if charge.total is not None)
 
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
-    
     __tablename__ = 'charge'
-    
+
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
-    
     description = Column(String(255))
     group = Column(String(255))
     quantity = Column(Float)
@@ -1129,6 +1125,11 @@ class Charge(Base):
     rate = Column(Float)
     rsi_binding = Column(String(255))
     total = Column(Float)
+
+    # description of error in computing the quantity and/or rate formula.
+    # either this or quantity and rate should be null at any given time,
+    # never both or neither.
+    error = Column(String(255))
     
     utilbill = relationship("UtilBill", backref=backref('charges', order_by=id,
                                                         cascade="all"))
@@ -1154,6 +1155,7 @@ class Charge(Base):
         self.rate = rate
         self.rsi_binding = rsi_binding
         self.total = total
+        self.error = None
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -1161,7 +1163,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     date_received = Column(DateTime, nullable=False)
-    date_applied = Column(Date, nullable=False)
+    date_applied = Column(DateTime, nullable=False)
     description = Column(String)
     credit = Column(Float)
 
@@ -1179,8 +1181,8 @@ class Payment(Base):
         assert isinstance(date_received, datetime)
         assert isinstance(date_applied, date)
         self.customer = customer
-        self.date_received = date_received # datetime
-        self.date_applied = date_applied   # date
+        self.date_received = date_received
+        self.date_applied = date_applied
         self.description = description
         self.credit = credit
 
@@ -1281,31 +1283,12 @@ class StateDB(object):
         were created were created (highest existing account number + 1--we're
         assuming accounts will be integers, even though we always store them as
         strings).'''
-        session = Session()
         last_account = max(map(int, self.listAccounts()))
         return last_account + 1
-
-    def get_utilbill(self, account, service, start, end):
-        session = Session()
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        return session.query(UtilBill)\
-                .filter(UtilBill.customer_id==customer.id)\
-                .filter(UtilBill.service==service)\
-                .filter(UtilBill.period_start==start)\
-                .filter(UtilBill.period_end==end).one()
 
     def get_utilbill_by_id(self, ubid):
         session = Session()
         return session.query(UtilBill).filter(UtilBill.id==ubid).one()
-
-    def utilbills_for_reebill(self, account, sequence, version='max'):
-        '''Returns all utility bills for the reebill given by account,
-        sequence, version (highest version by default).'''
-        session = Session()
-        reebill = self.get_reebill(account, sequence, version=version)
-        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
-                ReeBill.id == reebill.id).all()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -1383,20 +1366,6 @@ class StateDB(object):
                 .filter(ReeBill.issued==0).all()
         return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
-
-    def discount_rate(self, account):
-        '''Returns the discount rate for the customer given by account.'''
-        session = Session()
-        result = session.query(Customer).filter_by(account=account).one().\
-                get_discount_rate()
-        return result
-        
-    def late_charge_rate(self, account):
-        '''Returns the late charge rate for the customer given by account.'''
-        session = Session()
-        result = session.query(Customer).filter_by(account=account).one()\
-                .get_late_charge_rate()
-        return result
 
     def last_sequence(self, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
@@ -1489,16 +1458,18 @@ class StateDB(object):
         session.add(new_reebill)
         return new_reebill
 
-    def issue(self, account, sequence, issue_date=datetime.utcnow()):
+    def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
         as issued.
         '''
-        session = Session()
         reebill = self.get_reebill(account, sequence)
+        if issue_date is None:
+            issue_date = datetime.utcnow()
         if reebill.issued == 1:
             raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
                     "already issued") % (account, sequence, reebill.version))
         reebill.issued = 1
+        reebill.processed = 1
         reebill.issue_date = issue_date
 
     def is_issued(self, account, sequence, version='max',
@@ -1547,16 +1518,6 @@ class StateDB(object):
                 .order_by(Customer.account).all())
         return result
 
-    def list_accounts(self, start, limit):
-        '''List of customer accounts with start and limit (for paging).'''
-        # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        session = Session()
-        query = session.query(Customer.account)
-        slice = query[start:start + limit]
-        count = query.count()
-        result = map((lambda x: x[0]), slice)
-        return result, count
-
     def listSequences(self, account):
         session = Session()
 
@@ -1597,7 +1558,6 @@ class StateDB(object):
     def reebills(self, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
         in MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1607,7 +1567,6 @@ class StateDB(object):
     def reebill_versions(self, include_unissued=True):
         '''Generates (account, sequence, version) tuples for all reebills in
         MySQL.'''
-        session = Session()
         for account in self.listAccounts():
             for sequence in self.listSequences(account):
                 reebill = self.get_reebill(account, sequence)
@@ -1665,16 +1624,6 @@ class StateDB(object):
             return query[start:], query.count()
         return query[start:start + limit], query.count()
 
-    def get_utilbills_on_date(self, account, the_date):
-        '''Returns a list of UtilBill objects representing MySQL utility bills
-        whose periods start before/on and end after/on 'the_date'.'''
-        session = Session()
-        return session.query(UtilBill).filter(
-                UtilBill.customer==self.get_customer(account),
-                UtilBill.period_start<=the_date,
-                UtilBill.period_end>the_date).all()
-
-    
     def fill_in_hypothetical_utilbills(self, account, service,
             utility, rate_class, begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
@@ -1758,19 +1707,6 @@ class StateDB(object):
         session.add(new_payment)
         return new_payment
 
-    def update_payment(self, oid, date_applied, description, credit):
-        '''Sets the date_applied, description, and credit of the payment with
-        id 'oid'.'''
-        session = Session()
-        payment = session.query(Payment).filter(Payment.id == oid).one()
-        if isinstance(date_applied, basestring):
-            payment.date_applied = datetime.strptime(date_applied,
-                    "%Y-%m-%dT%H:%M:%S").date()
-        else:
-            payment.date_applied = date_applied
-        payment.description = description
-        payment.credit = credit
-
     def delete_payment(self, oid):
         '''Deletes the payment with id 'oid'.'''
         session = Session()
@@ -1799,9 +1735,9 @@ class StateDB(object):
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
         '''
-        assert isinstance(start, date)
+        assert isinstance(start, datetime)
         if end is None:
-            end=datetime.utcnow().date()
+            end=datetime.utcnow()
         session = Session()
         payments = session.query(Payment)\
                 .filter(Payment.customer==self.get_customer(account))\
@@ -1822,19 +1758,8 @@ class StateDB(object):
         # SQLAlchemy query to get account & dates for all utilbills
         session = Session()
         entityQuery = session.query(StatusDaysSince)
-
-        # example of how db sorting would be done
-        #if sort_col == 'dayssince' and sort_order == 'ASC':
-        #    sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
-        #elif sort_colr == 'dayssince' and sort_order == 'DESC':
-        #    sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
-        #lockmodeQuery = sortedQuery.with_lockmode("read")
-
         lockmodeQuery = entityQuery.with_lockmode("read")
-
-        result = lockmodeQuery.all()
-
-        return result
+        return lockmodeQuery.all()
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details

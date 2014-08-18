@@ -51,8 +51,7 @@ class billdb(Schema):
     host = String()
     port = TCPPort(min=1, max=65535)
     database = String()
-    utility_bill_trash_directory = String()
-    
+    utility_bill_trash_directory = String() 
 class statedb(Schema):
     uri = String()
     echo = StringBool()
@@ -73,12 +72,7 @@ class mailer(Schema):
 class authentication(Schema):
     authenticate = StringBool()
     
-class billimages(Schema):
-    bill_image_directory = String()
-    show_reebill_images = StringBool()
-    
 class reebillrendering(Schema):
-    temp_directory = Directory()
     template_directory = Directory()
     default_template = String()
     teva_accounts = String()
