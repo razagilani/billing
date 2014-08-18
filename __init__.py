@@ -25,7 +25,7 @@ def init_config(filename='settings.cfg', fp=None):
     log = logging.getLogger(__name__)
     
     global config
-    config = ConfigParser()
+    config = ValidatedConfigParser(vns)
     if fp:
         log.debug('Reading configuration fp')
         config.readfp(fp)
