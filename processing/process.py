@@ -16,8 +16,9 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from bson import ObjectId
+from billing.processing.billupload import BillUpload
 
-from billupload import ACCOUNT_NAME_REGEX
+ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
 #
 # uuid collides with locals so both the locals and package are renamed
@@ -50,13 +51,12 @@ sys.stdout = sys.stderr
 MAX_GAP_DAYS = 10
 
 class Process(object):
-    def __init__(self, state_db, rate_structure_dao, billupload,
+    def __init__(self, state_db, rate_structure_dao,
             nexus_util, bill_mailer, renderer, ree_getter,
             splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
-        self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
@@ -442,7 +442,7 @@ class Process(object):
         session.flush()
 
         if bill_file is not None:
-            self.billupload.upload_utilbill_file_to_s3(new_utilbill, bill_file)
+            BillUpload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
@@ -523,7 +523,7 @@ class Process(object):
         if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 
-        self.billupload.delete_utilbill_file_from_s3()
+        BillUpload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -936,8 +936,7 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            full_path = self.billupload.get_reebill_file_path(account,
-                    sequence)
+            full_path = BillUpload.get_reebill_file_path(account, sequence)
             # If the file exists, delete it, otherwise don't worry.
             try:
                 os.remove(full_path)
@@ -1097,6 +1096,7 @@ class Process(object):
         that actually have bills.'''
         # get all reebills whose periods contain any days in this month (there
         # should be at most 3)
+        session = Session()
         next_month_year, next_month = month_offset(year, month, 1)
         reebills = session.query(ReeBill).join(UtilBill).filter(
                 UtilBill.period_start >= date(year, month, 1),
@@ -1195,8 +1195,7 @@ class Process(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(account,
                 start, limit)
-        data = [dict(ub.column_dict().items() + [('utility', ub.utility.name)])
-                for ub in utilbills]
+        data = [ub.column_dict() for ub in utilbills]
         return data, total_count
 
     def update_reebill_readings(self, account, sequence):
@@ -1221,8 +1220,8 @@ class Process(object):
 
         # render all the bills
         for reebill in all_reebills:
-            the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
+            the_path = BillUpload.get_reebill_file_path(account,
+                                                        reebill.sequence)
             dirname, basename = os.path.split(the_path)
             self.renderer.render_max_version(reebill.customer.account,
                     reebill.sequence, dirname, basename)
@@ -1239,8 +1238,8 @@ class Process(object):
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
-        bill_file_paths = [self.billupload.get_reebill_file_path(account,
-                    s) for s in sequences]
+        bill_file_paths = [BillUpload.get_reebill_file_path(account, s)
+                           for s in sequences]
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
                 bill_file_paths)
 
@@ -1428,10 +1427,6 @@ class Process(object):
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
         return reebill.version
-
-    def get_utilbill_image_path(self, utilbill_id, resolution):
-        utilbill= self.state_db.get_utilbill_by_id(utilbill_id)
-        return self.billupload.getUtilBillImagePath(utilbill,resolution)
 
     def list_account_status(self, account=None):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
