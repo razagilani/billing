@@ -100,6 +100,22 @@ def check_authentication():
         raise Unauthenticated("No Session")
     return True
 
+def db_commit(method):
+    '''CherryPY Decorator for committing a database transaction when the method
+    returns. This should be used only on methods that should be allowed to
+    modify the database.
+    '''
+    @functools.wraps(method)
+    def wrapper(*args, **kwargs):
+        try:
+            result = method(*args, **kwargs)
+        except:
+            Session().rollback()
+            raise
+        Session().commit()
+        return result
+    return wrapper
+
 
 class WebResource(object):
 
@@ -256,6 +272,7 @@ class RESTResource(WebResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @cherrypy.tools.json_in(force=False)
+    @db_commit
     def default(self, *vpath, **params):
         method = getattr(self,
                          "handle_" + cherrypy.request.method.lower(),
@@ -269,12 +286,7 @@ class RESTResource(WebResource):
 
         return_value = {}
 
-        try:
-            response = method(*vpath, **params)
-            Session().commit()
-        except:
-            Session().rollback()
-            raise
+        response = method(*vpath, **params)
 
         if type(response) != tuple:
             raise ValueError("%s.handle_%s must return a tuple ("
@@ -366,15 +378,22 @@ class IssuableReebills(RESTResource):
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
+    @db_commit
     def issue_and_mail(self, *vpath, **params):
         params = cherrypy.request.params
+        account, sequence = params['account'], int(params['sequence'])
+        recipient_list = params['mailto']
         print params
         result = self.process.issue_and_mail(
-            cherrypy.session['user'],
-            params['account'],
-            params['sequence'],
-            params['mailto'],
+            account, sequence, recipient_list,
             params['apply_corrections'] == 'true')
+        if 'issued' in result:
+            for bill in result['issued']:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill[0], bill[1], bill[2],
+                    applied_sequence=bill[1] if bill[2] != 0 else None)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence, recipient_list)
         return self.dumps(result)
 
 class ReebillVersionsResource(RESTResource):
