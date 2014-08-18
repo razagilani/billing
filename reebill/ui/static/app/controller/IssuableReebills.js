@@ -76,8 +76,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
         };
         var successFunc = function(response){
-            store.reload();
-            waitMask.hide();
+            // Wait for the bill to be issued before reloading the store
+            Ext.defer(function(){
+                store.reload();
+                waitMask.hide();
+            }, 1000);
         }
         Ext.Ajax.request({
             url: url,
