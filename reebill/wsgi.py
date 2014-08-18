@@ -716,8 +716,21 @@ class ReeBillWSGI(object):
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_processed_and_mail(cherrypy.session['user'],
-                apply_corrections)
+        unissued_processed = self.process.get_issuable_processed_reebills_dict()
+        result = self.process.issue_processed_and_mail(apply_corrections)
+        for bill in unissued_processed:
+            unissued_corrections = self.process.get_unissued_corrections(
+                bill['account'])
+            for cor in unissued_corrections:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'], bill['account'],
+                        bill['sequence'],
+                        self.state_db.max_version(bill['account'], cor),
+                        applied_sequence=cor[0])
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], 0)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], bill['mailto'])
         return self.dumps({"success": True,
                            "issued": result})
 
