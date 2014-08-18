@@ -8,7 +8,9 @@ class BillUpload(object):
 
     @staticmethod
     def compute_hexdigest(data):
-        return hashlib.sha256().update(data).hexdigest()
+        hash_function = hashlib.sha256()
+        hash_function.update(data)
+        return hash_function.hexdigest()
 
     @staticmethod
     def get_amazon_bucket():

@@ -833,11 +833,6 @@ class UtilBill(Base):
         return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
                (config.get('aws_s3', 'bucket'), self.sha256_hexdigest)
 
-    def column_dict(self):
-        return dict(super(UtilBill, self).column_dict().items() +
-                    [('utility', self.utility.name),
-                     ('pdf_url', self.pdf_url())])
-
     @property
     def bindings(self):
         """Returns all bindings across both charges and registers"""
@@ -999,18 +994,16 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        the_dict = super(UtilBill, self).column_dict()
-        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
-        the_dict.update({
-            'account': self.customer.account,
-            'service': 'Unknown' if self.service is None
-                                else self.service.capitalize(),
-            'computed_total': self.total_charge() if self.state <
-                                UtilBill.Hypothetical else None,
-            'reebills': reebills,
-            'state': self.state_name()
-        })
-        return the_dict
+        return dict(super(UtilBill, self).column_dict().items() +
+                    [('account', self.customer.account),
+                     ('service', 'Unknown' if self.service is None
+                                           else self.service.capitalize()),
+                     ('computed_total', self.total_charge() if self.state <
+                                        UtilBill.Hypothetical else None),
+                     ('reebills', [ur.reebill.column_dict() for ur
+                                   in self._utilbill_reebills]),
+                     ('utility', self.utility.name),
+                     ('pdf_url', self.pdf_url)])
 
 class Register(Base):
     """A register reading on a utility bill"""
