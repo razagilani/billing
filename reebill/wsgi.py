@@ -697,8 +697,8 @@ class ReeBillWSGI(object):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         unissued_corrections = self.process.get_unissued_corrections(account)
-        self.process.issue_and_mail(cherrypy.session['user'], account,
-                sequence, recipients, apply_corrections)
+        self.process.issue_and_mail(account, sequence,
+                                    recipients, apply_corrections)
         for cor in unissued_corrections:
                 journal.ReeBillIssuedEvent.save_instance(
                     cherrypy.session['user'],account, sequence,
