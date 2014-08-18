@@ -19,7 +19,18 @@ Ext.define('ReeBill.model.Account', {
         {name: 'casualname'},
         {name: 'primusname'},
         {name: 'utilityserviceaddress'},
-        {name: 'lastperiodend', type:'date'},
+        {name: 'lastperiodend', convert: function(value, record){
+            // Calculate days since last processed util bill
+            // If there has never been a utility bill (value == null)
+            // it should be interpreted as infinite days since a utility bill
+            // instead of zero
+            if(value === null){
+                return Infinity;
+            }
+            value = Ext.Date.parse(value, 'Y-m-d')
+            var d = new Date();
+            return Math.round((d-value)/(1000*60*60*24));
+        }},
         {name: 'lastevent'},
         {name: 'lastissuedate'},
         {name: 'provisionable'},
