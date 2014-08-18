@@ -6,5 +6,7 @@ reebill/reconciliation.log
 reebill/reconciliation_report.json
 reebill/ui/revision.txt
 revision.txt
+settings.cfg
+alembic.ini
 .directory
 .idea
