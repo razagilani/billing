@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'IssuableReebills'
+        'IssuableReebills', 'IssuableReebillsMemory'
     ],
     
     refs: [{
@@ -39,7 +39,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        this.getIssuableReebillsStore().reload();
+        this.getIssuableReebillsMemoryStore().loadPage(1);
     },
 
     /**
@@ -63,7 +63,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var me = this;
         var store = me.getIssuableReebillsStore();
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {}
+        var params = {apply_corrections: false}
 
         var failureFunc = function(response){
             waitMask.hide();
@@ -84,18 +84,16 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         }
 
         if(billRecord !== undefined){
-            params = {
-                account: selected.get('account'),
-                sequence: selected.get('sequence'),
-                mailto: selected.get('mailto'),
-                apply_corrections: false
-            }
+            params.account = billRecord.get('account');
+            params.sequence = billRecord.get('sequence');
+            params.mailto = billRecord.get('mailto');
         }
 
         waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
+            method: 'POST',
             success: function(response){
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
@@ -108,11 +106,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         function(answer){
                             if(answer == 'yes'){
                                 waitMask.show();
-                                if(params.apply_corrections !== undefined){
-                                    params.apply_corrections = true;
-                                }
+                                params.apply_corrections = true;
                                 Ext.Ajax.request({
                                     url: url,
+                                    method: 'POST',
                                     params: params,
                                     failure: failureFunc,
                                     success: successFunc
@@ -139,7 +136,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             return;
 
         var selected = selections[0];
-        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail')
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail', selected)
     },
 
     handleIssueProcessed: function(){

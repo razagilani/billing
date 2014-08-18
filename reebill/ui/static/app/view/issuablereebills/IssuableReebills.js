@@ -7,7 +7,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
 
     title: 'Issuable Reebills',
     alias: 'widget.issuableReebills',    
-    store: 'IssuableReebills',
+    store: 'IssuableReebillsMemory',
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
@@ -37,7 +37,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
         header: 'Sequence',
         dataIndex: 'sequence',
         width: 120,
-        sortable: false
+        sortable: true
     },{
         header: 'Recipients',
         sortable: false,
@@ -58,20 +58,19 @@ Ext.define('ReeBill.view.IssuableReebills', {
         header: 'Total From Utility Bill',
         dataIndex: 'utilbill_total',
         width: 175,
-        sortable: false,
+        sortable: true,
         renderer: Ext.util.Format.usMoney
     },{
         header: 'Computed Total',
         dataIndex: 'actual_total',
         width: 175,
-        sortable: false,
+        sortable: true,
         renderer: Ext.util.Format.usMoney
     },{
         header: '$ Difference',
         dataIndex: 'difference',
         width: 175,
         sortable: true,
-        groupable: false,
         align: 'right',
         renderer: Ext.util.Format.usMoney
     }],
@@ -96,7 +95,7 @@ Ext.define('ReeBill.view.IssuableReebills', {
     bbar: {
         xtype: 'pagingtoolbar',
         pageSize: 25,
-        store: 'IssuableReebills',
+        store: 'IssuableReebillsMemory',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}'
     }

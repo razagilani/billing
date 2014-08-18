@@ -3,24 +3,18 @@ Ext.define('ReeBill.store.IssuableReebills', {
 
     model: 'ReeBill.model.Reebill',
 
-    autoLoad: false,
+    autoLoad: true,
     autoSync: true,
-
-    remoteGroup: false,
-    remoteSort: true,
-
-    groupField: 'group',
 
 	proxy: {
         type: 'rest',
         url: 'http://'+window.location.host+'/reebill/issuable',
 
-        pageParam: false,
-        sortParam: false,
-        groupParam: false,
-        directionParam: false,
-
         simpleSortMode: true,
+        pageParam: false,
+        startParam: false,
+        sortParam: false,
+        limitParam: false,
 
 		reader: {
 			type: 'json',
@@ -43,6 +37,27 @@ Ext.define('ReeBill.store.IssuableReebills', {
         },
 
 	},
+
+    // Keep the memory store in sync
+    listeners:{
+        load: function(store, records, successful, eOpts){
+            var memoryStore = Ext.getStore('IssuableReebillsMemory');
+            memoryStore.getProxy().data = records;
+        },
+        add: function(store, records, index, eOpts ){
+            var allRecords = store.getRange();
+            var memoryStore = Ext.getStore('IssuableReebillsMemory');
+            memoryStore.getProxy().data = allRecords;
+            memoryStore.reload()
+        },
+        remove: function(store, records, index, eOpts ){
+            var allRecords = store.getRange();
+            var memoryStore = Ext.getStore('IssuableReebillsMemory');
+            memoryStore.getProxy().data = allRecords;
+            memoryStore.reload()
+        },
+        scope: this
+    },
 
     sorters: [{
         property: 'account', 
