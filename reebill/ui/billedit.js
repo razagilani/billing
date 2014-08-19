@@ -2595,24 +2595,24 @@ function reeBillReady() {
                 dataIndex: 'description',
             },{
                 header: 'Quantity',
-                width: 75,
+                width: 25,
                 sortable: true,
                 dataIndex: 'quantity',
                 editable: false,
             },{
                 header: 'Units',
-                width: 75,
+                width: 25,
                 sortable: true,
                 dataIndex: 'quantity_units',
             },{
                 header: 'Rate',
-                width: 75,
+                width: 35,
                 sortable: true,
                 dataIndex: 'rate',
                 editable: false,
             },{
                 header: 'Total', 
-                width: 75, 
+                //width: 75,
                 sortable: true, 
                 dataIndex: 'total', 
                 summaryType: 'sum',
