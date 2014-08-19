@@ -18,6 +18,7 @@ def init_config(filename='settings.cfg', fp=None):
     """
     from billing.data.validation import configuration as vns
     from billing.lib.config import ValidatedConfigParser
+    from ConfigParser import ConfigParser
     from os.path import dirname, realpath
     import logging
 

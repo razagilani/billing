@@ -100,6 +100,22 @@ def check_authentication():
         raise Unauthenticated("No Session")
     return True
 
+def db_commit(method):
+    '''CherryPY Decorator for committing a database transaction when the method
+    returns. This should be used only on methods that should be allowed to
+    modify the database.
+    '''
+    @functools.wraps(method)
+    def wrapper(*args, **kwargs):
+        try:
+            result = method(*args, **kwargs)
+        except:
+            Session().rollback()
+            raise
+        Session().commit()
+        return result
+    return wrapper
+
 
 class WebResource(object):
 
@@ -256,6 +272,7 @@ class RESTResource(WebResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @cherrypy.tools.json_in(force=False)
+    @db_commit
     def default(self, *vpath, **params):
         method = getattr(self,
                          "handle_" + cherrypy.request.method.lower(),
@@ -269,12 +286,7 @@ class RESTResource(WebResource):
 
         return_value = {}
 
-        try:
-            response = method(*vpath, **params)
-            Session().commit()
-        except:
-            Session().rollback()
-            raise
+        response = method(*vpath, **params)
 
         if type(response) != tuple:
             raise ValueError("%s.handle_%s must return a tuple ("
@@ -346,12 +358,9 @@ class AccountsResource(RESTResource):
 
 class IssuableReebills(RESTResource):
 
-    def handle_get(self, start, limit, sort='account', dir='DESC',
-                   *vpath, **params):
-        start, limit = int(start), int(limit)
+    def handle_get(self, *vpath, **params):
         issuable_reebills = self.process.get_issuable_reebills_dict()
-
-        return True, {'rows': issuable_reebills[start:start+limit],
+        return True, {'rows': issuable_reebills,
                       'results': len(issuable_reebills)}
 
     def handle_put(self, reebill_id, *vpath, **params):
@@ -366,15 +375,43 @@ class IssuableReebills(RESTResource):
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
+    @db_commit
     def issue_and_mail(self, *vpath, **params):
         params = cherrypy.request.params
+        account, sequence = params['account'], int(params['sequence'])
+        recipient_list = params['mailto']
         print params
         result = self.process.issue_and_mail(
-            cherrypy.session['user'],
-            params['account'],
-            params['sequence'],
-            params['mailto'],
-            params['apply_corrections'] == 'true')
+            params['apply_corrections'] == 'true',
+            account=account, sequence=sequence, recipients=recipient_list)
+        if 'issued' in result:
+            for bill in result['issued']:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill[0], bill[1], bill[2],
+                    applied_sequence=bill[1] if bill[2] != 0 else None)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence, recipient_list)
+        return self.dumps(result)
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def issue_processed_and_mail(self, **kwargs):
+        params = cherrypy.request.params
+        apply_corrections = (params['apply_corrections'] == 'true')
+        result = self.process.issue_and_mail(apply_corrections, processed=True)
+        if 'issued' in result:
+            for bill in result['issued']:
+                # Bills is a tuple of (account, sequence, version,
+                # recipient_list)
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill[0], bill[1], bill[2],
+                    applied_sequence=bill[1] if bill[2] != 0 else None)
+            for bill in result['issued']:
+                # ReebillMailedEvents Last
+                if bill[2] == 0:
+                    journal.ReeBillMailedEvent.save_instance(
+                        cherrypy.session['user'], bill[0], bill[1], bill[3])
         return self.dumps(result)
 
 class ReebillVersionsResource(RESTResource):

@@ -39,12 +39,11 @@ Ext.define('ReeBill.model.Reebill', {
         // Data for Issuable Reebills
         {name: 'mailto'},
         {name: 'utilbill_total'},
-        {name: 'reebill_total'},
         {name: 'difference', convert: function(value, record){
             return Math.abs(record.get('actual_total') - record.get('utilbill_total'))
         }},
         {name: 'group', type: 'string', convert: function(value, record){
-            if(record.get('issued') === 1){
+            if(record.get('processed') === true){
                 return 'Processed Reebills'
             }
 

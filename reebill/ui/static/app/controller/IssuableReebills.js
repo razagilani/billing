@@ -2,7 +2,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'IssuableReebills'
+        'IssuableReebills', 'IssuableReebillsMemory'
     ],
     
     refs: [{
@@ -11,7 +11,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
     },{
         ref: 'issueButton',
         selector: 'button[action=issue]'
-    }],    
+    },{
+        ref: 'issueProcessedButton',
+        selector: 'button[action=issueprocessed]'
+    }],
 
     init: function() {
         this.application.on({
@@ -25,6 +28,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             },
             'button[action=issue]': {
                 click: this.handleIssue
+            },
+            'button[action=issueprocessed]': {
+                click: this.handleIssueProcessed
             }
         });
     },
@@ -53,17 +59,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         this.getIssueButton().setDisabled(disabled);
     },
 
-    makeIssueRequest: function(url){
+    makeIssueRequest: function(url, billRecord){
         var me = this;
-        var selections = me.getIssuableReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
-
-        var selected = selections[0];
         var store = me.getIssuableReebillsStore();
-
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        waitMask.show();
+        var params = {apply_corrections: false}
 
         var failureFunc = function(response){
             waitMask.hide();
@@ -76,17 +76,24 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             });
         };
         var successFunc = function(response){
-            store.reload();
-            waitMask.hide();
+            // Wait for the bill to be issued before reloading the store
+            Ext.defer(function(){
+                store.reload();
+                waitMask.hide();
+            }, 1000);
         }
+
+        if(billRecord !== undefined){
+            params.account = billRecord.get('account');
+            params.sequence = billRecord.get('sequence');
+            params.mailto = billRecord.get('mailto');
+        }
+
+        waitMask.show();
         Ext.Ajax.request({
             url: url,
-            params: {
-                account: selected.get('account'),
-                sequence: selected.get('sequence'),
-                mailto: selected.get('mailto'),
-                apply_corrections: false
-            },
+            params: params,
+            method: 'POST',
             success: function(response){
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
@@ -99,14 +106,11 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                         function(answer){
                             if(answer == 'yes'){
                                 waitMask.show();
+                                params.apply_corrections = true;
                                 Ext.Ajax.request({
                                     url: url,
-                                    params: {
-                                        account: selected.get('account'),
-                                        sequence: selected.get('sequence'),
-                                        mailto: selected.get('mailto'),
-                                        apply_corrections: true
-                                    },
+                                    method: 'POST',
+                                    params: params,
                                     failure: failureFunc,
                                     success: successFunc
                                 });
@@ -126,7 +130,18 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      */
     handleIssue: function() {
         var me = this;
-        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail')
+        var selections = me.getIssuableReebillsGrid().getSelectionModel().getSelection();
+
+        if (!selections.length)
+            return;
+
+        var selected = selections[0];
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail', selected)
+    },
+
+    handleIssueProcessed: function(){
+        var me = this;
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_processed_and_mail')
     }
 
 });

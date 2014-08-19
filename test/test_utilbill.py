@@ -219,7 +219,7 @@ class UtilBillTest(TestCase):
                 'gas', 'utility', 'rate class', Address(), Address())
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
-        self.assertEqual(0, utilbill.total_charge())
+        self.assertEqual(0, utilbill.get_total_charges())
 
     def test_compute_charges_independent(self):
         utility = Utility('utility', Address())
@@ -252,7 +252,7 @@ class UtilBillTest(TestCase):
                 utilbill.get_charge_by_rsi_binding('B'))
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
                 'Error in quantity formula: division by zero')
-        self.assertEqual(150 + 6, utilbill.total_charge())
+        self.assertEqual(150 + 6, utilbill.get_total_charges())
 
     def test_compute_charges_with_cycle(self):
         '''Test computing charges whose dependencies form a cycle.

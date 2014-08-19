@@ -149,7 +149,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              account_number='Acct123456',
                              period_start=date(2012, 1, 1),
                              period_end=date(2012, 1, 31),
-                             total_charges=50.00,
+                             target_total=50.00,
                              date_received=date(2011, 2, 3),
                              processed=True)
 
@@ -158,7 +158,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              account_number='Acct123456',
                              period_start=date(2012, 2, 1),
                              period_end=date(2012, 2, 28),
-                             total_charges=65.00,
+                             target_total=65.00,
                              date_received=date(2011, 3, 3),
                              processed=True)
 
@@ -200,7 +200,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                          account_number='Acct123456',
                          period_start=date(2012, 1, 1),
                          period_end=date(2012, 1, 31),
-                         total_charges=50.00,
+                         target_total=50.00,
                          date_received=date(2011, 2, 3),
                          processed=True)
         session.add(u)
