@@ -1,6 +1,10 @@
 Ext.define('ReeBill.controller.TabPanel', {
     extend: 'Ext.app.Controller',
 
+    stores: [
+        'IssuableReebills',
+    ],
+
     refs: [{
         ref: 'accountsGrid',
         selector: 'grid[id=accountsGrid]'
@@ -31,6 +35,9 @@ Ext.define('ReeBill.controller.TabPanel', {
     },{
         ref: 'reebillChargesTab',
         selector: 'panel[name=reebillChargesTab]'
+    },{
+        ref: 'issuableReebills',
+        selector: 'panel[id=issuableReebillsGrid]'
     }],
     
     init: function() {
@@ -51,6 +58,13 @@ Ext.define('ReeBill.controller.TabPanel', {
             'grid[id=reebillsGrid]': {
                 selectionchange: this.setTabs
             }
+        });
+
+        this.getIssuableReebillsStore().on({
+            load: function(store, records, successful, eOpts ){
+                this.getIssuableReebills().setDisabled(false);
+            },
+            scope: this
         });
 
     },

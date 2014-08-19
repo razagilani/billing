@@ -46,11 +46,10 @@ Ext.define('ReeBill.view.Accounts', {
         tooltip: 'Days Since Last Issued Utility Bill',
         dataIndex: 'lastperiodend',
         renderer: function(value){
-            if(value === null){
-                return;
+            if(value === Infinity){
+                return ''
             }
-            var d = new Date();
-            return Math.round((d-value)/(1000*60*60*24));
+            return value
         },
         align: 'right',
         width: 100

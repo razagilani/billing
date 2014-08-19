@@ -233,7 +233,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         assert utilbill.period_end == doc['period_end'] == date(2013, 2, 1)
         assert utilbill.service == doc['service'] == 'Gas'
         assert utilbill.utility.name == doc['utility'] == 'Test Utility Company Template'
-        assert utilbill.total_charges == 100
+        assert utilbill.target_total == 100
         assert utilbill.rate_class == doc['rate_class'] == 'Test Rate Class Template'
 
         # invalid date ranges
