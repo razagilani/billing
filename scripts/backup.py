@@ -20,12 +20,13 @@ import sys
 import shlex
 from StringIO import StringIO
 from gzip import GzipFile
+from os import SEEK_END
 
 # TODO set from command line argument?
 BUCKET_NAME = 'skyline-test'
 
 # amount of data to read and send to S3 at one time in bytes
-CHUNK_SIZE_BYTES = 5 * 1024**2
+S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
 
 #TODO pipe through gzip
 # see if check_call can be used
@@ -41,6 +42,32 @@ m = re.match(r'^mysql://(\w+):(\w+)+@(\w+):([0-9]+)/(\w+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
 
+def _write_gzipped_chunk(in_file, out_file, chunk_size):
+    '''Replace the contents of 'out_file' with 'chunk_size' bytes read from
+    'in_file' (or all remaining bytes from 'in_file', whichever is smaller).
+
+    Write gzipped data from 'in_file' to 'out_file' until 'out_file' contains
+    'chunk_size' of gzipped data (or until reaching the end of 'in_file'). Note
+    that more than 'chunk_size' may be read from 'in_file' to get 'chunk_size'
+    bytes of data after compression.
+    Return True if the end of 'in_file' has been reached, False otherwise.
+    '''
+    out_file.seek(0)
+    out_file.truncate()
+
+    # A GzipFile wraps another file object and implements the file interface.
+    # when you write to the GzipFile, it writes compressed data to its
+    # 'fileobj'.
+    gzipper = GzipFile(fileobj=out_file, mode='w')
+
+    while True:
+        data = in_file.read(128 * 1024)
+        if data == '':
+            return True
+        if out_file.tell() >= chunk_size:
+            return False
+        gzipper.write(data)
+
 def run_command_with_output_to_s3(command, s3_key):
     '''Run 'command' as a subprocess, writing its stdout to 's3_key'
     (boto.s3.key.Key object). Wait for the process to exit and raise a ValueError
@@ -53,17 +80,26 @@ def run_command_with_output_to_s3(command, s3_key):
     '''
     process = Popen(shlex.split(command), stderr=sys.stderr, stdout=PIPE)
 
+    the_file = StringIO()
+
     multipart_upload = bucket.initiate_multipart_upload(s3_key)
+
     count = 1
-    while True:
-        chunk = process.stdout.read(CHUNK_SIZE_BYTES)
-        if chunk == '':
-            break
-        multipart_upload.upload_part_from_file(StringIO(chunk), count)
+    done = False
+    while not done:
+        # write a chunk of gzipped data into 'the_file'
+        done = _write_gzipped_chunk(process.stdout, the_file,
+                S3_MULTIPART_CHUNK_SIZE_BYTES)
+
+        # upload the contents of 'the_file' to S3
+        the_file.seek(0)
+        multipart_upload.upload_part_from_file(the_file, count)
         count += 1 
 
+    # TODO move this part to callback (?) to separate it from the S3 stuff
     status = process.wait()
     if status != 0:
+        # TODO choose an exception class that makes sense for this
         raise ValueError('Command exited with status %s: "%s"' % (
                 status, command))
 
@@ -99,7 +135,6 @@ def parse_args():
 
 if __name__ == '__main__':
     now = datetime.utcnow().isoformat()
-
     args = parse_args()
 
     #access_key = 'AKIAINC2Y2F7IOLKO6CA'
@@ -107,7 +142,7 @@ if __name__ == '__main__':
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = conn.get_bucket(BUCKET_NAME)
 
-    backup_mysql('%s_reebill_mysql' % now)
+    backup_mysql('%s_reebill_mysql.gz' % now)
         
     for collection in MONGO_COLLECTIONS:
-        backup_mongo_collection('%s_reebill_mongo_%s' % (now, collection))
+        backup_mongo_collection('%s_reebill_mongo_%s.gz' % (now, collection))
