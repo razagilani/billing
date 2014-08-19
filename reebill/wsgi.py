@@ -1347,7 +1347,6 @@ class ReeBillWSGI(object):
         self.process.upload_utility_bill(account, service,
                 begin_date_as_date,
                 end_date_as_date, file_to_upload.file,
-                file_to_upload.filename if file_to_upload else None,
                 total=total_charges_as_float,
                 state=UtilBill.Complete if file_to_upload.file else \
                         UtilBill.SkylineEstimated,
