@@ -1,7 +1,6 @@
 from billing import init_config
-from processing.billupload import BillUpload
-
 init_config('tstsettings.cfg')
+from processing.billupload import BillUpload
 import json
 import unittest
 from StringIO import StringIO
@@ -11,7 +10,7 @@ import os
 from os.path import realpath, join, dirname
 
 from sqlalchemy.orm.exc import NoResultFound
-
+from billing.processing.mongo import NoSuchBillException
 from skyliner.sky_handlers import cross_range
 from billing.processing.process import IssuedBillError
 from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
@@ -19,7 +18,6 @@ from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 # TODO this should not be used anymore
-from billing.processing.mongo import NoSuchBillException
 from billing.exc import BillStateError, FormulaSyntaxError
 from billing.test import utils
 
@@ -703,18 +701,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # delete utility bills
         ids = [obj['id'] for obj in utilbills_data]
 
-        _, new_path = self.process.delete_utility_bill_by_id(ids[3])
+        self.process.delete_utility_bill_by_id(ids[3])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(3, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[2])
+        #self.assertTrue(os.access(new_path, os.F_OK))
+
+        self.process.delete_utility_bill_by_id(ids[2])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[1])
+        #self.assertTrue(os.access(new_path, os.F_OK))
+
+        self.process.delete_utility_bill_by_id(ids[1])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
-        _, new_path = self.process.delete_utility_bill_by_id(ids[0])
+
+        self.process.delete_utility_bill_by_id(ids[0])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 

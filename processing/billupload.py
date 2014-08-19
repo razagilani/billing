@@ -3,6 +3,7 @@ import hashlib
 from boto.s3.connection import S3Connection
 import os
 from billing import config
+from billing.processing.state import Session, UtilBill
 
 class BillUpload(object):
 
@@ -31,9 +32,13 @@ class BillUpload(object):
     @staticmethod
     def delete_utilbill_pdf_from_s3(utilbill):
         """Removes the pdf file associated with utilbill from s3"""
-        key_name = BillUpload.utilbill_key_name(utilbill)
-        key = BillUpload.get_amazon_bucket().get_key(key_name)
-        key.delete()
+        hexdigest = utilbill.sha256_hexdigest
+        session = Session()
+        if session.query(UtilBill).\
+            filter_by(sha256_hexdigest=utilbill.sha256_hexdigest).count() == 1:
+            key_name = BillUpload.utilbill_key_name(utilbill)
+            key = BillUpload.get_amazon_bucket().get_key(key_name)
+            key.delete()
 
     @staticmethod
     def upload_utilbill_pdf_to_s3(utilbill, file_io):
