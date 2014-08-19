@@ -1039,10 +1039,12 @@ function reeBillReady() {
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
+                xtype : 'datecolumn',
                 header: 'Issue Date',
                 sortable: false,
                 dataIndex: 'issue_date',
                 width: 70,
+                format : 'Y-m-d',
                 renderer: reeBillGridRenderer,
             },{
                 header: 'Hypo',
