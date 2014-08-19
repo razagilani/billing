@@ -1565,7 +1565,8 @@ if __name__ == '__main__':
     }
     cherrypy.config.update({
         'server.socket_host': root.reebill.config.get("http", "socket_host"),
-        'server.socket_port': root.reebill.config.get("http", "socket_port")})
+        'server.socket_port': 8181,
+    }
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
