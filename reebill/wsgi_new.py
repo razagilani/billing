@@ -203,8 +203,8 @@ class WebResource(object):
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
-            self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
+            self.state_db, self.ratestructure_dao, self.nexus_util,
+            self.bill_mailer, self.renderer,
             self.ree_getter, logger=self.logger)
 
         # determine whether authentication is on or off
@@ -558,7 +558,6 @@ class UtilBillResource(RESTResource):
             UtilBill.SkylineEstimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
-            fileobj.filename if fileobj.file else None,
             total=total_charges, state=billstate, utility=None, rate_class=None)
 
         # Since this is initated by an Ajax request, we will still have to
@@ -603,12 +602,12 @@ class UtilBillResource(RESTResource):
         return True, {'rows': result, 'results': 1}
 
     def handle_delete(self, utilbill_id, account, *vpath, **params):
-        utilbill, deleted_path = self.process.delete_utility_bill_by_id(
+        utilbill = self.process.delete_utility_bill_by_id(
             utilbill_id)
         journal.UtilBillDeletedEvent.save_instance(
             cherrypy.session['user'], account,
             utilbill.period_start, utilbill.period_end,
-            utilbill.service, deleted_path)
+            utilbill.service, utilbill.sha256_hexdigest)
         return True, {}
 
 

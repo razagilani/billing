@@ -5,6 +5,7 @@ import ast
 from datetime import timedelta, datetime, date
 import logging
 import json
+from billing import config
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
@@ -808,6 +809,7 @@ class UtilBill(Base):
     total_charges = Column(Float)
     date_received = Column(DateTime)
     account_number = Column(String, nullable=False)
+    sha256_hexdigest = Column(String(64))
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
@@ -825,6 +827,11 @@ class UtilBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
     utility = relationship('Utility')
+
+    @property
+    def pdf_url(self):
+        return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
+               (config.get('aws_s3', 'bucket'), self.sha256_hexdigest)
 
     @property
     def bindings(self):
@@ -987,18 +994,17 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        the_dict = super(UtilBill, self).column_dict()
-        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
-        the_dict.update({
-            'account': self.customer.account,
-            'service': 'Unknown' if self.service is None
-                                else self.service.capitalize(),
-            'computed_total': self.total_charge() if self.state <
-                                UtilBill.Hypothetical else None,
-            'reebills': reebills,
-            'state': self.state_name()
-        })
-        return the_dict
+        return dict(super(UtilBill, self).column_dict().items() +
+                    [('account', self.customer.account),
+                     ('service', 'Unknown' if self.service is None
+                                           else self.service.capitalize()),
+                     ('computed_total', self.total_charge() if self.state <
+                                        UtilBill.Hypothetical else None),
+                     ('reebills', [ur.reebill.column_dict() for ur
+                                   in self._utilbill_reebills]),
+                     ('utility', self.utility.name),
+                     ('state', self.state_name()),
+                     ('pdf_url', self.pdf_url)])
 
 class Register(Base):
     """A register reading on a utility bill"""

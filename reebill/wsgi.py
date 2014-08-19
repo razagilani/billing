@@ -199,7 +199,7 @@ class ReeBillWSGI(object):
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.state_db,  self.ratestructure_dao,
-                self.billUpload, self.nexus_util, self.bill_mailer,
+                self.nexus_util, self.bill_mailer,
                 self.renderer, self.ree_getter, logger=self .logger)
 
 
@@ -1347,7 +1347,6 @@ class ReeBillWSGI(object):
         self.process.upload_utility_bill(account, service,
                 begin_date_as_date,
                 end_date_as_date, file_to_upload.file,
-                file_to_upload.filename if file_to_upload else None,
                 total=total_charges_as_float,
                 state=UtilBill.Complete if file_to_upload.file else \
                         UtilBill.SkylineEstimated,
@@ -1467,12 +1466,12 @@ class ReeBillWSGI(object):
             # delete each utility bill, and log the deletion in the journal
             # with the path where the utility bill file was moved
             for utilbill_id in ids:
-                utilbill, deleted_path = self.process\
+                utilbill = self.process\
                         .delete_utility_bill_by_id(utilbill_id)
                 journal.UtilBillDeletedEvent.save_instance(
                         cherrypy.session['user'], account,
                         utilbill.period_start, utilbill.period_end,
-                        utilbill.service, deleted_path)
+                        utilbill.service, utilbill.sha256_hexdigest)
             return self.dumps({'success': True})
 
     @cherrypy.expose
