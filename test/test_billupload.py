@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from billing import init_config
+init_config('tstsettings.cfg')
 import sys
 from mock import Mock
 import unittest
