@@ -1,5 +1,6 @@
 import sys
 import logging
+from billing import init_config, init_model
 
 def init_logging():
     """Initialize logging to debug before we import anything else"""
@@ -30,7 +31,7 @@ import mongoengine
 import MySQLdb
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import UnboundExecutionError
-from billing import init_config, init_model
+
 from billing.test import utils as test_utils
 from billing.processing import mongo
 from billing.processing import rate_structure2
@@ -224,7 +225,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         logger = logging.getLogger('test')
 
         self.state_db = StateDB(logger)
-        self.billupload = BillUpload(config, logger)
+        self.billupload = BillUpload()
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -271,7 +272,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
         self.process = Process(self.state_db,  self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer, renderer,
+                self.nexus_util, bill_mailer, renderer,
                 ree_getter, self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,

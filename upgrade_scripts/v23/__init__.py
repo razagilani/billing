@@ -15,6 +15,7 @@ from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session, Company, Customer, Utility, \
     Address, UtilBill
+from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def migrate_utilbill_utility(utilbill_data, session):
                       % (utility_name, utility_bill.id))
 
 
+
 def upgrade():
     log.info('Beginning upgrade to version 23')
 
@@ -88,15 +90,22 @@ def upgrade():
     log.info('Reading initial customers data')
     customer_data = read_initial_table_data('customer', session)
     utilbill_data = read_initial_table_data('utilbill', session)
+
     log.info('Creating utilities')
     create_utilities(session)
+
     log.info('Migrating customer fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
+
     log.info('Migration utilbill utility')
     migrate_utilbill_utility(utilbill_data, session)
+
+    log.info('Uploading utilbills to AWS')
+    upload_utilbills_to_aws(session)
+
     log.info('Committing to database')
     session.commit()
 
     log.info('Upgrading schema to revision 18a02dea5969')
     alembic_upgrade('18a02dea5969')
-    log.info('Upgrade to version 23 complete')
+    log.info('Upgrade Complete')

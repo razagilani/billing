@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from billing import init_config
+init_config('tstsettings.cfg')
 import sys
 from mock import Mock
 import unittest
@@ -33,7 +35,7 @@ port = 27017
 ''')
         config = ConfigParser.RawConfigParser()
         config.readfp(config_file)
-        self.billupload = BillUpload(config, logging.getLogger('billupload_test'))
+        self.billupload = BillUpload()
 
         # ensure that test directory exists and is empty
         try:
@@ -52,36 +54,7 @@ port = 27017
         # remove test directory
         shutil.rmtree('/tmp/test')
 
-    def test_delete_utilbill_file(self):
-        start, end = date(2012,1,1), date(2012,2,1)
-        path = self.billupload.get_utilbill_file_path(self.utilbill,
-                                                      extension='.pdf')
 
-        # path should not exist yet, and the trash directory should be empty
-        assert not os.access(path, os.F_OK)
-        for root, dirs, files in os.walk(self.billupload.utilbill_trash_dir):
-            assert (dirs, files) == ([], [])
-
-        # create parent directories of bill file, then create bill file itself
-        # with some text in it
-        os.makedirs(os.path.split(path)[0])
-        with open(path, 'w') as bill_file:
-            bill_file.write('this is a test')
-
-        # delete the file, and get the path it was moved to
-        new_path = self.billupload.delete_utilbill_file(self.utilbill)
-
-        # now the file should not exist at its original path
-        self.assertFalse(os.access(path, os.F_OK))
-
-        # but there should now be one file in the trash path, and its path
-        # should be 'new_path'
-        self.assertEqual(1,
-                len(list(os.walk(self.billupload.utilbill_trash_dir))))
-        for root, dirs, files in os.walk(self.billupload.utilbill_trash_dir):
-            self.assertEqual([], dirs)
-            self.assertEqual(1, len(files))
-            self.assertEqual(new_path, os.path.join(root, files[0]))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
