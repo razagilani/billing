@@ -43,6 +43,7 @@ Ext.define('ReeBill.store.IssuableReebills', {
         load: function(store, records, successful, eOpts){
             var memoryStore = Ext.getStore('IssuableReebillsMemory');
             memoryStore.getProxy().data = records;
+            memoryStore.loadPage(1);
         },
         add: function(store, records, index, eOpts ){
             var allRecords = store.getRange();

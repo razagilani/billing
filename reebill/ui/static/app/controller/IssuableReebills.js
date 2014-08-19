@@ -39,7 +39,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        this.getIssuableReebillsMemoryStore().loadPage(1);
+        this.getIssuableReebillsStore().reload();
     },
 
     /**
