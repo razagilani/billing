@@ -1,6 +1,10 @@
 from billing import init_config
 init_config('tstsettings.cfg')
+from billing import config
+
 from processing.billupload import BillUpload
+
+
 import json
 import unittest
 from StringIO import StringIO
@@ -986,7 +990,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         sequence, version, amount = corrections[0]
         self.assertEqual(2, sequence)
         self.assertEqual(1, version)
-        self.assertAlmostEqual(-15, amount)
+        self.assertAlmostEqual(-15, amount, places=4)
 
     # TODO rename
     def test_roll(self):
