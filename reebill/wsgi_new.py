@@ -558,7 +558,6 @@ class UtilBillResource(RESTResource):
             UtilBill.SkylineEstimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
-            fileobj.filename if fileobj.file else None,
             total=total_charges, state=billstate, utility=None, rate_class=None)
 
         # Since this is initated by an Ajax request, we will still have to
