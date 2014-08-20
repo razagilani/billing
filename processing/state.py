@@ -881,7 +881,7 @@ class UtilBill(Base):
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None):
+                 reebill=None, sha256_hexdigest=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -901,6 +901,7 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.sha256_hexdigest = sha256_hexdigest
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]

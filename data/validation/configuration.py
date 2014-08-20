@@ -84,7 +84,5 @@ class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
-    
-
-    
-    
+class amqp(Schema):
+    exchange = String()
