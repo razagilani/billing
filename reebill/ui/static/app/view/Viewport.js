@@ -166,7 +166,6 @@ Ext.define('ReeBill.view.Viewport', {
                 },{
                     xtype: 'issuableReebills',
                     id: 'issuableReebillsGrid',
-                    disabled: true
                 },{
                     xtype: 'panel',
                     name: 'journalTab',
