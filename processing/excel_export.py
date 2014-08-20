@@ -4,7 +4,6 @@ from operator import itemgetter
 import pymongo
 import tablib
 import traceback
-from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
