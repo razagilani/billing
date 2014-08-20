@@ -22,7 +22,7 @@ from StringIO import StringIO
 from gzip import GzipFile
 from os import SEEK_END
 
-# TODO set from command line argument?
+# TODO set from command line argument? or from config file?
 BUCKET_NAME = 'skyline-test'
 
 # amount of data to send to S3 at one time in bytes
@@ -79,7 +79,7 @@ def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
     that Amazon may charge for storage of incomplete upload parts.)
     '''
     chunk_buffer = StringIO()
-    multipart_upload = bucket.initiate_multipart_upload(s3_key)
+    multipart_upload = s3_key.bucket.initiate_multipart_upload(s3_key)
 
     count = 1
     done = False
@@ -102,8 +102,8 @@ def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
 
 def run_command(command):
     '''Run 'command' (shell command string) as a subprocess. Return stdout of
-    the subprocess (file), and function that True if the process exited with
-    non-0 status or False otherwise.
+    the subprocess (file), and function that raises a CalledProcessError if the
+    process exited with non-0 status.
     '''
     process = Popen(shlex.split(command), stderr=sys.stderr, stdout=PIPE)
     def check_status():
@@ -113,22 +113,20 @@ def run_command(command):
                     status, command))
     return process.stdout, check_status
         
-def backup_mysql(key_name):
+def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
-    key = Key(bucket, name=key_name)
     stdout, check_status = run_command(command)
-    write_gizpped_to_s3(stdout, key, check_status)
+    write_gizpped_to_s3(stdout, s3_key, check_status)
 
-def backup_mongo_collection(collection_name, key_name):
+def backup_mongo_collection(collection_name, s3_key):
     # NOTE "usersdb" section is used to get mongo database parameters for
     # all collections
     command = MONGODUMP_COMMAND % dict(
             db=config.get('usersdb', 'database'),
             host=config.get('usersdb', 'host'),
             collection=collection_name)
-    key = Key(bucket, name=key_name)
     stdout, check_status = run_command(command)
-    write_gizpped_to_s3(stdout, key, check_status)
+    write_gizpped_to_s3(stdout, s3_key, check_status)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -150,7 +148,8 @@ if __name__ == '__main__':
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = conn.get_bucket(BUCKET_NAME)
 
-    backup_mysql('%s_reebill_mysql.gz' % now)
+    backup_mysql(Key(bucket, name='%s_reebill_mysql.gz' % now))
 
     for collection in MONGO_COLLECTIONS:
-        backup_mongo_collection(collection, '%s_reebill_mongo_%s.gz' % (now, collection))
+        backup_mongo_collection(collection,
+                Key(bucket, name='%s_reebill_mongo_%s.gz' % (now, collection)))
