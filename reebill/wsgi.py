@@ -692,22 +692,39 @@ class ReeBillWSGI(object):
     @authenticate_ajax
     @json_exception
     @db_commit
-    def issue_and_mail(self, account, sequence, recipients, apply_corrections,
-                       **kwargs):
-        sequence = int(sequence)
-        apply_corrections = (apply_corrections == 'true')
-        unissued_corrections = self.process.get_unissued_corrections(account)
-        self.process.issue_and_mail(account, sequence,
-                                    recipients, apply_corrections)
-        for cor in unissued_corrections:
+    def issue_and_mail(self, reebills, **kwargs):
+        reebills = json.loads(reebills)
+        reebills_with_corrections = []
+        for bill in reebills:
+            apply_corrections = (bill['apply_corrections'] == 'true')
+            unissued_corrections = self.process.get_unissued_corrections(bill['account'])
+            if len(unissued_corrections) > 0 and not apply_corrections:
+                reebills_with_corrections.append(
+                    {
+                    'reebill': bill,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+                )
+                reebills.remove(bill)
+        if len(reebills_with_corrections) > 0:
+            for bill in reebills:
+                reebills_with_corrections.append({'reebill': bill})
+            return self.dumps({"success": False,
+                               "reebills": reebills_with_corrections,
+                               "corrections": True})
+        for bill in reebills:
+            unissued_corrections = self.process.get_unissued_corrections(bill['account'])
+            self.process.issue_and_mail(bill['account'], int(bill['sequence']),
+                                    bill['recipients'], bill['apply_corrections'])
+            for cor in unissued_corrections:
                 journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'],account, sequence,
-                    self.state_db.max_version(account, cor),
+                    cherrypy.session['user'],bill['account'], bill['sequence'],
+                    self.state_db.max_version(bill['account'], cor),
                     applied_sequence=cor[0])
-        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                                                account, sequence, 0)
-        journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
-                    account, sequence,recipients)
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                                bill['account'], bill['sequence'], 0)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                    bill['account'], bill['sequence'], bill['recipients'])
         return self.dumps({"success": True})
 
     @cherrypy.expose
