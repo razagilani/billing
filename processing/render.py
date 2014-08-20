@@ -14,8 +14,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
-from billing.processing import mongo
-
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
     behavior in render.py using Decimals, which was to round to the nearest
