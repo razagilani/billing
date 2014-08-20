@@ -18,14 +18,13 @@ def init_config(filename='settings.cfg', fp=None):
     """
     from billing.data.validation import configuration as vns
     from billing.lib.config import ValidatedConfigParser
-    from ConfigParser import ConfigParser
     from os.path import dirname, realpath
     import logging
 
     log = logging.getLogger(__name__)
     
     global config
-    config = ConfigParser()
+    config = ValidatedConfigParser(vns)
     if fp:
         log.debug('Reading configuration fp')
         config.readfp(fp)
