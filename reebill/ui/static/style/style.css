@@ -1,0 +1,41 @@
+.region {
+	cursor: pointer; 
+	padding: 0.5em; 
+	float: left;
+	margin: 0 10px 10px 0;
+}
+
+.account-grid-gray, .payment-grid-frozen {
+	color: gray;
+}
+
+.utilbill-grid-unprocessed {
+	color: blue;
+}
+
+.reebill-grid-unissued {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: blue;
+}
+.reebill-grid-unissued-correction {
+    font-style: italic;
+    color: red;
+}
+
+.utilbill-grid-unprocessed {
+    font-style: italic;
+    color: blue;
+}
+
+.ratestructure-grid-error{
+    font-weight: bold;
+    color: red;
+}
+
+.messageBoxOverflow .x-box-inner .x-box-inner {
+    overflow: auto;
+}
+
+.x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
+    font-weight: bold !important;
+}
