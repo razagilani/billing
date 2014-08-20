@@ -44,21 +44,18 @@ db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
 
 def _write_gzipped_chunk(in_file, out_file, chunk_size):
-    '''Replace the contents of 'out_file' with 'chunk_size' bytes read from
-    'in_file' (or all remaining bytes from 'in_file', whichever is smaller).
-
-    Write gzipped data from 'in_file' to 'out_file' until 'out_file' contains
-    'chunk_size' of gzipped data (or until reaching the end of 'in_file'). Note
-    that more than 'chunk_size' may be read from 'in_file' to get 'chunk_size'
-    bytes of data after compression.
+    '''Write gzipped data from 'in_file' to 'out_file' until 'out_file'
+    contains 'chunk_size' of gzipped data (or until reaching the end of
+    'in_file'). Note that more than 'chunk_size' may be read from 'in_file' to
+    get 'chunk_size' bytes of data after compression.
     Return True if the end of 'in_file' has been reached, False otherwise.
     '''
     out_file.seek(0)
     out_file.truncate()
 
-    # A GzipFile wraps another file object and implements the file interface.
-    # when you write to the GzipFile, it writes compressed data to its
-    # 'fileobj'.
+    # A GzipFile wraps another file object (its 'fileobj') and implements the
+    # same interface as a regular file. when you write to the GzipFile, it
+    # writes a compressed version of what you wrote to its 'fileobj'.
     gzipper = GzipFile(fileobj=out_file, mode='w')
 
     while True:
@@ -71,8 +68,9 @@ def _write_gzipped_chunk(in_file, out_file, chunk_size):
 
 def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
     '''Write the file 'in_file' to 's3_key' (boto.s3.key.Key object). A
-    multipart upload is used so that 'in_file' does not have to support
-    seeking (meaning it can be a file of indeterminate length).
+    multipart upload is used so that 'in_file' does not have to support seeking
+    (meaning it can be a file with indeterminate length, like the stdout of a
+    process).
 
     'call_before_complete': optional callable that can raise an exception to
     cancel the upload instead of completing it. (boto's documentation suggests
