@@ -158,7 +158,7 @@ class ReeBillWSGI(object):
             self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
-        if self.config.get('runtime', 'mock_skyliner'):
+        if self.config.getboolean('runtime', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
