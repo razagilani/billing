@@ -60,13 +60,6 @@ Ext.define('ReeBill.controller.TabPanel', {
             }
         });
 
-        this.getIssuableReebillsStore().on({
-            load: function(store, records, successful, eOpts ){
-                this.getIssuableReebills().setDisabled(false);
-            },
-            scope: this
-        });
-
     },
 
     handleAccountSelect: function(){
