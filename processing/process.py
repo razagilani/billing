@@ -1295,7 +1295,6 @@ class Process(object):
             bills = [{'account': account, 'sequence': sequence,
                       'mailto': recipients}]
 
-        print bills, '############3'
 
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
@@ -1308,8 +1307,8 @@ class Process(object):
                 # The user has confirmed to issue unissued corrections.
                 return {
                     'success': False,
-                    'unissued_corrections': [c[0] for c in unissued_corrections],
-                    'adjustment': sum(c[2] for c in unissued_corrections)}
+                    'unissued_corrections': [c[0] for c in
+                                             unissued_corrections]}
 
             result = {'success': True, 'issued': []}
             # Let's issue
