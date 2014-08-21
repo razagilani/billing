@@ -38,6 +38,7 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'processed'},
         // Data for Issuable Reebills
         {name: 'mailto'},
+        {name: 'readings'},
         {name: 'utilbill_total'},
         {name: 'difference', convert: function(value, record){
             return Math.abs(record.get('actual_total') - record.get('utilbill_total'))
