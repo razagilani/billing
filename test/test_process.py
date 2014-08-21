@@ -1492,7 +1492,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         two = self.process.roll_reebill(acc)
         two.processed = 1
 
-
         # neither reebill should be issued yet
         self.assertEquals(False, self.state_db.is_issued(acc, 1))
         self.assertEquals(None, one.issue_date)
@@ -1508,7 +1507,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.process.issue_processed_and_mail(False)
+        self.process.issue_and_mail(False, processed=True)
 
         self.assertEquals(True, one.issued)
         self.assertEquals(True, one.processed)
@@ -1520,7 +1519,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # issue and email two
         self.process.renderer.render_max_version.return_value = 2
-        self.process.issue_processed_and_mail(False)
+        self.process.issue_and_mail(False, processed=True)
 
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
