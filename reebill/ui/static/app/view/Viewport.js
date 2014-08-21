@@ -100,12 +100,6 @@ Ext.define('ReeBill.view.Viewport', {
                         id: 'utilityBillRegistersGrid',
                         region: 'center',
                         collapsible: false
-                    },{
-                        xtype: 'uploadIntervalMeter',
-                        id: 'uploadIntervalMeterForm',
-                        region: 'south',
-                        collapsible: false,
-                        disabled: true
                     }]
                 },{
                     xtype: 'panel',
@@ -142,7 +136,10 @@ Ext.define('ReeBill.view.Viewport', {
                         xtype: 'sequentialAccountInformation',
                         id: 'sequentialAccountInformationForm',
                         disabled: true
-
+                    },{
+                        xtype: 'uploadIntervalMeter',
+                        id: 'uploadIntervalMeterForm',
+                        disabled: true
                     }]
                 },{
                     xtype: 'panel',

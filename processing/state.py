@@ -599,7 +599,8 @@ class ReeBill(Base):
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
-            'services': []
+            'services': [],
+            'readings': [r.column_dict() for r in self.readings]
         })
 
         if self.version > 0:

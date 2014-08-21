@@ -53,6 +53,9 @@ Ext.define('ReeBill.controller.Reebills', {
     },{
         ref: 'reebillViewer',
         selector: 'pdfpanel[name=reebillViewer]'
+    },{
+        ref: 'uploadIntervalMeterForm',
+        selector: 'uploadIntervalMeter'
     }],
     
     init: function() {
@@ -103,6 +106,12 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'panel[id=sequentialAccountInformationForm]':{
                expand: this.handleAccountInformationActivation
+            },
+            'button[action=resetUploadIntervalMeter]': {
+                click: this.resetUploadIntervalMeter
+            },
+            'button[action=submitUploadIntervalMeter]': {
+                click: this.submitUploadIntervalMeter
             }
         });
 
@@ -126,17 +135,23 @@ Ext.define('ReeBill.controller.Reebills', {
      */
     handleActivate: function() {
         var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
-        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+        var reebillsGrid = this.getReebillsGrid();
+        var uploadIntervalMeterForm = this.getUploadIntervalMeterForm();
+        var sequentialAccountInformationForm = this.getSequentialAccountInformationForm();
 
         if (!selectedAccount.length)
             return;
 
         // required for GET & POST
         this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
-        this.getReebillsStore().loadPage(1);
-
-        this.getSequentialAccountInformationForm().collapse();
-        this.getSequentialAccountInformationForm().setDisabled(!selections.length);
+        this.getReebillsGrid().expand();
+        sequentialAccountInformationForm.setDisabled(true);
+        uploadIntervalMeterForm.setDisabled(true);
+        this.getReebillsStore().loadPage(1, {callback: function() {
+            var selections = reebillsGrid.getSelectionModel().getSelection();
+            sequentialAccountInformationForm.setDisabled(!selections.length);
+            uploadIntervalMeterForm.setDisabled(!selections.length);
+        }});
     },
 
     /**
@@ -164,6 +179,8 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
+        this.initializeUploadIntervalMeterForm();
+        this.getUploadIntervalMeterForm().setDisabled(false);
     },
 
     /**
@@ -497,5 +514,74 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleResetAccountInformation: function() {
         this.loadSequentialAccountInformation();
-     }
+     },
+
+    /**
+     * Initialize the upload form
+     */
+    initializeUploadIntervalMeterForm: function() {
+        var form = this.getUploadIntervalMeterForm();
+        var selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection();
+        var registerBindingField = form.down('[name=register_binding]');
+
+        form.getForm().reset();
+
+        var readings = selectedReebill[0].get('readings');
+        var energySoldRegister = null;
+        for (var i = 0;i < readings.length; i++) {
+            if (readings[i].measure == 'Energy Sold') {
+                energySoldRegister = readings[i].register_binding;
+            }
+        }
+        if (energySoldRegister != null) {
+            registerBindingField.setValue(energySoldRegister);
+        }
+    },
+
+    /**
+     * Handle the reset upload meter CSV button.
+     */
+    resetUploadIntervalMeter: function() {
+        this.initializeUploadIntervalMeterForm();
+    },
+
+    /**
+     * Handle the submit upload meter CSV button.
+     */
+    submitUploadIntervalMeter: function () {
+        var form = this.getUploadIntervalMeterForm().getForm(),
+        selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
+        selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection();
+
+        if (!selectedReebill.length)
+            Ext.MessageBox.alert('Errors', 'Please select a reebill to apply this to..');
+            return;
+
+        if (!form.isValid()) {
+            Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+            return;
+        }
+
+        var params = {
+            account: selectedAccount[0].get('account'),
+            account: selectedReebill[0].get('sequence'),
+        };
+
+        form.submit({
+            url: 'http://'+window.location.host+'/reebill/registers/upload_interval_meter_csv',
+            params: params, 
+            waitMsg:'Saving...',
+            failure: function(form, action) {
+                switch (action.failureType) {
+                case Ext.form.Action.CLIENT_INVALID:
+                    Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                    break;
+                case Ext.form.Action.CONNECT_FAILURE:
+                    Ext.Msg.alert('Failure', 'Ajax communication failed');
+                    break;
+                }
+            }
+        });
+    },
+
 });
