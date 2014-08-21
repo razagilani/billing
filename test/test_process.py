@@ -1450,7 +1450,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.process.issue_and_mail(acc, 1, one.email_recipient, False)
+        self.process.issue_and_mail(False, account=acc, sequence=1,
+                                    recipients=one.email_recipient)
 
         self.assertEquals(True, one.issued)
         self.assertEquals(True, one.processed)
@@ -1462,7 +1463,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # issue and email two
         self.process.renderer.render_max_version.return_value = 2
-        self.process.issue_and_mail(acc, 2, two.email_recipient, False)
+        self.process.issue_and_mail(False, account=acc, sequence=2,
+                                    recipients=two.email_recipient)
 
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
