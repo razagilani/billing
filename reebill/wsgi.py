@@ -92,6 +92,7 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
+
 def db_commit(method):
     '''Decorator for committing a database transaction when the method returns.
     This should be used only on methods that should be allowed to modify the
@@ -130,9 +131,6 @@ class ReeBillWSGI(object):
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.state_db,
-                pymongo.Connection(self.billdb_config['host'],
-                int(self.billdb_config['port']))[self.billdb_config['database']])
 
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
@@ -191,23 +189,18 @@ class ReeBillWSGI(object):
                 },
             )
 
-        self.integrate_skyline_backend = self.config.get('runtime',
-                'integrate_skyline_backend')
-
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(
-            dict(self.config.items('reebillrendering')), self.state_db,
-            self.reebill_dao, self.logger)
+                dict(self.config.items('reebillrendering')), self.state_db,
+                self.logger)
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                self.reebill_dao, self.logger)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
         # create one Process object to use for all related bill processing
-        self.process = process.Process(self.state_db, self.reebill_dao,
-                self.ratestructure_dao, self.billUpload, self.nexus_util,
-                self.bill_mailer, self.renderer, self.ree_getter, logger=self
-                .logger)
+        self.process = process.Process(self.state_db,  self.ratestructure_dao,
+                self.billUpload, self.nexus_util, self.bill_mailer,
+                self.renderer, self.ree_getter, logger=self .logger)
 
 
         # determine whether authentication is on or off
@@ -219,7 +212,6 @@ class ReeBillWSGI(object):
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
-        # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
@@ -717,26 +709,40 @@ class ReeBillWSGI(object):
             self.process.issue_and_mail(bill['account'], int(bill['sequence']),
                                     bill['recipients'], bill['apply_corrections'])
             for cor in unissued_corrections:
-                journal.ReeBillIssuedEvent.save_instance(
+            journal.ReeBillIssuedEvent.save_instance(
                     cherrypy.session['user'],bill['account'], bill['sequence'],
                     self.state_db.max_version(bill['account'], cor),
-                    applied_sequence=cor[0])
+                applied_sequence=cor[0])
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                                                 bill['account'], bill['sequence'], 0)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                     bill['account'], bill['sequence'], bill['recipients'])
-        return self.dumps({"success": True})
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
+        print apply_corrections
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_processed_and_mail(cherrypy.session['user'],
-                apply_corrections)
-        return self.dumps({"success": True,
-                           "issued": result})
+        unissued_processed = self.process.get_issuable_processed_reebills_dict()
+        result = self.process.issue_processed_and_mail(apply_corrections)
+        for bill in unissued_processed:
+            unissued_corrections = self.process.get_unissued_corrections(
+                bill['account'])
+            for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'],
+                    self.state_db.max_version(bill['account'], cor),
+                    applied_sequence=cor[0])
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], 0)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], bill['mailto'])
+        return self.dumps({'success': True,
+                           'issued': result})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -814,7 +820,7 @@ class ReeBillWSGI(object):
         energy and rate structure for all utility bills for the given account,
         or every account (1 per sheet) if 'account' is not given,
         '''
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -841,7 +847,7 @@ class ReeBillWSGI(object):
         else:
             spreadsheet_name = 'all_accounts.xls'
 
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -868,7 +874,7 @@ class ReeBillWSGI(object):
         else:
             spreadsheet_name = 'brokerage_accounts.xls'
 
-        exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+        exporter = excel_export.Exporter(self.state_db)
 
         # write excel spreadsheet into a StringIO buffer (file-like)
         buf = StringIO()
@@ -928,7 +934,8 @@ class ReeBillWSGI(object):
                 # "id" field contains the old rsi_binding, which is used
                 # to look up the RSI; "rsi_binding" field contains the
                 # new one that will replace it (if there is one)
-                rsi_binding = self.process.update_rsi(utilbill_id, id, row)
+                rsi_binding = self.process.update_charge(row,
+                                utilbill_id=utilbill_id, rsi_binding=id)
 
                 # re-add "id" field which was removed above (using new
                 # rsi_binding)
@@ -936,16 +943,16 @@ class ReeBillWSGI(object):
                 row['id'] = rsi_binding
 
         if xaction == "create":
-            self.process.add_rsi(utilbill_id)
+            self.process.add_charge(utilbill_id)
 
         if xaction == "destroy":
             if type(rows) is unicode: rows = [rows]
             for row in rows:
-                self.process.delete_rsi(utilbill_id, row)
+                self.process.delete_charge(utilbill_id, row)
 
-        rsis_json = self.process.get_rsis_json(utilbill_id)
-        return json.dumps({'success': True, 'rows': rsis_json,
-                'total':len(rsis_json)})
+        charges_json = self.process.get_utilbill_charges_json(utilbill_id)
+        return json.dumps({'success': True, 'rows': charges_json,
+                'total':len(charges_json)})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1175,7 +1182,8 @@ class ReeBillWSGI(object):
             assert isinstance(row, dict)
 
             rsi_binding = row.pop('id')
-            self.process.update_charge(utilbill_id, rsi_binding, row)
+            self.process.update_charge(row, utilbill_id=utilbill_id,
+                                       rsi_binding=rsi_binding)
 
         if xaction == "create":
             row = json.loads(kwargs["rows"])[0]
@@ -1185,7 +1193,8 @@ class ReeBillWSGI(object):
 
         if xaction == "destroy":
             rsi_binding = json.loads(kwargs["rows"])[0]
-            self.process.delete_charge(utilbill_id, rsi_binding)
+            self.process.delete_charge(utilbill_id=utilbill_id,
+                                       rsi_binding=rsi_binding)
 
         charges_json = self.process.get_utilbill_charges_json(utilbill_id)
         return self.dumps({'success': True, 'rows': charges_json,
@@ -1350,11 +1359,10 @@ class ReeBillWSGI(object):
 
         return self.dumps(result)
 
-#
-    ################
 
     ################
     # Handle utility bill upload
+    ################
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1564,7 +1572,8 @@ if __name__ == '__main__':
     }
     cherrypy.config.update({
         'server.socket_host': root.reebill.config.get("http", "socket_host"),
-        'server.socket_port': root.reebill.config.get("http", "socket_port")})
+        'server.socket_port': 8181
+    })
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)

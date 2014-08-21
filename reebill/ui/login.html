@@ -1,45 +1,106 @@
 <html>
     <head>
         <title>Log In</title>
-        <script type="text/javascript" src="ext-3.3.1/adapter/ext/ext-base.js"></script>
-        <script type="text/javascript" src="ext-3.3.1/ext-all.js"></script>
-        <script type="text/javascript" src="login.js"></script>
-        <link rel="stylesheet" type="text/css" href="ext-3.3.1/resources/css/ext-all.css">
+        <script type="text/javascript" src="static/ext/ext-all-debug.js"></script>
+        <link rel="stylesheet" type="text/css"
+              href="static/ext/resources/css/ext-all-classic.css">
     </head>
 
     <style type="text/css">
-        .outerbox
-            {
-            position:absolute;
-            top: 50%;
-            left: 50%;
-            width: 100%;
+        body, html{
+            background: #FFFFFF !important;
+        }
+        .outerbox {
+            display: table;
+            position: absolute;
             height: 100%;
-            display: block
-            }
-        .innerbox
-            {
-            position:absolute;
-            margin-left: -150px;
-            top: -50px;
-            width: 300px;
-            height: 100px;
-            }
+            width: 100%;
+            top: 0px;
+            left: 0px;
+        }
+        .middlebox{
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .innerbox {
+            margin-left: auto;
+            margin-right: auto;
+            width: 400px;
+        }
     </style>
 
     <script type="text/javascript">
+        Ext.require([
+            'Ext.form.*',
+            'Ext.data.*'
+        ]);
         Ext.onReady(function() {
-            ReeBill.WelcomeLoginFormPanel.render(loginform);
+            Ext.create('Ext.form.Panel', {
+                url: 'http://' + location.host + '/reebill/login',
+                frame: true,
+                title:'Log In',
+                border: false,
+                width: 400,
+                renderTo: 'loginform',
+                bodyStyle: {
+                    background: '#fff',
+                    padding: '5px'
+                },
+                defaultType: 'textfield',
+                items: [
+                    {
+                        name:'username',
+                        fieldLabel:'User Name',
+                        msgTarget:'side',
+                    },{
+                        name:'password',
+                        fieldLabel:'Password',
+                        inputType:'password',
+                        msgTarget:'side',
+                    },{
+                        name: 'rememberme',
+                        xtype: 'checkbox',
+                        fieldLabel: 'Remember Me'
+                    }
+                ],
+                buttons: [
+                    {
+                        text: 'Log In',
+                        type: 'submit',
+                        formBind: true,
+                        handler: function () {
+                            var form = this.up('form').getForm();
+                            form.submit({
+                                waitMsg: 'Authenticating...',
+                                success: function(fp, o) {
+                                    window.location = 'http://'
+                                            + location.host + '/reebill/';
+                                },
+                                failure: function() {
+                                    Ext.Msg.alert("Error",
+                                        Ext.JSON.decode(
+                                            this.response.responseText).error);
+                                }
+                            });
+                        }
+                    }
+                ]
+            });
         });
     </script>
 
     <body>
-        <p style="font-family:Verdana, sans-serif; font-style:italic; font-weight:bold; font-size:400%; color:00b423" align="center" >
-            <img src="skyline_logo_whitebackground.png" align="top">
+        <p style="font-family:Verdana, sans-serif; font-style:italic;
+        font-weight:bold; font-size:400%; color:#00b423" align="center" >
+            <img src="static/images/skyline_logo_whitebackground.png" align="top">
             ReeBill
         </p>
         <div class='outerbox'>
-            <div class="innerbox" id="loginform"></div>
+            <div class="middlebox">
+                <div class="innerbox" id="loginform">
+
+                </div>
+            </div>
         </div>
     </body>
 </html>
