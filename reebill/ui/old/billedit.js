@@ -666,6 +666,7 @@ function reeBillReady() {
         var editable = sm.getSelections().every(function(r) {return r.data.editable});
         // Check if there are Reebills associated with this Utility Bill
         var has_reebills = sm.getSelections().every(function(r) {return (r.data.reebills.length > 0)});
+
         if (editable && !has_reebills){
             utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(false);
         }
@@ -1036,10 +1037,12 @@ function reeBillReady() {
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
+                xtype : 'datecolumn',
                 header: 'Issue Date',
                 sortable: false,
                 dataIndex: 'issue_date',
                 width: 70,
+                format : 'Y-m-d',
                 renderer: reeBillGridRenderer,
             },{
                 header: 'Hypo',
@@ -2592,24 +2595,24 @@ function reeBillReady() {
                 dataIndex: 'description',
             },{
                 header: 'Quantity',
-                width: 75,
+                width: 25,
                 sortable: true,
                 dataIndex: 'quantity',
                 editable: false,
             },{
                 header: 'Units',
-                width: 75,
+                width: 25,
                 sortable: true,
                 dataIndex: 'quantity_units',
             },{
                 header: 'Rate',
-                width: 75,
+                width: 35,
                 sortable: true,
                 dataIndex: 'rate',
                 editable: false,
             },{
                 header: 'Total', 
-                width: 75, 
+                //width: 75,
                 sortable: true, 
                 dataIndex: 'total', 
                 summaryType: 'sum',
@@ -2768,8 +2771,7 @@ function reeBillReady() {
             align : 'stretch',
         },
         items: [
-            chargesUBVersionMenu,
-            aChargesGrid,
+            aChargesGrid
         ]
     });
 
@@ -2947,9 +2949,6 @@ function reeBillReady() {
         }
         // Scroll based on action
         if (action == 'create'){
-            var lastrow = RSIStore.getCount() -1;
-            RSIGrid.getView().focusRow(lastrow);
-            RSIGrid.startEditing(lastrow, 1);
         }else if(action == 'update'){
             RSIGrid.getView().focusRow(selected_record_id);
         }
@@ -5277,84 +5276,112 @@ function reeBillReady() {
         disabled: true,
         handler: function()
         {
-            var r = issuableGrid.getSelectionModel().getSelected();
-            issuableGrid.setDisabled(true);
-            issueDataConn.request({
-                params: {
-                    account: r.data.account,
-                    sequence: r.data.sequence,
-                    recipients: r.data.mailto,
+            var records = issuableGrid.getSelectionModel().getSelections();
+            data = []
+            Ext.each(records, function(item){
+                var obj = {
+                    account: item.data.account,
+                    sequence: item.data.sequence,
+                    recipients: item.data.mailto,
                     apply_corrections: false
-                },
-                success: function (response, options) {
-                    var o = {};
-                    try {
-                        o = Ext.decode(response.responseText);
-                    }
-                    catch(e) {
-                        Ext.Msg.alert("Data Error", "Could not decode response from server");
-                        return;
-                        issuableStore.reload();
-                        issuableGrid.setDisabled(false);
-                    }
-                    if (o.success == true) {
-                        Ext.Msg.alert("Success", "Mail successfully sent");
-                        issuableGrid.getSelectionModel().clearSelections();
-                        issuableStore.reload();
-                        issuableGrid.setDisabled(false);
-                        utilbillGridStore.reload({callback: refreshUBVersionMenus});
-                    }
-                    else if (o.success !== true && o.corrections != undefined) {
-                        var result = Ext.Msg.confirm('Corrections must be applied',
-                                                     'Corrections from reebills ' + o.corrections +
-                                                     ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
-                                    if (answer == 'yes') {
-                                        issueDataConn.request({
-                                            params: {
-                                                account: r.data.account,
-                                                sequence: r.data.sequence,
-                                                recipients: r.data.mailto,
-                                                apply_corrections: true
-                                            },
-                                            success: function(response, options) {
-                                                var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true) {
-                                                    Ext.Msg.alert("Success", "Mail successfully sent");
-                                                    issuableGrid.getSelectionModel().clearSelections();
-                                                }
-                                                issuableStore.reload();
-                                                issuableGrid.setDisabled(false);
-                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
-                                            },
-                                            failure: function() {
-                                                issuableStore.reload();
-                                                issuableGrid.setDisabled(false);
+                };
+                data.push(obj);
+            });
+            issuableGrid.setDisabled(true);
+
+                issueDataConn.request({
+                    params: {
+                        reebills: Ext.encode(data)
+                    },
+                    success: function (response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);
+                        }
+                        catch (e) {
+                            Ext.Msg.alert("Data Error", "Could not decode response from server");
+                            return;
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert("Success", "Mail successfully sent");
+                            issuableGrid.getSelectionModel().clearSelections();
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                            utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                        }
+                        else if (o.success !== true && o.corrections != undefined)
+                        {
+                            reebills = o.reebills;
+                            success = 1;
+                            data = []
+                            Ext.each(reebills, function(reebill)
+                            {
+                                if (reebill.corrections != undefined)
+                                {
+                                    var result = Ext.Msg.confirm('Corrections must be applied to account ',
+                                            'Corrections from reebills ' + o.corrections +
+                                            ' will be applied to this bill as an adjusment of $'
+                                            + o.adjustment + '. Are you sure you want to issue it?', function (answer) {
+                                            if (answer == 'yes') {
+                                                reebill.reebill.apply_corrections = true;
+                                                data.push(reebill.reebill);
+                                            }
+                                            else {
+                                                success = 0;
                                             }
                                         });
+                                    if (success == 0)
+                                        return false;
+
                                     }
-                                    else{
+                                else {
+                                    data.push(reebill.reebill);
+                                }
+                                });
+                            if (success == 1) {
+                                issueDataConn.request({
+                                    params: {
+                                        reebills: Ext.encode(data)
+                                    },
+                                    success: function (response, options) {
+                                        var o2 = Ext.decode(response.responseText);
+                                        if (o2.success == true) {
+                                            Ext.Msg.alert("Success", "Mail successfully sent");
+                                            issuableGrid.getSelectionModel().clearSelections();
+                                        }
+                                        issuableStore.reload();
+                                        issuableGrid.setDisabled(false);
+                                        utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                                    },
+                                    failure: function () {
+                                        issuableStore.reload();
                                         issuableGrid.setDisabled(false);
                                     }
                                 });
-                    }
-                    else {
+                            }
+                            else {
+                                issuableGrid.setDisabled(false);
+                            }
+                        }
+                        else {
+                            issuableStore.reload();
+                            issuableGrid.setDisabled(false);
+                        }
+                    },
+                    failure: function () {
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
-                },
-                failure: function () {
-                    issuableStore.reload();
-                    issuableGrid.setDisabled(false);
-                }
-            });
-        },
-    });
+                });
+            }
+        });
 
 
 
     var issueProcessedDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/issue_processed_and_mail',
+        url: 'http://'+location.host+'/reebill/issue_processed_and_mail'
     });
     issueProcessedDataConn.autoAbort = false;
     issueProcessedDataConn.disableCaching = true;
@@ -5397,6 +5424,40 @@ function reeBillReady() {
                             issuableGrid.setDisabled(false);
                             utilbillGridStore.reload({callback: refreshUBVersionMenus});
                         }
+                        else if (o.success !== true && o.corrections != undefined) {
+                        var result = Ext.Msg.confirm('Corrections must be applied',
+                                                     'Corrections from reebills ' + o.corrections +
+                                                     ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        issueDataConn.request({
+                                            params: {
+                                                account: r.data.account,
+                                                sequence: r.data.sequence,
+                                                recipients: r.data.mailto,
+                                                apply_corrections: true
+                                            },
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true) {
+                                                    Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                                utilbillGridStore.reload({callback: refreshUBVersionMenus});
+                                            },
+                                            failure: function() {
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            }
+                                        });
+                                    }
+                                    else{
+                                        issuableGrid.setDisabled(false);
+                                    }
+                                });
+                        }
                         else {
                             issuableStore.reload();
                             issuableGrid.setDisabled(false);
@@ -5421,7 +5482,7 @@ function reeBillReady() {
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
         selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
+            multiSelect: true,
             moveEditorOnEnter: false,
             listeners: {
                 rowselect: function (selModel, index, record) {
@@ -5953,7 +6014,7 @@ function reeBillReady() {
             Ext.getCmp('rbComputeButton').setDisabled(record.data.issued == true);
             Ext.getCmp('rbRenderPDFButton').setDisabled(false);
             record.data.processed ? Ext.getCmp('rbToggleProcessed').setText("Mark as Unprocessed") : Ext.getCmp('rbToggleProcessed').setText("Mark as Processed");
-            Ext.getCmp('rbToggleProcessed').setDisabled(false);
+            Ext.getCmp('rbToggleProcessed').setDisabled(record.data.issued == true);
 
             ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
