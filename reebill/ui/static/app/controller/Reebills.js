@@ -180,7 +180,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
         this.initializeUploadIntervalMeterForm();
-        this.getUploadIntervalMeterForm().setDisabled(false);
+        this.getUploadIntervalMeterForm().setDisabled(issued);
     },
 
     /**
@@ -553,9 +553,10 @@ Ext.define('ReeBill.controller.Reebills', {
         selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection(),
         selectedReebill = this.getReebillsGrid().getSelectionModel().getSelection();
 
-        if (!selectedReebill.length)
+        if (!selectedReebill.length) {
             Ext.MessageBox.alert('Errors', 'Please select a reebill to apply this to..');
             return;
+        }
 
         if (!form.isValid()) {
             Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
@@ -564,22 +565,15 @@ Ext.define('ReeBill.controller.Reebills', {
 
         var params = {
             account: selectedAccount[0].get('account'),
-            account: selectedReebill[0].get('sequence'),
+            sequence: selectedReebill[0].get('sequence'),
         };
 
         form.submit({
-            url: 'http://'+window.location.host+'/reebill/registers/upload_interval_meter_csv',
+            url: 'http://'+window.location.host+'/reebill/reebills/upload_interval_meter_csv',
             params: params, 
             waitMsg:'Saving...',
             failure: function(form, action) {
-                switch (action.failureType) {
-                case Ext.form.Action.CLIENT_INVALID:
-                    Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
-                    break;
-                case Ext.form.Action.CONNECT_FAILURE:
-                    Ext.Msg.alert('Failure', 'Ajax communication failed');
-                    break;
-                }
+                Ext.Msg.alert('Error', 'Failed to submit interval meter data')
             }
         });
     },
