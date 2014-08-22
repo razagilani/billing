@@ -1,13 +1,13 @@
-"""
-File: wsgi.py
-"""
-from billing import initialize
-initialize()
-from billing import config
+from os.path import dirname, realpath, join
+from billing import init_config, init_model, init_logging
 
-import sys
-import os
-import pprint
+p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+init_logging(path=p)
+init_config(filename=p)
+init_model()
+
+from billing import config
+import sys, pprint, os
 
 # TODO: 64957006
 # Dislike having this exceptionally useful code here, whose purpose is to
@@ -1005,15 +1005,18 @@ cherrypy_conf = {
 
 }
 
+
+cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
+
 if __name__ == '__main__':
     bridge = BillToolBridge()
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
         'server.socket_port': bridge.config.get("http", "socket_port")})
-    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
+    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
 else:
     # WSGI Mode
     cherrypy.config.update({
