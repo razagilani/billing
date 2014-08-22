@@ -54,12 +54,11 @@ def init_model(uri=None, schema_revision=None):
     import logging
     log = logging.getLogger(__name__)
 
-
     uri = uri if uri else config.get('statedb', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
     Session.rollback()
     Session.remove()
-    engine = create_engine(uri)
+    engine = create_engine(uri, echo=config.get('statedb', 'echo'))
     Session.configure(bind=engine)
     Base.metadata.bind = engine
     check_schema_revision(schema_revision=schema_revision)
