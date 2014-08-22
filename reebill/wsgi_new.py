@@ -379,7 +379,6 @@ class IssuableReebills(RESTResource):
         params = cherrypy.request.params
         account, sequence = params['account'], int(params['sequence'])
         recipient_list = params['mailto']
-        print params
         result = self.process.issue_and_mail(
             params['apply_corrections'] == 'true',
             account=account, sequence=sequence, recipients=recipient_list)
@@ -567,6 +566,26 @@ class ReebillsResource(RESTResource):
 
         return True, {}
 
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def upload_interval_meter_csv(self, *vpath, **params):
+        '''Takes an upload of an interval meter CSV file (cherrypy file upload
+        object) and puts energy from it into the shadow registers of the
+        reebill given by account, sequence.'''
+        account = params['account']
+        sequence = params['sequence']
+        csv_file = params['file_to_upload']
+        timestamp_column = params['timestamp_column']
+        timestamp_format = params['timestamp_format']
+        energy_column = params['energy_column']
+        energy_unit = params['energy_unit']
+        register_binding = params['register_binding']
+        version = self.process.upload_interval_meter_csv(account, sequence, csv_file, timestamp_column, timestamp_format, energy_column, energy_unit, register_binding)
+        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+            account, sequence, version)
+
+        return self.dumps({'success':True})
 
 class UtilBillResource(RESTResource):
 
@@ -684,7 +703,6 @@ class RegistersResource(RESTResource):
     def handle_delete(self, register_id, *vpath, **params):
         self.process.delete_register(register_id)
         return True, {}
-
 
 class RateStructureResource(RESTResource):
 
