@@ -1,5 +1,5 @@
 import sys
-import os.path as path
+import os
 
 __version__ = '21'
 
@@ -30,7 +30,10 @@ def init_config(filename='settings.cfg', fp=None):
         config.readfp(fp)
     else:
         log.debug('Reading configuration file %s' % filename)
-        config.read(filename)
+        absolute_path = os.path.join(dirname(realpath(__file__)), filename)
+        # check that file exists because ValidatedConfigParser.read ignores missing file
+        assert os.access(absolute_path, os.R_OK)
+        config.read(absolute_path)
     if not config.has_section('main'):
         config.add_section('main')
     config.set('main', 'appdir', dirname(realpath(__file__)))
