@@ -51,7 +51,7 @@ from billing.exc import Unauthenticated, IssuedBillError, RenderError
 from billing.processing.excel_export import Exporter
 
 pp = pprint.PrettyPrinter(indent=4).pprint
-user_dao = UserDAO(**dict(config.items('usersdb')))
+user_dao = UserDAO(**dict(config.items('mongodb')))
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
 
@@ -126,7 +126,7 @@ class WebResource(object):
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'))
         # load users database
-        self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
+        self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
@@ -135,11 +135,8 @@ class WebResource(object):
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
 
-        # create a MongoReeBillDAO
-        self.billdb_config = dict(self.config.items("billdb"))
-
         # create a RateStructureDAO
-        rsdb_config_section = dict(self.config.items("rsdb"))
+        rsdb_config_section = dict(self.config.items("mongodb"))
         mongoengine.connect(
             rsdb_config_section['database'],
             host=rsdb_config_section['host'],
@@ -151,7 +148,7 @@ class WebResource(object):
         # create a MongoEngine connection "alias" named "journal" with which
         # journal.Event subclasses (in journal.py) can associate themselves by
         # setting meta = {'db_alias': 'journal'}.
-        journal_config = dict(self.config.items('journaldb'))
+        journal_config = dict(self.config.items('mongodb'))
         mongoengine.connect(
             journal_config['database'],
             host=journal_config['host'], port=int(journal_config['port']),
@@ -482,7 +479,7 @@ class ReebillsResource(RESTResource):
             self.renderer.render(
                 account,
                 sequence,
-                self.config.get("billdb", "billpath")+ "%s" % account,
+                self.config.get("bill", "billpath")+ "%s" % account,
                 "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 False
             )

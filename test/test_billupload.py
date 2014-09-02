@@ -22,14 +22,15 @@ class BillUploadTest(unittest.TestCase):
 [billimages]
 bill_image_directory = /tmp/test/billimages
 show_reebill_images = true
-[billdb]
-billpath = /tmp/test/db-test/skyline/bills/
+[mongodb]
+host = localhost
+port = 27017
 database = skyline
+[bill]
+billpath = /tmp/test/db-test/skyline/bills/
 utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
 utility_bill_trash_directory = /tmp/test/db-test/skyline/utilitybills-deleted
 collection = reebills
-host = localhost
-port = 27017
 ''')
         config = ConfigParser.RawConfigParser()
         config.readfp(config_file)
