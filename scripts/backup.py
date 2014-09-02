@@ -117,11 +117,9 @@ def backup_mysql(s3_key):
     write_gizpped_to_s3(stdout, s3_key, check_status)
 
 def backup_mongo_collection(collection_name, s3_key):
-    # NOTE "usersdb" section is used to get mongo database parameters for
-    # all collections
     command = MONGODUMP_COMMAND % dict(
-            db=config.get('usersdb', 'database'),
-            host=config.get('usersdb', 'host'),
+            db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
             collection=collection_name)
     stdout, check_status = run_command(command)
     write_gizpped_to_s3(stdout, s3_key, check_status)

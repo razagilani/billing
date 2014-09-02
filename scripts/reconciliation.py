@@ -40,7 +40,7 @@ def close_enough(x,y):
         return abs(x) < .001
     return abs(x - y) / y < .001
 
-def generate_report(logger, billdb_config, statedb_config, splinter_config,
+def generate_report(logger, statedb_config, splinter_config,
         oltp_url, output_file, nexushost, skip_oltp=False):
     '''Saves JSON data for reconciliation report in the file 'output_file'.
     Each line of the file is a JSON dictionary. The entire file is meant to be
