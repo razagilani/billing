@@ -170,7 +170,7 @@ def restore_mysql(bucket):
     stdin.close()
     check_exit_status()
 
-def restore_mongo_collection(collection_name, bson_file_path):
+def restore_mongo_collection(bucket, collection_name, bson_file_path):
     '''bson_file_path: local file path to write bson to temporarily so
     mongorestore can read from it. (this is a workaround for mongorestore's
     inability to accept input from stdin; see ticket
@@ -232,6 +232,6 @@ if __name__ == '__main__':
             # NOTE mongorestore cannot restore from a file unless its name
             # ends with ".bson".
             bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (collection, now)
-            restore_mongo_collection(collection, bson_file_path)
+            restore_mongo_collection(bucket, collection, bson_file_path)
     else:
         print >> sys.stderr, 'Unknown command "%s"' % args.command
