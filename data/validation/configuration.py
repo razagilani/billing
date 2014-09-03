@@ -30,36 +30,24 @@ class skyline_backend(Schema):
     nexus_db_host = String()
     nexus_web_host = String()
 
-class journaldb(Schema):
-    host = String()
-    port = TCPPort()
-    database = String()
-    
 class http(Schema):
     socket_port = TCPPort()
     socket_host = String()
     
-class rsdb(Schema):
-    host = String()
-    port = TCPPort(min=1, max=65535)
-    database = String()
-    
-class billdb(Schema):
+class bill(Schema):
     utilitybillpath = String()
     billpath = String()
-    host = String()
-    port = TCPPort(min=1, max=65535)
-    database = String()
-    utility_bill_trash_directory = String() 
+    utility_bill_trash_directory = String()
+
 class statedb(Schema):
     uri = String()
     echo = StringBool()
-    
-class usersdb(Schema):
-    host = String()
+
+class mongodb(Schema):
     database = String()
+    host = String()
     port = TCPPort()
-    
+
 class mailer(Schema):
     smtp_host = String()
     smtp_port = TCPPort()

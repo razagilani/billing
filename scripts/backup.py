@@ -149,8 +149,8 @@ def backup_mongo_collection(collection_name, s3_key):
     # all collections. this is being/has been fixed; see
     # https://www.pivotaltracker.com/story/show/77254458
     command = MONGODUMP_COMMAND % dict(
-            db=config.get('usersdb', 'database'),
-            host=config.get('usersdb', 'host'),
+            db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'),
             collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)

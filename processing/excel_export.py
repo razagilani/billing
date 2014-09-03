@@ -458,7 +458,6 @@ def main(export_func, filename, account=None):
 
     logger = logging.getLogger('reebill')
     state_db = state.StateDB(logger=logger)
-    billdb_config = dict(config.items("billdb"))
     exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
