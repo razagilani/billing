@@ -1,5 +1,5 @@
 import sys
-import os.path as path
+import os
 
 __version__ = '21'
 
@@ -9,12 +9,13 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 config = None
 
 
-def init_config(filename='settings.cfg', fp=None):
+def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
     :class:`billing.lib.config.ValidatedConfigParser`.
     
-    :param filename: The configuration file path; default `settings.cfg`.
-    :param fp: A configuration file pointer to be used in place of filename
+    :param filepath: The configuration file path relative to the module's root
+    directory; default `settings.cfg`.
+    :param fp: A configuration file pointer to be used in place of filepath
     """
     from billing.data.validation import configuration as vns
     from billing.lib.config import ValidatedConfigParser
@@ -29,8 +30,11 @@ def init_config(filename='settings.cfg', fp=None):
         log.debug('Reading configuration fp')
         config.readfp(fp)
     else:
-        log.debug('Reading configuration file %s' % filename)
-        config.read(filename)
+        log.debug('Reading configuration file %s' % filepath)
+        absolute_path = os.path.join(dirname(realpath(__file__)), filepath)
+        # check that file exists because ValidatedConfigParser.read ignores missing file
+        assert os.access(absolute_path, os.R_OK)
+        config.read(absolute_path)
     if not config.has_section('main'):
         config.add_section('main')
     config.set('main', 'appdir', dirname(realpath(__file__)))
