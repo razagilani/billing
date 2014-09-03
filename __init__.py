@@ -9,11 +9,11 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 config = None
 
 
-def init_config(filename='settings.cfg', fp=None):
+def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
     :class:`billing.lib.config.ValidatedConfigParser`.
     
-    :param filename: The configuration file path; default `settings.cfg`.
+    :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
     from billing.data.validation import configuration as vns
@@ -30,7 +30,7 @@ def init_config(filename='settings.cfg', fp=None):
         config.readfp(fp)
     else:
         log.debug('Reading configuration file %s' % filepath)
-        absolute_path = os.path.join(dirname(realpath(__file__)), filepath)
+        absolute_path = path.join(dirname(realpath(__file__)), filepath)
         config.read(absolute_path)
     
     if not config.has_section('main'):
