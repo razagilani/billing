@@ -135,8 +135,7 @@ def run_command(command):
     def check_exit_status():
         status = process.wait()
         if status != 0:
-            raise CalledProcessError('Command exited with status %s: "%s"' % (
-                    status, command))
+            raise CalledProcessError(status, command)
     return process.stdin, process.stdout, check_exit_status
 
 def backup_mysql(s3_key):
