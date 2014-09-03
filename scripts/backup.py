@@ -3,23 +3,24 @@
 Back up/restore ReeBill databases to/from S3.
 TODO: needs a name that reflects what it does (not just backing up).
 '''
-from boto.s3.connection import S3Connection
-from os.path import basename
-import os
-from boto.s3.key import Key
-from subprocess import call, Popen, PIPE, CalledProcessError
+from subprocess import Popen, PIPE, CalledProcessError
 from datetime import datetime
 import argparse
 import os
-from billing import init_config
-init_config()
-from billing import config
 import re
 import sys
 import shlex
 from StringIO import StringIO
 from gzip import GzipFile
 import zlib
+
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
+
+from billing import init_config
+
+init_config()
+from billing import config
 
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
