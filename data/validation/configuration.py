@@ -72,7 +72,50 @@ class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
 
-    
+#Logging
 
-    
-    
+class loggers(Schema):
+    keys = String()
+
+class handlers(Schema):
+    keys = String()
+
+class formatters(Schema):
+    keys = String()
+
+class logger_root(Schema):
+    level = String()
+    handlers = String()
+
+class logger_sqlalchemy(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+
+class logger_reebill(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+    propagate = Int()
+
+class handler_consoleHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_consoleHandler.add_field('class', String())
+
+class handler_reebillHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_reebillHandler.add_field('class', String())
+
+class handler_fileHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_fileHandler.add_field('class', String())
+
+class formatter_simpleFormatter(Schema):
+    format = String()
+
