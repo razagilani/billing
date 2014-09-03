@@ -1310,7 +1310,7 @@ class Process(object):
                     'unissued_corrections': [c[0] for c in
                                              unissued_corrections]}
 
-            result = {'success': True, 'issued': []}
+            result = {'issued': []}
             # Let's issue
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True

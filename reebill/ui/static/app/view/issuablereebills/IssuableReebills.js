@@ -6,7 +6,8 @@ Ext.define('ReeBill.view.IssuableReebills', {
     ],
 
     title: 'Issuable Reebills',
-    alias: 'widget.issuableReebills',    
+    alias: 'widget.issuableReebills',
+    multiSelect: true,
     store: 'IssuableReebillsMemory',
     
     plugins: [

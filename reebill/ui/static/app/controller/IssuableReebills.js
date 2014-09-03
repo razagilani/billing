@@ -63,7 +63,7 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         var me = this;
         var store = me.getIssuableReebillsStore();
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {apply_corrections: false}
+        var params = {reebills: billRecord}
 
         var failureFunc = function(response){
             waitMask.hide();
@@ -77,49 +77,81 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         };
         var successFunc = function(response){
             // Wait for the bill to be issued before reloading the store
+           var obj = Ext.JSON.decode(response.responseText);
+           Ext.MessageBox.show({
+                title: "Issued and Mailed " + obj.issued.length + " reebills ",
+                msg:  "Mail sent successfully",
+                icon: Ext.MessageBox.INFO,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
             Ext.defer(function(){
                 store.reload();
                 waitMask.hide();
             }, 1000);
         }
 
-        if(billRecord !== undefined){
+        /*if(billRecord !== undefined){
             params.account = billRecord.get('account');
             params.sequence = billRecord.get('sequence');
             params.mailto = billRecord.get('mailto');
-        }
+        }*/
 
         waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
+            reebills: params,
             method: 'POST',
             success: function(response){
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
-                if (obj.unissued_corrections.length){
-                    Ext.MessageBox.confirm(
-                        'Corrections must be applied',
-                        'Corrections from reebills ' + obj.unissued_corrections +
-                        ' will be applied to this bill as an adjusment of $'
-                        + obj.adjustment + '. Are you sure you want to issue it?',
-                        function(answer){
-                            if(answer == 'yes'){
-                                waitMask.show();
-                                params.apply_corrections = true;
-                                Ext.Ajax.request({
-                                    url: url,
-                                    method: 'POST',
-                                    params: params,
-                                    failure: failureFunc,
-                                    success: successFunc
-                                });
-                            }
+                if (obj.corrections != undefined) {
+                    var reebill_corrections = '';
+                    Ext.each(obj.reebills, function (reebill) {
+                        if (reebill.adjustment != undefined) {
+                            reebill_corrections +='Reebill from account ' + reebill.accounmt+
+                                     ' with sequence ' + reebill.sequence +
+                                      ' with corrections '  + reebill.unissued_corrections +
+                                    ' will be applied to this bill as an adjusment of $'
+                                    + reebill.adjustment + '. Are you sure you want to issue it?' + '</br>'
+
+
                         }
-                    );
-                }else {
-                    successFunc();
+                    });
+
+                    Ext.MessageBox.confirm(
+                                'Corrections must be applied',reebill_corrections,
+
+                                function (answer) {
+                                    if (answer == 'yes') {
+                                        var reebills = new Array();
+                                        Ext.each(obj.reebills, function (reebill) {
+                                            if (reebill.adjustment != undefined)
+                                                reebill.reebill.apply_corrections = true;
+                                            reebills.push(reebill.reebill);
+                                        });
+                                        var params = Ext.encode(reebills);
+                                        var json_data = {reebills: params}
+                                        Ext.Ajax.request({
+                                            url: url,
+                                            method: 'POST',
+                                            params: json_data,
+                                            reebills: json_data,
+                                            failure: failureFunc,
+                                            success: successFunc
+                                        });
+                                        waitMask.show();
+                                        }
+
+                                });
+
                 }
+                else
+                {
+                    successFunc(response);
+                }
+
             },
             failure: failureFunc
         });
@@ -135,8 +167,18 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         if (!selections.length)
             return;
 
-        var selected = selections[0];
-        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail', selected)
+        data = []
+        Ext.each(selections, function(item){
+            var obj = {
+                account: item.data.account,
+                sequence: item.data.sequence,
+                recipients: item.data.mailto,
+                apply_corrections: false
+            };
+            data.push(obj);
+        });
+
+        me.makeIssueRequest(window.location.origin + '/reebill/issuable/issue_and_mail', Ext.encode(data))
     },
 
     handleIssueProcessed: function(){
