@@ -10,7 +10,6 @@ from subprocess import call, Popen, PIPE, CalledProcessError
 from datetime import datetime
 import argparse
 import os
-import shutil
 from billing import init_config
 init_config()
 from billing import config
@@ -28,8 +27,9 @@ MYSQLDUMP_COMMAND = 'mysqldump -u%(user)s -p%(password)s %(db)s'
 MYSQL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
 
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
+MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
+                        '--collection %(collection)s %(filepath)s')
 MONGO_COLLECTIONS = ['users', 'journal']
-# TODO mongorestore
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
@@ -128,19 +128,21 @@ def run_command(command):
     '''Run 'command' (shell command string) as a subprocess. Return stdin of
     the subprocess (file), stdout of the subprocess (file), and function that
     raises a CalledProcessError if the process exited with non-0 status.
+    stderr of the subprocess is redirected to this script's stderr.
     '''
-    process = Popen(shlex.split(command), stdin=PIPE, stdout=PIPE, stderr=sys.stderr)
-    def check_status():
+    process = Popen(shlex.split(command), stdin=PIPE, stdout=PIPE,
+                    stderr=sys.stderr)
+    def check_exit_status():
         status = process.wait()
         if status != 0:
             raise CalledProcessError('Command exited with status %s: "%s"' % (
                     status, command))
-    return process.stdin, process.stdout, check_status
-        
+    return process.stdin, process.stdout, check_exit_status
+
 def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
-    stdout, check_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_status)
+    _, stdout, check_exit_status = run_command(command)
+    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
 def backup_mongo_collection(collection_name, s3_key):
     # NOTE "usersdb" section is used to get mongo database parameters for
@@ -150,12 +152,12 @@ def backup_mongo_collection(collection_name, s3_key):
             db=config.get('mongodb', 'database'),
             host=config.get('mongodb', 'host'),
             collection=collection_name)
-    _, stdout, check_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_status)
+    _, stdout, check_exit_status = run_command(command)
+    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
 def restore_mysql(bucket):
     command = MYSQL_COMMAND % root_db_params
-    stdin, _, check_status = run_command(command)
+    stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
     # TODO: how to figure out which key to use?
@@ -166,7 +168,36 @@ def restore_mysql(bucket):
 
     # stdin pipe must be closed to make the process exit
     stdin.close()
-    check_status()
+    check_exit_status()
+
+def restore_mongo_collection(bucket, collection_name, bson_file_path):
+    '''bson_file_path: local file path to write bson to temporarily so
+    mongorestore can read from it. (this is a workaround for mongorestore's
+    inability to accept input from stdin; see ticket
+    https://jira.mongodb.org/browse/SERVER-4345.)
+    '''
+    # TODO: how to figure out which key to use?
+    # currently newest key with "mongo" and collection_name in its name
+    key = sorted((x for x in bucket.list() if x.name.find('mongo') != -1
+            and x.name.find(collection_name) != -1),
+            key=lambda x: x.last_modified)[0]
+
+    # temporarily write bson data to bson_file_path so mongorestore can read it
+    with open(bson_file_path, 'wb') as bson_file:
+        ungzip_file = UnGzipFile(bson_file)
+        key.get_contents_to_file(ungzip_file)
+
+    command = MONGORESTORE_COMMAND % dict(
+            db=config.get('usersdb', 'database'),
+            collection=collection_name,
+            filepath=bson_file_path)
+    _, _, check_exit_status = run_command(command)
+
+    # this may not help because mongorestore seems to exit with status
+    # 0 even when it has an error
+    check_exit_status()
+
+    os.remove(bson_file_path)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -197,5 +228,10 @@ if __name__ == '__main__':
                     Key(bucket, name='%s_reebill_mongo_%s.gz' % (now, collection)))
     elif args.command == 'restore':
         restore_mysql(bucket)
+        for collection in MONGO_COLLECTIONS:
+            # NOTE mongorestore cannot restore from a file unless its name
+            # ends with ".bson".
+            bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (collection, now)
+            restore_mongo_collection(bucket, collection, bson_file_path)
     else:
         print >> sys.stderr, 'Unknown command "%s"' % args.command
