@@ -1,19 +1,11 @@
-"""
-File: wsgi.py
-"""
-from billing import initialize
 from os.path import dirname, realpath, join
 from billing import init_config, init_model, init_logging
-p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(path=p)
-init_config(filename=p)
-init_model()
-#initialize()
-from billing import config
+initialize()
+from os.path import dirname, realpath, join
 
-import sys
-import os
-import pprint
+
+from billing import config
+import sys, pprint, os
 
 # TODO: 64957006
 # Dislike having this exceptionally useful code here, whose purpose is to
@@ -57,7 +49,7 @@ from billing.exc import Unauthenticated, IssuedBillError, RenderError
 from billing.processing.excel_export import Exporter
 
 pp = pprint.PrettyPrinter(indent=4).pprint
-user_dao = UserDAO(**dict(config.items('usersdb')))
+user_dao = UserDAO(**dict(config.items('mongodb')))
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
 
@@ -132,7 +124,7 @@ class WebResource(object):
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'))
         # load users database
-        self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
+        self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
@@ -141,11 +133,8 @@ class WebResource(object):
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
 
-        # create a MongoReeBillDAO
-        self.billdb_config = dict(self.config.items("billdb"))
-
         # create a RateStructureDAO
-        rsdb_config_section = dict(self.config.items("rsdb"))
+        rsdb_config_section = dict(self.config.items("mongodb"))
         mongoengine.connect(
             rsdb_config_section['database'],
             host=rsdb_config_section['host'],
@@ -157,7 +146,7 @@ class WebResource(object):
         # create a MongoEngine connection "alias" named "journal" with which
         # journal.Event subclasses (in journal.py) can associate themselves by
         # setting meta = {'db_alias': 'journal'}.
-        journal_config = dict(self.config.items('journaldb'))
+        journal_config = dict(self.config.items('mongodb'))
         mongoengine.connect(
             journal_config['database'],
             host=journal_config['host'], port=int(journal_config['port']),
@@ -511,7 +500,7 @@ class ReebillsResource(RESTResource):
             self.renderer.render(
                 account,
                 sequence,
-                self.config.get("billdb", "billpath")+ "%s" % account,
+                self.config.get("bill", "billpath")+ "%s" % account,
                 "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 False
             )
@@ -1052,15 +1041,18 @@ cherrypy_conf = {
 
 }
 
+
+cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
+
 if __name__ == '__main__':
     bridge = BillToolBridge()
     cherrypy.config.update({
         'server.socket_host': bridge.config.get("http", "socket_host"),
         'server.socket_port': bridge.config.get("http", "socket_port")})
-    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
+    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
 else:
     # WSGI Mode
     cherrypy.config.update({

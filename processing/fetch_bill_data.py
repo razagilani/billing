@@ -119,7 +119,7 @@ class RenewableEnergyGetter(object):
                             'register "%s" in %s') % (binding, reebill))
 
     def fetch_interval_meter_data(self, reebill, csv_file,
-            register_binding, timestamp_column=0, energy_column=1,
+            timestamp_column=0, energy_column=1,
             energy_unit='btu', timestamp_format=dateutils.ISO_8601_DATETIME):
         '''Update hypothetical quantities of registers in reebill with
         interval-meter energy values from csv_file. If meter_identifier is given,
