@@ -23,9 +23,14 @@ import zlib
 # TODO set from command line argument? or from config file?
 BUCKET_NAME = 'skyline-test'
 
+# all backups are stored with the same key name. a new version is created every
+# time the database is backed up, the latest version is used automatically
+# whenever the key is accessed without specifying a version.
+MYSQL_BACKUP_KEY_NAME = 'reebill_mysql.gz'
+MONGO_BACKUP_KEY_NAME_FORMAT = 'reebill_mongo_%s.gz'
+
 MYSQLDUMP_COMMAND = 'mysqldump -u%(user)s -p%(password)s %(db)s'
 MYSQL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
-
 MONGODUMP_COMMAND = 'mongodump -d %(db)s -h %(host)s -c %(collection)s -o -'
 MONGORESTORE_COMMAND = ('mongorestore --drop --noIndexRestore --db %(db)s '
                         '--collection %(collection)s %(filepath)s')
@@ -135,8 +140,7 @@ def run_command(command):
     def check_exit_status():
         status = process.wait()
         if status != 0:
-            raise CalledProcessError('Command exited with status %s: "%s"' % (
-                    status, command))
+            raise CalledProcessError(status, command)
     return process.stdin, process.stdout, check_exit_status
 
 def backup_mysql(s3_key):
@@ -160,10 +164,12 @@ def restore_mysql(bucket):
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
-    # TODO: how to figure out which key to use?
-    # currently newest key with "mysql" in its name
-    key = sorted((x for x in bucket.list() if x.name.find('mysql') != -1),
-            key=lambda x: x.last_modified)[0]
+    key = bucket.get_key(MYSQL_BACKUP_KEY_NAME)
+    if not key or not key.exists():
+        raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
+                MYSQL_BACKUP_KEY_NAME, bucket.name))
+    print 'restoring MySQL from %s/%s version %s, last modified %s' % (
+            bucket.name, key.name, key.version_id, key.last_modified)
     key.get_contents_to_file(ungzip_file)
 
     # stdin pipe must be closed to make the process exit
@@ -176,13 +182,17 @@ def restore_mongo_collection(bucket, collection_name, bson_file_path):
     inability to accept input from stdin; see ticket
     https://jira.mongodb.org/browse/SERVER-4345.)
     '''
-    # TODO: how to figure out which key to use?
-    # currently newest key with "mongo" and collection_name in its name
-    key = sorted((x for x in bucket.list() if x.name.find('mongo') != -1
-            and x.name.find(collection_name) != -1),
-            key=lambda x: x.last_modified)[0]
+    key_name = MONGO_BACKUP_KEY_NAME_FORMAT % collection_name
+    key = bucket.get_key(key_name)
+    if not key or not key.exists():
+        raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
+                key_name, bucket.name))
+    print ('restoring Mongo collection "%s" from %s/%s version %s, '
+           'last modified %s') % (collection_name, bucket.name, key.name,
+            key.version_id, key.last_modified)
 
-    # temporarily write bson data to bson_file_path so mongorestore can read it
+    # temporarily write bson data to bson_file_path so mongorestore can read
+    # it, then restore from that file
     with open(bson_file_path, 'wb') as bson_file:
         ungzip_file = UnGzipFile(bson_file)
         key.get_contents_to_file(ungzip_file)
@@ -220,12 +230,20 @@ if __name__ == '__main__':
     conn = S3Connection(args.access_key, args.secret_key)
     bucket = conn.get_bucket(BUCKET_NAME)
 
-    if args.command == 'backup':
-        backup_mysql(Key(bucket, name='%s_reebill_mysql.gz' % now))
+    # make sure this bucket has versioning turned on; if not, it's probably
+    # the wrong bucket
+    versioning_status = bucket.get_versioning_status()
+    if versioning_status != {'Versioning': 'Enabled'}:
+        print >> sys.stderr, ("Can't use a bucket without versioning for "
+                "backups. The bucket \"%s\" has versioning status: %s") % (
+                bucket.name, versioning_status)
+        sys.exit(1)
 
+    if args.command == 'backup':
+        backup_mysql(Key(bucket, name=MYSQL_BACKUP_KEY_NAME))
         for collection in MONGO_COLLECTIONS:
-            backup_mongo_collection(collection,
-                    Key(bucket, name='%s_reebill_mongo_%s.gz' % (now, collection)))
+            backup_mongo_collection(collection, Key(bucket,
+                    name=MONGO_BACKUP_KEY_NAME_FORMAT % collection))
     elif args.command == 'restore':
         restore_mysql(bucket)
         for collection in MONGO_COLLECTIONS:
