@@ -1,8 +1,5 @@
-from os.path import dirname, realpath, join
-from billing import init_config, init_model, init_logging
+from billing import initialize
 initialize()
-from os.path import dirname, realpath, join
-
 
 from billing import config
 import sys, pprint, os
