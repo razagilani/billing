@@ -520,9 +520,10 @@ class ReeBill(Base):
         for binding, evaluation in context.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
+                quantity_units = '' if charge.quantity_units is None else charge.quantity_units
                 session.add(ReeBillCharge(self, binding,
                     charge.description, charge.group, charge.quantity,
-                    evaluation.quantity, charge.quantity_units, charge.rate,
+                    evaluation.quantity, quantity_units, charge.rate,
                     evaluation.rate, charge.total, evaluation.total))
 
     def compute_charges(self):

@@ -1,6 +1,7 @@
 from os.path import dirname, realpath, join
 
 from billing import init_config, init_model, init_logging
+from processing import excel_export
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
@@ -30,7 +31,6 @@ from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
-from billing.processing import mongo, excel_export
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd,\
         rate_structure2 as rs
@@ -709,7 +709,7 @@ class ReeBillWSGI(object):
             self.process.issue_and_mail(bill['account'], int(bill['sequence']),
                                     bill['recipients'], bill['apply_corrections'])
             for cor in unissued_corrections:
-            journal.ReeBillIssuedEvent.save_instance(
+                journal.ReeBillIssuedEvent.save_instance(
                     cherrypy.session['user'],bill['account'], bill['sequence'],
                     self.state_db.max_version(bill['account'], cor),
                 applied_sequence=cor[0])

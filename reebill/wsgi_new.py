@@ -2,7 +2,13 @@
 File: wsgi.py
 """
 from billing import initialize
-initialize()
+from os.path import dirname, realpath, join
+from billing import init_config, init_model, init_logging
+p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+init_logging(path=p)
+init_config(filename=p)
+init_model()
+#initialize()
 from billing import config
 
 import sys
@@ -375,29 +381,52 @@ class IssuableReebills(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def issue_and_mail(self, *vpath, **params):
-        params = cherrypy.request.params
-        account, sequence = params['account'], int(params['sequence'])
-        recipient_list = params['mailto']
-        result = self.process.issue_and_mail(
-            params['apply_corrections'] == 'true',
-            account=account, sequence=sequence, recipients=recipient_list)
-        if 'issued' in result:
-            for bill in result['issued']:
-                journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill[0], bill[1], bill[2],
-                    applied_sequence=bill[1] if bill[2] != 0 else None)
-            journal.ReeBillMailedEvent.save_instance(
-                cherrypy.session['user'], account, sequence, recipient_list)
-        return self.dumps(result)
+    def issue_and_mail(self, reebills, **params):
+        bills = json.loads(reebills)
+        reebills_with_corrections = []
+        corrections = False
+        for bill in bills:
+            unissued_corrections = self.process.get_unissued_corrections(bill['account'])
+            if len(unissued_corrections) > 0 and not bill['apply_corrections']:
+                # The user has confirmed to issue unissued corrections.
+                corrections = True
+                reebills_with_corrections.append(
+                    {
+                    'reebill': bill,
+                    'unissued_corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)}
+                )
+            else:
+                reebills_with_corrections.append({'reebill': bill})
+        if corrections:
+            return self.dumps({"success": True,
+                               "reebills": reebills_with_corrections,
+                               "corrections": True})
+        results = {'success': True, 'issued': []}
+        for bill in reebills_with_corrections:
+            print bill
+            account, sequence = bill['reebill']['account'], int(bill['reebill']['sequence'])
+            recipient_list = bill['reebill']['recipients']
+            result = self.process.issue_and_mail(
+                bill['reebill']['apply_corrections'],
+                account=account, sequence=sequence, recipients=recipient_list)
+            if 'issued' in result:
+                for bill in result['issued']:
+                    journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'], bill[0], bill[1], bill[2],
+                        applied_sequence=bill[1] if bill[2] != 0 else None)
+                    results['issued'].append(result)
+                journal.ReeBillMailedEvent.save_instance(
+                    cherrypy.session['user'], account, sequence, recipient_list)
+
+        return self.dumps(results)
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        apply_corrections = (params['apply_corrections'] == 'true')
-        result = self.process.issue_and_mail(apply_corrections, processed=True)
+        result = self.process.issue_and_mail(apply_corrections=True, processed=True)
         if 'issued' in result:
             for bill in result['issued']:
                 # Bills is a tuple of (account, sequence, version,
