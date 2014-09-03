@@ -268,7 +268,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil."""
-        init_config('tstsettings.cfg')
+        init_config('test/tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()
