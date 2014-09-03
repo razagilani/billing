@@ -40,5 +40,5 @@ class ValidatedConfigParser(RawConfigParser):
         """Reads the configuration file using :meth:`ConfigParser.read` and 
         runs formencode validators on each configuration section. 
         """
-        RawConfigParser.read(self, filenames)
+        read_ok = RawConfigParser.read(self, filenames)
         self._validate()
