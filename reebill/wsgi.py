@@ -10,7 +10,6 @@ init_model()
 from billing import config
 
 import sys
-
 import traceback
 import json
 import cherrypy
