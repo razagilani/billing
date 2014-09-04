@@ -1,8 +1,13 @@
-from billing import initialize
-initialize()
+from os.path import dirname, realpath, join
+from billing import init_config, init_model, init_logging
+
+p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
+init_logging(path=p)
+init_config(filepath=p)
+init_model()
 
 from billing import config
-import sys, pprint, os
+import sys, pprint
 
 # TODO: 64957006
 # Dislike having this exceptionally useful code here, whose purpose is to
