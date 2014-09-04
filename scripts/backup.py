@@ -327,15 +327,10 @@ if __name__ == '__main__':
             'with "restore-local"'))
     restore_local_parser = subparsers.add_parser('restore-local', help=(
             'restore databases from existing dump files in local directory'))
-    backup_parser.set_defaults(func=backup)
-    restore_parser.set_defaults(func=restore)
-    download_parser.set_defaults(func=download)
-    restore_local_parser.set_defaults(func=restore_local)
 
     # arguments for S3
     for parser in (backup_parser, restore_parser, download_parser):
-        parser.add_argument("--bucket", required=True, type=str,
-                help=('S3 bucket name'))
+        parser.add_argument(dest='bucket', type=str, help='S3 bucket name')
         # the environment variables that provide default values for these keys
         # come from Josh's bash script, documented here:
         # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
@@ -364,6 +359,12 @@ if __name__ == '__main__':
         parser.add_argument('--scrub', action='store_true',
                 help=('After restoring, replace parts of the data set with '
                 'placeholder values (for development only).'))
+
+    # each command corrsponds to the function with the same name defined above
+    backup_parser.set_defaults(func=backup)
+    restore_parser.set_defaults(func=restore)
+    download_parser.set_defaults(func=download)
+    restore_local_parser.set_defaults(func=restore_local)
 
     args = main_parser.parse_args()
     args.func(args)
