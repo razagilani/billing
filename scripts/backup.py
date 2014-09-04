@@ -41,19 +41,13 @@ db_uri = config.get('statedb', 'uri')
 m = re.match(r'^mysql://(\w+):(\w+)+@(\w+):([0-9]+)/(\w+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
-# only root can restore a MySQL database, but root's credentials are not
-# stored in the config file.
-# TODO: the root password should be made into an argument, or we can ignore
-# this problem until we switch to Postgres.
-root_db_params = dict(db_params, user='root', password='root')
-
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
 
 # amount of data to read and compress at one time in bytes
 GZIP_CHUNK_SIZE_BYTES = 128 * 1024
 
-def shellquote(s):
+def shell_quote(s):
     return "'" + s.replace("'", "'\\''") + "'"
 
 def _write_gzipped_chunk(in_file, out_file, chunk_size):
@@ -155,8 +149,9 @@ def backup_mongo_collection(collection_name, s3_key):
     _, stdout, check_exit_status = run_command(command)
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
-def restore_mysql_s3(bucket):
-    command = MYSQL_COMMAND % root_db_params
+def restore_mysql_s3(bucket, root_password):
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -172,8 +167,9 @@ def restore_mysql_s3(bucket):
     stdin.close()
     check_exit_status()
 
-def restore_mysql_local(dump_file_path):
-    command = MYSQL_COMMAND % root_db_params
+def restore_mysql_local(dump_file_path, root_password):
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
@@ -209,7 +205,7 @@ def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
     command = MONGORESTORE_COMMAND % dict(
             db=config.get('mongodb', 'database'),
             collection=collection_name,
-            filepath=shellquote(bson_file_path))
+            filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
@@ -266,7 +262,7 @@ def backup(args):
 
 def restore(args):
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    restore_mysql_s3(bucket)
+    restore_mysql_s3(bucket, args.root_password)
     for collection in MONGO_COLLECTIONS:
         # NOTE mongorestore cannot restore from a file unless its name
         # ends with ".bson".
@@ -306,7 +302,8 @@ def download(args):
                 backup_file_dir_absolute_path, file_name))
 
 def restore_local(args):
-    restore_mysql_local(os.path.join(args.backup_file_dir, MYSQL_BACKUP_FILE_NAME))
+    restore_mysql_local(os.path.join(args.backup_file_dir,
+            MYSQL_BACKUP_FILE_NAME), args.root_password)
     for collection in MONGO_COLLECTIONS:
         backup_file_path = os.path.join(args.backup_file_dir,
                 MONGO_BACKUP_FILE_NAME_FORMAT % collection)
@@ -358,9 +355,13 @@ if __name__ == '__main__':
                 help=('Local directory containing database dump files (%s).' %
                 ', '.join(all_file_names)))
 
-    # arguments for restoring database in development environment
+    # arguments for restoring database
     for parser in (restore_parser, restore_local_parser):
-        parser.add_argument("--scrub", action='store_true',
+        # only root can restore a MySQL database, but root's credentials are not
+        # stored in the config file.
+        parser.add_argument('--root-password', type=str, default='root',
+                help=('MySQL root password, default "root".'))
+        parser.add_argument('--scrub', action='store_true',
                 help=('After restoring, replace parts of the data set with '
                 'placeholder values (for development only).'))
 
