@@ -13,10 +13,7 @@ class TCPPort(Int):
 class Directory(FancyValidator):
     def _convert_to_python(self, value, state):
         if isdir(value): return value
-        raise Invalid("Please specify a valid directory", value, state)        
-
-class alembic(Schema):
-    script_location = Directory()
+        raise Invalid("Please specify a valid directory", value, state)
 
 class runtime(Schema):
     integrate_nexus = StringBool()
