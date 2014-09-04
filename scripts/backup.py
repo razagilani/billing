@@ -25,8 +25,8 @@ from billing import config
 # all backups are stored with the same key name. a new version is created every
 # time the database is backed up, the latest version is used automatically
 # whenever the key is accessed without specifying a version.
-MYSQL_BACKUP_KEY_NAME = 'reebill_mysql.gz'
-MONGO_BACKUP_KEY_NAME_FORMAT = 'reebill_mongo_%s.gz'
+MYSQL_BACKUP_FILE_NAME = 'reebill_mysql.gz'
+MONGO_BACKUP_FILE_NAME_FORMAT = 'reebill_mongo_%s.gz'
 
 MYSQLDUMP_COMMAND = 'mysqldump -u%(user)s -p%(password)s %(db)s'
 MYSQL_COMMAND = 'mysql -u%(user)s -p%(password)s -D%(db)s'
@@ -41,18 +41,14 @@ db_uri = config.get('statedb', 'uri')
 m = re.match(r'^mysql://(\w+):(\w+)+@(\w+):([0-9]+)/(\w+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
-# only root can restore a MySQL database, but root's credentials are not
-# stored in the config file.
-# TODO: the root password should be made into an argument, or we can ignore
-# this problem until we switch to Postgres.
-root_db_params = dict(db_params, user='root', password='root')
-
 # amount of data to send to S3 at one time in bytes
 S3_MULTIPART_CHUNK_SIZE_BYTES = 5 * 1024**2
 
 # amount of data to read and compress at one time in bytes
 GZIP_CHUNK_SIZE_BYTES = 128 * 1024
 
+def shell_quote(s):
+    return "'" + s.replace("'", "'\\''") + "'"
 
 def _write_gzipped_chunk(in_file, out_file, chunk_size):
     '''Write gzipped data from 'in_file' to 'out_file' until 'out_file'
@@ -148,25 +144,21 @@ def backup_mysql(s3_key):
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
 def backup_mongo_collection(collection_name, s3_key):
-    # NOTE "usersdb" section is used to get mongo database parameters for
-    # all collections. this is being/has been fixed; see
-    # https://www.pivotaltracker.com/story/show/77254458
-    command = MONGODUMP_COMMAND % dict(
-            db=config.get('usersdb', 'database'),
-            host=config.get('usersdb', 'host'),
-            collection=collection_name)
+    command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
-def restore_mysql(bucket):
-    command = MYSQL_COMMAND % root_db_params
+def restore_mysql_s3(bucket, root_password):
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
     stdin, _, check_exit_status = run_command(command)
     ungzip_file = UnGzipFile(stdin)
 
-    key = bucket.get_key(MYSQL_BACKUP_KEY_NAME)
+    key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                MYSQL_BACKUP_KEY_NAME, bucket.name))
+                MYSQL_BACKUP_FILE_NAME, bucket.name))
     print 'restoring MySQL from %s/%s version %s (modified %s)' % (
             bucket.name, key.name, key.version_id, key.last_modified)
     key.get_contents_to_file(ungzip_file)
@@ -175,13 +167,27 @@ def restore_mysql(bucket):
     stdin.close()
     check_exit_status()
 
-def restore_mongo_collection(bucket, collection_name, bson_file_path):
+def restore_mysql_local(dump_file_path, root_password):
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
+    stdin, _, check_exit_status = run_command(command)
+    ungzip_file = UnGzipFile(stdin)
+
+    print 'restoring MySQL from local file %s' % dump_file_path
+    # TODO: maybe bad to read whole file at once
+    with open(dump_file_path) as dump_file:
+        ungzip_file.write(dump_file.read())
+
+    stdin.close()
+    check_exit_status()
+
+def restore_mongo_collection_s3(bucket, collection_name, bson_file_path):
     '''bson_file_path: local file path to write bson to temporarily so
     mongorestore can read from it. (this is a workaround for mongorestore's
     inability to accept input from stdin; see ticket
     https://jira.mongodb.org/browse/SERVER-4345.)
     '''
-    key_name = MONGO_BACKUP_KEY_NAME_FORMAT % collection_name
+    key_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection_name
     key = bucket.get_key(key_name)
     if not key or not key.exists():
         raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
@@ -197,9 +203,9 @@ def restore_mongo_collection(bucket, collection_name, bson_file_path):
         key.get_contents_to_file(ungzip_file)
 
     command = MONGORESTORE_COMMAND % dict(
-            db=config.get('usersdb', 'database'),
+            db=config.get('mongodb', 'database'),
             collection=collection_name,
-            filepath=bson_file_path)
+            filepath=shell_quote(bson_file_path))
     _, _, check_exit_status = run_command(command)
 
     # this may not help because mongorestore seems to exit with status
@@ -207,6 +213,17 @@ def restore_mongo_collection(bucket, collection_name, bson_file_path):
     check_exit_status()
 
     os.remove(bson_file_path)
+
+def restore_mongo_collection_local(collection_name, dump_file_path):
+    print 'restoring Mongo collection "%s" from local file %s' % (
+            collection_name, dump_file_path)
+    command = MONGORESTORE_COMMAND % dict(db=config.get('mongodb', 'database'),
+            collection=collection_name, filepath=dump_file_path)
+    _, _, check_exit_status = run_command(command)
+
+    # this may not help because mongorestore seems to exit with status
+    # 0 even when it has an error
+    check_exit_status()
 
 def scrub_dev_data():
     '''Replace some data with placeholder values for development environment.
@@ -221,28 +238,8 @@ def scrub_dev_data():
     stdin.close()
     check_exit_status()
 
-def parse_args():
-    parser = argparse.ArgumentParser(description=("Backup script for utility "
-            "bill and reebill databases. Database credentials are read from the "
-            "application config file (settings.cfg)."))
-    parser.add_argument(dest='command',
-            choices=['backup', 'restore', 'restore-dev'], help=(
-            'backup: write database dump files to the given S3 bucket. '
-            'restore: restore databases from existing dump files. '
-            'restore-dev: restore development database from existing dump'
-            'files, with some data replaced by placeholder values. '))
-    parser.add_argument("--bucket", required=True, type=str, help="S3 bucket name")
-    parser.add_argument("--access-key", required=True, type=str,
-            help="The S3 access key for authenticating, generated by AWS IAM")
-    parser.add_argument("--secret-key", required=True, type=str,
-            help="The S3 secret key for authenticating, generated by AWS IAM")
-    return parser.parse_args()
-
-if __name__ == '__main__':
-    now = datetime.utcnow().isoformat()
-    args = parse_args()
-
-    conn = S3Connection(args.access_key, args.secret_key)
+def get_bucket(bucket_name, access_key, secret_key):
+    conn = S3Connection(access_key, secret_key)
     bucket = conn.get_bucket(args.bucket)
 
     # make sure this bucket has versioning turned on; if not, it's probably
@@ -252,21 +249,122 @@ if __name__ == '__main__':
         print >> sys.stderr, ("Can't use a bucket without versioning for "
                 "backups. The bucket \"%s\" has versioning status: %s") % (
                 bucket.name, versioning_status)
+        # TODO not good to sys.exit outside main
         sys.exit(1)
+    return bucket
 
-    if args.command == 'backup':
-        backup_mysql(Key(bucket, name=MYSQL_BACKUP_KEY_NAME))
-        for collection in MONGO_COLLECTIONS:
-            backup_mongo_collection(collection, Key(bucket,
-                    name=MONGO_BACKUP_KEY_NAME_FORMAT % collection))
-    elif args.command in ('restore', 'restore-dev'):
-        restore_mysql(bucket)
-        for collection in MONGO_COLLECTIONS:
-            # NOTE mongorestore cannot restore from a file unless its name
-            # ends with ".bson".
-            bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (collection, now)
-            restore_mongo_collection(bucket, collection, bson_file_path)
-        if args.command == 'restore-dev':
-            scrub_dev_data()
+def backup(args):
+    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
+    for collection in MONGO_COLLECTIONS:
+        backup_mongo_collection(collection, Key(bucket,
+                name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
+
+def restore(args):
+    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    restore_mysql_s3(bucket, args.root_password)
+    for collection in MONGO_COLLECTIONS:
+        # NOTE mongorestore cannot restore from a file unless its name
+        # ends with ".bson".
+        bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
+                collection, datetime.utcnow())
+        restore_mongo_collection_s3(bucket, collection, bson_file_path)
+    if args.scrub:
+        scrub_dev_data()
+
+def download(args):
+    if args.backup_file_dir.startswith(os.path.sep):
+        backup_file_dir_absolute_path = args.backup_file_dir
     else:
-        print >> sys.stderr, 'Unknown command "%s"' % args.command
+        backup_file_dir_absolute_path = os.path.join(
+            os.path.realpath(__file__), args.backup_file_dir)
+    # TODO actual error message
+    assert os.access(backup_file_dir_absolute_path, os.W_OK)
+
+    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+
+    # download MySQL dump
+    key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
+    if not key or not key.exists():
+        raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
+                key.name, bucket.name))
+    key.get_contents_to_filename(os.path.join(
+            backup_file_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
+
+    # download Mongo dump
+    for collection in MONGO_COLLECTIONS:
+        file_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection
+        key = bucket.get_key(file_name)
+        if not key or not key.exists():
+            raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
+                    key.name, bucket.name))
+        key.get_contents_to_filename(os.path.join(
+                backup_file_dir_absolute_path, file_name))
+
+def restore_local(args):
+    restore_mysql_local(os.path.join(args.backup_file_dir,
+            MYSQL_BACKUP_FILE_NAME), args.root_password)
+    for collection in MONGO_COLLECTIONS:
+        backup_file_path = os.path.join(args.backup_file_dir,
+                MONGO_BACKUP_FILE_NAME_FORMAT % collection)
+        restore_mongo_collection_local(collection, backup_file_path)
+    # TODO always scrub the data when restore-local is used because it's only for development?
+    if args.scrub:
+        scrub_dev_data()
+
+if __name__ == '__main__':
+    main_parser = argparse.ArgumentParser(description=("Backup script for "
+            "utility bill and reebill databases. Database credentials are "
+            "read from the application config file (settings.cfg)."))
+
+    subparsers = main_parser.add_subparsers()
+    backup_parser = subparsers.add_parser('backup',
+            help='write database dump files to the given S3 bucket')
+    restore_parser = subparsers.add_parser('restore',
+            help='restore databases from existing dump files in S3 bucket')
+    download_parser = subparsers.add_parser('download',
+            help=('download database dump files so they can be used '
+            'with "restore-local"'))
+    restore_local_parser = subparsers.add_parser('restore-local', help=(
+            'restore databases from existing dump files in local directory'))
+
+    # arguments for S3
+    for parser in (backup_parser, restore_parser, download_parser):
+        parser.add_argument(dest='bucket', type=str, help='S3 bucket name')
+        # the environment variables that provide default values for these keys
+        # come from Josh's bash script, documented here:
+        # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
+        parser.add_argument("--access-key", type=str,
+                default=os.environ.get('AWS_ACCESS_KEY_ID', None),
+                help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
+        parser.add_argument("--secret-key", type=str,
+                default=os.environ.get('AWS_SECRET_ACCESS_KEY', None),
+                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY_ID if "
+                "it is defined."))
+
+    # arguments for local backup files
+    all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
+            (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
+    for parser in (download_parser, restore_local_parser):
+        parser.add_argument('--backup-file-dir', type=str, default='/tmp',
+                help=('Local directory containing database dump files (%s).' %
+                ', '.join(all_file_names)))
+
+    # arguments for restoring database
+    for parser in (restore_parser, restore_local_parser):
+        # only root can restore a MySQL database, but root's credentials are not
+        # stored in the config file.
+        parser.add_argument('--root-password', type=str, default='root',
+                help=('MySQL root password, default "root".'))
+        parser.add_argument('--scrub', action='store_true',
+                help=('After restoring, replace parts of the data set with '
+                'placeholder values (for development only).'))
+
+    # each command corrsponds to the function with the same name defined above
+    backup_parser.set_defaults(func=backup)
+    restore_parser.set_defaults(func=restore)
+    download_parser.set_defaults(func=download)
+    restore_local_parser.set_defaults(func=restore_local)
+
+    args = main_parser.parse_args()
+    args.func(args)
