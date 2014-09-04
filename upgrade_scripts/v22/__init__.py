@@ -22,9 +22,9 @@ from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
 
-client = MongoClient(config.get('billdb', 'host'),
-                    int(config.get('billdb', 'port')))
-db = client[config.get('billdb', 'database')]
+client = MongoClient(config.get('mongodb', 'host'),
+                    int(config.get('mongodb', 'port')))
+db = client[config.get('mongodb', 'database')]
 
 
 def read_initial_customer_data(session):
