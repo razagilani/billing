@@ -1061,7 +1061,6 @@ class Charge(Base):
     # never both or neither.
 
     quantity_formula = Column(String(1000), nullable=False)
-    rate_formula = Column(String(1000), nullable=False)
     has_charge = Column(Boolean, nullable=False)
     shared = Column(Boolean, nullable=False)
     roundrule = Column(String(1000))
@@ -1093,8 +1092,8 @@ class Charge(Base):
         return list(var_names)
 
     def __init__(self, utilbill, description, group, quantity, quantity_units,
-                 rate, rsi_binding, total, quantity_formula="", rate_formula="",
-                 has_charge=True, shared=False, roundrule=""):
+                 rate, rsi_binding, total, quantity_formula="", has_charge=True,
+                 shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
@@ -1107,7 +1106,6 @@ class Charge(Base):
         :param total: The total charge (equal to rate * quantity)
 
         :param quantity_formula: The RSI quantity formula
-        :param rate_formula: The RSI rate formula
         :param has_charge:
         :param shared:
         :param roundrule:
@@ -1123,7 +1121,6 @@ class Charge(Base):
         self.total = total
 
         self.quantity_formula = quantity_formula
-        self.rate_formula = rate_formula
         self.has_charge = has_charge
         self.shared = shared
         self.roundrule = roundrule
@@ -1141,7 +1138,6 @@ class Charge(Base):
                    other.rsi_binding,
                    other.total,
                    quantity_formula=other.quantity_formula,
-                   rate_formula=other.rate_formula,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)
@@ -1163,7 +1159,7 @@ class Charge(Base):
     @staticmethod
     def _evaluate_formula(formula, name, context):
         """Evaluates the formula in the specified context
-        :param formula: a `quantity_formula` or `rate_formula`
+        :param formula: a `quantity_formula`
         :param name: the formula name (i.e. rate / charge) for exception message
         :param context: map of binding name to `Evaluation`
         """
@@ -1179,9 +1175,8 @@ class Charge(Base):
 
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
-         in `quantity_formula` and `rate_formula` as parsed by Python"""
-        return set(Charge.get_variable_names(self.quantity_formula) +
-                   Charge.get_variable_names(self.rate_formula))
+         in `quantity_formula` as parsed by Python"""
+        return set(Charge.get_variable_names(self.quantity_formula))
 
     def evaluate(self, context, update=False):
         """Evaluates the quantity and rate formulas and returns a
@@ -1196,14 +1191,12 @@ class Charge(Base):
         try:
             quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
                     context)
-            rate = self._evaluate_formula(self.rate_formula, 'rate', context)
         except FormulaError as exception:
             evaluation = ChargeEvaluation(exception=exception)
         else:
-            evaluation = ChargeEvaluation(quantity, rate)
+            evaluation = ChargeEvaluation(quantity, self.rate)
         if update:
             self.quantity = evaluation.quantity
-            self.rate = evaluation.rate
             self.total = evaluation.total
             self.error = None if evaluation.exception is None else \
                 evaluation.exception.message

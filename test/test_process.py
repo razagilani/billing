@@ -46,7 +46,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_charge({
             'rsi_binding': 'A',
             'quantity_formula': 'REG_TOTAL.quantity',
-            'rate_formula': '1'
+            'rate': '1'
         }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(utilbill.id)  # creates charges
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
@@ -113,7 +113,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         self.process.add_charge(utilbill_data['id'])
         self.process.update_charge({'quantity_formula': 'REG_TOTAL.quantity',
-                                    'rate_formula': '1', 'rsi_binding': 'A',
+                                    'rate': '1', 'rsi_binding': 'A',
                                     'description':'a'},
                                     utilbill_id=utilbill_data['id'],
                                     rsi_binding='New RSI #1')

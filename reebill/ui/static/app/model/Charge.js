@@ -13,7 +13,6 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'error'},
         {name: 'has_charge'},
         {name: 'quantity_formula'},
-        {name: 'rate_formula'},
         {name: 'roundrule'},
         {name: 'shared'},
         {name: 'utilbill_id'}
@@ -23,7 +22,7 @@ Ext.define('ReeBill.model.Charge', {
 //  Null means the FormulaInput should be disabled
     formulaMappings: {
         'quantity': 'quantity_formula',
-        'rate': 'rate_formula',
+        'rate': 'rate',
         'shared': null,
         'has_charge': null,
     },
