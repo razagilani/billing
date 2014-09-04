@@ -46,7 +46,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_charge({
             'rsi_binding': 'A',
             'quantity_formula': 'REG_TOTAL.quantity',
-            'rate': '1'
+            'rate': 1
         }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(utilbill.id)  # creates charges
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
@@ -113,7 +113,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         self.process.add_charge(utilbill_data['id'])
         self.process.update_charge({'quantity_formula': 'REG_TOTAL.quantity',
-                                    'rate': '1', 'rsi_binding': 'A',
+                                    'rate': 1, 'rsi_binding': 'A',
                                     'description':'a'},
                                     utilbill_id=utilbill_data['id'],
                                     rsi_binding='New RSI #1')
@@ -313,7 +313,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'rsi_binding': 'THE_CHARGE',
             'quantity_formula': 'REG_TOTAL.quantity',
             'quantity_units': 'therms',
-            'rate_formula': '1',
+            'rate': 1,
             'group': 'All Charges',
         }, utilbill_id=u.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(u.id)
@@ -817,7 +817,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             #update the just-created charge
             p.update_charge({'rsi_binding': 'THE_CHARGE',
                           'quantity_formula': 'REG_TOTAL.quantity',
-                          'rate_formula': '1',
+                          'rate': 1,
                           'group': 'All Charges'}, utilbill_id=ub.id,
                          rsi_binding='New RSI #1')
 
@@ -930,7 +930,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         charge = self.process.add_charge(u1.id)
         self.process.update_charge(dict(rsi_binding='THE_CHARGE',
             quantity_formula="REG_TOTAL.quantity",
-            quantity_units='therms', rate_formula='1',
+            quantity_units='therms', rate=1,
             group='All Charges'), charge_id=charge.id)
 
         self.process.update_utilbill_metadata(u1.id,
