@@ -22,10 +22,9 @@ class ReebillTest(unittest.TestCase):
                 'total', 'REG_TOTAL', [], '')]
         utilbill.charges = [
             Charge(utilbill, 'a', 'All Charges', 0, 'therms',
-                    0,'A', 0, quantity_formula='REG_TOTAL.quantity',
-                    rate_formula='2'),
-            Charge(utilbill, 'b', 'All Charges', 0, 'therms', 0, 'B', 0,
-                    quantity_formula='1', rate_formula='1', has_charge=False),
+                    2,'A', 0, quantity_formula='REG_TOTAL.quantity'),
+            Charge(utilbill, 'b', 'All Charges', 0, 'therms', 1, 'B', 0,
+                    quantity_formula='1', has_charge=False),
         ]
 
         reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
