@@ -5,7 +5,7 @@ from processing import excel_export
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
-init_config(filename=p)
+init_config(filepath=p)
 init_model()
 from billing import config
 
