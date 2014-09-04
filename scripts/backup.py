@@ -150,13 +150,8 @@ def backup_mysql(s3_key):
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
 def backup_mongo_collection(collection_name, s3_key):
-    # NOTE "usersdb" section is used to get mongo database parameters for
-    # all collections. this is being/has been fixed; see
-    # https://www.pivotaltracker.com/story/show/77254458
-    command = MONGODUMP_COMMAND % dict(
-            db=config.get('usersdb', 'database'),
-            host=config.get('usersdb', 'host'),
-            collection=collection_name)
+    command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     write_gizpped_to_s3(stdout, s3_key, check_exit_status)
 
@@ -347,12 +342,12 @@ if __name__ == '__main__':
         # the environment variables that provide default values for these keys
         # come from Josh's bash script, documented here:
         # https://bitbucket.org/skylineitops/docs/wiki/EnvironmentSetup#markdown-header-setting-up-s3-access-keys-for-destaging-application-data
-        parser.add_argument("--access-key", required=True, type=str,
+        parser.add_argument("--access-key", type=str,
                 default=os.environ.get('AWS_ACCESS_KEY_ID', None),
                 help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
-        parser.add_argument("--secret-key", required=True, type=str,
+        parser.add_argument("--secret-key", type=str,
                 default=os.environ.get('AWS_SECRET_ACCESS_KEY', None),
-                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY_ID if"
+                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY_ID if "
                 "it is defined."))
 
     # arguments for local backup files
@@ -360,14 +355,14 @@ if __name__ == '__main__':
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser):
         parser.add_argument('--backup-file-dir', type=str, default='/tmp',
-                help=('Local directory containing database dump files (%s) to be '
-                'used with restore-local' % ', '.join(all_file_names)))
+                help=('Local directory containing database dump files (%s).' %
+                ', '.join(all_file_names)))
 
     # arguments for restoring database in development environment
     for parser in (restore_parser, restore_local_parser):
         parser.add_argument("--scrub", action='store_true',
                 help=('After restoring, replace parts of the data set with '
-                'placeholder values (for development only)'))
+                'placeholder values (for development only).'))
 
     args = main_parser.parse_args()
     args.func(args)
