@@ -270,9 +270,6 @@ class RESTResource(WebResource):
                        for x in dir(self) if x.startswith("handle_")]
             cherrypy.response.headers["Allow"] = ",".join(methods)
             raise cherrypy.HTTPError(405, "Method not implemented.")
-
-        return_value = {}
-
         response = method(*vpath, **params)
 
         if type(response) != tuple:
