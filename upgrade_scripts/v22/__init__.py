@@ -17,7 +17,8 @@ from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session, Charge
 from billing.processing.rate_structure2 import RateStructureDAO
-from processing.state import Register, UtilBill, Address, Customer
+from processing.state import Register, UtilBill, Address, Customer,\
+    ReeBill, Payment
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -147,5 +148,8 @@ def upgrade():
 
     log.info('Upgrading to schema revision 2e47f4f18a8b')
     alembic_upgrade('2e47f4f18a8b')
+
+    log.info('Upgrading to schema revision 6446c51511c')
+    alembic_upgrade('6446c51511c')
 
     log.info('Upgrade to version 22 complete')

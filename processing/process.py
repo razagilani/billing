@@ -615,13 +615,15 @@ class Process(object):
             present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
-                reebill.payment_received = self.state_db. \
+                payments = self.state_db. \
                     get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN)
+                        state.MYSQLDB_DATETIME_MIN, payment_objects=True)
+                self.compute_reebill_payments(payments, reebill)
             else:
-                reebill.payment_received = self.state_db. \
+                payments = self.state_db. \
                     get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date)
+                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date, payment_objects=True)
+                self.compute_reebill_payments(payments, reebill)
             # obviously balances are 0
             reebill.prior_balance = 0
             reebill.balance_forward = 0
@@ -646,13 +648,15 @@ class Process(object):
                         version=0):
                     present_v0_issue_date = self.state_db.get_reebill(account,
                             reebill.sequence, version=0).issue_date
-                    reebill.payment_received = self.state_db. \
+                    payments = self.state_db. \
                             get_total_payment_since(account,
-                            predecessor.issue_date, end=present_v0_issue_date)
+                            predecessor.issue_date, end=present_v0_issue_date, payment_objects=True)
+                    self.compute_reebill_payments(payments, reebill)
                 else:
-                    reebill.payment_received = self.state_db. \
+                    payments = self.state_db. \
                             get_total_payment_since(account,
-                            predecessor.issue_date)
+                            predecessor.issue_date, payment_objects=True)
+                    self.compute_reebill_payments(payments, reebill)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
@@ -669,12 +673,17 @@ class Process(object):
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
-        # after that)
+        # after that)describe
         lc = self.get_late_charge(reebill)
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
         return reebill
+
+    def compute_reebill_payments(self, payments, reebill):
+        for payment in payments:
+            payment.reebill_id = reebill.id
+        reebill.payment_received = float(sum(payment.credit for payment in payments))
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
