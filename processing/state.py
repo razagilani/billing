@@ -53,7 +53,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '2e47f4f18a8b'
+_schema_revision = '6446c51511c'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -1214,12 +1214,16 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'), nullable=False)
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
     description = Column(String)
     credit = Column(Float)
 
     customer = relationship("Customer", backref=backref('payments',
+        order_by=id))
+
+    reebill = relationship("ReeBill", backref=backref('payments',
         order_by=id))
 
     '''date_received is the datetime when Skyline recorded the payment.
@@ -1241,11 +1245,11 @@ class Payment(Base):
 
     def is_editable(self):
         """ Returns True or False depending on whether the payment should be
-        editable. Payments should be editable as long as date_received is
-        within one day of today (ignoring seconds or microseconds)
+        editable. Payments should be editable as long as it is not applied to
+        a reebill
         """
         today = datetime.utcnow()
-        if (today-self.date_received).days <= 1:
+        if self.reebill_id is None:
             return True
         return False
 
@@ -1876,7 +1880,7 @@ class StateDB(object):
             Payment.date_applied < periodend)).all()
         return payments
 
-    def get_total_payment_since(self, account, start, end=None):
+    def get_total_payment_since(self, account, start, end=None, payment_objects=False):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
@@ -1890,6 +1894,8 @@ class StateDB(object):
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
+        if payment_objects:
+            return payments.all()
         return float(sum(payment.credit for payment in payments.all()))
 
     def payments(self, account):
