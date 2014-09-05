@@ -16,9 +16,10 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.processing.state import Session, Charge
+from billing.processing.process import Process
 from billing.processing.rate_structure2 import RateStructureDAO
 from processing.state import Register, UtilBill, Address, Customer,\
-    ReeBill, Payment
+    ReeBill, Payment, StateDB, MYSQLDB_DATETIME_MIN
 from bson.objectid import ObjectId
 
 log = logging.getLogger(__name__)
@@ -125,6 +126,63 @@ def copy_rsis_from_mongo(s):
             charge.shared = rsi.get('shared', True)
             charge.has_charge = rsi.get('has_charge', True)
 
+'''def assign_reebill_id_to_payments(s):
+    state_db = StateDB()
+    for reebill in s.query(ReeBill).filter(ReeBill.issued == 1):
+        if reebill.sequence == 1:
+            reebill.total_adjustment = 0
+
+            # include all payments since the beginning of time, in case there
+            # happen to be any.
+            # if any version of this bill has been issued, get payments up
+            # until the issue date; otherwise get payments up until the
+            # present.
+            present_v0_issue_date = state_db.get_reebill(
+                  reebill.customer_id, reebill.sequence, version=0).issue_date
+            if present_v0_issue_date is None:
+                payments = state_db. \
+                    get_total_payment_since(reebill.customer_id,
+                        MYSQLDB_DATETIME_MIN, payment_objects=True)
+                for payment in payments:
+                    payment.reebill_id = reebill.id
+                    payment.save()
+            else:
+                payments = state_db. \
+                    get_total_payment_since(reebill.customer_id,
+                        MYSQLDB_DATETIME_MIN, end=present_v0_issue_date, payment_objects=True)
+                for payment in payments:
+                    payment.reebill_id = reebill.id
+                    payment.save()
+        else:
+            predecessor = state_db.get_reebill(reebill.customer_id,
+                    reebill.sequence - 1, version=0)
+
+            # get payment_received: all payments between issue date of
+            # predecessor's version 0 and issue date of current reebill's version 0
+            # (if current reebill is unissued, its version 0 has None as its
+            # issue_date, meaning the payment period lasts up until the present)
+            if predecessor.issued:
+                # if predecessor's version 0 is issued, gather all payments from
+                # its issue date until version 0 issue date of current bill, or
+                # today if this bill has never been issued
+                if state_db.is_issued(reebill.customer_id, reebill.sequence,
+                        version=0):
+                    present_v0_issue_date = state_db.get_reebill(reebill.customer_id,
+                            reebill.sequence, version=0).issue_date
+                    payments = state_db. \
+                            get_total_payment_since(reebill.customer_id,
+                            predecessor.issue_date, end=present_v0_issue_date, payment_objects=True)
+                    for payment in payments:
+                        payment.reebill_id = reebill.id
+                        payment.save()
+                else:
+                    payments = state_db. \
+                            get_total_payment_since(reebill.customer_id,
+                            predecessor.issue_date, payment_objects=True)
+                    for payment in payments:
+                        payment.reebill_id = reebill.id
+                        payment.save()'''
+
 def upgrade():
     log.info('Beginning upgrade to version 22')
 
@@ -151,5 +209,8 @@ def upgrade():
 
     log.info('Upgrading to schema revision 6446c51511c')
     alembic_upgrade('6446c51511c')
+    log.info('Setting reebill_ids in payments for issued reebills')
+    #assign_reebill_id_to_payments(session)
+    #session.commit()
 
     log.info('Upgrade to version 22 complete')
