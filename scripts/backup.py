@@ -339,7 +339,7 @@ if __name__ == '__main__':
                 help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
         parser.add_argument("--secret-key", type=str,
                 default=os.environ.get('AWS_SECRET_ACCESS_KEY', None),
-                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY_ID if "
+                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY if "
                 "it is defined."))
 
     # arguments for local backup files
