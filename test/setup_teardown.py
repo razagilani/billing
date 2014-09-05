@@ -33,7 +33,6 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.exc import UnboundExecutionError
 
 from billing.test import utils as test_utils
-from billing.processing import mongo
 from billing.processing import rate_structure2
 from billing.processing.process import Process
 from billing.processing.state import StateDB, Customer, Session, UtilBill, \
@@ -284,7 +283,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil."""
-        init_config('tstsettings.cfg')
+        init_config('test/tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
         self.init_dependencies()

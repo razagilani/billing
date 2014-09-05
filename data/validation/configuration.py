@@ -13,10 +13,7 @@ class TCPPort(Int):
 class Directory(FancyValidator):
     def _convert_to_python(self, value, state):
         if isdir(value): return value
-        raise Invalid("Please specify a valid directory", value, state)        
-
-class alembic(Schema):
-    script_location = Directory()
+        raise Invalid("Please specify a valid directory", value, state)
 
 class runtime(Schema):
     integrate_nexus = StringBool()
@@ -30,36 +27,24 @@ class skyline_backend(Schema):
     nexus_db_host = String()
     nexus_web_host = String()
 
-class journaldb(Schema):
-    host = String()
-    port = TCPPort()
-    database = String()
-    
 class http(Schema):
     socket_port = TCPPort()
     socket_host = String()
     
-class rsdb(Schema):
-    host = String()
-    port = TCPPort(min=1, max=65535)
-    database = String()
-    
-class billdb(Schema):
+class bill(Schema):
     utilitybillpath = String()
     billpath = String()
-    host = String()
-    port = TCPPort(min=1, max=65535)
-    database = String()
-    utility_bill_trash_directory = String() 
+    utility_bill_trash_directory = String()
+
 class statedb(Schema):
     uri = String()
     echo = StringBool()
-    
-class usersdb(Schema):
-    host = String()
+
+class mongodb(Schema):
     database = String()
+    host = String()
     port = TCPPort()
-    
+
 class mailer(Schema):
     smtp_host = String()
     smtp_port = TCPPort()
@@ -86,3 +71,50 @@ class reebillestimatedrevenue(Schema):
 
 class amqp(Schema):
     exchange = String()
+
+#Logging
+
+class loggers(Schema):
+    keys = String()
+
+class handlers(Schema):
+    keys = String()
+
+class formatters(Schema):
+    keys = String()
+
+class logger_root(Schema):
+    level = String()
+    handlers = String()
+
+class logger_sqlalchemy(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+class logger_reebill(Schema):
+    level = String()
+    handlers = String()
+    qualname = String()
+    propagate = Int()
+
+class handler_consoleHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_consoleHandler.add_field('class', String())
+
+class handler_reebillHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_reebillHandler.add_field('class', String())
+
+class handler_fileHandler(Schema):
+    level = String()
+    formatter = String()
+    args = String()
+handler_fileHandler.add_field('class', String())
+
+class formatter_simpleFormatter(Schema):
+    format = String()
+

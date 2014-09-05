@@ -40,8 +40,9 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 BILL_UPLOAD_LOG_FILE_NAME = 'bill_upload.log'
 
 #def estimated_revenue_report(self, start, limit, **kwargs):
-def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        oltp_url, reportoutputdir, output_file_name, output_xls_file_name, nexushost, skip_oltp=False):
+def generate_report(logger, statedb_config, splinter_config, oltp_url,
+                    reportoutputdir, output_file_name, output_xls_file_name,
+                    nexushost, skip_oltp=False):
     '''Handles AJAX request for data to fill estimated revenue report
     grid.''' 
 
@@ -139,7 +140,7 @@ def main():
             help="Directory to write static report file.")
     args = parser.parse_args()
 
-    # set up config dicionaries for data access objects used in generate_report
+    # set up config dictionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
         'host': args.billdbhost,

@@ -555,9 +555,10 @@ class ReeBill(Base):
         for binding, evaluation in context.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
+                quantity_units = '' if charge.quantity_units is None else charge.quantity_units
                 session.add(ReeBillCharge(self, binding,
                     charge.description, charge.group, charge.quantity,
-                    evaluation.quantity, charge.quantity_units, charge.rate,
+                    evaluation.quantity, quantity_units, charge.rate,
                     evaluation.rate, charge.total, evaluation.total))
 
     def compute_charges(self):
@@ -634,7 +635,8 @@ class ReeBill(Base):
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
             # TODO: is this used at all? does it need to be populated?
-            'services': []
+            'services': [],
+            'readings': [r.column_dict() for r in self.readings]
         })
 
         if self.version > 0:
@@ -1254,12 +1256,16 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'), nullable=False)
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
     description = Column(String)
     credit = Column(Float)
 
     customer = relationship("Customer", backref=backref('payments',
+        order_by=id))
+
+    reebill = relationship("ReeBill", backref=backref('payments',
         order_by=id))
 
     '''date_received is the datetime when Skyline recorded the payment.
@@ -1281,11 +1287,11 @@ class Payment(Base):
 
     def is_editable(self):
         """ Returns True or False depending on whether the payment should be
-        editable. Payments should be editable as long as date_received is
-        within one day of today (ignoring seconds or microseconds)
+        editable. Payments should be editable as long as it is not applied to
+        a reebill
         """
         today = datetime.utcnow()
-        if (today-self.date_received).days <= 1:
+        if self.reebill_id is None:
             return True
         return False
 
@@ -1924,7 +1930,7 @@ class StateDB(object):
             Payment.date_applied < periodend)).all()
         return payments
 
-    def get_total_payment_since(self, account, start, end=None):
+    def get_total_payment_since(self, account, start, end=None, payment_objects=False):
         '''Returns sum of all account's payments applied on or after 'start'
         and before 'end' (today by default). If 'start' is None, the beginning
         of the interval extends to the beginning of time.
@@ -1938,6 +1944,8 @@ class StateDB(object):
                 .filter(Payment.date_applied < end)
         if start is not None:
             payments = payments.filter(Payment.date_applied >= start)
+        if payment_objects:
+            return payments.all()
         return float(sum(payment.credit for payment in payments.all()))
 
     def payments(self, account):
