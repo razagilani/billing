@@ -603,13 +603,15 @@ class Process(object):
             present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
-                reebill.payment_received = self.state_db. \
+                payments = self.state_db. \
                     get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN)
+                        state.MYSQLDB_DATETIME_MIN, payment_objects=True)
+                self.compute_reebill_payments(payments, reebill)
             else:
-                reebill.payment_received = self.state_db. \
+                payments = self.state_db. \
                     get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date)
+                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date, payment_objects=True)
+                self.compute_reebill_payments(payments, reebill)
             # obviously balances are 0
             reebill.prior_balance = 0
             reebill.balance_forward = 0
@@ -634,13 +636,15 @@ class Process(object):
                         version=0):
                     present_v0_issue_date = self.state_db.get_reebill(account,
                             reebill.sequence, version=0).issue_date
-                    reebill.payment_received = self.state_db. \
+                    payments = self.state_db. \
                             get_total_payment_since(account,
-                            predecessor.issue_date, end=present_v0_issue_date)
+                            predecessor.issue_date, end=present_v0_issue_date, payment_objects=True)
+                    self.compute_reebill_payments(payments, reebill)
                 else:
-                    reebill.payment_received = self.state_db. \
+                    payments = self.state_db. \
                             get_total_payment_since(account,
-                            predecessor.issue_date)
+                            predecessor.issue_date, payment_objects=True)
+                    self.compute_reebill_payments(payments, reebill)
             else:
                 # if predecessor is not issued, there's no way to tell what
                 # payments will go in this bill instead of a previous bill, so
@@ -657,12 +661,17 @@ class Process(object):
 
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
-        # after that)
+        # after that)describe
         lc = self.get_late_charge(reebill)
         reebill.late_charge = lc or 0
         reebill.balance_due = reebill.balance_forward + reebill.ree_charge + \
                 reebill.late_charge
         return reebill
+
+    def compute_reebill_payments(self, payments, reebill):
+        for payment in payments:
+            payment.reebill_id = reebill.id
+        reebill.payment_received = float(sum(payment.credit for payment in payments))
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
@@ -1283,7 +1292,6 @@ class Process(object):
             bills = [{'account': account, 'sequence': sequence,
                       'mailto': recipients}]
 
-        print bills, '############3'
 
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
@@ -1296,10 +1304,10 @@ class Process(object):
                 # The user has confirmed to issue unissued corrections.
                 return {
                     'success': False,
-                    'unissued_corrections': [c[0] for c in unissued_corrections],
-                    'adjustment': sum(c[2] for c in unissued_corrections)}
+                    'unissued_corrections': [c[0] for c in
+                                             unissued_corrections]}
 
-            result = {'success': True, 'issued': []}
+            result = {'issued': []}
             # Let's issue
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
@@ -1344,12 +1352,12 @@ class Process(object):
 
     def upload_interval_meter_csv(self, account, sequence, csv_file,
         timestamp_column, timestamp_format, energy_column, energy_unit,
-        register_identifier, **args):
+        register_binding, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence. Returns reebill version number.
         '''
-        reebill = self.state_db.get_reebill(sequence)
+        reebill = self.state_db.get_reebill(account, sequence)
 
         # convert column letters into 0-based indices
         if not re.match('[A-Za-z]', timestamp_column):
@@ -1362,7 +1370,7 @@ class Process(object):
         # extract data from the file (assuming the format of AtSite's
         # example files)
         self.ree_getter.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=register_identifier,
+                register_binding=register_binding,
                 timestamp_column=timestamp_column,
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)

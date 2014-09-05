@@ -1,5 +1,7 @@
 from ConfigParser import RawConfigParser
 from formencode.api import Invalid
+from formencode.schema import Schema
+from inspect import isclass
 
 
 class ValidatedConfigParser(RawConfigParser):
@@ -16,10 +18,29 @@ class ValidatedConfigParser(RawConfigParser):
         self._vns = vns
         RawConfigParser.__init__(self, **kwargs)
 
+    def schema_dict(self):
+        validation_schemas = {}
+        for var in dir(self._vns):
+            attribute = getattr(self._vns, var, None)
+            if isclass(attribute) and issubclass(attribute, Schema) and \
+                var != 'Schema':
+                validation_schemas[var] = attribute
+        return validation_schemas
+
     def _validate(self):
         """Runs formencode validators on each configuration section."""
+
+        schemas = self.schema_dict()
+        actual = set(self.sections())
+        expected = set(schemas.keys())
+        if actual != expected:
+            symmetric_difference = actual.symmetric_difference(expected)
+            diff = ', '.join(symmetric_difference)
+            raise Invalid("Configuration sections mismatch: %s" % diff,
+                          symmetric_difference, None)
+
         for section in self.sections():
-            validator = getattr(self._vns, section, None)
+            validator = schemas[section]
             if not validator: continue
             raw_section_vals = dict(self.items(section))
             try:

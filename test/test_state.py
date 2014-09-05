@@ -28,7 +28,7 @@ class StateTest(TestCaseWithSetup):
 
     def setUp(self):
         # clear out database
-        init_config('tstsettings.cfg')
+        init_config('test/tstsettings.cfg')
         init_model()
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
