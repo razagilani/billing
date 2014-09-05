@@ -126,7 +126,7 @@ def copy_rsis_from_mongo(s):
             charge.shared = rsi.get('shared', True)
             charge.has_charge = rsi.get('has_charge', True)
 
-def assign_reebill_id_to_payments(s):
+'''def assign_reebill_id_to_payments(s):
     state_db = StateDB()
     for reebill in s.query(ReeBill).filter(ReeBill.issued == 1):
         if reebill.sequence == 1:
@@ -181,7 +181,7 @@ def assign_reebill_id_to_payments(s):
                             predecessor.issue_date, payment_objects=True)
                     for payment in payments:
                         payment.reebill_id = reebill.id
-                        payment.save()
+                        payment.save()'''
 
 def upgrade():
     log.info('Beginning upgrade to version 22')
@@ -210,7 +210,7 @@ def upgrade():
     log.info('Upgrading to schema revision 6446c51511c')
     alembic_upgrade('6446c51511c')
     log.info('Setting reebill_ids in payments for issued reebills')
-    assign_reebill_id_to_payments(session)
-    session.commit()
+    #assign_reebill_id_to_payments(session)
+    #session.commit()
 
     log.info('Upgrade to version 22 complete')
