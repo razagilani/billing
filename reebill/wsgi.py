@@ -114,8 +114,12 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
+        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
+        cache = json.load(open(cache_file)) if cache_file != "" else None
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
-                                                    'nexus_web_host'))
+                                                    'nexus_web_host'),
+                                    offline_cache=cache)
+
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
