@@ -1145,36 +1145,21 @@ class Charge(Base):
                    shared=other.shared,
                    roundrule=other.roundrule)
 
-    def _validate_formula_parses(self, formula, formula_name):
-        """Validates the formula parses and raises an exception if necessary
-        :param formula: the formula to validate
-        :param formula_name: a name of the formula for the exception message
-        :param rsi_binding: an rsi binding for the exception message
-        """
-        try:
-            ast.parse(formula)
-        except SyntaxError:
-            raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                                     '"%s":\n%s' % (
-                                         formula_name, self.rsi_binding,
-                                         formula))
-
     @staticmethod
-    def _evaluate_formula(formula, name, context):
+    def _evaluate_formula(formula, context):
         """Evaluates the formula in the specified context
         :param formula: a `quantity_formula` or `rate_formula`
-        :param name: the formula name (i.e. rate / charge) for exception message
         :param context: map of binding name to `Evaluation`
         """
         try:
             return eval(formula, {}, context)
         except SyntaxError:
-            raise FormulaSyntaxError('Syntax error in %s formula' % name)
+            raise FormulaSyntaxError('Syntax error')
         except Exception as e:
-            message = 'Error in %s formula: '
+            message = 'Error: '
             message += 'division by zero' if type(e) == ZeroDivisionError \
                 else e.message
-            raise FormulaError(message % name)
+            raise FormulaError(message)
 
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
@@ -1193,9 +1178,8 @@ class Charge(Base):
         :returns: a `Evaluation`
         """
         try:
-            quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
-                    context)
-            rate = self._evaluate_formula(self.rate_formula, 'rate', context)
+            quantity = self._evaluate_formula(self.quantity_formula, context)
+            rate = self._evaluate_formula(self.rate_formula, context)
         except FormulaError as exception:
             evaluation = ChargeEvaluation(exception=exception)
         else:
