@@ -260,8 +260,6 @@ class Process(object):
         utilbill.period_start = period_start
         utilbill.period_end = period_end
 
-        self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
-                utilbill.service)
         self.compute_utility_bill(utilbill.id)
         return  utilbill
 
@@ -541,8 +539,6 @@ class Process(object):
             session.delete(charge)
         for register in utility_bill.registers:
             session.delete(register)
-        self.state_db.trim_hypothetical_utilbills(utility_bill.customer.account,
-                                                  utility_bill.service)
         session.delete(utility_bill)
 
         return utility_bill, path
@@ -558,16 +554,6 @@ class Process(object):
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
         self.compute_utility_bill(utilbill_id)
-
-    def has_utilbill_predecessor(self, utilbill_id):
-        try:
-            utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-            self.state_db.get_last_real_utilbill(
-                    utilbill.customer.account, utilbill.period_start,
-                    utility=utilbill.utility, service=utilbill.service)
-            return True
-        except NoSuchBillException:
-            return False
 
     def refresh_charges(self, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
