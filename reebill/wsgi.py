@@ -488,16 +488,9 @@ class ReebillsResource(RESTResource):
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            if not self.config.get('billimages', 'show_reebill_images'):
-                raise RenderError('Render does nothing because reebill'
-                                  ' images have been turned off.')
-            self.renderer.render(
-                account,
-                sequence,
+            self.renderer.render(account, sequence,
                 self.config.get("bill", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
-                False
-            )
+                "%.5d_%.4d.pdf" % (int(account), int(sequence)), False)
             rtn = row
 
         elif action == 'mail':
