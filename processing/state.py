@@ -372,7 +372,6 @@ class ReeBill(Base):
         '''Returns period of the first (only) utility bill for this reebill
         as tuple of dates.
         '''
-        assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
 
