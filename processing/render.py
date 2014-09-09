@@ -25,6 +25,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont  
 from reportlab.pdfgen.canvas import Canvas  
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
+from itertools import groupby
 
 import csv
 
@@ -108,6 +109,7 @@ class ReebillFileHandler(object):
         return os.path.join(self._pdf_dir_path, self.get_file_name(reebill))
 
     def _generate_document(self, reebill):
+
         return {
             'account': reebill.customer.account,
             'sequence': str(reebill.sequence),
@@ -155,8 +157,26 @@ class ReebillFileHandler(object):
             'billing_city': reebill.billing_address.city,
             'billing_postal_code': reebill.billing_address.postal_code,
             'billing_state': reebill.billing_address.state,
-            'utility_meters': [],
-            'hypothetical_chargegroups': {},
+            'utility_meters':  [{
+                    # TODO fix messed-up pycharm auto-formatting
+                 'meter_id': meter_id,
+                 'registers': [{
+                    'register_id': reading.register_binding,
+                    'description': '',
+                    'shadow_total': reading.conventional_quantity,
+                    'utility_total': reading.renewable_quantity,
+                    'total': 0,
+                    'quantity_units': reading.unit,
+                } for reading in readings]
+            } for meter_id, readings in groupby(reebill.readings,
+                    key=lambda r: r.register_binding)],
+            'hypothetical_chargegroups': {group_name: [{
+                'description': charge.description,
+                'quantity': charge.h_quantity,
+                'rate': charge.h_rate,
+                'total': charge.h_total
+            } for charge in charges]
+            for group_name, charges in groupby(reebill.charges, key=lambda c: c.group)},
         }
 
     def render(self, reebill):
