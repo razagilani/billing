@@ -99,8 +99,6 @@ class BillDoc(BaseDocTemplate):
         #BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
         BaseDocTemplate.__init__(self, "basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
 
-        self.setProgressCallBack(BillDoc.progress)
-
         # logger for reporting errors
         self.logger = logger
 
@@ -177,11 +175,7 @@ class BillDoc(BaseDocTemplate):
         self.styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
 
         
-    def beforePage(self):
-        logger.debug("Before Page: %s" % self.pageTemplate.id)
-        
     def afterPage(self):
-        logger.debug("After Page: %s" % self.pageTemplate.id)
         if self.pageTemplate.id == self.page_names[0]:
             self.canv.saveState()
             #self.canv.setStrokeColorRGB(32,32,32)
@@ -199,12 +193,7 @@ class BillDoc(BaseDocTemplate):
             self.canv.restoreState()
         
     def handle_pageBegin(self):
-        logger.debug("handle_pageBegin")
         BaseDocTemplate.handle_pageBegin(self)
-
-    @classmethod
-    def progress(self, type, value):
-        logger.debug("%s %s" % (type, value))
 
     def flowables(self):
         return []
