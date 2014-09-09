@@ -104,8 +104,8 @@ Ext.define('ReeBill.view.Viewport', {
                     }]
                 },{
                     xtype: 'panel',
-                    name: 'rateStructuresTab',
-                    title: 'Rate Structure',
+                    name: 'chargesTab',
+                    title: 'Charges',
                     layout: 'border',
                     disabled: true,
                     defaults: {
@@ -113,8 +113,8 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'rateStructures',
-                        id: 'rateStructuresGrid',
+                        xtype: 'charges',
+                        id: 'chargesGrid',
                         region: 'center'                        
                     }]
                 },{
