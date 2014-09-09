@@ -17,6 +17,12 @@
     font-style: italic; /* this does nothing--same for font-weight: bold */
     color: blue;
 }
+
+.reebill-grid-unissued-processed {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: green;
+}
+
 .reebill-grid-unissued-correction {
     font-style: italic;
     color: red;
