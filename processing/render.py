@@ -76,6 +76,100 @@ def concat_pdfs(in_paths, out_path):
     for in_file in in_files:
         in_file.close()
 
+class ReebillFileHandler(object):
+    '''Methods for working with Reebill PDF files.
+    '''
+
+    TEMPLATE_DIR = 'reebill_templates'
+    FILE_NAME_FORMAT = '%(account)s_%(sequence)4d.pdf'
+
+    # TODO this will be set by type of energy service
+    # see https://www.pivotaltracker.com/story/show/78497806
+    PDF_SKIN_NAME = 'nextility_pv'
+
+    def __init__(self, output_dir_path):
+        ''':param output_dir_path: directory where reebill PDF files are
+        stored.
+        :param skin_name: name of "skin" to be used when rendering PDFs,
+        '''
+        self._pdf_dir_path = output_dir_path
+        # TODO rename
+        self._pdf_skin_name = pdf_skin_name
+
+    def get_file_name(self, reebill):
+        '''Return name of the PDF file associated with the given :class:`ReeBill`
+        (which does not necessarily exist yet).
+        '''
+        return ReebillFileHandler.FILE_NAME_FORMAT % dict(
+                account=reebill.customer.account, sequence=reebill.sequence)
+
+    def get_file_path(self, reebill):
+        '''Return full path to the PDF file associated with the given :class:`ReeBill`
+        (which does not necessarily exist yet).
+        '''
+        return os.path.join(self._pdf_dir_path, self.get_file_name(reebill))
+
+    def _generate_document(self, reebill):
+        return {
+            'account': reebill.customer.account,
+            'sequence': str(reebill.sequence),
+            'begin_period': reebill.utilbills[0].period_start,
+            'manual_adjustment': reebill.manual_adjustment,
+            'balance_forward': reebill.balance_forward,
+            'payment_received': reebill.payment_received,
+            'balance_due': reebill.balance_due,
+            'total_energy_consumed': reebill.get_total_renewable_energy(), # TODO: what is this?
+            'total_re_consumed': reebill.get_total_renewable_energy(),
+            'total_ce_consumed': 0, # TODO
+            'total_re_delivered_grid': 0,
+            'total_re_generated': 0,
+            'due_date': reebill.due_date,
+            'end_period': reebill.utilbill.period_end,
+            'hypothetical_charges': reebill.get_total_hypothetical_charges(),
+            'actual_charges': reebill.get_total_actual_charges(),
+            'discount_rate': reebill.discount_rate,
+            'issue_date': reebill.issue_date,
+            'late_charge': reebill.late_charge,
+            'prior_balance': reebill.prior_balance,
+            'ree_charge': reebill.ree_charge,
+            'neg_credit_applied': 0,
+            'neg_ree_charge': 0,
+            'neg_credit_balance': 0,
+            'ree_savings': reebill.ree_savings,
+            'neg_ree_savings': 0,
+            'neg_ree_potential_savings': 0,
+            'ree_value': reebill.ree_value,
+            'service_addressee': reebill.service_address.addressee,
+            'service_city': reebill.service_address.city,
+            'service_postal_code': reebill.service_address.postal_code,
+            'service_state': reebill.service_address.state,
+            'service_street': reebill.service_address.street,
+            'total_adjustment': reebill.total_adjustment,
+            'total_hypothetical_charges': reebill.get_total_hypothetical_charges(), # TODO duplicate?
+            'total_utility_charges': reebill.get_total_actual_charges(), # TODO duplicate?
+            'payment_addressee': 'Skyline Innovations',
+            'payment_city': 'Washington',
+            'payment_postal_code': '20009',
+            'payment_state': 'DC',
+            'payment_street': '1606 20th St NW',
+            'billing_addressee': reebill.billing_address.addressee,
+            'billing_street': reebill.billing_address.street,
+            'billing_city': reebill.billing_address.city,
+            'billing_postal_code': reebill.billing_address.postal_code,
+            'billing_state': reebill.billing_address.state,
+            'utility_meters': [],
+            'hypothetical_chargegroups': {},
+            }
+
+    def render(self, reebill):
+        '''Create a PDF of the given :class:`ReeBill`.
+        '''
+        document = self._generate_document(reebill)
+        file_name = self.get_file_name(reebill)
+        ThermalBillDoc(None).render([document], self._pdf_dir_path,
+                file_name, ReebillFileHandler.TEMPLATE_DIR,
+                ReebillFileHandler.PDF_SKIN_NAME)
+
 class BillDoc(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
     #
