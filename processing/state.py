@@ -372,7 +372,6 @@ class ReeBill(Base):
         '''Returns period of the first (only) utility bill for this reebill
         as tuple of dates.
         '''
-        assert len(self.utilbills) == 1
         return self.utilbills[0].period_start, self.utilbills[0].period_end
 
 
@@ -1146,36 +1145,21 @@ class Charge(Base):
                    shared=other.shared,
                    roundrule=other.roundrule)
 
-    def _validate_formula_parses(self, formula, formula_name):
-        """Validates the formula parses and raises an exception if necessary
-        :param formula: the formula to validate
-        :param formula_name: a name of the formula for the exception message
-        :param rsi_binding: an rsi binding for the exception message
-        """
-        try:
-            ast.parse(formula)
-        except SyntaxError:
-            raise FormulaSyntaxError('Syntax error in %s formula of RSI '
-                                     '"%s":\n%s' % (
-                                         formula_name, self.rsi_binding,
-                                         formula))
-
     @staticmethod
-    def _evaluate_formula(formula, name, context):
+    def _evaluate_formula(formula, context):
         """Evaluates the formula in the specified context
         :param formula: a `quantity_formula` or `rate_formula`
-        :param name: the formula name (i.e. rate / charge) for exception message
         :param context: map of binding name to `Evaluation`
         """
         try:
             return eval(formula, {}, context)
         except SyntaxError:
-            raise FormulaSyntaxError('Syntax error in %s formula' % name)
+            raise FormulaSyntaxError('Syntax error')
         except Exception as e:
-            message = 'Error in %s formula: '
+            message = 'Error: '
             message += 'division by zero' if type(e) == ZeroDivisionError \
                 else e.message
-            raise FormulaError(message % name)
+            raise FormulaError(message)
 
     def formula_variables(self):
         """Returns the full set of non built-in variable names referenced
@@ -1194,9 +1178,8 @@ class Charge(Base):
         :returns: a `Evaluation`
         """
         try:
-            quantity = self._evaluate_formula(self.quantity_formula, 'quantity',
-                    context)
-            rate = self._evaluate_formula(self.rate_formula, 'rate', context)
+            quantity = self._evaluate_formula(self.quantity_formula, context)
+            rate = self._evaluate_formula(self.rate_formula, context)
         except FormulaError as exception:
             evaluation = ChargeEvaluation(exception=exception)
         else:
@@ -1337,14 +1320,6 @@ class StateDB(object):
     def get_utilbill_by_id(self, ubid):
         session = Session()
         return session.query(UtilBill).filter(UtilBill.id == ubid).one()
-
-    def utilbills_for_reebill(self, account, sequence, version='max'):
-        '''Returns all utility bills for the reebill given by account,
-        sequence, version (highest version by default).'''
-        session = Session()
-        reebill = self.get_reebill(account, sequence, version=version)
-        return session.query(UtilBill).filter(ReeBill.utilbills.any(),
-                ReeBill.id == reebill.id).all()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -1543,39 +1518,6 @@ class StateDB(object):
             return None
         return cursor.first()
 
-    def get_last_utilbill(self, account, service=None, utility=None,
-                          rate_class=None, end=None):
-        '''Returns the latest (i.e. last-ending) utility bill for the given
-        account matching the given criteria. If 'end' is given, the last
-        utility bill ending before or on 'end' is returned.'''
-        session = Session()
-        cursor = session.query(UtilBill).join(Customer) \
-            .filter(UtilBill.customer_id == Customer.id) \
-            .filter(Customer.account == account)
-        if service is not None:
-            cursor = cursor.filter(UtilBill.service == service)
-        if utility is not None:
-            cursor = cursor.filter(UtilBill.utility == utility)
-        if rate_class is not None:
-            cursor = cursor.filter(UtilBill.rate_class == rate_class)
-        if end is not None:
-            cursor = cursor.filter(UtilBill.period_end <= end)
-        result = cursor.order_by(UtilBill.period_end).first()
-        if result is None:
-            raise NoSuchBillException("No utility bill found")
-        return result
-
-    def last_utilbill_end_date(self, account):
-        '''Returns the end date of the latest utilbill for the customer given
-        by 'account', or None if there are no utilbills.'''
-        session = Session()
-        customer = self.get_customer(account)
-        query_results = session.query(sqlalchemy.func.max(UtilBill.period_end)) \
-            .filter(UtilBill.customer_id == customer.id).one()
-        if len(query_results) > 0:
-            return query_results[0]
-        return None
-
     def new_reebill(self, account, sequence, version=0):
         '''Creates a new reebill row in the database and returns the new
         ReeBill object corresponding to it.'''
@@ -1646,16 +1588,6 @@ class StateDB(object):
                 .order_by(Customer.account).all())
         return result
 
-    def list_accounts(self, start, limit):
-        '''List of customer accounts with start and limit (for paging).'''
-        # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        session = Session()
-        query = session.query(Customer.account)
-        slice = query[start:start + limit]
-        count = query.count()
-        result = map((lambda x: x[0]), slice)
-        return result, count
-
     def listSequences(self, account):
         session = Session()
 
@@ -1704,19 +1636,6 @@ class StateDB(object):
                 if include_unissued or reebill.issued:
                     yield account, int(sequence), int(reebill.max_version)
 
-    def reebill_versions(self, include_unissued=True):
-        '''Generates (account, sequence, version) tuples for all reebills in
-        MySQL.'''
-        for account in self.listAccounts():
-            for sequence in self.listSequences(account):
-                reebill = self.get_reebill(account, sequence)
-                if include_unissued or reebill.issued:
-                    max_version = reebill.max_version
-                else:
-                    max_version = reebill.max_version - 1
-                for version in range(max_version + 1):
-                    yield account, sequence, version
-
     def get_reebill(self, account, sequence, version='max'):
         '''Returns the ReeBill object corresponding to the given account,
         sequence, and version (the highest version if no version number is
@@ -1736,16 +1655,6 @@ class StateDB(object):
         session = Session()
         return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
-    def get_descendent_reebills(self, account, sequence):
-        session = Session()
-        query = session.query(ReeBill).join(Customer) \
-            .filter(Customer.account == account) \
-            .order_by(ReeBill.sequence)
-
-        slice = query[int(sequence):]
-
-        return slice
-
     def list_utilbills(self, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
@@ -1763,67 +1672,6 @@ class StateDB(object):
         if limit is None:
             return query[start:], query.count()
         return query[start:start + limit], query.count()
-
-    def get_utilbills_on_date(self, account, the_date):
-        '''Returns a list of UtilBill objects representing MySQL utility bills
-        whose periods start before/on and end after/on 'the_date'.'''
-        session = Session()
-        return session.query(UtilBill).filter(
-                UtilBill.customer==self.get_customer(account),
-                UtilBill.period_start<=the_date,
-                UtilBill.period_end>the_date).all()
-
-    def fill_in_hypothetical_utilbills(self, account, service,
-                                       utility, rate_class, begin_date,
-                                       end_date):
-        '''Creates hypothetical utility bills in MySQL covering the period
-        [begin_date, end_date).'''
-        # get customer id from account number
-        session = Session()
-        customer = session.query(Customer).filter(Customer.account == account) \
-            .one()
-
-        for (start, end) in guess_utilbill_periods(begin_date, end_date):
-            # make a UtilBill
-            # note that all 3 Mongo documents are None
-            utilbill = UtilBill(customer, UtilBill.Hypothetical, service,
-                utility, rate_class, period_start=start, period_end=end)
-            # put it in the database
-            session.add(utilbill)
-
-    def trim_hypothetical_utilbills(self, account, service):
-        '''Deletes hypothetical utility bills for the given account and service
-        whose periods precede the start date of the earliest non-hypothetical
-        utility bill or follow the end date of the last utility bill.'''
-        session = Session()
-        customer = self.get_customer(account)
-        all_utilbills = session.query(UtilBill) \
-            .filter(UtilBill.customer == customer)
-        real_utilbills = all_utilbills \
-            .filter(UtilBill.state != UtilBill.Hypothetical)
-        hypothetical_utilbills = all_utilbills \
-            .filter(UtilBill.state == UtilBill.Hypothetical)
-
-        # if there are no real utility bills, delete all the hypothetical ones
-        # (i.e. all of the utility bills for this customer)
-        if real_utilbills.count() == 0:
-            for hb in hypothetical_utilbills:
-                session.delete(hb)
-            return
-
-        # if there are real utility bills, only delete the hypothetical ones
-        # whose entire period comes before end of first real bill or after
-        # start of last real bill
-        first_real_utilbill = real_utilbills \
-            .order_by(asc(UtilBill.period_start))[0]
-        last_real_utilbill = session.query(UtilBill) \
-            .order_by(desc(UtilBill.period_start))[0]
-        for hb in hypothetical_utilbills:
-            if (hb.period_start <= first_real_utilbill.period_end \
-                    and hb.period_end <= first_real_utilbill.period_end)\
-                    or (hb.period_end >= last_real_utilbill.period_start\
-                    and hb.period_start >= last_real_utilbill.period_start):
-                session.delete(hb)
 
     # NOTE deprectated in favor of UtilBillLoader.get_last_real_utilbill
     def get_last_real_utilbill(self, account, end, service=None,
@@ -1912,7 +1760,6 @@ class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
     from other classes so they can be more easily tested.
     '''
-
     def __init__(self, session):
         ''''session': SQLAlchemy session object to be used for database
         queries.
