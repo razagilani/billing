@@ -131,12 +131,6 @@ class WebResource(object):
         self.billUpload = BillUpload(self.config, self.logger)
 
         # create a RateStructureDAO
-        rsdb_config_section = dict(self.config.items("mongodb"))
-        mongoengine.connect(
-            rsdb_config_section['database'],
-            host=rsdb_config_section['host'],
-            port=int(rsdb_config_section['port']),
-            alias='ratestructure')
         self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
 
         # configure journal:
