@@ -15,7 +15,7 @@ Ext.Ajax.request({
         config.reportPanelDisabled = data.report_panel_disabled;
         config.journalPanelDisabled = data.preferences_panel_disabled;
         config.aboutPanelDisabled = data.about_panel_disabled;
-        config.rateStructurePanelDisabled = data.rate_structure_panel_disabled;
+        config.chargesPanelDisabled = data.charges_panel_disabled;
         config.billPeriodsPanelDisabled = data.bill_periods_panel_disabled;
         config.usagePeriodsPanelDisabled = data.usage_periods_panel_disabled;
         config.reeBillPanelDisabled = data.reebill_panel_disabled;
@@ -33,13 +33,13 @@ Ext.Ajax.request({
             autoCreateViewport: true,
             
             controllers: [
-                'BottomBar', 'Accounts', 'IssuableReebills', 'Journal', 'Payments', 'RateStructures', 'Reports', 'Preferences',
+                'BottomBar', 'Accounts', 'IssuableReebills', 'Journal', 'Payments', 'Charges', 'Reports', 'Preferences',
                 'ReebillCharges', 'Reebills', 'TabPanel', 'UtilityBillRegisters', 'UtilityBills', 'Viewer'
             ],
             
             stores: [
                 'Accounts', 'AccountsMemory', 'AccountsFilter', 'IssuableReebills', 'IssuableReebillsMemory', 'EstimatedRevenue', 'Preferences',
-                'JournalEntries', 'Payments', 'RateStructures', 'Reconciliations', 'ReebillCharges', 'Reebills',
+                'JournalEntries', 'Payments', 'Charges', 'Reconciliations', 'ReebillCharges', 'Reebills',
                 'Services', 'Timestamps', 'Units', 'UtilityBills', 'UtilityBillsMemory', 'UtilityBillRegisters', 'ReeBillVersions'
             ],
 

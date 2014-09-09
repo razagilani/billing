@@ -25,7 +25,7 @@ Ext.define('ReeBill.view.Viewport', {
                 name: 'utilityBillViewer',
                 pageScale: 0.5,
                 collapsible: true,
-                collapsed: true,
+                collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
             },{
@@ -104,8 +104,8 @@ Ext.define('ReeBill.view.Viewport', {
                     }]
                 },{
                     xtype: 'panel',
-                    name: 'rateStructuresTab',
-                    title: 'Rate Structure',
+                    name: 'chargesTab',
+                    title: 'Charges',
                     layout: 'border',
                     disabled: true,
                     defaults: {
@@ -113,8 +113,8 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'rateStructures',
-                        id: 'rateStructuresGrid',
+                        xtype: 'charges',
+                        id: 'chargesGrid',
                         region: 'center'                        
                     }]
                 },{

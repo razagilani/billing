@@ -5,6 +5,7 @@ Ext.define('Ext.ux.panel.PDF',{
 
     floatable: false,
     titleCollapse: true,
+    header: false,
 
     extraBaseCls: Ext.baseCSSPrefix + 'pdf',
     extraBodyCls: Ext.baseCSSPrefix + 'pdf-body',
