@@ -911,7 +911,7 @@ class ReportsResource(WebResource):
             })
 
 
-class BillToolBridge(WebResource):
+class ReebillWSGI(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
     utilitybills = UtilBillResource()
@@ -1003,44 +1003,72 @@ class BillToolBridge(WebResource):
 
         return config_dict
 
-
-cherrypy_conf = {
-    '/': {
-        'tools.sessions.on': True,
-        'tools.staticdir.root': os.path.dirname(
-            os.path.realpath(__file__))+'/ui',
-        'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-    },
-    '/login.html': {
-        'tools.staticfile.on': True,
-        'tools.staticfile.filename': os.path.dirname(
-            os.path.realpath(__file__))+"/ui/login.html"
-    },
-    '/index.html': {
-        'tools.staticfile.on': True,
-        'tools.staticfile.filename': os.path.dirname(
-            os.path.realpath(__file__))+"/ui/index.html"
-    },
-    '/static': {
-        'tools.staticdir.on': True,
-        'tools.staticdir.dir': 'static'
-    }
-
-}
-
-
 cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
 
 if __name__ == '__main__':
-    bridge = BillToolBridge()
+    app = ReebillWSGI()
+
+    class CherryPyRoot(object):
+        reebill = app
+
+    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui/'
+    cherrypy_conf = {
+        '/': {
+            'tools.sessions.on': True,
+            # 'tools.staticdir.root': '/',
+            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
+        },
+        '/reebill/login.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "login.html"
+        },
+        '/reebill/index.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "index.html"
+        },
+        '/reebill/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': ui_root + "static"
+        },
+        '/utilitybills': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': app.config.get('bill', 'utilitybillpath')
+        },
+        '/reebills': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': app.config.get('bill', 'billpath')
+        }
+    }
+
     cherrypy.config.update({
-        'server.socket_host': bridge.config.get("http", "socket_host"),
-        'server.socket_port': bridge.config.get("http", "socket_port")})
+        'server.socket_host': app.config.get("http", "socket_host"),
+        'server.socket_port': app.config.get("http", "socket_port")})
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
-    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
+    cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
+    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui'
+    cherrypy_conf = {
+        '/': {
+            'tools.sessions.on': True,
+            'tools.staticdir.root': ui_root,
+            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
+        },
+        '/login.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "/login.html"
+        },
+        '/index.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "/index.html"
+        },
+        '/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': 'static'
+        }
+
+    }
     # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
@@ -1051,5 +1079,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
-    bridge = BillToolBridge()
-    application = cherrypy.Application(bridge, script_name=None, config=cherrypy_conf)
+    app = ReebillWSGI()
+    application = cherrypy.Application(app, script_name=None, config=cherrypy_conf)
