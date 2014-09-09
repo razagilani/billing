@@ -24,7 +24,7 @@ Ext.define('ReeBill.view.Viewport', {
                 name: 'utilityBillViewer',
                 pageScale: 0.5,
                 collapsible: true,
-                collapsed: true,
+                collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
             },{
