@@ -709,7 +709,7 @@ class RegistersResource(RESTResource):
         self.process.delete_register(register_id)
         return True, {}
 
-class RateStructureResource(RESTResource):
+class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
         charges = self.process.get_utilbill_charges_json(utilbill_id)
@@ -916,7 +916,7 @@ class BillToolBridge(WebResource):
     reebills = ReebillsResource()
     utilitybills = UtilBillResource()
     registers = RegistersResource()
-    ratestructure = RateStructureResource()
+    charges = ChargesResource()
     payments = PaymentsResource()
     reebillcharges = ReebillChargesResource()
     reebillversions = ReebillVersionsResource()
