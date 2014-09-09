@@ -4,7 +4,6 @@ from operator import itemgetter
 import pymongo
 import tablib
 import traceback
-from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
@@ -12,6 +11,8 @@ from billing.processing.state import UtilBill, ReeBill, Customer
 from billing.exc import *
 
 import pprint
+from util.dateutils import date_to_datetime
+
 pformat = pprint.PrettyPrinter().pformat
 
 LOG_FILE_NAME = 'xls_export.log'
@@ -21,11 +22,10 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 
-    def __init__(self, state_db, reebill_dao, verbose=False):
+    def __init__(self, state_db, verbose=False):
         # objects for database access
         self.state_db = state_db
         self.verbose = verbose
-        self.reebill_dao = reebill_dao
 
     def export_account_charges(self, output_file, account=None,
                                start_date=None, end_date=None):
@@ -109,8 +109,9 @@ class Exporter(object):
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
             for charge in actual_charges:
-                column_name = '%s: %s' % (charge.group, charge.description)
-                total = charge.total
+                column_name = '%s: %s' % (charge['group'],
+                        charge.get('description', 'Error: No Description Found!'))
+                total = charge.get('total', 0)
 
                 if column_name in dataset.headers:
                     # Column already exists. Is there already something in the
@@ -167,17 +168,14 @@ class Exporter(object):
         # Initial datasheet rows
         ds_rows = []
         for ub in utilbills:
-
             units = quantity = ''
             account = ub.customer.account
             try:
                 # Find the register whose binding is reg_total and get the quantity and units
-                ub_doc = self.reebill_dao._load_utilbill_by_id(
-                ub.document_id)
-                for register in mongo.get_all_actual_registers_json(ub_doc):
-                    if register.get('binding', '').lower() == 'reg_total':
-                        units = register.get('quantity_units', '')
-                        quantity = register.get('quantity', '')
+                for register in ub.registers:
+                    if register.register_binding.lower() == 'reg_total':
+                        units = register.quantity_units
+                        quantity = register.quantity
             except NoSuchBillException:
                 units = quantity = "ERROR"
             # Create a row
@@ -231,7 +229,7 @@ class Exporter(object):
             *ds_rows, headers=ds_headers, title=account)
         return dataset
 
-    def export_reebill_details(self, output_file, begin_date=None,
+    def export_reebill_details(self, output_file, account=None, begin_date=None,
                                end_date=None):
         '''
         Writes an Excel spreadsheet to output_file. This Spreadsheet is
@@ -239,8 +237,10 @@ class Exporter(object):
         of all issued reebills and related payments for all accounts and
         calculates cumulative savings and RE&E energy
         '''
-
-        accounts = self.state_db.listAccounts()
+        if account is not None:
+            accounts = [account]
+        else:
+            accounts = self.state_db.listAccounts()
         dataset = self.get_export_reebill_details_dataset(
             accounts, begin_date, end_date)
         workbook = tablib.Databook()
@@ -292,6 +292,7 @@ class Exporter(object):
         Date and Payment Date).
         '''
 
+
         ds_rows = []
 
         for account in accounts:
@@ -300,6 +301,7 @@ class Exporter(object):
 
             reebills = self.state_db.listReebills(0, 10000,
                     account, u'sequence', u'ASC')[0]
+
             for reebill in reebills:
                 # Skip over unissued reebills
                 if not reebill.issued==1:
@@ -326,10 +328,13 @@ class Exporter(object):
 
                 # iterate the payments and find the ones that apply.
                 if period_start and period_end:
+                    # TODO i don't know who wrote this or why, but it looks
+                    # like trouble. converted to use datetimes without
+                    # changing the behavior.
                     applicable_payments = filter(
-                        lambda x: period_start <= x.date_applied.date() <
-                                  period_end,
-                        payments)
+                        lambda x: date_to_datetime(period_start) <= \
+                                x.date_applied <  date_to_datetime(period_end),
+                                payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping,
                     # where a payment may be applicable more than ones)
@@ -353,6 +358,7 @@ class Exporter(object):
                 average_rate_unit_ree=None
                 actual_total = reebill.get_total_actual_charges()
                 hypothetical_total = reebill.get_total_hypothetical_charges()
+
 
                 total_ree = reebill.get_total_renewable_energy()
                 if total_ree != 0:
@@ -452,12 +458,7 @@ def main(export_func, filename, account=None):
 
     logger = logging.getLogger('reebill')
     state_db = state.StateDB(logger=logger)
-    billdb_config = dict(config.items("billdb"))
-    reebill_dao = mongo.ReebillDAO(state_db,
-                pymongo.Connection(billdb_config['host'],
-                int(billdb_config['port']))[billdb_config['database']])
-
-    exporter = Exporter(state_db, reebill_dao)
+    exporter = Exporter(state_db)
 
     with open(filename, 'wb') as output_file:
         if export_func == 'energy':
