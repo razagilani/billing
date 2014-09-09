@@ -195,7 +195,7 @@ class BillDoc(BaseDocTemplate):
         self.logger = logger
 
 
-    def load_fonts(self):
+    def _load_fonts(self):
 
         # TODO make font directories relocatable
         rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
@@ -242,7 +242,7 @@ class BillDoc(BaseDocTemplate):
         registerFontFamily('Avenir',normal='Avenir',bold='AvenirBd',italic='AvenirI',boldItalic='AvenirBI')
 
 
-    def set_styles(self):
+    def _set_styles(self):
 
         self.styles = getSampleStyleSheet()
         self.styles.add(ParagraphStyle(name='BillLabel', fontName='AvenirBd', fontSize=10, leading=10))
@@ -266,7 +266,8 @@ class BillDoc(BaseDocTemplate):
         self.styles.add(ParagraphStyle(name='BillFieldMicroRight', fontName='BryantMA', fontSize=5, leading=8, alignment=TA_RIGHT))
         self.styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
 
-        
+
+    # NOTE: this should not be public but it can't be changed due to definition in ReportLab
     def afterPage(self):
         if self.pageTemplate.id == self.page_names[0]:
             self.canv.saveState()
@@ -283,7 +284,8 @@ class BillDoc(BaseDocTemplate):
             #self.canv.setDash(1,3)
             #self.canv.line(0,264,612,264)
             self.canv.restoreState()
-        
+
+    # NOTE: this should not be public but it can't be changed due to definition in ReportLab
     def handle_pageBegin(self):
         BaseDocTemplate.handle_pageBegin(self)
 
@@ -313,15 +315,16 @@ class BillDoc(BaseDocTemplate):
     # Middle y 264
     # Bottom Y 0
 
-    def assemble_pages(self):
+    def _assemble_pages(self):
         pages = []
-        for i, frames in enumerate(self.page_frames()):
+        for i, frames in enumerate(self._page_frames()):
             pages.append(PageTemplate(id=self.page_names[i], frames=frames))
 
         self.addPageTemplates(pages)
 
+    # NOTE: this should not be public but it can't be changed due to definition in ReportLab
     def build(self, flowables):
-        """build the document using the flowables while drawing lines and figures on top of them."""
+        """build the document using the _flowables while drawing lines and figures on top of them."""
 
         # TODO: 17377331 - find out why the failure is silent
         BaseDocTemplate.build(self, flowables, canvasmaker=canvas.Canvas)
@@ -330,16 +333,16 @@ class BillDoc(BaseDocTemplate):
         self.filename = os.path.join("%s", "%s") % (output_directory, output_name)
         self.skin_directory = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), skin_directory)
         self.skin = skin_name
-        self.load_fonts()
-        self.set_styles()
-        self.assemble_pages()
-        self.build(self.flowables(data))
+        self._load_fonts()
+        self._set_styles()
+        self._assemble_pages()
+        self.build(self._flowables(data))
 
 class ThermalBillDoc(BillDoc):
 
     page_names = ['First Page', 'Second Page']
 
-    def page_frames(self):
+    def _page_frames(self):
 
         _showBoundaries = 0
 
@@ -403,7 +406,7 @@ class ThermalBillDoc(BillDoc):
         balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
 
-        # build page container for flowables to populate
+        # build page container for _flowables to populate
         firstPage = [backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF]
 
         # page two frames
@@ -424,13 +427,13 @@ class ThermalBillDoc(BillDoc):
         # charge details frame
         chargeDetailsF = Frame(30, 1, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
 
-        # build page container for flowables to populate
+        # build page container for _flowables to populate
         #secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
         secondPage = [backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF]
 
         return [firstPage, secondPage]
 
-    def flowables(self, bill_data):
+    def _flowables(self, bill_data):
 
         b = bill_data[-1]
 
@@ -896,14 +899,14 @@ class PVBillDoc(BillDoc):
 
     def flowables(self, bill_data):
         """
-        Returns list of flowables for all pages
+        Returns list of _flowables for all pages
         """
 
         s = self.styles 
 
         b = bill_data[-1]
 
-        # first page flowables
+        # first page _flowables
         fl = []
 
         fl.append(
