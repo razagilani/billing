@@ -696,20 +696,48 @@ class ReeBillWSGI(object):
                        **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
-        self.process.issue_and_mail(cherrypy.session['user'], account,
+        unissued_corrections = self.process.get_unissued_corrections(account)
+        if len(unissued_corrections) > 0 and not apply_corrections:
+                return self.dumps({'success': False,
+                    'corrections': [c[0] for c in unissued_corrections],
+                    'adjustment': sum(c[2] for c in unissued_corrections)})
+        self.process.issue_and_mail(account,
                 sequence, recipients, apply_corrections)
-        return self.dumps({"success": True})
+        for cor in unissued_corrections:
+            journal.ReeBillIssuedEvent.save_instance(
+                cherrypy.session['user'],account, sequence,
+                self.state_db.max_version(account, cor[0]),
+                applied_sequence=cor[0])
+        journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                                            account, sequence, 0)
+        journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                account, sequence,recipients)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @authenticate_ajax
     @json_exception
     @db_commit
     def issue_processed_and_mail(self, apply_corrections, **kwargs):
+        print apply_corrections
         apply_corrections = (apply_corrections == 'true')
-        result = self.process.issue_processed_and_mail(cherrypy.session['user'],
-                apply_corrections)
-        return self.dumps({"success": True,
-                           "issued": result})
+        unissued_processed = self.process.get_issuable_processed_reebills_dict()
+        result = self.process.issue_processed_and_mail(apply_corrections)
+        for bill in unissued_processed:
+            unissued_corrections = self.process.get_unissued_corrections(
+                bill['account'])
+            for cor in unissued_corrections:
+                journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'],
+                    bill['sequence'],
+                    self.state_db.max_version(bill['account'], cor),
+                    applied_sequence=cor[0])
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], 0)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                bill['account'], bill['sequence'], bill['mailto'])
+        return self.dumps({'success': True,
+                           'issued': result})
 
     @cherrypy.expose
     @authenticate_ajax
@@ -1537,7 +1565,8 @@ if __name__ == '__main__':
     }
     cherrypy.config.update({
         'server.socket_host': root.reebill.config.get("http", "socket_host"),
-        'server.socket_port': root.reebill.config.get("http", "socket_port")})
+        'server.socket_port': 8181
+    })
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
