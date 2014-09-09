@@ -26,7 +26,7 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 class Process(object):
     def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, ree_getter,
+            nexus_util, bill_mailer, reebill_file_handler, ree_getter,
             splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
@@ -35,7 +35,7 @@ class Process(object):
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
-        self.renderer = renderer
+        self.reebill_file_handler = reebill_file_handler
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
@@ -1148,7 +1148,7 @@ class Process(object):
             the_path = self.billupload.get_reebill_file_path(account,
                     reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(reebill.customer.account,
+            self.reebill_file_handler.render_max_version(reebill.customer.account,
                     reebill.sequence, dirname, basename)
 
         # "the last element" (???)
@@ -1330,4 +1330,4 @@ class Process(object):
 
     def render_reebill(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
-        self.renderer.render(reebill)
+        self.reebill_file_handler.render(reebill)
