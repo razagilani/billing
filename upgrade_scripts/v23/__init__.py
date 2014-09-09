@@ -7,6 +7,7 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+from boto.s3.connection import S3Connection
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
 from upgrade_scripts import alembic_upgrade
@@ -79,6 +80,8 @@ def migrate_utilbill_utility(utilbill_data, session):
 
 
 def upgrade():
+
+    cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
 
     log.info('Upgrading schema to revision fc9faca7a7f')

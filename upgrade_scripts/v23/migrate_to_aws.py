@@ -35,7 +35,7 @@ def get_utilbill_file_path(utilbill, extension=None):
 
     # path to the bill file (in its original format):
     # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-    save_directory = config.get('billdb', 'utilitybillpath')
+    save_directory = config.get('bill', 'utilitybillpath')
     path_without_extension = os.path.join(save_directory,
             str(utilbill.customer.account), str(utilbill.id))
 
@@ -71,13 +71,11 @@ def upload_utilbills_to_aws(session):
     """
     Uploads utilbills to AWS
     """
-    connection = S3Connection(config.get('aws_s3', 'access_key_id'),
-                              config.get('aws_s3', 'access_key_secret'))
-    bucket = connection.get_bucket('reebill-dev')
-    bu = BillUpload(config, log)
+    bu = BillUpload()
+    bucket = bu.get_amazon_bucket()
     for utilbill in session.query(UtilBill).all():
         try:
-            local_file_path = bu.get_utilbill_file_path(utilbill)
+            local_file_path = get_utilbill_file_path(utilbill)
             sha256_hexdigest = get_hash(local_file_path)
         except IOError:
             log.error('Local pdf file for utilbill id %s not found' % \

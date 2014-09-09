@@ -15,9 +15,14 @@ class BillUpload(object):
 
     @staticmethod
     def get_amazon_bucket():
-        connection = S3Connection(config.get('aws_s3', 'access_key_id'),
-                                  config.get('aws_s3', 'access_key_secret'))
-        return connection.get_bucket(config.get('aws_s3', 'bucket'))
+        connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                              config.get('aws_s3', 'aws_secret_access_key'),
+                              is_secure=config.get('aws_s3', 'is_secure'),
+                              port=config.get('aws_s3', 'port'),
+                              host=config.get('aws_s3', 'host'),
+                              calling_format=config.get('aws_s3',
+                                                        'calling_format'))
+        return connection.get_bucket(config.get('bill', 'bucket'))
 
     @staticmethod
     def utilbill_key_name(utilbill):
