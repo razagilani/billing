@@ -199,9 +199,8 @@ class WebResource(object):
             )
 
         # create a ReebillRenderer
-        self.renderer = render.ReebillRenderer(
-            dict(self.config.items('reebillrendering')), self.state_db,
-            self.logger)
+        self.reebill_file_handler = render.ReebillFileHandler(
+                self.config.get('reebillrendering', 'template_directory'))
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
@@ -211,7 +210,7 @@ class WebResource(object):
         # create one Process object to use for all related bill processing
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
+            self.billUpload, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
             self.ree_getter, logger=self.logger)
 
         # determine whether authentication is on or off
@@ -488,9 +487,7 @@ class ReebillsResource(RESTResource):
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            self.renderer.render(account, sequence,
-                self.config.get("bill", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)), False)
+            self.process.render_reebill(int(account), int(sequence))
             rtn = row
 
         elif action == 'mail':

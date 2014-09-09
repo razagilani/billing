@@ -1327,3 +1327,7 @@ class Process(object):
 
         rows = list(rows_dict.itervalues())
         return len(rows), rows
+
+    def render_reebill(self, account, sequence):
+        reebill = self.state_db.get_reebill(account, sequence)
+        self.renderer.render(reebill)
