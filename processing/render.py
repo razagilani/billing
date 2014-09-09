@@ -1,33 +1,26 @@
 #!/usr/bin/env python
 import sys
-import os  
-from decimal import *
+import os
 from datetime import datetime
 from argparse import ArgumentParser
 import logging
 from collections import deque
+from itertools import groupby
+import csv
+from errno import EEXIST
 
 from pyPdf import PdfFileWriter, PdfFileReader
-
-import reportlab  
+import reportlab
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
-from reportlab.rl_config import defaultPageSize
-from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors
-from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from reportlab.pdfgen.pathobject import PDFPathObject 
-from reportlab.pdfbase import pdfmetrics  
-from reportlab.pdfbase.ttfonts import TTFont  
-from reportlab.pdfgen.canvas import Canvas  
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
-from itertools import groupby
-
-import csv
 
 # Important for currency formatting
 import locale
@@ -97,19 +90,31 @@ class ReebillFileHandler(object):
 
     def get_file_name(self, reebill):
         '''Return name of the PDF file associated with the given :class:`ReeBill`
-        (which does not necessarily exist yet).
+        (the file may not exist).
         '''
         return ReebillFileHandler.FILE_NAME_FORMAT % dict(
                 account=reebill.customer.account, sequence=reebill.sequence)
 
     def get_file_path(self, reebill):
         '''Return full path to the PDF file associated with the given :class:`ReeBill`
-        (which does not necessarily exist yet).
+        (the file may not exist).
         '''
-        return os.path.join(self._pdf_dir_path, self.get_file_name(reebill))
+        return os.path.join(self._pdf_dir_path, reebill.customer.account,
+                self.get_file_name(reebill))
+
+    def _ensure_directory_exists(self, reebill):
+        '''Create directories if necessary to ensure that the path to the
+        directory containing the given :class:`ReeBill`'s file is valid.
+        '''
+        path = self.get_file_path(reebill)
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as e:
+            # makedirs fails if the directories already exist
+            if e.errno == EEXIST:
+                pass
 
     def _generate_document(self, reebill):
-
         return {
             'account': reebill.customer.account,
             'sequence': str(reebill.sequence),
@@ -182,9 +187,10 @@ class ReebillFileHandler(object):
     def render(self, reebill):
         '''Create a PDF of the given :class:`ReeBill`.
         '''
+        self._ensure_directory_exists(reebill)
         document = self._generate_document(reebill)
-        file_name = self.get_file_name(reebill)
-        ThermalBillDoc(None).render([document], self._pdf_dir_path,
+        dir_path, file_name = os.path.split(self.get_file_path(reebill))
+        ThermalBillDoc(None).render([document], dir_path,
                 file_name, ReebillFileHandler.TEMPLATE_DIR,
                 ReebillFileHandler.PDF_SKIN_NAME)
 

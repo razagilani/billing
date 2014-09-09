@@ -51,7 +51,8 @@ class ReebillFileHandlerTest(TestCase):
 
         self.renderer.render(r)
 
-        with open(self.renderer.get_file_path(r), 'rb') as pdf_file:
+        path = self.renderer.get_file_path(r)
+        with open(path, 'rb') as pdf_file:
             pdf_hash = sha1(pdf_file.read()).hexdigest()
 
         # TODO: PDF file comes out different every time?

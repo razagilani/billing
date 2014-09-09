@@ -200,7 +200,7 @@ class WebResource(object):
 
         # create a ReebillRenderer
         self.reebill_file_handler = render.ReebillFileHandler(
-                self.config.get('reebillrendering', 'template_directory'))
+                self.config.get('bill', 'billpath'))
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
