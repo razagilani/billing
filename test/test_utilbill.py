@@ -144,13 +144,13 @@ class UtilBillTest(TestCase):
         self.assert_charge_values(2, 3, get('REFERENCED_BY_ANOTHER'))
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('SYNTAX_ERROR'),
-                'Syntax error in quantity formula')
+                'Syntax error')
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('DIV_BY_ZERO_ERROR'),
-                'Error in rate formula: division by zero')
+                'Error: division by zero')
         self.assert_error(
                 utilbill.get_charge_by_rsi_binding('UNKNOWN_IDENTIFIER'),
-                "Error in quantity formula: name 'x' is not defined")
+                "Error: name 'x' is not defined")
 
         # TODO enable when bug #76318266 is fixed
         # self.assertEqual(40 + 45 + 31 + 30 + 10 + 0 + 5 + 6,
@@ -167,12 +167,10 @@ class UtilBillTest(TestCase):
         self.assert_charge_values(50, 0.2, get('BLOCK_2'))
         self.assert_charge_values(0, 0.1, get('BLOCK_3'))
         self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
-        self.assert_error(get('SYNTAX_ERROR'),
-                'Syntax error in quantity formula')
-        self.assert_error(get('DIV_BY_ZERO_ERROR'),
-                'Error in rate formula: division by zero')
+        self.assert_error(get('SYNTAX_ERROR'), 'Syntax error')
+        self.assert_error(get('DIV_BY_ZERO_ERROR'), 'Error: division by zero')
         self.assert_error(get('UNKNOWN_IDENTIFIER'),
-                "Error in quantity formula: name 'x' is not defined")
+                "Error: name 'x' is not defined")
 
         # try a different quantity: 250 therms
         register.quantity = 250
@@ -184,12 +182,11 @@ class UtilBillTest(TestCase):
         self.assert_charge_values(150, 0.2, get('BLOCK_2'))
         self.assert_charge_values(50, 0.1, get('BLOCK_3'))
         self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
-        self.assert_error(get('SYNTAX_ERROR'),
-                'Syntax error in quantity formula')
+        self.assert_error(get('SYNTAX_ERROR'), 'Syntax error')
         self.assert_error(get('DIV_BY_ZERO_ERROR'),
-                'Error in rate formula: division by zero')
+                'Error: division by zero')
         self.assert_error(get('UNKNOWN_IDENTIFIER'),
-                "Error in quantity formula: name 'x' is not defined")
+                "Error: name 'x' is not defined")
 
         # and another quantity: 0
         register.quantity = 0
@@ -201,12 +198,11 @@ class UtilBillTest(TestCase):
         self.assert_charge_values(0, 0.2, get('BLOCK_2'))
         self.assert_charge_values(0, 0.1, get('BLOCK_3'))
         self.assert_charge_values(5, 1, get('REFERENCES_ANOTHER'))
-        self.assert_error(get('SYNTAX_ERROR'),
-                'Syntax error in quantity formula')
+        self.assert_error(get('SYNTAX_ERROR'), 'Syntax error')
         self.assert_error(get('DIV_BY_ZERO_ERROR'),
-                'Error in rate formula: division by zero')
+                'Error: division by zero')
         self.assert_error(get('UNKNOWN_IDENTIFIER'),
-                "Error in quantity formula: name 'x' is not defined")
+                "Error: name 'x' is not defined")
 
 
     def test_compute_charges_empty(self):
@@ -250,7 +246,7 @@ class UtilBillTest(TestCase):
         self.assert_charge_values(2, 3,
                 utilbill.get_charge_by_rsi_binding('B'))
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
-                'Error in quantity formula: division by zero')
+                'Error: division by zero')
         self.assertEqual(150 + 6, utilbill.get_total_charges())
 
     def test_compute_charges_with_cycle(self):
@@ -290,11 +286,11 @@ class UtilBillTest(TestCase):
         utilbill.compute_charges()
 
         self.assert_error(utilbill.get_charge_by_rsi_binding('A'),
-                "Error in quantity formula: name 'B' is not defined")
+                "Error: name 'B' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('B'),
-                "Error in rate formula: name 'A' is not defined")
+                "Error: name 'A' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('C'),
-                "Error in rate formula: name 'C' is not defined")
+                "Error: name 'C' is not defined")
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
-                "Error in quantity formula: name 'A' is not defined")
+                "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
