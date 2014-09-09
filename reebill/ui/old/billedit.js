@@ -97,7 +97,6 @@ var defaultRequestComplete = function(dataconn, response) {
 
 
 
-
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
