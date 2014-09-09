@@ -19,9 +19,9 @@ from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
 
-client = MongoClient(config.get('billdb', 'host'),
-    int(config.get('billdb', 'port')))
-db = client[config.get('billdb', 'database')]
+client = MongoClient(config.get('mongodb', 'host'),
+    int(config.get('mongodb', 'port')))
+db = client[config.get('mongodb', 'database')]
 
 
 utility_names = ['Pepco',
@@ -83,7 +83,6 @@ def upgrade():
 
     log.info('Upgrading schema to revision fc9faca7a7f')
     alembic_upgrade('fc9faca7a7f')
-
     init_model(schema_revision='fc9faca7a7f')
 
     session = Session()
