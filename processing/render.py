@@ -81,7 +81,7 @@ class ReebillFileHandler(object):
     '''
 
     TEMPLATE_DIR = 'reebill_templates'
-    FILE_NAME_FORMAT = '%(account)s_%(sequence)4d.pdf'
+    FILE_NAME_FORMAT = '%(account)s_%(sequence)04d.pdf'
 
     # TODO this will be set by type of energy service
     # see https://www.pivotaltracker.com/story/show/78497806
@@ -157,7 +157,7 @@ class ReebillFileHandler(object):
             'billing_state': reebill.billing_address.state,
             'utility_meters': [],
             'hypothetical_chargegroups': {},
-            }
+        }
 
     def render(self, reebill):
         '''Create a PDF of the given :class:`ReeBill`.
