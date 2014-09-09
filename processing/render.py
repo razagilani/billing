@@ -254,7 +254,7 @@ class BillDoc(BaseDocTemplate):
 
     def render(self, data, output_directory, output_name, skin_directory, skin_name):
         self.filename = os.path.join("%s", "%s") % (output_directory, output_name)
-        self.skin_directory = skin_directory
+        self.skin_directory = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), skin_directory)
         self.skin = skin_name
         self.load_fonts()
         self.set_styles()
