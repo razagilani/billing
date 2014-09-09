@@ -93,8 +93,6 @@ class ReebillFileHandler(object):
         :param skin_name: name of "skin" to be used when rendering PDFs,
         '''
         self._pdf_dir_path = output_dir_path
-        # TODO rename
-        self._pdf_skin_name = pdf_skin_name
 
     def get_file_name(self, reebill):
         '''Return name of the PDF file associated with the given :class:`ReeBill`
