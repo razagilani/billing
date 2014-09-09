@@ -2,6 +2,7 @@ Ext.define('ReeBill.view.Viewport', {
 
     extend: 'Ext.container.Viewport',
     layout: 'fit',
+    componentCls: 'panel-noborder',
 
     initComponent: function() {
         this.items = {
@@ -14,10 +15,10 @@ Ext.define('ReeBill.view.Viewport', {
                 region: 'north',
                 xtype: 'panel',
                 layout: 'fit',
-                height: 80,
+                height: 30,
                 split: false,
                 border: false,
-                html: '<div id="header" style="background-image:url(\'static/images/green_stripe.jpg\');"><table style="border-collapse: collapse;"><tr><td><img src="static/images/skyline_logo.png"/></td><td><img src="static/images/reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="static/images/money_chaser.png"/></td></tr></table></div>'
+                html: '<div id="header" style="background:#00a4e4; height:inherit;"><img src="static/images/nextility_blue.png" style="height:inherit; padding:3px"></div>'
             },{
                 region: 'west',
                 xtype: 'pdfpanel',
