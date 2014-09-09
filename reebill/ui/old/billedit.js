@@ -94,7 +94,6 @@ var defaultRequestComplete = function(dataconn, response) {
     }
 }
 
-account
 
 
 
@@ -106,7 +105,7 @@ function reeBillReady() {
     var selected_account = null;
     var selected_sequence = null;
 
-    // this is a Record object in 'utilbillGridStoaccountre'
+    // this is a Record object in 'utilbillGridStore'
     var selected_utilbill = null;
     
     // handle global success:false responses
