@@ -246,8 +246,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         })
 
         self.temp_dir = TempDirectory()
-        reebill_file_handler = ReebillFileHandler(
-                self.temp_dir.path,'nextility_pv')
+        reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 

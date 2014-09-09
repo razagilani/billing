@@ -11,7 +11,7 @@ from billing.processing.render import ReebillFileHandler
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
         self.temp_dir = TempDirectory()
-        self.renderer = ReebillFileHandler(self.temp_dir.path, 'skyline_pv')
+        self.renderer = ReebillFileHandler(self.temp_dir.path)
 
     def tearDown(self):
         self.temp_dir.cleanup()
