@@ -63,6 +63,7 @@ class JournalTest(utils.TestCase):
             'msg': 'hello',
             'sequence': 1,
             'date': datetime.utcnow(),
+            'event': 'Note: hello'
             }, entry.to_dict())
     
     def test_utilbill_deleted(self):
@@ -260,9 +261,25 @@ class JournalTest(utils.TestCase):
         journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1)
         journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
         description = self.dao.last_event_summary('90001')
-        self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
-                .strftime(ISO_8601_DATE), description)
-        
+        self.assertEqual(
+            ('90001', 'Reebill 90001-1 rolled on ' + datetime.utcnow().date()
+                .strftime(ISO_8601_DATE)), description)
+
+    def test_get_all_last_events(self):
+        # The first Account
+        journal.AccountCreatedEvent.save_instance(self.user, '90001')
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90001', 1, 0)
+        # The second Account
+        journal.AccountCreatedEvent.save_instance(self.user, '90002')
+
+        last_events = self.dao.get_all_last_events()
+        datestr = datetime.utcnow().date().strftime(ISO_8601_DATE)
+        self.assertEqual(dict([
+            ('90001', 'Reebill 90001-1 bound to REE on ' + datestr),
+            ('90002', 'Account 90002 created on ' + datestr)
+        ]), dict(last_events))
+
     def test_dates(self):
         '''Catches a bug where successive events have the same date:
         https://www.pivotaltracker.com/story/show/32141609.'''
