@@ -1,4 +1,4 @@
-Ext.define('ReeBill.store.RateStructures', {
+Ext.define('ReeBill.store.Charges', {
     extend: 'Ext.data.Store',
 
     model: 'ReeBill.model.Charge',
@@ -13,7 +13,7 @@ Ext.define('ReeBill.store.RateStructures', {
 
         pageParam: false,
 
-        url: 'http://'+window.location.host+'/reebill/ratestructure',
+        url: 'http://'+window.location.host+'/reebill/charges',
 
 		reader: {
 			type: 'json',
