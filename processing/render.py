@@ -195,9 +195,6 @@ class BillDoc(BaseDocTemplate):
     def handle_pageBegin(self):
         BaseDocTemplate.handle_pageBegin(self)
 
-    def flowables(self):
-        return []
-
     # Staples envelope (for send)
     # #10 (4-1/8" (297pt)  x 9-1/2")
     # Left window position fits standard formats
@@ -223,10 +220,6 @@ class BillDoc(BaseDocTemplate):
     # Top Y 528
     # Middle y 264
     # Bottom Y 0
-
-    # Max width, including 25pt gutters: 562
-    def page_frames(self):
-        return []
 
     def assemble_pages(self):
         pages = []
