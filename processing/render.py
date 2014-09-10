@@ -5,7 +5,7 @@ from datetime import datetime
 from argparse import ArgumentParser
 import logging
 from collections import deque
-from itertools import groupby
+from itertools import groupby, chain
 import csv
 from errno import EEXIST
 
@@ -21,6 +21,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
 
 # Important for currency formatting
 import locale
@@ -115,6 +116,15 @@ class ReebillFileHandler(object):
                 pass
 
     def _generate_document(self, reebill):
+        def get_utilbill_register_data_for_reebill_reading(reading):
+            utilbill = reading.reebill.utilbill
+            try:
+                register = next(r for r in utilbill.registers
+                        if r.register_binding == reading.register_binding)
+            except StopIteration:
+                return '', '', ''
+            return (register.meter_identifier, register.identifier,
+                    register.description)
         return {
             'account': reebill.customer.account,
             'sequence': str(reebill.sequence),
@@ -163,18 +173,19 @@ class ReebillFileHandler(object):
             'billing_postal_code': reebill.billing_address.postal_code,
             'billing_state': reebill.billing_address.state,
             'utility_meters':  [{
-                    # TODO fix messed-up pycharm auto-formatting
+                 # TODO fix messed-up pycharm auto-formatting
                  'meter_id': meter_id,
                  'registers': [{
-                    'register_id': reading.register_binding,
-                    'description': '',
+                    'register_id': register_id,
+                    'description': description,
                     'shadow_total': reading.conventional_quantity,
                     'utility_total': reading.renewable_quantity,
                     'total': 0,
                     'quantity_units': reading.unit,
                 } for reading in readings]
-            } for meter_id, readings in groupby(reebill.readings,
-                    key=lambda r: r.register_binding)],
+            } for (meter_id, register_id, description), readings
+                    in groupby(reebill.readings, key=lambda r: \
+                    get_utilbill_register_data_for_reebill_reading(r))],
             'hypothetical_chargegroups': {group_name: [{
                 'description': charge.description,
                 'quantity': charge.h_quantity,
