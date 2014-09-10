@@ -38,13 +38,13 @@ from billing.processing.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
-from billing.processing.render import ReebillRenderer
+from billing.processing.render import ReebillFileHandler
 from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from billing.test import example_data
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 import logging
-
+from testfixtures import TempDirectory
 
 
 class TestCaseWithSetup(test_utils.TestCase):
@@ -245,18 +245,13 @@ class TestCaseWithSetup(test_utils.TestCase):
             # TODO 64956668
         })
 
-        renderer = ReebillRenderer({
-            'temp_directory': '/tmp',
-            'template_directory': join(dirname(realpath(__file__)), '..',
-                    'reebill_templates'),
-            'default_template': '/dev/null',
-            'teva_accounts': '',
-        }, self.state_db, logger)
+        self.temp_dir = TempDirectory()
+        reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
         self.process = Process(self.state_db,  self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer, renderer,
+                self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
                 ree_getter, self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
@@ -284,6 +279,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.truncate_tables(self.session)
         Session.remove()
 
+        self.temp_dir.cleanup()
 
 if __name__ == '__main__':
     unittest.main()
