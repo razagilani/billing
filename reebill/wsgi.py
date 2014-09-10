@@ -97,11 +97,7 @@ def db_commit(method):
     '''
     @functools.wraps(method)
     def wrapper(*args, **kwargs):
-        try:
-            result = method(*args, **kwargs)
-        except:
-            Session().rollback()
-            raise
+        result = method(*args, **kwargs)
         Session().commit()
         return result
     return wrapper
