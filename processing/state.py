@@ -195,7 +195,6 @@ class Customer(Base):
     fb_service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_service_address_id==Address.id')
 
-
     def get_discount_rate(self):
         return self.discountrate
 
