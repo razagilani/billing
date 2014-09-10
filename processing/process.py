@@ -1152,8 +1152,7 @@ class Process(object):
             the_path = self.billupload.get_reebill_file_path(account,
                     reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.reebill_file_handler.render_max_version(reebill.customer.account,
-                    reebill.sequence, dirname, basename)
+            self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]
