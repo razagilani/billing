@@ -1,10 +1,7 @@
-from billing import init_config
-init_config('tstsettings.cfg')
-from billing import config
+from test import init_test_config
+init_test_config()
 
-from processing.billupload import BillUpload
-
-
+from os.path import realpath, join, dirname
 import json
 import unittest
 from mock import Mock, call
@@ -12,7 +9,6 @@ from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
 import os
-from os.path import realpath, join, dirname
 
 from sqlalchemy.orm.exc import NoResultFound
 from billing.processing.mongo import NoSuchBillException

@@ -1,12 +1,10 @@
 #!/usr/bin/python
-from billing import init_config
-init_config('tstsettings.cfg')
-import sys
+from test import init_test_config
+init_test_config()
 from mock import Mock
 import unittest
 from StringIO import StringIO
 import ConfigParser
-import logging
 import os
 import shutil
 import errno
