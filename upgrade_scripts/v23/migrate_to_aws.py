@@ -73,6 +73,7 @@ def upload_utilbills_to_aws(session):
     """
     bu = BillUpload()
     bucket = bu.get_amazon_bucket()
+    upload_count = 0
     for utilbill in session.query(UtilBill).all():
         try:
             local_file_path = get_utilbill_file_path(utilbill)
@@ -83,6 +84,8 @@ def upload_utilbills_to_aws(session):
             continue
         log.debug('Uploading pdf for utilbill id %s file path %s hexdigest %s'
                   % (utilbill.id, local_file_path, sha256_hexdigest))
+        upload_count += 1
+        log.debug('upload count: %s' % upload_count)
         full_key_name = os.path.join('utilbill', sha256_hexdigest)
         key = bucket.new_key(full_key_name)
         key.set_contents_from_filename(local_file_path)
