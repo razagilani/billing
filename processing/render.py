@@ -133,11 +133,12 @@ class ReebillFileHandler(object):
             'balance_forward': reebill.balance_forward,
             'payment_received': reebill.payment_received,
             'balance_due': reebill.balance_due,
-            'total_energy_consumed': reebill.get_total_renewable_energy(), # TODO: what is this?
+            'total_energy_consumed': reebill.get_total_renewable_energy() + \
+                                     reebill.get_total_conventional_energy(),
             'total_re_consumed': reebill.get_total_renewable_energy(),
-            'total_ce_consumed': 0, # TODO
+            'total_ce_consumed': reebill.get_total_conventional_energy(),
             'total_re_delivered_grid': 0,
-            'total_re_generated': 0,
+            'total_re_generated': reebill.get_total_conventional_energy(),
             'due_date': reebill.due_date,
             'end_period': reebill.utilbill.period_end,
             'hypothetical_charges': reebill.get_total_hypothetical_charges(),
@@ -162,6 +163,7 @@ class ReebillFileHandler(object):
             'total_adjustment': reebill.total_adjustment,
             'total_hypothetical_charges': reebill.get_total_hypothetical_charges(), # TODO duplicate?
             'total_utility_charges': reebill.get_total_actual_charges(), # TODO duplicate?
+            # hard-coded skyline address should go in template
             'payment_addressee': 'Skyline Innovations',
             'payment_city': 'Washington',
             'payment_postal_code': '20009',
@@ -180,7 +182,7 @@ class ReebillFileHandler(object):
                     'description': description,
                     'shadow_total': reading.conventional_quantity,
                     'utility_total': reading.renewable_quantity,
-                    'total': 0,
+                    'total': reading.conventional_quantity + reading.renewable_quantity, # redundant?
                     'quantity_units': reading.unit,
                 } for reading in readings]
             } for (meter_id, register_id, description), readings
