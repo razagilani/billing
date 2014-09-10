@@ -5,10 +5,10 @@ import ast
 from datetime import timedelta, datetime, date
 import logging
 import json
+import traceback
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.ext.declarative.api import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.base import class_mapper
@@ -16,17 +16,17 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean, Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 import tsort
-import traceback
 from alembic.migration import MigrationContext
 
 from billing.exc import IssuedBillError, NoSuchBillException,\
         RegisterError, FormulaSyntaxError
 from billing.exc import FormulaError
 from exc import DatabaseError
+
 
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
@@ -179,6 +179,9 @@ class Customer(Base):
     latechargerate = Column(Float(asdecimal=False), nullable=False)
     bill_email_recipient = Column(String, nullable=False)
 
+    # null means brokerage-only customer
+    service = Column(Enum('thermal', 'pv'))
+
     # "fb_" = to be assigned to the customer's first-created utility bill
     fb_utility_name = Column(String(255), nullable=False)
     fb_rate_class = Column(String(255), nullable=False)
@@ -191,7 +194,6 @@ class Customer(Base):
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_service_address_id==Address.id')
-
 
     def get_discount_rate(self):
         return self.discountrate
