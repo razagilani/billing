@@ -838,7 +838,7 @@ class UtilBill(Base):
     @property
     def pdf_url(self):
         return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
-               (config.get('aws_s3', 'bucket'), self.sha256_hexdigest)
+               (config.get('bill', 'bucket'), self.sha256_hexdigest)
 
     @property
     def bindings(self):
