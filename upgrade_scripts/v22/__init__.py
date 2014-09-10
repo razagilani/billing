@@ -181,6 +181,16 @@ def assign_reebill_id_to_payments(s):
                     for payment in payments:
                         payment.reebill_id = reebill.id
 
+def set_customer_service_type(s):
+    for customer in s.query(Customer).all():
+        if customer.account.startswith('1'):
+            if customer.account in ('10160', '10161'):
+                customer.service = 'pv'
+            else:
+                customer.service = 'thermal'
+        else:
+            customer.service = None
+
 def upgrade():
     log.info('Beginning upgrade to version 22')
 
@@ -191,6 +201,7 @@ def upgrade():
     init_model(schema_revision='39efff02706c')
 
     session = Session()
+    set_customer_service_type(session)
     log.info('Reading initial customer info')
     initial_customer_data = read_initial_customer_data(session)
     log.info('Setting fb attributes')
