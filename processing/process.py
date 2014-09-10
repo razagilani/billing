@@ -32,7 +32,7 @@ from billing.util.dateutils import estimate_month, month_offset, month_differenc
 from billing.util.monthmath import Month
 from billing.util.dictutils import subdict
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException
+    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError
 
 import pprint
 from processing.state import UtilbillReebill
@@ -318,6 +318,9 @@ class Process(object):
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
 
+        if reebill.processed:
+            raise ProcessedBillError("can't modify processed reebill")
+
         if discount_rate is not None:
             reebill.discount_rate = discount_rate
         if late_charge_rate is not None:
@@ -589,6 +592,8 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
+        if reebill.processed:
+            raise NotComputable("Cannot compute processed reebill")
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
@@ -844,7 +849,9 @@ class Process(object):
             raise ValueError('%s has no corrections to apply' % account)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_reebill(account, target_sequence,
+        reebill = self.state_db.get_reebill(account, target_sequence, target_max_version)
+        if not reebill.processed:
+            self.compute_reebill(account, target_sequence,
                 version=target_max_version)
 
         # issue each correction
@@ -1033,7 +1040,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
 
         # compute the bill to make sure it's up to date before issuing
-        self.compute_reebill(reebill.customer.account,
+        if not reebill.processed:
+            self.compute_reebill(reebill.customer.account,
                 reebill .sequence, version=reebill.version)
 
         reebill.issue_date = issue_date
@@ -1226,12 +1234,16 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
+        if reebill.processed:
+            raise ProcessedBillError("Can't modify processed reebill")
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
 
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
+        if reebill.processed:
+            raise ProcessedBillError("Can't modify processed reebill")
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 
@@ -1268,6 +1280,7 @@ class Process(object):
         """ Returns a list of issuable reebill dictionaries
             of the earliest unissued version-0 reebill account. If
             proccessed == True, only processed Reebills are returned
+            account can be used to get issuable bill for an account
         """
         session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
@@ -1295,7 +1308,7 @@ class Process(object):
         email. If processed is given, this function  issues and mails all
         processed Reebills instead
         """
-        if processed is True:
+        if processed:
             assert sequence is None and account is None and recipients is None
             bills = self.get_issuable_reebills_dict(processed=True)
         else:
@@ -1337,7 +1350,8 @@ class Process(object):
                     ))
 
             try:
-                self.compute_reebill(bill['account'], bill['sequence'])
+                if not processed:
+                    self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
                 result['issued'].append((
                     bill['account'], bill['sequence'], 0, bill['mailto']))
