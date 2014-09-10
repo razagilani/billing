@@ -1,6 +1,6 @@
 """Validation logic for the configuration file.
 """
-from boto.s3.connection import OrdinaryCallingFormat
+from boto.s3.connection import OrdinaryCallingFormat, S3Connection
 from formencode.schema import Schema
 from formencode.validators import StringBool, String, URL, Int, Email, OneOf
 from formencode.compound import All
@@ -21,7 +21,9 @@ class CallingFormat(FancyValidator):
     def _convert_to_python(self, value, state):
         if value == 'OrdinaryCallingFormat':
             return OrdinaryCallingFormat()
-        return None
+        elif value == 'DefaultCallingFormat':
+            return S3Connection.DefaultCallingFormat
+        raise Invalid('Please specify a valid calling format.')
 
 class runtime(Schema):
     integrate_nexus = StringBool()
