@@ -974,6 +974,10 @@ class Process(object):
                         service_address['city'],
                         service_address['state'],
                         service_address['postal_code']))
+
+        # TODO set service in "new account" form
+        new_customer.service = 'thermal'
+
         session.add(new_customer)
         session.flush()
         return new_customer
