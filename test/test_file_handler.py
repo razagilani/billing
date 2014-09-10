@@ -35,7 +35,8 @@ class ReebillFileHandlerTest(TestCase):
 
         u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Rate Class', ba3, sa3,
                      period_start=date(2000,1,1), period_end=date(2000,2,1))
-        u.registers = [Register(u, '', 100, 'therms', '', False, 'total', 'REG_TOTAL', [], '')]
+        u.registers = [Register(u, 'All energy', 100, 'therms', 'REGID',
+                                False, 'total', 'REG_TOTAL', [], 'METERID')]
 
         r = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
