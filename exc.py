@@ -50,6 +50,9 @@ class IssuedBillError(BillingError):
     attempt to save changes to an issued reebill document in mongo, not failure
     of a bill-processing operation due to a business rule."""
 
+class ProcessedBillError(BillingError):
+    """Exception for trying to modify a bill that has been processed."""
+
 
 class BillStateError(BillingError):
     """A bill was in a state in which some operation is not allowed."""
@@ -62,6 +65,9 @@ class NotAttachable(BillStateError):
 
 class NotIssuable(BillStateError):
     """Trying to issue a bill that is not issuable."""
+
+class NotComputable(BillStateError):
+    '''Trying to compute processed bill'''
 
 
 class RSIError(BillingError):
@@ -99,3 +105,10 @@ class MongoError(BillingError):
 
 class RenderError(Exception):
     pass
+
+class ConfirmAdjustment(Exception):
+    def __init__(self, correction_sequences, total_adjustment):
+        super(ConfirmAdjustment, self).__init__()
+        self.correction_sequences = correction_sequences
+        self.total_adjustment = total_adjustment
+
