@@ -74,10 +74,6 @@ Ext.define('ReeBill.controller.Charges', {
             }
         });
 
-        this.getUtilityBillsStore().on({
-            write: this.handleActivate,
-            scope: this
-        });
         this.getChargesStore().on({
             write: this.handleRowSelect,
             scope: this
@@ -179,6 +175,8 @@ Ext.define('ReeBill.controller.Charges', {
             this.updateTextFields();
         }
      },
+
+
 
     /**
      * Update the GroupTextField & RoundRuleTextField
