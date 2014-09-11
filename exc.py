@@ -105,3 +105,10 @@ class MongoError(BillingError):
 
 class RenderError(Exception):
     pass
+
+class ConfirmAdjustment(Exception):
+    def __init__(self, correction_sequences, total_adjustment):
+        super(ConfirmAdjustment, self).__init__()
+        self.correction_sequences = correction_sequences
+        self.total_adjustment = total_adjustment
+

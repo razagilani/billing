@@ -38,7 +38,7 @@ from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.session_contextmanager import DBSession
-from billing.exc import Unauthenticated, IssuedBillError, RenderError
+from billing.exc import Unauthenticated, IssuedBillError, RenderError, ConfirmAdjustment
 from billing.processing.excel_export import Exporter
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -599,47 +599,21 @@ class ReebillsResource(RESTResource):
     @cherrypy.tools.authenticate_ajax()
     @db_commit
     def toggle_processed(self, reebill, account, **params):
-        bill = json.loads(reebill)
-        account = json.loads(account)
-        corrections = False
-        reebill_obj = self.state_db.get_reebill(account['account'], bill['sequence'], bill['version'])
-        unissued_corrections = self.process.get_unissued_corrections(account['account'])
-        issuable_reebill = self.state_db.get_issuable_reebill_for_account(account['account'])[0]
-        if not reebill_obj.processed:
-            if issuable_reebill['sequence'] == reebill_obj.sequence and issuable_reebill['version'] == reebill_obj.version:
-                if len(unissued_corrections) > 0 and not bill['apply_corrections']:
-                    # The user has confirmed to issue unissued corrections.
-                    corrections = True
-                    reebills_with_corrections = \
-                        {
-                        'reebill': bill,
-                        'unissued_corrections': [c[0] for c in unissued_corrections],
-                        'adjustment': sum(c[2] for c in unissued_corrections)}
-                else:
-                    reebills_with_corrections = {'reebill': bill}
-                if corrections:
-                    return self.dumps({"success": True,
-                                   "reebills": reebills_with_corrections,
-                                   "corrections": True})
-                for c in unissued_corrections:
-                    unissued_reebill = self.state_db.get_reebill(account['account'], c[0], c[1])
-                    if not unissued_reebill.processed:
-                        self.process.compute_reebill(account['account'], c[0], c[1])
-                        unissued_reebill.processed = True
-                self.process.compute_reebill(account['account'], bill['sequence'], bill['version'])
-            reebill_obj.processed = True
-            results = self.dumps({"success": True,
-                            "processed": True})
-        else:
-            if issuable_reebill['sequence'] == reebill_obj.sequence and issuable_reebill['version'] == reebill_obj.version:
-                for c in unissued_corrections:
-                    unissued_reebill = self.state_db.get_reebill(account['account'], c[0], c[1])
-                    unissued_reebill.processed = False
-            reebill_obj.processed = False
-            results =  self.dumps({"success": True,
-                            "processed": False})
-
-        return results
+        reebill_json = json.loads(reebill)
+        account_json = json.loads(account)
+        account = account_json['account']
+        sequence, version = reebill_json['sequence'], reebill_json['version']
+        apply_corrections = reebill_json['apply_corrections']
+        try:
+            self.process.toggle_reebill_processed(account, sequence, version,
+                    apply_corrections)
+        except ConfirmAdjustment as e:
+            return json.dumps({
+                'reebill': reebill_json,
+                'unissued_corrections': e.correction_sequences,
+                'adjustment': e.total_adjustment,
+            })
+        return json.dumps({'success': True})
 
 class UtilBillResource(RESTResource):
 

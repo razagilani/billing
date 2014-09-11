@@ -1334,24 +1334,6 @@ class StateDB(object):
             .filter(UtilBill.period_start == start) \
             .filter(UtilBill.period_end == end).one()
 
-    def get_issuable_reebill_for_account(self, account):
-        session = Session()
-        customer = session.query(Customer).filter(Customer.account == account).one()
-        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
-                .filter(ReeBill.issued == 0, ReeBill.version == 0)
-        unissued_v0_reebills = unissued_v0_reebills.subquery()
-        min_sequence = session.query(
-                unissued_v0_reebills.c.customer_id.label('customer_id'),
-                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
-                .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
-                .filter(ReeBill.sequence==min_sequence.c.sequence)\
-                .filter(ReeBill.customer_id == customer.id)
-
-        issuable_reebills = [r.column_dict() for r in reebills.all()]
-        return issuable_reebills
-
     def get_utilbill_by_id(self, ubid):
         session = Session()
         return session.query(UtilBill).filter(UtilBill.id == ubid).one()

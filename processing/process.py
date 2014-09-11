@@ -4,18 +4,14 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
-
 import os
-import copy
 from datetime import date, datetime, timedelta
-from operator import itemgetter
 import traceback
-from itertools import chain
+
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from bson import ObjectId
 
 from billupload import ACCOUNT_NAME_REGEX
 
@@ -23,19 +19,16 @@ from billupload import ACCOUNT_NAME_REGEX
 # uuid collides with locals so both the locals and package are renamed
 import re
 import errno
-import bson
 from billing.processing import journal
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, Payment
-from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
+    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Session, Payment
+from billing.util.dateutils import estimate_month, month_offset, month_difference
 from billing.util.monthmath import Month
-from billing.util.dictutils import subdict
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError
+    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment
 
 import pprint
-from processing.state import UtilbillReebill
 
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
@@ -1441,3 +1434,49 @@ class Process(object):
 
         rows = list(rows_dict.itervalues())
         return len(rows), rows
+
+    def toggle_reebill_processed(self, account, sequence, version,
+                apply_corrections):
+        '''Make the reebill given by account, sequence, version processed if
+        it is not processed or un-processed if it is processed. If there are
+        un-issued corrections for the given account, 'apply_corrections' must
+        be True or ConfirmAdjustment will be raised.
+        '''
+        session = Session()
+        reebill = self.state_db.get_reebill(account, sequence, version)
+
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued bill")
+
+        # issuable_reebill = self.state_db.get_issuable_reebill_for_account(account_json['account_json'])[0]
+        issuable_reebill = session.query(ReeBill).join(Customer) \
+                .filter(ReeBill.customer_id==Customer.id)\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.version==0, ReeBill.issued==False)\
+                .order_by(ReeBill.sequence).first()
+
+        if reebill.processed:
+            reebill.processed = False
+        else:
+            if reebill == issuable_reebill:
+                unissued_corrections = self.get_unissued_corrections(account)
+
+                # if there are corrections and user has not confirmed applying
+                # them, send back data for a confirmation message
+                if len(unissued_corrections) > 0 and not apply_corrections:
+                    sequences = [sequence for sequence, _, _
+                            in unissued_corrections]
+                    total_adjustment = sum(adjustment
+                            for _, _, adjustment in unissued_corrections)
+                    raise ConfirmAdjustment(sequences, total_adjustment)
+
+                # otherwise, mark corrected bills as processed
+                for sequence, version, _ in unissued_corrections:
+                    unissued_reebill = self.state_db.get_reebill(account, sequence, version)
+                    if not unissued_reebill.processed:
+                        self.compute_reebill(account, sequence, version)
+                        unissued_reebill.processed = True
+
+            self.compute_reebill(account, sequence, version)
+            reebill.processed = True
+
