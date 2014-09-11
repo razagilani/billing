@@ -110,9 +110,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                     var reebill_corrections = '';
                     Ext.each(obj.reebills, function (reebill) {
                         if (reebill.adjustment != undefined) {
-                            reebill_corrections +='Reebill from account ' + reebill.accounmt+
-                                     ' with sequence ' + reebill.sequence +
-                                      ' with corrections '  + reebill.unissued_corrections +
+                            reebill_corrections +='Reebill from account ' + reebill.reebill.account+
+                                     ' with sequence ' + reebill.reebill.sequence +
+                                      ' with corrections '  + reebill.unissued_corrections[0] +
                                     ' will be applied to this bill as an adjusment of $'
                                     + reebill.adjustment + '. Are you sure you want to issue it?' + '</br>'
 
