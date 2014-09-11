@@ -60,32 +60,17 @@ class ChargeUnitTests(utils.TestCase):
             self.assertEqual(getattr(charge_2, key),
                              None if key == 'utilbill' else val)
 
-    def test_validate_formula_parses(self):
-        parse = lambda x: Charge._validate_formula_parses(self.charge, x, "")
-        invalid_formulas = ["mickeymouse $ ^ @r",
-                            "REG_TOTAL.^*"]
-        valid_formulas = ["REG_TOTAL.quantity * 2 + 10",
-                          "min(100, REG_TOTAL.quantity)",
-                          "min(200, max(0, REG_TOTAL.quantity - 100))",
-                          "max(0, REG_TOTAL.quantity - 200)"]
-        for formula in valid_formulas:
-            parse(formula)
-        for formula in invalid_formulas:
-            self.assertRaises(FormulaSyntaxError, parse, formula)
-
     def test_evaluate_formula(self):
-        test_cases = [('5 + ', None, 'Syntax error in x formula'),
+        test_cases = [('5 + ', None, 'Syntax error'),
                       ('OTHER_VAR.quantity', 4, None),
                       ('SOME_VAR.rate * OTHER_VAR.quantity', 12, None),
-                      ('asdf', None, "Error in x formula: name 'asdf' "
+                      ('asdf', None, "Error: name 'asdf' "
                                      "is not defined"),
-                      ('ERROR.value', None, "Error in x formula: "
-                                            "'ChargeEvaluation' object has no "
+                      ('ERROR.value', None, "Error: 'ChargeEvaluation' object has no "
                                             "attribute 'value'")]
         for formula, expected_result, expected_error_message in test_cases:
             try:
-                result = self.charge._evaluate_formula(formula, "x",
-                                                       self.context)
+                result = self.charge._evaluate_formula(formula, self.context)
                 self.assertEqual(result, expected_result)
             except FormulaError as error:
                 self.assertEqual(error.message, expected_error_message)

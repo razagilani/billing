@@ -7,18 +7,21 @@ imported with the data model uninitialized! Therefore this module should not
 import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
+import datetime
+import logging
+
 from bson.errors import InvalidId
-from sqlalchemy.engine import create_engine
 from sqlalchemy.sql.schema import MetaData, Table
 from sqlalchemy.sql import select
-from upgrade_scripts import alembic_upgrade
-import logging
 from pymongo import MongoClient
-from billing import config, init_model
-from billing.processing.state import Session, Charge
-from billing.processing.rate_structure2 import RateStructureDAO
-from processing.state import Register, UtilBill, Address, Customer
 from bson.objectid import ObjectId
+
+from upgrade_scripts import alembic_upgrade
+from billing import config, init_model
+from billing.processing.state import Session
+from processing.state import Register, UtilBill, Address, Customer,\
+        ReeBill, Payment, MYSQLDB_DATETIME_MIN
+
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +127,70 @@ def copy_rsis_from_mongo(s):
             charge.shared = rsi.get('shared', True)
             charge.has_charge = rsi.get('has_charge', True)
 
+def assign_reebill_id_to_payments(s):
+
+    for reebill in s.query(ReeBill).filter(ReeBill.issued == 1).all():
+        if reebill.sequence == 1:
+            reebill.total_adjustment = 0
+
+            # include all payments since the beginning of time, in case there
+            # happen to be any.
+            # if any version of this bill has been issued, get payments up
+            # until the issue date; otherwise get payments up until the
+            # present.
+            present_v0_issue_date = reebill.issue_date
+            if present_v0_issue_date is None:
+                payments = s.query(Payment).filter(Payment.customer==s.query(Customer).filter(Customer.id==reebill.customer_id).one())\
+                    .filter(Payment.date_applied < datetime.utcnow)\
+                    .filter(Payment.date_applied >= MYSQLDB_DATETIME_MIN).all()
+                for payment in payments:
+                    payment.reebill_id = reebill.id
+            else:
+                payments = s.query(Payment).filter(Payment.customer==s.query(Customer).filter(Customer.id==reebill.customer_id).one())\
+                    .filter(Payment.date_applied < present_v0_issue_date)\
+                    .filter(Payment.date_applied >= MYSQLDB_DATETIME_MIN).all()
+                for payment in payments:
+                    payment.reebill_id = reebill.id
+        else:
+            account = s.query(Customer).filter(Customer.id==reebill.customer_id).one().account
+            predecessor = s.query(ReeBill).join(Customer) \
+                    .filter(Customer.account == account) \
+                    .filter(ReeBill.sequence == reebill.sequence - 1) \
+                    .filter(ReeBill.version == 0).one()
+            if predecessor.issued:
+                # if predecessor's version 0 is issued, gather all payments from
+                # its issue date until version 0 issue date of current bill, or
+                # today if this bill has never been issued
+                if s.query(ReeBill).join(Customer) \
+                            .filter(Customer.account == account) \
+                            .filter(ReeBill.sequence == reebill.sequence) \
+                            .filter(ReeBill.version == 0).one().issued:
+                    present_v0_issue_date = s.query(ReeBill).join(Customer) \
+                            .filter(Customer.account == account) \
+                            .filter(ReeBill.sequence == reebill.sequence) \
+                            .filter(ReeBill.version == 0).one().issue_date
+                    payments = s.query(Payment).filter(Payment.customer_id==reebill.customer_id)\
+                            .filter(Payment.date_applied < present_v0_issue_date)\
+                            .filter(Payment.date_applied >= predecessor.issue_date).all()
+                    for payment in payments:
+                        payment.reebill_id = reebill.id
+                else:
+                    payments = s.query(Payment).filter(Payment.customer_id==reebill.customer_id)\
+                            .filter(Payment.date_applied < datetime.utcnow())\
+                            .filter(Payment.date_applied >= predecessor.issue_date).all()
+                    for payment in payments:
+                        payment.reebill_id = reebill.id
+
+def set_customer_service_type(s):
+    for customer in s.query(Customer).all():
+        if customer.account.startswith('1'):
+            if customer.account in ('10160', '10161'):
+                customer.service = 'pv'
+            else:
+                customer.service = 'thermal'
+        else:
+            customer.service = None
+
 def upgrade():
     log.info('Beginning upgrade to version 22')
 
@@ -134,6 +201,7 @@ def upgrade():
     init_model(schema_revision='39efff02706c')
 
     session = Session()
+    set_customer_service_type(session)
     log.info('Reading initial customer info')
     initial_customer_data = read_initial_customer_data(session)
     log.info('Setting fb attributes')
@@ -147,5 +215,12 @@ def upgrade():
 
     log.info('Upgrading to schema revision 2e47f4f18a8b')
     alembic_upgrade('2e47f4f18a8b')
+
+    log.info('Upgrading to schema revision 6446c51511c')
+    alembic_upgrade('6446c51511c')
+
+    log.info('Setting reebill_ids in payments for issued reebills')
+    assign_reebill_id_to_payments(session)
+    session.commit()
 
     log.info('Upgrade to version 22 complete')

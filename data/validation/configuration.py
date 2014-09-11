@@ -26,6 +26,7 @@ class skyline_backend(Schema):
     olap_database = String()
     nexus_db_host = String()
     nexus_web_host = String()
+    nexus_offline_cache_file = String()
 
 class http(Schema):
     socket_port = TCPPort()
