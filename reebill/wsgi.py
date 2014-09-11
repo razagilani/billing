@@ -605,7 +605,7 @@ class UtilBillResource(RESTResource):
         fileobj = params['file_to_upload']
 
         billstate = UtilBill.Complete if fileobj.file else \
-            UtilBill.SkylineEstimated
+            UtilBill.Estimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
             fileobj.filename if fileobj.file else None,
