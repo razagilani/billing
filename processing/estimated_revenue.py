@@ -31,7 +31,7 @@ class EstimatedRevenue(object):
         self.monguru = splinter.get_monguru()
         self.ratestructure_dao = ratestructure_dao
         self.process = Process(state_db, reebill_dao, ratestructure_dao,
-                billupload, nexus_util, splinter)
+                nexus_util, splinter)
 
         # pre-load all the olap ids of accounts for speed (each one requires an
         # HTTP request)

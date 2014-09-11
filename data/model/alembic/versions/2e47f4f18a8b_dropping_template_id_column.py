@@ -19,7 +19,6 @@ def upgrade():
     op.drop_column(u'customer', 'utilbill_template_id')
     op.drop_column('charge', 'rate_formula')
 
-
 def downgrade():
     op.add_column(u'customer', sa.Column('utilbill_template_id',
                                     mysql.VARCHAR(length=24), nullable=False))
