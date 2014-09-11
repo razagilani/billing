@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.RateStructures', {
+Ext.define('ReeBill.view.Charges', {
     extend: 'Ext.grid.Panel',
 
     requires: [
@@ -7,8 +7,8 @@ Ext.define('ReeBill.view.RateStructures', {
         'Ext.dd.*'
     ],
 
-    alias: 'widget.rateStructures',    
-    store: 'RateStructures',
+    alias: 'widget.charges',
+    store: 'Charges',
     preventHeader: true,
     
     plugins: [{
@@ -27,19 +27,19 @@ Ext.define('ReeBill.view.RateStructures', {
     viewConfig: {
         trackOver: false,
         stripeRows: true,
-        itemId: 'rateStructureGridView',
+        itemId: 'chargesGridView',
         getRowClass: function(record) {
             if (record.get('error')){
-                return 'ratestructure-grid-error';
+                return 'charges-grid-error';
             }
         },
         plugins:[{
-            ptype: 'gridviewdragdrop',
+            ptype: 'gridviewdragdrop'
         }],
         listeners: {
             drop: function(node, data, overModel, dropPosition, eOpts) {
                 data.records[0].set('group', overModel.get('group'));
-                Ext.getStore('RateStructures').group('group', 'ASC');
+                Ext.getStore('Charges').group('group', 'ASC');
             }
         }
     },
@@ -96,7 +96,7 @@ Ext.define('ReeBill.view.RateStructures', {
         xtype: 'templatecolumn',
         header: 'Rate',
         sortable: true,
-        dataIndex: 'rate_formula',
+        dataIndex: 'rate',
         editor: {
             xtype: 'textfield',
             allowBlank: false
@@ -136,18 +136,18 @@ Ext.define('ReeBill.view.RateStructures', {
         items: [{
             xtype: 'button',
             text: 'Insert',
-            action: 'newRateStructure',
+            action: 'newCharge',
             iconCls: 'silk-add'
         },{        
             xtype: 'button',
             text: 'Remove',
-            action: 'removeRateStructure',
+            action: 'removeCharge',
             iconCls: 'silk-delete',
             disabled: true
         },{
             xtype: 'button',
             text: 'Regenerate',
-            action: 'regenerateRateStructure',
+            action: 'regenerateCharge',
             iconCls: 'silk-wrench'
         },'-',{
             xtype: 'formulaField',

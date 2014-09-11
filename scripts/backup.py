@@ -339,15 +339,15 @@ if __name__ == '__main__':
                 help=("AWS S3 access key. Default $AWS_ACCESS_KEY_ID if it is defined."))
         parser.add_argument("--secret-key", type=str,
                 default=os.environ.get('AWS_SECRET_ACCESS_KEY', None),
-                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY_ID if "
+                help=("AWS S3 secret key. Default $AWS_SECRET_ACCESS_KEY if "
                 "it is defined."))
 
     # arguments for local backup files
     all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser):
-        parser.add_argument('--backup-file-dir', type=str, default='/tmp',
-                help=('Local directory containing database dump files (%s).' %
+        parser.add_argument(dest='backup_file_dir', type=str,
+                help=('Local directory containing database dump files (%s)' %
                 ', '.join(all_file_names)))
 
     # arguments for restoring database

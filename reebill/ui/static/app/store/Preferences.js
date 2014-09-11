@@ -25,16 +25,7 @@ Ext.define('ReeBill.store.Preferences', {
 		},
 
         listeners:{
-            exception: function (proxy, response, operation) {
-                Ext.getStore('Preferences').rejectChanges();
-                Ext.MessageBox.show({
-                    title: "Server error - " + response.status + " - " + response.statusText,
-                    msg:  response.responseText,
-                    icon: Ext.MessageBox.ERROR,
-                    buttons: Ext.Msg.OK,
-                    cls: 'messageBoxOverflow'
-                });
-            },
+            exception: utils.makeProxyExceptionHandler('Preferences'),
             scope: this
         },
 

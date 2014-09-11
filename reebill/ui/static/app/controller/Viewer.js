@@ -33,7 +33,6 @@ Ext.define('ReeBill.controller.Viewer', {
             return
         }
         var viewer = this.getUtilityBillViewer();
-        viewer.expand();
         viewer.setSrc(bill.get('pdf_url'));
     },
 

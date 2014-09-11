@@ -3,58 +3,32 @@
 File: process.py
 Description: Various utility procedures to process bills
 """
-import sys
-
 import os
-import copy
-from datetime import date, datetime, timedelta
-from operator import itemgetter
+from datetime import datetime, timedelta
 import traceback
-from itertools import chain
+import re
+import errno
+
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from bson import ObjectId
 from billing.processing.billupload import BillUpload
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
-
-#
-# uuid collides with locals so both the locals and package are renamed
-import re
-import errno
-import bson
 from billing.processing import journal
-from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
     Payment, Utility
-from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month
-from billing.util.dictutils import subdict
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, NotUniqueException
 
-import pprint
-from processing.state import UtilbillReebill
-
-pp = pprint.PrettyPrinter(indent=1).pprint
-sys.stdout = sys.stderr
-
-# number of days allowed between two non-Hypothetical utility bills before
-# Hypothetical utility bills will be added between them.
-# this was added to make the behavior of "hypothetical" utility bills less
-# irritating, but really, they should never exist or at least never be stored
-# in the database as if they were actual bills.
-# see https://www.pivotaltracker.com/story/show/30083239
-MAX_GAP_DAYS = 10
 
 class Process(object):
     def __init__(self, state_db, rate_structure_dao,
             nexus_util, bill_mailer, renderer, ree_getter,
             splinter=None, logger=None):
-        '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.nexus_util = nexus_util
@@ -261,8 +235,6 @@ class Process(object):
         utilbill.period_start = period_start
         utilbill.period_end = period_end
 
-        self.state_db.trim_hypothetical_utilbills(utilbill.customer.account,
-                utilbill.service)
         self.compute_utility_bill(utilbill.id)
         return  utilbill
 
@@ -377,9 +349,9 @@ class Process(object):
             raise ValueError(("A file is required for a complete or "
                     "utility-estimated utility bill"))
         if bill_file is not None and state in (UtilBill.Hypothetical,
-                UtilBill.SkylineEstimated):
-            raise ValueError("Hypothetical or Skyline-estimated utility bills "
-                    "can't have file")
+                UtilBill.Estimated):
+            raise ValueError("Hypothetical or Estimated utility bills "
+                    "can't have a file")
 
         session = Session()
 
@@ -517,8 +489,8 @@ class Process(object):
         utility bill cannot be deleted.
         """
         session = Session()
-        utility_bill = session.query(state.UtilBill).\
-            filter(state.UtilBill.id == utilbill_id).one()
+        utility_bill = session.query(UtilBill).filter(
+                UtilBill.id == utilbill_id).one()
 
         if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
@@ -530,8 +502,6 @@ class Process(object):
             session.delete(charge)
         for register in utility_bill.registers:
             session.delete(register)
-        self.state_db.trim_hypothetical_utilbills(utility_bill.customer.account,
-                                                  utility_bill.service)
         session.delete(utility_bill)
         return utility_bill
 
@@ -546,16 +516,6 @@ class Process(object):
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
         self.compute_utility_bill(utilbill_id)
-
-    def has_utilbill_predecessor(self, utilbill_id):
-        try:
-            utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-            self.state_db.get_last_real_utilbill(
-                    utilbill.customer.account, utilbill.period_start,
-                    utility=utilbill.utility, service=utilbill.service)
-            return True
-        except NoSuchBillException:
-            return False
 
     def refresh_charges(self, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
@@ -603,14 +563,13 @@ class Process(object):
             present_v0_issue_date = self.state_db.get_reebill(
                   account, sequence, version=0).issue_date
             if present_v0_issue_date is None:
-                payments = self.state_db. \
-                    get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN, payment_objects=True)
+                payments = self.state_db.get_total_payment_since(
+                        account, MYSQLDB_DATETIME_MIN, payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
             else:
-                payments = self.state_db. \
-                    get_total_payment_since(account,
-                        state.MYSQLDB_DATETIME_MIN, end=present_v0_issue_date, payment_objects=True)
+                payments = self.state_db.get_total_payment_since(
+                        account, MYSQLDB_DATETIME_MIN, end=present_v0_issue_date,
+                        payment_objects=True)
                 self.compute_reebill_payments(payments, reebill)
             # obviously balances are 0
             reebill.prior_balance = 0
@@ -741,7 +700,6 @@ class Process(object):
             new_reebill.copy_reading_conventional_quantities_from_utility_bill()
         session.add(new_reebill)
         session.add_all(new_reebill.readings)
-
 
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), new_reebill, use_olap=True)
@@ -1001,6 +959,10 @@ class Process(object):
                         service_address['city'],
                         service_address['state'],
                         service_address['postal_code']))
+
+        # TODO set service in "new account" form
+        new_customer.service = 'thermal'
+
         session.add(new_customer)
         session.flush()
         return new_customer
@@ -1093,55 +1055,7 @@ class Process(object):
             rows.append(row)
         return rows, total_count
 
-    def sequences_for_approximate_month(self, account, year, month):
-        '''Returns a list of sequences of all reebills whose approximate month
-        (as determined by dateutils.estimate_month()) is 'month' of 'year', or
-        None if the month precedes the approximate month of the first reebill.
-        When 'sequence' exceeds the last sequence for the account, bill periods
-        are assumed to correspond exactly to calendar months.
-        
-        This should be the inverse of the mapping from bill periods to months
-        provided by estimate_month() when its domain is restricted to months
-        that actually have bills.'''
-        # get all reebills whose periods contain any days in this month (there
-        # should be at most 3)
         session = Session()
-        next_month_year, next_month = month_offset(year, month, 1)
-        reebills = session.query(ReeBill).join(UtilBill).filter(
-                UtilBill.period_start >= date(year, month, 1),
-                UtilBill.period_end <= date(next_month_year, next_month, 1)
-                ).all()
-
-        # sequences for this month are those of the bills whose approximate
-        # month is this month
-        sequences_for_month = [r.sequence for r in reebills if
-                estimate_month(r.period_begin, r.period_end) == (year, month)]
-
-        # if there's at least one sequence, return the list of sequences
-        if sequences_for_month != []:
-            return sequences_for_month
-
-        # get approximate month of last reebill (return [] if there were never
-        # any reebills)
-        last_sequence = self.state_db.last_sequence(account)
-        if last_sequence == 0:
-            return []
-        last_reebill = self.state_db.get_reebill(account, last_sequence)
-        last_reebill_year, last_reebill_month = estimate_month(
-                *last_reebill.get_period())
-
-        # if this month isn't after the last bill month, there are no bill
-        # sequences
-        if (year, month) <= (last_reebill_year, last_reebill_month):
-            return []
-
-        # if (year, month) is after the last bill month, return the sequence
-        # determined by counting real months after the approximate month of the
-        # last bill (there is only one sequence in this case)
-        sequence_offset = month_difference(last_reebill_year,
-                last_reebill_month, year, month)
-        return [last_sequence + sequence_offset]
-
     def sequences_in_month(self, account, year, month):
         '''Returns a list of sequences of all reebills whose periods contain
         ANY days within the given month. The list is empty if the month
@@ -1190,14 +1104,6 @@ class Process(object):
                 last_sequence).get_period()[1]
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
-
-    def all_names_of_accounts(self, accounts):
-        # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
-        return name_dicts
-
-
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
@@ -1232,8 +1138,8 @@ class Process(object):
             the_path = BillUpload.get_reebill_file_path(account,
                                                         reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render_max_version(reebill.customer.account,
-                    reebill.sequence, dirname, basename)
+            self.renderer.render(reebill.customer.account,
+                    reebill.sequence, dirname, basename, False)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]
@@ -1384,7 +1290,7 @@ class Process(object):
           accounts dictionary is returned """
         grid_data = self.state_db.get_accounts_grid_data(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
-            [row[0] for row in grid_data])
+                [row[0] for row in grid_data])
 
         rows_dict = {}
         for acc, _, _, issue_date, rate_class, service_address, periodend in \

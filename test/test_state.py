@@ -47,72 +47,7 @@ class StateTest(TestCaseWithSetup):
         #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         #self._clear_tables(mysql_connection)
 
-    def test_trim_hypothetical_utilbills(self):
-        account, service = '99999', 'gas'
-        today = datetime.utcnow().date()
-        customer = self.session.query(Customer).filter_by(account=account).one()
-
-        # when there are no utility bills, trim_hypothetical_utilbills
-        # should do nothing
-        assert self.session.query(UtilBill).count() == 0
-        self.state_db.trim_hypothetical_utilbills(account, service)
-        self.assertEqual(0, self.session.query(UtilBill).count())
-
-        # TODO add tests for other services to make sure e.g. "electric"
-        # bills are unaffected
-
-        # to simplify the utility-bill-creation API
-        def create_bill(start, end, state):
             washgas = Utility('washgas', Address())
-            self.session.add(UtilBill(customer, state, 'gas',
-                    washgas, 'DC Non Residential Non Heat', Address(),
-                    Address(), period_start=start, period_end=end,
-                    date_received=today))
-
-        # when there are only Hypothetical utility bills,
-        # trim_hypothetical_utilbills should remove all of them
-        create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Hypothetical)
-        create_bill(date(2012,2,1), date(2012,3,1), UtilBill.Hypothetical)
-        create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
-        self.state_db.trim_hypothetical_utilbills(account, service)
-        self.assertEqual(0, self.session.query(UtilBill).count())
-
-        # 2 Complete bills
-        create_bill(date(2012,1,1), date(2012,2,1), UtilBill.Complete)
-        create_bill(date(2012,6,15), date(2012,7,15), UtilBill.Complete)
-
-        # Hypothetical bills before, between, and after the Complete bills
-        # (including some overlaps with Complete bills and each other)
-        create_bill(date(2011,9,1), date(2011,10,1), UtilBill.Hypothetical)
-        create_bill(date(2011,10,1), date(2011,11,15), UtilBill.Hypothetical)
-        create_bill(date(2011,11,15), date(2012,1,15), UtilBill.Hypothetical)
-        create_bill(date(2012,1,30), date(2012,3,1), UtilBill.Hypothetical)
-        create_bill(date(2012,3,1), date(2012,4,1), UtilBill.Hypothetical)
-        create_bill(date(2012,6,1), date(2012,7,1), UtilBill.Hypothetical)
-        create_bill(date(2012,7,20), date(2012,8,20), UtilBill.Hypothetical)
-        create_bill(date(2012,7,20), date(2012,9,1), UtilBill.Hypothetical)
-
-        self.state_db.trim_hypothetical_utilbills(account, service)
-
-        # the survivors should be the ones with at least one period date in
-        # the inner interval (end of earliest non-hypothetical bill to
-        # start of latest)
-        bills = self.state_db.list_utilbills(account)[0]\
-                .filter(UtilBill.state==UtilBill.Hypothetical).all()
-
-        # Ensure that the results are sorted in ascending order by period_start
-        # because the constant indices used in the assertions below rely on that order
-        bills.sort(key=lambda x: x.period_start)
-
-        self.assertEqual(3, len(bills))
-        self.assertEqual((date(2012,1,30), date(2012,3,1)),
-                (bills[0].period_start, bills[0].period_end))
-        self.assertEqual((date(2012,3,1), date(2012,4,1)),
-                (bills[1].period_start, bills[1].period_end))
-        self.assertEqual((date(2012,6,1), date(2012,7,1)),
-                (bills[2].period_start, bills[2].period_end))
-
-
     def test_new_reebill(self):
         b = self.state_db.new_reebill('99999', 1)
         self.assertEqual('99999', b.customer.account)
