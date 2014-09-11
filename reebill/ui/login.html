@@ -8,7 +8,7 @@
 
     <style type="text/css">
         body, html{
-            background: #FFFFFF !important;
+            background: #fff !important;
         }
         .outerbox {
             display: table;
@@ -38,10 +38,11 @@
             Ext.create('Ext.form.Panel', {
                 url: 'http://' + location.host + '/reebill/login',
                 frame: true,
-                title:'Log In',
                 border: false,
                 width: 400,
                 renderTo: 'loginform',
+                frame: false,
+                frameHeader: false,
                 bodyStyle: {
                     background: '#fff',
                     padding: '5px'
@@ -71,7 +72,6 @@
                         handler: function () {
                             var form = this.up('form').getForm();
                             form.submit({
-                                waitMsg: 'Authenticating...',
                                 success: function(fp, o) {
                                     window.location = 'http://'
                                             + location.host + '/reebill/';
@@ -90,15 +90,12 @@
     </script>
 
     <body>
-        <p style="font-family:Verdana, sans-serif; font-style:italic;
-        font-weight:bold; font-size:400%; color:#00b423" align="center" >
-            <img src="static/images/skyline_logo_whitebackground.png" align="top">
-            ReeBill
-        </p>
+    <p align="center">
+    <img src="static/images/NEXTILITY_LOGO.png" width='300' align="center">
+    </p>
         <div class='outerbox'>
             <div class="middlebox">
                 <div class="innerbox" id="loginform">
-
                 </div>
             </div>
         </div>
