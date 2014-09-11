@@ -168,9 +168,10 @@ Ext.define('ReeBill.view.UtilityBills', {
     }],
 
     bbar: {
-        xtype: 'pagingtoolbar',
+        xtype: 'pagingmemorytoolbar',
         pageSize: 25,
         store: 'UtilityBillsMemory',
+        refreshStore: 'UtilityBills',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}'
     }
