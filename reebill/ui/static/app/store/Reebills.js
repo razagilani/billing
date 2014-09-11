@@ -22,16 +22,7 @@ Ext.define('ReeBill.store.Reebills', {
 		},
 
         listeners:{
-            exception: function (proxy, response, operation) {
-                Ext.getStore('Reebills').rejectChanges();
-                Ext.MessageBox.show({
-                    title: "Server error - " + response.status + " - " + response.statusText,
-                    msg:  response.responseText,
-                    icon: Ext.MessageBox.ERROR,
-                    buttons: Ext.Msg.OK,
-                    cls: 'messageBoxOverflow'
-                });
-            },
+            exception: utils.makeProxyExceptionHandler('Reebills'),
             scope: this
         },
 

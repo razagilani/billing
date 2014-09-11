@@ -13,6 +13,9 @@ Ext.define('ReeBill.view.Reebills', {
                 // issued bill
             } else if (record.get('version') == 0) {
                 // unissued version-0 bill
+                if (record.get('processed')){
+                    return 'reebill-grid-unissued-processed';
+                }
                 return 'reebill-grid-unissued';
             } else {
                 // unissued correction

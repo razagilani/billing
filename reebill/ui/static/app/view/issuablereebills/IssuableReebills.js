@@ -32,19 +32,19 @@ Ext.define('ReeBill.view.IssuableReebills', {
     columns: [{
         header: 'Account',
         dataIndex: 'account',
-        width: 120,
+        width: 90,
         sortable: true
     },{
         header: 'Sequence',
         dataIndex: 'sequence',
-        width: 120,
+        width: 90,
         sortable: true
     },{
         header: 'Recipients',
         sortable: false,
         groupable: false,
         dataIndex: 'mailto',
-        width: 250,
+        minWidth: 175,
         flex: 1,
         editor: {
             xtype: 'textfield'
@@ -58,19 +58,19 @@ Ext.define('ReeBill.view.IssuableReebills', {
     },{
         header: 'Total From Utility Bill',
         dataIndex: 'utilbill_total',
-        width: 175,
+        width: 130,
         sortable: true,
         renderer: Ext.util.Format.usMoney
     },{
         header: 'Computed Total',
         dataIndex: 'actual_total',
-        width: 175,
+        width: 130,
         sortable: true,
         renderer: Ext.util.Format.usMoney
     },{
         header: '$ Difference',
         dataIndex: 'difference',
-        width: 175,
+        width: 130,
         sortable: true,
         align: 'right',
         renderer: Ext.util.Format.usMoney

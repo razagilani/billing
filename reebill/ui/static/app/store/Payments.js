@@ -19,16 +19,7 @@ Ext.define('ReeBill.store.Payments', {
 		},
 
         listeners:{
-            exception: function (proxy, response, operation) {
-                Ext.getStore('Payments').rejectChanges();
-                Ext.MessageBox.show({
-                    title: "Server error - " + response.status + " - " + response.statusText,
-                    msg:  response.responseText,
-                    icon: Ext.MessageBox.ERROR,
-                    buttons: Ext.Msg.OK,
-                    cls: 'messageBoxOverflow'
-                });
-            },
+            exception: utils.makeProxyExceptionHandler('Payments'),
             scope: this
         },
     },

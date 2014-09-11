@@ -46,7 +46,7 @@ Ext.define('ReeBill.view.AccountForm', {
         }]
     },{
         xtype: 'fieldset',
-        title: 'Skyline Billing Address',
+        title: 'Billing Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150
@@ -74,7 +74,7 @@ Ext.define('ReeBill.view.AccountForm', {
         }]
     },{
         xtype: 'fieldset',
-        title: 'Skyline Service Address',
+        title: 'Service Address',
         defaults: {
             anchor: '100%',
             labelWidth: 150

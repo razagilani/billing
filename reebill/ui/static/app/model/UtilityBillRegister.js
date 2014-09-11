@@ -13,7 +13,7 @@ Ext.define('ReeBill.model.UtilityBillRegister', {
         {name: 'reg_type'},
         {name: 'register_binding'},
         {name: 'description'},
-        {name: 'quantity'},
+        {name: 'quantity', type: 'float'},
         {name: 'quantity_units'}
     ]
 });

@@ -17,6 +17,12 @@
     font-style: italic; /* this does nothing--same for font-weight: bold */
     color: blue;
 }
+
+.reebill-grid-unissued-processed {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: green;
+}
+
 .reebill-grid-unissued-correction {
     font-style: italic;
     color: red;
@@ -27,7 +33,7 @@
     color: blue;
 }
 
-.ratestructure-grid-error{
+.charges-grid-error{
     font-weight: bold;
     color: red;
 }
@@ -38,4 +44,8 @@
 
 .x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
     font-weight: bold !important;
+}
+
+.panel-noborder > .x-panel > .x-panel-body {
+    border: 0px !important
 }
