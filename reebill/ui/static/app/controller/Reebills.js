@@ -171,10 +171,14 @@ Ext.define('ReeBill.controller.Reebills', {
 
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
+        var processed = selected.get('processed')
 
         this.getDeleteReebillButton().setDisabled(issued);
+        this.getDeleteReebillButton().setDisabled(processed);
         this.getBindREOffsetButton().setDisabled(issued);
+        this.getBindREOffsetButton().setDisabled(processed);
         this.getComputeReebillButton().setDisabled(issued);
+        this.getComputeReebillButton().setDisabled(processed);
         this.getToggleReebillProcessedButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
@@ -553,7 +557,7 @@ Ext.define('ReeBill.controller.Reebills', {
          // Disable Save Button if not the Highest Version is selected
          // or if the bill is issued
          this.getSaveAccountInformationButton().setDisabled(
-             !store.isHighestVersion(version) || selected.get('issued'));
+             !store.isHighestVersion(version) || selected.get('issued') || selected.get('processed'));
      },
 
      /**
