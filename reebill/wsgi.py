@@ -97,11 +97,7 @@ def db_commit(method):
     '''
     @functools.wraps(method)
     def wrapper(*args, **kwargs):
-        try:
-            result = method(*args, **kwargs)
-        except:
-            Session().rollback()
-            raise
+        result = method(*args, **kwargs)
         Session().commit()
         return result
     return wrapper
@@ -114,8 +110,12 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
+        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
+        cache = json.load(open(cache_file)) if cache_file != "" else None
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
-                                                    'nexus_web_host'))
+                                                    'nexus_web_host'),
+                                    offline_cache=cache)
+
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
@@ -127,12 +127,6 @@ class WebResource(object):
         self.billUpload = BillUpload(self.config, self.logger)
 
         # create a RateStructureDAO
-        rsdb_config_section = dict(self.config.items("mongodb"))
-        mongoengine.connect(
-            rsdb_config_section['database'],
-            host=rsdb_config_section['host'],
-            port=int(rsdb_config_section['port']),
-            alias='ratestructure')
         self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
 
         # configure journal:
@@ -484,16 +478,9 @@ class ReebillsResource(RESTResource):
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            if not self.config.get('billimages', 'show_reebill_images'):
-                raise RenderError('Render does nothing because reebill'
-                                  ' images have been turned off.')
-            self.renderer.render(
-                account,
-                sequence,
+            self.renderer.render(account, sequence,
                 self.config.get("bill", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
-                False
-            )
+                "%.5d_%.4d.pdf" % (int(account), int(sequence)), False)
             rtn = row
 
         elif action == 'mail':
@@ -506,9 +493,8 @@ class ReebillsResource(RESTResource):
             self.process.mail_reebills(account, [int(sequence)], recipient_list)
 
             # journal mailing of every bill
-            for sequence in sequences:
-                journal.ReeBillMailedEvent.save_instance(
-                    cherrypy.session['user'], account, sequence, recipients)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
         elif action == 'setProcessed':
@@ -591,7 +577,7 @@ class ReebillsResource(RESTResource):
         register_binding = params['register_binding']
         version = self.process.upload_interval_meter_csv(account, sequence, csv_file, timestamp_column, timestamp_format, energy_column, energy_unit, register_binding)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-            account, sequence, version)
+                account, sequence, version)
 
         return self.dumps({'success':True})
 
@@ -618,7 +604,7 @@ class UtilBillResource(RESTResource):
         fileobj = params['file_to_upload']
 
         billstate = UtilBill.Complete if fileobj.file else \
-            UtilBill.SkylineEstimated
+            UtilBill.Estimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
             fileobj.filename if fileobj.file else None,
@@ -712,7 +698,7 @@ class RegistersResource(RESTResource):
         self.process.delete_register(register_id)
         return True, {}
 
-class RateStructureResource(RESTResource):
+class ChargesResource(RESTResource):
 
     def handle_get(self, utilbill_id, *vpath, **params):
         charges = self.process.get_utilbill_charges_json(utilbill_id)
@@ -914,12 +900,12 @@ class ReportsResource(WebResource):
             })
 
 
-class BillToolBridge(WebResource):
+class ReebillWSGI(WebResource):
     accounts = AccountsResource()
     reebills = ReebillsResource()
     utilitybills = UtilBillResource()
     registers = RegistersResource()
-    ratestructure = RateStructureResource()
+    charges = ChargesResource()
     payments = PaymentsResource()
     reebillcharges = ReebillChargesResource()
     reebillversions = ReebillVersionsResource()
@@ -1006,44 +992,72 @@ class BillToolBridge(WebResource):
 
         return config_dict
 
-
-cherrypy_conf = {
-    '/': {
-        'tools.sessions.on': True,
-        'tools.staticdir.root': os.path.dirname(
-            os.path.realpath(__file__))+'/ui',
-        'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
-    },
-    '/login.html': {
-        'tools.staticfile.on': True,
-        'tools.staticfile.filename': os.path.dirname(
-            os.path.realpath(__file__))+"/ui/login.html"
-    },
-    '/index.html': {
-        'tools.staticfile.on': True,
-        'tools.staticfile.filename': os.path.dirname(
-            os.path.realpath(__file__))+"/ui/index.html"
-    },
-    '/static': {
-        'tools.staticdir.on': True,
-        'tools.staticdir.dir': 'static'
-    }
-
-}
-
-
 cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
 
 if __name__ == '__main__':
-    bridge = BillToolBridge()
+    app = ReebillWSGI()
+
+    class CherryPyRoot(object):
+        reebill = app
+
+    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui/'
+    cherrypy_conf = {
+        '/': {
+            'tools.sessions.on': True,
+            # 'tools.staticdir.root': '/',
+            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
+        },
+        '/reebill/login.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "login.html"
+        },
+        '/reebill/index.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "index.html"
+        },
+        '/reebill/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': ui_root + "static"
+        },
+        '/utilitybills': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': app.config.get('bill', 'utilitybillpath')
+        },
+        '/reebills': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': app.config.get('bill', 'billpath')
+        }
+    }
+
     cherrypy.config.update({
-        'server.socket_host': bridge.config.get("http", "socket_host"),
-        'server.socket_port': bridge.config.get("http", "socket_port")})
+        'server.socket_host': app.config.get("http", "socket_host"),
+        'server.socket_port': app.config.get("http", "socket_port")})
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)
-    cherrypy.quickstart(bridge, "/reebill", config=cherrypy_conf)
+    cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
+    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui'
+    cherrypy_conf = {
+        '/': {
+            'tools.sessions.on': True,
+            'tools.staticdir.root': ui_root,
+            'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
+        },
+        '/login.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "/login.html"
+        },
+        '/index.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': ui_root + "/index.html"
+        },
+        '/static': {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': 'static'
+        }
+
+    }
     # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
@@ -1054,5 +1068,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
-    bridge = BillToolBridge()
-    application = cherrypy.Application(bridge, script_name=None, config=cherrypy_conf)
+    app = ReebillWSGI()
+    application = cherrypy.Application(app, script_name=None, config=cherrypy_conf)

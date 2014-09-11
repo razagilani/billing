@@ -2,6 +2,7 @@ Ext.define('ReeBill.view.Viewport', {
 
     extend: 'Ext.container.Viewport',
     layout: 'fit',
+    componentCls: 'panel-noborder',
 
     initComponent: function() {
         this.items = {
@@ -14,17 +15,17 @@ Ext.define('ReeBill.view.Viewport', {
                 region: 'north',
                 xtype: 'panel',
                 layout: 'fit',
-                height: 80,
+                height: 30,
                 split: false,
                 border: false,
-                html: '<div id="header" style="background-image:url(\'static/images/green_stripe.jpg\');"><table style="border-collapse: collapse;"><tr><td><img src="static/images/skyline_logo.png"/></td><td><img src="static/images/reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="static/images/money_chaser.png"/></td></tr></table></div>'
+                html: '<div id="header" style="background:#00a4e4; height:inherit;"><img src="static/images/nextility_blue.png" style="height:inherit; padding:3px"></div>'
             },{
                 region: 'west',
                 xtype: 'pdfpanel',
                 name: 'utilityBillViewer',
                 pageScale: 0.5,
                 collapsible: true,
-                collapsed: true,
+                collapsed: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
             },{
@@ -103,8 +104,8 @@ Ext.define('ReeBill.view.Viewport', {
                     }]
                 },{
                     xtype: 'panel',
-                    name: 'rateStructuresTab',
-                    title: 'Rate Structure',
+                    name: 'chargesTab',
+                    title: 'Charges',
                     layout: 'border',
                     disabled: true,
                     defaults: {
@@ -112,8 +113,8 @@ Ext.define('ReeBill.view.Viewport', {
                         split: true
                     },
                     items: [{
-                        xtype: 'rateStructures',
-                        id: 'rateStructuresGrid',
+                        xtype: 'charges',
+                        id: 'chargesGrid',
                         region: 'center'                        
                     }]
                 },{

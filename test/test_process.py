@@ -618,17 +618,17 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         for x, y in zip(dictionaries, utilbills_data):
             self.assertDictContainsSubset(x, y)
 
-        # 3rd bill "Skyline estimated", without a file
+        # 3rd bill "estimated", without a file
         self.process.upload_utility_bill(account, 'gas',
             date(2012, 3, 1), date(2012, 4, 1),
             None, None,
-            state=UtilBill.SkylineEstimated,
+            state=UtilBill.Estimated,
             utility='washgas',
             rate_class='DC Non Residential Non Heat')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
             30)
         dictionaries = [{
-                            'state': 'Skyline Estimated',
+                            'state': 'Estimated',
                             'service': 'Gas',
                             'utility': 'washgas',
                             'rate_class': 'DC Non Residential Non Heat',
@@ -1174,7 +1174,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                .12, .34, billing_address, service_address, '100001')
 
         # new customers also need to be in nexus for 'update_renewable_readings' to
-        # work (using mock Skyliner)
+        # work (using mock skyliner)
         self.nexus_util._customers.extend([
             {
                 'billing': 'aaaaa',

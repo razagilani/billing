@@ -21,8 +21,8 @@ Ext.define('ReeBill.controller.TabPanel', {
         ref: 'metersTab',
         selector: 'panel[name=metersTab]'
     },{
-        ref: 'rateStructuresTab',
-        selector: 'panel[name=rateStructuresTab]'
+        ref: 'chargesTab',
+        selector: 'panel[name=chargesTab]'
     },{
         ref: 'chargesTab',
         selector: 'panel[name=chargesTab]'
@@ -79,7 +79,7 @@ Ext.define('ReeBill.controller.TabPanel', {
         this.getPaymentsGrid().setDisabled(!accountSelections || !accountSelections.length);
 
         this.getMetersTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
-        this.getRateStructuresTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
+        this.getChargesTab().setDisabled(!utilityBillSelections || !utilityBillSelections.length);
 
         this.getReebillChargesTab().setDisabled(!reebillSelections || !reebillSelections.length);
     }
