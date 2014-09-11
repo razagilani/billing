@@ -47,7 +47,6 @@ class StateTest(TestCaseWithSetup):
         #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         #self._clear_tables(mysql_connection)
 
-            washgas = Utility('washgas', Address())
     def test_new_reebill(self):
         b = self.state_db.new_reebill('99999', 1)
         self.assertEqual('99999', b.customer.account)

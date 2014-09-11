@@ -1412,12 +1412,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.renderer.render_max_version.return_value = 1
         self.process.upload_utility_bill(acc, 'gas',
             date(2012, 1, 1), date(2012, 2, 1),
-            StringIO('january 2012'),
-            'january.pdf')
+            StringIO('january 2012'))
         self.process.upload_utility_bill(acc, 'gas',
             date(2012, 2, 1), date(2012, 3, 1),
-            StringIO('february 2012'),
-            'february.pdf')
+            StringIO('february 2012'))
         one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
         two = self.process.roll_reebill(acc)
 
@@ -1467,12 +1465,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.renderer.render_max_version.return_value = 1
         self.process.upload_utility_bill(acc, 'gas',
             date(2012, 1, 1), date(2012, 2, 1),
-            StringIO('january 2012'),
-            'january.pdf')
+            StringIO('january 2012'))
         self.process.upload_utility_bill(acc, 'gas',
             date(2012, 2, 1), date(2012, 3, 1),
-            StringIO('february 2012'),
-            'february.pdf')
+            StringIO('february 2012'))
         one = self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
         one.processed = 1
         two = self.process.roll_reebill(acc)
