@@ -74,7 +74,7 @@ class RenewableEnergyGetter(object):
     def update_renewable_readings(self, olap_id, reebill, use_olap=True,
                 verbose=False):
         '''Update hypothetical register quantities in 'reebill' with
-        Skyline-generated energy. The OLAP database is the default source of
+        renewable energy. The OLAP database is the default source of
         energy-sold values; use use_olap=False to get them directly from OLTP.
         '''
         install_obj = self._splinter.get_install_obj_for(olap_id)
