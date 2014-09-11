@@ -69,7 +69,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
 
         this.getRemoveUtilityBillRegisterButton().setDisabled(!hasSelections);
-        this.getUploadIntervalMeterForm().setDisabled(!hasSelections);
     },
 
     /**
