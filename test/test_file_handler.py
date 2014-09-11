@@ -18,6 +18,10 @@ class ReebillFileHandlerTest(TestCase):
         self.temp_dir.cleanup()
 
     def test_render(self):
+        '''Simple test of reebill PDF rendering that checks whether the PDF
+        file matches the expected value. This will tell you when something is
+        broken but it won't tell you what's broken.
+        '''
         ba = Address(addressee='Billing Addressee', street='123 Example St.',
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
@@ -48,13 +52,28 @@ class ReebillFileHandlerTest(TestCase):
                           1, 1, 30, 40),
         ]
 
-        # TODO: put some actual data in this bill
-
         self.renderer.render(r)
 
+        # get hash of the PDF file, excluding certain parts where ReportLab puts data
+        # that are different every time (current date, and some mysterious bytes)
         path = self.renderer.get_file_path(r)
         with open(path, 'rb') as pdf_file:
-            pdf_hash = sha1(pdf_file.read()).hexdigest()
+            filtered_lines, prev_line = [], ''
+            while True:
+                line = pdf_file.readline()
+                if line == '':
+                    break
+                if not (line.startswith(' /CreationDate (D:') or
+                        prev_line.startswith(' % ReportLab generated PDF '
+                        'document -- digest (http://www.reportlab.com)')):
+                    filtered_lines.append(line)
+                prev_line = line
+        filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
 
-        # TODO: PDF file comes out different every time?
-        #self.assertEqual('3a4df0883354b404397c527b815409dada09f493', pdf_hash)
+        # NOTE this will need to be updated whenever the PDF is actually
+        # supposed to be different. the only way to do it is to manually verify
+        # that the PDF looks right, then get its actual hash and paste it here
+        # to make sure it stays that way.
+        self.assertEqual('6fed8edcfb0b2927715158b6fcf9a2e4ccb16e8b',
+                filtered_pdf_hash)
+
