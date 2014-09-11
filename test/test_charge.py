@@ -30,11 +30,10 @@ class ChargeUnitTests(utils.TestCase):
                                   group='SOME_GROUP',
                                   quantity=0.0,
                                   quantity_units='therms',
-                                  rate=0.0,
                                   rsi_binding='SOME_RSI',
                                   total=0.0,
                                   quantity_formula="SOME_VAR.quantity * 2",
-                                  rate_formula="OTHER_VAR.rate + 1",
+                                  rate=6,
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding")
@@ -77,13 +76,10 @@ class ChargeUnitTests(utils.TestCase):
                 self.assertEqual(error.message, expected_error_message)
 
     def test_formula_variable(self):
-        formulas = [('REG_TOTAL.quantity', 'SOME_VAL.rate',
-                     set(['REG_TOTAL', 'SOME_VAL'])),
-                    ('SOMEVAR.rr', 'OTHERVAR + zz',
-                     set(['SOMEVAR', 'OTHERVAR', 'zz']))]
-        for quantity_formula, rate_formula, formula_variables in formulas:
+        formulas = [('REG_TOTAL.quantity', set(['REG_TOTAL'])),
+                    ('SOMEVAR.rr + zz',  set(['SOMEVAR', 'zz']))]
+        for quantity_formula, formula_variables in formulas:
             self.charge.quantity_formula = quantity_formula
-            self.charge.rate_formula = rate_formula
             self.assertEqual(formula_variables,
                              Charge.formula_variables(self.charge))
         self.charge.quantity_formula = '$958^04'
@@ -93,15 +89,12 @@ class ChargeUnitTests(utils.TestCase):
 
         evaluation = Charge.evaluate(self.charge, self.context)
         self.assertEqual(evaluation.quantity, 4)
-        self.assertEqual(evaluation.rate, 6)
         self.assertEqual(evaluation.total, 24)
 
     def test_evaluate_check_update_is_true(self):
         self.assertNotEqual(self.charge.quantity, 4)
-        self.assertNotEqual(self.charge.rate, 6)
         Charge.evaluate(self.charge, self.context, update=True)
         self.assertEqual(self.charge.quantity, 4)
-        self.assertEqual(self.charge.rate, 6)
         self.assertEqual(self.charge.total, 24)
 
     def test_evaluate_does_not_raise_on_bad_input_raise_exception_false(self):

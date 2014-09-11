@@ -16,10 +16,12 @@ Ext.define('ReeBill.controller.Viewer', {
         
         this.control({
             'grid[id=utilityBillsGrid]': {
-                selectionchange: this.handleUtilityBillSelect
+                selectionchange: this.handleUtilityBillSelect,
+                deselect: this.handleUtilityBillDeselect
             },
             'grid[id=reebillsGrid]': {
-                selectionchange: this.handleReebillSelect
+                selectionchange: this.handleReebillSelect,
+                deselect: this.handleReebillDeselect
             }
         });
     },
@@ -37,6 +39,11 @@ Ext.define('ReeBill.controller.Viewer', {
 
     },
 
+    handleUtilityBillDeselect: function(){
+        var viewer = this.getUtilityBillViewer();
+        viewer.setSrc('');
+    },
+
     /**
      * Handle the selection of a reebill.
      */
@@ -51,6 +58,11 @@ Ext.define('ReeBill.controller.Viewer', {
         }
         var viewer = this.getReebillViewer();
         viewer.setSrc(window.location.origin + '/reebills/' + bill.get('account') + '/' + bill.get('account') + '_' + s + '.pdf');
+    },
+
+    handleReebillDeselect: function(){
+        var viewer = this.getReebillViewer();
+        viewer.setSrc('');
     }
 
 });

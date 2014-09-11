@@ -158,6 +158,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleDelete: function() {
         var scope = this,
             store = this.getUtilityBillsStore(),
+            grid = this.getUtilityBillsGrid(),
             selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
 
         if (!selected)
@@ -168,6 +169,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             function(answer) {
                 if (answer == 'yes') {
                     store.remove(selected)
+                    grid.fireEvent('deselect', selected, 0);
                 }
             });
     },

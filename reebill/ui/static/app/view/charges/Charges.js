@@ -96,7 +96,7 @@ Ext.define('ReeBill.view.Charges', {
         xtype: 'templatecolumn',
         header: 'Rate',
         sortable: true,
-        dataIndex: 'rate_formula',
+        dataIndex: 'rate',
         editor: {
             xtype: 'textfield',
             allowBlank: false

@@ -61,9 +61,10 @@ Ext.define('ReeBill.view.Accounts', {
     }],
 
     bbar: {
-        xtype: 'pagingtoolbar',
+        xtype: 'pagingmemorytoolbar',
         pageSize: 25,
         store: 'AccountsMemory',
+        refreshStore: 'Accounts',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}',
         items: ['->',{

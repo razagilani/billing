@@ -1,7 +1,6 @@
 Ext.define('ReeBill.store.UtilityBills', {
-    extend: 'Ext.data.Store',
-    //extend: 'Ext.ux.data.PagingStore',
-
+    extend: 'Ext.data.SyncStore',
+    memoryStore: 'UtilityBillsMemory',
     model: 'ReeBill.model.UtilityBill',
 
     autoLoad: false,
@@ -28,28 +27,6 @@ Ext.define('ReeBill.store.UtilityBills', {
             scope: this
         }
 	},
-
-    // Keep the memory store in sync
-    listeners:{
-        load: function(store, records, successful, eOpts){
-            var memoryStore = Ext.getStore('UtilityBillsMemory');
-            memoryStore.getProxy().data = records;
-            memoryStore.loadPage(1);
-        },
-        add: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('UtilityBillsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        remove: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('UtilityBillsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        scope: this
-    },
 
     getLastEndDate: function(){
         var lastDate = new Date(0);
