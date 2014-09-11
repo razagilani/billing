@@ -819,21 +819,21 @@ class UtilBill(Base):
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
     # the utility (and which will be corrected later to become Complete).
-    # 2. Skyline estimated: a bill that is known to exist (and whose dates are
-    # correct) but whose contents were estimated by Skyline.
-    # 3. Hypothetical: Skyline supposes that there is probably a bill during a
+    # 2. Estimated: a bill that is known to exist (and whose dates are
+    # correct) but whose contents were estimated (not by the utility).
+    # 3. Hypothetical: it is believed that there is probably a bill during a
     # certain time period and estimates what its contents would be if it
     # existed. Such a bill may not really exist (since we can't even know how
     # many bills there are in a given period of time), and if it does exist,
     # its actual dates will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
-    Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
+    Complete, UtilityEstimated, Estimated, Hypothetical = range(4)
 
     # human-readable names for utilbill states (used in UI)
     _state_descriptions = {
         Complete: 'Final',
         UtilityEstimated: 'Utility Estimated',
-        SkylineEstimated: 'Skyline Estimated',
+        Estimated: 'Estimated',
         Hypothetical: 'Missing'
     }
 
@@ -844,7 +844,7 @@ class UtilBill(Base):
                  target_total=0, date_received=None, processed=False,
                  reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
-        UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
+        UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
         self.customer = customer
@@ -1211,7 +1211,7 @@ class Payment(Base):
     reebill = relationship("ReeBill", backref=backref('payments',
         order_by=id))
 
-    '''date_received is the datetime when Skyline recorded the payment.
+    '''date_received is the datetime when the payment was recorded.
     date_applied is the date that the payment is "for", from the customer's
     perspective. Normally these are on the same day, but an error in an old
     payment can be corrected by entering a new payment with the same
@@ -1771,10 +1771,10 @@ class UtilBillLoader(object):
     def load_real_utilbills(self, **kwargs):
         '''Returns a cursor of UtilBill objects matching the criteria given
         by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
-        state SkylineEstimated or lower) are included.
+        state Estimated or lower) are included.
         '''
-        cursor = self._session.query(UtilBill).filter(UtilBill.state <=
-                UtilBill.SkylineEstimated)
+        cursor = self._session.query(UtilBill).filter(
+                UtilBill.state <= UtilBill.Estimated)
         for key, value in kwargs.iteritems():
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
