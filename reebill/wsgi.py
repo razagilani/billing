@@ -464,7 +464,6 @@ class ReebillsResource(RESTResource):
         sequence, account = r.sequence, r.customer.account
         action = row.pop('action')
         action_value = row.pop('action_value')
-        # Initialize the return value to the client
         rtn = None
 
         if action == 'bindree':
