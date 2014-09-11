@@ -346,8 +346,8 @@ if __name__ == '__main__':
     all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
     for parser in (download_parser, restore_local_parser):
-        parser.add_argument('--backup-file-dir', type=str, default='/tmp',
-                help=('Local directory containing database dump files (%s).' %
+        parser.add_argument(dest='backup_file_dir', type=str,
+                help=('Local directory containing database dump files (%s)' %
                 ', '.join(all_file_names)))
 
     # arguments for restoring database
