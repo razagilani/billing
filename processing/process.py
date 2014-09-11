@@ -593,7 +593,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
         if reebill.processed:
-            raise NotComputable("Cannot compute processed reebill")
+            # processed reebills are already computed
+            return
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
