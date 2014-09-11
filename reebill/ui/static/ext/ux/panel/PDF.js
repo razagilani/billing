@@ -111,7 +111,6 @@ Ext.define('Ext.ux.panel.PDF',{
     
     getDocument: function(regenBustCache){
         var me = this;
-        console.log('getDocument', regenBustCache, me.src);
 
         if(me._bustCache === undefined || regenBustCache === true){
             me._makeBustCache();
