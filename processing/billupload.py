@@ -61,5 +61,5 @@ class BillUpload(object):
         """Return the path for the PDF file of the reebill given by account,
         sequence.
         """
-        return os.path.join(config.get('billdb', 'billpath'),
+        return os.path.join(config.get('bill', 'billpath'),
                             account, '%s_%.4d.pdf' % (account, sequence))

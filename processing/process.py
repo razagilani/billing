@@ -14,6 +14,7 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from billing.processing.billupload import BillUpload
+from processing.state import MYSQLDB_DATETIME_MIN
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 from billing.processing import journal
