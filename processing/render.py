@@ -42,11 +42,6 @@ def format_for_display(x, places=2):
     '''
     return ('%%.%sf' % places) % round_for_display(x, places)
 
-def stringify(d):
-    """ convert dictionary values that are None to empty string. """
-    d.update(dict([(k,'') for k,v in d.items() if v is None ]))
-    return d
-
 def concat_pdfs(in_paths, out_path):
     '''Concatenates all PDF files given in 'in_paths', writing the output file
     at 'out_path'.'''
@@ -203,7 +198,7 @@ class ReebillFileHandler(object):
         self._ensure_directory_exists(reebill)
         document = self._generate_document(reebill)
         dir_path, file_name = os.path.split(self.get_file_path(reebill))
-        ThermalBillDoc(None).render([document], dir_path,
+        ThermalBillDoc().render([document], dir_path,
                 file_name, ReebillFileHandler.TEMPLATE_DIR,
                 ReebillFileHandler.PDF_SKIN_NAME)
 
@@ -218,7 +213,7 @@ class BillDoc(BaseDocTemplate):
     #pageinfo = "Skyline Bill"
     page_names = []
 
-    def __init__(self, logger):
+    def __init__(self):
         """
         Config should be a dict of configuration keys and values.
         """
@@ -229,10 +224,6 @@ class BillDoc(BaseDocTemplate):
         # TODO filesep
         #BaseDocTemplate.__init__(self, "%s/%s" % (output_directory, output_name), pagesize=letter, showBoundary=0, allowSplitting=0)
         BaseDocTemplate.__init__(self, "basedoctemplate.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
-
-        # logger for reporting errors
-        self.logger = logger
-
 
     def _load_fonts(self):
 
@@ -1284,28 +1275,6 @@ class PVBillDoc(BillDoc):
         return fl
 
 
-def init_logging(args):
-    '''Return initialized logger.'''
-    #globals & logger init
-    LOGGER_NAME = "Bill Renderer"
-    std_formatter = logging.Formatter('%(asctime)s - %(funcName)s : '
-                                      '%(levelname)-8s %(message)s')
-    _logger = logging.getLogger(LOGGER_NAME)
-    _logger.setLevel(logging.DEBUG)
-
-    #configure writing to stdout (bhvr toggled w/ verbose flag)
-    so_handler = logging.StreamHandler(sys.stdout)
-    so_formatter = std_formatter
-
-    so_handler.setFormatter(so_formatter)
-    if args.verbose:
-        so_handler.setLevel(logging.DEBUG) 
-    else:
-        so_handler.setLevel(logging.INFO) 
-    _logger.addHandler(so_handler)
-
-    return _logger
-
 def build_parsers():
     '''Return initialized argument parser.'''
     parser = ArgumentParser(description="Send AMQP for recently modified records.")
@@ -1345,8 +1314,6 @@ if __name__ == '__main__':
 
     parser = build_parsers()
     args = parser.parse_args()
-
-    logger = init_logging(args)
 
     if not os.path.exists(args.output_directory):
         os.mkdir(args.output_directory)
@@ -1548,7 +1515,7 @@ if __name__ == '__main__':
 
                     by_date_dict[the_date]['hypothetical_chargegroups'] = fake_hypo_chargegroups
     else:
-        logger.info("No datafile supplied, generating one bill")
+        print "No datafile supplied, generating one bill"
         # implemented here so all necessary fields can be seen
         by_date_dict = {'2014-01-01': fake_bill_fields}
         by_date_dict['2014-01-01']['utility_meters'] = fake_utility_meters
@@ -1564,7 +1531,7 @@ if __name__ == '__main__':
 
         # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
         if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
-            doc = ThermalBillDoc(logger)
+            doc = ThermalBillDoc()
         else:
-            doc = PVBillDoc(logger)
+            doc = PVBillDoc()
         doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
