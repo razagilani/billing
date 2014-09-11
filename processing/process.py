@@ -28,7 +28,6 @@ class Process(object):
     def __init__(self, state_db, rate_structure_dao, billupload,
             nexus_util, bill_mailer, reebill_file_handler, ree_getter,
             splinter=None, logger=None):
-        '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.billupload = billupload
@@ -350,9 +349,9 @@ class Process(object):
             raise ValueError(("A file is required for a complete or "
                     "utility-estimated utility bill"))
         if bill_file is not None and state in (UtilBill.Hypothetical,
-                UtilBill.SkylineEstimated):
-            raise ValueError("Hypothetical or Skyline-estimated utility bills "
-                    "can't have file")
+                UtilBill.Estimated):
+            raise ValueError("Hypothetical or Estimated utility bills "
+                    "can't have a file")
 
         session = Session()
 
