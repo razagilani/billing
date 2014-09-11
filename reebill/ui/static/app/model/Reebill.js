@@ -40,6 +40,9 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'mailto'},
         {name: 'readings'},
         {name: 'utilbill_total'},
+        {name: 'adjustment', convert: function(value, record){
+            return record.get('manual_adjustment') + record.get('total_adjustment')
+        }},
         {name: 'difference', convert: function(value, record){
             return Math.abs(record.get('actual_total') - record.get('utilbill_total'))
         }},
