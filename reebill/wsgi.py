@@ -493,9 +493,8 @@ class ReebillsResource(RESTResource):
             self.process.mail_reebills(account, [int(sequence)], recipient_list)
 
             # journal mailing of every bill
-            for sequence in sequences:
-                journal.ReeBillMailedEvent.save_instance(
-                    cherrypy.session['user'], account, sequence, recipients)
+            journal.ReeBillMailedEvent.save_instance(
+                cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
         elif action == 'setProcessed':
@@ -578,7 +577,7 @@ class ReebillsResource(RESTResource):
         register_binding = params['register_binding']
         version = self.process.upload_interval_meter_csv(account, sequence, csv_file, timestamp_column, timestamp_format, energy_column, energy_unit, register_binding)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-            account, sequence, version)
+                account, sequence, version)
 
         return self.dumps({'success':True})
 
