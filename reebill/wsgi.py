@@ -202,7 +202,7 @@ class WebResource(object):
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
             self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
-            self.ree_getter, logger=self.logger)
+            self.journal_dao, self.ree_getter, logger=self.logger)
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('authentication',

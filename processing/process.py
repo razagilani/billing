@@ -26,7 +26,7 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 class Process(object):
     def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, ree_getter,
+            nexus_util, bill_mailer, renderer, ree_getter, journal_dao,
             splinter=None, logger=None):
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -38,7 +38,7 @@ class Process(object):
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
-        self.journal_dao = journal.JournalDAO()
+        self.journal_dao = journal_dao
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
