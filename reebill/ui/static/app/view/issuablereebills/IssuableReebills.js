@@ -79,6 +79,9 @@ Ext.define('ReeBill.view.IssuableReebills', {
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{        
             xtype: 'button',
             text: 'Issue Selected ReeBill',
