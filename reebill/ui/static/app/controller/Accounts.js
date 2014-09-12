@@ -40,9 +40,17 @@ Ext.define('ReeBill.controller.Accounts', {
         });
 
         this.getAccountsStore().on({
+            beforeload: function(store){
+                if(this.getAccountsGrid) {
+                    var grid = this.getAccountsGrid();
+                    grid.setLoading(true);
+                }
+            },
             load: function(store, records, successful, eOpts ){
-                var memoryStore = this.getAccountsMemoryStore();
-                memoryStore.loadPage(1);
+                if(this.getAccountsGrid) {
+                    var grid = this.getAccountsGrid();
+                    grid.setLoading(false);
+                }
             },
             add: function(){
                 var accountForm = this.getAccountForm();
@@ -62,6 +70,7 @@ Ext.define('ReeBill.controller.Accounts', {
                 memStore.loadPage(1);
 
                 // Update the filter combofield for filters
+                console.log(this.getAccountsFilter())
                 var filterCombo = this.getAccountsFilter();
                 var filterPrefRec = store.getOrCreate('filtername', 'none');
                 filterCombo.setValue(filterPrefRec.get('value'));
