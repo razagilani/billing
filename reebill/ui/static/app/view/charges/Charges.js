@@ -51,7 +51,7 @@ Ext.define('ReeBill.view.Charges', {
         header: 'Shared',
         dataIndex: 'shared',
         sortable: true,
-        width: 65,
+        width: 65
     },{
         header: 'RSI Binding',
         sortable: true,
@@ -60,7 +60,7 @@ Ext.define('ReeBill.view.Charges', {
             xtype: 'textfield',
             allowBlank: false
         },
-        width: 180,
+        width: 180
     },{
         header: 'Description',
         sortable: true,
@@ -93,7 +93,6 @@ Ext.define('ReeBill.view.Charges', {
         },
         width: 70
     },{
-        xtype: 'templatecolumn',
         header: 'Rate',
         sortable: true,
         dataIndex: 'rate',
@@ -103,8 +102,7 @@ Ext.define('ReeBill.view.Charges', {
         },
         flex: 1,
         width: 250,
-        allowBlank: false,
-        tpl: '{[values.error ? values.error : values.rate]}'
+        allowBlank: false
     },{
         xtype: 'checkcolumn',
         header: 'Has Charge',
@@ -154,7 +152,7 @@ Ext.define('ReeBill.view.Charges', {
             iconCls: 'silk-wrench'
         },'-',{
             xtype: 'formulaField',
-            name: 'formulaField',
+            name: 'formulaField'
         },'-',{
             xtype: 'groupTextField',
             name: 'groupTextField'
