@@ -345,10 +345,7 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
-         selected.beginEdit();
-         selected.set('action', 'setProcessed');
-         selected.set('action_value', !selected.get('processed'));
-         selected.endEdit();
+         selected.set('processed', !selected.get('processed'));
      },
 
      /**
@@ -385,7 +382,38 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleCreateNext: function() {
          var store = this.getReebillsStore();
-         store.insert(0, {issued:false});
+         if(store.count() === 0){
+            if(this._lastCreateNextDate === undefined){
+                this._lastCreateNextDate = ''
+            }
+            Ext.Msg.prompt(
+                'Service Start Date',
+                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
+                function(button, text){
+                    console.log(this);
+                    if(button === 'ok'){
+                        var controller = this;
+                        controller._lastCreateNextDate = text;
+                        if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
+                            store.insert(0, {period_start: text});
+                        }else{
+                            Ext.Msg.alert(
+                                'Invalid Date',
+                                'Please enter a date in the format (YYYY-MM-DD)',
+                                function(){
+                                    controller.handleCreateNext();
+                                }
+                            )
+                        }
+                    }
+                },
+                this,
+                false,
+                this._lastCreateNextDate
+            )
+         }else{
+            store.insert(0, {issued:false});
+         }
      },
 
      /**

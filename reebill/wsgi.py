@@ -440,8 +440,8 @@ class ReebillsResource(RESTResource):
 
     def handle_post(self, account, *vpath, **params):
         """ Handles Reebill creation """
-        params = cherrypy.request.params
-        start_date = params.get('start_date')
+        params = cherrypy.request.json
+        start_date = params.get('period_start')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         reebill = self.process.roll_reebill(account, start_date=start_date)
@@ -496,14 +496,6 @@ class ReebillsResource(RESTResource):
                 cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
-        elif action == 'setProcessed':
-            if action_value is None:
-                raise ValueError("Got no value for row['action_value']")
-
-            rb = self.process.update_sequential_account_info(
-                account, sequence, processed=action_value)
-            rtn = rb.column_dict()
-
         elif action == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
             rtn = rb.column_dict()
@@ -518,7 +510,6 @@ class ReebillsResource(RESTResource):
         elif not action:
             # Regular PUT request. In this case this means updated
             # Sequential Account Information
-
             discount_rate = float(row['discount_rate'])
             late_charge_rate = float(row['late_charge_rate'])
 
@@ -538,7 +529,8 @@ class ReebillsResource(RESTResource):
                 ba_postal_code=ba['postal_code'],
                 sa_addressee=sa['addressee'], sa_street=sa['street'],
                 sa_city=sa['city'], sa_state=sa['state'],
-                sa_postal_code=sa['postal_code'])
+                sa_postal_code=sa['postal_code'],
+                processed=row['processed'])
 
             rtn = rb.column_dict()
 
