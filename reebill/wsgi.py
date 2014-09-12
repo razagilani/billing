@@ -590,13 +590,14 @@ class ReebillsResource(RESTResource):
         sequence, version = reebill_json['sequence'], reebill_json['version']
         apply_corrections = reebill_json['apply_corrections']
         try:
-            self.process.toggle_reebill_processed(account, sequence, version,
+            self.process.toggle_reebill_processed(account, sequence,
                     apply_corrections)
         except ConfirmAdjustment as e:
             return json.dumps({
                 'reebill': reebill_json,
                 'unissued_corrections': e.correction_sequences,
                 'adjustment': e.total_adjustment,
+                'corrections': True
             })
         return json.dumps({'success': True})
 
