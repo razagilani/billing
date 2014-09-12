@@ -49,3 +49,13 @@
 .panel-noborder > .x-panel > .x-panel-body {
     border: 0px !important
 }
+
+.noteform-noborder textarea{
+    height: 100%;
+    padding: 3px !important;
+    border: 0 !important;
+}
+.noteform-noborder #noteForm-body{
+    border-top: 0 !important;
+    top: 23px !important;
+}
