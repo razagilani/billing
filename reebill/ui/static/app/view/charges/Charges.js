@@ -110,7 +110,7 @@ Ext.define('ReeBill.view.Charges', {
         header: 'Has Charge',
         dataIndex: 'has_charge',
         sortable: true,
-        width: 100,
+        width: 100
     },{
         header: 'Group',
         dataIndex: 'group',

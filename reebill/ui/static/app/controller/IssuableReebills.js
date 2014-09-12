@@ -33,6 +33,18 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 click: this.handleIssueProcessed
             }
         });
+
+        this.getIssuableReebillsStore().on({
+            beforeload: function(store){
+                var grid = this.getIssuableReebillsGrid();
+                grid.setLoading(true);
+            },
+            load: function(store) {
+                var grid = this.getIssuableReebillsGrid();
+                grid.setLoading(false);
+            },
+            scope: this
+        });
     },
 
     /**
