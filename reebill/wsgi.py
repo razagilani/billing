@@ -496,14 +496,6 @@ class ReebillsResource(RESTResource):
                 cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
-        elif action == 'setProcessed':
-            if action_value is None:
-                raise ValueError("Got no value for row['action_value']")
-
-            rb = self.process.update_sequential_account_info(
-                account, sequence, processed=action_value)
-            rtn = rb.column_dict()
-
         elif action == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
             rtn = rb.column_dict()
@@ -518,7 +510,6 @@ class ReebillsResource(RESTResource):
         elif not action:
             # Regular PUT request. In this case this means updated
             # Sequential Account Information
-
             discount_rate = float(row['discount_rate'])
             late_charge_rate = float(row['late_charge_rate'])
 
@@ -538,7 +529,8 @@ class ReebillsResource(RESTResource):
                 ba_postal_code=ba['postal_code'],
                 sa_addressee=sa['addressee'], sa_street=sa['street'],
                 sa_city=sa['city'], sa_state=sa['state'],
-                sa_postal_code=sa['postal_code'])
+                sa_postal_code=sa['postal_code'],
+                processed=row['processed'])
 
             rtn = rb.column_dict()
 

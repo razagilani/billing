@@ -345,10 +345,7 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
-         selected.beginEdit();
-         selected.set('action', 'setProcessed');
-         selected.set('action_value', !selected.get('processed'));
-         selected.endEdit();
+         selected.set('processed', !selected.get('processed'));
      },
 
      /**
