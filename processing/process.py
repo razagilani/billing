@@ -528,7 +528,8 @@ class Process(object):
         utilbill.charges = []
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
-        self.compute_utility_bill(utilbill_id)
+        return self.compute_utility_bill(utilbill_id)
+
 
     def refresh_charges(self, utilbill_id):
         '''Replaces charges in the utility bill document with newly-created
