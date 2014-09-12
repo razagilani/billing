@@ -132,6 +132,10 @@ Ext.define('ReeBill.view.Reebills', {
             action: 'computeReebill'
         },{
             xtype: 'button',
+            text: 'Update Readings',
+            action: 'updateReadings'
+        },{
+            xtype: 'button',
             text: 'Toggle Processed',
             action: 'toggleReebillProcessed'
         },'-',{
