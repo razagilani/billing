@@ -28,8 +28,8 @@ class JournalDAO(object):
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        return (account, '%s on %s' % (str(last_entry),
-                last_entry.date.strftime(ISO_8601_DATE)))
+        return '%s on %s' % (str(last_entry),
+                last_entry.date.strftime(ISO_8601_DATE))
 
     def load_entries(self, account=None):
         '''Returns a list of dictionaries describing all entries for all
@@ -44,34 +44,55 @@ class JournalDAO(object):
         all acocunts. Returns a list of tuples containing 'Account',  'String
         representation of the event' for each of the events.
         """
-        map_f = '''
-            function () {emit(this.account, this)}
-        '''
-        reduce_f = '''
-            function (key, values) {
-                var item = values[0];
-                for ( var i=1; i < values.length; i++ ) {
-                    if ( values[i].date > item.date){
-                        item = values[i];
-                    }
-                }
-                return item;
-            }
-        '''
-        finalize_f = '''
-            function(key, redcedVal){
-                return redcedVal._id;
-            }
-        '''
-        ids = [ObjectId(mrdoc.value['str']) for mrdoc in
-               Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
-        return [(e.account, '%s on %s' % (
-            str(e), e.date.strftime(ISO_8601_DATE))) for e in
-            Event.objects.in_bulk(ids).itervalues()]
+        # map_f = '''
+        #     function () {emit(this.account, this)}
+        # '''
+        # reduce_f = '''
+        #     function (key, values) {
+        #         var item = values[0];
+        #         for ( var i=1; i < values.length; i++ ) {
+        #             if ( values[i].date > item.date){
+        #                 item = values[i];
+        #             }
+        #         }
+        #         return item;
+        #     }
+        # '''
+        # finalize_f = '''
+        #     function(key, redcedVal){
+        #         return redcedVal._id;
+        #     }
+        # '''
+        # ids = [ObjectId(mrdoc.value['str']) for mrdoc in
+        #        Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
+        # return [(e.account, '%s on %s' % (
+        #     str(e), e.date.strftime(ISO_8601_DATE))) for e in
+        #     Event.objects.in_bulk(ids).itervalues()]
+
+        # result = Event.objects.aggregate(
+        #     {'$group':{
+        #         '_id': '$account',
+        #         'date': {'$max': '$date'},
+        #         #'document': {'$push': '$$CURRENT'},
+        #         'sequence': '$sequence'
+        #     },
+        # })
+        result = Event.objects.aggregate(
+            {'$group':{
+                '_id': '$account',
+                'date': {'$max': '$date'},
+                #'document': {'$push': '$$CURRENT'},
+                'sequence': '$sequence'
+            },
+        })
+        # db.journal.aggregate({$group: {_id:'$account', d: {$max: '$date'}, x: {$push: '$$ROOT'}}}, {$out: 'agg'})
+        documents = list(result)
+        #documents = [x['document'] for x in result]
+        pass
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
-    
+
     This class should not be instantiated, and does not even have a constructor
     because MongoEngine makes a constructor for it, to which it passes the
     values of all the fields below as keyword arguments. That means you can't

@@ -239,6 +239,12 @@ class TestCaseWithSetup(test_utils.TestCase):
                 'casualname': 'Example 3',
                 'primus': '1787 Massachusetts Ave.',
             },
+            {
+                'billing': '100001',
+                'olap': 'example-4',
+                'casualname': 'Example 4',
+                'primus': '1788 Massachusetts Ave.',
+                },
         ])
 
         bill_mailer = Mailer({
@@ -262,9 +268,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                 ree_getter, journal_dao, splinter=self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
-                            alias='utilbills')
-        mongoengine.connect('test', host='localhost', port=27017,
-                            alias='ratestructure')
+                            alias='journal')
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:

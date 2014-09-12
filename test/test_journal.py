@@ -261,9 +261,8 @@ class JournalTest(utils.TestCase):
         journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1)
         journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
         description = self.dao.last_event_summary('90001')
-        self.assertEqual(
-            ('90001', 'Reebill 90001-1 rolled on ' + datetime.utcnow().date()
-                .strftime(ISO_8601_DATE)), description)
+        self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
+                .strftime(ISO_8601_DATE), description)
 
     def test_get_all_last_events(self):
         # The first Account
