@@ -319,11 +319,11 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
+         var viewer = me.getReebillViewer();
+         viewer.setLoading();
          store.suspendAutoSync();
          selected.set('action', 'render');
          store.sync({callback: function(){
-             console.log('called')
-             var viewer = me.getReebillViewer();
               // Rerequest the document and regenerate the bust cache param
              viewer.getDocument(true);
          }});
@@ -576,6 +576,6 @@ Ext.define('ReeBill.controller.Reebills', {
                 Ext.Msg.alert('Error', 'Failed to submit interval meter data')
             }
         });
-    },
+    }
 
 });
