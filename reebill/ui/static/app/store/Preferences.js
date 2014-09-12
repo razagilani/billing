@@ -27,7 +27,7 @@ Ext.define('ReeBill.store.Preferences', {
         listeners:{
             exception: utils.makeProxyExceptionHandler('Preferences'),
             scope: this
-        },
+        }
 
 	},
 
@@ -38,7 +38,7 @@ Ext.define('ReeBill.store.Preferences', {
     getOrCreate: function(pref, val){
         var result = this.find('key', pref);
         if(result === -1){
-            result = this.add({key: pref, value: val});
+            result = this.add({key: pref, value: val})[0];
         }else{
             result = this.getAt(result);
         }
