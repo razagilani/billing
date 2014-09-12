@@ -74,7 +74,13 @@ Ext.define('ReeBill.view.IssuableReebills', {
         sortable: true,
         align: 'right',
         renderer: Ext.util.Format.usMoney
-    }],
+    },{
+        header: 'Adjustment',
+        dataIndex: 'adjustment',
+        width: 175,
+        sortable: true,
+        renderer: Ext.util.Format.usMoney
+        }],
 
     dockedItems: [{
         dock: 'top',
