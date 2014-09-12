@@ -150,15 +150,16 @@ Ext.define('ReeBill.view.Charges', {
             text: 'Regenerate',
             action: 'regenerateCharge',
             iconCls: 'silk-wrench'
+        },{
+            xtype: 'button',
+            text: 'Recompute',
+            action: 'recomputeCharges'
         },'-',{
             xtype: 'formulaField',
             name: 'formulaField'
         },'-',{
             xtype: 'groupTextField',
             name: 'groupTextField'
-        },'-',{
-            xtype: 'roundRuleTextField',
-            name: 'roundRuleTextField'
         }]
     }]
 });

@@ -22,9 +22,6 @@ Ext.define('ReeBill.controller.Charges', {
         ref: 'utilityBillsGrid',
         selector: 'grid[id=utilityBillsGrid]'
     },{
-        ref: 'serviceForCharges',
-        selector: 'combo[name=serviceForCharges]'
-    },{
         ref: 'removeCharge',
         selector: 'button[action=removeCharge]'
     },{
@@ -33,9 +30,6 @@ Ext.define('ReeBill.controller.Charges', {
     },{
         ref: 'groupTextField',
         selector: 'groupTextField'
-    },{
-        ref: 'roundRuleField',
-        selector: 'roundRuleTextField'
     }],
 
     init: function() {
@@ -62,14 +56,14 @@ Ext.define('ReeBill.controller.Charges', {
             'button[action=regenerateCharge]': {
                 click: this.handleRegenerate
             },
+            'button[action=recomputeCharges]': {
+                click: this.handleRecompute
+            },
             'formulaField':{
                 specialkey: this.handleFormulaFieldEnter
             },
             'groupTextField':{
                 specialkey: this.handleGroupTextFieldEnter
-            },
-            'roundRuleTextField':{
-                specialkey: this.handleRoundRuleFieldEnter
             }
         });
 
@@ -87,7 +81,6 @@ Ext.define('ReeBill.controller.Charges', {
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var field = this.getFormulaField();
         var groupTextField = this.getGroupTextField();
-        var roundRuleField = this.getRoundRuleField();
 
         if (!selectedBill)
             return;
@@ -100,7 +93,6 @@ Ext.define('ReeBill.controller.Charges', {
         // Disable Text Fields on Activate
         field.setDisabled(true);
         groupTextField.setDisabled(true);
-        roundRuleField.setDisabled(true);
     },
 
     /**
@@ -129,19 +121,6 @@ Ext.define('ReeBill.controller.Charges', {
     },
 
     /**
-     * Handle a special key press in the GroupTextField
-     */
-    handleRoundRuleFieldEnter: function(f, e) {
-        var field = this.getRoundRuleField();
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
-
-        if (e.getKey() == e.ENTER) {
-            selected.set('roundrule', field.getValue());
-            this.getChargesGrid().focus();
-        }
-    },
-
-    /**
      * Handle the row selection.
      */
     handleRowSelect: function() {
@@ -152,17 +131,16 @@ Ext.define('ReeBill.controller.Charges', {
         // Set group in GroupTextField
         if(hasSelections && selected !== undefined){
             this.updateTextFields();
+            var field = this.getFormulaField();
+            field.setDisabled(false);
+            field.setValue(selected.get('quantity_formula'));
         }
-
-        var field = this.getFormulaField();
-        field.setDisabled(false);
-        field.setValue(selected.get('quantity_formula'));
      },
 
 
 
     /**
-     * Update the GroupTextField & RoundRuleTextField
+     * Update the GroupTextField
      */
     updateTextFields: function(){
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
@@ -170,13 +148,8 @@ Ext.define('ReeBill.controller.Charges', {
 
         if(hasSelections && selected !== undefined){
             var groupTextField = this.getGroupTextField();
-            var roundRuleField = this.getRoundRuleField();
-
             groupTextField.setDisabled(false);
             groupTextField.setValue(selected.get('group'));
-
-            roundRuleField.setDisabled(false);
-            roundRuleField.setValue(selected.get('roundrule'));
         }
     },
 
@@ -210,12 +183,15 @@ Ext.define('ReeBill.controller.Charges', {
      * Handle the regenerate button being clicked.
      */
     handleRegenerate: function() {
-        var store = this.getChargesStore(),
-            selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-
-        if (!selectedBill)
-            return;
-
+        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'regenerate_charges');
+    },
+
+    /**
+     * Handle the recompute button being clicked.
+     */
+    handleRecompute: function() {
+        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        selectedBill.set('action', 'compute');
     }
 });

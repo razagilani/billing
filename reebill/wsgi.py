@@ -616,7 +616,7 @@ class UtilBillResource(RESTResource):
         result= {}
 
         if action == 'regenerate_charges':
-            ub = self.process.compute_utility_bill(utilbill_id)
+            ub = self.process.regenerate_uprs(utilbill_id)
             result = ub.column_dict()
 
         elif action == 'compute':
