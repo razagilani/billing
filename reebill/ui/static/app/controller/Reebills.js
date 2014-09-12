@@ -402,13 +402,13 @@ Ext.define('ReeBill.controller.Reebills', {
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
                     var reebill_corrections = '';
-                        if (obj.reebills.adjustment != undefined) {
-                            Ext.each(obj.reebills.unissued_corrections, function(correction) {
-                                reebill_corrections += 'Reebill from account ' + obj.reebills.reebill.account +
-                                    ' with sequence ' + obj.reebills.reebill.sequence +
+                        if (obj.adjustment != undefined) {
+                            Ext.each(obj.unissued_corrections, function(correction) {
+                                reebill_corrections += 'Reebill from account ' + obj.reebill.account +
+                                    ' with sequence ' + obj.reebill.sequence +
                                     ' with corrections ' + correction +
                                     ' will be applied to this bill as an adjusment of $'
-                                    + obj.reebills.adjustment + ', which would also become processed.' +
+                                    + obj.adjustment + ', which would also become processed.' +
                                     'Do you want to make this correction processed?' + '</br>'
                             });
 
@@ -419,15 +419,10 @@ Ext.define('ReeBill.controller.Reebills', {
 
                                 function (answer) {
                                     if (answer == 'yes') {
-                                            if (obj.reebills.adjustment != undefined)
-                                                obj.reebills.apply_corrections = true;
+                                            if (obj.adjustment != undefined)
+                                                obj.reebill.apply_corrections = true;
 
-                                        var reebill = obj.reebills.reebill;
-                                        reebill.adjustment = obj.reebills.adjustment;
-                                        reebill.unissued_corrections = obj.reebills.unissued_corrections;
-                                        reebill.apply_corrections = obj.reebills.apply_corrections;
-
-                                        var params = {reebill: Ext.encode(reebill),
+                                        var params = {reebill: Ext.encode(obj.reebill),
                                                     account: Ext.encode(account[0].data)}
                                         Ext.Ajax.request({
                                             url: url,

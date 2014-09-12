@@ -16,7 +16,8 @@ from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
 # TODO this should not be used anymore
-from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException
+from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
+    ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import utils
 
 
@@ -1527,225 +1528,251 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
 
+    def test_delete_reebill(self):
+        account = '99999'
+        # create 2 utility bills for Jan-Feb 2012
+        self.process.upload_utility_bill(account, 'gas',
+            date(2012, 1, 1), date(2012, 2, 1),
+            StringIO('january 2012'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas',
+            date(2012, 2, 1), date(2012, 3, 1),
+            StringIO('february 2012'), 'february.pdf')
+        utilbill = self.session.query(UtilBill).join(Customer).\
+                filter(Customer.account == account).order_by(
+        UtilBill.period_start).first()
 
-def test_delete_reebill(self):
-    account = '99999'
-    # create 2 utility bills for Jan-Feb 2012
-    self.process.upload_utility_bill(account, 'gas',
-        date(2012, 1, 1), date(2012, 2, 1),
-        StringIO('january 2012'), 'january.pdf')
-    self.process.upload_utility_bill(account, 'gas',
-        date(2012, 2, 1), date(2012, 3, 1),
-        StringIO('february 2012'), 'february.pdf')
-    utilbill = self.session.query(UtilBill).join(Customer).\
-            filter(Customer.account == account).order_by(
-    UtilBill.period_start).first()
+        reebill = self.process.roll_reebill(account,
+                                                start_date=date(2012, 1, 1))
+        self.process.roll_reebill(account)
 
-    reebill = self.process.roll_reebill(account,
-                                            start_date=date(2012, 1, 1))
-    self.process.roll_reebill(account)
+        # only the last reebill is deletable: deleting the 2nd one should
+        # succeed, but deleting the 1st one should fail
+        with self.assertRaises(IssuedBillError):
+            self.process.delete_reebill(account, 1)
+        self.process.delete_reebill(account, 2)
+        with self.assertRaises(NoResultFound):
+            self.state_db.get_reebill(account, 2, version=0)
+        self.assertEquals(1, self.session.query(ReeBill).count())
+        self.assertEquals([1], self.state_db.listSequences(account))
+        self.assertEquals([utilbill], reebill.utilbills)
 
-    # only the last reebill is deletable: deleting the 2nd one should
-    # succeed, but deleting the 1st one should fail
-    with self.assertRaises(IssuedBillError):
+        # issued reebill should not be deletable
+        self.process.issue(account, 1)
+        self.assertEqual(1, reebill.issued)
+        self.assertEqual([utilbill], reebill.utilbills)
+        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        self.assertRaises(IssuedBillError, self.process.delete_reebill,
+            account, 1)
+
+        # create a new verison and delete it, returning to just version 0
+        self.process.new_version(account, 1)
+        self.session.query(ReeBill).filter_by(version=1).one()
+        self.assertEqual(1, self.state_db.max_version(account, 1))
+        self.assertFalse(self.state_db.is_issued(account, 1))
         self.process.delete_reebill(account, 1)
-    self.process.delete_reebill(account, 2)
-    with self.assertRaises(NoResultFound):
-        self.state_db.get_reebill(account, 2, version=0)
-    self.assertEquals(1, self.session.query(ReeBill).count())
-    self.assertEquals([1], self.state_db.listSequences(account))
-    self.assertEquals([utilbill], reebill.utilbills)
+        self.assertEqual(0, self.state_db.max_version(account, 1))
+        self.assertTrue(self.state_db.is_issued(account, 1))
 
-    # issued reebill should not be deletable
-    self.process.issue(account, 1)
-    self.assertEqual(1, reebill.issued)
-    self.assertEqual([utilbill], reebill.utilbills)
-    self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
-    self.process.compute_reebill(account, 1, version=0)
-    self.assertRaises(IssuedBillError, self.process.delete_reebill,
-        account, 1)
-
-    # create a new verison and delete it, returning to just version 0
-    self.process.new_version(account, 1)
-    self.session.query(ReeBill).filter_by(version=1).one()
-    self.assertEqual(1, self.state_db.max_version(account, 1))
-    self.assertFalse(self.state_db.is_issued(account, 1))
-    self.process.delete_reebill(account, 1)
-    self.assertEqual(0, self.state_db.max_version(account, 1))
-    self.assertTrue(self.state_db.is_issued(account, 1))
-
-    # original version should still be attached to utility bill
-    # TODO this will have to change. see
-    # https://www.pivotaltracker.com/story/show/31629749
-    self.assertEqual([utilbill], reebill.utilbills)
-    self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
+        # original version should still be attached to utility bill
+        # TODO this will have to change. see
+        # https://www.pivotaltracker.com/story/show/31629749
+        self.assertEqual([utilbill], reebill.utilbills)
+        self.assertEqual(reebill, utilbill._utilbill_reebills[0].reebill)
 
 
-def test_correction_adjustment(self):
-    '''Tests that adjustment from a correction is applied to (only) the
-        earliest unissued bill.'''
-    # replace process.ree_getter with one that always sets the renewable
-    # energy readings to a known value
-    self.process.ree_getter = MockReeGetter(10)
-    acc = '99999'
+    def test_correction_adjustment(self):
+        '''Tests that adjustment from a correction is applied to (only) the
+            earliest unissued bill.'''
+        # replace process.ree_getter with one that always sets the renewable
+        # energy readings to a known value
+        self.process.ree_getter = MockReeGetter(10)
+        acc = '99999'
 
-    # create 3 utility bills: Jan, Feb, Mar
-    for i in range(3):
-        self.setup_dummy_utilbill_calc_charges(acc, date(2012, i + 1, 1),
-            date(2012, i + 2, 1))
+        # create 3 utility bills: Jan, Feb, Mar
+        for i in range(3):
+            self.setup_dummy_utilbill_calc_charges(acc, date(2012, i + 1, 1),
+                date(2012, i + 2, 1))
 
-    # create 1st reebill and issue it
-    self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
-    self.process.bind_renewable_energy(acc, 1)
-    self.process.compute_reebill(acc, 1)
-    self.process.issue(acc, 1, issue_date=datetime(2012, 3, 15))
-    reebill_metadata = self.process.get_reebill_metadata_json('99999')
-    self.assertDictContainsSubset({
-                      'sequence': 1,
+        # create 1st reebill and issue it
+        self.process.roll_reebill(acc, start_date=date(2012, 1, 1))
+        self.process.bind_renewable_energy(acc, 1)
+        self.process.compute_reebill(acc, 1)
+        self.process.issue(acc, 1, issue_date=datetime(2012, 3, 15))
+        reebill_metadata = self.process.get_reebill_metadata_json('99999')
+        self.assertDictContainsSubset({
+                          'sequence': 1,
+                              'version': 0,
+                              'issued': 1,
+                              'issue_date': datetime(2012,3,15),
+                          'actual_total': 0.,
+                          'hypothetical_total': 10,
+                          'payment_received': 0.,
+                          'period_start': date(2012, 1, 1),
+                          'period_end': date(2012, 2, 1),
+                          'prior_balance': 0.,
+                              'processed': 1,
+                              'ree_charge': 8.8,
+                          'ree_value': 10,
+                          'services': [],
+                          'total_adjustment': 0.,
+                          'total_error': 0.,
+                          'ree_quantity': 10,
+                          'balance_due': 8.8,
+                          'balance_forward': 0,
+                          'corrections': '-',
+                          }, reebill_metadata[0])
+
+        # create 2nd reebill, leaving it unissued
+        self.process.ree_getter.quantity = 0
+        self.process.roll_reebill(acc)
+        # make a correction on reebill #1. this time 20 therms of renewable
+        # energy instead of 10 were consumed.
+        self.process.ree_getter.quantity = 20
+        self.process.new_version(acc, 1)
+        self.process.compute_reebill(acc, 2)
+
+        for x, y in zip([{
+                          'actual_total': 0,
+                          'balance_due': 17.6,
+                          'balance_forward': 17.6,
+                          'corrections': '(never issued)',
+                          'hypothetical_total': 0,
+                          'issue_date': None,
+                          'issued': 0,
                           'version': 0,
-                          'issued': 1,
-                          'issue_date': datetime(2012,3,15),
-                      'actual_total': 0.,
-                      'hypothetical_total': 10,
-                      'payment_received': 0.,
-                      'period_start': date(2012, 1, 1),
-                      'period_end': date(2012, 2, 1),
-                      'prior_balance': 0.,
-                          'processed': 1,
-                          'ree_charge': 8.8,
-                      'ree_value': 10,
-                      'services': [],
-                      'total_adjustment': 0.,
-                      'total_error': 0.,
-                      'ree_quantity': 10,
-                      'balance_due': 8.8,
-                      'balance_forward': 0,
-                      'corrections': '-',
-                      }, reebill_metadata[0])
-
-    # create 2nd reebill, leaving it unissued
-    self.process.ree_getter.quantity = 0
-    self.process.roll_reebill(acc)
-    # make a correction on reebill #1. this time 20 therms of renewable
-    # energy instead of 10 were consumed.
-    self.process.ree_getter.quantity = 20
-    self.process.new_version(acc, 1)
-    self.process.compute_reebill(acc, 2)
-
-    for x, y in zip([{
-                      'actual_total': 0,
-                      'balance_due': 17.6,
-                      'balance_forward': 17.6,
-                      'corrections': '(never issued)',
-                      'hypothetical_total': 0,
-                      'issue_date': None,
-                      'issued': 0,
-                      'version': 0,
-                      'payment_received': 0.0,
-                      'period_end': date(2012, 3, 1),
-                      'period_start': date(2012, 2, 1),
-                      'prior_balance': 8.8,
-                      'processed': 0,
-                      'ree_charge': 0.0,
-                      'ree_quantity': 0,
-                      'ree_value': 0,
-                      'sequence': 2,
-                      'services': [],
-                      'total_adjustment': 8.8,
-                      'total_error': 0.0
-                  }, {
-                      'actual_total': 0,
-                      'balance_due': 17.6,
-                      'balance_forward': 0,
-                      'corrections': '#1 not issued',
-                      'hypothetical_total': 20.0,
-                      'issue_date': None,
-                      'issued': 0,
-                      'version': 1,
-                      'payment_received': 0.0,
-                      'period_end': date(2012, 2, 1),
-                      'period_start': date(2012, 1, 1),
-                      'prior_balance': 0,
-                      'processed': 0,
-                      'ree_charge': 17.6,
-                      'ree_quantity': 20,
-                      'ree_value': 20,
-                      'sequence': 1,
-                      'services': [],
-                      'total_adjustment': 0,
-                      'total_error': 8.8,
-                  }], self.process.get_reebill_metadata_json('99999')):
-        self.assertDictContainsSubset(x, y)
+                          'payment_received': 0.0,
+                          'period_end': date(2012, 3, 1),
+                          'period_start': date(2012, 2, 1),
+                          'prior_balance': 8.8,
+                          'processed': 0,
+                          'ree_charge': 0.0,
+                          'ree_quantity': 0,
+                          'ree_value': 0,
+                          'sequence': 2,
+                          'services': [],
+                          'total_adjustment': 8.8,
+                          'total_error': 0.0
+                      }, {
+                          'actual_total': 0,
+                          'balance_due': 17.6,
+                          'balance_forward': 0,
+                          'corrections': '#1 not issued',
+                          'hypothetical_total': 20.0,
+                          'issue_date': None,
+                          'issued': 0,
+                          'version': 1,
+                          'payment_received': 0.0,
+                          'period_end': date(2012, 2, 1),
+                          'period_start': date(2012, 1, 1),
+                          'prior_balance': 0,
+                          'processed': 0,
+                          'ree_charge': 17.6,
+                          'ree_quantity': 20,
+                          'ree_value': 20,
+                          'sequence': 1,
+                          'services': [],
+                          'total_adjustment': 0,
+                          'total_error': 8.8,
+                      }], self.process.get_reebill_metadata_json('99999')):
+            self.assertDictContainsSubset(x, y)
 
 
 
-def test_create_first_reebill(self):
-    '''Test creating the first utility bill and reebill for an account,
-        making sure the reebill is correct with respect to the utility bill.
-        '''
-    # at first, there are no utility bills
-    self.assertEqual(([], 0), self.process.get_all_utilbills_json(
-        '99999', 0, 30))
 
-    # upload a utility bill
-    self.process.upload_utility_bill('99999', 'gas',
-        date(2013, 1, 1), date(2013, 2, 1), StringIO('January 2013'),
-        'january.pdf')
+        # when you make a bill processed and it has corrections applying to it, and you don't specify apply_corrections=True,
+        # it raises an exception ConfirmAdjustment
+        self.assertRaises(ConfirmAdjustment ,self.process.toggle_reebill_processed, acc, 2, apply_corrections=False)
+        self.process.toggle_reebill_processed(acc,2,apply_corrections=True)
+        reebill = self.state_db.get_reebill(acc, 2)
+        correction = self.state_db.get_reebill(acc, 1, version=1)
+        # any processed regular bill or correction can't be modified (compute, bind_ree, sequential_account_info)
+        self.assertRaises(ProcessedBillError, self.process.compute_reebill, acc, reebill.sequence)
+        self.assertRaises(ProcessedBillError, self.process.bind_renewable_energy, acc, reebill.sequence)
+        self.assertRaises(ProcessedBillError, self.process.update_sequential_account_info, acc, reebill.sequence)
+        self.assertRaises(ProcessedBillError, self.process.compute_reebill, acc, correction.sequence)
+        self.assertRaises(ProcessedBillError, self.process.bind_renewable_energy, acc, correction.sequence)
+        self.assertRaises(ProcessedBillError, self.process.update_sequential_account_info, acc, correction.sequence)
 
-    utilbill_data = self.process.get_all_utilbills_json(
-        '99999', 0, 30)[0][0]
-    self.assertDictContainsSubset({
-    'account': '99999',
-    'computed_total': 0,
-    'period_end': date(2013, 2, 1),
-    'period_start': date(2013, 1, 1),
-    'processed': 0,
-        'rate_class': 'Test Rate Class Template',
-    'reebills': [],
-    'service': 'Gas',
-    'state': 'Final',
-    'total_charges': 0.0,
-        'utility': 'Test Utility Company Template',
+         # when you do specify apply_corrections=True, the corrections are marked as processed.
+        self.assertEqual(reebill.processed, True)
+        self.assertEqual(correction.processed, True)
+        # When toggle_reebill_processed is called for a processed reebill, reebill becomes unprocessed
+        self.process.toggle_reebill_processed(acc, 2, apply_corrections=False)
+        self.assertEqual(reebill.processed, False)
+        # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
+        self.process.issue(acc, reebill.sequence, issue_date=datetime(2012,3,10))
+        self.assertRaises(IssuedBillError,
+                self.process.toggle_reebill_processed, acc, reebill.sequence,
+                apply_corrections=False)
+
+
+    def test_create_first_reebill(self):
+        '''Test creating the first utility bill and reebill for an account,
+            making sure the reebill is correct with respect to the utility bill.
+            '''
+        # at first, there are no utility bills
+        self.assertEqual(([], 0), self.process.get_all_utilbills_json(
+            '99999', 0, 30))
+
+        # upload a utility bill
+        self.process.upload_utility_bill('99999', 'gas',
+            date(2013, 1, 1), date(2013, 2, 1), StringIO('January 2013'),
+            'january.pdf')
+
+        utilbill_data = self.process.get_all_utilbills_json(
+            '99999', 0, 30)[0][0]
+        self.assertDictContainsSubset({
+        'account': '99999',
+        'computed_total': 0,
+        'period_end': date(2013, 2, 1),
+        'period_start': date(2013, 1, 1),
+        'processed': 0,
+            'rate_class': 'Test Rate Class Template',
+        'reebills': [],
+        'service': 'Gas',
+        'state': 'Final',
+        'total_charges': 0.0,
+            'utility': 'Test Utility Company Template',
+            }, utilbill_data)
+
+        # create a reebill
+        self.process.roll_reebill('99999', start_date=date(2013, 1, 1))
+
+        utilbill_data = self.process.get_all_utilbills_json(
+            '99999', 0, 30)[0][0]
+        self.assertDictContainsSubset({'issue_date': None, 'sequence': 1, 'version': 0},
+                                      utilbill_data['reebills'][0])
+
+        self.assertDictContainsSubset({
+        'account': '99999',
+        'computed_total': 0,
+        'period_end': date(2013, 2, 1),
+        'period_start': date(2013, 1, 1),
+        'processed': 0,
+            'rate_class': 'Test Rate Class Template',
+        'service': 'Gas', 'state': 'Final',
+        'total_charges': 0.0,
+            'utility': 'Test Utility Company Template',
         }, utilbill_data)
 
-    # create a reebill
-    self.process.roll_reebill('99999', start_date=date(2013, 1, 1))
-
-    utilbill_data = self.process.get_all_utilbills_json(
-        '99999', 0, 30)[0][0]
-    self.assertDictContainsSubset({'issue_date': None, 'sequence': 1, 'version': 0},
-                                  utilbill_data['reebills'][0])
-
-    self.assertDictContainsSubset({
-    'account': '99999',
-    'computed_total': 0,
-    'period_end': date(2013, 2, 1),
-    'period_start': date(2013, 1, 1),
-    'processed': 0,
-        'rate_class': 'Test Rate Class Template',
-    'service': 'Gas', 'state': 'Final',
-    'total_charges': 0.0,
-        'utility': 'Test Utility Company Template',
-    }, utilbill_data)
-
-    billing_address = {
-        'addressee': 'Andrew Mellon',
-        'street': '1785 Massachusetts Ave. NW',
-        'city': 'Washington',
-        'state': 'DC',
-        'postal_code': '20036',
-    }
-    service_address = {
-        'addressee': 'Skyline Innovations',
-        'street': '1606 20th St. NW',
-        'city': 'Washington',
-        'state': 'DC',
-        'postal_code': '20009',
-    }
-    self.process.create_new_account('55555', 'Another New Account',
-        0.6, 0.2, billing_address, service_address, '99999')
-    self.assertRaises(ValueError, self.process.roll_reebill,
-        '55555', start_date=date(2013, 2, 1))
+        billing_address = {
+            'addressee': 'Andrew Mellon',
+            'street': '1785 Massachusetts Ave. NW',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20036',
+        }
+        service_address = {
+            'addressee': 'Skyline Innovations',
+            'street': '1606 20th St. NW',
+            'city': 'Washington',
+            'state': 'DC',
+            'postal_code': '20009',
+        }
+        self.process.create_new_account('55555', 'Another New Account',
+            0.6, 0.2, billing_address, service_address, '99999')
+        self.assertRaises(ValueError, self.process.roll_reebill,
+            '55555', start_date=date(2013, 2, 1))
 
 
 def test_uncomputable_correction_bug(self):
