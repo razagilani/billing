@@ -105,6 +105,9 @@ Ext.define('ReeBill.view.Reebills', {
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{
             xtype: 'button',
             text: 'Create Next',

@@ -59,3 +59,9 @@
     border-top: 0 !important;
     top: 23px !important;
 }
+
+.x-menu-item-icon{
+    display: inline-block !important;
+    position: relative !important;
+    margin-right: 5px !important;
+}
