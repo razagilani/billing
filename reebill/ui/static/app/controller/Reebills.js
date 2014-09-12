@@ -21,8 +21,11 @@ Ext.define('ReeBill.controller.Reebills', {
         ref: 'computeReebillButton',
         selector: 'button[action=computeReebill]'        
     },{
+        ref: 'updateReadingsButton',
+        selector: 'button[action=updateReadings]'
+    },{
         ref: 'deleteReebillButton',
-        selector: 'button[action=deleteReebill]'        
+        selector: 'button[action=deleteReebill]'
     },{
         ref: 'createNewVersionButton',
         selector: 'button[action=createNewVersion]'        
@@ -96,6 +99,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
+            },
+            'button[action=updateReadings]': {
+                click: this.handleUpdateReadings
             },
             'button[action=toggleReebillProcessed]': {
                 click: this.handleToggleReebillProcessed
@@ -176,6 +182,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getBindREOffsetButton().setDisabled(issued);
         this.getComputeReebillButton().setDisabled(issued);
         this.getToggleReebillProcessedButton().setDisabled(issued);
+        this.getUpdateReadingsButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
@@ -274,6 +281,22 @@ Ext.define('ReeBill.controller.Reebills', {
 
          var selected = selections[0];
          selected.set('action', 'compute');
+     },
+
+     /**
+     * Handle the update readings button.
+     */
+     handleUpdateReadings: function(){
+        var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
+        Ext.Msg.confirm(
+            'Confirm Updating Readings',
+            'Are you sure you want to update the Readings?',
+            function(answer) {
+                if (answer == 'yes') {
+                    selected.set('action', 'updatereadings');
+                }
+            }
+        );
      },
 
      /**

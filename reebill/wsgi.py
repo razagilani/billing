@@ -496,6 +496,10 @@ class ReebillsResource(RESTResource):
                 cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
+        elif action == 'updatereadings':
+            rb = self.process.update_reebill_readings(account, sequence)
+            rtn = rb.column_dict()
+
         elif action == 'compute':
             rb = self.process.compute_reebill(account, sequence, 'max')
             rtn = rb.column_dict()
@@ -536,8 +540,8 @@ class ReebillsResource(RESTResource):
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
-        row['action'] = ''
-        row['action_value'] = ''
+        rtn['action'] = ''
+        rtn['action_value'] = ''
         return True, {'rows': rtn, 'results': 1}
 
     def handle_delete(self, reebill_id, *vpath, **params):

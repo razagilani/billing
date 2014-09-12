@@ -1134,6 +1134,7 @@ class Process(object):
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
+        return reebill
 
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
