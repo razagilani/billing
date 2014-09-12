@@ -556,6 +556,7 @@ class Process(object):
                 version)
         if reebill.processed:
             raise ProcessedBillError("Cannot compute processed reebill")
+            return
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
