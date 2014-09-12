@@ -35,7 +35,8 @@ Ext.define('ReeBill.controller.Accounts', {
                 click: this.saveNewAccount
             },
             'combo[name=accountsFilter]': {
-                change: this.handleFilter
+                change: this.handleFilter,
+                render: this.initFilterCombo
             }
         });
 
@@ -69,11 +70,7 @@ Ext.define('ReeBill.controller.Accounts', {
                 memStore.sort({property: sortColumn, direction: sortDir});
                 memStore.loadPage(1);
 
-                // Update the filter combofield for filters
-                console.log(this.getAccountsFilter())
-                var filterCombo = this.getAccountsFilter();
-                var filterPrefRec = store.getOrCreate('filtername', 'none');
-                filterCombo.setValue(filterPrefRec.get('value'));
+                this.initFilterCombo();
             },
             scope: this
         });
@@ -117,6 +114,18 @@ Ext.define('ReeBill.controller.Accounts', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
+    },
+
+    /**
+     * Select the filter from preference store
+     */
+    initFilterCombo: function(){
+        var store = this.getPreferencesStore();
+        var filterCombo = this.getAccountsFilter();
+        if(store.getRange().length && filterCombo){
+            var filterPrefRec = store.getOrCreate('filtername', 'none');
+            filterCombo.setValue(filterPrefRec.get('value'));
+        }
     },
 
     /**
