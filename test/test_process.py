@@ -53,6 +53,60 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
 
 
+    def test_list_account_status(self):
+        count, data = self.process.list_account_status()
+        self.assertEqual(3, count)
+        self.assertEqual([{
+            'account': '99999',
+            'lastrateclass': '',
+            'casualname': 'Example 1',
+            'utilityserviceaddress': '',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': None,
+            'primusname': '1785 Massachusetts Ave.',
+            'lastevent': '',
+        }, {
+            'account': '100001',
+            'lastrateclass': 'Other Rate Class',
+            'casualname': 'Example 4',
+            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': date(2012, 1, 31),
+            'primusname': '1788 Massachusetts Ave.',
+            'lastevent': '',
+        }, {
+            'account': '100000',
+            'lastrateclass': 'Test Rate Class Template',
+            'casualname': 'Example 3',
+            'utilityserviceaddress': '123 Test Street, Test City, XX',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': date(2012, 2, 28),
+            'primusname': '1787 Massachusetts Ave.',
+            'lastevent': '',
+        }], data)
+
+        # get only one account
+        count, data = self.process.list_account_status(account='99999')
+        self.assertEqual(1, count)
+        self.assertEqual([{
+            'account': '99999',
+            'lastrateclass': '',
+            'casualname': 'Example 1',
+            'utilityserviceaddress': '',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': None,
+            'primusname': '1785 Massachusetts Ave.',
+            'lastevent': '',
+        }], data)
+
     def test_create_new_account(self):
         billing_address = {
             'addressee': 'Andrew Mellon',
