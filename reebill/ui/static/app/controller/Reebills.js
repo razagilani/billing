@@ -177,10 +177,14 @@ Ext.define('ReeBill.controller.Reebills', {
 
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
+        var processed = selected.get('processed')
 
         this.getDeleteReebillButton().setDisabled(issued);
+        this.getDeleteReebillButton().setDisabled(processed);
         this.getBindREOffsetButton().setDisabled(issued);
+        this.getBindREOffsetButton().setDisabled(processed);
         this.getComputeReebillButton().setDisabled(issued);
+        this.getComputeReebillButton().setDisabled(processed);
         this.getToggleReebillProcessedButton().setDisabled(issued);
         this.getUpdateReadingsButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
@@ -368,10 +372,105 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
-         selected.set('processed', !selected.get('processed'));
+         selected.data.apply_corrections = false;
+         var account = this.getAccountsGrid().getSelectionModel().getSelection();
+         this.makeIssueRequest('http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
+         /*selected.beginEdit();
+         selected.set('action', 'setProcessed');
+         selected.set('action_value', !selected.get('processed'));
+         selected.endEdit();*/
      },
 
-     /**
+     makeIssueRequest: function(url, billRecord, account){
+        //var me = this;
+        //var store = me.getIssuableReebillsStore();
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        var params = {reebill: Ext.encode(billRecord.data),
+                    account: Ext.encode(account[0].data)}
+        var store = this.getReebillsStore();
+
+        var failureFunc = function(response){
+            waitMask.hide();
+            Ext.MessageBox.show({
+                title: "Server error - " + response.status + " - " + response.statusText,
+                msg:  response.responseText,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+        };
+        var successFunc = function(response){
+            // Wait for the bill to be issued before reloading the store
+           var obj = Ext.JSON.decode(response.responseText);
+            Ext.defer(function(){
+                store.reload();
+                waitMask.hide();
+            }, 1000);
+        }
+
+        /*if(billRecord !== undefined){
+            params.account = billRecord.get('account');
+            params.sequence = billRecord.get('sequence');
+            params.mailto = billRecord.get('mailto');
+        }*/
+
+        waitMask.show();
+        Ext.Ajax.request({
+            url: url,
+            params: params,
+            reebill: params,
+            method: 'POST',
+            success: function(response){
+                waitMask.hide();
+                var obj = Ext.JSON.decode(response.responseText);
+                if (obj.corrections != undefined) {
+                    var reebill_corrections = '';
+                        if (obj.adjustment != undefined) {
+                            Ext.each(obj.unissued_corrections, function(correction) {
+                                reebill_corrections += 'Reebill from account ' + obj.reebill.account +
+                                    ' with sequence ' + obj.reebill.sequence +
+                                    ' with corrections ' + correction +
+                                    ' will be applied to this bill as an adjusment of $'
+                                    + obj.adjustment + ', which would also become processed.' +
+                                    'Do you want to make this correction processed?' + '</br>'
+                            });
+
+                        }
+
+                    Ext.MessageBox.confirm(
+                                'There are corrections with this reebill',reebill_corrections,
+
+                                function (answer) {
+                                    if (answer == 'yes') {
+                                            if (obj.adjustment != undefined)
+                                                obj.reebill.apply_corrections = true;
+
+                                        var params = {reebill: Ext.encode(obj.reebill),
+                                                    account: Ext.encode(account[0].data)}
+                                        Ext.Ajax.request({
+                                            url: url,
+                                            method: 'POST',
+                                            params: params,
+                                            failure: failureFunc,
+                                            success: successFunc
+                                        });
+                                        waitMask.show();
+                                        }
+
+                                });
+                    store.reload();
+                }
+                else
+                {
+                    successFunc(response);
+                }
+
+            },
+            failure: failureFunc
+        });
+     },
+
+    /**
       * Handle the create new version button.
       */
      handleCreateNewVersion: function() {
@@ -507,7 +606,7 @@ Ext.define('ReeBill.controller.Reebills', {
          // Disable Save Button if not the Highest Version is selected
          // or if the bill is issued
          this.getSaveAccountInformationButton().setDisabled(
-             !store.isHighestVersion(version) || selected.get('issued'));
+             !store.isHighestVersion(version) || selected.get('issued') || selected.get('processed'));
      },
 
      /**

@@ -4,10 +4,10 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import os
-from datetime import datetime, timedelta
 import traceback
 import re
 import errno
+from datetime import datetime, timedelta
 
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
@@ -21,7 +21,7 @@ from billing.processing.state import Customer, UtilBill, ReeBill, \
     Payment, MYSQLDB_DATETIME_MIN
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException
+    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment
 
 
 class Process(object):
@@ -291,6 +291,9 @@ class Process(object):
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
 
+        if reebill.processed:
+            raise ProcessedBillError("can't modify processed reebill")
+
         if discount_rate is not None:
             reebill.discount_rate = discount_rate
         if late_charge_rate is not None:
@@ -551,6 +554,8 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
+        if reebill.processed:
+            raise ProcessedBillError("Cannot compute processed reebill")
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
@@ -804,7 +809,9 @@ class Process(object):
             raise ValueError('%s has no corrections to apply' % account)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.compute_reebill(account, target_sequence,
+        reebill = self.state_db.get_reebill(account, target_sequence, target_max_version)
+        if not reebill.processed:
+            self.compute_reebill(account, target_sequence,
                 version=target_max_version)
 
         # issue each correction
@@ -997,7 +1004,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
 
         # compute the bill to make sure it's up to date before issuing
-        self.compute_reebill(reebill.customer.account,
+        if not reebill.processed:
+            self.compute_reebill(reebill.customer.account,
                 reebill .sequence, version=reebill.version)
 
         reebill.issue_date = issue_date
@@ -1134,6 +1142,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
+        if reebill.processed:
+            raise ProcessedBillError("Can't modify processed reebill")
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
         return reebill
 
@@ -1141,6 +1151,8 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence)
         if reebill.issued:
             raise IssuedBillError("Can't modify an issued reebill")
+        if reebill.processed:
+            raise ProcessedBillError("Can't modify processed reebill")
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 
@@ -1177,6 +1189,7 @@ class Process(object):
         """ Returns a list of issuable reebill dictionaries
             of the earliest unissued version-0 reebill account. If
             proccessed == True, only processed Reebills are returned
+            account can be used to get issuable bill for an account
         """
         session = Session()
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
@@ -1204,7 +1217,7 @@ class Process(object):
         email. If processed is given, this function  issues and mails all
         processed Reebills instead
         """
-        if processed is True:
+        if processed:
             assert sequence is None and account is None and recipients is None
             bills = self.get_issuable_reebills_dict(processed=True)
         else:
@@ -1246,7 +1259,8 @@ class Process(object):
                     ))
 
             try:
-                self.compute_reebill(bill['account'], bill['sequence'])
+                if not processed:
+                    self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
                 result['issued'].append((
                     bill['account'], bill['sequence'], 0, bill['mailto']))
@@ -1332,3 +1346,56 @@ class Process(object):
 
         rows = list(rows_dict.itervalues())
         return len(rows), rows
+
+    def toggle_reebill_processed(self, account, sequence,
+                apply_corrections):
+        '''Make the reebill given by account, sequence, processed if
+        it is not processed or un-processed if it is processed. If there are
+        un-issued corrections for the given account, 'apply_corrections' must
+        be True or ConfirmAdjustment will be raised.
+        '''
+        session = Session()
+        reebill = self.state_db.get_reebill(account, sequence)
+
+        if reebill.issued:
+            raise IssuedBillError("Can't modify an issued bill")
+
+        issuable_reebill = session.query(ReeBill).join(Customer) \
+                .filter(ReeBill.customer_id==Customer.id)\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.version==0, ReeBill.issued==False)\
+                .order_by(ReeBill.sequence).first()
+
+        if reebill.processed:
+            reebill.processed = False
+        else:
+            if reebill == issuable_reebill:
+                unissued_corrections = self.get_unissued_corrections(account)
+
+                # if there are corrections that are not already processed and
+                # user has not confirmed applying
+                # them, send back data for a confirmation message
+                unprocessed_corrections = False
+                for sequence, version, _ in unissued_corrections:
+                    correction = self.state_db.get_reebill(account, sequence, version)
+                    if not correction.processed:
+                        unprocessed_corrections = True
+                        break
+                if len(unissued_corrections) > 0 and unprocessed_corrections and not apply_corrections:
+                    sequences = [sequence for sequence, _, _
+                            in unissued_corrections]
+                    total_adjustment = sum(adjustment
+                            for _, _, adjustment in unissued_corrections)
+                    raise ConfirmAdjustment(sequences, total_adjustment)
+
+                # otherwise, mark corrected bills as processed
+                if unprocessed_corrections:
+                    for sequence, version, _ in unissued_corrections:
+                        unissued_reebill = self.state_db.get_reebill(account, sequence)
+                        if not unissued_reebill.processed:
+                            self.compute_reebill(account, sequence)
+                            unissued_reebill.processed = True
+
+            self.compute_reebill(account, reebill.sequence)
+            reebill.processed = True
+
