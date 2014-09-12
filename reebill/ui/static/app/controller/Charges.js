@@ -135,6 +135,8 @@ Ext.define('ReeBill.controller.Charges', {
             field.setDisabled(false);
             field.setValue(selected.get('quantity_formula'));
         }
+
+        this.getChargesGrid().focus();
      },
 
 
