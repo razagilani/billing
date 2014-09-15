@@ -77,10 +77,22 @@ class ReebillFileHandler(object):
     # see https://www.pivotaltracker.com/story/show/78497806
     PDF_SKIN_NAME = 'nextility_pv'
 
+    @staticmethod
+    def _ensure_directory_exists(path):
+        '''Create directories if necessary to ensure that the given path is
+        valid.
+        '''
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as e:
+            # makedirs fails if the directories already exist
+            if e.errno == EEXIST:
+                pass
+
     def __init__(self, output_dir_path):
         ''':param output_dir_path: directory where reebill PDF files are
         stored.
-        :param skin_name: name of "skin" to be used when rendering PDFs,
+        :param skin_name: name of "skin" to be used when rendering PDFs
         '''
         self._pdf_dir_path = output_dir_path
 
@@ -92,8 +104,8 @@ class ReebillFileHandler(object):
                 account=reebill.customer.account, sequence=reebill.sequence)
 
     def get_file_path(self, reebill):
-        '''Return full path to the PDF file associated with the given :class:`ReeBill`
-        (the file may not exist).
+        '''Return full path to the PDF file associated with the given
+        :class:`ReeBill` (the file may not exist).
         '''
         return os.path.join(self._pdf_dir_path, reebill.customer.account,
                 self.get_file_name(reebill))
@@ -111,18 +123,6 @@ class ReebillFileHandler(object):
         except OSError as e:
             if not ignore_missing or e.errno != ENOENT:
                 raise
-
-    def _ensure_directory_exists(self, reebill):
-        '''Create directories if necessary to ensure that the path to the
-        directory containing the given :class:`ReeBill`'s file is valid.
-        '''
-        path = self.get_file_path(reebill)
-        try:
-            os.makedirs(os.path.dirname(path))
-        except OSError as e:
-            # makedirs fails if the directories already exist
-            if e.errno == EEXIST:
-                pass
 
     def _generate_document(self, reebill):
         def get_utilbill_register_data_for_reebill_reading(reading):
@@ -210,9 +210,10 @@ class ReebillFileHandler(object):
     def render(self, reebill):
         '''Create a PDF of the given :class:`ReeBill`.
         '''
-        self._ensure_directory_exists(reebill)
+        path = self.get_file_path(reebill)
+        self._ensure_directory_exists(path)
+        dir_path, file_name = os.path.split(path)
         document = self._generate_document(reebill)
-        dir_path, file_name = os.path.split(self.get_file_path(reebill))
         ThermalBillDoc().render([document], dir_path,
                 file_name, ReebillFileHandler.TEMPLATE_DIR,
                 ReebillFileHandler.PDF_SKIN_NAME)
