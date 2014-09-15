@@ -1974,61 +1974,85 @@ def test_compute_utility_bill(self):
         self.assertDictContainsSubset(x, y)
 
 
-def test_compute_reebill(self):
-    '''Basic test of reebill processing with an emphasis on making sure
-        the accounting numbers in reebills are correct.
-        '''
-    account = '99999'
-    energy_quantity = 100.0
-    payment_amount = 100.0
-    self.process.ree_getter = MockReeGetter(energy_quantity)
+    def test_compute_reebill(self):
+        '''Basic test of reebill processing with an emphasis on making sure
+            the accounting numbers in reebills are correct.
+            '''
+        account = '99999'
+        energy_quantity = 100.0
+        payment_amount = 100.0
+        self.process.ree_getter = MockReeGetter(energy_quantity)
 
-    # create 2 utility bills with 1 charge in them
-    self.process.upload_utility_bill(account, 'gas',
-        date(2013, 1, 1), date(2013, 2, 1),
-        StringIO('January 2013'),
-        'january.pdf')
-    self.process.upload_utility_bill(account, 'gas',
-        date(2013, 2, 1), date(2013, 3, 1),
-        StringIO('February 2013'),
-        'february.pdf')
-    utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
-    id_2, id_1 = (obj['id'] for obj in utilbills_data)
-    self.process.add_charge(id_1)
-    self.process.update_charge({'rsi_binding': 'THE_CHARGE',
-                                'quantity_formula': 'REG_TOTAL.quantity',
-                                'rate_formula': '1'},
-                                utilbill_id=id_1,
-                                rsi_binding='New RSI #1')
-    self.process.refresh_charges(id_1)
-    self.process.update_utilbill_metadata(id_1, processed=True)
-    self.process.regenerate_uprs(id_2)
-    self.process.refresh_charges(id_2)
-    self.process.update_utilbill_metadata(id_2, processed=True)
+        # create 2 utility bills with 1 charge in them
+        self.process.upload_utility_bill(account, 'gas',
+            date(2013, 1, 1), date(2013, 2, 1),
+            StringIO('January 2013'),
+            'january.pdf')
+        self.process.upload_utility_bill(account, 'gas',
+            date(2013, 2, 1), date(2013, 3, 1),
+            StringIO('February 2013'),
+            'february.pdf')
+        utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
+        id_2, id_1 = (obj['id'] for obj in utilbills_data)
+        self.process.add_charge(id_1)
+        self.process.update_charge({'rsi_binding': 'THE_CHARGE',
+                                    'quantity_formula': 'REG_TOTAL.quantity',
+                                    'rate_formula': '1'},
+                                    utilbill_id=id_1,
+                                    rsi_binding='New RSI #1')
+        self.process.refresh_charges(id_1)
+        self.process.update_utilbill_metadata(id_1, processed=True)
+        self.process.regenerate_uprs(id_2)
+        self.process.refresh_charges(id_2)
+        self.process.update_utilbill_metadata(id_2, processed=True)
 
-    # create, process, and issue reebill
-    self.process.roll_reebill(account, start_date=date(2013, 1, 1))
-    self.process.update_sequential_account_info(account, 1,
-        discount_rate=0.5)
+        # create, process, and issue reebill
+        self.process.roll_reebill(account, start_date=date(2013, 1, 1))
+        self.process.update_sequential_account_info(account, 1,
+            discount_rate=0.5)
 
-    # get renewable energy and compute the reebill. make sure this is
-    # idempotent because in the past there was a bug where it was not.
-    for i in range(2):
-        self.process.bind_renewable_energy(account, 1)
-        self.process.compute_reebill(account, 1)
+        # get renewable energy and compute the reebill. make sure this is
+        # idempotent because in the past there was a bug where it was not.
+        for i in range(2):
+            self.process.bind_renewable_energy(account, 1)
+            self.process.compute_reebill(account, 1)
+            reebill_data = self.process.get_reebill_metadata_json(account)
+            self.assertDictContainsSubset({
+                'sequence': 1,
+                 'version': 0,
+                 'issued': 0,
+                                                 'issue_date': None,
+                                                 'actual_total': 0.,
+                                                 'hypothetical_total': energy_quantity,
+                                                 'payment_received': 0.,
+                                                 'period_start': date(2013, 1, 1),
+                                                 'period_end': date(2013, 2, 1),
+                                                 'prior_balance': 0.,
+                                                 'processed': False,
+                 'ree_charge': energy_quantity * .5,
+                                                 'ree_value': energy_quantity,
+                                                 'services': [],
+                                                 'total_adjustment': 0.,
+                                                 'total_error': 0.,
+                                                 'ree_quantity': energy_quantity,
+                                                 'balance_due': energy_quantity * .5,
+                                                 'balance_forward': 0.,
+                 'corrections': '(never issued)'}, reebill_data[0])
+
+        self.process.issue(account, 1, issue_date=datetime(2013, 2, 15))
         reebill_data = self.process.get_reebill_metadata_json(account)
         self.assertDictContainsSubset({
-            'sequence': 1,
+                                             'sequence': 1,
              'version': 0,
-             'issued': 0,
-                                             'issue_date': None,
+             'issued': 1,
+                                             'issue_date': datetime(2013, 2, 15),
                                              'actual_total': 0.,
                                              'hypothetical_total': energy_quantity,
                                              'payment_received': 0.,
                                              'period_start': date(2013, 1, 1),
                                              'period_end': date(2013, 2, 1),
                                              'prior_balance': 0.,
-                                             'processed': False,
+             'processed': 1,
              'ree_charge': energy_quantity * .5,
                                              'ree_value': energy_quantity,
                                              'services': [],
@@ -2036,264 +2060,239 @@ def test_compute_reebill(self):
                                              'total_error': 0.,
                                              'ree_quantity': energy_quantity,
                                              'balance_due': energy_quantity * .5,
-                                             'balance_forward': 0.,
-             'corrections': '(never issued)'}, reebill_data[0])
+                                             'balance_forward': 0.0,
+                                             'corrections': '-',
+         }, reebill_data[0])
 
-    self.process.issue(account, 1, issue_date=datetime(2013, 2, 15))
-    reebill_data = self.process.get_reebill_metadata_json(account)
-    self.assertDictContainsSubset({
-                                         'sequence': 1,
-         'version': 0,
-         'issued': 1,
-                                         'issue_date': datetime(2013, 2, 15),
-                                         'actual_total': 0.,
-                                         'hypothetical_total': energy_quantity,
-                                         'payment_received': 0.,
-                                         'period_start': date(2013, 1, 1),
-                                         'period_end': date(2013, 2, 1),
-                                         'prior_balance': 0.,
-         'processed': 1,
-         'ree_charge': energy_quantity * .5,
-                                         'ree_value': energy_quantity,
-                                         'services': [],
-                                         'total_adjustment': 0.,
-                                         'total_error': 0.,
-                                         'ree_quantity': energy_quantity,
-                                         'balance_due': energy_quantity * .5,
-                                         'balance_forward': 0.0,
-                                         'corrections': '-',
-     }, reebill_data[0])
+        # add a payment so payment_received is not 0
+        self.process.create_payment(account, date(2013, 2, 17),
+            'a payment for the first reebill', payment_amount)
 
-    # add a payment so payment_received is not 0
-    self.process.create_payment(account, date(2013, 2, 17),
-        'a payment for the first reebill', payment_amount)
+        # 2nd reebill
+        self.process.roll_reebill(account)
+        self.process.update_sequential_account_info(account, 2,
+            discount_rate=0.2)
+        self.process.compute_reebill(account, 2)
+        reebill_data = self.process.get_reebill_metadata_json(account)
+        dictionaries = [{
+                            'sequence': 2,
+                            'version': 0L,
+                            'issued': 0,
+                            'issue_date': None,
+                            'actual_total': 0,
+                            'hypothetical_total': energy_quantity,
+                            'payment_received': payment_amount,
+                            'period_start': date(2013, 2, 1),
+                            'period_end': date(2013, 3, 1),
+                            'prior_balance': energy_quantity * .5,
+                            'processed': 0,
+                            'ree_charge': energy_quantity * .8,
+                            'ree_value': energy_quantity,
+                            'services': [],
+                            'total_adjustment': 0,
+                            'total_error': 0.0,
+                            'ree_quantity': energy_quantity,
+                            'balance_due': energy_quantity * .5 +
+                                           energy_quantity * .8 - payment_amount,
+                            'balance_forward': energy_quantity * .5 -
+                                               payment_amount,
+                            'corrections': '(never issued)',
+                        }, {
+                            'sequence': 1L,
+                            'version': 0L,
+                            'issued': 1,
+                            'issue_date': datetime(2013, 2, 15),
+                            'actual_total': 0,
+                            'hypothetical_total': energy_quantity,
+                            'payment_received': 0.0,
+                            'period_start': date(2013, 1, 1),
+                            'period_end': date(2013, 2, 1),
+                            'prior_balance': 0,
+                            'processed': 1,
+                            'ree_charge': energy_quantity * .5,
+                            'ree_value': energy_quantity,
+                            'services': [],
+                            'total_adjustment': 0,
+                            'total_error': 0.0,
+                            'ree_quantity': energy_quantity,
+                            'balance_due': energy_quantity * .5,
+                            'balance_forward': 0.0,
+                            'corrections': '-',
+                        }]
 
-    # 2nd reebill
-    self.process.roll_reebill(account)
-    self.process.update_sequential_account_info(account, 2,
-        discount_rate=0.2)
-    self.process.compute_reebill(account, 2)
-    reebill_data = self.process.get_reebill_metadata_json(account)
-    dictionaries = [{
-                        'sequence': 2,
-                        'version': 0L,
-                        'issued': 0,
-                        'issue_date': None,
-                        'actual_total': 0,
-                        'hypothetical_total': energy_quantity,
-                        'payment_received': payment_amount,
-                        'period_start': date(2013, 2, 1),
-                        'period_end': date(2013, 3, 1),
-                        'prior_balance': energy_quantity * .5,
-                        'processed': 0,
-                        'ree_charge': energy_quantity * .8,
-                        'ree_value': energy_quantity,
-                        'services': [],
-                        'total_adjustment': 0,
-                        'total_error': 0.0,
-                        'ree_quantity': energy_quantity,
-                        'balance_due': energy_quantity * .5 +
-                                       energy_quantity * .8 - payment_amount,
-                        'balance_forward': energy_quantity * .5 -
-                                           payment_amount,
-                        'corrections': '(never issued)',
-                    }, {
-                        'sequence': 1L,
-                        'version': 0L,
-                        'issued': 1,
-                        'issue_date': datetime(2013, 2, 15),
-                        'actual_total': 0,
-                        'hypothetical_total': energy_quantity,
-                        'payment_received': 0.0,
-                        'period_start': date(2013, 1, 1),
-                        'period_end': date(2013, 2, 1),
-                        'prior_balance': 0,
-                        'processed': 1,
-                        'ree_charge': energy_quantity * .5,
-                        'ree_value': energy_quantity,
-                        'services': [],
-                        'total_adjustment': 0,
-                        'total_error': 0.0,
-                        'ree_quantity': energy_quantity,
-                        'balance_due': energy_quantity * .5,
-                        'balance_forward': 0.0,
-                        'corrections': '-',
-                    }]
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dictionaries[i], reebill_dct)
 
-    for i, reebill_dct in enumerate(reebill_data):
-        self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+        # make a correction on reebill #1: payment does not get applied to
+        # #1, and does get applied to #2
+        # NOTE because #1-1 is unissued, its utility bill document should
+        # be "current", not frozen
+        self.process.new_version(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        reebill_data = self.process.get_reebill_metadata_json(account)
+        dictionaries = [{
+                            'sequence': 2,
+                            'version': 0,
+                            'issued': 0,
+                            'issue_date': None,
+                            'actual_total': 0,
+                            'hypothetical_total': energy_quantity,
+                            'payment_received': payment_amount,
+                            'period_start': date(2013, 2, 1),
+                            'period_end': date(2013, 3, 1),
+                            'prior_balance': energy_quantity * .5,
+                            'processed': 0,
+                            'ree_charge': energy_quantity * .8,
+                            'ree_value': energy_quantity,
+                            'services': [],
+                            'total_adjustment': 0,
+                            'total_error': 0,
+                            'ree_quantity': energy_quantity,
+                            'balance_due': energy_quantity * .5 +
+                                           energy_quantity * .8 - payment_amount,
+                            'balance_forward': energy_quantity * .5 -
+                                               payment_amount,
+                            'corrections': '(never issued)',
+                        }, {
+                            'sequence': 1,
+                            'version': 1,
+                            'issued': 0,
+                            'issue_date': None,
+                            'actual_total': 0,
+                            'hypothetical_total': energy_quantity,
+                            'payment_received': 0,
+                            'period_start': date(2013, 1, 1),
+                            'period_end': date(2013, 2, 1),
+                            'prior_balance': 0,
+                            'processed': 0,
+                            'ree_charge': energy_quantity * .5,
+                            'ree_value': energy_quantity,
+                            'services': [],
+                            'total_adjustment': 0,
+                            'total_error': 0,
+                            'ree_quantity': energy_quantity,
+                            'balance_due': energy_quantity * .5,
+                            'balance_forward': 0,
+                            'corrections': '#1 not issued',
+                        }]
 
-    # make a correction on reebill #1: payment does not get applied to
-    # #1, and does get applied to #2
-    # NOTE because #1-1 is unissued, its utility bill document should
-    # be "current", not frozen
-    self.process.new_version(account, 1)
-    self.process.compute_reebill(account, 1)
-    self.process.compute_reebill(account, 2)
-    reebill_data = self.process.get_reebill_metadata_json(account)
-    dictionaries = [{
-                        'sequence': 2,
-                        'version': 0,
-                        'issued': 0,
-                        'issue_date': None,
-                        'actual_total': 0,
-                        'hypothetical_total': energy_quantity,
-                        'payment_received': payment_amount,
-                        'period_start': date(2013, 2, 1),
-                        'period_end': date(2013, 3, 1),
-                        'prior_balance': energy_quantity * .5,
-                        'processed': 0,
-                        'ree_charge': energy_quantity * .8,
-                        'ree_value': energy_quantity,
-                        'services': [],
-                        'total_adjustment': 0,
-                        'total_error': 0,
-                        'ree_quantity': energy_quantity,
-                        'balance_due': energy_quantity * .5 +
-                                       energy_quantity * .8 - payment_amount,
-                        'balance_forward': energy_quantity * .5 -
-                                           payment_amount,
-                        'corrections': '(never issued)',
-                    }, {
-                        'sequence': 1,
-                        'version': 1,
-                        'issued': 0,
-                        'issue_date': None,
-                        'actual_total': 0,
-                        'hypothetical_total': energy_quantity,
-                        'payment_received': 0,
-                        'period_start': date(2013, 1, 1),
-                        'period_end': date(2013, 2, 1),
-                        'prior_balance': 0,
-                        'processed': 0,
-                        'ree_charge': energy_quantity * .5,
-                        'ree_value': energy_quantity,
-                        'services': [],
-                        'total_adjustment': 0,
-                        'total_error': 0,
-                        'ree_quantity': energy_quantity,
-                        'balance_due': energy_quantity * .5,
-                        'balance_forward': 0,
-                        'corrections': '#1 not issued',
-                    }]
-
-    for i, reebill_dct in enumerate(reebill_data):
-        self.assertDictContainsSubset(dictionaries[i], reebill_dct)
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dictionaries[i], reebill_dct)
 
 
 
-def test_payment_application(self):
-    """Test that payments are applied to reebills according their "date
-        received", including when multiple payments are applied and multiple
-        bills are issued in the same day.
-        """
-    account = '99999'
-    self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
-        date(2000, 2, 1), StringIO('January'), 'january.pdf')
-    self.process.upload_utility_bill(account, 'gas', date(2000, 2, 1),
-        date(2000, 3, 1), StringIO('February'), 'March.pdf')
-    self.process.upload_utility_bill(account, 'gas', date(2000, 3, 1),
-        date(2000, 4, 1), StringIO('March'), 'March.pdf')
+    def test_payment_application(self):
+        """Test that payments are applied to reebills according their "date
+            received", including when multiple payments are applied and multiple
+            bills are issued in the same day.
+            """
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+            date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 2, 1),
+            date(2000, 3, 1), StringIO('February'), 'March.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 3, 1),
+            date(2000, 4, 1), StringIO('March'), 'March.pdf')
 
-    # create 2 reebills
-    reebill_1 = self.process.roll_reebill(account,
-        start_date=date(2000, 1, 1))
-    reebill_2 = self.process.roll_reebill(account)
+        # create 2 reebills
+        reebill_1 = self.process.roll_reebill(account,
+            start_date=date(2000, 1, 1))
+        reebill_2 = self.process.roll_reebill(account)
 
-    # 1 payment applied today at 1:00, 1 payment applied at 2:00
-    self.process.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
-    self.process.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
+        self.process.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
 
-    # 1st reebill has both payments applied to it, 2nd has neither
-    self.process.compute_reebill(account, 1)
-    self.process.compute_reebill(account, 2)
-    self.assertEqual(22, reebill_1.payment_received)
-    self.assertEqual(0, reebill_2.payment_received)
+        # 1st reebill has both payments applied to it, 2nd has neither
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
 
-    # issue the 1st bill
-    self.process.issue(account, 1, issue_date=datetime(2000, 1, 1, 3))
-    self.assertEqual(22, reebill_1.payment_received)
-    self.assertEqual(0, reebill_2.payment_received)
-    self.process.compute_reebill(account, 2)
-    self.assertEqual(22, reebill_1.payment_received)
-    self.assertEqual(0, reebill_2.payment_received)
+        # issue the 1st bill
+        self.process.issue(account, 1, issue_date=datetime(2000, 1, 1, 3))
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(0, reebill_2.payment_received)
 
-    # now later payments apply to the 2nd bill
-    self.process.create_payment(account, datetime(2000, 1, 1, 3), 'three', 30)
-    self.process.compute_reebill(account, 2)
-    self.assertEqual(30, reebill_2.payment_received)
+        # now later payments apply to the 2nd bill
+        self.process.create_payment(account, datetime(2000, 1, 1, 3), 'three', 30)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(30, reebill_2.payment_received)
 
-    # even when a correction is made on the 1st bill
-    self.process.new_version(account, 1)
-    self.process.compute_reebill(account, 1)
-    self.process.compute_reebill(account, 2)
-    self.assertEqual(22, reebill_1.payment_received)
-    self.assertEqual(30, reebill_2.payment_received)
+        # even when a correction is made on the 1st bill
+        self.process.new_version(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
 
-    # a payment that is backdated to before a corrected bill was issued
-    # does not appear on the corrected version
-    self.process.create_payment(account, datetime(2000, 1, 1, 2, 30),
-        'backdated payment', 230)
-    self.process.compute_reebill(account, 1)
-    self.process.compute_reebill(account, 2)
-    self.assertEqual(22, reebill_1.payment_received)
-    self.assertEqual(30, reebill_2.payment_received)
+        # a payment that is backdated to before a corrected bill was issued
+        # does not appear on the corrected version
+        self.process.create_payment(account, datetime(2000, 1, 1, 2, 30),
+            'backdated payment', 230)
+        self.process.compute_reebill(account, 1)
+        self.process.compute_reebill(account, 2)
+        self.assertEqual(22, reebill_1.payment_received)
+        self.assertEqual(30, reebill_2.payment_received)
 
 
-def test_tou_metering(self):
-    # TODO: possibly move to test_fetch_bill_data
-    account = '99999'
+    def test_tou_metering(self):
+        # TODO: possibly move to test_fetch_bill_data
+        account = '99999'
 
-    def get_mock_energy_consumption(install, start, end, measure,
-                                    ignore_misisng=True, verbose=False):
-        assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
-        result = []
-        for hourly_period in cross_range(start, end):
-            # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
-            # (Sat Jan 15), return number of BTU equal to the hour of
-            # the day. no energy is consumed on other days.
-            if hourly_period.day in (1, 14, 15):
-                result.append(hourly_period.hour)
-            else:
-                result.append(0)
-        assert len(result) == 31 * 24  # hours in January
-        return result
+        def get_mock_energy_consumption(install, start, end, measure,
+                                        ignore_misisng=True, verbose=False):
+            assert start, end == (date(2000, 1, 1), date(2000, 2, 1))
+            result = []
+            for hourly_period in cross_range(start, end):
+                # for a holiday (Jan 1), weekday (Fri Jan 14), or weekend
+                # (Sat Jan 15), return number of BTU equal to the hour of
+                # the day. no energy is consumed on other days.
+                if hourly_period.day in (1, 14, 15):
+                    result.append(hourly_period.hour)
+                else:
+                    result.append(0)
+            assert len(result) == 31 * 24  # hours in January
+            return result
 
-    self.process.ree_getter.get_billable_energy_timeseries = \
-        get_mock_energy_consumption
+        self.process.ree_getter.get_billable_energy_timeseries = \
+            get_mock_energy_consumption
 
-    self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
-        date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+            date(2000, 2, 1), StringIO('January'), 'january.pdf')
 
-    # modify registers of this utility bill so they are TOU
-    u = self.session.query(UtilBill).join(Customer). \
-        filter_by(account='99999').one()
-    active_periods_str = json.dumps({
-                                     'active_periods_weekday': [[9, 9]],
-                                     'active_periods_weekend': [[11, 11]],
-        'active_periods_holiday': [[13, 13]]
-    })
-    self.session.add(Register(u, 'time-of-use register', 0, 'btu',
-            'test2', False, 'tou', 'TOU', active_periods_str, ''))
-    self.process.roll_reebill(account, start_date=date(2000, 1, 1))
+        # modify registers of this utility bill so they are TOU
+        u = self.session.query(UtilBill).join(Customer). \
+            filter_by(account='99999').one()
+        active_periods_str = json.dumps({
+                                         'active_periods_weekday': [[9, 9]],
+                                         'active_periods_weekend': [[11, 11]],
+            'active_periods_holiday': [[13, 13]]
+        })
+        self.session.add(Register(u, 'time-of-use register', 0, 'btu',
+                'test2', False, 'tou', 'TOU', active_periods_str, ''))
+        self.process.roll_reebill(account, start_date=date(2000, 1, 1))
 
-    # the total energy consumed over the 3 non-0 days is
-    # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-    # when only the hours 9, 11, and 13 are included, the total is just
-    # 9 + 11 + 13 = 33.
-    total_renewable_btu = 23 * 24 / 2. * 3
-    total_renewable_therms = total_renewable_btu / 1e5
-    tou_renewable_btu = 9 + 11 + 13
+        # the total energy consumed over the 3 non-0 days is
+        # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
+        # when only the hours 9, 11, and 13 are included, the total is just
+        # 9 + 11 + 13 = 33.
+        total_renewable_btu = 23 * 24 / 2. * 3
+        total_renewable_therms = total_renewable_btu / 1e5
+        tou_renewable_btu = 9 + 11 + 13
 
-    # check reading of the reebill corresponding to the utility register
-    total_reading, tou_reading = self.session.query(ReeBill).one().readings
-    self.assertEqual('therms', total_reading.unit)
-    self.assertEqual(total_renewable_therms,
-            total_reading.renewable_quantity)
-    self.assertEqual('btu', tou_reading.unit)
-    self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
+        # check reading of the reebill corresponding to the utility register
+        total_reading, tou_reading = self.session.query(ReeBill).one().readings
+        self.assertEqual('therms', total_reading.unit)
+        self.assertEqual(total_renewable_therms,
+                total_reading.renewable_quantity)
+        self.assertEqual('btu', tou_reading.unit)
+        self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
 
 if __name__ == '__main__':
-    # unittest.main(failfast=True)
     unittest.main()
