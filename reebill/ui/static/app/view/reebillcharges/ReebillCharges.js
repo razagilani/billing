@@ -52,11 +52,7 @@ Ext.define('ReeBill.view.ReebillCharges', {
         dataIndex: 'quantity_units',
         width: 120
     },{
-        header: 'Actual Rate',
-        dataIndex: 'actual_rate',
-        width: 120
-    },{
-        header: 'Hypo Rate',
+        header: 'Rate',
         dataIndex: 'rate',
         width: 120
     },{
