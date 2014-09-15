@@ -116,6 +116,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
         if (!selected || !selected.length)
             return;
         var lastEndDate = store.getLastEndDate();
+        // If there is no record in the store set the date to one month ago from today
+        if(!lastEndDate){
+            lastEndDate = Ext.Date.add(new Date(), Ext.Date.MONTH, -1);
+        }
         accountField.setValue(selected[0].get('account'));
         startDateField.setValue(lastEndDate);
         endDateField.setValue(Ext.Date.add(lastEndDate, Ext.Date.MONTH, 1));
