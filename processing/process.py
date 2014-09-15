@@ -1334,14 +1334,18 @@ class Process(object):
                 'provisionable': False,
                 'lastissuedate': issue_date if issue_date else '',
                 'lastrateclass': rate_class if rate_class else '',
-                'utilityserviceaddress': str(service_address) if service_address else ''
+                'utilityserviceaddress': str(service_address) if service_address else '',
+                'lastevent': '',
             }
 
         if account is not None:
-            events = [self.journal_dao.last_event_summary(account)]
+            events = [(account, self.journal_dao.last_event_summary(account))]
         else:
             events = self.journal_dao.get_all_last_events()
         for acc, last_event in events:
+            # filter out events that belong to an unknown account (this could
+            # not be done in JournalDAO.get_all_last_events() because it only
+            # has access to Mongo)
             if acc in rows_dict:
                 rows_dict[acc]['lastevent'] = last_event
 
