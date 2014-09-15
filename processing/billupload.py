@@ -36,8 +36,8 @@ class BillUpload(object):
 
     @staticmethod
     def delete_utilbill_pdf_from_s3(utilbill):
-        """Removes the pdf file associated with utilbill from s3"""
-        hexdigest = utilbill.sha256_hexdigest
+        """Removes the pdf file associated with utilbill from s3.
+        """
         session = Session()
         if session.query(UtilBill).\
             filter_by(sha256_hexdigest=utilbill.sha256_hexdigest).count() == 1:
