@@ -11,7 +11,7 @@ from billing.processing.render import ReebillFileHandler
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
         self.temp_dir = TempDirectory()
-        self.renderer = ReebillFileHandler(self.temp_dir.path)
+        self.file_handler = ReebillFileHandler(self.temp_dir.path)
 
     def tearDown(self):
         # TODO: this seems to not always remove the directory?
@@ -52,11 +52,11 @@ class ReebillFileHandlerTest(TestCase):
                           'kWh', 1, 30, 40),
         ]
 
-        self.renderer.render(r)
+        self.file_handler.render(r)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time (current date, and some mysterious bytes)
-        path = self.renderer.get_file_path(r)
+        path = self.file_handler.get_file_path(r)
         with open(path, 'rb') as pdf_file:
             filtered_lines, prev_line = [], ''
             while True:
