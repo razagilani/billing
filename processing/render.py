@@ -186,7 +186,7 @@ class ReebillFileHandler(object):
             'hypothetical_chargegroups': {group_name: [{
                 'description': charge.description,
                 'quantity': charge.h_quantity,
-                'rate': charge.h_rate,
+                'rate': charge.rate,
                 'total': charge.h_total
             } for charge in charges]
             for group_name, charges in groupby(reebill.charges, key=lambda c: c.group)},

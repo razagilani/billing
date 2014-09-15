@@ -56,7 +56,7 @@ Ext.define('ReeBill.view.Accounts', {
     },{
         header: 'Last Event',
         dataIndex: 'lastevent',
-        width: 350,
+        minWidth: 350,
         flex:1
     }],
 

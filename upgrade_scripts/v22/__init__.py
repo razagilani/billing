@@ -194,11 +194,11 @@ def set_customer_service_type(s):
 def upgrade():
     log.info('Beginning upgrade to version 22')
 
-    log.info('Upgrading to schema revision 39efff02706c')
-    alembic_upgrade('39efff02706c')
+    log.info('Upgrading to schema revision 32bbb4189c1')
+    alembic_upgrade('32bbb4189c1')
     log.info('Alembic Upgrade Complete')
 
-    init_model(schema_revision='39efff02706c')
+    init_model(schema_revision='32bbb4189c1')
 
     session = Session()
     set_customer_service_type(session)

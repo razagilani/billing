@@ -38,7 +38,7 @@ from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
 from billing.processing.session_contextmanager import DBSession
-from billing.exc import Unauthenticated, IssuedBillError, RenderError
+from billing.exc import Unauthenticated, IssuedBillError, RenderError, ConfirmAdjustment
 from billing.processing.excel_export import Exporter
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -201,7 +201,7 @@ class WebResource(object):
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
             self.billUpload, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
-            self.ree_getter, logger=self.logger)
+            self.ree_getter, self.journal_dao, logger=self.logger)
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('authentication',
@@ -439,8 +439,8 @@ class ReebillsResource(RESTResource):
 
     def handle_post(self, account, *vpath, **params):
         """ Handles Reebill creation """
-        params = cherrypy.request.params
-        start_date = params.get('start_date')
+        params = cherrypy.request.json
+        start_date = params.get('period_start')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         reebill = self.process.roll_reebill(account, start_date=start_date)
@@ -493,12 +493,8 @@ class ReebillsResource(RESTResource):
                 cherrypy.session['user'], account, sequence, recipients)
             rtn = row
 
-        elif action == 'setProcessed':
-            if action_value is None:
-                raise ValueError("Got no value for row['action_value']")
-
-            rb = self.process.update_sequential_account_info(
-                account, sequence, processed=action_value)
+        elif action == 'updatereadings':
+            rb = self.process.update_reebill_readings(account, sequence)
             rtn = rb.column_dict()
 
         elif action == 'compute':
@@ -515,7 +511,6 @@ class ReebillsResource(RESTResource):
         elif not action:
             # Regular PUT request. In this case this means updated
             # Sequential Account Information
-
             discount_rate = float(row['discount_rate'])
             late_charge_rate = float(row['late_charge_rate'])
 
@@ -535,14 +530,15 @@ class ReebillsResource(RESTResource):
                 ba_postal_code=ba['postal_code'],
                 sa_addressee=sa['addressee'], sa_street=sa['street'],
                 sa_city=sa['city'], sa_state=sa['state'],
-                sa_postal_code=sa['postal_code'])
+                sa_postal_code=sa['postal_code'],
+                processed=row['processed'])
 
             rtn = rb.column_dict()
 
         # Reset the action parameters, so the client can coviniently submit
         # the same action again
-        row['action'] = ''
-        row['action_value'] = ''
+        rtn['action'] = ''
+        rtn['action_value'] = ''
         return True, {'rows': rtn, 'results': 1}
 
     def handle_delete(self, reebill_id, *vpath, **params):
@@ -576,6 +572,27 @@ class ReebillsResource(RESTResource):
                 account, sequence, version)
 
         return self.dumps({'success':True})
+
+    @cherrypy.expose
+    @cherrypy.tools.authenticate_ajax()
+    @db_commit
+    def toggle_processed(self, reebill, account, **params):
+        reebill_json = json.loads(reebill)
+        account_json = json.loads(account)
+        account = account_json['account']
+        sequence, version = reebill_json['sequence'], reebill_json['version']
+        apply_corrections = reebill_json['apply_corrections']
+        try:
+            self.process.toggle_reebill_processed(account, sequence,
+                    apply_corrections)
+        except ConfirmAdjustment as e:
+            return json.dumps({
+                'reebill': reebill_json,
+                'unissued_corrections': e.correction_sequences,
+                'adjustment': e.total_adjustment,
+                'corrections': True
+            })
+        return json.dumps({'success': True})
 
 class UtilBillResource(RESTResource):
 
@@ -617,7 +634,7 @@ class UtilBillResource(RESTResource):
         result= {}
 
         if action == 'regenerate_charges':
-            ub = self.process.compute_utility_bill(utilbill_id)
+            ub = self.process.regenerate_uprs(utilbill_id)
             result = ub.column_dict()
 
         elif action == 'compute':

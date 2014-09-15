@@ -9,6 +9,9 @@ Ext.define('ReeBill.view.Exports', {
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{
             xtype: 'button',
             text: 'Export ReeBill XLS',

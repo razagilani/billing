@@ -21,8 +21,11 @@ Ext.define('ReeBill.controller.Reebills', {
         ref: 'computeReebillButton',
         selector: 'button[action=computeReebill]'        
     },{
+        ref: 'updateReadingsButton',
+        selector: 'button[action=updateReadings]'
+    },{
         ref: 'deleteReebillButton',
-        selector: 'button[action=deleteReebill]'        
+        selector: 'button[action=deleteReebill]'
     },{
         ref: 'createNewVersionButton',
         selector: 'button[action=createNewVersion]'        
@@ -96,6 +99,9 @@ Ext.define('ReeBill.controller.Reebills', {
             },
             'button[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
+            },
+            'button[action=updateReadings]': {
+                click: this.handleUpdateReadings
             },
             'button[action=toggleReebillProcessed]': {
                 click: this.handleToggleReebillProcessed
@@ -171,11 +177,16 @@ Ext.define('ReeBill.controller.Reebills', {
 
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
+        var processed = selected.get('processed')
 
         this.getDeleteReebillButton().setDisabled(issued);
+        this.getDeleteReebillButton().setDisabled(processed);
         this.getBindREOffsetButton().setDisabled(issued);
+        this.getBindREOffsetButton().setDisabled(processed);
         this.getComputeReebillButton().setDisabled(issued);
+        this.getComputeReebillButton().setDisabled(processed);
         this.getToggleReebillProcessedButton().setDisabled(issued);
+        this.getUpdateReadingsButton().setDisabled(issued);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
@@ -277,6 +288,22 @@ Ext.define('ReeBill.controller.Reebills', {
      },
 
      /**
+     * Handle the update readings button.
+     */
+     handleUpdateReadings: function(){
+        var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
+        Ext.Msg.confirm(
+            'Confirm Updating Readings',
+            'Are you sure you want to update the Readings?',
+            function(answer) {
+                if (answer == 'yes') {
+                    selected.set('action', 'updatereadings');
+                }
+            }
+        );
+     },
+
+     /**
       * Handle the delete button.
       */
      handleDelete: function() {
@@ -319,11 +346,11 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
+         var viewer = me.getReebillViewer();
+         viewer.setLoading();
          store.suspendAutoSync();
          selected.set('action', 'render');
          store.sync({callback: function(){
-             console.log('called')
-             var viewer = me.getReebillViewer();
               // Rerequest the document and regenerate the bust cache param
              viewer.getDocument(true);
          }});
@@ -345,13 +372,105 @@ Ext.define('ReeBill.controller.Reebills', {
              return;
 
          var selected = selections[0];
-         selected.beginEdit();
+         selected.data.apply_corrections = false;
+         var account = this.getAccountsGrid().getSelectionModel().getSelection();
+         this.makeIssueRequest('http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
+         /*selected.beginEdit();
          selected.set('action', 'setProcessed');
          selected.set('action_value', !selected.get('processed'));
-         selected.endEdit();
+         selected.endEdit();*/
      },
 
-     /**
+     makeIssueRequest: function(url, billRecord, account){
+        //var me = this;
+        //var store = me.getIssuableReebillsStore();
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        var params = {reebill: Ext.encode(billRecord.data),
+                    account: Ext.encode(account[0].data)}
+        var store = this.getReebillsStore();
+
+        var failureFunc = function(response){
+            waitMask.hide();
+            Ext.MessageBox.show({
+                title: "Server error - " + response.status + " - " + response.statusText,
+                msg:  response.responseText,
+                icon: Ext.MessageBox.ERROR,
+                buttons: Ext.Msg.OK,
+                cls: 'messageBoxOverflow'
+            });
+        };
+        var successFunc = function(response){
+            // Wait for the bill to be issued before reloading the store
+           var obj = Ext.JSON.decode(response.responseText);
+            Ext.defer(function(){
+                store.reload();
+                waitMask.hide();
+            }, 1000);
+        }
+
+        /*if(billRecord !== undefined){
+            params.account = billRecord.get('account');
+            params.sequence = billRecord.get('sequence');
+            params.mailto = billRecord.get('mailto');
+        }*/
+
+        waitMask.show();
+        Ext.Ajax.request({
+            url: url,
+            params: params,
+            reebill: params,
+            method: 'POST',
+            success: function(response){
+                waitMask.hide();
+                var obj = Ext.JSON.decode(response.responseText);
+                if (obj.corrections != undefined) {
+                    var reebill_corrections = '';
+                        if (obj.adjustment != undefined) {
+                            Ext.each(obj.unissued_corrections, function(correction) {
+                                reebill_corrections += 'Reebill from account ' + obj.reebill.account +
+                                    ' with sequence ' + obj.reebill.sequence +
+                                    ' with corrections ' + correction +
+                                    ' will be applied to this bill as an adjusment of $'
+                                    + obj.adjustment + ', which would also become processed.' +
+                                    'Do you want to make this correction processed?' + '</br>'
+                            });
+
+                        }
+
+                    Ext.MessageBox.confirm(
+                                'There are corrections with this reebill',reebill_corrections,
+
+                                function (answer) {
+                                    if (answer == 'yes') {
+                                            if (obj.adjustment != undefined)
+                                                obj.reebill.apply_corrections = true;
+
+                                        var params = {reebill: Ext.encode(obj.reebill),
+                                                    account: Ext.encode(account[0].data)}
+                                        Ext.Ajax.request({
+                                            url: url,
+                                            method: 'POST',
+                                            params: params,
+                                            failure: failureFunc,
+                                            success: successFunc
+                                        });
+                                        waitMask.show();
+                                        }
+
+                                });
+                    store.reload();
+                }
+                else
+                {
+                    successFunc(response);
+                }
+
+            },
+            failure: failureFunc
+        });
+     },
+
+    /**
       * Handle the create new version button.
       */
      handleCreateNewVersion: function() {
@@ -385,7 +504,38 @@ Ext.define('ReeBill.controller.Reebills', {
       */
      handleCreateNext: function() {
          var store = this.getReebillsStore();
-         store.insert(0, {issued:false});
+         if(store.count() === 0){
+            if(this._lastCreateNextDate === undefined){
+                this._lastCreateNextDate = ''
+            }
+            Ext.Msg.prompt(
+                'Service Start Date',
+                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
+                function(button, text){
+                    console.log(this);
+                    if(button === 'ok'){
+                        var controller = this;
+                        controller._lastCreateNextDate = text;
+                        if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
+                            store.insert(0, {period_start: text});
+                        }else{
+                            Ext.Msg.alert(
+                                'Invalid Date',
+                                'Please enter a date in the format (YYYY-MM-DD)',
+                                function(){
+                                    controller.handleCreateNext();
+                                }
+                            )
+                        }
+                    }
+                },
+                this,
+                false,
+                this._lastCreateNextDate
+            )
+         }else{
+            store.insert(0, {issued:false});
+         }
      },
 
      /**
@@ -456,7 +606,7 @@ Ext.define('ReeBill.controller.Reebills', {
          // Disable Save Button if not the Highest Version is selected
          // or if the bill is issued
          this.getSaveAccountInformationButton().setDisabled(
-             !store.isHighestVersion(version) || selected.get('issued'));
+             !store.isHighestVersion(version) || selected.get('issued') || selected.get('processed'));
      },
 
      /**
@@ -576,6 +726,6 @@ Ext.define('ReeBill.controller.Reebills', {
                 Ext.Msg.alert('Error', 'Failed to submit interval meter data')
             }
         });
-    },
+    }
 
 });
