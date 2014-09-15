@@ -315,7 +315,9 @@ def restore_local(args):
 if __name__ == '__main__':
     main_parser = argparse.ArgumentParser(description=("Backup script for "
             "utility bill and reebill databases. Database credentials are "
-            "read from the application config file (settings.cfg)."))
+            "read from the application config file (settings.cfg). "
+            "See https://bitbucket.org/skylineitops/billing/wiki/"
+            "Backing%20up%20and%20restoring%20databases"))
 
     subparsers = main_parser.add_subparsers()
     backup_parser = subparsers.add_parser('backup',
