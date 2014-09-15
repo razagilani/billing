@@ -53,7 +53,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '6446c51511c'
+_schema_revision = '32bbb4189c1'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -777,8 +777,7 @@ class UtilBill(Base):
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
-    # TODO: rename the column to match
-    target_total = Column(Float, name='total_charges')
+    target_total = Column(Float)
 
     date_received = Column(DateTime)
     account_number = Column(String, nullable=False)
