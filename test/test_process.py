@@ -220,7 +220,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         reebill_charges = self.process.get_hypothetical_matched_charges(reebill_data['id'])
         self.assertEqual([{
                               'actual_quantity': 0,
-                              'actual_rate': 1,
                               'actual_total': 0,
                               'description': 'a',
                               'quantity': 10,
