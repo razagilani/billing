@@ -13,7 +13,7 @@ from billing.processing.render import ReebillFileHandler
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
         self.temp_dir = TempDirectory()
-        self.renderer = ReebillFileHandler(self.temp_dir.path)
+        self.file_handler = ReebillFileHandler(self.temp_dir.path)
 
         ba = Address(addressee='Billing Addressee', street='123 Example St.',
                      city='Washington', state='DC', postal_code='01234')
@@ -43,7 +43,7 @@ class ReebillFileHandlerTest(TestCase):
                           'kWh', 1, 30, 40),
             ]
 
-    def tearDown(self):
+        self.file_handler.render(self.reebill)
         # TODO: this seems to not always remove the directory?
         self.temp_dir.cleanup()
 
@@ -52,11 +52,11 @@ class ReebillFileHandlerTest(TestCase):
         whether the PDF file matches the expected value will tell you when
         something is broken but it won't tell you what's broken.
         '''
-        self.renderer.render(self.reebill)
+        self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time (current date, and some mysterious bytes)
-        path = self.renderer.get_file_path(self.reebill)
+        path = self.file_handler.get_file_path(self.reebill)
         with open(path, 'rb') as pdf_file:
             filtered_lines, prev_line = [], ''
             while True:
@@ -79,13 +79,13 @@ class ReebillFileHandlerTest(TestCase):
 
         # delete the file
         self.assertTrue(os.path.isfile(path))
-        self.renderer.delete_file(self.reebill)
+        self.file_handler.delete_file(self.reebill)
         self.assertFalse(os.path.exists(path))
 
         # since the file is now gone, deleting it will raise an OSError
         with self.assertRaises(OSError) as context:
-            self.renderer.delete_file(self.reebill)
+            self.file_handler.delete_file(self.reebill)
         self.assertEqual(ENOENT, context.exception.errno)
 
         # unless ignore_missing == True
-        self.renderer.delete_file(self.reebill, ignore_missing=True)
+        self.file_handler.delete_file(self.reebill, ignore_missing=True)
