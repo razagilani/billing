@@ -29,6 +29,10 @@ Ext.define('ReeBill.store.UtilityBills', {
 	},
 
     getLastEndDate: function(){
+        if(this.count() === 0){
+            return false;
+        }
+
         var lastDate = new Date(0);
         this.each(function(record){
             var pEnd = record.get('period_end');
