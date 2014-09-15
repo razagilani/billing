@@ -15,10 +15,10 @@ Ext.define('ReeBill.view.ReeBillVersions', {
 
     valueField: 'version',
 
-    tpl: '<tpl for="."><div class="x-boundlist-item"><tpl if="sequence">Reebill {sequence}-{version}: {issue_date}<tpl else>Current version</tpl></div></tpl>',
+    tpl: '<tpl for="."><div class="x-boundlist-item">Reebill {sequence}-{version}<tpl if="issued">: {issue_date:date("Y-m-d")}</tpl></div></tpl>',
     displayTpl: Ext.create('Ext.XTemplate',
         '<tpl for=".">',
-            '<tpl if="sequence">Reebill {sequence}-{version}: {issue_date}<tpl else>Current version</tpl>',
+            'Reebill {sequence}-{version}<tpl if="issued">: {issue_date:date("Y-m-d")}</tpl>',
         '</tpl>'
     ),
 
