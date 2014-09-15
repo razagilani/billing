@@ -40,55 +40,29 @@ class JournalDAO(object):
         return result
 
     def get_all_last_events(self):
-        """ Uses a mongo map reduce operation to retireve the latest event for
-        all acocunts. Returns a list of tuples containing 'Account',  'String
-        representation of the event' for each of the events.
-        """
-        # map_f = '''
-        #     function () {emit(this.account, this)}
-        # '''
-        # reduce_f = '''
-        #     function (key, values) {
-        #         var item = values[0];
-        #         for ( var i=1; i < values.length; i++ ) {
-        #             if ( values[i].date > item.date){
-        #                 item = values[i];
-        #             }
-        #         }
-        #         return item;
-        #     }
-        # '''
-        # finalize_f = '''
-        #     function(key, redcedVal){
-        #         return redcedVal._id;
-        #     }
-        # '''
-        # ids = [ObjectId(mrdoc.value['str']) for mrdoc in
-        #        Event.objects.map_reduce(map_f, reduce_f, 'inline', finalize_f)]
-        # return [(e.account, '%s on %s' % (
-        #     str(e), e.date.strftime(ISO_8601_DATE))) for e in
-        #     Event.objects.in_bulk(ids).itervalues()]
-
-        # result = Event.objects.aggregate(
-        #     {'$group':{
-        #         '_id': '$account',
-        #         'date': {'$max': '$date'},
-        #         #'document': {'$push': '$$CURRENT'},
-        #         'sequence': '$sequence'
-        #     },
-        # })
-        result = Event.objects.aggregate(
-            {'$group':{
+        '''Return a list of tuples (account, event summary string)
+        describing the latest event for every account.
+        '''
+        # aggegation must be used to do all of this in one query
+        results = Event.objects.aggregate(
+            # sort all documents by date decreasing
+            {'$sort': {'date': -1}},
+            # combine all documents for each account into one, having the first
+            # document in the previous step as the value of the key "doc"
+            {'$group': {
                 '_id': '$account',
-                'date': {'$max': '$date'},
-                #'document': {'$push': '$$CURRENT'},
-                'sequence': '$sequence'
-            },
-        })
-        # db.journal.aggregate({$group: {_id:'$account', d: {$max: '$date'}, x: {$push: '$$ROOT'}}}, {$out: 'agg'})
-        documents = list(result)
-        #documents = [x['document'] for x in result]
-        pass
+                'doc': {'$first': '$$CURRENT'},
+            }},
+        )
+
+        # convert the "doc" subdocument of each result document into an
+        # Event object belonging to one of the classes below (using the "_cls"
+        # key to get the class name--yes this is hideous)
+        events = (globals()[r['doc']['_cls'].split('.')[-1]]
+                ._from_son(r['doc']) for r in results)
+
+        return [(e.account, '%s on %s' % (str(e),
+                e.date.strftime(ISO_8601_DATE))) for e in events]
 
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
