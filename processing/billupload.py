@@ -183,12 +183,3 @@ def validate_account(account):
         # even a string, it's definitely not valid
         return False
 
-def validate_sequence_number(sequence):
-    '''Returns true iff the sequence number is valid (just checks against a
-    regex).'''
-    try:
-        return re.match(SEQUENCE_NUMBER_REGEX, sequence) is not None
-    except TypeError:
-        # re.match() accepts only 'str' and 'unicode' types; if account is not
-        # even a string, it's definitely not valid
-        return False

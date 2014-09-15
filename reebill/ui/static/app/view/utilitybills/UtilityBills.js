@@ -133,6 +133,9 @@ Ext.define('ReeBill.view.UtilityBills', {
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{
             xtype: 'button',
             action: 'utilbillCompute',

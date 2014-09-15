@@ -47,9 +47,9 @@ class ReebillFileHandlerTest(TestCase):
         r.replace_readings_from_utility_bill_registers(u)
         r.charges = [
             ReeBillCharge(r, 'A', 'Example Charge A', 'Supply', 10, 20, 'kWh',
-                          1, 1, 10, 20),
-            ReeBillCharge(r, 'B', 'Example Charge B', 'Distribution', 30, 40, 'kWh',
-                          1, 1, 30, 40),
+                          1, 10, 20),
+            ReeBillCharge(r, 'B', 'Example Charge B', 'Distribution', 30, 40,
+                          'kWh', 1, 30, 40),
         ]
 
         self.renderer.render(r)

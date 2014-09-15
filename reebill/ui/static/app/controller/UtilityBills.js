@@ -55,7 +55,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
         });
 
         this.getUtilityBillsStore().on({
-            load: this.initalizeUploadForm,
+            beforeload: function(store){
+                var grid = this.getUtilityBillsGrid();
+                grid.setLoading(true);
+            },
+            load: function(store) {
+                var grid = this.getUtilityBillsGrid();
+                grid.setLoading(false);
+                this.initalizeUploadForm();
+            },
             scope: this
         });
     },

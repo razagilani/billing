@@ -32,7 +32,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.exc import UnboundExecutionError
 from billing import init_config, init_model
 from billing.test import utils as test_utils
-from billing.processing import rate_structure2
+from billing.processing import rate_structure2, journal
 from billing.processing.process import Process
 from billing.processing.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
@@ -239,6 +239,12 @@ class TestCaseWithSetup(test_utils.TestCase):
                 'casualname': 'Example 3',
                 'primus': '1787 Massachusetts Ave.',
             },
+            {
+                'billing': '100001',
+                'olap': 'example-4',
+                'casualname': 'Example 4',
+                'primus': '1788 Massachusetts Ave.',
+                },
         ])
 
         bill_mailer = Mailer({
@@ -250,14 +256,14 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 
+        journal_dao = journal.JournalDAO()
+
         self.process = Process(self.state_db,  self.rate_structure_dao,
                 self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
-                ree_getter, self.splinter, logger=logger)
+                ree_getter, journal_dao, splinter=self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
-                            alias='utilbills')
-        mongoengine.connect('test', host='localhost', port=27017,
-                            alias='ratestructure')
+                            alias='journal')
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
