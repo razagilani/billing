@@ -287,11 +287,8 @@ class Process(object):
         corresponding to the "sequential account information" form in the UI,
         """
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't modify an issued reebill")
-
-        if reebill.processed:
-            raise ProcessedBillError("can't modify processed reebill")
+        if reebill.issued or reebill.processed:
+            raise ProcessedBillError("Can't modify a processed reebill")
 
         if discount_rate is not None:
             reebill.discount_rate = discount_rate
@@ -554,8 +551,7 @@ class Process(object):
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
         if reebill.processed:
-            raise ProcessedBillError("Cannot compute processed reebill")
-            return
+            raise ProcessedBillError("Can't modify a processed reebill")
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
