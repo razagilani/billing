@@ -522,10 +522,10 @@ class ReeBill(Base):
             charge = charge_dct[binding]
             if charge.has_charge:
                 quantity_units = '' if charge.quantity_units is None else charge.quantity_units
-                session.add(ReeBillCharge(self, binding,
-                    charge.description, charge.group, charge.quantity,
-                    evaluation.quantity, quantity_units, charge.rate,
-                    evaluation.rate, charge.total, evaluation.total))
+                session.add(ReeBillCharge(self, binding, charge.description,
+                        charge.group, charge.quantity, evaluation.quantity,
+                        quantity_units, charge.rate, charge.total,
+                        evaluation.total))
 
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
@@ -681,14 +681,12 @@ class ReeBillCharge(Base):
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     quantity_unit = Column(String, nullable=False)
-    a_rate = Column(Float, nullable=False)
-    h_rate = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group,
-                 a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
-                 a_total, h_total):
+    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+                 h_quantity, quantity_unit, rate, a_total, h_total):
         assert quantity_unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
@@ -696,7 +694,7 @@ class ReeBillCharge(Base):
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
         self.quantity_unit = quantity_unit
-        self.a_rate, self.h_rate = a_rate, h_rate
+        self.rate = rate
         self.a_total, self.h_total = a_total, h_total
 
 class Reading(Base):
