@@ -920,14 +920,7 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            full_path = self.billupload.get_reebill_file_path(account,
-                    sequence)
-            # If the file exists, delete it, otherwise don't worry.
-            try:
-                os.remove(full_path)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            self.reebill_file_handler.delete_file(reebill, ignore_missing=True)
         return version
 
     def create_new_account(self, account, name, discount_rate,
@@ -1158,9 +1151,6 @@ class Process(object):
 
         # render all the bills
         for reebill in all_reebills:
-            the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
-            dirname, basename = os.path.split(the_path)
             self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
@@ -1175,9 +1165,10 @@ class Process(object):
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
-        bill_file_paths = [self.billupload.get_reebill_file_path(account,
-                    s) for s in sequences]
-        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
+        bill_file_paths = [self.reebill_file_handler.get_file_path(r)
+                for r in all_reebills]
+        bill_file_dir_path = os.path.dirname(bill_file_paths[0])
+        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_dir_path,
                 bill_file_paths)
 
     def get_issuable_reebills_dict(self, processed=False):
