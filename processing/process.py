@@ -197,11 +197,10 @@ class Process(object):
             'rsi_binding': reebill_charge.rsi_binding,
             'description': reebill_charge.description,
             'actual_quantity': reebill_charge.a_quantity,
-            'actual_rate': reebill_charge.a_rate,
-            'actual_total': reebill_charge.a_total,
-            'quantity_units': reebill_charge.quantity_unit,
             'quantity': reebill_charge.h_quantity,
-            'rate': reebill_charge.h_rate,
+            'quantity_units': reebill_charge.quantity_unit,
+            'rate': reebill_charge.rate,
+            'actual_total': reebill_charge.a_total,
             'total': reebill_charge.h_total,
         } for reebill_charge in reebill.charges]
 
