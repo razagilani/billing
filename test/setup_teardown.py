@@ -1,5 +1,6 @@
 import sys
 import logging
+from boto.s3.connection import S3Connection
 from billing import init_config, init_model
 
 def init_logging():
@@ -223,8 +224,20 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         logger = logging.getLogger('test')
 
+        # TODO most or all of these dependencies do not need to be instance
+        # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
-        self.billupload = BillUpload()
+
+        # a real S3Connection is being used here, so actual requests are
+        # being sent.
+        s3_connection = S3Connection(
+                config.get('aws_s3', 'aws_access_key_id'),
+                config.get('aws_s3', 'aws_secret_access_key'),
+                is_secure=config.get('aws_s3', 'is_secure'),
+                port=config.get('aws_s3', 'port'),
+                host=config.get('aws_s3', 'host'),
+                calling_format=config.get('aws_s3', 'calling_format'))
+        self.billupload = BillUpload(s3_connection)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -278,8 +291,8 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         journal_dao = journal.JournalDAO()
 
-        self.process = Process(self.state_db,  self.rate_structure_dao,
-                self.nexus_util, bill_mailer, renderer,
+        self.process = Process(self.state_db, self.rate_structure_dao,
+                self.billupload, self.nexus_util, bill_mailer, renderer,
                 ree_getter, journal_dao, splinter=self.splinter, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
