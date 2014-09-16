@@ -29,6 +29,24 @@ class UtilBillTest(TestCase):
         self.assertEqual(quantity * rate, c.total)
         self.assertEqual(None, c.error)
 
+    def test_add_charge(self):
+        utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
+                'nobody@example.com', 'FB Test Utility',
+                'FB Test Rate Class', Address(), Address()),
+                UtilBill.Complete, 'gas', 'utility', 'rate class',
+                Address(), Address(), period_start=date(2000, 1, 1),
+                period_end=date(2000, 2, 1))
+
+        session = Session()
+        session.add(utilbill)
+        session.flush()
+        self.assertEqual(utilbill.registers, [])
+
+        charge = utilbill.add_charge()
+        self.assertEqual(charge.quantity_formula, '')
+
+
+
     def test_compute(self):
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', 'FB Test Utility',
