@@ -592,7 +592,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         for start, end in bad_dates:
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(
-                    account, 'electric', start, end, StringIO(), 'january.pdf',
+                    account, 'electric', start, end, StringIO(),
                     utility='pepco', rate_class='Residential-R')
 
         # one utility bill
