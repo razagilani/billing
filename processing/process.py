@@ -115,27 +115,8 @@ class Process(object):
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        session = Session()
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
-        n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
-            n += 1
-        charge = Charge(utilbill=utilbill,
-                        description="New Charge - Insert description here",
-                        group="",
-                        quantity=0.0,
-                        quantity_units="",
-                        rate=0.0,
-                        rsi_binding="New RSI #%s" % n,
-                        total=0.0)
-        session.add(charge)
-        registers = utilbill.registers
-        charge.quantity_formula = '' if len(registers) == 0 else \
-            ('%s.quantity' % 'REG_TOTAL' if any([register.identifier ==
-                'REG_TOTAL' for register in registers]) else \
-            registers[0].identifier)
-        session.flush()
+        charge = utilbill.add_charge()
         self.compute_utility_bill(utilbill_id)
         return charge
 
