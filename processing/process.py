@@ -723,7 +723,7 @@ class Process(object):
 
         try:
             self.compute_reebill(account, new_sequence)
-        except Exception as e:
+        except FormulaError as e:
             self.logger.error("Error when computing reebill %s: %s" % (
                     new_reebill, e))
         return new_reebill
