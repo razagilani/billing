@@ -108,10 +108,13 @@ Ext.define('Ext.ux.panel.PDF',{
         this.src = src;
         return this.getDocument(regenBustCache);
     },
+
+    setLoading: function(){
+        this.canvasLayer.innerHTML = this.loadingMessage;
+    },
     
     getDocument: function(regenBustCache){
         var me = this;
-        console.log('getDocument', regenBustCache, me.src);
 
         if(me._bustCache === undefined || regenBustCache === true){
             me._makeBustCache();
@@ -121,7 +124,7 @@ Ext.define('Ext.ux.panel.PDF',{
             me.canvasLayer.innerHTML = me.noSrcMessage;
             return
         }else{
-            me.canvasLayer.innerHTML = me.loadingMessage;
+            me.setLoading();
         }
 
         // Function to asyncronoulsy parse pages from the PDF
@@ -162,7 +165,7 @@ Ext.define('Ext.ux.panel.PDF',{
 
     renderDoc: function(scope){
         var me = scope;
-        var panelWidth =  me.width;
+        var panelWidth =  me.width - 20;
 
         if(!me._pdfDoc) {
             return;
@@ -186,7 +189,7 @@ Ext.define('Ext.ux.panel.PDF',{
 
     _renderPage: function(page, content){
         var me = this;
-        var panelWidth =  me.width;
+        var panelWidth =  me.width - 20;
         var scale = (panelWidth) / page.getViewport(1.0).width;
         var viewport = page.getViewport(scale);
         var canvas = document.createElement('canvas');
@@ -207,7 +210,7 @@ Ext.define('Ext.ux.panel.PDF',{
 
     _renderText: function(page, content){
         var me = this;
-        var panelWidth =  me.width;
+        var panelWidth =  me.width - 20;
         var scale = (panelWidth) / page.getViewport(1.0).width;
         var viewport = page.getViewport(scale);
         var textLayerSubDiv = document.createElement('div');

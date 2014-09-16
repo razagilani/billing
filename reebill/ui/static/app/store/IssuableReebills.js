@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.IssuableReebills', {
-    extend: 'Ext.data.Store',
-
+    extend: 'Ext.data.SyncStore',
+    memoryStore: 'IssuableReebillsMemory',
     model: 'ReeBill.model.Reebill',
 
     autoLoad: false,
@@ -28,28 +28,6 @@ Ext.define('ReeBill.store.IssuableReebills', {
         }
 
 	},
-
-    // Keep the memory store in sync
-    listeners:{
-        load: function(store, records, successful, eOpts){
-            var memoryStore = Ext.getStore('IssuableReebillsMemory');
-            memoryStore.getProxy().data = records;
-            memoryStore.loadPage(1);
-        },
-        add: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('IssuableReebillsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        remove: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('IssuableReebillsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        scope: this
-    },
 
     sorters: [{
         property: 'account', 

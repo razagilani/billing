@@ -7,7 +7,7 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'description'},
         {name: 'quantity'},
         {name: 'quantity_units'},
-        {name: 'rate'},
+        {name: 'rate', type: 'float'},
         {name: 'total', type: 'float'},
         {name: 'processingnote'},
         {name: 'error'},
@@ -16,21 +16,5 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'roundrule'},
         {name: 'shared'},
         {name: 'utilbill_id'}
-    ],
-
-//  Maps forumlas to their quantitites so they can be shown in the FormulaInput
-//  Null means the FormulaInput should be disabled
-    formulaMappings: {
-        'quantity': 'quantity_formula',
-        'rate': 'rate',
-        'shared': null,
-        'has_charge': null,
-    },
-
-    getFormulaKey: function(originalKey){
-        if(this.formulaMappings[originalKey] !== undefined){
-            return this.formulaMappings[originalKey];
-        }
-        return originalKey;
-    }
+    ]
 });

@@ -56,14 +56,15 @@ Ext.define('ReeBill.view.Accounts', {
     },{
         header: 'Last Event',
         dataIndex: 'lastevent',
-        width: 350,
+        minWidth: 350,
         flex:1
     }],
 
     bbar: {
-        xtype: 'pagingtoolbar',
+        xtype: 'pagingmemorytoolbar',
         pageSize: 25,
         store: 'AccountsMemory',
+        refreshStore: 'Accounts',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}',
         items: ['->',{
