@@ -152,6 +152,8 @@ class Process(object):
                     filter(Charge.rsi_binding == rsi_binding).one()
 
         for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
             setattr(charge, k, v)
         session.flush()
         self.refresh_charges(charge.utilbill.id)
