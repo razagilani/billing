@@ -1293,15 +1293,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'rsi_binding': 'SYSTEM_CHARGE',
             'description': 'System Charge',
             'quantity_formula': '1',
-            'rate_formula': '11.2',
+            'rate': 11.2,
             'shared': True,
             'group': 'A',
         }, utilbill_id=id_a, rsi_binding='New RSI #1')
         self.process.update_charge({
             'rsi_binding': 'NOT_SHARED',
             'description': 'System Charge',
-           'quantity_formula': '1',
-           'rate_formula': '3',
+            'quantity_formula': '1',
+            'rate': 3,
             'shared': False,
             'group': 'B',
         }, utilbill_id=id_a, rsi_binding='New RSI #2')
@@ -1311,16 +1311,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
            self.process.update_charge({
                 'rsi_binding': 'DISTRIBUTION_CHARGE',
                 'description': 'Distribution charge for all therms',
-               'quantity_formula': '750.10197727',
-               'rate_formula': '220.16',
+                'quantity_formula': '750.10197727',
+                'rate': 220.16,
                 'shared': True,
                 'group': 'C',
            }, utilbill_id=i, rsi_binding='New RSI #1')
            self.process.update_charge({
                 'rsi_binding': 'PGC',
                 'description': 'Purchased Gas Charge',
-               'quantity_formula': '750.10197727',
-               'rate_formula': '0.7563',
+                'quantity_formula': '750.10197727',
+                'rate': 0.7563,
                 'shared': True,
                 'group': 'D',
            }, utilbill_id=i, rsi_binding='New RSI #2')
@@ -1363,8 +1363,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_charge({
             'rsi_binding': 'RIGHT_OF_WAY',
             'description': 'DC Rights-of-Way Fee',
-           'quantity_formula': '750.10197727',
-           'rate_formula': '0.03059',
+            'quantity_formula': '750.10197727',
+            'rate': 0.03059,
             'shared': True
         }, utilbill_id=id_a_2, rsi_binding='New RSI #1')
 
@@ -1870,7 +1870,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         charge = self.process.add_charge(utilbill_id)
         self.process.update_charge({
             'quantity_formula': '1 + ',
-            'RSI_BINDING': 'some_rsi'
+            'rsi_binding': 'some_rsi'
         }, charge_id=charge.id)
         with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)
@@ -1937,7 +1937,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'rsi_binding': 'A',
                 'description':'UPRS only',
                 'quantity_formula': '2',
-                'rate_formula': '3',
+                'rate': 3,
                 'group': 'All Charges',
                 'quantity_units':'kWh'
             },
@@ -1949,7 +1949,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 'rsi_binding': 'B',
                 'description':'not shared',
                 'quantity_formula': '6',
-                'rate_formula': '7',
+                'rate': 7,
                 'quantity_units':'therms',
                 'group': 'All Charges',
                 'shared': False
@@ -2010,7 +2010,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.add_charge(id_1)
         self.process.update_charge({'rsi_binding': 'THE_CHARGE',
                                     'quantity_formula': 'REG_TOTAL.quantity',
-                                    'rate_formula': '1'},
+                                    'rate': 1},
                                     utilbill_id=id_1,
                                     rsi_binding='New RSI #1')
         self.process.refresh_charges(id_1)
