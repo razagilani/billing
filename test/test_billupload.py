@@ -30,7 +30,7 @@ class BillUploadTest(unittest.TestCase):
         init_model()
 
     def test_compute_hexdigest(self):
-        self.assertEqual(self.bu.compute_hexdigest('asdf'),
+        self.assertEqual(self.bu.compute_hexdigest(StringIO('asdf')),
             'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b')
 
     def test_get_amazon_bucket(self):
@@ -49,7 +49,8 @@ class BillUploadTest(unittest.TestCase):
         key_name = 'some_keyname'
         test_data = 'test_data_123'
 
-        self.bu._upload_to_s3(key_name, test_data)
+        utilbill = Mock(autospec=UtilBill)
+        self.bu.upload_utilbill_pdf_to_s3(utilbill, StringIO(test_data))
 
         bucket = self.bu._get_amazon_bucket()
         k = bucket.new_key(key_name)
@@ -65,7 +66,7 @@ class BillUploadTest(unittest.TestCase):
                       0, 'gas', fb_utility, 'test_rate_class', Address(),
                       Address(), period_start=date(2014, 1, 1),
                       period_end=date(2012, 1, 31))
-        ub.sha256_hexdigest = '000000f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        ub.sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
 
         key_name = self.bu._get_key_name(ub)
 
@@ -73,7 +74,8 @@ class BillUploadTest(unittest.TestCase):
         s.add(ub)
         s.flush()
 
-        self.bu._upload_to_s3(key_name, 'test_file_data')
+        utilbill = Mock(autospec=UtilBill)
+        self.bu.upload_utilbill_pdf_to_s3(utilbill, StringIO('test_file_data'))
         key_obj = self.bu._get_amazon_bucket().get_key(key_name)
 
         #Ensure we've uploaded the file
@@ -97,13 +99,14 @@ class BillUploadTest(unittest.TestCase):
                           0, 'gas', fb_utility, 'test_rate_class', Address(),
                           Address(), period_start=date(2014, 1, 1),
                           period_end=date(2012, 1, 31))
-            ub.sha256_hexdigest = '000000f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+            ub.sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
             s.add(ub)
         s.flush()
 
         key_name = self.bu._get_key_name(ub)
 
-        self.bu._upload_to_s3(key_name, 'test_file_data')
+        utilbill = Mock(autospec=UtilBill)
+        self.bu.upload_utilbill_pdf_to_s3(utilbill, StringIO('test_file_data'))
 
         key_obj = self.bu._get_amazon_bucket().get_key(key_name)
 
