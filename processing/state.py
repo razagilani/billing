@@ -28,7 +28,6 @@ from billing.exc import FormulaError
 from exc import DatabaseError
 
 
-
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
@@ -585,7 +584,6 @@ class ReeBill(Base):
         ReeBill whose 'rsi_binding' matches 'binding'.
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
-
 
     def column_dict(self):
         period_start , period_end = self.get_period()
