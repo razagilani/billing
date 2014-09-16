@@ -13,7 +13,6 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from billing.processing.billupload import BillUpload
 from processing.state import MYSQLDB_DATETIME_MIN
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -28,11 +27,12 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 
 class Process(object):
-    def __init__(self, state_db, rate_structure_dao,
+    def __init__(self, state_db, rate_structure_dao, billupload,
             nexus_util, bill_mailer, renderer, ree_getter, journal_dao,
             splinter=None, logger=None):
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
+        self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
@@ -398,7 +398,7 @@ class Process(object):
         session.flush()
 
         if bill_file is not None:
-            BillUpload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
+            self.billupload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
@@ -479,7 +479,7 @@ class Process(object):
         if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 
-        BillUpload.delete_utilbill_pdf_from_s3(utility_bill)
+        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -893,7 +893,7 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            full_path = BillUpload.get_reebill_file_path(account, sequence)
+            full_path = self.billupload.get_reebill_file_path(account, sequence)
             # If the file exists, delete it, otherwise don't worry.
             try:
                 os.remove(full_path)
@@ -1123,7 +1123,7 @@ class Process(object):
 
         # render all the bills
         for reebill in all_reebills:
-            the_path = BillUpload.get_reebill_file_path(account,
+            the_path = self.billupload.get_reebill_file_path(account,
                                                         reebill.sequence)
             dirname, basename = os.path.split(the_path)
             self.renderer.render(reebill.customer.account,
@@ -1141,7 +1141,7 @@ class Process(object):
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
-        bill_file_paths = [BillUpload.get_reebill_file_path(account, s)
+        bill_file_paths = [self.billupload.get_reebill_file_path(account, s)
                            for s in sequences]
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
                 bill_file_paths)

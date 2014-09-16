@@ -503,7 +503,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.upload_utility_bill(account, 'gas', date(2012, 1, 1),
             date(2012, 2, 1), StringIO('January 2012'), 'january.pdf')
         utilbill_id = self.process.get_all_utilbills_json(
-            account, 0, 30)[0][0]['id']
+                account, 0, 30)[0][0]['id']
 
         # the UPRS for this utility bill will be empty, because there are
         # no other utility bills in the db, and the bill will have no

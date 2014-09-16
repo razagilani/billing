@@ -1,4 +1,5 @@
 from os.path import dirname, realpath, join
+from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
@@ -123,8 +124,14 @@ class WebResource(object):
         self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(logger=self.logger)
 
-        # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config, self.logger)
+        s3_connection = S3Connection(
+                config.get('aws_s3', 'aws_access_key_id'),
+                config.get('aws_s3', 'aws_secret_access_key'),
+                is_secure=config.get('aws_s3', 'is_secure'),
+                port=config.get('aws_s3', 'port'),
+                host=config.get('aws_s3', 'host'),
+                calling_format=config.get('aws_s3', 'calling_format'))
+        self.billupload = BillUpload(s3_connection)
 
         # create a RateStructureDAO
         self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
@@ -195,14 +202,14 @@ class WebResource(object):
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    self.logger)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
-            self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
-            self.ree_getter, self.journal_dao, logger=self.logger)
+                self.state_db, self.ratestructure_dao,
+                self.billupload, self.nexus_util, self.bill_mailer,
+                self.renderer, self.ree_getter, self.journal_dao,
+                logger=self.logger)
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.get('authentication',

@@ -1,3 +1,4 @@
+from boto.s3.connection import S3Connection
 from test import init_test_config
 init_test_config()
 
@@ -17,7 +18,14 @@ from datetime import date
 class BillUploadTest(unittest.TestCase):
 
     def setUp(self):
-        self.bu = BillUpload()
+        s3_connection = S3Connection(
+                config.get('aws_s3', 'aws_access_key_id'),
+                config.get('aws_s3', 'aws_secret_access_key'),
+                is_secure=config.get('aws_s3', 'is_secure'),
+                port=config.get('aws_s3', 'port'),
+                host=config.get('aws_s3', 'host'),
+                calling_format=config.get('aws_s3', 'calling_format'))
+        self.bu = BillUpload(s3_connection)
         self.config = config
         init_model()
 
@@ -26,7 +34,7 @@ class BillUploadTest(unittest.TestCase):
             'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b')
 
     def test_get_amazon_bucket(self):
-        bucket = self.bu.get_amazon_bucket()
+        bucket = self.bu._get_amazon_bucket()
         self.assertEqual(type(bucket), Bucket)
         self.assertEqual(bucket.name, config.get('bill', 'bucket'))
         self.assertEqual(bucket.connection.host, config.get('aws_s3', 'host'))
@@ -35,15 +43,15 @@ class BillUploadTest(unittest.TestCase):
         ub = Mock()
         ub.sha256_hexdigest = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         expected = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
-        self.assertEqual(self.bu.utilbill_key_name(ub), expected)
+        self.assertEqual(self.bu._get_key_name(ub), expected)
 
     def test_upload_to_s3(self):
         key_name = 'some_keyname'
         test_data = 'test_data_123'
 
-        self.bu.upload_to_s3(key_name, test_data)
+        self.bu._upload_to_s3(key_name, test_data)
 
-        bucket = self.bu.get_amazon_bucket()
+        bucket = self.bu._get_amazon_bucket()
         k = bucket.new_key(key_name)
         self.assertEqual(test_data, k.get_contents_as_string())
 
@@ -59,14 +67,14 @@ class BillUploadTest(unittest.TestCase):
                       period_end=date(2012, 1, 31))
         ub.sha256_hexdigest = '000000f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
 
-        key_name = self.bu.utilbill_key_name(ub)
+        key_name = self.bu._get_key_name(ub)
 
         s = Session()
         s.add(ub)
         s.flush()
 
-        self.bu.upload_to_s3(key_name, 'test_file_data')
-        key_obj = self.bu.get_amazon_bucket().get_key(key_name)
+        self.bu._upload_to_s3(key_name, 'test_file_data')
+        key_obj = self.bu._get_amazon_bucket().get_key(key_name)
 
         #Ensure we've uploaded the file
         self.assertEqual('test_file_data', key_obj.get_contents_as_string())
@@ -93,11 +101,11 @@ class BillUploadTest(unittest.TestCase):
             s.add(ub)
         s.flush()
 
-        key_name = self.bu.utilbill_key_name(ub)
+        key_name = self.bu._get_key_name(ub)
 
-        self.bu.upload_to_s3(key_name, 'test_file_data')
+        self.bu._upload_to_s3(key_name, 'test_file_data')
 
-        key_obj = self.bu.get_amazon_bucket().get_key(key_name)
+        key_obj = self.bu._get_amazon_bucket().get_key(key_name)
 
         #Ensure we've uploaded the file correctly
         self.assertEqual('test_file_data', key_obj.get_contents_as_string())
@@ -121,8 +129,8 @@ class BillUploadTest(unittest.TestCase):
 
 
         self.bu.upload_utilbill_pdf_to_s3(ub, StringIO('test_file_upload'))
-        key_name = self.bu.utilbill_key_name(ub)
-        key_obj = self.bu.get_amazon_bucket().get_key(key_name)
+        key_name = self.bu._get_key_name(ub)
+        key_obj = self.bu._get_amazon_bucket().get_key(key_name)
         self.assertEqual('test_file_upload', key_obj.get_contents_as_string())
 
     def test_get_reebill_file_path(self):
