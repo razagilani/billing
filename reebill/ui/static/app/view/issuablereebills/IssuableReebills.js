@@ -74,11 +74,20 @@ Ext.define('ReeBill.view.IssuableReebills', {
         sortable: true,
         align: 'right',
         renderer: Ext.util.Format.usMoney
-    }],
+    },{
+        header: 'Adjustment',
+        dataIndex: 'adjustment',
+        width: 175,
+        sortable: true,
+        renderer: Ext.util.Format.usMoney
+        }],
 
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{        
             xtype: 'button',
             text: 'Issue Selected ReeBill',
@@ -94,9 +103,10 @@ Ext.define('ReeBill.view.IssuableReebills', {
     }],
 
     bbar: {
-        xtype: 'pagingtoolbar',
+        xtype: 'pagingmemorytoolbar',
         pageSize: 25,
         store: 'IssuableReebillsMemory',
+        refreshStore: 'IssuableReebills',
         displayInfo: true,
         displayMsg: 'Displaying {0} - {1} of {2}'
     }

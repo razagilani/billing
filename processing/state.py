@@ -29,7 +29,6 @@ from billing.exc import FormulaError
 from exc import DatabaseError
 
 
-
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
@@ -556,10 +555,10 @@ class ReeBill(Base):
             charge = charge_dct[binding]
             if charge.has_charge:
                 quantity_units = '' if charge.quantity_units is None else charge.quantity_units
-                session.add(ReeBillCharge(self, binding,
-                    charge.description, charge.group, charge.quantity,
-                    evaluation.quantity, quantity_units, charge.rate,
-                    evaluation.rate, charge.total, evaluation.total))
+                session.add(ReeBillCharge(self, binding, charge.description,
+                        charge.group, charge.quantity, evaluation.quantity,
+                        quantity_units, charge.rate, charge.total,
+                        evaluation.total))
 
     def compute_charges(self):
         """Computes and updates utility bill charges, then computes and
@@ -619,7 +618,6 @@ class ReeBill(Base):
         ReeBill whose 'rsi_binding' matches 'binding'.
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
-
 
     def column_dict(self):
         period_start , period_end = self.get_period()
@@ -715,14 +713,12 @@ class ReeBillCharge(Base):
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
     quantity_unit = Column(String, nullable=False)
-    a_rate = Column(Float, nullable=False)
-    h_rate = Column(Float, nullable=False)
+    rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
-    def __init__(self, reebill, rsi_binding, description, group,
-                 a_quantity, h_quantity, quantity_unit, a_rate, h_rate,
-                 a_total, h_total):
+    def __init__(self, reebill, rsi_binding, description, group, a_quantity,
+                 h_quantity, quantity_unit, rate, a_total, h_total):
         assert quantity_unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
@@ -730,7 +726,7 @@ class ReeBillCharge(Base):
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
         self.quantity_unit = quantity_unit
-        self.a_rate, self.h_rate = a_rate, h_rate
+        self.rate = rate
         self.a_total, self.h_total = a_total, h_total
 
 class Reading(Base):
@@ -811,8 +807,7 @@ class UtilBill(Base):
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
-    # TODO: rename the column to match
-    target_total = Column(Float, name='total_charges')
+    target_total = Column(Float)
 
     date_received = Column(DateTime)
     account_number = Column(String, nullable=False)
@@ -929,6 +924,30 @@ class UtilBill(Base):
              for ur in self._utilbill_reebills),
             key=lambda element: (element['sequence'], element['version'])
         )
+
+    def add_charge(self):
+        session = Session.object_session(self)
+        all_rsi_bindings = set([c.rsi_binding for c in self.charges])
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+        charge = Charge(utilbill=self,
+                        description="New Charge - Insert description here",
+                        group="",
+                        quantity=0.0,
+                        quantity_units="",
+                        rate=0.0,
+                        rsi_binding="New RSI #%s" % n,
+                        total=0.0)
+        session.add(charge)
+        registers = self.registers
+        charge.quantity_formula = '' if len(registers) == 0 else \
+            ('%s.quantity' % 'REG_TOTAL' if any([register.register_binding ==
+                'REG_TOTAL' for register in registers]) else \
+            registers[0].register_binding)
+        session.flush()
+        return charge
+
 
     def ordered_charges(self):
         """Sorts the charges by their evaluation order. Any charge that is

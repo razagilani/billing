@@ -105,6 +105,9 @@ Ext.define('ReeBill.view.Reebills', {
     dockedItems: [{
         dock: 'top',
         xtype: 'toolbar',
+        layout: {
+            overflowHandler: 'Menu'
+        },
         items: [{
             xtype: 'button',
             text: 'Create Next',
@@ -130,6 +133,10 @@ Ext.define('ReeBill.view.Reebills', {
             xtype: 'button',
             text: 'Compute',
             action: 'computeReebill'
+        },{
+            xtype: 'button',
+            text: 'Update Readings',
+            action: 'updateReadings'
         },{
             xtype: 'button',
             text: 'Toggle Processed',

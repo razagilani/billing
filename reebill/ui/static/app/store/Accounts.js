@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.Accounts', {
-    extend: 'Ext.data.Store',
-
+    extend: 'Ext.data.SyncStore',
+    memoryStore: 'AccountsMemory',
     model: 'ReeBill.model.Account',
 
     autoLoad: true,
@@ -28,27 +28,6 @@ Ext.define('ReeBill.store.Accounts', {
             scope: this
         }
 	},
-
-    // Keep the memory store in sync
-    listeners:{
-        load: function(store, records, successful, eOpts){
-            var memoryStore = Ext.getStore('AccountsMemory');
-            memoryStore.getProxy().data = records;
-        },
-        add: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('AccountsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        remove: function(store, records, index, eOpts ){
-            var allRecords = store.getRange();
-            var memoryStore = Ext.getStore('AccountsMemory');
-            memoryStore.getProxy().data = allRecords;
-            memoryStore.reload()
-        },
-        scope: this
-    },
 
     getNextAccountNumber: function(){
         var highestAccNr = 0;

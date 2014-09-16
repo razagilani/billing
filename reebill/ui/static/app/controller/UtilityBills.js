@@ -55,7 +55,15 @@ Ext.define('ReeBill.controller.UtilityBills', {
         });
 
         this.getUtilityBillsStore().on({
-            load: this.initalizeUploadForm,
+            beforeload: function(store){
+                var grid = this.getUtilityBillsGrid();
+                grid.setLoading(true);
+            },
+            load: function(store) {
+                var grid = this.getUtilityBillsGrid();
+                grid.setLoading(false);
+                this.initalizeUploadForm();
+            },
             scope: this
         });
     },
@@ -108,6 +116,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
         if (!selected || !selected.length)
             return;
         var lastEndDate = store.getLastEndDate();
+        // If there is no record in the store set the date to one month ago from today
+        if(!lastEndDate){
+            lastEndDate = Ext.Date.add(new Date(), Ext.Date.MONTH, -1);
+        }
         accountField.setValue(selected[0].get('account'));
         startDateField.setValue(lastEndDate);
         endDateField.setValue(Ext.Date.add(lastEndDate, Ext.Date.MONTH, 1));
@@ -158,6 +170,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleDelete: function() {
         var scope = this,
             store = this.getUtilityBillsStore(),
+            grid = this.getUtilityBillsGrid(),
             selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
 
         if (!selected)
@@ -168,6 +181,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
             function(answer) {
                 if (answer == 'yes') {
                     store.remove(selected)
+                    grid.fireEvent('deselect', selected, 0);
                 }
             });
     },

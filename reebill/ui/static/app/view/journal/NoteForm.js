@@ -5,16 +5,15 @@ Ext.define('ReeBill.view.NoteForm', {
 
     alias: 'widget.noteForm',    
 
-    bodyPadding: 15,
-    
-    defaults: {
-        anchor: '100%'
-    },
+    componentCls: 'noteform-noborder',
+
+    height: 150,
 
     items: [{
         xtype: 'textarea',
         name: 'entry',
-        height: 150,
+        height: '100%',
+        width: '100%',
         hideLabel: true,
         allowBlank: false
     }],
