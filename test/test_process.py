@@ -589,18 +589,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_upload_utility_bill(self):
-        #Bad
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
-        # TODO include test of saving of utility bill files here
         account = '99999'
+
+        # validation of dates
+        bad_dates = [
+            (date(2000,1,1), date(2000,1,1,)),
+            (date(2000,1,1), date(2001,1,2,)),
+        ]
+        for start, end in bad_dates:
+            with self.assertRaises(ValueError):
+                self.process.upload_utility_bill(
+                    account, 'electric', start, end, StringIO(), 'january.pdf',
+                    utility='pepco', rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
         # account
         utilbill_path = join(dirname(realpath(__file__)), 'data',
-            'utility_bill.pdf')
+                             'utility_bill.pdf')
         with open(utilbill_path) as file1:
             self.process.upload_utility_bill(account, 'electric',
                 date(2012, 1, 1),
