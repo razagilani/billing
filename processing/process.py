@@ -954,14 +954,13 @@ class Process(object):
             raise ValueError(('Late charge rate must be between 0 and 1 '
                               'inclusive'))
         session = Session()
-        
         last_utility_bill = session.query(UtilBill)\
-            .join(Customer).filter(Customer.account == template_account)\
-            .order_by(desc(UtilBill.period_end)).first()
-
+                .join(Customer).filter(Customer.account == template_account)\
+                .order_by(desc(UtilBill.period_end)).first()
         if last_utility_bill is None:
-            raise NoSuchBillException("Last utility bill not found for account %s" % \
-                                      template_account)
+            raise NoSuchBillException(
+                    "Last utility bill not found for account %s" %
+                    template_account)
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
                 'example@example.com',
@@ -1001,8 +1000,8 @@ class Process(object):
 
         # compute the bill to make sure it's up to date before issuing
         if not reebill.processed:
-            self.compute_reebill(reebill.customer.account,
-                reebill .sequence, version=reebill.version)
+            self.compute_reebill(reebill.customer.account, reebill.sequence,
+                                 version=reebill.version)
 
         reebill.issue_date = issue_date
         reebill.due_date = (issue_date + timedelta(days=30)).date()
@@ -1030,23 +1029,16 @@ class Process(object):
         for reebill in session.query(ReeBill).\
                 filter(ReeBill.issue_date != None).\
                 order_by(ReeBill.customer_id).all():
-
             total_count += 1
-
             savings = reebill.ree_value - reebill.ree_charge
-
             if reebill.customer_id != customer_id:
                 cumulative_savings = 0
                 customer_id = reebill.customer_id
-
             cumulative_savings += savings
-
             row = {}
-
             actual_total = reebill.utilbill.get_total_charges()
             hypothetical_total = reebill.get_total_hypothetical_charges()
             total_ree = reebill.get_total_renewable_energy()
-
             row['account'] = reebill.customer.account
             row['sequence'] = reebill.sequence
             row['billing_address'] = reebill.billing_address
