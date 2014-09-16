@@ -419,8 +419,10 @@ class Process(object):
             upload_result = self.billupload.upload(new_utilbill, account,
                     bill_file, file_name)
             if not upload_result:
-                raise IOError('File upload failed: %s %s %s' % (account,
-                    new_utilbill.id, file_name))
+                # TODO there is no test coverage for this situation; fix that
+                # after utility bill files are stored in S3
+                raise IOError('File upload failed: %s %s %s' % (
+                        account, new_utilbill.id, file_name))
         session.flush()
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
