@@ -900,9 +900,9 @@ class UtilBill(Base):
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
-            ('%s.quantity' % 'REG_TOTAL' if any([register.register_binding ==
+            'REG_TOTAL.quantity' if any([register.register_binding ==
                 'REG_TOTAL' for register in registers]) else \
-            registers[0].register_binding)
+            registers[0].register_binding
         session.flush()
         return charge
 

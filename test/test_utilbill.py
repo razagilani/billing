@@ -1,6 +1,12 @@
 '''Unit tests for the UtilBill class and other code that will eventually be
 included in it.
 '''
+from test import init_test_config
+init_test_config()
+from billing import init_model
+
+
+
 from unittest import TestCase
 from datetime import date
 from unittest import TestCase
@@ -10,6 +16,16 @@ from billing.processing.state import UtilBill, Customer, Session, Charge,\
     Address, Register
 
 class UtilBillTest(TestCase):
+
+    def setUp(self):
+        init_model()
+        session = Session()
+        session.query(UtilBill).delete()
+        session.query(Customer).delete()
+
+
+    def tearDown(self):
+        Session.remove()
 
     def assert_error(self, c, error_message):
         '''Assert that the Charge 'c' has None for its quantity/rate/total
@@ -30,6 +46,8 @@ class UtilBillTest(TestCase):
         self.assertEqual(None, c.error)
 
     def test_add_charge(self):
+
+
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', 'FB Test Utility',
                 'FB Test Rate Class', Address(), Address()),
@@ -40,12 +58,38 @@ class UtilBillTest(TestCase):
         session = Session()
         session.add(utilbill)
         session.flush()
+
+
         self.assertEqual(utilbill.registers, [])
 
         charge = utilbill.add_charge()
-        self.assertEqual(charge.quantity_formula, '')
+        self.assertEqual(charge.quantity_formula, '', "The quantity formula"
+                " should be an empty string when no registers are present")
 
+        session.delete(charge)
 
+        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
+            'therms', "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL"),
+                              Register(utilbill, "ABCDEF description", 150,
+            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
+            "GHIJKL")]
+
+        charge = utilbill.add_charge()
+        self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
+         " quantity formula should be 'REG_TOTAL.quantity' when at least one "
+         " register has a register_binding named 'REG_TOTAL'.")
+        session.delete(charge)
+
+        for register in utilbill.registers:
+            session.delete(register)
+
+        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
+            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
+            "GHIJKL")]
+        charge = utilbill.add_charge()
+        self.assertEqual(charge.quantity_formula, "SOME_OTHER_BINDING", "The "
+            " quantity formula should be 'SOME_OTHER_BINDING' when no registers"
+            " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
