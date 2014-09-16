@@ -1,21 +1,19 @@
 import json
 import unittest
-from mock import Mock, call
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
 import os
 from os.path import realpath, join, dirname
 
+from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
-from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
-    Charge
+from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-# TODO this should not be used anymore
+
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import utils
@@ -1190,6 +1188,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                       utilbill_data[:2])
 
         self.process.roll_reebill(account)
+
+        # if a utiltity bill has an error in its charges, an exception should
+        # be raised when computing the reebill, but Process.roll_reebill ignores
+        # it and catches it
+        last_utilbill_id = utilbill_data[0]['id']
+        charge = self.process.add_charge(last_utilbill_id)
+        charge.quantity_formula = '1 +'
         self.process.roll_reebill(account)
         self.process.compute_reebill(account, 2)
 
