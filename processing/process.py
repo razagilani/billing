@@ -21,7 +21,8 @@ from billing.processing.state import Customer, UtilBill, ReeBill, \
     Payment, MYSQLDB_DATETIME_MIN
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment
+    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment, \
+    FormulaError
 
 
 class Process(object):
@@ -647,7 +648,8 @@ class Process(object):
     def compute_reebill_payments(self, payments, reebill):
         for payment in payments:
             payment.reebill_id = reebill.id
-        reebill.payment_received = float(sum(payment.credit for payment in payments))
+        reebill.payment_received = float(
+                sum(payment.credit for payment in payments))
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
