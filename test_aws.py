@@ -26,11 +26,14 @@ print 'connected'
 print 'making bucket'
 
 connection.create_bucket('reebill-dev')
+connection.create_bucket('reebill-dev')
+connection.create_bucket('reebill-dev')
+
 print 'made bucket'
 bucket = connection.get_bucket('reebill-dev')
 
 print 'got bucket'
-exit()
+#exit()
 
 bucket_directory = 'utilbill'
 

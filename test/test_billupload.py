@@ -11,22 +11,27 @@ import unittest
 from billing.processing.billupload import BillUpload
 from billing import config
 import os
+import subprocess
 from mock import Mock
 from billing.processing.state import Session
 from datetime import date
+from os.path import join
 
 class BillUploadTest(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        tmp_dir = join('/', 'tmp', 'fakes3_test')
+        print type(tmp_dir)
+        s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
+        cls.fakes3_process = subprocess.Popen(s3_args)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fakes3_process.terminate()
+
     def setUp(self):
-        s3_connection = S3Connection(
-                config.get('aws_s3', 'aws_access_key_id'),
-                config.get('aws_s3', 'aws_secret_access_key'),
-                is_secure=config.get('aws_s3', 'is_secure'),
-                port=config.get('aws_s3', 'port'),
-                host=config.get('aws_s3', 'host'),
-                calling_format=config.get('aws_s3', 'calling_format'))
-        self.bu = BillUpload(s3_connection)
-        self.config = config
+        self.bu = BillUpload.from_config()
         init_model()
 
     def test_compute_hexdigest(self):
