@@ -535,7 +535,7 @@ class ReebillRenderer:
                 charge.description,
                 format_for_display(charge.h_quantity),
                 '',
-                format_for_display(charge.h_rate, places=5),
+                format_for_display(charge.rate, places=5),
                 '',
                 format_for_display(charge.h_total, places=2),
             ])
