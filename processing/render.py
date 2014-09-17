@@ -137,7 +137,6 @@ class ReebillFileHandler(object):
             'due_date': reebill.due_date,
             'end_period': reebill.utilbill.period_end,
             'hypothetical_charges': reebill.get_total_hypothetical_charges(),
-            'actual_charges': reebill.get_total_actual_charges(),
             'discount_rate': reebill.discount_rate,
             'issue_date': reebill.issue_date,
             'late_charge': reebill.late_charge,
@@ -156,10 +155,8 @@ class ReebillFileHandler(object):
             'service_state': reebill.service_address.state,
             'service_street': reebill.service_address.street,
             'total_adjustment': reebill.total_adjustment,
-            'total_hypothetical_charges': reebill.get_total_hypothetical_charges(), # TODO duplicate?
-            'total_utility_charges': reebill.get_total_actual_charges(), # TODO duplicate?
-            # hard-coded skyline address should go in template
-            'payment_addressee': 'Skyline Innovations',
+            'total_utility_charges': reebill.get_total_actual_charges(),
+            'payment_addressee': 'Nextility',
             'payment_city': 'Washington',
             'payment_postal_code': '20009',
             'payment_state': 'DC',
@@ -170,14 +167,14 @@ class ReebillFileHandler(object):
             'billing_postal_code': reebill.billing_address.postal_code,
             'billing_state': reebill.billing_address.state,
             'utility_meters':  [{
-                 # TODO fix messed-up pycharm auto-formatting
                  'meter_id': meter_id,
                  'registers': [{
                     'register_id': register_id,
                     'description': description,
-                    'shadow_total': reading.conventional_quantity,
-                    'utility_total': reading.renewable_quantity,
-                    'total': reading.conventional_quantity + reading.renewable_quantity, # redundant?
+                    'shadow_total': reading.renewable_quantity,
+                    'utility_total': reading.conventional_quantity,
+                    'total': (reading.conventional_quantity +
+                              reading.renewable_quantity),
                     'quantity_units': reading.unit,
                 } for reading in readings]
             } for (meter_id, register_id, description), readings
@@ -1042,7 +1039,7 @@ class PVBillDoc(BillDoc):
             'of %s.'
             % (locale.currency(b['hypothetical_charges'], grouping=True),
             '(exclusive of NEG credit)' if b['neg_ree_charge'] else '',
-            locale.currency(b['actual_charges'], grouping=True),
+            locale.currency(b['total_utility_charges'], grouping=True),
             locale.currency(b['ree_value'], grouping=True),
             (b['discount_rate']*100),
             locale.currency(b['ree_charge'], grouping=True),
@@ -1335,7 +1332,7 @@ if __name__ == '__main__':
         "due_date": datetime.strptime("2013-03-01", "%Y-%m-%d"),
         "end_period": datetime.strptime("2013-02-01", "%Y-%m-%d"),
         "hypothetical_charges": float("18371.95"),
-        "actual_charges": float("3661.84"),
+            #"actual_charges": float("3661.84"),
         "discount_rate": float("0.99"),
         "issue_date": datetime.strptime("2013-02-01", "%Y-%m-%d"),
         "late_charge": float("0"),
@@ -1482,57 +1479,3 @@ if __name__ == '__main__':
             }
         ],
     } 
-
-    if args.data_file:
-
-        # read in lots of simulated data
-        reader = csv.reader(open(args.data_file))
-
-        for row, record in enumerate(reader):
-            if row == 0:
-                # the first column is the name of the variable
-                # create a dictionary whose keys are date column headers
-                by_date_dict = dict((datetime.strptime(col, '%Y-%m-%d'), dict()) for col in record[1:])
-
-                # keep track of the dates in column order
-                col_hdrs = [datetime.strptime(r, '%Y-%m-%d') for r in record[1:]]
-            else:
-                for col_index, value in enumerate(record[1:]):
-                    the_date = col_hdrs[col_index]
-                    if record[0] in ['begin_period', 'end_period', 'due_date', 'issue_date']:
-                        value = datetime.strptime(value, '%Y-%m-%d')
-                    elif record[0] in ['manual_adjustment', 'balance_due', 'balance_forward', 'hypothetical_charges', 
-                        'late_charge', 'payment_received','prior_balance', 'ree_charge', 'ree_savings', 'ree_value',
-                        'total_adjustment', 'total_hypothetical_charges', 'total_utility_charges', 'actual_charges',
-                        'discount_rate', 'neg_credit_applied', 'neg_ree_savings', 'neg_ree_charge', 'neg_credit_balance', 
-                        'neg_ree_potential_savings', 'total_re_generated', 'total_re_consumed', 'total_ce_consumed',
-                        'total_energy_consumed', 'total_re_delivered_grid']:
-                        value = float(value)
-
-                    by_date_dict[the_date][record[0]] = value
-
-                    # tack on fake meters 
-                    by_date_dict[the_date]['utility_meters'] = fake_utility_meters
-
-                    by_date_dict[the_date]['hypothetical_chargegroups'] = fake_hypo_chargegroups
-    else:
-        print "No datafile supplied, generating one bill"
-        # implemented here so all necessary fields can be seen
-        by_date_dict = {'2014-01-01': fake_bill_fields}
-        by_date_dict['2014-01-01']['utility_meters'] = fake_utility_meters
-        by_date_dict['2014-01-01']['hypothetical_chargegroups'] = fake_hypo_chargegroups
-    
-
-    bill_data = deque([],13)
-
-    for i, kvp in enumerate(sorted(by_date_dict.keys())):
-        bill_data.append(by_date_dict[kvp])
-
-        # pass in all cycles data (for historical lookback)
-
-        # for some reasons, if the file path passed in does not exist, BillDoc fails silently 
-        if args.skin_name == "nextility_swh" or args.skin_name == "skyline":
-            doc = ThermalBillDoc()
-        else:
-            doc = PVBillDoc()
-        doc.render(bill_data, args.output_directory, "%s-%s" % ("{0:02}".format(i), args.output_file), args.skin_directory, args.skin_name)
