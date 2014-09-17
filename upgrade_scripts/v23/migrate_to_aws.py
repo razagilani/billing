@@ -71,7 +71,7 @@ def upload_utilbills_to_aws(session):
     """
     Uploads utilbills to AWS
     """
-    bu = BillUpload()
+    bu = BillUpload.from_config()
     bucket = bu._get_amazon_bucket()
     upload_count = 0
     for utilbill in session.query(UtilBill).all():
