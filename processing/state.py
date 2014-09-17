@@ -28,7 +28,6 @@ from billing.exc import FormulaError
 from exc import DatabaseError
 
 
-
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
@@ -623,7 +622,6 @@ class ReeBill(Base):
         '''
         return next(c for c in self.charges if c.rsi_binding == binding)
 
-
     def column_dict(self):
         period_start , period_end = self.get_period()
         the_dict = super(ReeBill, self).column_dict()
@@ -921,6 +919,30 @@ class UtilBill(Base):
              for ur in self._utilbill_reebills),
             key=lambda element: (element['sequence'], element['version'])
         )
+
+    def add_charge(self):
+        session = Session.object_session(self)
+        all_rsi_bindings = set([c.rsi_binding for c in self.charges])
+        n = 1
+        while ('New RSI #%s' % n) in all_rsi_bindings:
+            n += 1
+        charge = Charge(utilbill=self,
+                        description="New Charge - Insert description here",
+                        group="",
+                        quantity=0.0,
+                        quantity_units="",
+                        rate=0.0,
+                        rsi_binding="New RSI #%s" % n,
+                        total=0.0)
+        session.add(charge)
+        registers = self.registers
+        charge.quantity_formula = '' if len(registers) == 0 else \
+            'REG_TOTAL.quantity' if any([register.register_binding ==
+                'REG_TOTAL' for register in registers]) else \
+            registers[0].register_binding
+        session.flush()
+        return charge
+
 
     def ordered_charges(self):
         """Sorts the charges by their evaluation order. Any charge that is

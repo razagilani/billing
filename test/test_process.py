@@ -1,21 +1,19 @@
 import json
 import unittest
-from mock import Mock, call
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
 import os
 from os.path import realpath, join, dirname
 
+from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
-from billing.processing.process import IssuedBillError
-from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
-    Charge
+from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-# TODO this should not be used anymore
+
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import utils
@@ -589,18 +587,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_upload_utility_bill(self):
-        #Bad
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
-        # TODO include test of saving of utility bill files here
         account = '99999'
+
+        # validation of dates
+        bad_dates = [
+            (date(2000,1,1), date(2000,1,1,)),
+            (date(2000,1,1), date(2001,1,2,)),
+        ]
+        for start, end in bad_dates:
+            with self.assertRaises(ValueError):
+                self.process.upload_utility_bill(
+                    account, 'electric', start, end, StringIO(), 'january.pdf',
+                    utility='pepco', rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
         # account
         utilbill_path = join(dirname(realpath(__file__)), 'data',
-            'utility_bill.pdf')
+                             'utility_bill.pdf')
         with open(utilbill_path) as file1:
             self.process.upload_utility_bill(account, 'electric',
                 date(2012, 1, 1),
@@ -1181,6 +1188,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                                                       utilbill_data[:2])
 
         self.process.roll_reebill(account)
+
+        # if a utiltity bill has an error in its charges, an exception should
+        # be raised when computing the reebill, but Process.roll_reebill ignores
+        # it and catches it
+        last_utilbill_id = utilbill_data[0]['id']
+        charge = self.process.add_charge(last_utilbill_id)
+        charge.quantity_formula = '1 +'
         self.process.roll_reebill(account)
         self.process.compute_reebill(account, 2)
 
@@ -1279,15 +1293,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             'rsi_binding': 'SYSTEM_CHARGE',
             'description': 'System Charge',
             'quantity_formula': '1',
-            'rate_formula': '11.2',
+            'rate': 11.2,
             'shared': True,
             'group': 'A',
         }, utilbill_id=id_a, rsi_binding='New RSI #1')
         self.process.update_charge({
             'rsi_binding': 'NOT_SHARED',
             'description': 'System Charge',
-           'quantity_formula': '1',
-           'rate_formula': '3',
+            'quantity_formula': '1',
+            'rate': 3,
             'shared': False,
             'group': 'B',
         }, utilbill_id=id_a, rsi_binding='New RSI #2')
@@ -1297,16 +1311,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
            self.process.update_charge({
                 'rsi_binding': 'DISTRIBUTION_CHARGE',
                 'description': 'Distribution charge for all therms',
-               'quantity_formula': '750.10197727',
-               'rate_formula': '220.16',
+                'quantity_formula': '750.10197727',
+                'rate': 220.16,
                 'shared': True,
                 'group': 'C',
            }, utilbill_id=i, rsi_binding='New RSI #1')
            self.process.update_charge({
                 'rsi_binding': 'PGC',
                 'description': 'Purchased Gas Charge',
-               'quantity_formula': '750.10197727',
-               'rate_formula': '0.7563',
+                'quantity_formula': '750.10197727',
+                'rate': 0.7563,
                 'shared': True,
                 'group': 'D',
            }, utilbill_id=i, rsi_binding='New RSI #2')
@@ -1349,8 +1363,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.process.update_charge({
             'rsi_binding': 'RIGHT_OF_WAY',
             'description': 'DC Rights-of-Way Fee',
-           'quantity_formula': '750.10197727',
-           'rate_formula': '0.03059',
+            'quantity_formula': '750.10197727',
+            'rate': 0.03059,
             'shared': True
         }, utilbill_id=id_a_2, rsi_binding='New RSI #1')
 
@@ -1827,151 +1841,150 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertRaises(ValueError, self.process.roll_reebill,
             '55555', start_date=date(2013, 2, 1))
 
+    def test_uncomputable_correction_bug(self):
+        '''Regresssion test for
+            https://www.pivotaltracker.com/story/show/53434901.'''
+        account = '99999'
+        # create reebill and utility bill
+        self.process.upload_utility_bill(account, 'gas', date(2013, 1, 1),
+            date(2013, 2, 1), StringIO('January 2013'), 'january.pdf')
+        utilbill_id = self.process.get_all_utilbills_json(
+            account, 0, 30)[0][0]['id']
+        self.process.roll_reebill(account, start_date=date(2013, 1, 1))
+        # bind, compute, issue
+        self.process.bind_renewable_energy(account, 1)
+        self.process.compute_reebill(account, 1)
+        self.process.issue(account, 1)
 
-def test_uncomputable_correction_bug(self):
-    '''Regresssion test for
-        https://www.pivotaltracker.com/story/show/53434901.'''
-    account = '99999'
-    # create reebill and utility bill
-    self.process.upload_utility_bill(account, 'gas', date(2013, 1, 1),
-        date(2013, 2, 1), StringIO('January 2013'), 'january.pdf')
-    utilbill_id = self.process.get_all_utilbills_json(
-        account, 0, 30)[0][0]['id']
-    self.process.roll_reebill(account, start_date=date(2013, 1, 1))
-    # bind, compute, issue
-    self.process.bind_renewable_energy(account, 1)
-    self.process.compute_reebill(account, 1)
-    self.process.issue(account, 1)
+        # create new version
+        self.process.new_version(account, 1)
+        self.assertEquals(1, self.state_db.max_version(account, 1))
 
-    # create new version
-    self.process.new_version(account, 1)
-    self.assertEquals(1, self.state_db.max_version(account, 1))
-
-    # initially, reebill version 1 can be computed without an error
-    self.process.compute_reebill(account, 1, version=1)
-
-    # put it in an un-computable state by adding a charge with a syntax
-    # error in its formula. it should now raise an RSIError.
-    # (computing a utility bill doesn't raise an exception by default, but
-    # computing a reebill based on the utility bill does.)
-    charge = self.process.add_charge(utilbill_id)
-    self.process.update_charge({
-        'quantity_formula': '1 + ',
-        'RSI_BINDING': 'some_rsi'
-    }, charge_id=charge.id)
-    with self.assertRaises(FormulaSyntaxError):
+        # initially, reebill version 1 can be computed without an error
         self.process.compute_reebill(account, 1, version=1)
 
-    # delete the new version
-    self.process.delete_reebill(account, 1)
-    reebill_data = self.process.get_reebill_metadata_json(account)
-    self.assertEquals(0, reebill_data[0]['version'])
+        # put it in an un-computable state by adding a charge with a syntax
+        # error in its formula. it should now raise an RSIError.
+        # (computing a utility bill doesn't raise an exception by default, but
+        # computing a reebill based on the utility bill does.)
+        charge = self.process.add_charge(utilbill_id)
+        self.process.update_charge({
+            'quantity_formula': '1 + ',
+            'rsi_binding': 'some_rsi'
+        }, charge_id=charge.id)
+        with self.assertRaises(FormulaSyntaxError):
+            self.process.compute_reebill(account, 1, version=1)
 
-    # try to create a new version again: it should succeed, even though
-    # there was a KeyError due to a missing RSI when computing the bill
-    self.process.new_version(account, 1)
-    reebill_data = self.process.get_reebill_metadata_json(account)
-    self.assertEquals(1, reebill_data[0]['version'])
+        # delete the new version
+        self.process.delete_reebill(account, 1)
+        reebill_data = self.process.get_reebill_metadata_json(account)
+        self.assertEquals(0, reebill_data[0]['version'])
+
+        # try to create a new version again: it should succeed, even though
+        # there was a KeyError due to a missing RSI when computing the bill
+        self.process.new_version(account, 1)
+        reebill_data = self.process.get_reebill_metadata_json(account)
+        self.assertEquals(1, reebill_data[0]['version'])
 
 
-def test_compute_utility_bill(self):
-    '''Tests creation of a utility bill and updating the Mongo document
-        after the MySQL row has changed.'''
-    # create reebill and utility bill
-    # NOTE Process._generate_docs_for_new_utility_bill requires utility
-    # and rate_class arguments to match those of the template
-    self.process.upload_utility_bill('99999', 'gas', date(2013, 5, 6),
-        date(2013, 7, 8), StringIO('A Water Bill'), 'waterbill.pdf',
-        utility='washgas', rate_class='some rate structure')
-    utilbill_data = self.process.get_all_utilbills_json(
-        '99999', 0, 30)[0][0]
-    self.assertDictContainsSubset({
-                                      'account': '99999',
-                                      'computed_total': 0,
-                                      'period_end': date(2013, 7, 8),
-                                      'period_start': date(2013, 5, 6),
-                                      'processed': 0,
-                                      'rate_class': 'some rate structure',
-                                      'reebills': [],
-                                      'service': 'Gas',
-                                      'state': 'Final',
-                                      'total_charges': 0.0,
-                                      'utility': 'washgas',
-                                  }, utilbill_data)
+    def test_compute_utility_bill(self):
+        '''Tests creation of a utility bill and updating the Mongo document
+            after the MySQL row has changed.'''
+        # create reebill and utility bill
+        # NOTE Process._generate_docs_for_new_utility_bill requires utility
+        # and rate_class arguments to match those of the template
+        self.process.upload_utility_bill('99999', 'gas', date(2013, 5, 6),
+            date(2013, 7, 8), StringIO('A Water Bill'), 'waterbill.pdf',
+            utility='washgas', rate_class='some rate structure')
+        utilbill_data = self.process.get_all_utilbills_json(
+            '99999', 0, 30)[0][0]
+        self.assertDictContainsSubset({
+                                          'account': '99999',
+                                          'computed_total': 0,
+                                          'period_end': date(2013, 7, 8),
+                                          'period_start': date(2013, 5, 6),
+                                          'processed': 0,
+                                          'rate_class': 'some rate structure',
+                                          'reebills': [],
+                                          'service': 'Gas',
+                                          'state': 'Final',
+                                          'total_charges': 0.0,
+                                          'utility': 'washgas',
+                                      }, utilbill_data)
 
-    # doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
-    # TODO enable these assertions when upload_utility_bill stops
-    # ignoring them; currently they are set to match the template's
-    # values regardless of the arguments to upload_utility_bill, and
-    # Process._generate_docs_for_new_utility_bill requires them to
-    # match the template.
-    #self.assertEquals('water', doc['service'])
-    #self.assertEquals('pepco', doc['utility'])
-    #self.assertEquals('pepco', doc['rate_class'])
+        # doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
+        # TODO enable these assertions when upload_utility_bill stops
+        # ignoring them; currently they are set to match the template's
+        # values regardless of the arguments to upload_utility_bill, and
+        # Process._generate_docs_for_new_utility_bill requires them to
+        # match the template.
+        #self.assertEquals('water', doc['service'])
+        #self.assertEquals('pepco', doc['utility'])
+        #self.assertEquals('pepco', doc['rate_class'])
 
-    # modify the MySQL utility bill
-    self.process.update_utilbill_metadata(utilbill_data['id'],
-        period_start=date(2013, 6, 6),
-        period_end=date(2013, 8, 8),
-        service='electricity',
-        utility='BGE',
-        rate_class='General Service - Schedule C')
+        # modify the MySQL utility bill
+        self.process.update_utilbill_metadata(utilbill_data['id'],
+            period_start=date(2013, 6, 6),
+            period_end=date(2013, 8, 8),
+            service='electricity',
+            utility='BGE',
+            rate_class='General Service - Schedule C')
 
-    # add some RSIs to the UPRS, and charges to match
+        # add some RSIs to the UPRS, and charges to match
 
-    self.process.add_charge(utilbill_data['id'])
-    self.process.update_charge({
+        self.process.add_charge(utilbill_data['id'])
+        self.process.update_charge({
+                'rsi_binding': 'A',
+                'description':'UPRS only',
+                'quantity_formula': '2',
+                'rate': 3,
+                'group': 'All Charges',
+                'quantity_units':'kWh'
+            },
+            utilbill_id=utilbill_data['id'],
+            rsi_binding='New RSI #1')
+
+        self.process.add_charge(utilbill_data['id'])
+        self.process.update_charge({
+                'rsi_binding': 'B',
+                'description':'not shared',
+                'quantity_formula': '6',
+                'rate': 7,
+                'quantity_units':'therms',
+                'group': 'All Charges',
+                'shared': False
+            }, utilbill_id=utilbill_data['id'], rsi_binding='New RSI #1')
+
+        # compute_utility_bill should update the document to match
+        self.process.compute_utility_bill(utilbill_data['id'])
+        self.process.refresh_charges(utilbill_data['id'])
+        charges = self.process.get_utilbill_charges_json(utilbill_data['id'])
+
+        # check charges
+        # NOTE if the commented-out lines are added below the test will
+        # fail, because the charges are missing those keys.
+        for x, y in zip([
+        {
             'rsi_binding': 'A',
-            'description':'UPRS only',
-            'quantity_formula': '2',
-            'rate_formula': '3',
+            'quantity': 2,
+            'quantity_units': 'kWh',
+            'rate': 3,
+            'total': 6,
+            'description': 'UPRS only',
             'group': 'All Charges',
-            'quantity_units':'kWh'
-        },
-        utilbill_id=utilbill_data['id'],
-        rsi_binding='New RSI #1')
-
-    self.process.add_charge(utilbill_data['id'])
-    self.process.update_charge({
+                                 'error': None,
+        }, {
             'rsi_binding': 'B',
-            'description':'not shared',
-            'quantity_formula': '6',
-            'rate_formula': '7',
-            'quantity_units':'therms',
+            'quantity': 6,
+            'quantity_units': 'therms',
+            'rate': 7,
+            'total': 42,
+            'description': 'not shared',
             'group': 'All Charges',
-            'shared': False
-        }, utilbill_id=utilbill_data['id'], rsi_binding='New RSI #1')
-
-    # compute_utility_bill should update the document to match
-    self.process.compute_utility_bill(utilbill_data['id'])
-    self.process.refresh_charges(utilbill_data['id'])
-    charges = self.process.get_utilbill_charges_json(utilbill_data['id'])
-
-    # check charges
-    # NOTE if the commented-out lines are added below the test will
-    # fail, because the charges are missing those keys.
-    for x, y in zip([
-    {
-        'rsi_binding': 'A',
-        'quantity': 2,
-        'quantity_units': 'kWh',
-        'rate': 3,
-        'total': 6,
-        'description': 'UPRS only',
-        'group': 'All Charges',
-                             'error': None,
-    }, {
-        'rsi_binding': 'B',
-        'quantity': 6,
-        'quantity_units': 'therms',
-        'rate': 7,
-        'total': 42,
-        'description': 'not shared',
-        'group': 'All Charges',
-        'error': None,
-    },
-                     ], charges):
-        self.assertDictContainsSubset(x, y)
+            'error': None,
+        },
+                         ], charges):
+            self.assertDictContainsSubset(x, y)
 
 
     def test_compute_reebill(self):
@@ -1997,7 +2010,7 @@ def test_compute_utility_bill(self):
         self.process.add_charge(id_1)
         self.process.update_charge({'rsi_binding': 'THE_CHARGE',
                                     'quantity_formula': 'REG_TOTAL.quantity',
-                                    'rate_formula': '1'},
+                                    'rate': 1},
                                     utilbill_id=id_1,
                                     rsi_binding='New RSI #1')
         self.process.refresh_charges(id_1)

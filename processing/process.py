@@ -21,7 +21,8 @@ from billing.processing.state import Customer, UtilBill, ReeBill, \
     Payment, MYSQLDB_DATETIME_MIN
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment
+    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment, \
+    FormulaError
 
 
 class Process(object):
@@ -114,27 +115,8 @@ class Process(object):
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        session = Session()
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        all_rsi_bindings = set([c.rsi_binding for c in utilbill.charges])
-        n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
-            n += 1
-        charge = Charge(utilbill=utilbill,
-                        description="New Charge - Insert description here",
-                        group="",
-                        quantity=0.0,
-                        quantity_units="",
-                        rate=0.0,
-                        rsi_binding="New RSI #%s" % n,
-                        total=0.0)
-        session.add(charge)
-        registers = utilbill.registers
-        charge.quantity_formula = '' if len(registers) == 0 else \
-            ('%s.quantity' % 'REG_TOTAL' if any([register.identifier ==
-                'REG_TOTAL' for register in registers]) else \
-            registers[0].identifier)
-        session.flush()
+        charge = utilbill.add_charge()
         self.compute_utility_bill(utilbill_id)
         return charge
 
@@ -151,6 +133,8 @@ class Process(object):
                     filter(Charge.rsi_binding == rsi_binding).one()
 
         for k, v in fields.iteritems():
+            if k not in Charge.column_names():
+                raise AttributeError("Charge has no attribute '%s'" % k)
             setattr(charge, k, v)
         session.flush()
         self.refresh_charges(charge.utilbill.id)
@@ -419,8 +403,10 @@ class Process(object):
             upload_result = self.billupload.upload(new_utilbill, account,
                     bill_file, file_name)
             if not upload_result:
-                raise IOError('File upload failed: %s %s %s' % (account,
-                    new_utilbill.id, file_name))
+                # TODO there is no test coverage for this situation; fix that
+                # after utility bill files are stored in S3
+                raise IOError('File upload failed: %s %s %s' % (
+                        account, new_utilbill.id, file_name))
         session.flush()
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
@@ -645,7 +631,8 @@ class Process(object):
     def compute_reebill_payments(self, payments, reebill):
         for payment in payments:
             payment.reebill_id = reebill.id
-        reebill.payment_received = float(sum(payment.credit for payment in payments))
+        reebill.payment_received = float(
+                sum(payment.credit for payment in payments))
 
     def roll_reebill(self, account, start_date=None):
         """ Create first or roll the next reebill for given account.
@@ -721,7 +708,7 @@ class Process(object):
 
         try:
             self.compute_reebill(account, new_sequence)
-        except Exception as e:
+        except FormulaError as e:
             self.logger.error("Error when computing reebill %s: %s" % (
                     new_reebill, e))
         return new_reebill
@@ -954,14 +941,13 @@ class Process(object):
             raise ValueError(('Late charge rate must be between 0 and 1 '
                               'inclusive'))
         session = Session()
-        
         last_utility_bill = session.query(UtilBill)\
-            .join(Customer).filter(Customer.account == template_account)\
-            .order_by(desc(UtilBill.period_end)).first()
-
+                .join(Customer).filter(Customer.account == template_account)\
+                .order_by(desc(UtilBill.period_end)).first()
         if last_utility_bill is None:
-            raise NoSuchBillException("Last utility bill not found for account %s" % \
-                                      template_account)
+            raise NoSuchBillException(
+                    "Last utility bill not found for account %s" %
+                    template_account)
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
                 'example@example.com',
@@ -1001,8 +987,8 @@ class Process(object):
 
         # compute the bill to make sure it's up to date before issuing
         if not reebill.processed:
-            self.compute_reebill(reebill.customer.account,
-                reebill .sequence, version=reebill.version)
+            self.compute_reebill(reebill.customer.account, reebill.sequence,
+                                 version=reebill.version)
 
         reebill.issue_date = issue_date
         reebill.due_date = (issue_date + timedelta(days=30)).date()
@@ -1030,23 +1016,16 @@ class Process(object):
         for reebill in session.query(ReeBill).\
                 filter(ReeBill.issue_date != None).\
                 order_by(ReeBill.customer_id).all():
-
             total_count += 1
-
             savings = reebill.ree_value - reebill.ree_charge
-
             if reebill.customer_id != customer_id:
                 cumulative_savings = 0
                 customer_id = reebill.customer_id
-
             cumulative_savings += savings
-
             row = {}
-
             actual_total = reebill.utilbill.get_total_charges()
             hypothetical_total = reebill.get_total_hypothetical_charges()
             total_ree = reebill.get_total_renewable_energy()
-
             row['account'] = reebill.customer.account
             row['sequence'] = reebill.sequence
             row['billing_address'] = reebill.billing_address
