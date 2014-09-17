@@ -210,34 +210,12 @@ class TestCaseWithSetup(test_utils.TestCase):
         """
         from billing import config
 
-        self.state_db = StateDB(Session, logger)
-        self.billupload = BillUpload(config, logger)
-        mock_install_1 = MockSkyInstall(name='example-1')
-        mock_install_2 = MockSkyInstall(name='example-2')
-        self.splinter = MockSplinter(deterministic=True,
-                installs=[mock_install_1, mock_install_2])
-
-    def init_dependencies(self):
-        """Configure connectivity to various other systems and databases.
-        """
-        from billing import config
-
         logger = logging.getLogger('test')
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
-
-        # a real S3Connection is being used here, so actual requests are
-        # being sent.
-        s3_connection = S3Connection(
-                config.get('aws_s3', 'aws_access_key_id'),
-                config.get('aws_s3', 'aws_secret_access_key'),
-                is_secure=config.get('aws_s3', 'is_secure'),
-                port=config.get('aws_s3', 'port'),
-                host=config.get('aws_s3', 'host'),
-                calling_format=config.get('aws_s3', 'calling_format'))
-        self.billupload = BillUpload(s3_connection)
+        self.billupload = BillUpload.from_config()
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')

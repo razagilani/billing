@@ -22,7 +22,6 @@ class BillUploadTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         tmp_dir = join('/', 'tmp', 'fakes3_test')
-        print type(tmp_dir)
         s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
         cls.fakes3_process = subprocess.Popen(s3_args)
 

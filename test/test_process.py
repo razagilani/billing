@@ -7,6 +7,7 @@ import unittest
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
 import pprint
+import subprocess
 
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
@@ -35,6 +36,19 @@ class MockReeGetter(object):
 
 
 class ProcessTest(TestCaseWithSetup, utils.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        tmp_dir = join('/', 'tmp', 'fakes3_test')
+        s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
+        cls.fakes3_process = subprocess.Popen(s3_args)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fakes3_process.terminate()
+
+
+
     def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
         """Upload a dummy-utilbill, add an RSI, and calculate charges
         """
