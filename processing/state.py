@@ -506,6 +506,43 @@ class ReeBill(Base):
 
         return total_therms
 
+    def get_total_conventional_energy(self, ccf_conversion_factor=None):
+        # TODO remove duplicate code with the above
+        total_therms = 0
+        for reading in self.readings:
+            quantity = reading.conventional_quantity
+            unit = reading.unit.lower()
+            assert isinstance(quantity, (float, int))
+            assert isinstance(unit, basestring)
+
+            # convert quantity to therms according to unit, and add it to
+            # the total
+            if unit == 'therms':
+                total_therms += quantity
+            elif unit == 'btu':
+                # TODO physical constants must be global
+                total_therms += quantity / 100000.0
+            elif unit == 'kwh':
+                # TODO physical constants must be global
+                total_therms += quantity / .0341214163
+            elif unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    # print ("Register in reebill %s-%s-%s contains gas measured "
+                    #        "in ccf: energy value is wrong; time to implement "
+                    #        "https://www.pivotaltracker.com/story/show/28825375"
+                    #       ) % (self.customer.account, self.sequence,
+                    #       self.version)
+                    # assume conversion factor is 1
+                    total_therms += quantity
+            elif unit == 'kwd':
+                total_therms += quantity
+            else:
+                raise ValueError('Unknown energy unit: "%s"' % unit)
+        return total_therms
+
     def replace_charges_with_context_evaluations(self, context):
         """Replace the ReeBill charges with data from each `Evaluation`.
         :param context: a dictionary of binding: `Evaluation`
