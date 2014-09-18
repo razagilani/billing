@@ -105,11 +105,11 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    addressee = Column(String, nullable=False)
-    street = Column(String, nullable=False)
-    city = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    postal_code = Column(String, nullable=False)
+    addressee = Column(String(1000), nullable=False)
+    street = Column(String(1000), nullable=False)
+    city = Column(String(1000), nullable=False)
+    state = Column(String(1000), nullable=False)
+    postal_code = Column(String(1000), nullable=False)
 
     def __init__(self, addressee='', street='', city='', state='',
                  postal_code=''):
@@ -175,7 +175,7 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey('address.id'))
 
-    name = Column(String)
+    name = Column(String(1000))
     discriminator = Column(String(50))
     address = relationship("Address")
 
@@ -207,11 +207,11 @@ class Customer(Base):
     id = Column(Integer, primary_key=True)
     fb_utility_id = Column(Integer, ForeignKey('company.id'))
 
-    account = Column(String, nullable=False)
-    name = Column(String)
+    account = Column(String(45), nullable=False)
+    name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
-    bill_email_recipient = Column(String, nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
 
     # null means brokerage-only customer
     service = Column(Enum('thermal', 'pv'))
@@ -287,7 +287,7 @@ class ReeBill(Base):
     balance_due = Column(Float, nullable=False)
     balance_forward = Column(Float, nullable=False)
     discount_rate = Column(Float, nullable=False)
-    due_date = Column(Date, nullable=False)
+    due_date = Column(Date)
     late_charge_rate = Column(Float, nullable=False)
     late_charge = Column(Float, nullable=False)
     total_adjustment = Column(Float, nullable=False)
@@ -296,7 +296,7 @@ class ReeBill(Base):
     prior_balance = Column(Float, nullable=False)
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
-    email_recipient = Column(String, nullable=True)
+    email_recipient = Column(String(1000), nullable=True)
     processed = Column(Boolean, default=False)
 
     billing_address_id = Column(Integer, ForeignKey('address.id'),
@@ -667,9 +667,9 @@ class UtilbillReebill(Base):
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
-    document_id = Column(String)
+    document_id = Column(String(24))
     # TODO remove this
-    uprs_document_id = Column(String)  #indicates the rate structure data
+    uprs_document_id = Column(String(24))  #indicates the rate structure data
 
     # there is no delete cascade in this 'relationship' because a UtilBill
     # should not be deleted when a UtilbillReebill is deleted.
@@ -705,14 +705,14 @@ class ReeBillCharge(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
-    rsi_binding = Column(String, nullable=False)
-    description = Column(String, nullable=False)
+    rsi_binding = Column(String(1000), nullable=False)
+    description = Column(String(1000), nullable=False)
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
-    group = Column(String, name='group_name', nullable=False)
+    group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    quantity_unit = Column(String, nullable=False)
+    quantity_unit = Column(String(1000), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -739,11 +739,11 @@ class Reading(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
     # identifies which utility bill register this corresponds to
-    register_binding = Column(String, nullable=False)
+    register_binding = Column(String(1000), nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
     # quantity
-    measure = Column(String, nullable=False)
+    measure = Column(String(1000), nullable=False)
 
     # actual reading from utility bill
     conventional_quantity = Column(Float, nullable=False)
@@ -751,9 +751,9 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
-    aggregate_function = Column(String, nullable=False)
+    aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(String, nullable=False)
+    unit = Column(String(1000), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
@@ -800,8 +800,8 @@ class UtilBill(Base):
     utility_id = Column(Integer, ForeignKey('company.id'))
 
     state = Column(Integer, nullable=False)
-    service = Column(String, nullable=False)
-    rate_class = Column(String, nullable=False)
+    service = Column(String(45), nullable=False)
+    rate_class = Column(String(255), nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
 
@@ -810,7 +810,7 @@ class UtilBill(Base):
     target_total = Column(Float)
 
     date_received = Column(DateTime)
-    account_number = Column(String, nullable=False)
+    account_number = Column(String(1000), nullable=False)
     sha256_hexdigest = Column(String(64))
 
     # whether this utility bill is considered "done" by the user--mainly
@@ -819,8 +819,8 @@ class UtilBill(Base):
     processed = Column(Integer, nullable=False)
 
     # _ids of Mongo documents
-    document_id = Column(String)
-    uprs_document_id = Column(String)
+    document_id = Column(String(24))
+    uprs_document_id = Column(String(24))
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
@@ -1252,10 +1252,10 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    reebill_id = Column(Integer, ForeignKey('reebill.id'), nullable=False)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
-    description = Column(String)
+    description = Column(String(45))
     credit = Column(Float)
 
     customer = relationship("Customer", backref=backref('payments',
