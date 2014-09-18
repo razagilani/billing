@@ -36,14 +36,14 @@ class BillUpload(object):
         self.config = config
 
         # directory where utility bill files are stored after being "deleted"
-        self.utilbill_trash_dir = self.config.get('billdb',
+        self.utilbill_trash_dir = self.config.get('bill',
                 'utility_bill_trash_directory')
         
         self.logger = logger
         
         # load save directory info from config file
-        self.save_directory = self.config.get('billdb', 'utilitybillpath')
-        self.reebill_directory = self.config.get('billdb', 'billpath')
+        self.save_directory = self.config.get('bill', 'utilitybillpath')
+        self.reebill_directory = self.config.get('bill', 'billpath')
 
     def upload(self, utilbill, account, the_file, file_name):
         '''
@@ -183,12 +183,3 @@ def validate_account(account):
         # even a string, it's definitely not valid
         return False
 
-def validate_sequence_number(sequence):
-    '''Returns true iff the sequence number is valid (just checks against a
-    regex).'''
-    try:
-        return re.match(SEQUENCE_NUMBER_REGEX, sequence) is not None
-    except TypeError:
-        # re.match() accepts only 'str' and 'unicode' types; if account is not
-        # even a string, it's definitely not valid
-        return False

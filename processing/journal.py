@@ -5,6 +5,8 @@ import os
 from operator import attrgetter
 
 import mongoengine
+from mongoengine.document import MapReduceDocument
+from bson import ObjectId
 
 from billing.util.dateutils import ISO_8601_DATE
 
@@ -37,9 +39,34 @@ class JournalDAO(object):
                 Event.objects(**query)]
         return result
 
+    def get_all_last_events(self):
+        '''Return a list of tuples (account, event summary string)
+        describing the latest event for every account.
+        '''
+        # aggegation must be used to do all of this in one query
+        results = Event.objects.aggregate(
+            # sort all documents by date decreasing
+            {'$sort': {'date': -1}},
+            # combine all documents for each account into one, having the first
+            # document in the previous step as the value of the key "doc"
+            {'$group': {
+                '_id': '$account',
+                'doc': {'$first': '$$CURRENT'},
+            }},
+        )
+
+        # convert the "doc" subdocument of each result document into an
+        # Event object belonging to one of the classes below (using the "_cls"
+        # key to get the class name--yes this is hideous)
+        events = (globals()[r['doc']['_cls'].split('.')[-1]]
+                ._from_son(r['doc']) for r in results)
+
+        return [(e.account, '%s on %s' % (str(e),
+                e.date.strftime(ISO_8601_DATE))) for e in events]
+
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
-    
+
     This class should not be instantiated, and does not even have a constructor
     because MongoEngine makes a constructor for it, to which it passes the
     values of all the fields below as keyword arguments. That means you can't
@@ -130,6 +157,7 @@ class Note(Event):
         if sequence is not None:
             result.sequence = sequence
         result.save()
+        return result
 
     def __str__(self):
         return 'Note: %s' % (self.msg)
@@ -141,7 +169,10 @@ class Note(Event):
         result = super(Note, self).to_dict()
         if hasattr(self, 'sequence'):
             result.update({'sequence': self.sequence})
-        result.update({'msg': self.msg})
+        result.update({
+            'msg': self.msg,
+            'event': str(self)
+        })
         return result
 
 class UtilBillDeletedEvent(Event):
