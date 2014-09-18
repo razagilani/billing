@@ -1545,7 +1545,7 @@ class ReeBillWSGI(object):
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
-
+cherrypy.request.hooks.attach('on_end_resource', Session.remove, priority=80)
 
 if __name__ == '__main__':
     class Root(object):
