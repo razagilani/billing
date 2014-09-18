@@ -4,74 +4,46 @@ from datetime import date
 from mock import Mock
 
 from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
-    Charge
-from billing.processing.rate_structure2 import RateStructure, \
-        RateStructureItem
-from processing.mongo import ReebillDAO
+    Charge, Register, Session
 
 
 class ReebillTest(unittest.TestCase):
 
-    def setUp(self):
-        self.mock_rbd = Mock(autospec=ReebillDAO)
-
     def test_compute_charges(self):
-        customer = Customer('someone', '11111', 0.5, 0.1, '',
-            'example@example.com')
-
-        uprs = RateStructure(rates=[
-            RateStructureItem(
-                rsi_binding='A',
-                description='a',
-                quantity='REG_TOTAL.quantity',
-                rate='2',
-                group='All Charges',
-            ),
-            # no charge for this RSI
-            RateStructureItem(
-                rsi_binding='B',
-                description='b',
-                quantity='1',
-                rate='1',
-                group='All Charges',
-                has_charge=False,
-            )
-        ])
-
-        # only fields that are actually used are included in this document
-        utilbill_doc = {
-            'meters': [{
-                'registers': [{
-                    'register_binding': 'REG_TOTAL',
-                    'quantity': 100,
-                    'quantity_units': 'therms',
-                }]
-            }],
-        }
+        customer = Customer('someone', '11111', 0.5, 0.1,
+                'example@example.com', 'Test Utility', 'Test Rate Class',
+                Address(), Address())
 
         utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
                 'DC Non Residential Non Heat', period_start=date(2000,1,1),
-                period_end=date(2000,2,1), uprs_id=str(uprs.id),
+                period_end=date(2000,2,1),
                 billing_address=Address(), service_address=Address())
-        utilbill.charges = [Charge(utilbill, 'a', 'All Charges', 0, 'therms',
-                0,'A', 0)]
+        utilbill.registers = [Register(utilbill, '', 100, 'therms', '', False,
+                'total', 'REG_TOTAL', [], '')]
+        utilbill.charges = [
+            Charge(utilbill, 'a', 'All Charges', 0, 'therms',
+                    2,'A', 0, quantity_formula='REG_TOTAL.quantity'),
+            Charge(utilbill, 'b', 'All Charges', 0, 'therms', 1, 'B', 0,
+                    quantity_formula='1', has_charge=False),
+        ]
 
         reebill = ReeBill(customer, 1, discount_rate=0.5, late_charge_rate=0.1,
                 utilbills=[utilbill])
+        reebill.replace_readings_from_utility_bill_registers(utilbill)
 
-        reebill.update_readings_from_document(utilbill_doc)
+        Session().add_all([utilbill, reebill])
         self.assertEqual(1, len(reebill.readings))
         reading = reebill.readings[0]
         self.assertEqual(100, reading.conventional_quantity)
         self.assertEqual(0, reading.renewable_quantity)
 
-        self.mock_rbd.load_doc_for_utilbill.return_value = utilbill_doc
-        reebill.compute_charges(uprs, self.mock_rbd)
+        reebill.compute_charges()
 
         # check that there are the same group names and rsi_bindings in
         # reebill charges as utility bill charges
         self.assertEqual(
-            set((c.rsi_binding, c.description) for c in utilbill.charges),
+            set((c.rsi_binding, c.description) for c in utilbill.charges if
+                c.has_charge),
             set((c.rsi_binding, c.description) for c in reebill.charges)
         )
 
@@ -83,8 +55,7 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual('a', c.description)
         self.assertEqual(100, c.a_quantity)
         self.assertEqual(100, c.h_quantity)
-        self.assertEqual(2, c.a_rate)
-        self.assertEqual(2, c.h_rate)
+        self.assertEqual(2, c.rate)
         self.assertEqual(200, c.a_total)
         self.assertEqual(200, c.h_total)
         self.assertEqual('All Charges', c.group)

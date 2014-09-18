@@ -216,11 +216,11 @@ class EstimatedRevenue(object):
         # time instead of using cron.)
 
         reebill = self._load_reebill(account, sequence)
-        ree_charges = float(reebill.ree_charges)
+        ree_charge = float(reebill.ree_charge)
         days_in_month = dateutils.days_in_month(month.year, month.month,
                 reebill.period_begin, reebill.period_end)
         period_length = (reebill.period_end - reebill.period_begin).days
-        revenue_in_month = ree_charges * days_in_month / float(period_length)
+        revenue_in_month = ree_charge * days_in_month / float(period_length)
         return revenue_in_month
 
 
@@ -354,10 +354,10 @@ class EstimatedRevenue(object):
                 # energy charge (the price at which its energy was sold to the
                 # customer, including the discount) / quantity of renewable energy
                 # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
-                ree_charges = float(last_reebill.ree_charges)
+                ree_charge = float(last_reebill.ree_charge)
                 total_renewable_energy = float(last_reebill
                         .get_total_renewable_energy())
-                rate = ree_charges / total_renewable_energy
+                rate = ree_charge / total_renewable_energy
 
         # store rate in cache for this sequence and all others that lack a
         # reebill with non-0 energy
