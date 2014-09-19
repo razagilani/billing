@@ -5,9 +5,6 @@ from test import init_test_config
 init_test_config()
 from billing import init_model
 
-
-
-from unittest import TestCase
 from datetime import date
 from unittest import TestCase
 
