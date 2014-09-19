@@ -11,11 +11,9 @@ from sqlalchemy.orm.exc import NoResultFound
 from skyliner.sky_handlers import cross_range
 from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.test import example_data
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import utils
-
 
 
 # TODO: move this into setUp and use it in every test
@@ -28,6 +26,42 @@ class MockReeGetter(object):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
 
+
+example_charge_fields = [
+    dict(rate=23.14,
+         rsi_binding='PUC',
+         description='Peak Usage Charge',
+         quantity_formula='1'),
+    dict(rate=0.03059,
+         rsi_binding='RIGHT_OF_WAY',
+         roundrule='ROUND_HALF_EVEN',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rate=0.01399,
+         rsi_binding='SETF',
+         roundrule='ROUND_UP',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rsi_binding='SYSTEM_CHARGE',
+         rate=11.2,
+         quantity_formula='1'),
+    dict(rsi_binding='DELIVERY_TAX',
+         rate=0.07777,
+         quantity_units='therms',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rate=.2935,
+         rsi_binding='DISTRIBUTION_CHARGE',
+         roundrule='ROUND_UP',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rate=.7653,
+         rsi_binding='PGC',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rate=0.006,
+         rsi_binding='EATF',
+         quantity_formula='REG_TOTAL.quantity'),
+    dict(rate=0.06,
+         rsi_binding='SALES_TAX',
+         quantity_formula=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
+                           'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
+                           'SETF.total + EATF.total + DELIVERY_TAX.total'))]
 
 class ProcessTest(TestCaseWithSetup, utils.TestCase):
     '''Tests that involve both utility bills and reebills. TODO: each of
@@ -209,14 +243,11 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         utilbill_id = self.process.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
-        # the UPRS for this utility bill will be empty, because there are
-        # no other utility bills in the db, and the bill will have no
-        # charges; all the charges in the template bill get removed because
-        # the rate structure has no RSIs in it. so, add RSIs and charges
-        # corresponding to them from example_data. (this is the same way
-        # the user would manually add RSIs and charges when processing the
+        # there are no charges in this utility bill yet because there are no
+        # other utility bills in the db, so add charges. (this is the same way
+        # the user would manually add charges when processing the
         # first bill for a given rate structure.)
-        for fields in example_data.charge_fields:
+        for fields in example_charge_fields:
             self.process.add_charge(utilbill_id)
             self.process.update_charge(fields, utilbill_id=utilbill_id,
                                        rsi_binding="New RSI #1")
