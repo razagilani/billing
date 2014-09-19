@@ -7,7 +7,7 @@ import logging
 import mongoengine
 
 from billing import init_config, init_model
-from billing.test import utils as test_utils
+from billing.test import testing_utils as test_utils
 from billing.processing import rate_structure2, journal
 from billing.processing.process import Process
 from billing.processing.state import StateDB, Customer, Session, UtilBill, \

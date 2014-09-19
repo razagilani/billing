@@ -11,7 +11,6 @@ from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.exc import NoSuchBillException
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -23,8 +22,8 @@ billdb_config = {
 }
 
 class StateTest(TestCaseWithSetup):
-
-
+    '''Tests for ReeBill-specific data-access objects, including the database.
+    '''
 
     def setUp(self):
         # clear out database
@@ -260,75 +259,6 @@ class StateTest(TestCaseWithSetup):
         self.assertEqual(reebill, self.state_db.get_last_reebill('99999'))
         self.assertEqual(None, self.state_db.get_last_reebill(
                 '99999', issued_only=True))
-
-    def test_get_last_real_utilbill(self):
-        customer = self.session.query(Customer).one()
-
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2001,1,1))
-
-        # one bill
-        empty_address = Address()
-        gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
-                'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
-        self.session.add(gas_bill_1)
-
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,3,1)))
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,1)))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,1,31))
-
-        # two bills
-        electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
-                'whatever', empty_address, empty_address,
-                period_start=date(2000,1,2), period_end=date(2000,2,2))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 3, 1)))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 2, 2)))
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 2, 1)))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,1,31))
-
-        # electric bill is ignored if service "gas" is specified
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,2), service='gas'))
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,1), service='gas'))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2000,1,31), service='gas')
-
-        # filter by utility and rate class
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='washgas'))
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), rate_class='DC Non Residential Non Heat'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='pepco', rate_class='whatever'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), rate_class='whatever'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='pepco', rate_class='whatever'))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2000,1,31), utility='washgas', rate_class='whatever')
-
-        # hypothetical utility bills are always ignored
-        gas_bill_1.state = UtilBill.Hypothetical
-        electric_bill.state = UtilBill.Hypothetical
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,3,1))
 
     def test_get_accounts_grid_data(self):
         empty_address = Address()
