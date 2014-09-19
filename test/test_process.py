@@ -1,5 +1,5 @@
-from test import init_test_config
-init_test_config()
+from billing import init_config
+init_config(filepath='test/tstsettings.cfg')
 
 from os.path import realpath, join, dirname
 import json
