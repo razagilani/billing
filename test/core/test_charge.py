@@ -1,9 +1,9 @@
 from datetime import date
 
-from billing.test import utils
 from billing.processing.state import Charge, UtilBill, Customer, Address, \
     ChargeEvaluation
-from billing.exc import FormulaSyntaxError, FormulaError
+from billing.exc import FormulaError
+from test import testing_utils
 
 
 builtins = ['__import__', 'abs', 'all', 'any', 'apply', 'bin', 'callable',
@@ -15,7 +15,7 @@ builtins = ['__import__', 'abs', 'all', 'any', 'apply', 'bin', 'callable',
             'reload', 'repr', 'round', 'setattr', 'sorted', 'sum', 'unichr',
             'vars', 'zip']
 
-class ChargeUnitTests(utils.TestCase):
+class ChargeUnitTests(testing_utils.TestCase):
     """Unit Tests for the :class:`billing.processing.state.Charge` class"""
 
     def setUp(self):

@@ -13,7 +13,7 @@ from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
-from billing.test import utils
+from billing.test import testing_utils
 
 
 # TODO: move this into setUp and use it in every test
@@ -63,7 +63,7 @@ example_charge_fields = [
                            'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
                            'SETF.total + EATF.total + DELIVERY_TAX.total'))]
 
-class ProcessTest(TestCaseWithSetup, utils.TestCase):
+class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
     '''Tests that involve both utility bills and reebills. TODO: each of
     these should be separated apart and put in one of the other classes
     below, or made into some kind of multi-application integrationt test.
@@ -369,7 +369,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                           self.process.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
 
-class UtilbillProcessingTest(TestCaseWithSetup, utils.TestCase):
+class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     '''Integration tests for features of the ReeBill application that deal
     with utility bills (to become "NexBill") including database.
     '''
@@ -940,7 +940,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, utils.TestCase):
             self.assertDictContainsSubset(x, y)
 
 
-class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
+class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
     '''
