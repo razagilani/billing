@@ -11,7 +11,6 @@ from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.exc import NoSuchBillException
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -23,6 +22,8 @@ billdb_config = {
 }
 
 class StateTest(TestCaseWithSetup):
+    '''Tests for ReeBill-specific data-access objects, including the database.
+    '''
 
     def setUp(self):
         # clear out database
