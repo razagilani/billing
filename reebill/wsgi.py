@@ -657,7 +657,7 @@ class UtilBillResource(RESTResource):
                         v, ISO_8601_DATE).date()
                 elif k == 'service':
                     update_args[k] = v.lower()
-                elif k in ('total_charges', 'utility',
+                elif k in ('target_total', 'utility',
                            'rate_class', 'processed'):
                     update_args[k] = v
 
