@@ -2335,5 +2335,23 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual('btu', tou_reading.unit)
         self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
 
+    def test_update_readings(self):
+        '''Simple test to get coverage on Process.update_reebill_readings.
+        This can be expanded or merged into another test method later on.
+        '''
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                                         date(2000, 2, 1), StringIO('January'),
+                                         'january.pdf')
+        self.process.roll_reebill(account, start_date=date(2000, 1, 1))
+        self.process.update_reebill_readings(account, 1)
+        self.process.update_sequential_account_info(account, 1, processed=True)
+        with self.assertRaises(ProcessedBillError):
+            self.process.update_reebill_readings(account, 1)
+        self.process.issue(account, 1)
+        with self.assertRaises(IssuedBillError):
+            self.process.update_reebill_readings(account, 1)
+
+
 if __name__ == '__main__':
     unittest.main()
