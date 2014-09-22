@@ -917,7 +917,7 @@ class Process(object):
                     raise
         return version
 
-    def create_new_account(self, account, name, discount_rate,
+    def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
             template_account):
         '''Creates a new account with utility bill template copied from the
@@ -940,6 +940,9 @@ class Process(object):
         if not 0 <= late_charge_rate <=1:
             raise ValueError(('Late charge rate must be between 0 and 1 '
                               'inclusive'))
+        if service_type not in (None,) + Customer.SERVICE_TYPES:
+            raise ValueError('Unknown service type "%s"' % service_type)
+
         session = Session()
         last_utility_bill = session.query(UtilBill)\
                 .join(Customer).filter(Customer.account == template_account)\
@@ -964,8 +967,7 @@ class Process(object):
                         service_address['state'],
                         service_address['postal_code']))
 
-        # TODO set service in "new account" form
-        new_customer.service = 'thermal'
+        new_customer.service = service_type
 
         session.add(new_customer)
         session.flush()
