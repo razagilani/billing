@@ -86,7 +86,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         }
         # Create new account "88888" based on template account "99999",
         # which was created in setUp
-        self.process.create_new_account('88888', 'New Account',
+        self.process.create_new_account('88888', 'New Account', 'thermal',
                                             0.6, 0.2, billing_address,
                                             service_address, '100000')
 
@@ -217,14 +217,14 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         # it should not be possible to create an account that already
         # exists
         self.assertRaises(ValueError, self.process.create_new_account,
-            '88888', 'New Account', 0.6, 0.2,
+            '88888', 'New Account', 'pv', 0.6, 0.2,
             billing_address, service_address, '99999')
 
         # try creating another account when the template account has no
         # utility bills yet
-        self.process.create_new_account('77777', 'New Account',
-            0.6, 0.2, billing_address, service_address, '88888')
-        self.process.create_new_account('66666', 'New Account',
+        self.process.create_new_account('77777', 'New Account', 'thermal',
+                0.6, 0.2, billing_address, service_address, '88888')
+        self.process.create_new_account('66666', 'New Account', 'thermal',
             0.6, 0.2, billing_address, service_address, '88888')
 
         # Try rolling a reebill for a new account that has no utility bills uploaded yet
@@ -682,21 +682,24 @@ class UtilbillProcessingTest(TestCaseWithSetup, utils.TestCase):
             'city': 'Washington',
             'state': 'DC',
             'postal_code': '20036',
-            }
+        }
         service_address = {
             'addressee': 'Skyline Innovations',
             'street': '1606 20th St. NW',
             'city': 'Washington',
             'state': 'DC',
             'postal_code': '20009',
-            }
+        }
 
-        self.process.create_new_account(acc_a, 'Customer A',
-                                        .12, .34, billing_address, service_address, '100001')
-        self.process.create_new_account(acc_b, 'Customer B',
-                                        .12, .34, billing_address, service_address, '100001')
-        self.process.create_new_account(acc_c, 'Customer C',
-                                        .12, .34, billing_address, service_address, '100001')
+        self.process.create_new_account(acc_a, 'Customer A', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
+        self.process.create_new_account(acc_b, 'Customer B', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
+        self.process.create_new_account(acc_c, 'Customer C', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
 
         # new customers also need to be in nexus for 'update_renewable_readings' to
         # work (using mock skyliner)
@@ -1617,7 +1620,8 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
             'postal_code': '20009',
             }
         self.process.create_new_account('55555', 'Another New Account',
-                                        0.6, 0.2, billing_address, service_address, '99999')
+                                        'thermal', 0.6, 0.2, billing_address,
+                                        service_address, '99999')
         self.assertRaises(ValueError, self.process.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 

@@ -321,10 +321,13 @@ class AccountsResource(RESTResource):
             'postal_code': row['sa_postal_code'],
         }
 
+        # TODO: for some reason Ext JS converts null into emtpy string
+        if row['service_type'] == '':
+            row['service_type'] = None
         self.process.create_new_account(
-            row['account'], row['name'], float(row['discount_rate']),
-            float(row['late_charge_rate']), billing_address,
-            service_address, row['template_account'])
+                row['account'], row['name'], row['service_type'],
+                float(row['discount_rate']), float(row['late_charge_rate']),
+                billing_address, service_address, row['template_account'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
