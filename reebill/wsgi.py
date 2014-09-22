@@ -722,6 +722,9 @@ class ChargesResource(RESTResource):
 
     def handle_put(self, charge_id, *vpath, **params):
         row = cherrypy.request.json
+        if 'quantity_formula' in row and\
+                len(row['quantity_formula'].strip()) == 0:
+            row['quantity_formula'] = '0'
         c = self.process.update_charge(row, charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 

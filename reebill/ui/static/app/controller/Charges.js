@@ -100,7 +100,7 @@ Ext.define('ReeBill.controller.Charges', {
      */
     handleFormulaFieldEnter: function(f, e) {
         if (e.getKey() == e.ENTER) {
-            var field = this.getFormulaField()
+            var field = this.getFormulaField();
             var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
             selected.set('quantity_formula', field.getValue());
             this.getChargesGrid().focus();
