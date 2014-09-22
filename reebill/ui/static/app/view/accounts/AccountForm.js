@@ -1,3 +1,13 @@
+// The data store containing the list of states
+var service_types = Ext.create('Ext.data.Store', {
+    fields: ['service_type'],
+    data : [
+        {'service_type': 'Thermal'},
+        {'service_type': 'PV'},
+        {'service_type': 'None'},
+    ]
+});
+
 Ext.define('ReeBill.view.AccountForm', {
     extend: 'Ext.form.Panel',
 
@@ -43,6 +53,17 @@ Ext.define('ReeBill.view.AccountForm', {
             fieldLabel: 'Late Charge Rate',
             name: 'late_charge_rate',
             allowBlank: false,
+        },{
+            xtype: 'combobox',
+            fieldLabel: 'Renewable Energy Service',
+            name: 'service_type',
+            allowBlank: false,
+            store: service_types,
+            queryMode: 'local',
+            displayField: 'service_type',
+            valueField: 'service_type',
+            value: 'Thermal',
+            editable: false,
         }]
     },{
         xtype: 'fieldset',
