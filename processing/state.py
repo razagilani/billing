@@ -171,6 +171,10 @@ class Address(Base):
 class Customer(Base):
     __tablename__ = 'customer'
 
+    # this is here because there doesn't seem to be a way to get a list of
+    # possible values from a SQLAlchemy.types.Enum
+    SERVICE_TYPES = ('thermal', 'PV')
+
     id = Column(Integer, primary_key=True)
     account = Column(String, nullable=False)
     name = Column(String)
@@ -179,7 +183,7 @@ class Customer(Base):
     bill_email_recipient = Column(String, nullable=False)
 
     # null means brokerage-only customer
-    service = Column(Enum('thermal', 'pv'))
+    service = Column(Enum(*SERVICE_TYPES))
 
     # "fb_" = to be assigned to the customer's first-created utility bill
     fb_utility_name = Column(String(255), nullable=False)

@@ -14,6 +14,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'sa_postal_code'},
         {name: 'sa_state'},
         {name: 'sa_street'},
+        {name: 'service_type'},
         {name: 'template_account'},
         {name: 'codename'},
         {name: 'casualname'},
