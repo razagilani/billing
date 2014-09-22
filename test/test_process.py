@@ -2020,6 +2020,47 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
         with self.assertRaises(NoSuchBillException) as context:
             self.process.roll_reebill(account)
 
+    def test_list_all_versions(self):
+        account = '99999'
+        utilbill = self.process.upload_utility_bill(
+            account, 'gas', date(2013, 5, 2), date(2013, 6, 3),
+            StringIO('May 2013'), 'may.pdf')
+        reebill = self.process.roll_reebill(
+            account, start_date=date(2013, 4, 4))
+        self.process.compute_reebill(account, 1)
+        self.process.issue(account, 1, issue_date=datetime(2013, 5, 1))
+        self.process.new_version(account, 1)
+        reebill_data = self.process.list_all_versions(account, 1)
+        dicts = [{
+            'sequence': 1,
+            'version': 1,
+            'issued': 0,
+            'issue_date': None,
+            'payment_received': 0.,
+            'period_start': date(2013, 5, 2),
+            'period_end': date(2013, 6, 3),
+            'prior_balance': 0.,
+            'processed': False,
+            'balance_forward': 0.,
+            'corrections': '#1 not issued'
+        }, {
+            'sequence': 1,
+            'version': 0,
+            'issued': 1,
+            'issue_date': datetime(2013, 5, 1),
+            'payment_received': 0.,
+            'period_start': date(2013, 5, 2),
+            'period_end': date(2013, 6, 3),
+            'prior_balance': 0.,
+            'processed': 1,
+            'balance_forward': 0.,
+            'corrections': '-'
+        }]
+
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dicts[i], reebill_dct)
+
+
     def test_compute_reebill(self):
         '''Basic test of reebill processing with an emphasis on making sure
             the accounting numbers in reebills are correct.
