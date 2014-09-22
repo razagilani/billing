@@ -78,7 +78,7 @@ Ext.define('ReeBill.view.Charges', {
         dataIndex: 'quantity_formula',
         editor: {
             xtype: 'textfield',
-            allowBlank: false
+            allowBlank: true
         },
         flex: 1,
         width: 250,
