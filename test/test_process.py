@@ -429,8 +429,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, utils.TestCase):
 
         # change "total" aka "total_charges"
         self.process.update_utilbill_metadata(utilbill.id,
-                                              total_charges=200)
-        self.assertEqual(200, utilbill.total_charges)
+                                              target_total=200)
+        self.assertEqual(200, utilbill.target_total)
         # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
         # change utility name
