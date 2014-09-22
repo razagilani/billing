@@ -1549,6 +1549,7 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
         self.assertEqual(reebill.processed, False)
         # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
         self.process.issue(acc, reebill.sequence, issue_date=datetime(2012,3,10))
+        self.assertRaises(IssuedBillError, self.process.bind_renewable_energy, acc, reebill.sequence)
         self.assertRaises(IssuedBillError,
                           self.process.toggle_reebill_processed, acc, reebill.sequence,
                           apply_corrections=False)
