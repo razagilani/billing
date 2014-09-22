@@ -64,7 +64,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         },
     },{
         header: 'Total',
-        dataIndex: 'total_charges',
+        dataIndex: 'target_total',
         editor: {
             xtype: 'numberfield',
             allowBlank: false
