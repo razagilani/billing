@@ -391,14 +391,13 @@ class ReeBill(Base):
         bill registers."""
         s = Session.object_session(self)
         for reading in self.readings:
-            s.delete(reading)
+            s.expunge(reading)
+            self.readings.remove(reading)
         for register in utility_bill.registers:
-            self.readings.append(Reading(register.register_binding,
-                "Energy Sold",
-                register.quantity,
-                0,
-                "SUM",
-                register.quantity_units))
+            new_reading = Reading(register.register_binding, "Energy Sold",
+                                  register.quantity, 0, "SUM",
+                                  register.quantity_units)
+            self.readings.append(new_reading)
 
     def update_readings_from_reebill(self, reebill_readings):
         '''Updates the set of Readings associated with this ReeBill to match
