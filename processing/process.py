@@ -189,15 +189,15 @@ class Process(object):
         } for reebill_charge in reebill.charges]
 
     def update_utilbill_metadata(self, utilbill_id, period_start=None,
-            period_end=None, service=None, total_charges=None, utility=None,
+            period_end=None, service=None, target_total=None, utility=None,
             rate_class=None, processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        if total_charges is not None:
-            utilbill.total_charges = total_charges
+        if target_total is not None:
+            utilbill.target_total = target_total
 
         if service is not None:
             utilbill.service = service
