@@ -173,7 +173,7 @@ class Customer(Base):
 
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
-    SERVICE_TYPES = ('thermal', 'PV')
+    SERVICE_TYPES = ('thermal', 'pv')
 
     id = Column(Integer, primary_key=True)
     account = Column(String, nullable=False)
@@ -1325,14 +1325,6 @@ class StateDB(object):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
 
-    def get_next_account_number(self):
-        '''Returns what would become the next account number if a new account
-        were created were created (highest existing account number + 1--we're
-        assuming accounts will be integers, even though we always store them as
-        strings).'''
-        last_account = max(map(int, self.listAccounts()))
-        return last_account + 1
-
     def get_utilbill(self, account, service, start, end):
         session = Session()
         customer = session.query(Customer) \
@@ -1431,13 +1423,6 @@ class StateDB(object):
             get_discount_rate()
         return result
 
-    def late_charge_rate(self, account):
-        '''Returns the late charge rate for the customer given by account.'''
-        session = Session()
-        result = session.query(Customer).filter_by(account=account).one() \
-            .get_late_charge_rate()
-        return result
-
     def last_sequence(self, account):
         '''Returns the sequence of the last reebill for 'account', or 0 if
         there are no reebills.'''
@@ -1528,31 +1513,6 @@ class StateDB(object):
             q = q.filter(Customer.account == account)
 
         return q.all()
-
-    def get_last_reebill(self, account, issued_only=False):
-        '''Returns the highest-sequence, highest-version ReeBill object for the
-        given account, or None if no reebills exist. if issued_only is True,
-        returns the highest-sequence/version issued reebill.
-        '''
-        session = Session()
-        customer = self.get_customer(account)
-        cursor = session.query(ReeBill).filter_by(customer=customer) \
-            .order_by(desc(ReeBill.sequence), desc(ReeBill.version))
-        if issued_only:
-            cursor = cursor.filter_by(issued=True)
-        if cursor.count() == 0:
-            return None
-        return cursor.first()
-
-    def new_reebill(self, account, sequence, version=0):
-        '''Creates a new reebill row in the database and returns the new
-        ReeBill object corresponding to it.'''
-        session = Session()
-        customer = session.query(Customer) \
-            .filter(Customer.account == account).one()
-        new_reebill = ReeBill(customer, sequence, version)
-        session.add(new_reebill)
-        return new_reebill
 
     def issue(self, account, sequence, issue_date=None):
         '''Marks the highest version of the reebill given by account, sequence
@@ -1698,18 +1658,6 @@ class StateDB(object):
         if limit is None:
             return query[start:], query.count()
         return query[start:start + limit], query.count()
-
-    # NOTE deprectated in favor of UtilBillLoader.get_last_real_utilbill
-    def get_last_real_utilbill(self, account, end, service=None,
-                               utility=None, rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill whose
-        end date is before/on 'end', optionally with the given service,
-        utility, rate class, and 'processed' status.
-        '''
-        session = Session()
-        return UtilBillLoader(session).get_last_real_utilbill(account, end,
-                service=service, utility=utility, rate_class=rate_class,
-                processed=processed)
 
     def create_payment(self, account, date_applied, description,
                        credit, date_received=None):
