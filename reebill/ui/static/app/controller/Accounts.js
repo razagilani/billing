@@ -134,7 +134,7 @@ Ext.define('ReeBill.controller.Accounts', {
     handleFilter: function( combo, newValue, oldValue, eOpts) {
         // We're filtering every record, so we have to use AccountsStore
         // and not AccountsMemoryStore
-        var memStore = this.getAccountsMemoryStore()
+        var memStore = this.getAccountsMemoryStore();
         var prefStore = this.getPreferencesStore();
         var filter = this.getAccountsFilter().getValue();
         var filterPrefRec = prefStore.setOrCreate('filtername', newValue);
@@ -157,18 +157,61 @@ Ext.define('ReeBill.controller.Accounts', {
     saveNewAccount: function() {
         var accountForm = this.getAccountForm(),
             accountsGrid = this.getAccountsGrid(),
-            makeAnotherAccount = accountForm.down('[name=makeAnotherAccount]');
-        var store = this.getAccountsStore()
+            makeAnotherAccount = accountForm.down('[name=makeAnotherAccount]').checked;
+        var store = this.getAccountsStore();
+
+        var memoryStore = this.getAccountsMemoryStore();
+        memoryStore.on('load', function(){
+                            console.log('memory store load')
+        }, this);
 
         if (accountForm.getForm().isValid()) {
             var values = accountForm.getForm().getValues();
             console.log(values);
 
+            store.suspendAutoSync();
             store.add(values);
-            if (!makeAnotherAccount.getValue())
+            if (!makeAnotherAccount) {
+                store.sync({
+                    success: function (batch, options) {
+                        var filter = this.getAccountsFilter().getValue();
+                        var filterStore = this.getAccountsFilterStore();
+                        var filterRec = filterStore.findRecord('value', filter);
+                        var accountRec = batch.operations[0].records[0];
+                        var memoryStore = this.getAccountsMemoryStore();
+                        var accountsStore = this.getAccountsStore();
+                        console.log('batch:', batch, options, filter, filterRec, accountRec);
+
+                        // Test if the current filter would filter out the newly
+                        // created account and if yes, set the filter to none
+                        if(!filterRec.get('filter').filterFn(accountRec)){
+                            var noneFilter = filterStore.findRecord('value', 'none');
+                            var filterCombo = this.getAccountsFilter();
+                            filterCombo.select(noneFilter);
+                        }
+                        memoryStore.on('load', function(){
+                            console.log('bla')
+                            var page = accountsStore.getPageFromRecordIndex(
+                                accountRec.index);
+                            memoryStore.loadPage(page);
+                            console.log('page:', page)
+                        }, this, {single: true});
+                    },
+                    callback: function(){
+                        store.resumeAutoSync();
+                    },
+                    scope: this
+                });
                 accountsGrid.expand();
-            else
+            }else {
                 this.loadNextAccountNumber();
+                store.sync({
+                    callback: function(){
+                        store.resumeAutoSync();
+                    },
+                    scope: this
+                });
+            }
         }
     },
 
