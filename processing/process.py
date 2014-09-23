@@ -341,8 +341,8 @@ class Process(object):
         # edit it after uploading.
         customer = self.state_db.get_customer(account)
         try:
-            predecessor = self.state_db.get_last_real_utilbill(account,
-                    begin_date, service=service)
+            predecessor = UtilBillLoader(session).get_last_real_utilbill(
+                    account, begin_date, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -381,10 +381,6 @@ class Process(object):
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        bill_to_replace = self._find_replaceable_utility_bill(
-                customer, service, begin_date, end_date, state)
-        if bill_to_replace is not None:
-            session.delete(bill_to_replace)
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
                 Address.from_other(billing_address),
                 Address.from_other(service_address),
@@ -422,52 +418,8 @@ class Process(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return self.state_db.get_last_real_utilbill(account,
+        return UtilBillLoader(Session()).get_last_real_utilbill(account,
                 datetime.utcnow()).service_address.to_dict()
-
-    def _find_replaceable_utility_bill(self, customer, service, start,
-            end, state):
-        '''Returns exactly one state.UtilBill that should be replaced by
-        'new_utilbill' which is about to be uploaded (i.e. has the same
-        customer, period, and service, but a less-final state). Returns None if
-        there is no such bill. A NotUniqueException is raised if more than one
-        utility bill matching these criteria is found.
-        
-        Note: customer, service, start, end are passed in instead of a new
-        UtilBill because SQLAlchemy automatically adds any UtilBill that is
-        instantiated to the session, which breaks the test for matching utility
-        bills that already exist.'''
-        # TODO 38385969: is this really a good idea?
-
-        # get existing bills matching dates and service
-        # (there should be at most one, but you never know)
-        session = Session()
-        existing_bills = session.query(UtilBill)\
-                .filter_by(customer=customer)\
-                .filter_by(service=service)\
-                .filter_by(period_start=start)\
-                .filter_by(period_end=end)
-        try:
-            existing_bill = existing_bills.one()
-        except NoResultFound:
-            return None
-        except MultipleResultsFound:
-            raise NotUniqueException(("Can't upload a bill for dates %s, %s "
-                    "because there are already %s of them") % (start, end,
-                    len(list(existing_bills))))
-
-        # now there is one existing bill with the same dates. if state is
-        # "more final" than an existing non-final bill that matches this
-        # one, that bill should be replaced with the new one
-        # (states can be compared with '<=' because they're ordered from
-        # "most final" to least--see state.UtilBill)
-        if existing_bill.state <= state:
-            # TODO this error message is kind of obscure
-            raise NotUniqueException(("Can't upload a utility bill for "
-                "dates %s, %s because one already exists with a more final"
-                " state than %s") % (start, end, state))
-
-        return existing_bill
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -820,7 +772,7 @@ class Process(object):
         hasn't been issued yet: there is a late fee applied to the balance of
         the previous bill when only when that previous bill's due date has
         passed.) Late fees only apply to bills whose predecessor has been
-        issued; None is returned if the predecessor has not been issued. (The
+        issued; 0 is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
         session = Session()
@@ -833,7 +785,7 @@ class Process(object):
 
         # unissued bill has no late charge
         if not self.state_db.is_issued(acc, seq - 1):
-            return None
+            return 0
 
         # late charge is 0 if version 0 of the previous bill is not overdue
         predecessor0 = self.state_db.get_reebill(acc, seq - 1,
@@ -939,18 +891,19 @@ class Process(object):
             raise ValueError('Unknown service type "%s"' % service_type)
 
         session = Session()
-        last_utility_bill = session.query(UtilBill)\
-                .join(Customer).filter(Customer.account == template_account)\
-                .order_by(desc(UtilBill.period_end)).first()
-        if last_utility_bill is None:
-            raise NoSuchBillException(
-                    "Last utility bill not found for account %s" %
-                    template_account)
+        try:
+            last_utility_bill = session.query(UtilBill)\
+                    .join(Customer).filter(Customer.account == template_account)\
+                    .order_by(desc(UtilBill.period_end)).first()
+        except NoSuchBillException:
+            utility = template_account.fb_utility
+            rate_class = template_account.fb_rate_class
+        else:
+            utility = last_utility_bill.utility
+            rate_class = last_utility_bill.rate_class
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                'example@example.com',
-                last_utility_bill.utility,      #fb_utility_name
-                last_utility_bill.rate_class,   #fb_rate_class
+                'example@example.com', utility, rate_class,
                 Address(billing_address['addressee'],
                         billing_address['street'],
                         billing_address['city'],
