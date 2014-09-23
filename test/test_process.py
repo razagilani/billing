@@ -947,6 +947,21 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
     '''Integration tests for the ReeBill application back end including
     database.
     '''
+    def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
+        """Upload a dummy-utilbill, add an RSI, and calculate charges
+        """
+        utilbill = self.process.upload_utility_bill(acc,
+                                                    'gas', begin_date, end_date,
+                                                    StringIO('a utility bill'),
+                                                    'filename.pdf')
+        self.process.add_charge(utilbill.id)
+        self.process.update_charge({
+                                       'rsi_binding': 'A',
+                                       'quantity_formula': 'REG_TOTAL.quantity',
+                                       'rate': 1
+                                   }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
+        self.process.refresh_charges(utilbill.id)  # creates charges
+        self.process.compute_utility_bill(utilbill.id)  # updates charge values
 
     def test_list_account_status(self):
         count, data = self.process.list_account_status()
@@ -1013,21 +1028,6 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
             'primusname': '1785 Massachusetts Ave.',
             'lastevent': '',
         }], data)
-    def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
-        """Upload a dummy-utilbill, add an RSI, and calculate charges
-        """
-        utilbill = self.process.upload_utility_bill(acc,
-                                                    'gas', begin_date, end_date,
-                                                    StringIO('a utility bill'),
-                                                    'filename.pdf')
-        self.process.add_charge(utilbill.id)
-        self.process.update_charge({
-                                       'rsi_binding': 'A',
-                                       'quantity_formula': 'REG_TOTAL.quantity',
-                                       'rate': 1
-                                   }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
-        self.process.refresh_charges(utilbill.id)  # creates charges
-        self.process.compute_utility_bill(utilbill.id)  # updates charge values
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
