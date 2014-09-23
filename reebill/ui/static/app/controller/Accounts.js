@@ -189,13 +189,13 @@ Ext.define('ReeBill.controller.Accounts', {
                             var filterCombo = this.getAccountsFilter();
                             filterCombo.select(noneFilter);
                         }
-                        memoryStore.on('load', function(){
-                            console.log('bla')
-                            var page = accountsStore.getPageFromRecordIndex(
-                                accountRec.index);
-                            memoryStore.loadPage(page);
-                            console.log('page:', page)
-                        }, this, {single: true});
+
+                        memoryStore.sort({
+                            property: 'account',
+                            direction: 'DESC'
+                        });
+                        memoryStore.loadPage(1);
+                        accountsGrid.getSelectionModel().select([accountRec]);
                     },
                     callback: function(){
                         store.resumeAutoSync();

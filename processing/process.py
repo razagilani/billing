@@ -1241,10 +1241,13 @@ class Process(object):
                 [row[0] for row in grid_data])
 
         rows_dict = {}
-        for acc, _, _, issue_date, rate_class, service_address, periodend in \
-                grid_data:
-            rows_dict[acc] ={
+        for acc, fb_utility_name, fb_rate_class, fb_service_address, _, _, \
+                issue_date, rate_class, service_address, periodend in grid_data:
+            rows_dict[acc] = {
                 'account': acc,
+                'fb_utility_name': fb_utility_name,
+                'fb_rate_class': fb_rate_class,
+                'fb_service_address': fb_service_address,
                 'codename': name_dicts[acc].get('codename', ''),
                 'casualname': name_dicts[acc].get('casualname', ''),
                 'primusname': name_dicts[acc].get('primus', ''),
@@ -1252,7 +1255,8 @@ class Process(object):
                 'provisionable': False,
                 'lastissuedate': issue_date if issue_date else '',
                 'lastrateclass': rate_class if rate_class else '',
-                'utilityserviceaddress': str(service_address) if service_address else '',
+                'lastutilityserviceaddress': str(service_address) if
+                service_address else '',
                 'lastevent': '',
             }
 
