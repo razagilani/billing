@@ -173,7 +173,7 @@ class Customer(Base):
 
     # this is here because there doesn't seem to be a way to get a list of
     # possible values from a SQLAlchemy.types.Enum
-    SERVICE_TYPES = ('thermal', 'PV')
+    SERVICE_TYPES = ('thermal', 'pv')
 
     id = Column(Integer, primary_key=True)
     account = Column(String, nullable=False)
