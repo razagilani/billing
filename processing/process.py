@@ -939,18 +939,19 @@ class Process(object):
             raise ValueError('Unknown service type "%s"' % service_type)
 
         session = Session()
-        last_utility_bill = session.query(UtilBill)\
-                .join(Customer).filter(Customer.account == template_account)\
-                .order_by(desc(UtilBill.period_end)).first()
-        if last_utility_bill is None:
-            raise NoSuchBillException(
-                    "Last utility bill not found for account %s" %
-                    template_account)
+        try:
+            last_utility_bill = session.query(UtilBill)\
+                    .join(Customer).filter(Customer.account == template_account)\
+                    .order_by(desc(UtilBill.period_end)).first()
+        except NoSuchBillException:
+            utility = template_account.fb_utility
+            rate_class = template_account.fb_rate_class
+        else:
+            utility = last_utility_bill.utility
+            rate_class = last_utility_bill.rate_class
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                'example@example.com',
-                last_utility_bill.utility,      #fb_utility_name
-                last_utility_bill.rate_class,   #fb_rate_class
+                'example@example.com', utility, rate_class,
                 Address(billing_address['addressee'],
                         billing_address['street'],
                         billing_address['city'],
