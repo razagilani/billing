@@ -42,10 +42,8 @@ class StateTest(TestCaseWithSetup):
         self.state_db = state.StateDB()
 
     def tearDown(self):
-        self.session.commit()
-        # clear out tables in mysql test database (not relying on StateDB)
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        #self._clear_tables(mysql_connection)
+        self.session.rollback()
+        self.truncate_tables(self.session)
 
     def test_new_reebill(self):
         b = self.state_db.new_reebill('99999', 1)

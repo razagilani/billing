@@ -19,15 +19,16 @@ from os.path import join
 
 class BillUploadTest(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        tmp_dir = join('/', 'tmp', 'fakes3_test')
-        s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
-        cls.fakes3_process = subprocess.Popen(s3_args)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.fakes3_process.terminate()
+    # @classmethod
+    # def setUpClass(cls):
+    #     tmp_dir = join('/', 'tmp', 'fakes3_test')
+    #     s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
+    #     cls.fakes3_process = subprocess.Popen(s3_args)
+    #
+    # @classmethod
+    # def tearDownClass(cls):
+    #     cls.fakes3_process.terminate()
+    #     cls.fakes3_process.wait()
 
     def setUp(self):
         self.bu = BillUpload.from_config()
@@ -50,8 +51,8 @@ class BillUploadTest(unittest.TestCase):
         self.assertEqual(self.bu._get_key_name(ub), expected)
 
     def test_upload_to_s3(self):
-        key_name = 'some_keyname'
-        test_data = 'test_data_123'
+        key_name = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        test_data = 'asdf'
 
         utilbill = Mock(autospec=UtilBill)
         self.bu.upload_utilbill_pdf_to_s3(utilbill, StringIO(test_data))

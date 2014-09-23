@@ -328,10 +328,13 @@ class AccountsResource(RESTResource):
             'postal_code': row['sa_postal_code'],
         }
 
+        # TODO: for some reason Ext JS converts null into emtpy string
+        if row['service_type'] == '':
+            row['service_type'] = None
         self.process.create_new_account(
-            row['account'], row['name'], float(row['discount_rate']),
-            float(row['late_charge_rate']), billing_address,
-            service_address, row['template_account'])
+                row['account'], row['name'], row['service_type'],
+                float(row['discount_rate']), float(row['late_charge_rate']),
+                billing_address, service_address, row['template_account'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
@@ -661,7 +664,7 @@ class UtilBillResource(RESTResource):
                         v, ISO_8601_DATE).date()
                 elif k == 'service':
                     update_args[k] = v.lower()
-                elif k in ('total_charges', 'utility',
+                elif k in ('target_total', 'utility',
                            'rate_class', 'processed'):
                     update_args[k] = v
 
@@ -729,6 +732,9 @@ class ChargesResource(RESTResource):
 
     def handle_put(self, charge_id, *vpath, **params):
         row = cherrypy.request.json
+        if 'quantity_formula' in row and\
+                len(row['quantity_formula'].strip()) == 0:
+            row['quantity_formula'] = '0'
         c = self.process.update_charge(row, charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 
