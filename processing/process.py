@@ -820,7 +820,7 @@ class Process(object):
         hasn't been issued yet: there is a late fee applied to the balance of
         the previous bill when only when that previous bill's due date has
         passed.) Late fees only apply to bills whose predecessor has been
-        issued; None is returned if the predecessor has not been issued. (The
+        issued; 0 is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
         session = Session()
@@ -833,7 +833,7 @@ class Process(object):
 
         # unissued bill has no late charge
         if not self.state_db.is_issued(acc, seq - 1):
-            return None
+            return 0
 
         # late charge is 0 if version 0 of the previous bill is not overdue
         predecessor0 = self.state_db.get_reebill(acc, seq - 1,

@@ -1109,9 +1109,9 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
                                          date(2000, 3, 1), date(2000, 4, 1), StringIO('March 2000'),
                                          'march.pdf')
         bill3 = self.process.roll_reebill(acc)
-        self.assertEqual(None, self.process.get_late_charge(bill3,
+        self.assertEqual(0, self.process.get_late_charge(bill3,
                                                             date(1999, 12, 31)))
-        self.assertEqual(None, self.process.get_late_charge(bill3,
+        self.assertEqual(0, self.process.get_late_charge(bill3,
                                                             date(2013, 1, 1)))
 
         # late charge should be based on the version with the least total
