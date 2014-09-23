@@ -1,28 +1,28 @@
 Ext.define('ReeBill.model.Account', {
     extend: 'Ext.data.Model',
     fields: [
-        {name: 'account'},
-        {name: 'fb_utility_name'},
-        {name: 'fb_rate_class'},
-        {name: 'fb_service_address'},
-        {name: 'ba_addressee'},
-        {name: 'ba_city'},
-        {name: 'ba_postal_code'},
-        {name: 'ba_state'},
-        {name: 'ba_street'},
-        {name: 'discount_rate'},
-        {name: 'late_charge_rate'},
-        {name: 'sa_addressee'},
-        {name: 'sa_city'},
-        {name: 'sa_postal_code'},
-        {name: 'sa_state'},
-        {name: 'sa_street'},
-        {name: 'service_type'},
+        {name: 'account', type: 'string'},
+        {name: 'fb_utility_name', type: 'string'},
+        {name: 'fb_rate_class', type: 'string'},
+        {name: 'fb_service_address', type: 'string'},
+        {name: 'ba_addressee', type: 'string'},
+        {name: 'ba_city', type: 'string'},
+        {name: 'ba_postal_code', type: 'string'},
+        {name: 'ba_state', type: 'string'},
+        {name: 'ba_street', type: 'string'},
+        {name: 'discount_rate', type: 'float'},
+        {name: 'late_charge_rate', type: 'float'},
+        {name: 'sa_addressee', type: 'string'},
+        {name: 'sa_city', type: 'string'},
+        {name: 'sa_postal_code', type: 'string'},
+        {name: 'sa_state', type: 'string'},
+        {name: 'sa_street', type: 'string'},
+        {name: 'service_type', type: 'string'},
         {name: 'template_account'},
-        {name: 'codename'},
-        {name: 'casualname'},
-        {name: 'primusname'},
-        {name: 'lastutilityserviceaddress'},
+        {name: 'codename', type: 'string'},
+        {name: 'casualname', type: 'string'},
+        {name: 'primusname', type: 'string'},
+        {name: 'lastutilityserviceaddress', type: 'string'},
         {name: 'lastperiodend', convert: function(value, record){
             // Calculate days since last processed util bill
             // If there has never been a utility bill (value == null)
@@ -35,10 +35,10 @@ Ext.define('ReeBill.model.Account', {
             var d = new Date();
             return Math.round((d-value)/(1000*60*60*24));
         }},
-        {name: 'lastevent'},
+        {name: 'lastevent', type: 'string'},
         {name: 'lastissuedate'},
         {name: 'provisionable'},
-        {name: 'lastrateclass'},
-        {name: 'name'}
+        {name: 'lastrateclass', type: 'string'},
+        {name: 'name', type: 'string'}
     ]
 });

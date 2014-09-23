@@ -342,7 +342,7 @@ class StateTest(TestCaseWithSetup):
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', False, 
+            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', False,
               None, None, None, 'New Rateclass', fake_address,
               date(2000, 6, 1))]
         )
