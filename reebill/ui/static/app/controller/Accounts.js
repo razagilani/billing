@@ -195,6 +195,7 @@ Ext.define('ReeBill.controller.Accounts', {
                             direction: 'DESC'
                         });
                         memoryStore.loadPage(1);
+                        accountsGrid.getSelectionModel().select([accountRec]);
                     },
                     callback: function(){
                         store.resumeAutoSync();
