@@ -3,6 +3,8 @@ from os.path import realpath, join, dirname
 import unittest
 from datetime import date
 import logging
+from boto.s3.connection import S3Connection
+from billing import init_config, init_model
 
 import mongoengine
 
@@ -11,7 +13,7 @@ from billing.test import utils as test_utils
 from billing.processing import rate_structure2, journal
 from billing.processing.process import Process
 from billing.processing.state import StateDB, Customer, Session, UtilBill, \
-    Register, Address
+    Register, Address, Utility
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
 from billing.processing.render import ReebillRenderer
@@ -41,15 +43,16 @@ init_logging()
 
 
 
+
 class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
 
     @staticmethod
     def truncate_tables(session):
-        for t in ["charge", "register", "payment", "reebill",
-                  "utilbill", "customer", "address", "reading",
-                  "reebill_charge", "utilbill_reebill"]:
+        for t in ["utilbill_reebill", "register", "utilbill", "payment",
+                  "reebill", "customer", "company", "charge", "address",
+                  "reading", "reebill_charge"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -108,21 +111,35 @@ class TestCaseWithSetup(test_utils.TestCase):
                          'XX',
                          '12345')
 
+        ca1 = Address('Test Utilco Address',
+                      '123 Utilco Street',
+                      'Utilco City',
+                      'XX', '12345')
+
+        uc = Utility('Test Utility Company Template', ca1)
+
+        ca2 = Address('Test Other Utilco Address',
+                      '123 Utilco Street',
+                      'Utilco City',
+                      'XX', '12345')
+
+        other_uc = Utility('Other Utility', ca1)
+
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
-                         ub_sa2, ub_ba2])
+                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc])
         session.flush()
 
         session.add(Customer('Test Customer', '99999', .12, .34,
-                             'example@example.com', 'Test Utility Company Template',
+                             'example@example.com', uc,
                              'Test Rate Class Template', fa_ba1, fa_sa1))
 
         #Template Customer aka "Template Account" in UI
         c2 = Customer('Test Customer 2', '100000', .12, .34,
-                             'example2@example.com', 'Test Utility Company Template',
+                             'example2@example.com', uc,
                              'Test Rate Class Template', fa_ba2, fa_sa2)
         session.add(c2)
 
-        u1 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
+        u1 = UtilBill(c2, UtilBill.Complete, 'gas', uc,
                              'Test Rate Class Template',  ub_ba1, ub_sa1,
                              account_number='Acct123456',
                              period_start=date(2012, 1, 1),
@@ -131,7 +148,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 2, 3),
                              processed=True)
 
-        u2 = UtilBill(c2, UtilBill.Complete, 'gas', 'Test Utility Company Template',
+        u2 = UtilBill(c2, UtilBill.Complete, 'gas', uc,
                              'Test Rate Class Template', ub_ba2, ub_sa2,
                              account_number='Acct123456',
                              period_start=date(2012, 2, 1),
@@ -160,7 +177,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
         c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
-                             'example2@example.com', 'Other Utility',
+                             'example2@example.com', other_uc,
                              'Other Rate Class', c4ba, c4sa)
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
@@ -173,7 +190,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
-        u = UtilBill(c4, UtilBill.Complete, 'gas', 'Other Utility',
+        u = UtilBill(c4, UtilBill.Complete, 'gas', other_uc,
                          'Other Rate Class',  ub_ba, ub_sa,
                          account_number='Acct123456',
                          period_start=date(2012, 1, 1),
@@ -188,22 +205,12 @@ class TestCaseWithSetup(test_utils.TestCase):
         """
         from billing import config
 
-        self.state_db = StateDB(Session, logger)
-        self.billupload = BillUpload(config, logger)
-        mock_install_1 = MockSkyInstall(name='example-1')
-        mock_install_2 = MockSkyInstall(name='example-2')
-        self.splinter = MockSplinter(deterministic=True,
-                installs=[mock_install_1, mock_install_2])
-
-    def init_dependencies(self):
-        """Configure connectivity to various other systems and databases.
-        """
-        from billing import config
-
         logger = logging.getLogger('test')
 
+        # TODO most or all of these dependencies do not need to be instance
+        # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
-        self.billupload = BillUpload(config, logger)
+        self.billupload = BillUpload.from_config()
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -257,7 +264,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         journal_dao = journal.JournalDAO()
 
-        self.process = Process(self.state_db,  self.rate_structure_dao,
+        self.process = Process(self.state_db, self.rate_structure_dao,
                 self.billupload, self.nexus_util, bill_mailer, renderer,
                 ree_getter, journal_dao, splinter=self.splinter, logger=logger)
 
