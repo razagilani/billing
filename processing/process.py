@@ -381,10 +381,6 @@ class Process(object):
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        bill_to_replace = self._find_replaceable_utility_bill(
-                customer, service, begin_date, end_date, state)
-        if bill_to_replace is not None:
-            session.delete(bill_to_replace)
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
                 Address.from_other(billing_address),
                 Address.from_other(service_address),
@@ -424,50 +420,6 @@ class Process(object):
     def get_service_address(self, account):
         return UtilBillLoader(Session()).get_last_real_utilbill(account,
                 datetime.utcnow()).service_address.to_dict()
-
-    def _find_replaceable_utility_bill(self, customer, service, start,
-            end, state):
-        '''Returns exactly one state.UtilBill that should be replaced by
-        'new_utilbill' which is about to be uploaded (i.e. has the same
-        customer, period, and service, but a less-final state). Returns None if
-        there is no such bill. A NotUniqueException is raised if more than one
-        utility bill matching these criteria is found.
-        
-        Note: customer, service, start, end are passed in instead of a new
-        UtilBill because SQLAlchemy automatically adds any UtilBill that is
-        instantiated to the session, which breaks the test for matching utility
-        bills that already exist.'''
-        # TODO 38385969: is this really a good idea?
-
-        # get existing bills matching dates and service
-        # (there should be at most one, but you never know)
-        session = Session()
-        existing_bills = session.query(UtilBill)\
-                .filter_by(customer=customer)\
-                .filter_by(service=service)\
-                .filter_by(period_start=start)\
-                .filter_by(period_end=end)
-        try:
-            existing_bill = existing_bills.one()
-        except NoResultFound:
-            return None
-        except MultipleResultsFound:
-            raise NotUniqueException(("Can't upload a bill for dates %s, %s "
-                    "because there are already %s of them") % (start, end,
-                    len(list(existing_bills))))
-
-        # now there is one existing bill with the same dates. if state is
-        # "more final" than an existing non-final bill that matches this
-        # one, that bill should be replaced with the new one
-        # (states can be compared with '<=' because they're ordered from
-        # "most final" to least--see state.UtilBill)
-        if existing_bill.state <= state:
-            # TODO this error message is kind of obscure
-            raise NotUniqueException(("Can't upload a utility bill for "
-                "dates %s, %s because one already exists with a more final"
-                " state than %s") % (start, end, state))
-
-        return existing_bill
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
