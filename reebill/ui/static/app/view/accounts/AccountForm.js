@@ -1,13 +1,3 @@
-// The data store containing the list of states
-var service_types = Ext.create('Ext.data.Store', {
-    fields: ['display_name', 'service_type'],
-    data : [
-        {display_name: 'Thermal', service_type: 'thermal'},
-        {display_name: 'PV', service_type: 'pv'},
-        {display_name: 'None', service_type: null},
-    ]
-});
-
 Ext.define('ReeBill.view.AccountForm', {
     extend: 'Ext.form.Panel',
 
@@ -57,16 +47,13 @@ Ext.define('ReeBill.view.AccountForm', {
             xtype: 'combobox',
             fieldLabel: 'Renewable Energy Service',
             name: 'service_type',
-            width: 100,
-            maxWidth: 100, // TODO: how do i make this work?
             allowBlank: false,
-            allowBlank: false,
-            store: service_types,
+            store: 'ServiceTypes',
             queryMode: 'local',
             displayField: 'display_name',
             valueField: 'service_type',
             value: 'thermal',
-            editable: false,
+            editable: false
         }]
     },{
         xtype: 'fieldset',
