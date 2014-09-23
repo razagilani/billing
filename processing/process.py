@@ -15,14 +15,12 @@ from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from billupload import ACCOUNT_NAME_REGEX
-from billing.processing import journal
 from billing.processing.state import Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Address, Charge, Register, Session, \
     Payment, MYSQLDB_DATETIME_MIN
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment, \
-    FormulaError
+    NoSuchBillException, NotUniqueException, ConfirmAdjustment, FormulaError
 
 
 class Process(object):
@@ -271,8 +269,7 @@ class Process(object):
         corresponding to the "sequential account information" form in the UI,
         """
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued or reebill.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+        reebill.check_editable()
 
         if discount_rate is not None:
             reebill.discount_rate = discount_rate
@@ -536,8 +533,7 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+        reebill.check_editable()
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
@@ -887,8 +883,7 @@ class Process(object):
         of the reebill that was deleted.'''
         session = Session()
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't delete an issued reebill.")
+        reebill.check_editable()
         if reebill.version == 0 and reebill.sequence < \
                 self.state_db.last_sequence(account):
             raise IssuedBillError("Only the last reebill can be deleted")
@@ -1117,19 +1112,13 @@ class Process(object):
         with a new set of readings that matches the reebill's utility bill.
         '''
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't modify an issued reebill")
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify processed reebill")
+        reebill.check_editable()
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
         return reebill
 
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't modify an issued reebill")
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify processed reebill")
+        reebill.check_editable()
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 
