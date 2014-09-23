@@ -16,40 +16,40 @@ Ext.define('ReeBill.controller.Reebills', {
         selector: 'combo[name=serviceForCharges]'        
     },{
         ref: 'bindREOffsetButton',
-        selector: 'button[action=bindREOffset]'        
+        selector: '[action=bindREOffset]'
     },{
         ref: 'computeReebillButton',
-        selector: 'button[action=computeReebill]'        
+        selector: '[action=computeReebill]'
     },{
         ref: 'updateReadingsButton',
-        selector: 'button[action=updateReadings]'
+        selector: '[action=updateReadings]'
     },{
         ref: 'deleteReebillButton',
-        selector: 'button[action=deleteReebill]'
+        selector: '[action=deleteReebill]'
     },{
         ref: 'createNewVersionButton',
-        selector: 'button[action=createNewVersion]'        
+        selector: '[action=createNewVersion]'
     },{
         ref: 'renderPdfButton',
-        selector: 'button[action=renderPdf]'        
+        selector: '[action=renderPdf]'
     },{
         ref: 'emailButton',
-        selector: 'button[action=email]'
+        selector: '[action=email]'
     },{
         ref: 'createNextButton',
-        selector: 'button[action=createNext]'
+        selector: '[action=createNext]'
     },{
         ref: 'toggleReebillProcessedButton',
-        selector: 'button[action=toggleReebillProcessed]'
+        selector: '[action=toggleReebillProcessed]'
     },{
         ref: 'sequentialAccountInformationForm',
         selector: 'panel[id=sequentialAccountInformationForm]'
     },{
         ref: 'saveAccountInformationButton',
-        selector: 'button[action=saveAccountInformation]'
+        selector: '[action=saveAccountInformation]'
     },{
         ref: 'resetAccountInformationButton',
-        selector: 'button[action=resetAccountInformation]'
+        selector: '[action=resetAccountInformation]'
     },{
         ref: 'reeBillVersions',
         selector: 'reeBillVersions'
@@ -73,37 +73,37 @@ Ext.define('ReeBill.controller.Reebills', {
             'grid[id=reebillsGrid]': {
                 selectionchange: this.handleRowSelect
             },
-            'button[action=bindREOffset]': {
+            '[action=bindREOffset]': {
                 click: this.handleBindREOffset
             },
-            'button[action=computeReebill]': {
+            '[action=computeReebill]': {
                 click: this.handleCompute
             },
-            'button[action=deleteReebill]': {
+            '[action=deleteReebill]': {
                 click: this.handleDelete
             },
-            'button[action=createNewVersion]': {
+            '[action=createNewVersion]': {
                 click: this.handleCreateNewVersion
             },
-            'button[action=email]': {
+            '[action=email]': {
                 click: this.handleMail
             },
-            'button[action=renderPdf]': {
+            '[action=renderPdf]': {
                 click: this.handleRenderPdf
             },
-            'button[action=createNext]': {
+            '[action=createNext]': {
                 click: this.handleCreateNext
             },
-            'button[action=saveAccountInformation]': {
+            '[action=saveAccountInformation]': {
                 click: this.handleSaveAccountInformation
             },
-            'button[action=resetAccountInformation]': {
+            '[action=resetAccountInformation]': {
                 click: this.handleResetAccountInformation
             },
-            'button[action=updateReadings]': {
+            '[action=updateReadings]': {
                 click: this.handleUpdateReadings
             },
-            'button[action=toggleReebillProcessed]': {
+            '[action=toggleReebillProcessed]': {
                 click: this.handleToggleReebillProcessed
             },
             'combo[name=reeBillVersions]': {
