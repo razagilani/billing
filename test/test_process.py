@@ -1957,42 +1957,28 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
             u"addressee" : u"Test Customer 1 Service",
             u"street" : u"123 Test Street"
         }
-        account_info = self.process.get_sequential_account_info(
-            account, 1)
-        self.assertDictContainsSubset(billing_address, account_info['billing_address'])
-        self.assertDictContainsSubset(service_address, account_info['service_address'])
+        account_info = self.process.get_sequential_account_info(account, 1)
+        self.assertDictContainsSubset(billing_address,
+                                      account_info['billing_address'])
+        self.assertDictContainsSubset(service_address,
+                                      account_info['service_address'])
         self.assertEqual(account_info['discount_rate'], 0.12)
         self.assertEqual(account_info['late_charge_rate'], 0.34)
 
-        # add two more utility bills: a Hypothetical one, then a Complete one
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 6, 3), date(2013, 7, 1),
-                                         None, 'no file',
-                                         state=UtilBill.Hypothetical)
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 7, 1),
-                                         date(2013, 7, 30),
-                                         StringIO('July 2013'),
-                                         'july.pdf')
-        utilbill_data, count = self.process.get_all_utilbills_json(
-            account, 0, 30)
-        self.assertEqual(4, count)
-        self.assertEqual(['Final', 'Missing', 'Final', 'Final'],
+        # add two more utility bills: UtilityEstimated and Complete
+        self.process.upload_utility_bill(account, 'gas', date(2013, 7, 1),
+                date(2013, 7, 30), StringIO('July 2013'), 'july.pdf')
+        utilbill_data, count = self.process.get_all_utilbills_json(account,
+                0, 30)
+        self.assertEqual(3, count)
+        self.assertEqual(['Final', 'Final', 'Final'],
                          [u['state'] for u in utilbill_data])
 
-        # The next utility bill isn't estimated or final, so
-        # create_next_reebill should fail
-        self.assertRaises(NoSuchBillException,
-                          self.process.roll_reebill, account)
-
-        # replace Hypothetical bill with a UtilityEstimated one.
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 6, 3), date(2013, 7, 1),
-                                         StringIO('June 2013'),
-                                         'june.pdf',
-                                         state=UtilBill.UtilityEstimated)
-        utilbill_data, count = self.process.get_all_utilbills_json(
-            account, 0, 30)
+        self.process.upload_utility_bill(account, 'gas', date(2013, 6, 3),
+                date(2013, 7, 1), StringIO('June 2013'), 'june.pdf',
+                state=UtilBill.UtilityEstimated)
+        utilbill_data, count = self.process.get_all_utilbills_json(account,
+                0, 30)
         self.assertEqual(4, count)
         self.assertEqual(['Final', 'Utility Estimated', 'Final', 'Final'],
                          [u['state'] for u in utilbill_data])
