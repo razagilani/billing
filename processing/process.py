@@ -341,8 +341,8 @@ class Process(object):
         # edit it after uploading.
         customer = self.state_db.get_customer(account)
         try:
-            predecessor = self.state_db.get_last_real_utilbill(account,
-                    begin_date, service=service)
+            predecessor = UtilBillLoader(session).get_last_real_utilbill(
+                    account, begin_date, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -422,7 +422,7 @@ class Process(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return self.state_db.get_last_real_utilbill(account,
+        return UtilBillLoader(Session()).get_last_real_utilbill(account,
                 datetime.utcnow()).service_address.to_dict()
 
     def _find_replaceable_utility_bill(self, customer, service, start,
