@@ -23,7 +23,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 from billing.exc import IssuedBillError, NoSuchBillException,\
-        RegisterError, FormulaSyntaxError
+        RegisterError, FormulaSyntaxError, ProcessedBillError
 from billing.exc import FormulaError
 from exc import DatabaseError
 
@@ -372,6 +372,15 @@ class ReeBill(Base):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
             self.customer.account, self.sequence, self.version, 'issued' if
             self.issued else 'unissued', len(self.utilbills))
+
+    def check_editable(self):
+        '''Raise a ProcessedBillError or IssuedBillError to prevent editing a
+        bill that should not be editable.
+        '''
+        if self.issued:
+            raise IssuedBillError("Can't modify an issued reebill")
+        if self.processed:
+            raise ProcessedBillError("Can't modify a processed reebill")
 
     def get_period(self):
         '''Returns period of the first (only) utility bill for this reebill
