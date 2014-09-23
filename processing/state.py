@@ -1457,7 +1457,8 @@ class StateDB(object):
         return max_sequence
 
     def get_accounts_grid_data(self, account=None):
-        '''Returns the Account of every customer,
+        '''Returns the Account, fb_utility_name, fb_rate_class,
+        and fb_service_address of every customer,
         the Sequence, Version and Issue date of the highest-sequence,
         highest-version issued ReeBill object,
         the rate class, the service address of the latest
@@ -1491,6 +1492,9 @@ class StateDB(object):
         .subquery()
 
         q = session.query(Customer.account,
+                          Customer.fb_utility_name,
+                          Customer.fb_rate_class,
+                          Customer.fb_service_address,
                           sequence_sq.c.max_sequence,
                           version_sq.c.max_version,
                           version_sq.c.issue_date,

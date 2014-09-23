@@ -2,6 +2,9 @@ Ext.define('ReeBill.model.Account', {
     extend: 'Ext.data.Model',
     fields: [
         {name: 'account'},
+        {name: 'fb_utility_name'},
+        {name: 'fb_rate_class'},
+        {name: 'fb_service_address'},
         {name: 'ba_addressee'},
         {name: 'ba_city'},
         {name: 'ba_postal_code'},
@@ -19,7 +22,7 @@ Ext.define('ReeBill.model.Account', {
         {name: 'codename'},
         {name: 'casualname'},
         {name: 'primusname'},
-        {name: 'utilityserviceaddress'},
+        {name: 'lastutilityserviceaddress'},
         {name: 'lastperiodend', convert: function(value, record){
             // Calculate days since last processed util bill
             // If there has never been a utility bill (value == null)
