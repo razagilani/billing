@@ -1,7 +1,26 @@
 import sys
+from os.path import realpath, join, dirname
+import unittest
+from datetime import date
 import logging
 from boto.s3.connection import S3Connection
 from billing import init_config, init_model
+
+import mongoengine
+
+from billing import init_config, init_model
+from billing.test import utils as test_utils
+from billing.processing import rate_structure2, journal
+from billing.processing.process import Process
+from billing.processing.state import StateDB, Customer, Session, UtilBill, \
+    Register, Address, Utility
+from billing.processing.billupload import BillUpload
+from billing.processing.bill_mailer import Mailer
+from billing.processing.render import ReebillRenderer
+from billing.processing.fetch_bill_data import RenewableEnergyGetter
+from nexusapi.nexus_util import MockNexusUtil
+from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
+
 
 def init_logging():
     """Initialize logging to debug before we import anything else"""
@@ -22,30 +41,6 @@ def init_logging():
 
 init_logging()
 
-from os.path import realpath, join, dirname
-import unittest
-from StringIO import StringIO
-import ConfigParser
-import pymongo
-from bson import ObjectId
-import mongoengine
-import MySQLdb
-from datetime import date, datetime, timedelta
-from sqlalchemy.exc import UnboundExecutionError
-
-from billing.test import utils as test_utils
-from billing.processing import rate_structure2, journal
-from billing.processing.process import Process
-from billing.processing.state import StateDB, Customer, Session, UtilBill, \
-    Register, Address, Utility
-from billing.processing.billupload import BillUpload
-from billing.processing.bill_mailer import Mailer
-from billing.processing.render import ReebillRenderer
-from billing.processing.fetch_bill_data import RenewableEnergyGetter
-from billing.test import example_data
-from nexusapi.nexus_util import MockNexusUtil
-from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-import logging
 
 
 

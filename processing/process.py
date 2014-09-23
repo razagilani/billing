@@ -16,14 +16,12 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from processing.state import MYSQLDB_DATETIME_MIN
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
-from billing.processing import journal
 from billing.processing.state import Customer, UtilBill, ReeBill, \
     UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
     Payment, Utility
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
-    NoSuchBillException, NotUniqueException, NotComputable, ProcessedBillError, ConfirmAdjustment, \
-    FormulaError
+    NoSuchBillException, NotUniqueException, ConfirmAdjustment, FormulaError
 
 
 class Process(object):
@@ -190,15 +188,15 @@ class Process(object):
         } for reebill_charge in reebill.charges]
 
     def update_utilbill_metadata(self, utilbill_id, period_start=None,
-            period_end=None, service=None, total_charges=None, utility=None,
+            period_end=None, service=None, target_total=None, utility=None,
             rate_class=None, processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
         utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        if total_charges is not None:
-            utilbill.total_charges = total_charges
+        if target_total is not None:
+            utilbill.target_total = target_total
 
         if service is not None:
             utilbill.service = service
@@ -272,8 +270,7 @@ class Process(object):
         corresponding to the "sequential account information" form in the UI,
         """
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued or reebill.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+        reebill.check_editable()
 
         if discount_rate is not None:
             reebill.discount_rate = discount_rate
@@ -522,8 +519,7 @@ class Process(object):
         '''
         reebill = self.state_db.get_reebill(account, sequence,
                 version)
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify a processed reebill")
+        reebill.check_editable()
         reebill.compute_charges()
         actual_total = reebill.get_total_actual_charges()
 
@@ -810,7 +806,7 @@ class Process(object):
         hasn't been issued yet: there is a late fee applied to the balance of
         the previous bill when only when that previous bill's due date has
         passed.) Late fees only apply to bills whose predecessor has been
-        issued; None is returned if the predecessor has not been issued. (The
+        issued; 0 is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
         session = Session()
@@ -823,7 +819,7 @@ class Process(object):
 
         # unissued bill has no late charge
         if not self.state_db.is_issued(acc, seq - 1):
-            return None
+            return 0
 
         # late charge is 0 if version 0 of the previous bill is not overdue
         predecessor0 = self.state_db.get_reebill(acc, seq - 1,
@@ -873,8 +869,7 @@ class Process(object):
         of the reebill that was deleted.'''
         session = Session()
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't delete an issued reebill.")
+        reebill.check_editable()
         if reebill.version == 0 and reebill.sequence < \
                 self.state_db.last_sequence(account):
             raise IssuedBillError("Only the last reebill can be deleted")
@@ -902,7 +897,7 @@ class Process(object):
                     raise
         return version
 
-    def create_new_account(self, account, name, discount_rate,
+    def create_new_account(self, account, name, service_type, discount_rate,
             late_charge_rate, billing_address, service_address,
             template_account):
         '''Creates a new account with utility bill template copied from the
@@ -925,6 +920,9 @@ class Process(object):
         if not 0 <= late_charge_rate <=1:
             raise ValueError(('Late charge rate must be between 0 and 1 '
                               'inclusive'))
+        if service_type not in (None,) + Customer.SERVICE_TYPES:
+            raise ValueError('Unknown service type "%s"' % service_type)
+
         session = Session()
         last_utility_bill = session.query(UtilBill)\
                 .join(Customer).filter(Customer.account == template_account)\
@@ -949,8 +947,7 @@ class Process(object):
                         service_address['state'],
                         service_address['postal_code']))
 
-        # TODO set service in "new account" form
-        new_customer.service = 'thermal'
+        new_customer.service = service_type
 
         session.add(new_customer)
         session.flush()
@@ -1038,7 +1035,6 @@ class Process(object):
             rows.append(row)
         return rows, total_count
 
-        session = Session()
     def sequences_in_month(self, account, year, month):
         '''Returns a list of sequences of all reebills whose periods contain
         ANY days within the given month. The list is empty if the month
@@ -1101,19 +1097,13 @@ class Process(object):
         with a new set of readings that matches the reebill's utility bill.
         '''
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't modify an issued reebill")
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify processed reebill")
+        reebill.check_editable()
         reebill.replace_readings_from_utility_bill_registers(reebill.utilbill)
         return reebill
 
     def bind_renewable_energy(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
-        if reebill.issued:
-            raise IssuedBillError("Can't modify an issued reebill")
-        if reebill.processed:
-            raise ProcessedBillError("Can't modify processed reebill")
+        reebill.check_editable()
         self.ree_getter.update_renewable_readings(
                 self.nexus_util.olap_id(account), reebill, use_olap=True)
 

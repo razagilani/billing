@@ -4,14 +4,10 @@ import random
 import unittest
 from datetime import date, datetime, timedelta
 
-from mock import Mock
-
 from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
     Register
-
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
-from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 import billing.processing.fetch_bill_data as fbd
 from billing.util.dateutils import date_to_datetime
