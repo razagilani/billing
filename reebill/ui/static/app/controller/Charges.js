@@ -23,7 +23,7 @@ Ext.define('ReeBill.controller.Charges', {
         selector: 'grid[id=utilityBillsGrid]'
     },{
         ref: 'removeCharge',
-        selector: 'button[action=removeCharge]'
+        selector: '[action=removeCharge]'
     },{
         ref: 'formulaField',
         selector: 'formulaField'
@@ -47,16 +47,16 @@ Ext.define('ReeBill.controller.Charges', {
             'panel[name=chargesTab]': {
                 activate: this.handleActivate
             },
-            'button[action=newCharge]': {
+            '[action=newCharge]': {
                 click: this.handleNew
             },
-            'button[action=removeCharge]': {
+            '[action=removeCharge]': {
                 click: this.handleDelete
             },
-            'button[action=regenerateCharge]': {
+            '[action=regenerateCharge]': {
                 click: this.handleRegenerate
             },
-            'button[action=recomputeCharges]': {
+            '[action=recomputeCharges]': {
                 click: this.handleRecompute
             },
             'formulaField':{
