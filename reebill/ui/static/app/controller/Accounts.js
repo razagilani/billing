@@ -171,7 +171,6 @@ Ext.define('ReeBill.controller.Accounts', {
 
             store.suspendAutoSync();
             store.add(values);
-                makeAnotherAccount.checked, Ext.ComponentQuery.query('[name=makeAnotherAccount]')[0].checked);
             if (!makeAnotherAccount) {
                 store.sync({
                     success: function (batch, options) {
