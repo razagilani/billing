@@ -1699,18 +1699,6 @@ class StateDB(object):
             return query[start:], query.count()
         return query[start:start + limit], query.count()
 
-    # NOTE deprectated in favor of UtilBillLoader.get_last_real_utilbill
-    def get_last_real_utilbill(self, account, end, service=None,
-                               utility=None, rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill whose
-        end date is before/on 'end', optionally with the given service,
-        utility, rate class, and 'processed' status.
-        '''
-        session = Session()
-        return UtilBillLoader(session).get_last_real_utilbill(account, end,
-                service=service, utility=utility, rate_class=rate_class,
-                processed=processed)
-
     def create_payment(self, account, date_applied, description,
                        credit, date_received=None):
         '''Adds a new payment, returns the new Payment object. By default,
