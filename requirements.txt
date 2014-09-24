@@ -13,9 +13,7 @@ fabulous==0.1.5
 formencode==1.3.0a1
 grapefruit==0.1a3
 greenlet==0.4.0
-#mongoengine==0.8.4
-# this is actually MongoEngine 0.9 from GitHub
-#git+https://github.com/MongoEngine/mongoengine.git@3a0c69005ba274ec6d039b44c17af1c78fd48223
+# this is actually MongoEngine 0.9 from GitHub (we were previously using 0.8.4)
 git+https://github.com/MongoEngine/mongoengine.git@d77b13efcb9f096bd20f9116cebedeae8d83749f
 numpy==1.6.2
 ordereddict==1.1

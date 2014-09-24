@@ -82,8 +82,9 @@ def copy_registers_from_mongo(s):
     for ub in s.query(UtilBill).all():
         mongo_ub = db.utilbills.find_one({"_id": ObjectId(ub.document_id)})
         if mongo_ub is None:
-            log.error("No mongo utility bill found for utilbill"
-                      "   id %s document_id %s" % (ub.id, ub.document_id))
+            if ub.state != UtilBill.Hypothetical:
+                log.error("No mongo utility bill found for utilbill"
+                          "   id %s document_id %s" % (ub.id, ub.document_id))
             continue
 
         for mongo_meter in mongo_ub['meters']:

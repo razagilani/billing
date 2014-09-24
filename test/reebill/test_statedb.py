@@ -1,3 +1,6 @@
+'''Tests for ReeBill-specific data-access objects, including the database.
+Currently the only one is StateDB.
+'''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
 init_logging()
 
@@ -11,7 +14,6 @@ from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.exc import NoSuchBillException
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -22,9 +24,7 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(TestCaseWithSetup):
-
-
+class StateDBTest(TestCaseWithSetup):
 
     def setUp(self):
         # clear out database
@@ -33,33 +33,26 @@ class StateTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        customer = Customer('Test Customer', 99999, .12, .34,
+        self.customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', 'FB Test Utility Name',
                             'FB Test Rate Class', blank_address, blank_address)
-        self.session.add(customer)
+        self.session.add(self.customer)
         self.session.commit()
         self.state_db = state.StateDB()
 
     def tearDown(self):
-        self.session.commit()
-        # clear out tables in mysql test database (not relying on StateDB)
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        #self._clear_tables(mysql_connection)
-
-    def test_new_reebill(self):
-        b = self.state_db.new_reebill('99999', 1)
-        self.assertEqual('99999', b.customer.account)
-        self.assertEqual(1, b.sequence)
-        self.assertEqual(0, b.version)
-        self.assertEqual(0, b.issued)
+        self.session.rollback()
+        self.truncate_tables(self.session)
 
     def test_versions(self):
         '''Tests max_version(), max_issued_version(), increment_version(), and
         the behavior of is_issued() with multiple versions.'''
+        session = Session()
         acc, seq = '99999', 1
         # initially max_version is 0, max_issued_version is None, and issued
         # is false
-        b = self.state_db.new_reebill(acc, seq)
+        b = ReeBill(self.customer, seq)
+        session.add(b)
         self.assertEqual(0, self.state_db.max_version(acc, seq))
         self.assertEqual(None, self.state_db.max_issued_version(acc, seq))
         self.assertEqual(False, self.state_db.is_issued(acc, seq))
@@ -79,9 +72,9 @@ class StateTest(TestCaseWithSetup):
         self.session.add(Customer('someone', '22222', 0.5, 0.1,
                 'customer2@example.com', 'FB Test Utility',
                 'FB Test Rate Class', Address(), Address()))
-        self.state_db.new_reebill('11111', 1)
-        self.state_db.new_reebill('11111', 2)
-        self.state_db.new_reebill('22222', 1)
+        session.add(ReeBill(self.state_db.get_customer('11111'), 1))
+        session.add(ReeBill(self.state_db.get_customer('11111'), 2))
+        session.add(ReeBill(self.state_db.get_customer('22222'), 1))
         self.state_db.issue('11111', 1)
         self.state_db.issue('22222', 1)
         self.state_db.increment_version('11111', 1)
@@ -164,10 +157,11 @@ class StateTest(TestCaseWithSetup):
 
 
     def test_get_unissued_corrections(self):
+        session = Session()
         # reebills 1-4, 1-3 issued
-        self.state_db.new_reebill('99999', 1)
-        self.state_db.new_reebill('99999', 2)
-        self.state_db.new_reebill('99999', 3)
+        session.add(ReeBill(self.customer, 1))
+        session.add(ReeBill(self.customer, 2))
+        session.add(ReeBill(self.customer, 3))
         self.state_db.issue('99999', 1)
         self.state_db.issue('99999', 2)
         self.state_db.issue('99999', 3)
@@ -247,91 +241,6 @@ class StateTest(TestCaseWithSetup):
                 datetime(2012,1,1), datetime(2012,4,1)))
 
 
-    def test_get_last_reebill(self):
-        customer = self.session.query(Customer).one()
-
-        self.assertEqual(None, self.state_db.get_last_reebill('99999'))
-        empty_address = Address()
-        utilbill = UtilBill(customer, 0, 'gas', 'washgas',
-                'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
-        reebill = ReeBill(customer, 1, 0, utilbills=[utilbill])
-        self.session.add(utilbill)
-        self.session.add(reebill)
-
-        self.assertEqual(reebill, self.state_db.get_last_reebill('99999'))
-        self.assertEqual(None, self.state_db.get_last_reebill(
-                '99999', issued_only=True))
-
-    def test_get_last_real_utilbill(self):
-        customer = self.session.query(Customer).one()
-
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2001,1,1))
-
-        # one bill
-        empty_address = Address()
-        gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
-                'DC Non Residential Non Heat', empty_address, empty_address,
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
-        self.session.add(gas_bill_1)
-
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,3,1)))
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,1)))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,1,31))
-
-        # two bills
-        electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
-                'whatever', empty_address, empty_address,
-                period_start=date(2000,1,2), period_end=date(2000,2,2))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 3, 1)))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 2, 2)))
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999', date(2000, 2, 1)))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,1,31))
-
-        # electric bill is ignored if service "gas" is specified
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,2), service='gas'))
-        self.assertEqual(gas_bill_1, self.state_db.get_last_real_utilbill(
-                '99999', date(2000,2,1), service='gas'))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2000,1,31), service='gas')
-
-        # filter by utility and rate class
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='washgas'))
-        self.assertEqual(gas_bill_1,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), rate_class='DC Non Residential Non Heat'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='pepco', rate_class='whatever'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), rate_class='whatever'))
-        self.assertEqual(electric_bill,
-                self.state_db.get_last_real_utilbill('99999',
-                date(2000,3,1), utility='pepco', rate_class='whatever'))
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999',
-                date(2000,1,31), utility='washgas', rate_class='whatever')
-
-        # hypothetical utility bills are always ignored
-        gas_bill_1.state = UtilBill.Hypothetical
-        electric_bill.state = UtilBill.Hypothetical
-        self.assertRaises(NoSuchBillException,
-                self.state_db.get_last_real_utilbill, '99999', date(2000,3,1))
-
     def test_get_accounts_grid_data(self):
         empty_address = Address()
         fake_address = Address('Addressee', 'Street', 'City', 'ST', '12345')
@@ -345,11 +254,14 @@ class StateTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),
-            [('99999', None, None, None, None, None, None),
-             ('99998', None, None, None, None, None, None)])
+            [('99999', 'FB Test Utility Name', 'FB Test Rate Class', None,
+              None, None, None, None, None, None),
+             ('99998', 'FB Test Utility Name', 'FB Test Rate Class', None,
+              None, None, None, None, None, None)])
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, None, None, None)])
+            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', None,
+              None, None, None, None, None, None)])
 
         # Attach two utilitybills with out addresses but with rate class to one
         # of the customers, and one utilbill with empty rateclass but with
@@ -372,13 +284,16 @@ class StateTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(),[
-                ('99999', None, None, None, 'DC Non Residential Non Heat',
+                ('99999', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, None, None, None, 'DC Non Residential Non Heat',
                     empty_address, date(2000, 2, 1)),
-                ('99998', None, None, None, '',
+                ('99998', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, None, None, None, '',
                     fake_address, date(2000, 5, 1))])
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, '', fake_address, date(2000, 5, 1))]
+            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', False,
+              None, None, None, '', fake_address, date(2000, 5, 1))]
         )
 
         # Now Attach a reebill to one and issue it , and a utilbill with a
@@ -397,14 +312,17 @@ class StateTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
-                ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
+                ('99999', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, 1L, 0L, issue_date, 'DC Non Residential Non Heat',
                     empty_address, date(2000, 2, 1)),
-                ('99998', None, None, None, 'New Rateclass', fake_address,
+                ('99998', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, None, None, None, 'New Rateclass', fake_address,
                  date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, 'New Rateclass', fake_address,
+            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', False,
+              None, None, None, 'New Rateclass', fake_address,
               date(2000, 6, 1))]
         )
 
@@ -415,14 +333,17 @@ class StateTest(TestCaseWithSetup):
 
         self.assertEqual(
             self.state_db.get_accounts_grid_data(), [
-                ('99999', 1L, 0L, issue_date, 'DC Non Residential Non Heat',
+                ('99999', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, 1L, 0L, issue_date, 'DC Non Residential Non Heat',
                     empty_address, date(2000, 2, 1)),
-                ('99998', None, None, None, 'New Rateclass', fake_address,
+                ('99998', 'FB Test Utility Name', 'FB Test Rate Class',
+                 False, None, None, None, 'New Rateclass', fake_address,
                  date(2000, 6, 1))]
         )
         self.assertEqual(
             self.state_db.get_accounts_grid_data('99998'),
-            [('99998', None, None, None, 'New Rateclass', fake_address,
+            [('99998', 'FB Test Utility Name', 'FB Test Rate Class', False,
+              None, None, None, 'New Rateclass', fake_address,
               date(2000, 6, 1))]
         )
 
