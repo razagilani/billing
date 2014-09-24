@@ -238,79 +238,102 @@ def scrub_dev_data():
     stdin.close()
     check_exit_status()
 
-def get_bucket(bucket_name, access_key, secret_key):
-    conn = S3Connection(access_key, secret_key)
-    bucket = conn.get_bucket(args.bucket)
+class S3BackupHandler(object):
+    def __init__(self, bucket_name, access_key, secret_key):
+        self._bucket_name = bucket_name
+        self._access_key = access_key
+        self._secret_key = secret_key
 
-    # make sure this bucket has versioning turned on; if not, it's probably
-    # the wrong bucket
-    versioning_status = bucket.get_versioning_status()
-    if versioning_status != {'Versioning': 'Enabled'}:
-        print >> sys.stderr, ("Can't use a bucket without versioning for "
-                "backups. The bucket \"%s\" has versioning status: %s") % (
-                bucket.name, versioning_status)
-        # TODO not good to sys.exit outside main
-        sys.exit(1)
-    return bucket
+    def _get_bucket(self):
+        conn = S3Connection(self._access_key, self._secret_key)
+        bucket = conn.get_bucket(self._bucket_name)
 
-def backup(args):
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
-    for collection in MONGO_COLLECTIONS:
-        backup_mongo_collection(collection, Key(bucket,
-                name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
+        # make sure this bucket has versioning turned on; if not, it's probably
+        # the wrong bucket
+        versioning_status = bucket.get_versioning_status()
+        if versioning_status != {'Versioning': 'Enabled'}:
+            print >> sys.stderr, ("Can't use a bucket without versioning for "
+                                  "backups. The bucket \"%s\" has versioning status: %s") % (
+                                     bucket.name, versioning_status)
+            # TODO not good to sys.exit outside main
+            sys.exit(1)
+        return bucket
 
-def restore(args):
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    restore_mysql_s3(bucket, args.root_password)
-    for collection in MONGO_COLLECTIONS:
-        # NOTE mongorestore cannot restore from a file unless its name
-        # ends with ".bson".
-        bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
-                collection, datetime.utcnow())
-        restore_mongo_collection_s3(bucket, collection, bson_file_path)
-    if args.scrub:
-        scrub_dev_data()
+    def backup(self):
+        raise NotImplemented('Subclasses must override this.')
 
-def download(args):
-    if args.backup_file_dir.startswith(os.path.sep):
-        backup_file_dir_absolute_path = args.backup_file_dir
-    else:
-        backup_file_dir_absolute_path = os.path.join(
-            os.path.realpath(__file__), args.backup_file_dir)
-    # TODO actual error message
-    assert os.access(backup_file_dir_absolute_path, os.W_OK)
+    def restore(self):
+        raise NotImplemented('Subclasses must override this.')
 
-    bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
+    def download(self, backup_file_dir):
+        raise NotImplemented('Subclasses must override this.')
 
-    # download MySQL dump
-    key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
-    if not key or not key.exists():
-        raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
-                key.name, bucket.name))
-    key.get_contents_to_filename(os.path.join(
-            backup_file_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
+    def backup_local(self, backup_file_dir):
+        raise NotImplemented('Subclasses must override this.')
 
-    # download Mongo dump
-    for collection in MONGO_COLLECTIONS:
-        file_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection
-        key = bucket.get_key(file_name)
+    def restore_local(self, backup_file_dir):
+        raise NotImplemented('Subclasses must override this.')
+
+
+class ReeBillBackupHandler(S3BackupHandler):
+
+    def backup(self):
+        bucket = self._get_bucket()
+        backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
+        for collection in MONGO_COLLECTIONS:
+            backup_mongo_collection(collection, Key(bucket,
+                    name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
+
+    def restore(self):
+        bucket = self._get_bucket()
+        restore_mysql_s3(bucket, args.root_password)
+        for collection in MONGO_COLLECTIONS:
+            # NOTE mongorestore cannot restore from a file unless its name
+            # ends with ".bson".
+            bson_file_path = '/tmp/reebill_mongo_%s_%s.bson' % (
+                    collection, datetime.utcnow())
+            restore_mongo_collection_s3(bucket, collection, bson_file_path)
+        if args.scrub:
+            scrub_dev_data()
+
+    def download(self, backup_file_dir):
+        if backup_file_dir.startswith(os.path.sep):
+            backup_file_dir_absolute_path = backup_file_dir
+        else:
+            backup_file_dir_absolute_path = os.path.join(
+                    os.path.realpath(__file__), backup_file_dir)
+        # TODO actual error message
+        assert os.access(backup_file_dir_absolute_path, os.W_OK)
+
+        bucket = self._get_bucket()
+        # download MySQL dump
+        key = bucket.get_key(MYSQL_BACKUP_FILE_NAME)
         if not key or not key.exists():
             raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
                     key.name, bucket.name))
         key.get_contents_to_filename(os.path.join(
-                backup_file_dir_absolute_path, file_name))
+                backup_file_dir_absolute_path, MYSQL_BACKUP_FILE_NAME))
 
-def restore_local(args):
-    restore_mysql_local(os.path.join(args.backup_file_dir,
-            MYSQL_BACKUP_FILE_NAME), args.root_password)
-    for collection in MONGO_COLLECTIONS:
-        backup_file_path = os.path.join(args.backup_file_dir,
-                MONGO_BACKUP_FILE_NAME_FORMAT % collection)
-        restore_mongo_collection_local(collection, backup_file_path)
-    # TODO always scrub the data when restore-local is used because it's only for development?
-    if args.scrub:
-        scrub_dev_data()
+        # download Mongo dump
+        for collection in MONGO_COLLECTIONS:
+            file_name = MONGO_BACKUP_FILE_NAME_FORMAT % collection
+            key = bucket.get_key(file_name)
+            if not key or not key.exists():
+                raise ValueError('The key "%s" does not exist in the bucket "%s"' % (
+                        key.name, bucket.name))
+            key.get_contents_to_filename(os.path.join(
+                    backup_file_dir_absolute_path, file_name))
+
+    def restore_local(self, backup_file_dir, root_password):
+        restore_mysql_local(os.path.join(backup_file_dir,
+                MYSQL_BACKUP_FILE_NAME), root_password)
+        for collection in MONGO_COLLECTIONS:
+            backup_file_path = os.path.join(backup_file_dir,
+                    MONGO_BACKUP_FILE_NAME_FORMAT % collection)
+            restore_mongo_collection_local(collection, backup_file_path)
+        # TODO always scrub the data when restore-local is used because it's only for development?
+        if args.scrub:
+            scrub_dev_data()
 
 if __name__ == '__main__':
     main_parser = argparse.ArgumentParser(description=("Backup script for "
