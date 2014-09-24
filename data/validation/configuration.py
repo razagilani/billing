@@ -1,10 +1,12 @@
 """Validation logic for the configuration file.
 """
-
+from boto.s3.connection import OrdinaryCallingFormat, S3Connection
 from formencode.schema import Schema
-from formencode.validators import StringBool, String, URL, Int, Email
+from formencode.validators import StringBool, String, URL, Int, Email, OneOf
+from formencode.compound import All
 from os.path import isdir
 from formencode.api import FancyValidator, Invalid
+
 
 class TCPPort(Int):
     min = 1
@@ -14,6 +16,14 @@ class Directory(FancyValidator):
     def _convert_to_python(self, value, state):
         if isdir(value): return value
         raise Invalid("Please specify a valid directory", value, state)
+
+class CallingFormat(FancyValidator):
+    def _convert_to_python(self, value, state):
+        if value == 'OrdinaryCallingFormat':
+            return OrdinaryCallingFormat()
+        elif value == 'DefaultCallingFormat':
+            return S3Connection.DefaultCallingFormat
+        raise Invalid('Please specify a valid calling format.')
 
 class runtime(Schema):
     integrate_nexus = StringBool()
@@ -36,6 +46,7 @@ class bill(Schema):
     utilitybillpath = String()
     billpath = String()
     utility_bill_trash_directory = String()
+    bucket = String()
 
 class statedb(Schema):
     uri = String()
@@ -69,6 +80,19 @@ class reebillreconciliation(Schema):
 class reebillestimatedrevenue(Schema):
     log_directory = Directory()
     report_directory = Directory()
+
+class amqp(Schema):
+    exchange = String()
+
+class aws_s3(Schema):
+    aws_access_key_id = String()
+    aws_secret_access_key = String()
+    host = String()
+    port = TCPPort()
+    is_secure = StringBool()
+    calling_format = All(CallingFormat(),
+                         OneOf(['OrdinaryCallingFormat',
+                                'DefaultCallingFormat']))
 
 #Logging
 

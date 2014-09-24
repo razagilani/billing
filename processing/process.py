@@ -13,11 +13,12 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from processing.state import MYSQLDB_DATETIME_MIN
 
-from billupload import ACCOUNT_NAME_REGEX
+ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Session, \
-    Payment, MYSQLDB_DATETIME_MIN
+    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
+    Payment, Utility
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, NotUniqueException, ConfirmAdjustment, FormulaError
@@ -200,7 +201,7 @@ class Process(object):
             utilbill.service = service
 
         if utility is not None:
-            utilbill.utility = utility
+            utilbill.utility = self.state_db.get_create_utility(utility)
 
         if rate_class is not None:
             utilbill.rate_class = rate_class
@@ -301,7 +302,7 @@ class Process(object):
         return reebill
 
     def upload_utility_bill(self, account, service, begin_date,
-            end_date, bill_file, file_name, utility=None, rate_class=None,
+            end_date, bill_file, utility=None, rate_class=None,
             total=0, state=UtilBill.Complete):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
@@ -352,7 +353,7 @@ class Process(object):
 
             q = session.query(UtilBill).\
                 filter_by(rate_class=customer.fb_rate_class).\
-                filter_by(utility=customer.fb_utility_name).\
+                filter_by(utility=customer.fb_utility).\
                 filter_by(processed=True).\
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
@@ -372,8 +373,8 @@ class Process(object):
             billing_address = customer.fb_billing_address
             service_address = customer.fb_service_address
 
-        utility = utility if utility else getattr(predecessor, 'utility', "")
-
+        utility = self.state_db.get_create_utility(utility) if utility else \
+            getattr(predecessor, 'utility', None)
         rate_class = rate_class if rate_class else \
             getattr(predecessor, 'rate_class', "")
 
@@ -389,17 +390,7 @@ class Process(object):
         session.flush()
 
         if bill_file is not None:
-            # if there is a file, get the Python file object and name
-            # string from CherryPy, and pass those to BillUpload to upload
-            # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billupload.upload(new_utilbill, account,
-                    bill_file, file_name)
-            if not upload_result:
-                # TODO there is no test coverage for this situation; fix that
-                # after utility bill files are stored in S3
-                raise IOError('File upload failed: %s %s %s' % (
-                        account, new_utilbill.id, file_name))
-        session.flush()
+            self.billupload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao.\
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
@@ -436,11 +427,7 @@ class Process(object):
         if utility_bill.is_attached():
             raise ValueError("Can't delete an attached utility bill.")
 
-        try:
-            path = self.billupload.delete_utilbill_file(utility_bill)
-        except IOError:
-            # file never existed or could not be found
-            path = None
+        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -448,8 +435,7 @@ class Process(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-
-        return utility_bill, path
+        return utility_bill
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
@@ -610,7 +596,7 @@ class Process(object):
                     .filter(UtilBill.customer == customer)\
                     .filter(not_(UtilBill._utilbill_reebills.any()))\
                     .filter(UtilBill.service == utilbill.service)\
-                    .filter(UtilBill.utility == utilbill.utility)\
+                    .filter(UtilBill.utility_id == utilbill.utility_id)\
                     .filter(UtilBill.period_start >= utilbill.period_end)\
                     .order_by(UtilBill.period_end).first()
                 if successor is None:
@@ -846,8 +832,7 @@ class Process(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            full_path = self.billupload.get_reebill_file_path(account,
-                    sequence)
+            full_path = self.billupload.get_reebill_file_path(account, sequence)
             # If the file exists, delete it, otherwise don't worry.
             try:
                 os.remove(full_path)
@@ -1074,7 +1059,7 @@ class Process(object):
         # render all the bills
         for reebill in all_reebills:
             the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
+                                                        reebill.sequence)
             dirname, basename = os.path.split(the_path)
             self.renderer.render(reebill.customer.account,
                     reebill.sequence, dirname, basename, False)
@@ -1091,8 +1076,8 @@ class Process(object):
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
-        bill_file_paths = [self.billupload.get_reebill_file_path(account,
-                    s) for s in sequences]
+        bill_file_paths = [self.billupload.get_reebill_file_path(account, s)
+                           for s in sequences]
         self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
                 bill_file_paths)
 
@@ -1226,8 +1211,8 @@ class Process(object):
         """ Returns a list of dictonaries (containing Account, Nexus Codename,
           Casual name, Primus Name, Utility Service Address, Date of last
           issued bill, Days since then and the last event) and the length
-          of the list for all accounts. If account is given, the only the
-          accounts dictionary is returned """
+          of the list for all accounts. If account is given, only that
+          account's dictionary is returned """
         grid_data = self.state_db.get_accounts_grid_data(account)
         name_dicts = self.nexus_util.all_names_for_accounts(
                 [row[0] for row in grid_data])
