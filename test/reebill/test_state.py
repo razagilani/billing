@@ -1,3 +1,6 @@
+'''Tests for ReeBill-specific data-access objects, including the database.
+Currently the only one is StateDB.
+'''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
 init_logging()
 
@@ -21,9 +24,7 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(TestCaseWithSetup):
-    '''Tests for ReeBill-specific data-access objects, including the database.
-    '''
+class StateDBTest(TestCaseWithSetup):
 
     def setUp(self):
         # clear out database
