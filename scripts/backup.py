@@ -92,7 +92,7 @@ class UnGzipFile(object):
         uncompressed_data = self._decompressor.decompress(data)
         self._fileobj.write(uncompressed_data)
 
-def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
+def write_gzipped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
     '''Write the file 'in_file' to 's3_key' (boto.s3.key.Key object). A
     multipart upload is used so that 'in_file' does not have to support seeking
     (meaning it can be a file with indeterminate length, like the stdout of a
@@ -124,7 +124,7 @@ def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
         raise
     multipart_upload.complete_upload()
 
-def write_gizpped_to_file(in_file, out_file):
+def write_gzipped_to_file(in_file, out_file):
     '''Write the file 'in_file' to 's3_key' (boto.s3.key.Key object). A
     multipart upload is used so that 'in_file' does not have to support seeking
     (meaning it can be a file with indeterminate length, like the stdout of a
@@ -163,26 +163,26 @@ def run_command(command):
 def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
+    write_gzipped_to_s3(stdout, s3_key, check_exit_status)
 
 def backup_mysql_local(file_path):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     with open(file_path,'wb') as out_file:
-        write_gizpped_to_file(stdout, out_file)
+        write_gzipped_to_file(stdout, out_file)
 
 def backup_mongo_collection(collection_name, s3_key):
     command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
             host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
+    write_gzipped_to_s3(stdout, s3_key, check_exit_status)
 
 def backup_mongo_collection_local(collection_name, file_path):
     command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
             host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     with open(file_path,'wb') as out_file:
-        write_gizpped_to_file(stdout, out_file)
+        write_gzipped_to_file(stdout, out_file)
 
 def restore_mysql_s3(bucket, root_password):
     command = MYSQL_COMMAND % dict(db_params, user='root',
