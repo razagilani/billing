@@ -40,7 +40,7 @@ Ext.Ajax.request({
             stores: [
                 'Accounts', 'AccountsMemory', 'AccountsFilter', 'IssuableReebills', 'IssuableReebillsMemory', 'EstimatedRevenue', 'Preferences',
                 'JournalEntries', 'Payments', 'Charges', 'Reconciliations', 'ReebillCharges', 'Reebills',
-                'Services', 'Timestamps', 'Units', 'UtilityBills', 'UtilityBillsMemory', 'UtilityBillRegisters', 'ReeBillVersions'
+                'Services', 'ServiceTypes', 'Timestamps', 'Units', 'UtilityBills', 'UtilityBillsMemory', 'UtilityBillRegisters', 'ReeBillVersions'
             ],
 
             models: [
