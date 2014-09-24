@@ -1595,7 +1595,7 @@ class StateDB(object):
         # NOTE: with the old database schema (one reebill row for all versions)
         # this method returned False when the 'version' argument was higher
         # than max_version. that was probably the wrong behavior, even though
-        # test_state:StateTest.test_versions tested for it.
+        # test_state:StateDBTest.test_versions tested for it.
         session = Session()
         try:
             if version == 'max':
