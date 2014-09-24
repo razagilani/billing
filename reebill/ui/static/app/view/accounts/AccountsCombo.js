@@ -9,14 +9,36 @@ Ext.define('ReeBill.view.AccountsCombo', {
         'Ext.XTemplate',
         '<tpl for=".">',
         '<div class="x-boundlist-item" >',
-        '{account} - {codename} - {casualname} - {primusname} - {lastrateclass}',
+
+        '{account} - ',
+        '<tpl if=\'values.codename || values.casualname || values.primusname\'>',
+        '<tpl if=\'values.codename\'>{codename}</tpl>',
+        '<tpl if=\'values.codename && values.casualname\'>/</tpl>',
+        '<tpl if=\'values.casualname\'>{casualname}</tpl>',
+        '<tpl if=\'values.casualname && values.primusname\'>/</tpl>',
+        '<tpl if=\'values.primusname\'>{primusname}</tpl>',
+        ' - ',
+        '</tpl>',
+        '{fb_utility_name}:{fb_rate_class}',
+
         '</div>',
         '</tpl>'
     ),
     displayTpl: Ext.create(
         'Ext.XTemplate',
         '<tpl for=".">',
-        '{account} - {codename} - {casualname} - {primusname} - {lastrateclass}',
+
+        '{account} - ',
+        '<tpl if=\'values.codename || values.casualname || values.primusname\'>',
+        '<tpl if=\'values.codename\'>{codename}</tpl>',
+        '<tpl if=\'values.codename && values.casualname\'>/</tpl>',
+        '<tpl if=\'values.casualname\'>{casualname}</tpl>',
+        '<tpl if=\'values.casualname && values.primusname\'>/</tpl>',
+        '<tpl if=\'values.primusname\'>{primusname}</tpl>',
+        ' - ',
+        '</tpl>',
+        '{fb_utility_name}:{fb_rate_class}',
+
         '</tpl>'
     ),
 
