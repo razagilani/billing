@@ -1,3 +1,6 @@
+'''Tests for ReeBill-specific data-access objects, including the database.
+Currently the only one is StateDB.
+'''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
 init_logging()
 
@@ -11,7 +14,6 @@ from billing import init_config, init_model
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
     Address
-from billing.exc import NoSuchBillException
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -22,9 +24,7 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(TestCaseWithSetup):
-
-
+class StateDBTest(TestCaseWithSetup):
 
     def setUp(self):
         # clear out database
