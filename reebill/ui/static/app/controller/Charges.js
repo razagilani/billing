@@ -23,7 +23,7 @@ Ext.define('ReeBill.controller.Charges', {
         selector: 'grid[id=utilityBillsGrid]'
     },{
         ref: 'removeCharge',
-        selector: 'button[action=removeCharge]'
+        selector: '[action=removeCharge]'
     },{
         ref: 'formulaField',
         selector: 'formulaField'
@@ -47,16 +47,16 @@ Ext.define('ReeBill.controller.Charges', {
             'panel[name=chargesTab]': {
                 activate: this.handleActivate
             },
-            'button[action=newCharge]': {
+            '[action=newCharge]': {
                 click: this.handleNew
             },
-            'button[action=removeCharge]': {
+            '[action=removeCharge]': {
                 click: this.handleDelete
             },
-            'button[action=regenerateCharge]': {
+            '[action=regenerateCharge]': {
                 click: this.handleRegenerate
             },
-            'button[action=recomputeCharges]': {
+            '[action=recomputeCharges]': {
                 click: this.handleRecompute
             },
             'formulaField':{
@@ -100,7 +100,7 @@ Ext.define('ReeBill.controller.Charges', {
      */
     handleFormulaFieldEnter: function(f, e) {
         if (e.getKey() == e.ENTER) {
-            var field = this.getFormulaField()
+            var field = this.getFormulaField();
             var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
             selected.set('quantity_formula', field.getValue());
             this.getChargesGrid().focus();
@@ -166,6 +166,11 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         store.add({'name': 'New RSI'});
+        store.sync({success:function(batch){
+            var record = batch.operations[0].records[0];
+            var plugin = this.getChargesGrid().findPlugin('cellediting');
+            plugin.startEdit(record, 2);
+        }, scope: this});
     },
 
     /**
