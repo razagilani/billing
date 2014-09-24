@@ -13,9 +13,6 @@ from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException,
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import testing_utils
 
-
-
-# TODO: move this into setUp and use it in every test
 class MockReeGetter(object):
     def __init__(self, quantity):
         self.quantity = quantity
@@ -24,43 +21,6 @@ class MockReeGetter(object):
                                   use_olap=True, verbose=False):
         for reading in reebill.readings:
             reading.renewable_quantity = self.quantity
-
-
-example_charge_fields = [
-    dict(rate=23.14,
-         rsi_binding='PUC',
-         description='Peak Usage Charge',
-         quantity_formula='1'),
-    dict(rate=0.03059,
-         rsi_binding='RIGHT_OF_WAY',
-         roundrule='ROUND_HALF_EVEN',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rate=0.01399,
-         rsi_binding='SETF',
-         roundrule='ROUND_UP',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rsi_binding='SYSTEM_CHARGE',
-         rate=11.2,
-         quantity_formula='1'),
-    dict(rsi_binding='DELIVERY_TAX',
-         rate=0.07777,
-         quantity_units='therms',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rate=.2935,
-         rsi_binding='DISTRIBUTION_CHARGE',
-         roundrule='ROUND_UP',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rate=.7653,
-         rsi_binding='PGC',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rate=0.006,
-         rsi_binding='EATF',
-         quantity_formula='REG_TOTAL.quantity'),
-    dict(rate=0.06,
-         rsi_binding='SALES_TAX',
-         quantity_formula=('SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
-                           'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
-                           'SETF.total + EATF.total + DELIVERY_TAX.total'))]
 
 class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
     '''Tests that involve both utility bills and reebills. TODO: each of
@@ -1610,6 +1570,44 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          date(2012, 2, 1), StringIO('January 2012'), 'january.pdf')
         utilbill_id = self.process.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
+
+        example_charge_fields = [
+            dict(rate=23.14,
+                 rsi_binding='PUC',
+                 description='Peak Usage Charge',
+                 quantity_formula='1'),
+            dict(rate=0.03059,
+                 rsi_binding='RIGHT_OF_WAY',
+                 roundrule='ROUND_HALF_EVEN',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rate=0.01399,
+                 rsi_binding='SETF',
+                 roundrule='ROUND_UP',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rsi_binding='SYSTEM_CHARGE',
+                 rate=11.2,
+                 quantity_formula='1'),
+            dict(rsi_binding='DELIVERY_TAX',
+                 rate=0.07777,
+                 quantity_units='therms',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rate=.2935,
+                 rsi_binding='DISTRIBUTION_CHARGE',
+                 roundrule='ROUND_UP',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rate=.7653,
+                 rsi_binding='PGC',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rate=0.006,
+                 rsi_binding='EATF',
+                 quantity_formula='REG_TOTAL.quantity'),
+            dict(rate=0.06,
+                 rsi_binding='SALES_TAX',
+                 quantity_formula=(
+                     'SYSTEM_CHARGE.total + DISTRIBUTION_CHARGE.total + '
+                     'PGC.total + RIGHT_OF_WAY.total + PUC.total + '
+                     'SETF.total + EATF.total + DELIVERY_TAX.total'))
+        ]
 
         # there are no charges in this utility bill yet because there are no
         # other utility bills in the db, so add charges. (this is the same way
