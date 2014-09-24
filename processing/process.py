@@ -25,15 +25,15 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 class Process(object):
     def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, ree_getter, journal_dao,
-            splinter=None, logger=None):
+            nexus_util, bill_mailer, reebill_file_handler,
+            ree_getter, journal_dao, splinter=None, logger=None):
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
-        self.renderer = renderer
+        self.reebill_file_handler = reebill_file_handler
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
@@ -1084,8 +1084,7 @@ class Process(object):
             the_path = self.billupload.get_reebill_file_path(account,
                     reebill.sequence)
             dirname, basename = os.path.split(the_path)
-            self.renderer.render(reebill.customer.account,
-                    reebill.sequence, dirname, basename, False)
+            self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]
@@ -1274,6 +1273,10 @@ class Process(object):
         rows = list(rows_dict.itervalues())
         return len(rows), rows
 
+    def render_reebill(self, account, sequence):
+        reebill = self.state_db.get_reebill(account, sequence)
+        self.reebill_file_handler.render(reebill)
+        
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
