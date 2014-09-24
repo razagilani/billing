@@ -147,7 +147,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             }
         # Create new account "88888" based on template account "99999",
         # which was created in setUp
-        self.process.create_new_account('88888', 'New Account',
+        self.process.create_new_account('88888', 'New Account', 'thermal',
                                         0.6, 0.2, billing_address,
                                         service_address, '100000')
 
@@ -217,15 +217,15 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # it should not be possible to create an account that already
         # exists
         self.assertRaises(ValueError, self.process.create_new_account,
-                          '88888', 'New Account', 0.6, 0.2,
-                          billing_address, service_address, '99999')
+            '88888', 'New Account', 'pv', 0.6, 0.2,
+            billing_address, service_address, '99999')
 
         # try creating another account when the template account has no
         # utility bills yet
-        self.process.create_new_account('77777', 'New Account',
-                                        0.6, 0.2, billing_address, service_address, '88888')
-        self.process.create_new_account('66666', 'New Account',
-                                        0.6, 0.2, billing_address, service_address, '88888')
+        self.process.create_new_account('77777', 'New Account', 'thermal',
+                0.6, 0.2, billing_address, service_address, '88888')
+        self.process.create_new_account('66666', 'New Account', 'thermal',
+            0.6, 0.2, billing_address, service_address, '88888')
 
         # Try rolling a reebill for a new account that has no utility bills uploaded yet
         self.assertRaises(NoResultFound, self.process.roll_reebill,
@@ -286,10 +286,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual('electricity', utilbill.service)
 
         # change "total" aka "total_charges"
-        # change "total" aka "total_charges"
         self.process.update_utilbill_metadata(utilbill.id,
-                                              total_charges=200)
-        self.assertEqual(200, utilbill.total_charges)
+                                              target_total=200)
+        self.assertEqual(200, utilbill.target_total)
         # NOTE "total" is not in utility bill Mongo documents, only MySQL
 
         # change utility name
@@ -541,21 +540,24 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'city': 'Washington',
             'state': 'DC',
             'postal_code': '20036',
-            }
+        }
         service_address = {
             'addressee': 'Skyline Innovations',
             'street': '1606 20th St. NW',
             'city': 'Washington',
             'state': 'DC',
             'postal_code': '20009',
-            }
+        }
 
-        self.process.create_new_account(acc_a, 'Customer A',
-                                        .12, .34, billing_address, service_address, '100001')
-        self.process.create_new_account(acc_b, 'Customer B',
-                                        .12, .34, billing_address, service_address, '100001')
-        self.process.create_new_account(acc_c, 'Customer C',
-                                        .12, .34, billing_address, service_address, '100001')
+        self.process.create_new_account(acc_a, 'Customer A', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
+        self.process.create_new_account(acc_b, 'Customer B', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
+        self.process.create_new_account(acc_c, 'Customer C', 'thermal',
+                                        .12, .34, billing_address,
+                                        service_address, '100001')
 
         # new customers also need to be in nexus for 'update_renewable_readings' to
         # work (using mock skyliner)
@@ -918,59 +920,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     setup process for each testj and there is no need to make assertions about
     the behavior of code that only involves utility bills.
     '''
-    def test_list_account_status(self):
-        count, data = self.process.list_account_status()
-        self.assertEqual(3, count)
-        self.assertEqual([{
-                              'account': '99999',
-                              'lastrateclass': '',
-                              'casualname': 'Example 1',
-                              'utilityserviceaddress': '',
-                              'lastissuedate': '',
-                              'provisionable': False,
-                              'codename': '',
-                              'lastperiodend': None,
-                              'primusname': '1785 Massachusetts Ave.',
-                              'lastevent': '',
-                              }, {
-                              'account': '100001',
-                              'lastrateclass': 'Other Rate Class',
-                              'casualname': 'Example 4',
-                              'utilityserviceaddress': '123 Test Street, Test City, XX',
-                              'lastissuedate': '',
-                              'provisionable': False,
-                              'codename': '',
-                              'lastperiodend': date(2012, 1, 31),
-                              'primusname': '1788 Massachusetts Ave.',
-                              'lastevent': '',
-                              }, {
-                              'account': '100000',
-                              'lastrateclass': 'Test Rate Class Template',
-                              'casualname': 'Example 3',
-                              'utilityserviceaddress': '123 Test Street, Test City, XX',
-                              'lastissuedate': '',
-                              'provisionable': False,
-                              'codename': '',
-                              'lastperiodend': date(2012, 2, 28),
-                              'primusname': '1787 Massachusetts Ave.',
-                              'lastevent': '',
-                              }], data)
-
-        # get only one account
-        count, data = self.process.list_account_status(account='99999')
-        self.assertEqual(1, count)
-        self.assertEqual([{
-                              'account': '99999',
-                              'lastrateclass': '',
-                              'casualname': 'Example 1',
-                              'utilityserviceaddress': '',
-                              'lastissuedate': '',
-                              'provisionable': False,
-                              'codename': '',
-                              'lastperiodend': None,
-                              'primusname': '1785 Massachusetts Ave.',
-                              'lastevent': '',
-                              }], data)
     def setup_dummy_utilbill_calc_charges(self, acc, begin_date, end_date):
         """Upload a dummy-utilbill, add an RSI, and calculate charges
         """
@@ -986,6 +935,71 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                    }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
         self.process.refresh_charges(utilbill.id)  # creates charges
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
+    def test_list_account_status(self):
+        count, data = self.process.list_account_status()
+        self.assertEqual(3, count)
+        self.assertEqual([{
+            'account': '99999',
+            'fb_rate_class': 'Test Rate Class Template',
+            'fb_service_address': None,
+            'fb_utility_name': 'Test Utility Company Template',
+            'lastrateclass': '',
+            'casualname': 'Example 1',
+            'lastutilityserviceaddress': '',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': None,
+            'primusname': '1785 Massachusetts Ave.',
+            'lastevent': '',
+            }, {
+            'account': '100001',
+            'fb_rate_class': 'Other Rate Class',
+            'fb_service_address': False,
+            'fb_utility_name': 'Other Utility',
+            'lastrateclass': 'Other Rate Class',
+            'casualname': 'Example 4',
+            'lastutilityserviceaddress': '123 Test Street, Test City, XX',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': date(2012, 1, 31),
+            'primusname': '1788 Massachusetts Ave.',
+            'lastevent': '',
+            }, {
+            'account': '100000',
+            'fb_rate_class': 'Test Rate Class Template',
+            'fb_service_address': False,
+            'fb_utility_name': 'Test Utility Company Template',
+            'lastrateclass': 'Test Rate Class Template',
+            'casualname': 'Example 3',
+            'lastutilityserviceaddress': '123 Test Street, Test City, XX',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': date(2012, 2, 28),
+            'primusname': '1787 Massachusetts Ave.',
+            'lastevent': '',
+        }], data)
+
+        # get only one account
+        count, data = self.process.list_account_status(account='99999')
+        self.assertEqual(1, count)
+        self.assertEqual([{
+            'account': '99999',
+            'fb_rate_class': 'Test Rate Class Template',
+            'fb_service_address': None,
+            'fb_utility_name': 'Test Utility Company Template',
+            'lastrateclass': '',
+            'casualname': 'Example 1',
+            'lastutilityserviceaddress': '',
+            'lastissuedate': '',
+            'provisionable': False,
+            'codename': '',
+            'lastperiodend': None,
+            'primusname': '1785 Massachusetts Ave.',
+            'lastevent': '',
+        }], data)
 
     def test_get_late_charge(self):
         '''Tests computation of late charges.
@@ -1079,9 +1093,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          date(2000, 3, 1), date(2000, 4, 1), StringIO('March 2000'),
                                          'march.pdf')
         bill3 = self.process.roll_reebill(acc)
-        self.assertEqual(None, self.process.get_late_charge(bill3,
+        self.assertEqual(0, self.process.get_late_charge(bill3,
                                                             date(1999, 12, 31)))
-        self.assertEqual(None, self.process.get_late_charge(bill3,
+        self.assertEqual(0, self.process.get_late_charge(bill3,
                                                             date(2013, 1, 1)))
 
         # late charge should be based on the version with the least total
@@ -1522,6 +1536,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(reebill.processed, False)
         # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
         self.process.issue(acc, reebill.sequence, issue_date=datetime(2012,3,10))
+        self.assertRaises(IssuedBillError, self.process.bind_renewable_energy, acc, reebill.sequence)
         self.assertRaises(IssuedBillError,
                           self.process.toggle_reebill_processed, acc, reebill.sequence,
                           apply_corrections=False)
@@ -1606,7 +1621,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             'postal_code': '20009',
             }
         self.process.create_new_account('55555', 'Another New Account',
-                                        0.6, 0.2, billing_address, service_address, '99999')
+                                        'thermal', 0.6, 0.2, billing_address,
+                                        service_address, '99999')
         self.assertRaises(ValueError, self.process.roll_reebill,
                           '55555', start_date=date(2013, 2, 1))
 
@@ -1941,42 +1957,28 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             u"addressee" : u"Test Customer 1 Service",
             u"street" : u"123 Test Street"
         }
-        account_info = self.process.get_sequential_account_info(
-            account, 1)
-        self.assertDictContainsSubset(billing_address, account_info['billing_address'])
-        self.assertDictContainsSubset(service_address, account_info['service_address'])
+        account_info = self.process.get_sequential_account_info(account, 1)
+        self.assertDictContainsSubset(billing_address,
+                                      account_info['billing_address'])
+        self.assertDictContainsSubset(service_address,
+                                      account_info['service_address'])
         self.assertEqual(account_info['discount_rate'], 0.12)
         self.assertEqual(account_info['late_charge_rate'], 0.34)
 
-        # add two more utility bills: a Hypothetical one, then a Complete one
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 6, 3), date(2013, 7, 1),
-                                         None, 'no file',
-                                         state=UtilBill.Hypothetical)
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 7, 1),
-                                         date(2013, 7, 30),
-                                         StringIO('July 2013'),
-                                         'july.pdf')
-        utilbill_data, count = self.process.get_all_utilbills_json(
-            account, 0, 30)
-        self.assertEqual(4, count)
-        self.assertEqual(['Final', 'Missing', 'Final', 'Final'],
+        # add two more utility bills: UtilityEstimated and Complete
+        self.process.upload_utility_bill(account, 'gas', date(2013, 7, 1),
+                date(2013, 7, 30), StringIO('July 2013'), 'july.pdf')
+        utilbill_data, count = self.process.get_all_utilbills_json(account,
+                0, 30)
+        self.assertEqual(3, count)
+        self.assertEqual(['Final', 'Final', 'Final'],
                          [u['state'] for u in utilbill_data])
 
-        # The next utility bill isn't estimated or final, so
-        # create_next_reebill should fail
-        self.assertRaises(NoSuchBillException,
-                          self.process.roll_reebill, account)
-
-        # replace Hypothetical bill with a UtilityEstimated one.
-        self.process.upload_utility_bill(account, 'gas',
-                                         date(2013, 6, 3), date(2013, 7, 1),
-                                         StringIO('June 2013'),
-                                         'june.pdf',
-                                         state=UtilBill.UtilityEstimated)
-        utilbill_data, count = self.process.get_all_utilbills_json(
-            account, 0, 30)
+        self.process.upload_utility_bill(account, 'gas', date(2013, 6, 3),
+                date(2013, 7, 1), StringIO('June 2013'), 'june.pdf',
+                state=UtilBill.UtilityEstimated)
+        utilbill_data, count = self.process.get_all_utilbills_json(account,
+                0, 30)
         self.assertEqual(4, count)
         self.assertEqual(['Final', 'Utility Estimated', 'Final', 'Final'],
                          [u['state'] for u in utilbill_data])
@@ -2007,6 +2009,47 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # bills
         with self.assertRaises(NoSuchBillException) as context:
             self.process.roll_reebill(account)
+
+    def test_list_all_versions(self):
+        account = '99999'
+        utilbill = self.process.upload_utility_bill(
+            account, 'gas', date(2013, 5, 2), date(2013, 6, 3),
+            StringIO('May 2013'), 'may.pdf')
+        reebill = self.process.roll_reebill(
+            account, start_date=date(2013, 4, 4))
+        self.process.compute_reebill(account, 1)
+        self.process.issue(account, 1, issue_date=datetime(2013, 5, 1))
+        self.process.new_version(account, 1)
+        reebill_data = self.process.list_all_versions(account, 1)
+        dicts = [{
+            'sequence': 1,
+            'version': 1,
+            'issued': 0,
+            'issue_date': None,
+            'payment_received': 0.,
+            'period_start': date(2013, 5, 2),
+            'period_end': date(2013, 6, 3),
+            'prior_balance': 0.,
+            'processed': False,
+            'balance_forward': 0.,
+            'corrections': '#1 not issued'
+        }, {
+            'sequence': 1,
+            'version': 0,
+            'issued': 1,
+            'issue_date': datetime(2013, 5, 1),
+            'payment_received': 0.,
+            'period_start': date(2013, 5, 2),
+            'period_end': date(2013, 6, 3),
+            'prior_balance': 0.,
+            'processed': 1,
+            'balance_forward': 0.,
+            'corrections': '-'
+        }]
+
+        for i, reebill_dct in enumerate(reebill_data):
+            self.assertDictContainsSubset(dicts[i], reebill_dct)
+
 
     def test_compute_reebill(self):
         '''Basic test of reebill processing with an emphasis on making sure
@@ -2323,6 +2366,24 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                          total_reading.renewable_quantity)
         self.assertEqual('btu', tou_reading.unit)
         self.assertEqual(tou_renewable_btu, tou_reading.renewable_quantity)
+
+    def test_update_readings(self):
+        '''Simple test to get coverage on Process.update_reebill_readings.
+        This can be expanded or merged into another test method later on.
+        '''
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                                         date(2000, 2, 1), StringIO('January'),
+                                         'january.pdf')
+        self.process.roll_reebill(account, start_date=date(2000, 1, 1))
+        self.process.update_reebill_readings(account, 1)
+        self.process.update_sequential_account_info(account, 1, processed=True)
+        with self.assertRaises(ProcessedBillError):
+            self.process.update_reebill_readings(account, 1)
+        self.process.issue(account, 1)
+        with self.assertRaises(IssuedBillError):
+            self.process.update_reebill_readings(account, 1)
+
 
     def test_compute_realistic_charges(self):
         '''Tests computing utility bill charges and reebill charge for a

@@ -10,10 +10,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
         selector: 'grid[id=issuableReebillsGrid]'
     },{
         ref: 'issueButton',
-        selector: 'button[action=issue]'
+        selector: '[action=issue]'
     },{
         ref: 'issueProcessedButton',
-        selector: 'button[action=issueprocessed]'
+        selector: '[action=issueprocessed]'
     }],
 
     init: function() {
@@ -26,10 +26,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                 activate: this.handleActivate,
                 selectionchange: this.handleRowSelect
             },
-            'button[action=issue]': {
+            '[action=issue]': {
                 click: this.handleIssue
             },
-            'button[action=issueprocessed]': {
+            '[action=issueprocessed]': {
                 click: this.handleIssueProcessed
             }
         });

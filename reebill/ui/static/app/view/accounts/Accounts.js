@@ -32,7 +32,7 @@ Ext.define('ReeBill.view.Accounts', {
         width: 120
     },{
         header: 'Utility Service Address',
-        dataIndex: 'utilityserviceaddress',
+        dataIndex: 'lastutilityserviceaddress',
         width: 200
     },{
         header: 'Last Issued',

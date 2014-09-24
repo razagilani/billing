@@ -43,6 +43,17 @@ Ext.define('ReeBill.view.AccountForm', {
             fieldLabel: 'Late Charge Rate',
             name: 'late_charge_rate',
             allowBlank: false,
+        },{
+            xtype: 'combobox',
+            fieldLabel: 'Renewable Energy Service',
+            name: 'service_type',
+            allowBlank: false,
+            store: 'ServiceTypes',
+            queryMode: 'local',
+            displayField: 'display_name',
+            valueField: 'service_type',
+            value: 'thermal',
+            editable: false
         }]
     },{
         xtype: 'fieldset',
