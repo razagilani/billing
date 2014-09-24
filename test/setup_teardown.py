@@ -1,5 +1,4 @@
 import sys
-from os.path import realpath, join, dirname
 import unittest
 from datetime import date
 import logging
@@ -14,7 +13,6 @@ from billing.processing.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.processing.billupload import BillUpload
 from billing.processing.bill_mailer import Mailer
-from billing.processing.render import ReebillRenderer
 from billing.processing.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
