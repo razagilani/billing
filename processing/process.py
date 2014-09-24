@@ -135,7 +135,6 @@ class Process(object):
                 raise AttributeError("Charge has no attribute '%s'" % k)
             setattr(charge, k, v)
         session.flush()
-        self.refresh_charges(charge.utilbill.id)
         self.compute_utility_bill(charge.utilbill.id)
         return charge
 
@@ -463,13 +462,6 @@ class Process(object):
         utilbill.charges = self.rate_structure_dao.\
             get_predicted_charges(utilbill, UtilBillLoader(session))
         return self.compute_utility_bill(utilbill_id)
-
-
-    def refresh_charges(self, utilbill_id):
-        '''Replaces charges in the utility bill document with newly-created
-        ones based on its rate structures.
-        '''
-        self.state_db.get_utilbill_by_id(utilbill_id).compute_charges()
 
     def compute_utility_bill(self, utilbill_id):
         '''Updates all charges in the utility bill given by 'utilbill_id'.
