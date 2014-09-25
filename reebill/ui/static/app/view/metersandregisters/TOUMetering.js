@@ -51,8 +51,8 @@ Ext.define('ReeBill.view.TOUMetering', {
             increment: 1,
             minValue: 0,
             maxValue: 23,
-            fieldLabel: 'Hollidays',
-            id: 'TOUMeteringSliderHollidays'
+            fieldLabel: 'Holidays',
+            id: 'TOUMeteringSliderHolidays'
         }]
     }],
 

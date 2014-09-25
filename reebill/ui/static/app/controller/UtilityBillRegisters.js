@@ -24,8 +24,8 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         ref: 'TOUWeekendSlider',
         selector: 'multislider[id=TOUMeteringSliderWeekends]'
     },{
-        ref: 'TOUHollidaySlider',
-        selector: 'multislider[id=TOUMeteringSliderHollidays]'
+        ref: 'TOUHolidaySlider',
+        selector: 'multislider[id=TOUMeteringSliderHolidays]'
     },{
         ref: 'TOUPanel',
         selector: '[id=TOUMeteringForm]'
@@ -47,7 +47,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
                 activate: this.handleActivate
             },
             'grid[id=utilityBillRegistersGrid]': {
-                selectionchange: this.handleRowSelect,
+                selectionchange: this.handleRowSelect
             },
             'button[action=newUtilityBillRegister]': {
                 click: this.handleNew
@@ -57,7 +57,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             },
             'button[action=saveTOUMetering]': {
                 click: this.handleSaveTOU
-            },
+            }
         });
 
         store.on({
@@ -132,7 +132,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var panel = this.getTOUPanel();
         var weekday = this.getTOUWeekdaySlider();
         var weekend = this.getTOUWeekendSlider();
-        var holliday = this.getTOUHollidaySlider();
+        var holiday = this.getTOUHolidaySlider();
         var warningLabel = this.getTOUWarningLabel();
 
         // Reset the panel
@@ -140,9 +140,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         panel.setDisabled(false);
         weekday.removeThumbs();
         weekend.removeThumbs();
-        holliday.removeThumbs();
-
-        console.log(weekday.getValues(), weekend.getValues(), holliday.getValues());
+        holiday.removeThumbs();
 
         var peakReg = store.findRecord('register_binding', 'REG_PEAK');
         var intReg = store.findRecord('register_binding', 'REG_INTERMEDIATE');
@@ -162,7 +160,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
                 warningLabel.setVisible(true);
                 weekday.addThumb(5);
                 weekend.addThumb(5);
-                holliday.addThumb(5);
+                holiday.addThumb(5);
             }
         }
 
@@ -172,7 +170,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             warningLabel.setVisible(true);
             weekday.addThumb(9);
             weekend.addThumb(9);
-            holliday.addThumb(9);
+            holiday.addThumb(9);
         }
 
         // Peak - Late Intermediate
@@ -180,7 +178,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             offPeakReg.get('active_periods') === null){
             weekday.addThumb(17);
             weekend.addThumb(17);
-            holliday.addThumb(17);
+            holiday.addThumb(17);
         }
 
         // Late Intermediate - Offpeak
@@ -189,13 +187,116 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
                 warningLabel.setVisible(true);
                 weekday.addThumb(21);
                 weekend.addThumb(21);
-                holliday.addThumb(21);
+                holiday.addThumb(21);
             }
         }
     },
 
     handleSaveTOU: function(){
+        var store = this.getUtilityBillRegistersStore();
+        var weekday = this.getTOUWeekdaySlider();
+        var weekend = this.getTOUWeekendSlider();
+        var holiday = this.getTOUHolidaySlider();
+        var peakReg = store.findRecord('register_binding', 'REG_PEAK');
+        var intReg = store.findRecord('register_binding', 'REG_INTERMEDIATE');
+        var offPeakReg = store.findRecord('register_binding', 'REG_OFFPEAK');
+        console.log(weekday.getValues(), weekend.getValues(), holiday.getValues());
 
-    },
+        if(peakReg === null || offPeakReg === null){
+            return
+        }
+
+        // The Server expects the following format for each register
+        var peak_periods = {
+            active_periods_weekday: null,
+            active_periods_weekend: null,
+            active_periods_holiday: null
+        };
+        var offpeak_periods = {
+            active_periods_weekday: null,
+            active_periods_weekend: null,
+            active_periods_holiday: null
+        };
+        var int_periods = {
+            active_periods_weekday: null,
+            active_periods_weekend: null,
+            active_periods_holiday: null
+        };
+
+        var weekday_values = weekday.getValues();
+        var weekend_values = weekend.getValues();
+        var holiday_values =holiday.getValues();
+
+        if(intReg !== null){
+            // There are 4 thumbs
+            // Offpeak is 0 - first thumb & last thumb - 23
+            offpeak_periods.active_periods_weekday = [
+                [0,weekday_values[0]],
+                [weekday_values[3],23]
+            ];
+            offpeak_periods.active_periods_weekend = [
+                [0,weekend_values[0]],
+                [weekend_values[3],23]
+            ];
+            offpeak_periods.active_periods_holiday = [
+                [0,holiday_values[0]],
+                [holiday_values[3],23]
+            ];
+            // Intermediate is first thumb - second thumb & third thumb - last thumb
+            int_periods.active_periods_weekday = [
+                [weekday_values[0],weekday_values[1]],
+                [weekday_values[2],weekday_values[3]]
+            ];
+            int_periods.active_periods_weekend = [
+                [weekend_values[0],weekend_values[1]],
+                [weekend_values[2],weekend_values[3]]
+            ];
+            int_periods.active_periods_holiday = [
+                [holiday_values[0],holiday_values[1]],
+                [holiday_values[2],holiday_values[3]]
+            ];
+            // Peak is second thumb - third thumb
+            peak_periods.active_periods_weekday = [
+                [weekday_values[1],weekday_values[2]]
+            ];
+            peak_periods.active_periods_weekend = [
+                [weekend_values[1],weekend_values[2]]
+            ];
+            peak_periods.active_periods_holiday = [
+                [holiday_values[1],holiday_values[2]]
+            ];
+            peakReg.set('active_periods', peak_periods);
+            intReg.set('active_periods', int_periods);
+            offPeakReg.set('active_periods', offpeak_periods);
+        }else{
+            // There are 2 thumbs
+            // Offpeak is 0 - first thumb & last thumb - 23
+            offpeak_periods.active_periods_weekday = [
+                [0,weekday_values[0]],
+                [weekday_values[1],23]
+            ];
+            offpeak_periods.active_periods_weekend = [
+                [0,weekend_values[0]],
+                [weekend_values[1],23]
+            ];
+            offpeak_periods.active_periods_holiday = [
+                [0,holiday_values[0]],
+                [holiday_values[1],23]
+            ];
+            // Peak is first thumb - second thumb
+            peak_periods.active_periods_weekday = [
+                [weekday_values[0],weekday_values[1]]
+            ];
+            peak_periods.active_periods_weekend = [
+                [weekend_values[0],weekend_values[1]]
+            ];
+            peak_periods.active_periods_holiday = [
+                [holiday_values[0],holiday_values[1]]
+            ];
+            peakReg.set('active_periods', peak_periods);
+            offPeakReg.set('active_periods', offpeak_periods);
+        }
+        console.log(offpeak_periods, int_periods, peak_periods);
+    }
 
 });
