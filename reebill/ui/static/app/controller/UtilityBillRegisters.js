@@ -29,6 +29,9 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     },{
         ref: 'TOUPanel',
         selector: '[id=TOUMeteringForm]'
+    },{
+        ref: 'TOUWarningLabel',
+        selector: 'label[id=TOUMeteringWarningLabel]'
     }],
 
     init: function() {
@@ -52,10 +55,14 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             'button[action=removeUtilityBillRegister]': {
                 click: this.handleDelete
             },
+            'button[action=saveTOUMetering]': {
+                click: this.handleSaveTOU
+            },
         });
 
         store.on({
             load: this.updateTOUSliders,
+            sync: this.updateTOUSliders,
             scope: this
         })
 
@@ -126,6 +133,15 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var weekday = this.getTOUWeekdaySlider();
         var weekend = this.getTOUWeekendSlider();
         var holliday = this.getTOUHollidaySlider();
+        var warningLabel = this.getTOUWarningLabel();
+
+        // Reset the panel
+        warningLabel.setVisible(false);
+        panel.setDisabled(false);
+        weekday.removeThumbs();
+        weekend.removeThumbs();
+        holliday.removeThumbs();
+
         console.log(weekday.getValues(), weekend.getValues(), holliday.getValues());
 
         var peakReg = store.findRecord('register_binding', 'REG_PEAK');
@@ -134,6 +150,52 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         console.log(peakReg, intReg, offPeakReg);
         if(peakReg === null || offPeakReg === null){
             panel.setDisabled(true);
+            return
         }
-    }
+
+        // Thumbs have to be created in order from left to right
+        // to function properly
+
+        // Offpeak - Early Intermediate
+        if(intReg !== null){
+            if(intReg.get('active_periods') === null){
+                warningLabel.setVisible(true);
+                weekday.addThumb(5);
+                weekend.addThumb(5);
+                holliday.addThumb(5);
+            }
+        }
+
+        // Early Intermediate - Peak
+        if(peakReg.get('active_periods') === null ||
+            offPeakReg.get('active_periods') === null){
+            warningLabel.setVisible(true);
+            weekday.addThumb(9);
+            weekend.addThumb(9);
+            holliday.addThumb(9);
+        }
+
+        // Peak - Late Intermediate
+        if(peakReg.get('active_periods') === null ||
+            offPeakReg.get('active_periods') === null){
+            weekday.addThumb(17);
+            weekend.addThumb(17);
+            holliday.addThumb(17);
+        }
+
+        // Late Intermediate - Offpeak
+        if(intReg !== null){
+            if(intReg.get('active_periods') === null){
+                warningLabel.setVisible(true);
+                weekday.addThumb(21);
+                weekend.addThumb(21);
+                holliday.addThumb(21);
+            }
+        }
+    },
+
+    handleSaveTOU: function(){
+
+    },
+
 });
