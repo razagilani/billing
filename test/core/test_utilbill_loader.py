@@ -4,7 +4,7 @@ from datetime import date
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import init_config, init_model
 from billing.processing.state import Customer, UtilBill, Session, \
-    Address, UtilBillLoader
+    Address, UtilBillLoader, Utility
 from billing.exc import NoSuchBillException
 
 
@@ -18,8 +18,9 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
         customer = Customer('Test Customer', 99999, .12, .34,
-                            'example@example.com', 'FB Test Utility Name',
-                            'FB Test Rate Class', blank_address, blank_address)
+                            'example@example.com', Utility('Test Utility',
+                            Address()), 'FB Test Rate Class', blank_address,
+                            blank_address)
         self.session.add(customer)
         self.session.commit()
 
@@ -34,6 +35,8 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
     def test_get_last_real_utilbill(self):
         customer = self.session.query(Customer).one()
+        washington_gas = customer.fb_utility
+        pepco = Utility('pepco', Address())
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
@@ -41,7 +44,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # one bill
         empty_address = Address()
-        gas_bill_1 = UtilBill(customer, 0, 'gas', 'washgas',
+        gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas,
                               'DC Non Residential Non Heat', empty_address, empty_address,
                               period_start=date(2000,1,1), period_end=date(2000,2,1))
         self.session.add(gas_bill_1)
@@ -53,7 +56,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2000,1,31))
 
         # two bills
-        electric_bill = UtilBill(customer, 0, 'electric', 'pepco',
+        electric_bill = UtilBill(customer, 0, 'electric', pepco,
                                  'whatever', empty_address, empty_address,
                                  period_start=date(2000,1,2), period_end=date(2000,2,2))
         self.assertEqual(electric_bill,
@@ -80,25 +83,25 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # filter by utility and rate class
         self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill('99999',
-                end=date(2000, 3, 1), utility='washgas'))
-        self.assertEqual(gas_bill_1,
-                         self.ubl.get_last_real_utilbill('99999',
+                end=date(2000, 3, 1), utility=gas_bill_1.utility))
+        self.assertEqual(gas_bill_1, self.ubl.get_last_real_utilbill('99999',
                          end=date(2000, 3, 1),
                          rate_class='DC Non Residential Non Heat'))
         self.assertEqual(electric_bill,
                          self.ubl.get_last_real_utilbill('99999',
-                        end=date(2000,3, 1), utility='pepco', rate_class='whatever'))
+                        end=date(2000,3, 1), utility=pepco,
+                        rate_class='whatever'))
         self.assertEqual(electric_bill,
                          self.ubl.get_last_real_utilbill('99999',
                         end=date(2000,3, 1), rate_class='whatever'))
         self.assertEqual(electric_bill,
                          self.ubl.get_last_real_utilbill('99999',
                                                          end=date(2000, 3, 1),
-                                                         utility='pepco',
+                                                         utility=pepco,
                                                          rate_class='whatever'))
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
-                          end=date(2000,1,31), utility='washgas',
+                          end=date(2000,1,31), utility=washington_gas,
                           rate_class='whatever')
 
         # hypothetical utility bills are always ignored
