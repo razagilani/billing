@@ -12,3 +12,4 @@ nose
 nose-progressive
 pudb
 sqlalchemy
+testfixtures

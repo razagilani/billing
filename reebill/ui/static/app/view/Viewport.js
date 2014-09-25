@@ -101,6 +101,12 @@ Ext.define('ReeBill.view.Viewport', {
                         id: 'utilityBillRegistersGrid',
                         region: 'center',
                         collapsible: false
+                    },{
+                        xtype: 'TOUMetering',
+                        id: 'TOUMeteringForm',
+                        region: 'south',
+                        collapsible:false,
+                        floatable: false,
                     }]
                 },{
                     xtype: 'panel',

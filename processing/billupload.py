@@ -6,8 +6,9 @@ from billing import config
 from billing.processing.state import Session, UtilBill
 
 HASH_CHUNK_SIZE = 1024 ** 2
-
 class BillUpload(object):
+    '''Utility bill file handler. TODO: rename.
+    '''
 
     def __init__(self, connection):
         ''':param connection: boto.s3.S3Connection
@@ -71,9 +72,3 @@ class BillUpload(object):
         key.set_contents_from_file(file)
 
     # TODO: this should go away when recent changes are merged
-    def get_reebill_file_path(self, account, sequence):
-        """Return the path for the PDF file of the reebill given by account,
-        sequence.
-        """
-        return os.path.join(config.get('bill', 'billpath'),
-                            account, '%s_%.4d.pdf' % (account, sequence))
