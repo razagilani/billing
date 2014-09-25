@@ -9,7 +9,12 @@ Ext.define('ReeBill.model.UtilityBillRegister', {
             } 
         },
         {name: 'meter_identifier'},
-        {name: 'active_periods'},
+        {name: 'active_periods', convert: function(value, record){
+            if(typeof(value) === 'string'){
+                return Ext.JSON.decode(value);
+            }
+            return value
+        }, defaultValue: null},
         {name: 'identifier'},
         {name: 'reg_type'},
         {name: 'register_binding'},
