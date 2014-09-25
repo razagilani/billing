@@ -523,7 +523,7 @@ class ThermalBillDoc(BillDoc):
         # populate billing address
         fl.append(Spacer(100,20))
         fl.append(Paragraph(b["billing_addressee"], s['BillFieldLg']))
-        fl.append(Paragraph(b["billing_street"], s['BillFieldLg']))
+        fl.append(Paragraph(b["billing_street"], s['BillField']))
         #fl.append(Paragraph(" ".join((b["billing_city"], b["billing_state"], b["billing_postal_code"])), s['BillFieldLg']))
         fl.append(Paragraph(" ".join((b["billing_city"], b["billing_state"], b["billing_postal_code"])), s['BillField']))
         fl.append(UseUpSpace())
@@ -756,7 +756,11 @@ class ThermalBillDoc(BillDoc):
                     None,
                     charge["description"],
                     charge["quantity"],
+                    # quantity units
+                    None,
                     charge["rate"],
+                    # rate units
+                    None,
                     charge["total"],
                 ])
         chargeDetails.append([None, None, None, None, None, None,
