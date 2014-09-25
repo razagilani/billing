@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 from billing.processing.state import UtilBill, UtilBillLoader, Address, Charge, Register, Session
@@ -65,11 +66,16 @@ class UtilbillProcessor(object):
 
         for k in ['description', 'quantity', 'quantity_units',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
-                  'active_periods', 'meter_identifier']:
+                  'meter_identifier']:
             val = rows.get(k, getattr(register, k))
             self.logger.debug("Setting attribute %s on register %s to %s" %
                               (k, register.id, val))
             setattr(register, k, val)
+        if 'active_periods' in rows and rows['active_periods'] is not None:
+            active_periods_str = json.dumps(rows['active_periods'])
+            self.logger.debug("Setting attribute active_periods on register"
+                              " %s to %s" % (register.id, active_periods_str))
+            register.active_periods = active_periods_str
         self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(register.utilbill_id)
         return register
