@@ -9,6 +9,7 @@ Ext.define('ReeBill.model.UtilityBillRegister', {
             } 
         },
         {name: 'meter_identifier'},
+        {name: 'active_periods'},
         {name: 'identifier'},
         {name: 'reg_type'},
         {name: 'register_binding'},
