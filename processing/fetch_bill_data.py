@@ -106,7 +106,7 @@ class RenewableEnergyGetter(object):
                 return total
 
             results = self._usage_data_to_virtual_register(utilbill,
-                energy_function)
+                    energy_function)
             for binding, quantity in results:
                 assert isinstance(binding, basestring)
                 assert isinstance(quantity, (float, int))
@@ -307,29 +307,10 @@ class RenewableEnergyGetter(object):
             total_energy = 0.0
 
             for day in dateutils.date_generator(start, end):
-                # the hour ranges during which we want to accumulate energy in this
-                # shadow register is the entire day for normal registers, or
-                # periods given by 'active_periods_weekday/weekend/holiday' for
-                # time-of-use registers
-                if register.get_active_periods() not in (None, {}):
-                    hour_ranges = map(tuple,
-                        register.get_active_periods()['active_periods_%s' %\
-                                                holidays.get_day_type(day)])
-                elif register.reg_type == 'total':
-                    # For non-TOU registers, only insert renewable energy if the
-                    # register dictionary has the key "type" and its value is
-                    # "total". Every non-TOU utility bill should have exactly one
-                    # such register (and every TOU bill should have at most one).
-                    # If they don't, renewable energy will be double-counted and
-                    # the bill will be wrong. # For explanation see
-                    # https://www.pivotaltracker.com/story/show/46469597
-                    hour_ranges = [(0,23)]
-                else:
-                    if 'type' in register:
-                        print 'register %s skipped because its "type" is "%s"' % (register['identifier'], register['type'])
-                    else:
-                        print 'register %s skipped because its "type" key is missing' % (register['identifier'],)
-                    continue
+                day_type = holidays.get_day_type(day)
+                active_periods = register.get_active_periods()
+                hour_ranges = map(tuple,
+                                  active_periods['active_periods_%s' % day_type])
 
                 for hourrange in hour_ranges:
                     # 5 digits after the decimal points is an arbitrary decision
