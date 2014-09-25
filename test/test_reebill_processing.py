@@ -111,7 +111,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': 'REG_TOTAL.quantity',
                                        'rate': 1
                                    }, utilbill_id=utilbill.id, rsi_binding='New RSI #1')
-        self.process.refresh_charges(utilbill.id)  # creates charges
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
     def test_list_account_status(self):
         count, data = self.process.list_account_status()
@@ -198,7 +197,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'rate': 1,
                                        'group': 'All Charges',
                                        }, utilbill_id=u.id, rsi_binding='New RSI #1')
-        self.process.refresh_charges(u.id)
         self.process.update_utilbill_metadata(u.id, processed=True)
 
         # create first reebill
@@ -886,8 +884,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             rsi_binding='New RSI #1')
 
             p.update_register(ub.registers[0].id, {'quantity': 100})
-
-            p.refresh_charges(ub.id)  # creates charges
             p.compute_utility_bill(ub.id)  # updates charge values
 
         for seq, reg_tot, strd in [(1, 100, base_date),
@@ -1267,10 +1263,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                     'rate': 1},
                                    utilbill_id=id_1,
                                    rsi_binding='New RSI #1')
-        self.process.refresh_charges(id_1)
         self.process.update_utilbill_metadata(id_1, processed=True)
         self.process.regenerate_uprs(id_2)
-        self.process.refresh_charges(id_2)
         self.process.update_utilbill_metadata(id_2, processed=True)
 
         # create, process, and issue reebill
@@ -1633,7 +1627,6 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.add_charge(utilbill_id)
             self.process.update_charge(fields, utilbill_id=utilbill_id,
                                        rsi_binding="New RSI #1")
-        self.process.refresh_charges(utilbill_id)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
