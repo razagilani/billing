@@ -54,7 +54,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         },
         width: 100,
     },{
-        header: 'RSI Binding',
+        header: 'Register Binding',
         dataIndex: 'register_binding',
         sortable: false,
         editor: {
