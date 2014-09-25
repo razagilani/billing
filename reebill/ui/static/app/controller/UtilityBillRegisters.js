@@ -62,7 +62,7 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
 
         store.on({
             load: this.updateTOUSliders,
-            sync: this.updateTOUSliders,
+            beforesync: this.updateTOUSliders,
             scope: this
         })
 
@@ -145,7 +145,6 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var peakReg = store.findRecord('register_binding', 'REG_PEAK');
         var intReg = store.findRecord('register_binding', 'REG_INTERMEDIATE');
         var offPeakReg = store.findRecord('register_binding', 'REG_OFFPEAK');
-        console.log(peakReg, intReg, offPeakReg);
         if(peakReg === null || offPeakReg === null){
             panel.setDisabled(true);
             return
@@ -155,40 +154,59 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         // to function properly
 
         // Offpeak - Early Intermediate
+        var periods;
         if(intReg !== null){
-            if(intReg.get('active_periods') === null){
+            periods = intReg.get('active_periods');
+            if(periods === null){
                 warningLabel.setVisible(true);
                 weekday.addThumb(5);
                 weekend.addThumb(5);
                 holiday.addThumb(5);
+            }else{
+                weekday.addThumb(periods.active_periods_weekday[0][0]);
+                weekend.addThumb(periods.active_periods_weekend[0][0]);
+                holiday.addThumb(periods.active_periods_holiday[0][0]);
             }
         }
 
         // Early Intermediate - Peak
-        if(peakReg.get('active_periods') === null ||
-            offPeakReg.get('active_periods') === null){
+        periods = peakReg.get('active_periods');
+        if(periods === null){
             warningLabel.setVisible(true);
             weekday.addThumb(9);
             weekend.addThumb(9);
             holiday.addThumb(9);
+        }else{
+            weekday.addThumb(periods.active_periods_weekday[0][0]);
+            weekend.addThumb(periods.active_periods_weekend[0][0]);
+            holiday.addThumb(periods.active_periods_holiday[0][0]);
         }
 
         // Peak - Late Intermediate
-        if(peakReg.get('active_periods') === null ||
-            offPeakReg.get('active_periods') === null){
-            weekday.addThumb(17);
-            weekend.addThumb(17);
-            holiday.addThumb(17);
-        }
-
-        // Late Intermediate - Offpeak
         if(intReg !== null){
             if(intReg.get('active_periods') === null){
                 warningLabel.setVisible(true);
-                weekday.addThumb(21);
-                weekend.addThumb(21);
-                holiday.addThumb(21);
+                weekday.addThumb(17);
+                weekend.addThumb(17);
+                holiday.addThumb(17);
+            }else{
+                weekday.addThumb(periods.active_periods_weekday[0][1]);
+                weekend.addThumb(periods.active_periods_weekend[0][1]);
+                holiday.addThumb(periods.active_periods_holiday[0][1]);
             }
+        }
+
+        // Late Intermediate - Offpeak
+        periods = offPeakReg.get('active_periods');
+        if(periods === null){
+            warningLabel.setVisible(true);
+            weekday.addThumb(21);
+            weekend.addThumb(21);
+            holiday.addThumb(21);
+        }else{
+            weekday.addThumb(periods.active_periods_weekday[1][0]);
+            weekend.addThumb(periods.active_periods_weekend[1][0]);
+            holiday.addThumb(periods.active_periods_holiday[1][0]);
         }
     },
 
@@ -200,12 +218,13 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         var peakReg = store.findRecord('register_binding', 'REG_PEAK');
         var intReg = store.findRecord('register_binding', 'REG_INTERMEDIATE');
         var offPeakReg = store.findRecord('register_binding', 'REG_OFFPEAK');
-        console.log(weekday.getValues(), weekend.getValues(), holiday.getValues());
 
         if(peakReg === null || offPeakReg === null){
             return
         }
 
+
+        store.suspendAutoSync();
         // The Server expects the following format for each register
         var peak_periods = {
             active_periods_weekday: null,
@@ -296,7 +315,9 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
             peakReg.set('active_periods', peak_periods);
             offPeakReg.set('active_periods', offpeak_periods);
         }
-        console.log(offpeak_periods, int_periods, peak_periods);
+        // Sync everything at once & reenable autosync
+        store.sync();
+        store.resumeAutoSync();
     }
 
 });
