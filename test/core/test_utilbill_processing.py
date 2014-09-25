@@ -74,7 +74,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                     'description':'a'},
                                    utilbill_id=utilbill_data['id'],
                                    rsi_binding='New RSI #1')
-        self.process.refresh_charges(utilbill_data['id'])
 
         ubdata = self.process.get_all_utilbills_json('88888', 0, 30)[0][0]
         self.assertDictContainsSubset({
@@ -653,7 +652,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # compute_utility_bill should update the document to match
         self.process.compute_utility_bill(utilbill_data['id'])
-        self.process.refresh_charges(utilbill_data['id'])
         charges = self.process.get_utilbill_charges_json(utilbill_data['id'])
 
         # check charges
@@ -740,7 +738,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.add_charge(utilbill_id)
             self.process.update_charge(fields, utilbill_id=utilbill_id,
                                        rsi_binding="New RSI #1")
-        self.process.refresh_charges(utilbill_id)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
