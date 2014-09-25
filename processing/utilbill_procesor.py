@@ -26,8 +26,8 @@ class UtilbillProcessor(object):
         l = []
         session = Session()
         for r in session.query(Register).join(UtilBill,
-                                              Register.utilbill_id == UtilBill.id). \
-                filter(UtilBill.id == utilbill_id).all():
+            Register.utilbill_id == UtilBill.id).\
+            filter(UtilBill.id == utilbill_id).all():
             l.append(r.column_dict())
         return l
 

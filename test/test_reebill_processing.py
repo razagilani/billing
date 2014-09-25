@@ -2,6 +2,9 @@ import json
 import unittest
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
+import pprint
+import os
+from os.path import realpath, join, dirname
 
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
@@ -12,6 +15,7 @@ from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError
 from billing.test import testing_utils
+from testfixtures.tempdirectory import TempDirectory
 
 class MockReeGetter(object):
     def __init__(self, quantity):
@@ -431,8 +435,12 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         acc = '99999'
         # two utilbills, with reebills
         self.process.bill_mailer = Mock()
-        self.process.renderer = Mock()
-        self.process.renderer.render_max_version.return_value = 1
+        self.process.reebill_file_handler = Mock()
+        self.process.reebill_file_handler.render_max_version.return_value = 1
+        self.process.reebill_file_handler.get_file_path = Mock()
+        temp_dir = TempDirectory()
+        self.process.reebill_file_handler.get_file_path.return_value = \
+                temp_dir.path
         self.process.upload_utility_bill(acc, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO('january 2012'),
@@ -471,7 +479,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
-        self.process.renderer.render_max_version.return_value = 2
+        self.process.reebill_file_handler.render_max_version.return_value = 2
         self.process.issue_and_mail(False, account=acc, sequence=2,
                                     recipients=two.email_recipient)
 
@@ -481,13 +489,19 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
 
+        temp_dir.cleanup()
+
     def test_issue_processed_and_mail(self):
         '''Tests issuing and mailing of processed reebills.'''
         acc = '99999'
         # two utilbills, with reebills
         self.process.bill_mailer = Mock()
-        self.process.renderer = Mock()
-        self.process.renderer.render_max_version.return_value = 1
+        self.process.reebill_file_handler = Mock()
+        self.process.reebill_file_handler.render_max_version.return_value = 1
+        self.process.reebill_file_handler.get_file_path = Mock()
+        temp_dir = TempDirectory()
+        self.process.reebill_file_handler.get_file_path.return_value = \
+                temp_dir.path
         self.process.upload_utility_bill(acc, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
                                          StringIO('january 2012'),
@@ -527,7 +541,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
-        self.process.renderer.render_max_version.return_value = 2
+        self.process.reebill_file_handler.render_max_version.return_value = 2
         self.process.issue_and_mail(False, processed=True)
 
         # re-load from mongo to see updated issue date and due date
@@ -535,6 +549,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEquals(True, two.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 2))
         self.assertEquals((two.issue_date + timedelta(30)).date(), two.due_date)
+
+        temp_dir.cleanup()
 
     def test_delete_reebill(self):
         account = '99999'

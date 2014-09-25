@@ -19,15 +19,15 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 class ReebillProcessor(object):
     def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, renderer, ree_getter, journal_dao,
-            splinter=None, logger=None):
+            nexus_util, bill_mailer, reebill_file_handler,
+            ree_getter, journal_dao, splinter=None, logger=None):
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
-        self.renderer = renderer
+        self.reebill_file_handler = reebill_file_handler
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
@@ -522,14 +522,7 @@ class ReebillProcessor(object):
         # because we believe it is confusing to delete the pdf when
         # when a version still exists
         if version == 0:
-            full_path = self.billupload.get_reebill_file_path(account,
-                    sequence)
-            # If the file exists, delete it, otherwise don't worry.
-            try:
-                os.remove(full_path)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            self.reebill_file_handler.delete_file(reebill, ignore_missing=True)
         return version
 
     def create_new_account(self, account, name, service_type, discount_rate,
@@ -740,11 +733,7 @@ class ReebillProcessor(object):
 
         # render all the bills
         for reebill in all_reebills:
-            the_path = self.billupload.get_reebill_file_path(account,
-                    reebill.sequence)
-            dirname, basename = os.path.split(the_path)
-            self.renderer.render(reebill.customer.account,
-                    reebill.sequence, dirname, basename, False)
+            self.reebill_file_handler.render(reebill)
 
         # "the last element" (???)
         most_recent_reebill = all_reebills[-1]
@@ -758,9 +747,10 @@ class ReebillProcessor(object):
             'bill_dates': bill_dates,
             'last_bill': bill_file_names[-1],
         }
-        bill_file_paths = [self.billupload.get_reebill_file_path(account,
-                    s) for s in sequences]
-        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_paths,
+        bill_file_paths = [self.reebill_file_handler.get_file_path(r)
+                for r in all_reebills]
+        bill_file_dir_path = os.path.dirname(bill_file_paths[0])
+        self.bill_mailer.mail(recipient_list, merge_fields, bill_file_dir_path,
                 bill_file_paths)
 
     def get_issuable_reebills_dict(self, processed=False):
@@ -933,6 +923,10 @@ class ReebillProcessor(object):
         rows = list(rows_dict.itervalues())
         return len(rows), rows
 
+    def render_reebill(self, account, sequence):
+        reebill = self.state_db.get_reebill(account, sequence)
+        self.reebill_file_handler.render(reebill)
+        
     def toggle_reebill_processed(self, account, sequence,
                 apply_corrections):
         '''Make the reebill given by account, sequence, processed if
