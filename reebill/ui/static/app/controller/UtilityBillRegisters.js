@@ -17,7 +17,19 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
     },{
         ref: 'removeUtilityBillRegisterButton',
         selector: 'button[action=removeUtilityBillRegister]'
-    }],    
+    },{
+        ref: 'TOUWeekdaySlider',
+        selector: 'multislider[id=TOUMeteringSliderWeekdays]'
+    },{
+        ref: 'TOUWeekendSlider',
+        selector: 'multislider[id=TOUMeteringSliderWeekends]'
+    },{
+        ref: 'TOUHollidaySlider',
+        selector: 'multislider[id=TOUMeteringSliderHollidays]'
+    },{
+        ref: 'TOUPanel',
+        selector: '[id=TOUMeteringForm]'
+    }],
 
     init: function() {
         var me = this,
@@ -41,6 +53,11 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
                 click: this.handleDelete
             },
         });
+
+        store.on({
+            load: this.updateTOUSliders,
+            scope: this
+        })
 
     },
 
@@ -103,5 +120,20 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         store.remove(selectedUtilityBillRegister);
     },
 
+    updateTOUSliders: function(){
+        var store = this.getUtilityBillRegistersStore();
+        var panel = this.getTOUPanel();
+        var weekday = this.getTOUWeekdaySlider();
+        var weekend = this.getTOUWeekendSlider();
+        var holliday = this.getTOUHollidaySlider();
+        console.log(weekday.getValues(), weekend.getValues(), holliday.getValues());
 
+        var peakReg = store.findRecord('register_binding', 'REG_PEAK');
+        var intReg = store.findRecord('register_binding', 'REG_INTERMEDIATE');
+        var offPeakReg = store.findRecord('register_binding', 'REG_OFFPEAK');
+        console.log(peakReg, intReg, offPeakReg);
+        if(peakReg === null || offPeakReg === null){
+            panel.setDisabled(true);
+        }
+    }
 });
