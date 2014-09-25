@@ -141,11 +141,5 @@ class BillUploadTest(unittest.TestCase):
         key_obj = self.bu._get_amazon_bucket().get_key(key_name)
         self.assertEqual('test_file_upload', key_obj.get_contents_as_string())
 
-    def test_get_reebill_file_path(self):
-        expected_path = os.path.join(config.get('bill', 'billpath'),
-                                     'tst_acct', 'tst_acct_0004.pdf')
-        self.assertEqual(expected_path,
-                         self.bu.get_reebill_file_path('tst_acct', 4))
-
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,7 @@ from datetime import date
 import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from processing.state import UtilBill
+from processing.state import UtilBill, Customer, Session
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 
@@ -200,6 +200,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         to BillUpload).'''
         account = '99999'
 
+        s = Session()
+        customer = s.query(Customer).filter_by(account=account).one()
+
         # validation of dates
         bad_dates = [
             (date(2000,1,1), date(2000,1,1,)),
@@ -208,8 +211,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         for start, end in bad_dates:
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(
-                    account, 'electric', start, end, StringIO(), 'january.pdf',
-                    utility='pepco', rate_class='Residential-R')
+                    account, 'electric', start, end, StringIO(),
+                    utility=customer.fb_utility, rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
