@@ -9,7 +9,6 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'quantity_units'},
         {name: 'rate', type: 'float'},
         {name: 'total', type: 'float'},
-        {name: 'processingnote'},
         {name: 'error'},
         {name: 'has_charge'},
         {name: 'quantity_formula'},
