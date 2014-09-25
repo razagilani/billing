@@ -78,11 +78,9 @@ Ext.define('ReeBill.controller.UtilityBillRegisters', {
         if (!selectedBill.length)
             return;
 
-        var params = {
+        store.getProxy().extraParams = {
             utilbill_id: selectedBill[0].get('id')
-        }
-
-        store.getProxy().extraParams = params;
+        };
         store.load();
     },
 
