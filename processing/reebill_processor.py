@@ -18,18 +18,13 @@ from billing.exc import IssuedBillError, NotIssuable, \
 
 
 class ReebillProcessor(object):
-    def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, splinter=None, logger=None):
+    def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
+                 ree_getter, journal_dao, logger=None):
         self.state_db = state_db
-        self.rate_structure_dao = rate_structure_dao
-        self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
         self.reebill_file_handler = reebill_file_handler
-        self.splinter = splinter
-        self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
         self.journal_dao = journal_dao
 
