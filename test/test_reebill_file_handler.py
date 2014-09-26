@@ -1,6 +1,8 @@
 from datetime import date
+from errno import ENOENT
 from unittest import TestCase
 from hashlib import sha1
+import os.path
 
 from testfixtures import TempDirectory
 
@@ -13,15 +15,6 @@ class ReebillFileHandlerTest(TestCase):
         self.temp_dir = TempDirectory()
         self.file_handler = ReebillFileHandler(self.temp_dir.path)
 
-    def tearDown(self):
-        # TODO: this seems to not always remove the directory?
-        self.temp_dir.cleanup()
-
-    def test_render(self):
-        '''Simple test of reebill PDF rendering that checks whether the PDF
-        file matches the expected value. This will tell you when something is
-        broken but it won't tell you what's broken.
-        '''
         ba = Address(addressee='Billing Addressee', street='123 Example St.',
                      city='Washington', state='DC', postal_code='01234')
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
@@ -36,27 +29,34 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-
         u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Rate Class', ba3, sa3,
                      period_start=date(2000,1,1), period_end=date(2000,2,1))
         u.registers = [Register(u, 'All energy', 100, 'therms', 'REGID',
                                 False, 'total', 'REG_TOTAL', [], 'METERID')]
-
-        r = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
+        self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
-        r.replace_readings_from_utility_bill_registers(u)
-        r.charges = [
-            ReeBillCharge(r, 'A', 'Example Charge A', 'Supply', 10, 20, 'kWh',
+        self.reebill.replace_readings_from_utility_bill_registers(u)
+        self.reebill.charges = [
+            ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply', 10, 20, 'kWh',
                           1, 10, 20),
-            ReeBillCharge(r, 'B', 'Example Charge B', 'Distribution', 30, 40,
+            ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution', 30, 40,
                           'kWh', 1, 30, 40),
-        ]
+            ]
 
-        self.file_handler.render(r)
+        self.file_handler.render(self.reebill)
+        # TODO: this seems to not always remove the directory?
+        self.temp_dir.cleanup()
+
+    def test_render_delete(self):
+        '''Simple test of creating and deleting a reebill PDF file. Checking
+        whether the PDF file matches the expected value will tell you when
+        something is broken but it won't tell you what's broken.
+        '''
+        self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time (current date, and some mysterious bytes)
-        path = self.file_handler.get_file_path(r)
+        path = self.file_handler.get_file_path(self.reebill)
         with open(path, 'rb') as pdf_file:
             filtered_lines, prev_line = [], ''
             while True:
@@ -77,3 +77,15 @@ class ReebillFileHandlerTest(TestCase):
         self.assertEqual('9d50228c79b48ce8f9dbc211c0fd532945a4475c',
                 filtered_pdf_hash)
 
+        # delete the file
+        self.assertTrue(os.path.isfile(path))
+        self.file_handler.delete_file(self.reebill)
+        self.assertFalse(os.path.exists(path))
+
+        # since the file is now gone, deleting it will raise an OSError
+        with self.assertRaises(OSError) as context:
+            self.file_handler.delete_file(self.reebill)
+        self.assertEqual(ENOENT, context.exception.errno)
+
+        # unless ignore_missing == True
+        self.file_handler.delete_file(self.reebill, ignore_missing=True)
