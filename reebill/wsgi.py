@@ -189,9 +189,8 @@ class WebResource(object):
             )
 
         # create a ReebillRenderer
-        self.renderer = render.ReebillRenderer(
-            dict(self.config.items('reebillrendering')), self.state_db,
-            self.logger)
+        self.reebill_file_handler = render.ReebillFileHandler(
+                self.config.get('bill', 'billpath'))
 
         self.bill_mailer = Mailer(dict(self.config.items("mailer")))
 
@@ -201,7 +200,7 @@ class WebResource(object):
         # create one Process object to use for all related bill processing
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.renderer,
+            self.billUpload, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
             self.ree_getter, self.journal_dao, logger=self.logger)
 
         # determine whether authentication is on or off
@@ -321,10 +320,13 @@ class AccountsResource(RESTResource):
             'postal_code': row['sa_postal_code'],
         }
 
+        # TODO: for some reason Ext JS converts null into emtpy string
+        if row['service_type'] == '':
+            row['service_type'] = None
         self.process.create_new_account(
-            row['account'], row['name'], float(row['discount_rate']),
-            float(row['late_charge_rate']), billing_address,
-            service_address, row['template_account'])
+                row['account'], row['name'], row['service_type'],
+                float(row['discount_rate']), float(row['late_charge_rate']),
+                billing_address, service_address, row['template_account'])
 
         journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                 row['account'])
@@ -469,9 +471,7 @@ class ReebillsResource(RESTResource):
             rtn = reebill.column_dict()
 
         elif action == 'render':
-            self.renderer.render(account, sequence,
-                self.config.get("bill", "billpath")+ "%s" % account,
-                "%.5d_%.4d.pdf" % (int(account), int(sequence)), False)
+            self.process.render_reebill(int(account), int(sequence))
             rtn = row
 
         elif action == 'mail':
@@ -714,6 +714,9 @@ class ChargesResource(RESTResource):
 
     def handle_put(self, charge_id, *vpath, **params):
         row = cherrypy.request.json
+        if 'quantity_formula' in row and\
+                len(row['quantity_formula'].strip()) == 0:
+            row['quantity_formula'] = '0'
         c = self.process.update_charge(row, charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 

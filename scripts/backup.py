@@ -38,7 +38,7 @@ MONGO_COLLECTIONS = ['users', 'journal']
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
 db_uri = config.get('statedb', 'uri')
-m = re.match(r'^mysql://(\w+):(\w+)+@(\w+):([0-9]+)/(\w+)$', db_uri)
+m = re.match(r'^mysql://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
 # amount of data to send to S3 at one time in bytes
@@ -92,7 +92,7 @@ class UnGzipFile(object):
         uncompressed_data = self._decompressor.decompress(data)
         self._fileobj.write(uncompressed_data)
 
-def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
+def write_gzipped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
     '''Write the file 'in_file' to 's3_key' (boto.s3.key.Key object). A
     multipart upload is used so that 'in_file' does not have to support seeking
     (meaning it can be a file with indeterminate length, like the stdout of a
@@ -124,6 +124,28 @@ def write_gizpped_to_s3(in_file, s3_key, call_before_complete=lambda: None):
         raise
     multipart_upload.complete_upload()
 
+def write_gzipped_to_file(in_file, out_file):
+    '''Write the file 'in_file' to 's3_key' (boto.s3.key.Key object). A
+    multipart upload is used so that 'in_file' does not have to support seeking
+    (meaning it can be a file with indeterminate length, like the stdout of a
+    process).
+
+    'call_before_complete': optional callable that can raise an exception to
+    cancel the upload instead of completing it. (boto's documentation suggests
+    that Amazon may charge for storage of incomplete upload parts.)
+    '''
+
+    count = 1
+    done = False
+    while not done:
+        # write a chunk of gzipped data into 'chunk_buffer'
+        done = _write_gzipped_chunk(in_file, out_file,
+                S3_MULTIPART_CHUNK_SIZE_BYTES)
+
+        # upload the contents of 'chunk_buffer' to S3
+        count += 1 
+    
+
 def run_command(command):
     '''Run 'command' (shell command string) as a subprocess. Return stdin of
     the subprocess (file), stdout of the subprocess (file), and function that
@@ -141,13 +163,26 @@ def run_command(command):
 def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
+    write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+
+def backup_mysql_local(file_path):
+    command = MYSQLDUMP_COMMAND % db_params
+    _, stdout, check_exit_status = run_command(command)
+    with open(file_path,'wb') as out_file:
+        write_gzipped_to_file(stdout, out_file)
 
 def backup_mongo_collection(collection_name, s3_key):
     command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
             host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
-    write_gizpped_to_s3(stdout, s3_key, check_exit_status)
+    write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+
+def backup_mongo_collection_local(collection_name, file_path):
+    command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
+            host=config.get('mongodb', 'host'), collection=collection_name)
+    _, stdout, check_exit_status = run_command(command)
+    with open(file_path,'wb') as out_file:
+        write_gzipped_to_file(stdout, out_file)
 
 def restore_mysql_s3(bucket, root_password):
     command = MYSQL_COMMAND % dict(db_params, user='root',
@@ -301,6 +336,13 @@ def download(args):
         key.get_contents_to_filename(os.path.join(
                 backup_file_dir_absolute_path, file_name))
 
+def backup_local(args):
+    backup_mysql_local(os.path.join(args.backup_file_dir, MYSQL_BACKUP_FILE_NAME))
+    for collection in MONGO_COLLECTIONS:
+        backup_file_path = os.path.join(args.backup_file_dir,
+                MONGO_BACKUP_FILE_NAME_FORMAT % collection)
+        backup_mongo_collection_local(collection, backup_file_path)
+
 def restore_local(args):
     restore_mysql_local(os.path.join(args.backup_file_dir,
             MYSQL_BACKUP_FILE_NAME), args.root_password)
@@ -329,6 +371,8 @@ if __name__ == '__main__':
             'with "restore-local"'))
     restore_local_parser = subparsers.add_parser('restore-local', help=(
             'restore databases from existing dump files in local directory'))
+    backup_local_parser = subparsers.add_parser('backup-local', help=(
+            'backup databases to local directory'))
 
     # arguments for S3
     for parser in (backup_parser, restore_parser, download_parser):
@@ -347,7 +391,7 @@ if __name__ == '__main__':
     # arguments for local backup files
     all_file_names =  [MYSQL_BACKUP_FILE_NAME] + [
             (MONGO_BACKUP_FILE_NAME_FORMAT % c) for c in MONGO_COLLECTIONS]
-    for parser in (download_parser, restore_local_parser):
+    for parser in (download_parser, restore_local_parser, backup_local_parser):
         parser.add_argument(dest='backup_file_dir', type=str,
                 help=('Local directory containing database dump files (%s)' %
                 ', '.join(all_file_names)))
@@ -367,6 +411,7 @@ if __name__ == '__main__':
     restore_parser.set_defaults(func=restore)
     download_parser.set_defaults(func=download)
     restore_local_parser.set_defaults(func=restore_local)
+    backup_local_parser.set_defaults(func=backup_local)
 
     args = main_parser.parse_args()
     args.func(args)
