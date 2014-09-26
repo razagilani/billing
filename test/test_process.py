@@ -12,7 +12,7 @@ from skyliner.sky_handlers import cross_range
 from billing.processing.state import ReeBill, Customer, UtilBill, Register
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, ProcessedBillError, IssuedBillError
+    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
 from billing.test import utils
 
 
@@ -1297,6 +1297,7 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
 
         # two should not be issuable until one_doc is issued
         self.assertRaises(BillStateError, self.process.issue, acc, 2)
+        self.assertRaises(NotIssuable, self.process.issue_and_mail, False, acc, 2)
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
@@ -1307,15 +1308,25 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
         self.assertEquals(True, one.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 1))
         self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
+        # make a correction on reebill #1. this time 20 therms of renewable
+        # energy instead of 10 were consumed.
+        self.process.ree_getter.quantity = 20
+        self.process.new_version(acc, 1)
 
         customer = self.state_db.get_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
         self.process.renderer.render_max_version.return_value = 2
-        self.process.issue_and_mail(False, account=acc, sequence=2,
+        # issuing a reebill that has corrections with apply_corrections False raises ConfirmAdjustment Exception
+        self.assertRaises(ConfirmAdjustment, self.process.issue_and_mail,False, account=acc, sequence=2,
                                     recipients=two.email_recipient)
-
+        #ValueError is Raised if an issued Bill is issued again
+        self.assertRaises(ValueError, self.process.issue_and_mail,True, account=acc, sequence=1,
+                                    recipients=two.email_recipient)
+        self.process.toggle_reebill_processed(acc, 2, True)
+        self.assertEqual(True, two.processed)
+        self.process.issue_and_mail(True, processed=True)
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
         self.assertEquals(True, two.processed)
@@ -1523,9 +1534,9 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
                              'total_error': 8.8,
                              }], self.process.get_reebill_metadata_json('99999')):
             self.assertDictContainsSubset(x, y)
-
-
-
+        # when you issue a bill and it has corrections applying to it, and you don't specify apply_corrections=True,
+        # it raises an exception ConfirmAdjustment
+        self.assertRaises(ConfirmAdjustment ,self.process.issue_and_mail, False, account=acc, sequence=2)
 
         # when you make a bill processed and it has corrections applying to it, and you don't specify apply_corrections=True,
         # it raises an exception ConfirmAdjustment
@@ -1547,12 +1558,14 @@ class ReebillProcessingTest(TestCaseWithSetup, utils.TestCase):
         # When toggle_reebill_processed is called for a processed reebill, reebill becomes unprocessed
         self.process.toggle_reebill_processed(acc, 2, apply_corrections=False)
         self.assertEqual(reebill.processed, False)
-        # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
+
         self.process.issue(acc, reebill.sequence, issue_date=datetime(2012,3,10))
         self.assertRaises(IssuedBillError, self.process.bind_renewable_energy, acc, reebill.sequence)
+        # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
         self.assertRaises(IssuedBillError,
                           self.process.toggle_reebill_processed, acc, reebill.sequence,
                           apply_corrections=False)
+
 
     def test_create_first_reebill(self):
         '''Test creating the first utility bill and reebill for an account,

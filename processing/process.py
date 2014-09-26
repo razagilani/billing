@@ -1200,57 +1200,44 @@ class Process(object):
                 sequence is None and account is None and recipients is None)
             bills = [{'account': account, 'sequence': sequence,
                       'mailto': recipients}]
-
-
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
             # sum of adjustments that have to be made so the client can create
             # a confirmation message
-
             unissued_corrections = self.get_unissued_corrections(bill['account'])
             if len(unissued_corrections) > 0 and not apply_corrections:
                 # The user has confirmed to issue unissued corrections.
-                return {
-                    'success': False,
-                    'unissued_corrections': [c[0] for c in
-                                             unissued_corrections]}
-
-            result = {'issued': []}
+                sequences = [sequence for sequence, _, _
+                            in unissued_corrections]
+                total_adjustment = sum(adjustment
+                            for _, _, adjustment in unissued_corrections)
+                raise ConfirmAdjustment(sequences, total_adjustment)
             # Let's issue
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
                 try:
                     self.issue_corrections(bill['account'], bill['sequence'])
-                except Exception, e:
+                except Exception as e:
                     self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill['account'], bill['sequence'],
                         e.__class__.__name__),) + e.args)
                     raise
-                for cor in unissued_corrections:
-                    result['issued'].append((
-                        bill['account'], cor[0],
-                        self.state_db.max_version(bill['account'], cor[0])
-                    ))
-
             try:
                 if not processed:
                     self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
-                result['issued'].append((
-                    bill['account'], bill['sequence'], 0, bill['mailto']))
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill['account'], bill['sequence'],
                         e.__class__.__name__),) + e.args)
                 raise
-
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                recipient_list)
-        return result
+        return bills
 
     def update_bill_email_recipient(self, account, sequence, recepients):
         """ Finds a particular reebill by account and sequence,

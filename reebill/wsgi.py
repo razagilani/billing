@@ -357,62 +357,54 @@ class IssuableReebills(RESTResource):
     def issue_and_mail(self, reebills, **params):
         bills = json.loads(reebills)
         reebills_with_corrections = []
-        corrections = False
         for bill in bills:
-            unissued_corrections = self.process.get_unissued_corrections(bill['account'])
-            if len(unissued_corrections) > 0 and not bill['apply_corrections']:
-                # The user has confirmed to issue unissued corrections.
-                corrections = True
-                reebills_with_corrections.append(
-                    {
-                    'reebill': bill,
-                    'unissued_corrections': [c[0] for c in unissued_corrections],
-                    'adjustment': sum(c[2] for c in unissued_corrections)}
-                )
-            else:
-                reebills_with_corrections.append({'reebill': bill})
-        if corrections:
-            return self.dumps({"success": True,
-                               "reebills": reebills_with_corrections,
-                               "corrections": True})
-        results = {'success': True, 'issued': []}
-        for bill in reebills_with_corrections:
             print bill
-            account, sequence = bill['reebill']['account'], int(bill['reebill']['sequence'])
-            recipient_list = bill['reebill']['recipients']
-            result = self.process.issue_and_mail(
-                bill['reebill']['apply_corrections'],
-                account=account, sequence=sequence, recipients=recipient_list)
-            if 'issued' in result:
-                for bill in result['issued']:
-                    journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'], bill[0], bill[1], bill[2],
-                        applied_sequence=bill[1] if bill[2] != 0 else None)
-                    results['issued'].append(result)
-                journal.ReeBillMailedEvent.save_instance(
-                    cherrypy.session['user'], account, sequence, recipient_list)
-
-        return self.dumps(results)
+            account, sequence = bill['account'], int(bill['sequence'])
+            recipient_list = bill['recipients']
+            try:
+                result = self.process.issue_and_mail(
+                    bill['apply_corrections'],
+                    account=account, sequence=sequence, recipients=recipient_list)
+            except ConfirmAdjustment as e:
+                reebills_with_corrections.append({'account': bill['account'],
+                        'sequence': bill['sequence'],
+                        'recipients': bill['recipients'],
+                        'apply_corrections': False,
+                        'corrections': e.correction_sequences,
+                        'adjustment': e.total_adjustment})
+        if not reebills_with_corrections:
+            for bill in bills:
+                version = self.state_db.max_version(bill['account'], bill['sequence'])
+                journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'], bill['account'], bill['sequence'],
+                        version, applied_sequence=version if version!=0 else None)
+                #results['issued'].append(result)
+            journal.ReeBillMailedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'], bill['sequence'], bill['recipients'])
+            return self.dumps({'success': True,
+                        'issued': bills})
+        else:
+            return self.dumps({'success': True,
+                    'reebills': reebills_with_corrections,
+                    'corrections': True})
 
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        result = self.process.issue_and_mail(apply_corrections=True, processed=True)
-        if 'issued' in result:
-            for bill in result['issued']:
-                # Bills is a tuple of (account, sequence, version,
-                # recipient_list)
-                journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill[0], bill[1], bill[2],
-                    applied_sequence=bill[1] if bill[2] != 0 else None)
-            for bill in result['issued']:
-                # ReebillMailedEvents Last
-                if bill[2] == 0:
-                    journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], bill[0], bill[1], bill[3])
-        return self.dumps(result)
+        bills = self.process.issue_and_mail(apply_corrections=True, processed=True)
+        for bill in bills:
+            version = self.state_db.max_version(bill['account'], bill['sequence'])
+            journal.ReeBillIssuedEvent.save_instance(
+                    cherrypy.session['user'], bill['account'], bill['sequence'], version,
+                    applied_sequence=bill['sequence'] if version != 0 else None)
+            if version == 0:
+                journal.ReeBillMailedEvent.save_instance(
+                        cherrypy.session['user'], bill['account'], bill['sequence'],
+                    bill['mailto'])
+        return self.dumps({'success': True,
+                    'issued': bills})
 
 class ReebillVersionsResource(RESTResource):
 
