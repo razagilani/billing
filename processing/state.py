@@ -1098,13 +1098,14 @@ class Register(Base):
         and "active_periods_holiday". For a non-time-of-use register will
         have an empty dictionary.
         """
+        keys = ['active_periods_weekday', 'active_periods_weekend',
+                'active_periods_holiday']
+        # blank means active every hour of every day
         if self.active_periods in ('', None):
-            return {}
+            return {key: [(0, 23)] for key in keys}
+        # non-blank: parse JSON and make sure it contains all 3 keys
         result = json.loads(self.active_periods)
-        for key in ['active_periods_weekday',
-                'active_periods_weekend',
-                'active_periods_holiday']:
-            assert key in result
+        assert all(key in result for key in keys)
         return result
 
 

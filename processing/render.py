@@ -7,7 +7,7 @@ import logging
 from collections import deque
 from itertools import groupby, chain
 import csv
-from errno import EEXIST
+from errno import EEXIST, ENOENT
 
 from pyPdf import PdfFileWriter, PdfFileReader
 import reportlab
@@ -110,6 +110,20 @@ class ReebillFileHandler(object):
         return os.path.join(self._pdf_dir_path, reebill.customer.account,
                 self.get_file_name(reebill))
 
+    def delete_file(self, reebill, ignore_missing=False):
+        '''Delete the file belonging to the given :class:`ReeBill`.
+        If ignore_missing is True, no exception will be raised if the file to
+        be deleted does not exist.
+        '''
+        # note that this will fail if the file does not exist. that is not
+        # supposed to happen so it is not being ignored.
+        path = self.get_file_path(reebill)
+        try:
+            os.remove(path)
+        except OSError as e:
+            if not ignore_missing or e.errno != ENOENT:
+                raise
+
     def _generate_document(self, reebill):
         def get_utilbill_register_data_for_reebill_reading(reading):
             utilbill = reading.reebill.utilbill
@@ -167,8 +181,8 @@ class ReebillFileHandler(object):
             'billing_postal_code': reebill.billing_address.postal_code,
             'billing_state': reebill.billing_address.state,
             'utility_meters':  [{
-                 'meter_id': meter_id,
-                 'registers': [{
+                'meter_id': meter_id,
+                    'registers': [{
                     'register_id': register_id,
                     'description': description,
                     'shadow_total': reading.renewable_quantity,
@@ -180,13 +194,15 @@ class ReebillFileHandler(object):
             } for (meter_id, register_id, description), readings
                     in groupby(reebill.readings, key=lambda r: \
                     get_utilbill_register_data_for_reebill_reading(r))],
-            'hypothetical_chargegroups': {group_name: [{
-                'description': charge.description,
-                'quantity': charge.h_quantity,
-                'rate': charge.rate,
-                'total': charge.h_total
-            } for charge in charges]
-            for group_name, charges in groupby(reebill.charges, key=lambda c: c.group)},
+            'hypothetical_chargegroups': {
+                group_name: [{
+                    'description': charge.description,
+                    'quantity': charge.h_quantity,
+                    'rate': charge.rate,
+                    'total': charge.h_total
+                } for charge in charges]
+            for group_name, charges in groupby(reebill.charges,
+                                               key=lambda c: c.group)},
         }
 
     def render(self, reebill):
