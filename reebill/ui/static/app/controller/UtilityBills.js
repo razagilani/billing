@@ -16,13 +16,13 @@ Ext.define('ReeBill.controller.UtilityBills', {
         selector: 'grid[id=utilityBillsGrid]'
     },{
         ref: 'utilbillCompute',
-        selector: 'button[action=utilbillCompute]'
+        selector: '[action=utilbillCompute]'
     },{
         ref: 'utilbillRemove',
-        selector: 'button[action=utilbillRemove]'
+        selector: '[action=utilbillRemove]'
     },{
         ref: 'utilbillToggleProcessed',
-        selector: 'button[action=utilbillToggleProcessed]'
+        selector: '[action=utilbillToggleProcessed]'
     }],    
     
     init: function() {
@@ -37,19 +37,19 @@ Ext.define('ReeBill.controller.UtilityBills', {
             'panel[name=utilityBillsTab]': {
                 activate: this.handleActivate
             },
-            'button[action=resetUploadUtilityBillForm]': {
+            '[action=resetUploadUtilityBillForm]': {
                 click: this.handleReset
             },
-            'button[action=submitUploadUtilityBillForm]': {
+            '[action=submitUploadUtilityBillForm]': {
                 click: this.handleSubmit
             },
-            'button[action=utilbillCompute]': {
+            '[action=utilbillCompute]': {
                 click: this.handleCompute
             },
-            'button[action=utilbillRemove]': {
+            '[action=utilbillRemove]': {
                 click: this.handleDelete
             },
-            'button[action=utilbillToggleProcessed]': {
+            '[action=utilbillToggleProcessed]': {
                 click: this.handleToggleProcessed
             }
         });
