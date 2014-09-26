@@ -1,7 +1,9 @@
 import json
 from datetime import datetime, timedelta
+from sqlalchemy import desc
 
-from billing.processing.state import UtilBill, UtilBillLoader, Address, Charge, Register, Session
+from billing.processing.state import UtilBill, UtilBillLoader, Address, Charge, Register, Session, \
+    Customer
 from billing.exc import NoSuchBillException
 
 
@@ -56,7 +58,6 @@ class UtilbillProcessor(object):
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
         """
-        self.logger.info("Running Process.update_register %s" % register_id)
         session = Session()
 
         #Register to be updated
@@ -67,21 +68,14 @@ class UtilbillProcessor(object):
                   'identifier', 'estimated', 'reg_type', 'register_binding',
                   'meter_identifier']:
             val = rows.get(k, getattr(register, k))
-            self.logger.debug("Setting attribute %s on register %s to %s" %
-                              (k, register.id, val))
             setattr(register, k, val)
         if 'active_periods' in rows and rows['active_periods'] is not None:
             active_periods_str = json.dumps(rows['active_periods'])
-            self.logger.debug("Setting attribute active_periods on register"
-                              " %s to %s" % (register.id, active_periods_str))
             register.active_periods = active_periods_str
-        self.logger.debug("Commiting changes to register %s" % register.id)
         self.compute_utility_bill(register.utilbill_id)
         return register
 
     def delete_register(self, register_id):
-        self.logger.info("Running Process.delete_register %s" %
-                         register_id)
         session = Session()
         register = session.query(Register).filter(
             Register.id == register_id).one()
@@ -92,7 +86,7 @@ class UtilbillProcessor(object):
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
         charge = utilbill.add_charge()
         self.compute_utility_bill(utilbill_id)
         return charge
@@ -138,7 +132,7 @@ class UtilbillProcessor(object):
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
         if target_total is not None:
             utilbill.target_total = target_total
 
@@ -202,7 +196,7 @@ class UtilbillProcessor(object):
         # utility name for the new one, or get it from the template.
         # note that it doesn't matter if this is wrong because the user can
         # edit it after uploading.
-        customer = self.state_db.get_customer(account)
+        customer = session.query(Customer).filter_by(account=account).one()
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
                 account, begin_date, service=service)
@@ -243,7 +237,7 @@ class UtilbillProcessor(object):
 
         # delete any existing bill with same service and period but less-final
         # state
-        customer = self.state_db.get_customer(account)
+        customer = session.query(Customer).filter_by(account=account).one()
         new_utilbill = UtilBill(customer, state, service, utility, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
@@ -319,7 +313,7 @@ class UtilbillProcessor(object):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         session = Session()
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
         for charge in utilbill.charges:
             session.delete(charge)
         utilbill.charges = []
@@ -332,15 +326,32 @@ class UtilbillProcessor(object):
         Also updates some keys in the document that are duplicates of columns
         in the MySQL table.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
         utilbill.compute_charges()
         return utilbill
+
+    def _list_utilbills(self, account, start=None, limit=None):
+        '''Queries the database for account, start date, and end date of bills
+        in a slice of the utilbills table; returns the slice and the total
+        number of rows in the table (for paging). If 'start' is not given, all
+        bills are returned. If 'start' is given but 'limit' is not, all bills
+        starting with index 'start'. If both 'start' and 'limit' are given,
+        returns bills with indices in [start, start + limit).'''
+        session = Session()
+        query = session.query(UtilBill).with_lockmode('read').join(Customer) \
+            .filter(Customer.account == account) \
+            .order_by(Customer.account, desc(UtilBill.period_start))
+
+        if start is None:
+            return query, query.count()
+        if limit is None:
+            return query[start:], query.count()
+        return query[start:start + limit], query.count()
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
-        utilbills, total_count = self.state_db.list_utilbills(account,
-                                                              start, limit)
+        utilbills, total_count = self._list_utilbills(account)
         data = [ub.column_dict() for ub in utilbills]
         return data, total_count
