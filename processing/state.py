@@ -1683,24 +1683,6 @@ class StateDB(object):
         session = Session()
         return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
-    def list_utilbills(self, account, start=None, limit=None):
-        '''Queries the database for account, start date, and end date of bills
-        in a slice of the utilbills table; returns the slice and the total
-        number of rows in the table (for paging). If 'start' is not given, all
-        bills are returned. If 'start' is given but 'limit' is not, all bills
-        starting with index 'start'. If both 'start' and 'limit' are given,
-        returns bills with indices in [start, start + limit).'''
-        session = Session()
-        query = session.query(UtilBill).with_lockmode('read').join(Customer) \
-            .filter(Customer.account == account) \
-            .order_by(Customer.account, desc(UtilBill.period_start))
-
-        if start is None:
-            return query, query.count()
-        if limit is None:
-            return query[start:], query.count()
-        return query[start:start + limit], query.count()
-
     def create_payment(self, account, date_applied, description,
                        credit, date_received=None):
         '''Adds a new payment, returns the new Payment object. By default,

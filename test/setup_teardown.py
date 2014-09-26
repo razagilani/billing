@@ -240,21 +240,11 @@ class TestCaseWithSetup(test_utils.TestCase):
                 'primus': '1788 Massachusetts Ave.',
                 },
         ])
+        #self.temp_dir = TempDirectory()
 
-        bill_mailer = Mailer({
-            # TODO 64956668
-        })
-
-        self.temp_dir = TempDirectory()
-        reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
-
-        ree_getter = RenewableEnergyGetter(self.splinter, logger)
-
-        journal_dao = journal.JournalDAO()
-
-        self.process = Process(self.state_db,  self.rate_structure_dao,
-                self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
-                ree_getter, journal_dao, logger=logger)
+        # self.process = Process(self.state_db,  self.rate_structure_dao,
+        #         self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
+        #         ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')
@@ -279,7 +269,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.truncate_tables(self.session)
         Session.remove()
 
-        self.temp_dir.cleanup()
+        #self.temp_dir.cleanup()
 
 if __name__ == '__main__':
     unittest.main()
