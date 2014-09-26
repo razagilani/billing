@@ -476,6 +476,7 @@ class ReebillProcessor(object):
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
 
+    # TODO: this method is not used anywhere but it probably should be.
     def get_outstanding_balance(self, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
         (or the account's last issued reebill when 'sequence' is not given)
