@@ -1,12 +1,5 @@
-from processing.reebill_procesor import ReebillProcessor
-from processing.utilbill_procesor import UtilbillProcessor
-                sequences = [sequence for sequence, _, _
-                            in unissued_corrections]
-                total_adjustment = sum(adjustment
-                            for _, _, adjustment in unissued_corrections)
-                raise ConfirmAdjustment(sequences, total_adjustment)
-                except Exception, e:
-        return bills
+from processing.reebill_processor import ReebillProcessor
+from processing.utilbill_processor import UtilbillProcessor
 
 class Process(UtilbillProcessor, ReebillProcessor):
     '''Deprecated wrapper around UtilbillProcessor and ReeBillProcessor.
@@ -14,10 +7,9 @@ class Process(UtilbillProcessor, ReebillProcessor):
     '''
     def __init__(self, state_db, rate_structure_dao, billupload,
             nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, splinter=None, logger=None):
+            ree_getter, journal_dao, logger=None):
         UtilbillProcessor.__init__(self, rate_structure_dao, billupload,
-                                   nexus_util, journal_dao, logger=logger)
-        ReebillProcessor.__init__(self, state_db, rate_structure_dao,
-                                  billupload, nexus_util, bill_mailer, reebill_file_handler,
-                                  ree_getter, journal_dao,
-                                  splinter=splinter, logger=logger)
+                                   nexus_util, logger=logger)
+        ReebillProcessor.__init__(self, state_db, nexus_util, bill_mailer,
+                                  reebill_file_handler, ree_getter, journal_dao,
+                                  logger=logger)
