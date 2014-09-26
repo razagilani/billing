@@ -344,11 +344,3 @@ class UtilbillProcessor(object):
                                                               start, limit)
         data = [ub.column_dict() for ub in utilbills]
         return data, total_count
-
-                sequences = [sequence for sequence, _, _
-                            in unissued_corrections]
-                total_adjustment = sum(adjustment
-                            for _, _, adjustment in unissued_corrections)
-                raise ConfirmAdjustment(sequences, total_adjustment)
-                except Exception, e:
-        return bills
