@@ -376,15 +376,16 @@ class IssuableReebills(RESTResource):
                         'adjustment': e.total_adjustment})
         if not reebills_with_corrections:
             for bill in bills:
-                version = self.state_db.max_version(bill['account'], bill['sequence'])
+                version = self.state_db.max_version(bill['account'],
+                                                    bill['sequence'])
                 journal.ReeBillIssuedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'], bill['sequence'],
-                        version, applied_sequence=version if version!=0 else None)
-                #results['issued'].append(result)
+                        cherrypy.session['user'], bill['account'],
+                        bill['sequence'], version,
+                        applied_sequence=version if version!=0 else None)
             journal.ReeBillMailedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'], bill['sequence'], bill['recipients'])
-            return self.dumps({'success': True,
-                        'issued': bills})
+                cherrypy.session['user'], bill['account'], bill['sequence'],
+                bill['recipients'])
+            return self.dumps({'success': True, 'issued': bills})
         else:
             return self.dumps({'success': True,
                     'reebills': reebills_with_corrections,
