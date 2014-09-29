@@ -9,9 +9,9 @@ from sqlalchemy import not_, and_
 from sqlalchemy import func
 
 from billupload import ACCOUNT_NAME_REGEX
-from billing.processing.state import Customer, UtilBill, ReeBill, \
-    ReeBillCharge, Address, Session, \
-    Payment, MYSQLDB_DATETIME_MIN
+from billing.model import (Customer, UtilBill, Address, Session,
+                           MYSQLDB_DATETIME_MIN)
+from billing.processing.state import (ReeBill, ReeBillCharge, Payment)
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
