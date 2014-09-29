@@ -27,7 +27,7 @@ class BillUploadTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.fakes3_process.kill()
+        cls.fakes3_process.terminate()
         cls.fakes3_process.wait()
 
     def setUp(self):
@@ -47,11 +47,11 @@ class BillUploadTest(unittest.TestCase):
     def test_utilbill_key_name(self):
         ub = Mock()
         ub.sha256_hexdigest = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
-        expected = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        expected = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         self.assertEqual(self.bu._get_key_name(ub), expected)
 
     def test_upload_to_s3(self):
-        key_name = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        key_name = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         test_data = 'asdf'
 
         utilbill = Mock(autospec=UtilBill)

@@ -42,7 +42,7 @@ class BillUpload(object):
 
     @staticmethod
     def _get_key_name(utilbill):
-        return os.path.join('utilbill', utilbill.sha256_hexdigest)
+        return utilbill.sha256_hexdigest
 
     def _create_amazon_bucket(self):
         self._connection.create_bucket(config.get('bill', 'bucket'))
