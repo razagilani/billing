@@ -8,6 +8,7 @@ __all__ = [
     'ReeBillCharge',
     'StateDB',
 ]
+
 from datetime import datetime, date
 import logging
 import traceback
@@ -25,7 +26,6 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Customer
-
 
 log = logging.getLogger(__name__)
 

@@ -1,6 +1,21 @@
 '''
 SQLALchemy classes for all applications that use the utility bill database.
+Also contains some related classes that do not correspond to database tables.
 '''
+__all__ = [
+    'Address',
+    'Base',
+    'Charge',
+    'ChargeEvaluation',
+    'Customer',
+    'Evaluation',
+    'MYSQLDB_DATETIME_MIN',
+    'Register',
+    'Session',
+    'UtilBill',
+    'UtilBillLoader',
+    'check_schema_revision',
+]
 import ast
 from datetime import datetime
 import json
@@ -22,8 +37,6 @@ from billing.exc import NoSuchBillException, FormulaSyntaxError
 from billing.exc import FormulaError
 from exc import DatabaseError
 
-
-
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
@@ -32,9 +45,15 @@ MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 Session = scoped_session(sessionmaker())
 
 class Base(object):
+    '''Common methods for all SQLAlchemy model classes, for use both here
+    and in consumers that define their own model classes.
+    '''
 
     @classmethod
     def column_names(cls):
+        '''Return list of attributes in the class that correspond to
+        database columns.
+        '''
         return [prop.key for prop in class_mapper(cls).iterate_properties
                 if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
 
@@ -43,6 +62,9 @@ class Base(object):
                     self.column_names()])
 
     def column_dict(self):
+        '''Return dictionary of names and values for all attributes
+        corresponding to database columns.
+        '''
         return {c: getattr(self, c) for c in self.column_names()}
 Base = declarative_base(cls=Base)
 
