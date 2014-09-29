@@ -1540,13 +1540,23 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # modify registers of this utility bill so they are TOU
         u = self.session.query(UtilBill).join(Customer). \
             filter_by(account='99999').one()
-        active_periods_str = json.dumps({
+        active_periods = {
             'active_periods_weekday': [[9, 9]],
             'active_periods_weekend': [[11, 11]],
             'active_periods_holiday': [[13, 13]]
+        }
+        r = self.process.new_register(u.id, {})
+        self.process.update_register(r.id, {
+            'description': 'time-of-use register',
+            'quantity': 0,
+            'quantity_units': 'btu',
+            'identifier': 'test2',
+            'estimated': False,
+            'reg_type': 'tou',
+            'register_binding': 'TOU',
+            'meter_identifier': '',
+            'active_periods': active_periods
         })
-        self.session.add(Register(u, 'time-of-use register', 0, 'btu',
-                                  'test2', False, 'tou', 'TOU', active_periods_str, ''))
         self.process.roll_reebill(account, start_date=date(2000, 1, 1))
 
         # the total energy consumed over the 3 non-0 days is
