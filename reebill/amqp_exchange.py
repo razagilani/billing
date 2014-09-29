@@ -43,10 +43,14 @@ def process_utility_bill(utility_provider_guid, account_number,
 
 def process_utility(name, utility_provider_guid):
     s = Session()
-    utility = Utility(name=name,
-        guid=utility_provider_guid,
-        address=Address())
-    s.add(utility)
+    utility = s.query(Utility).filter_by(guid=utility_provider_guid).first()
+    if utility:
+        utility.name = name
+    else:
+        utility = Utility(name=name,
+                          guid=utility_provider_guid,
+                          address=Address())
+        s.add(utility)
     s.commit()
 
 xl = SimpleExchange(config.get('amqp', 'exchange'),
