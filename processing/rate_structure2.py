@@ -14,7 +14,7 @@ from billing.exc import FormulaError, FormulaSyntaxError, \
 
 # minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
-from billing.processing.state import Charge
+from billing.model import Charge
 
 RSI_PRESENCE_THRESHOLD = 0.5
 
