@@ -1,35 +1,21 @@
 #!/usr/bin/python
 import os
-import sys
 import errno
 from uuid import uuid1
 import re
 from glob import glob
 import shutil
 
-sys.stdout = sys.stderr
-
 # strings allowed as account names (formerly only digits, now digits/letters)
-#ACCOUNT_NAME_REGEX = '[0-9]{5}'
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
-
-# date format expected from front end
-INPUT_DATE_FORMAT ='%Y-%m-%d' 
-
-# date format that goes in names of saved files
-OUTPUT_DATE_FORMAT = '%Y%m%d'
-
-# strings allowed as sequence numbers
-SEQUENCE_NUMBER_REGEX = '[0-9]+'
 
 # extensions of utility bill formats we know we can convert into an image
 # (order here determines order of preference for utility bill file lookup)
 UTILBILL_EXTENSIONS = ['.pdf', '.html', '.htm', '.tif', '.tiff']
 
-# extension of reebills (there probably won't be more than one format)
-REEBILL_EXTENSION = 'pdf'
-
 class BillUpload(object):
+    '''Utility bill file handler. TODO: rename.
+    '''
 
     def __init__(self, config, logger):
         #self.state_db = state_db
@@ -43,7 +29,6 @@ class BillUpload(object):
         
         # load save directory info from config file
         self.save_directory = self.config.get('bill', 'utilitybillpath')
-        self.reebill_directory = self.config.get('bill', 'billpath')
 
     def upload(self, utilbill, account, the_file, file_name):
         '''
@@ -149,13 +134,6 @@ class BillUpload(object):
 
         return new_path
 
-    def get_reebill_file_path(self, account, sequence):
-        '''Return the path for the PDF file of the reebill given by account,
-        sequence.
-        '''
-        return os.path.join(self.reebill_directory, account,
-                '%s_%.4d.pdf' % (account, sequence))
-
 def create_directory_if_necessary(path, logger):
     '''Creates the directory at 'path' if it does not exist and can be
     created.  If it cannot be created, logs the error using 'logger' and raises
@@ -170,8 +148,6 @@ def create_directory_if_necessary(path, logger):
         if e.errno != errno.EEXIST:
             logger.error('unable to create directory "%s": %s'  % (path, e))
             raise
-
-# validators for checking parameter values #####################################
 
 def validate_account(account):
     '''Returns true iff the account is valid (just checks agains a regex, but
