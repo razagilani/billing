@@ -6,7 +6,9 @@ import os.path
 
 from testfixtures import TempDirectory
 
-from billing.processing.state import ReeBill, Address, Customer, UtilBill, Register, Charge, ReeBillCharge
+from billing.model import Address, Customer, UtilBill, \
+    Register
+from billing.processing.state import ReeBill, ReeBillCharge
 from billing.processing.render import ReebillFileHandler
 
 

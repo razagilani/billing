@@ -1,6 +1,6 @@
 from datetime import date
 
-from billing.processing.state import Charge, UtilBill, Customer, Address, \
+from billing.model import Charge, UtilBill, Customer, Address, \
     ChargeEvaluation
 from billing.exc import FormulaError
 from test import testing_utils
