@@ -1,47 +1,44 @@
 from os.path import dirname, realpath, join
+
 from billing import init_config, init_model, init_logging
 
+
+# TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
 init_config(filepath=p)
 init_model()
 
 from billing import config
-import sys, pprint
+import sys
 
-import traceback
 import json
 import cherrypy
 import os
 import ConfigParser
-from datetime import datetime, date, timedelta
-import inspect
+from datetime import datetime
 import logging
-import time
 import functools
 from operator import itemgetter
 from StringIO import StringIO
-import pymongo
 import mongoengine
 from billing.skyliner.splinter import Splinter
 from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju
-from billing.util.dateutils import ISO_8601_DATE, ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.util.dateutils import ISO_8601_DATE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing.bill_mailer import Mailer
-from billing.processing import process, state, fetch_bill_data as fbd,\
-    rate_structure2 as rs
-from billing.processing.state import UtilBill, Session
+from billing.processing import process, state, fetch_bill_data as fbd
+from billing.processing.rate_structure2 import RateStructureDAO
+from billing.processing.state import Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal
 from billing.processing import render
 from billing.processing.users import UserDAO
-from billing.processing.session_contextmanager import DBSession
-from billing.exc import Unauthenticated, IssuedBillError, RenderError, ConfirmAdjustment
+from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.processing.excel_export import Exporter
 
-pp = pprint.PrettyPrinter(indent=4).pprint
 user_dao = UserDAO(**dict(config.items('mongodb')))
 
 cherrypy.request.method_with_bodies = ['PUT', 'POST', 'GET', 'DELETE']
@@ -127,7 +124,7 @@ class WebResource(object):
         self.billUpload = BillUpload(self.config, self.logger)
 
         # create a RateStructureDAO
-        self.ratestructure_dao = rs.RateStructureDAO(logger=self.logger)
+        self.ratestructure_dao = RateStructureDAO(logger=self.logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
