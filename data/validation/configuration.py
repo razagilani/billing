@@ -53,6 +53,7 @@ class mailer(Schema):
     mail_from = String()
     bcc_list = String()
     password = String()
+    template_file_name = String()
     
 class authentication(Schema):
     authenticate = StringBool()
