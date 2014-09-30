@@ -45,3 +45,10 @@ def get_day_type(day):
     if day.weekday() in [5,6]:
         return 'weekend'
     return 'weekday'
+
+def is_weekday(day):
+    '''Returns True if the given date is a weekday that is not a holiday.
+    '''
+    if day in all_holidays(day.year) or day.weekday() in [5,6]:
+        return False
+    return True

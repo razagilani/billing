@@ -1,17 +1,16 @@
 import os
 import traceback
 import re
-import errno
 from datetime import datetime, timedelta
 
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from billupload import ACCOUNT_NAME_REGEX
-from billing.processing.state import Customer, UtilBill, ReeBill, \
-    ReeBillCharge, Address, Session, \
-    Payment, MYSQLDB_DATETIME_MIN
+from billing.core.billupload import ACCOUNT_NAME_REGEX
+from billing.core.model import (Customer, UtilBill, Address, Session,
+                           MYSQLDB_DATETIME_MIN)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError

@@ -1,31 +1,23 @@
 from __future__ import division
-import ast
-from itertools import chain
-from datetime import datetime, date
 from collections import defaultdict
-import sys
-from math import sqrt, log, exp
-from bson import ObjectId
-from mongoengine import Document, EmbeddedDocument
-from mongoengine import StringField, ListField, EmbeddedDocumentField
-from mongoengine import DateTimeField, BooleanField
-from billing.exc import FormulaError, FormulaSyntaxError, \
-    NoSuchBillException
+from sys import maxint
+
+from billing.exc import NoSuchBillException
+from billing.core.model import Charge
+
 
 # minimum normlized score for an RSI to get included in a probable RS
 # (between 0 and 1)
-from billing.processing.state import Charge
-
 RSI_PRESENCE_THRESHOLD = 0.5
 
-def manhattan_distance(p1, p2):
+def _manhattan_distance(p1, p2):
     # note that 15-day offset is a 30-day distance, 30-day offset is a
     # 60-day difference
     delta_begin = abs(p1[0] - p2[0]).days
     delta_end = abs(p1[1] - p2[1]).days
     return delta_begin + delta_end
 
-def exp_weight_with_min(a, b, minimum):
+def _exp_weight_with_min(a, b, minimum):
     '''Exponentially-decreasing weight function with a minimum value so it's
     always nonnegative.'''
     return lambda x: max(a**(x * b), minimum)
@@ -44,8 +36,8 @@ class RateStructureDAO(object):
         self.logger = logger
 
     def _get_probable_shared_charges(self, utilbill_loader, utility, service,
-            rate_class, period, distance_func=manhattan_distance,
-            weight_func=exp_weight_with_min(0.5, 7, 0.000001),
+            rate_class, period, distance_func=_manhattan_distance,
+            weight_func=_exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
             verbose=False):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -74,7 +66,7 @@ class RateStructureDAO(object):
 
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
-        closest_occurrence = defaultdict(lambda: (sys.maxint, None))
+        closest_occurrence = defaultdict(lambda: (maxint, None))
 
         for binding in bindings:
             for utilbill in all_utilbills:
