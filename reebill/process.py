@@ -1,5 +1,5 @@
-from processing.reebill_processor import ReebillProcessor
-from processing.utilbill_processor import UtilbillProcessor
+from billing.reebill.reebill_processor import ReebillProcessor
+from billing.reebill.utilbill_processor import UtilbillProcessor
 
 class Process(UtilbillProcessor, ReebillProcessor):
     '''Deprecated wrapper around UtilbillProcessor and ReeBillProcessor.

@@ -5,7 +5,7 @@ import MySQLdb
 import argparse
 from billing.processing.state import StateDB, UtilBill, Customer
 from billing.processing.mongo import ReebillDAO
-from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
+from billing.processing.rate_structure import RateStructureDAO, RateStructure
 
 # command-line arguments
 parser = argparse.ArgumentParser(description='03_merge_rs')

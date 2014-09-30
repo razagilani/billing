@@ -10,7 +10,7 @@ from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 
 from skyliner.sky_handlers import cross_range
-from billing.processing.state import ReeBill, Customer, UtilBill, Register
+from billing.reebill.state import ReeBill, Customer, UtilBill
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
     ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
@@ -1543,7 +1543,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         active_periods = {
             'active_periods_weekday': [[9, 9]],
             'active_periods_weekend': [[11, 11]],
-            'active_periods_holiday': [[13, 13]]
+            'active_periods_holiday': [],
         }
         r = self.process.new_register(u.id, {})
         self.process.update_register(r.id, {
@@ -1561,11 +1561,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # the total energy consumed over the 3 non-0 days is
         # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-        # when only the hours 9, 11, and 13 are included, the total is just
-        # 9 + 11 + 13 = 33.
+        # when only the hours 9 and 11 are included, the total is just
+        # 9 + 11 + 11 = 33.
         total_renewable_btu = 23 * 24 / 2. * 3
         total_renewable_therms = total_renewable_btu / 1e5
-        tou_renewable_btu = 9 + 11 + 13
+        tou_renewable_btu = 9 + 11 + 11
 
         # check reading of the reebill corresponding to the utility register
         total_reading, tou_reading = self.session.query(ReeBill).one().readings
