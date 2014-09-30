@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill id="Asefasd2" xsi:schemaLocation="utilitybill ../UtilityBill.xsd skylinebill ../SkylineBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill" xmlns:sb="skylinebill" account="10002">
+	<ub:car>
+		<ub:accountnumber>101</ub:accountnumber>
+		<ub:serviceaddress>
+			<ub:addressee>Sample Customer Service Address</ub:addressee>
+			<ub:street>109 King street</ub:street>
+			<ub:city>Alexandria</ub:city>
+			<ub:state>Virginia</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>21002</ub:postalcode>
+			<ub:telephonenumber>555-1212</ub:telephonenumber>
+			<ub:hours>9-5 Mon-Fri</ub:hours>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee>Sample Customer Billing Address</ub:addressee>
+			<ub:street>109 King street  Ste #101</ub:street>
+			<ub:city>Alexandria</ub:city>
+			<ub:state>VA</ub:state>
+			<ub:country>USA</ub:country>
+			<ub:postalcode>21002</ub:postalcode>
+			<ub:telephonenumber>555-1212</ub:telephonenumber>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
+	<ub:unknownaddress description="online payments">
+		<ub:addressee>EBill Pay Location</ub:addressee>
+		<ub:street>http://www.dom.com</ub:street>
+		<ub:city/>
+		<ub:state/>
+		<ub:country/>
+		<ub:postalcode/>
+		<ub:telephonenumber/>
+		<ub:hours/>
+	</ub:unknownaddress>
+	<ub:unknownaddress description="test">
+		<ub:addressee>EBill Pay Location</ub:addressee>
+		<ub:street>http://www.dom.com</ub:street>
+		<ub:city/>
+		<ub:state/>
+		<ub:country/>
+		<ub:postalcode/>
+		<ub:telephonenumber/>
+		<ub:hours/>
+	</ub:unknownaddress>
+	<ub:skylinebill>
+		<ub:billperiodbegin>2009-04-01</ub:billperiodbegin>
+		<ub:billperiodend>2009-05-01</ub:billperiodend>
+		<ub:actualservicecharges>13574.14</ub:actualservicecharges>
+		<ub:hypotheticalservicecharges>14640.54</ub:hypotheticalservicecharges>
+		<ub:skylinecharges>906.44</ub:skylinecharges>
+		<ub:customersavings>159.56</ub:customersavings>
+		<ub:duedate>2009-05-30</ub:duedate>
+		<ub:issued>2009-05-05</ub:issued>
+	</ub:skylinebill>
+	<ub:summary service="electric">
+		<ub:uar>
+			<ub:tin/>
+			<ub:customeraccount/>
+			<ub:customerservice>
+				<ub:addressee>Dominion Customer Service</ub:addressee>
+				<ub:street>888-667-3000</ub:street>
+				<ub:city/>
+				<ub:state/>
+				<ub:country/>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:customerservice>
+			<ub:serviceoutage>
+				<ub:addressee/>
+				<ub:street/>
+				<ub:city/>
+				<ub:state/>
+				<ub:country/>
+				<ub:postalcode/>
+				<ub:telephonenumber>888-667-3000</ub:telephonenumber>
+				<ub:hours/>
+			</ub:serviceoutage>
+		</ub:uar>
+		<ub:priorbalance>12101.51</ub:priorbalance>
+		<ub:previouspayment>
+			<ub:payee>Dominion</ub:payee>
+			<ub:amount>12101.51</ub:amount>
+			<ub:date>2009-05-05</ub:date>
+		</ub:previouspayment>
+		<ub:adjustment>
+			<ub:payee/>
+			<ub:amount>0.0</ub:amount>
+		</ub:adjustment>
+		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:billperiodbegin>2009-04-01</ub:billperiodbegin>
+		<ub:billperiodend>2009-05-01</ub:billperiodend>
+		<ub:issuedate>2009-05-02</ub:issuedate>
+		<ub:currentcharges>13574.14</ub:currentcharges>
+		<ub:totaldue>13574.14</ub:totaldue>
+		<ub:duedate>2009-05-28</ub:duedate>
+		<ub:latepayment>
+			<ub:penalty>1.5%</ub:penalty>
+			<ub:amount>181.52</ub:amount>
+		</ub:latepayment>
+	</ub:summary>
+	<ub:details service="electric">
+		<ub:rateschedule>
+			<ub:name>Non Residential Service (Schedule GS-3)</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Basic Customer Charge</ub:description>
+					<ub:flatrate>119.80</ub:flatrate>
+					<ub:total>119.80</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>rkVA Demand</ub:description>
+					<ub:quantity units="rkVA">259</ub:quantity>
+					<ub:total>38.85</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Distribution Demand</ub:description>
+					<ub:quantity units="KWD">501</ub:quantity>
+					<ub:total>1062.12</ub:total>
+				</ub:charge>
+				<ub:total>1220.77</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Basic Customer Charge</ub:description>
+					<ub:total>119.80</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>rkVA Demand</ub:description>
+					<ub:quantity units="rkVA">259</ub:quantity>
+					<ub:total>38.85</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Distribution Demand</ub:description>
+					<ub:quantity units="KWD">501</ub:quantity>
+					<ub:total>1062.12</ub:total>
+				</ub:charge>
+				<ub:total>1220.77</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>ESS Adjustment</ub:description>
+					<ub:total>-320.64</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS On Peak Energy</ub:description>
+					<ub:quantity units="kWh">104383</ub:quantity>
+					<ub:rate units="cents">0.404</ub:rate>
+					<ub:total>421.70</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">66737</ub:quantity>
+					<ub:rate units="cents">0.272</ub:rate>
+					<ub:total>181.52</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Total kWh</ub:description>
+					<ub:quantity units="kWh">171120</ub:quantity>
+					<ub:total>0</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS On Peak Demand Charge</ub:description>
+					<ub:quantity units="KWD">436</ub:quantity>
+					<ub:total>5299.14</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS Off Peak Demand Charge</ub:description>
+					<ub:quantity units="KWD">0</ub:quantity>
+					<ub:total>0.0</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Rider S</ub:description>
+					<ub:total>214.08</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Electricity Supply Service (fuel)</ub:description>
+					<ub:quantity units="kWh">171120</ub:quantity>
+					<ub:rate units="cents">3.893</ub:rate>
+					<ub:total>6661.70</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales and Use Surcharge</ub:description>
+					<ub:total>37.20</ub:total>
+				</ub:charge>
+				<ub:total>12494.70</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>ESS Adjustment</ub:description>
+					<ub:total>-320.64</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS On Peak Energy</ub:description>
+					<ub:quantity units="kWh">91388</ub:quantity>
+					<ub:rate units="cents">0.404</ub:rate>
+					<ub:total>369.21</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS Off Peak Energy</ub:description>
+					<ub:quantity units="kWh">57412</ub:quantity>
+					<ub:rate units="cents">0.272</ub:rate>
+					<ub:total>156.16</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Total kWh</ub:description>
+					<ub:quantity units="kWh">148800</ub:quantity>
+					<ub:total>0</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS On Peak Demand Charge</ub:description>
+					<ub:quantity units="KWD">436</ub:quantity>
+					<ub:total>5299.14</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>ESS Off Peak Demand Charge</ub:description>
+					<ub:quantity units="KWD">0</ub:quantity>
+					<ub:total>0.0</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Rider S</ub:description>
+					<ub:total>214.08</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Electricity Supply Service (fuel)</ub:description>
+					<ub:rate units="cents">3.893</ub:rate>
+					<ub:total>5792.78</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sales and Use Surcharge</ub:description>
+					<ub:total>37.20</ub:total>
+				</ub:charge>
+				<ub:total>11547.93</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Tax">
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>State/Local Consumption Tax</ub:description>
+					<ub:quantity units="kWh">171120</ub:quantity>
+					<ub:rate units="cents">0.0796</ub:rate>
+					<ub:total>136.21</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Alexandria Utility Tax</ub:description>
+					<ub:quantity units="kWh">171120</ub:quantity>
+					<ub:rate units="cents">0.4610</ub:rate>
+					<ub:flatrate>0.97</ub:flatrate>
+					<ub:total>788.86</ub:total>
+					<ub:processingnote>$0.97 + $0.004610/kwh</ub:processingnote>
+				</ub:charge>
+				<ub:total>925.07</ub:total>
+			</ub:charges>
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>State/Local Consumption Tax</ub:description>
+					<ub:total>118.50</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Alexandria Utility Tax</ub:description>
+					<ub:total>686.94</ub:total>
+				</ub:charge>
+				<ub:total>805.44</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="hypothetical">14640.54</ub:total>
+		<ub:total type="actual">13574.14</ub:total>
+	</ub:details>
+	<ub:billableusage service="electric">
+		<ub:rateschedule>
+			<ub:name>Schedule GS-3</ub:name>
+			<ub:rateineffect>04/01-05/01</ub:rateineffect>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Off Pk Usage</ub:description>
+			<ub:quantity units="kWh">57412</ub:quantity>
+		</ub:usage>
+		<ub:usage>
+			<ub:description>On Pk Usage</ub:description>
+			<ub:quantity units="kWh">91388</ub:quantity>
+		</ub:usage>
+		<ub:usage>
+			<ub:description>Dist Demand</ub:description>
+			<ub:quantity>501</ub:quantity>
+		</ub:usage>
+		<ub:usage>
+			<ub:description>Off Pk Demand</ub:description>
+			<ub:quantity>0.0</ub:quantity>
+		</ub:usage>
+		<ub:usage>
+			<ub:description>RKVA</ub:description>
+			<ub:quantity>259</ub:quantity>
+		</ub:usage>
+		<ub:total>148800</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2009-04-01</ub:priorreaddate>
+			<ub:presentreaddate>2009-05-01</ub:presentreaddate>
+			<ub:identifier>0005748089</ub:identifier>
+			<ub:register shadow="true">
+				<ub:identifier>0005748089</ub:identifier>
+				<ub:description>Skyline kWh</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>22320</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>22320</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>0005748089</ub:identifier>
+				<ub:description>kWh</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>6185</ub:priorreading>
+				<ub:presentreading>6340</ub:presentreading>
+				<ub:factor>960</ub:factor>
+				<ub:total>148800</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>0005748089</ub:identifier>
+				<ub:description>KQH</ub:description>
+				<ub:units>KQH</ub:units>
+				<ub:priorreading>5708</ub:priorreading>
+				<ub:presentreading>5852</ub:presentreading>
+				<ub:factor>960</ub:factor>
+				<ub:total>138240</ub:total>
+			</ub:register>
+		</ub:meter>
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2009-04-01</ub:priorreaddate>
+			<ub:presentreaddate>2009-05-01</ub:presentreaddate>
+			<ub:identifier>00RG002738</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>On Peak Usage</ub:description>
+				<ub:total>91388</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>Off Peak Usage</ub:description>
+				<ub:total>57412</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>On  Peak Demand</ub:description>
+				<ub:total>436</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>RKVA</ub:description>
+				<ub:total>259</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>Skyline On Peak Usage</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>13615</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>00RG002738</ub:identifier>
+				<ub:description>Skyline Off Peak Usage</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>8705</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:usagehistory service="electric">
+		<ub:usage>
+			<ub:date>2008-05-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">192960</ub:total>
+			</ub:register>
+			<ub:total units="kWh">192960</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-06-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">162240</ub:total>
+			</ub:register>
+			<ub:total units="kWh">162240</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-07-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">197760</ub:total>
+			</ub:register>
+			<ub:total units="kWh">197760</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-08-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">192000</ub:total>
+			</ub:register>
+			<ub:total units="kWh">192000</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-09-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">197760</ub:total>
+			</ub:register>
+			<ub:total units="kWh">197760</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-10-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">160320</ub:total>
+			</ub:register>
+			<ub:total units="kWh">160320</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-11-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">158400</ub:total>
+			</ub:register>
+			<ub:total units="kWh">158400</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2008-12-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">202560</ub:total>
+			</ub:register>
+			<ub:total units="kWh">202560</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2009-01-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">214080</ub:total>
+			</ub:register>
+			<ub:total units="kWh">214080</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2009-02-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">204480</ub:total>
+			</ub:register>
+			<ub:total units="kWh">204480</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2009-03-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">176640</ub:total>
+			</ub:register>
+			<ub:total units="kWh">176640</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2009-04-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">138240</ub:total>
+			</ub:register>
+			<ub:total units="kWh">138240</ub:total>
+		</ub:usage>
+		<ub:usage>
+			<ub:date>2009-05-01</ub:date>
+			<ub:register>
+				<ub:identifier>kWh</ub:identifier>
+				<ub:total units="kWh">148800</ub:total>
+			</ub:register>
+			<ub:total units="kWh">148800</ub:total>
+		</ub:usage>
+	</ub:usagehistory>
+</ub:utilitybill>
