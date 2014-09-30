@@ -805,13 +805,11 @@ class ReportsResource(WebResource):
     def default(self, *vpath, **params):
         row = cherrypy.request.params
         print row
-        account = row.get('account', None)
-        begin_date = row.get('period_start', None)
-        begin_date = datetime.strptime(begin_date, '%d/%m/%Y').date() if \
-            begin_date else None
-        end_date = row.get('period_end', None)
-        end_date = datetime.strptime(end_date, '%d/%m/%Y').date() if \
-            end_date else None
+        account = row['account'] if row['account'] != '' else None
+        begin_date = datetime.strptime(row['period_start'], '%m/%d/%Y').date() \
+            if row['period_start'] != '' else None
+        end_date = datetime.strptime(row['period_end'], '%m/%d/%Y').date() if \
+            row['period_end'] != '' else None
 
         if row['type'] == 'utilbills':
             """
@@ -824,7 +822,7 @@ class ReportsResource(WebResource):
                 spreadsheet_name = account + '.xls'
             else:
                 spreadsheet_name = 'all_accounts.xls'
-            exporter = Exporter(self.state_db, self.reebill_dao)
+            exporter = Exporter(self.state_db)
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
@@ -845,7 +843,7 @@ class ReportsResource(WebResource):
                 spreadsheet_name = account + '.xls'
             else:
                 spreadsheet_name = 'brokerage_accounts.xls'
-            exporter = Exporter(self.state_db, self.reebill_dao)
+            exporter = Exporter(self.state_db)
 
             buf = StringIO()
             exporter.export_energy_usage(buf, account)
@@ -862,7 +860,7 @@ class ReportsResource(WebResource):
             energy and rate structure for all utility bills for the given account,
             or every account (1 per sheet) if 'account' is not given,
             """
-            exporter = Exporter(self.state_db, self.reebill_dao)
+            exporter = Exporter(self.state_db)
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
