@@ -45,14 +45,6 @@ Ext.define('ReeBill.view.TOUMetering', {
             maxValue: 23,
             fieldLabel: 'Weekends',
             id: 'TOUMeteringSliderWeekends'
-        },{
-            xtype: 'dynamicmultislider',
-            width: 200,
-            increment: 1,
-            minValue: 0,
-            maxValue: 23,
-            fieldLabel: 'Holidays',
-            id: 'TOUMeteringSliderHolidays'
         }]
     }],
 
