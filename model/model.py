@@ -2,20 +2,6 @@
 SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
-__all__ = [
-    'Address',
-    'Base',
-    'Charge',
-    'ChargeEvaluation',
-    'Customer',
-    'Evaluation',
-    'MYSQLDB_DATETIME_MIN',
-    'Register',
-    'Session',
-    'UtilBill',
-    'UtilBillLoader',
-    'check_schema_revision',
-]
 import ast
 from datetime import datetime
 import json
@@ -36,6 +22,20 @@ from alembic.migration import MigrationContext
 from billing.exc import NoSuchBillException, FormulaSyntaxError
 from billing.exc import FormulaError
 from exc import DatabaseError
+__all__ = [
+    'Address',
+    'Base',
+    'Charge',
+    'ChargeEvaluation',
+    'Customer',
+    'Evaluation',
+    'MYSQLDB_DATETIME_MIN',
+    'Register',
+    'Session',
+    'UtilBill',
+    'UtilBillLoader',
+    'check_schema_revision',
+]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
