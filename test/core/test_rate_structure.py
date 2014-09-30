@@ -4,10 +4,9 @@ import unittest
 
 from mock import Mock
 
-from billing.processing.rate_structure import RateStructureDAO
-from billing.model import Charge
+from billing.core.rate_structure import RateStructureDAO
+from billing.core.model import Charge
 from billing.exc import NoSuchBillException
-
 
 class RateStructureDAOTest(unittest.TestCase):
     def setUp(self):
