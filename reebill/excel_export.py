@@ -322,6 +322,8 @@ class Exporter(object):
                 if end_date:
                     if period_end <= end_date:
                         reebill_in_period = True
+                    else:
+                        reebill_in_period = False
                 if (begin_date or end_date) and not reebill_in_period:
                     continue
 
