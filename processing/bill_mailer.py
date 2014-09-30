@@ -8,7 +8,9 @@ class Mailer(object):
     '''
     Class for sending out emails
     '''
-    def __init__(self, mail_from, originator, password, template_html, smtp_host, smtp_port=587, bcc_list=None):
+
+    def __init__(self, mail_from, originator, password, template_html,
+                 smtp_host, smtp_port=587, bcc_list=None):
         '''
         :param mail_from: email address fdrom which emails are sent out
         :param originator: more descriptive email address for use as sender
