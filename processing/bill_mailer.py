@@ -41,6 +41,6 @@ class Mailer(object):
             template_html = template_file.read()
             send_email(self._mail_from, recipients, subject, self._originator, self._password,
                     self._smtp_host,
-                    self._smtp_port, template_file, merge_fields,
+                    self._smtp_port, template_html, merge_fields,
                     bcc_addrs=self._bcc_list,
                     attachment_paths=attachment_paths)
