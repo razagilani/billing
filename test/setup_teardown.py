@@ -7,7 +7,7 @@ import mongoengine
 
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
-from billing.processing import rate_structure2, journal
+from billing.processing import rate_structure, journal
 from billing.processing.process import Process
 from billing.processing.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
@@ -212,7 +212,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.rate_structure_dao = rate_structure2.RateStructureDAO(
+        self.rate_structure_dao = rate_structure.RateStructureDAO(
                 logger=logger)
 
         # TODO: 64956642 do not hard code nexus names

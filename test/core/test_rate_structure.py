@@ -4,7 +4,7 @@ import unittest
 
 from mock import Mock
 
-from billing.processing.rate_structure2 import RateStructureDAO
+from billing.processing.rate_structure import RateStructureDAO
 from billing.model import Charge
 from billing.exc import NoSuchBillException
 

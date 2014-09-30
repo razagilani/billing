@@ -30,7 +30,7 @@ from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing.bill_mailer import Mailer
 from billing.processing import process, state, fetch_bill_data as fbd
-from billing.processing.rate_structure2 import RateStructureDAO
+from billing.processing.rate_structure import RateStructureDAO
 from billing.processing.state import Session
 from billing.processing.billupload import BillUpload
 from billing.processing import journal

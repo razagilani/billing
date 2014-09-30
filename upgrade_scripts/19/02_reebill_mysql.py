@@ -4,7 +4,7 @@ import mongoengine
 import MySQLdb
 import argparse
 from billing.processing.state import StateDB, UtilBill, Customer, ReeBill
-from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
+from billing.processing.rate_structure import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 
 
