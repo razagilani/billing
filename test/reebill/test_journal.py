@@ -3,7 +3,7 @@ import pymongo
 import mongoengine
 from datetime import date, datetime, timedelta
 from time import sleep
-from billing.processing import journal
+from billing.reebill import journal
 from billing.util.dateutils import ISO_8601_DATE
 from billing.test import testing_utils
 

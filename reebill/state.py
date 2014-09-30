@@ -16,7 +16,7 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
-from billing.model import Base, Address, Register, Session, Evaluation, \
+from billing.core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Customer
 
 __all__ = [

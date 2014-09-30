@@ -3,7 +3,7 @@ from datetime import date
 import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from billing.model import UtilBill
+from billing.core.model import UtilBill
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 

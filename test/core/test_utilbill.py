@@ -9,7 +9,7 @@ from datetime import date
 from unittest import TestCase
 
 from billing.exc import RSIError
-from billing.model import UtilBill, Customer, Session, Charge,\
+from billing.core.model import UtilBill, Customer, Session, Charge,\
     Address, Register
 
 class UtilBillTest(TestCase):
