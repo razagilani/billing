@@ -201,6 +201,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         from billing import config
 
         logger = logging.getLogger('test')
+        init_config('test/tstsettings.cfg')
+        self.config = config
 
         self.state_db = StateDB(logger)
         self.billupload = BillUpload(config, logger)
@@ -240,10 +242,16 @@ class TestCaseWithSetup(test_utils.TestCase):
                 'primus': '1788 Massachusetts Ave.',
                 },
         ])
-
-        bill_mailer = Mailer({
-            # TODO 64956668
-        })
+        mailer_opts = dict(self.config.items("mailer"))
+        bill_mailer = Mailer(
+                mailer_opts['mail_from'],
+                mailer_opts['originator'],
+                mailer_opts['password'],
+                mailer_opts['template_file_name'],
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
+                mailer_opts['bcc_list']
+        )
 
         self.temp_dir = TempDirectory()
         reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
