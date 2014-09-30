@@ -1,14 +1,6 @@
 """
 Utility functions to interact with state database
 """
-__all__ = [
-    'Payment',
-    'Reading',
-    'ReeBill',
-    'ReeBillCharge',
-    'StateDB',
-]
-
 from datetime import datetime, date
 import logging
 import traceback
@@ -24,8 +16,16 @@ from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
-from billing.model import Base, Address, Register, Session, Evaluation, \
+from billing.core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Customer
+
+__all__ = [
+    'Payment',
+    'Reading',
+    'ReeBill',
+    'ReeBillCharge',
+    'StateDB',
+    ]
 
 log = logging.getLogger(__name__)
 

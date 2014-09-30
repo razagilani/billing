@@ -28,16 +28,15 @@ from billing.util import json_util as ju
 from billing.util.dateutils import ISO_8601_DATE
 from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
-from billing.processing.bill_mailer import Mailer
-from billing.processing import process, state, fetch_bill_data as fbd
-from billing.processing.rate_structure2 import RateStructureDAO
-from billing.processing.state import Session
-from billing.processing.billupload import BillUpload
-from billing.processing import journal
-from billing.processing import render
-from billing.processing.users import UserDAO
+from billing.reebill.bill_mailer import Mailer
+from billing.reebill import process, state, fetch_bill_data as fbd
+from billing.core.rate_structure import RateStructureDAO
+from billing.core.model import Session
+from billing.core.billupload import BillUpload
+from billing.reebill import journal, render
+from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
-from billing.processing.excel_export import Exporter
+from billing.reebill.excel_export import Exporter
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 
