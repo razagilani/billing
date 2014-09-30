@@ -58,5 +58,22 @@ class HolidaysTest(unittest.TestCase):
             independence13, labor13, columbus13, veterans13, thanks13, xmas13])
         self.assertEquals(all_2013, all_holidays(2013))
 
+    def test_is_weekday(self):
+        holidays_2013 = [
+            date(2013, 1, 1),
+            date(2013, 1, 21),
+            date(2013, 2, 18),
+            date(2013, 5, 27),
+            date(2013, 7, 4),
+            date(2013, 9, 2),
+            date(2013, 10, 14),
+            date(2013, 11, 11),
+            date(2013, 11, 28),
+            date(2013, 12, 25),
+        ]
+        self.assertFalse(any(is_weekday(day) for day in holidays_2013))
+        self.assertTrue(all(is_weekday(date(2013, 1, x)) for x in [2, 3, 4, 7]))
+        self.assertFalse(all(is_weekday(date(2013, 1, x)) for x in [5, 6]))
+
 if __name__ == '__main__':
     unittest.main()
