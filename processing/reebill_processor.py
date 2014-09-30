@@ -37,13 +37,25 @@ class ReebillProcessor(object):
     def update_payment(self, id, date_applied, description, credit):
         session = Session()
         payment = session.query(Payment).filter_by(id=id).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be changed after they are applied to an issued reebill')
         payment.date_applied = date_applied
         payment.description = description
         payment.credit = credit
 
     def delete_payment(self, oid):
         '''Wrapper to delete_payment method in state.py'''
+        session = Session()
+        payment = session.query(Payment).filter_by(id=oid).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be deleted after they are applied to an issued reebill')
         self.state_db.delete_payment(oid)
+
+    def get_payments(self, account):
+        '''Wrapper to state_db.payments'''
+        payments = self.state_db.payments(account)
+        return [payment.column_dict() for payment in payments]
+
 
     def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and

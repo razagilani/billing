@@ -737,8 +737,7 @@ class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
         start, limit = int(start), int(limit)
-        payments = self.state_db.payments(account)
-        rows = [payment.column_dict() for payment in payments]
+        rows = self.process.get_payments(account)
         return True, {'rows': rows[start:start+limit],  'results': len(rows)}
 
     def handle_post(self, account, *vpath, **params):

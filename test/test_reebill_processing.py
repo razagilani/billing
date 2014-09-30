@@ -1512,6 +1512,38 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(22, reebill_1.payment_received)
         self.assertEqual(30, reebill_2.payment_received)
 
+    def test_payments(self):
+        '''tests creating, updating, deleting and retrieving payments'''
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                                         date(2000, 2, 1), StringIO('January'), 'january.pdf')
+        # create a reebill
+        reebill = self.process.roll_reebill(account,
+                                              start_date=date(2000, 1, 1))
+
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
+        self.process.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
+
+        #self.process.compute_reebill(account, 1)
+
+        payments = self.process.get_payments(account)
+        self.assertEqual(len(payments), 2)
+        self.assertEqual(payments[0]['credit'], 10)
+        self.assertEqual(payments[1]['credit'], 12)
+        self.process.update_payment(payments[0]['id'], payments[0]['date_applied'], 'changed credit', 20)
+        payments = self.process.get_payments(account)
+        self.assertEqual(payments[0]['credit'], 20)
+        self.process.delete_payment(payments[0]['id'])
+        self.assertEqual(len(self.process.get_payments(account)), 1)
+
+         # 1st reebill has the only payment applied to it,
+        self.process.compute_reebill(account, 1)
+        self.process.issue(account, 1)
+        payment = self.process.get_payments(account)[0]
+        self.assertRaises(IssuedBillError, self.process.update_payment, payment['id'], payment['date_applied'], 'update', 20)
+        self.assertRaises(IssuedBillError, self.process.delete_payment, payment['id'])
+
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data
         account = '99999'
