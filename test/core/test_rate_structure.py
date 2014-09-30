@@ -1,11 +1,11 @@
 '''Tests for rate_structure.py'''
 from datetime import date
 import unittest
+
 from mock import Mock
-from bson import ObjectId
-from mongoengine import DoesNotExist
-from billing.processing.rate_structure2 import RateStructureDAO
-from billing.processing.state import Charge
+
+from billing.core.rate_structure import RateStructureDAO
+from billing.core.model import Charge
 from billing.exc import NoSuchBillException
 
 class RateStructureDAOTest(unittest.TestCase):

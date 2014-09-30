@@ -7,12 +7,12 @@ from mock import Mock, call
 from skyliner.sky_install import SkyInstall
 from skyliner.skymap.monguru import CubeDocument, Monguru
 
-from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
+from billing.reebill.state import ReeBill, Customer, UtilBill, Address, \
     Register, Reading
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
-import billing.processing.fetch_bill_data as fbd
+import billing.reebill.fetch_bill_data as fbd
 from billing.util.dateutils import date_to_datetime
 
 
