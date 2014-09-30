@@ -3,7 +3,7 @@ from datetime import date
 
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import init_config, init_model
-from billing.model import Customer, UtilBill, Session, \
+from billing.core.model import Customer, UtilBill, Session, \
     Address, UtilBillLoader
 from billing.exc import NoSuchBillException
 

@@ -3,7 +3,7 @@ from collections import defaultdict
 from sys import maxint
 
 from billing.exc import NoSuchBillException
-from billing.model import Charge
+from billing.core.model import Charge
 
 
 # minimum normlized score for an RSI to get included in a probable RS

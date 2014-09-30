@@ -7,13 +7,14 @@ import mongoengine
 
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
-from billing.processing import rate_structure, journal
-from billing.processing.process import Process
-from billing.processing.state import StateDB, Customer, Session, UtilBill, \
+from billing.core import rate_structure
+from billing.reebill import journal
+from billing.reebill.process import Process
+from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
-from billing.processing.billupload import BillUpload
-from billing.processing.bill_mailer import Mailer
-from billing.processing.fetch_bill_data import RenewableEnergyGetter
+from billing.core.billupload import BillUpload
+from billing.reebill.bill_mailer import Mailer
+from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -37,7 +38,7 @@ def init_logging():
 
 init_logging()
 
-from billing.processing.render import ReebillFileHandler
+from billing.reebill.render import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
