@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 
-from billing.model import UtilBill, UtilBillLoader, Address, Charge, \
+from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, \
     Register, Session
 from billing.exc import NoSuchBillException
 

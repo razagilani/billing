@@ -307,10 +307,13 @@ class RenewableEnergyGetter(object):
             total_energy = 0.0
 
             for day in dateutils.date_generator(start, end):
-                day_type = holidays.get_day_type(day)
                 active_periods = register.get_active_periods()
-                hour_ranges = map(tuple,
-                                  active_periods['active_periods_%s' % day_type])
+                if holidays.is_weekday(day):
+                    hour_ranges = map(tuple,
+                                      active_periods['active_periods_weekday'])
+                else:
+                    hour_ranges = map(tuple,
+                                      active_periods['active_periods_weekend'])
 
                 for hourrange in hour_ranges:
                     # 5 digits after the decimal points is an arbitrary decision

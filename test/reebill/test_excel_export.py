@@ -5,11 +5,9 @@ import unittest
 
 import mock
 
-from billing.processing.excel_export import Exporter
-from billing.processing.state import (
-    StateDB, ReeBill, Payment, UtilBill, Register)
-from billing.model import Charge
-
+from billing.reebill.excel_export import Exporter
+from billing.core.model import UtilBill, Register, Charge
+from billing.reebill.state import StateDB, ReeBill, Payment
 
 class ExporterTest(unittest.TestCase):
 

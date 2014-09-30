@@ -2,20 +2,6 @@
 SQLALchemy classes for all applications that use the utility bill database.
 Also contains some related classes that do not correspond to database tables.
 '''
-__all__ = [
-    'Address',
-    'Base',
-    'Charge',
-    'ChargeEvaluation',
-    'Customer',
-    'Evaluation',
-    'MYSQLDB_DATETIME_MIN',
-    'Register',
-    'Session',
-    'UtilBill',
-    'UtilBillLoader',
-    'check_schema_revision',
-]
 import ast
 from datetime import datetime
 import json
@@ -36,6 +22,20 @@ from alembic.migration import MigrationContext
 from billing.exc import NoSuchBillException, FormulaSyntaxError
 from billing.exc import FormulaError
 from exc import DatabaseError
+__all__ = [
+    'Address',
+    'Base',
+    'Charge',
+    'ChargeEvaluation',
+    'Customer',
+    'Evaluation',
+    'MYSQLDB_DATETIME_MIN',
+    'Register',
+    'Session',
+    'UtilBill',
+    'UtilBillLoader',
+    'check_schema_revision',
+]
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -548,15 +548,15 @@ class Register(Base):
     def get_active_periods(self):
         """Return a dictionary describing "active periods" of this register.
         For a time-of-use register, this dictionary should have the keys
-        "active_periods_weekday", "active_periods_weekend",
-        and "active_periods_holiday". For a non-time-of-use register will
-        have an empty dictionary.
+        "active_periods_weekday" and "active_periods_weekend". A
+        non-time-of-use register will have an empty dictionary.
+        The value of each key is a list of (start, end) pairs of hours in [0,23]
+        where the end hour is inclusive.
         """
-        keys = ['active_periods_weekday', 'active_periods_weekend',
-                'active_periods_holiday']
+        keys = ['active_periods_weekday', 'active_periods_weekend']
         # blank means active every hour of every day
         if self.active_periods in ('', None):
-            return {key: [(0, 23)] for key in keys}
+            return {key: [[0, 23]] for key in keys}
         # non-blank: parse JSON and make sure it contains all 3 keys
         result = json.loads(self.active_periods)
         assert all(key in result for key in keys)
