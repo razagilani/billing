@@ -95,28 +95,18 @@ class RenewableEnergyGetter(object):
                     install_obj.get_billable_energy_timeseries(
                     date_to_datetime(start), date_to_datetime(end), reading.measure)]
 
-            # this function takes an hour and returns energy sold during that hour
-            def energy_function(day, hourrange):
-                total = 0
-                for hour in range(hourrange[0], hourrange[1] + 1):
-                    index = timedelta_in_hours(date_to_datetime(day) +
-                        timedelta(hours=hour)
-                        - date_to_datetime(start))
-                    total += timeseries[index]
-                return total
-
-            results = self._usage_data_to_virtual_register(utilbill,
-                    energy_function)
-            for binding, quantity in results:
-                assert isinstance(binding, basestring)
-                assert isinstance(quantity, (float, int))
-                try:
-                    reebill.set_renewable_energy_reading(binding, quantity)
-                except RegisterError:
-                    # ignore any registers that exist in the utility bill
-                    # but don't have corresponding readings in the reebill
-                    self._logger.info(('In update_renewable_readings: skipped '
-                            'register "%s" in %s') % (binding, reebill))
+            quantity = self._usage_data_to_virtual_register(utilbill,
+                    reading, timeseries)
+            assert isinstance(quantity, (float, int))
+            try:
+                reebill.set_renewable_energy_reading(reading.register_binding,
+                                                     quantity)
+            except RegisterError:
+                # ignore any registers that exist in the utility bill
+                # but don't have corresponding readings in the reebill
+                self._logger.info(('In update_renewable_readings: skipped '
+                        'register "%s" in %s') % (reading.register_binding,
+                        reebill))
 
     def fetch_interval_meter_data(self, reebill, csv_file,
             timestamp_column=0, energy_column=1,
@@ -129,7 +119,7 @@ class RenewableEnergyGetter(object):
                 timestamp_column=timestamp_column, energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
         results = self._usage_data_to_virtual_register(reebill.utilbill,
-                energy_function)
+                reebill.readings[0], )
         for binding, quantity in results:
             assert isinstance(binding, basestring)
             assert isinstance(quantity, (float, int))
@@ -141,6 +131,8 @@ class RenewableEnergyGetter(object):
                 self._logger.info(('In update_renewable_readings: skipped '
                                    'register "%s" in %s') % (binding, reebill))
 
+
+    # NOTE this is used only by fetch_interval_meter_data, which is obsolete.
     def get_interval_meter_data_source(self, csv_file, timestamp_column=0,
             energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
             energy_unit='btu'):
@@ -267,44 +259,19 @@ class RenewableEnergyGetter(object):
         return get_energy_for_hour_range
 
 
-    def aggregate_total(self, energy_function, start, end, verbose=False):
-        '''Returns all energy given by 'energy_function' in the date range [start,
-        end), in BTU. 'energy_function' should be a function mapping a date and an
-        hour range (2-tuple of integers in [0,23]) to a float representing energy
-        used during that time in BTU.'''
-        result = 0
-        for day in dateutils.date_generator(start, end):
-            print 'getting energy for %s' % day
-            result += energy_function(day, (0, 23))
-        return result
-
-    def aggregate_tou(self, day_type, hour_range, energy_function, start, end,
-                      verbose=False):
-        '''Returns the sum of energy given by 'energy_function' during the hours
-        'hour_range' (a 2-tuple of integers in [0,24)) on days of type 'day_type'
-        ("weekday", "weekend", or "holiday"). 'energy_function' should be a
-        function mapping a date and an hour range (2-tuple of integers in [0,23])
-        to a float representing energy used during that time in BTU.'''
-        result = 0
-        for day in dateutils.date_generator(start, end):
-            if holidays.get_day_type(day) != day_type:
-                print 'getting energy for %s %s' % (day, hour_range)
-                result += energy_function(day, hour_range)
-        return result
-
-
-    def _usage_data_to_virtual_register(self, utilbill, energy_function, verbose=False):
-        '''Gets energy quantities from 'energy_function' and returns new
+    def _usage_data_to_virtual_register(self, utilbill, reading, timeseries):
+        '''Gets energy quantities from 'timeseries' and returns new
         renewable energy register readings as a list of (register binding,
         quantity) pairs. The caller should put these values in the
         appropriate place.
 
-        'energy_function' should be a function mapping a date and an hour
-        range (pair of integers in [0,23]) to a float representing energy used
-        during that time. (Energy is measured in therms, even if it's gas.)
+        'timeseries' a list of hourly values used to determine the register's
+        value, such as energy consumed in each hour. (Energy is measured in
+        therms.)
         '''
+        aggregation_function = reading.get_aggregation_function()
         def get_renewable_energy_for_register(register, start, end):
-            total_energy = 0.0
+            aggregate_value = None
 
             for day in dateutils.date_generator(start, end):
                 active_periods = register.get_active_periods()
@@ -316,21 +283,25 @@ class RenewableEnergyGetter(object):
                                       active_periods['active_periods_weekend'])
 
                 for hourrange in hour_ranges:
-                    # 5 digits after the decimal points is an arbitrary decision
-                    # TODO decide what our precision actually is: see
-                    # https://www.pivotaltracker.com/story/show/24088787
-                    energy_today = energy_function(day, hourrange)
-                    if verbose:
-                        print 'register %s accumulating energy %s %s for %s %s' % (
-                            register['identifier'], energy_today,
-                            register['quantity_units'],
-                            day, hourrange)
-                    total_energy += float(energy_today)
-            return total_energy
+                    indices = []
+                    for hour in range(hourrange[0], hourrange[1] + 1):
+                        index = timedelta_in_hours(date_to_datetime(day) +
+                            timedelta(hours=hour)
+                            - date_to_datetime(start))
+                        indices.append(index)
 
-        result = []
-        for register in utilbill.registers:
-            hypothetical_quantity = get_renewable_energy_for_register(register,
-                utilbill.period_start, utilbill.period_end)
-            result.append((register.register_binding, hypothetical_quantity))
-        return result
+                    energy_today = aggregation_function(
+                            timeseries[i] for i in indices)
+
+                    if aggregate_value is None:
+                        aggregate_value = float(energy_today)
+                    else:
+                        aggregate_value = aggregation_function(
+                                [aggregate_value, float(energy_today)])
+            return aggregate_value
+
+        register = next(r for r in utilbill.registers if r.register_binding
+                        == reading.register_binding)
+        return get_renewable_energy_for_register(
+                register, utilbill.period_start, utilbill.period_end)
+
