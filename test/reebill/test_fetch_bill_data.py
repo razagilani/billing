@@ -3,9 +3,12 @@ import csv
 import random
 import unittest
 from datetime import date, datetime, timedelta
+from mock import Mock, call
+from skyliner.sky_install import SkyInstall
+from skyliner.skymap.monguru import CubeDocument, Monguru
 
 from billing.reebill.state import ReeBill, Customer, UtilBill, Address, \
-    Register
+    Register, Reading
 from skyliner.sky_handlers import cross_range
 from billing.util import dateutils
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -173,7 +176,7 @@ class FetchTest(unittest.TestCase):
         self.ree_getter.fetch_interval_meter_data(self.reebill, csv_file)
 
 
-    def test_fetch_oltp_data(self):
+    def test_fetch_oltp_data_simple(self):
         '''Put energy in a bill with a simple "total" register, and make sure
         the register contains the right amount of energy.
         '''
@@ -197,3 +200,83 @@ class FetchTest(unittest.TestCase):
         # BTU).
         self.assertAlmostEqual(total_btu,
                 self.reebill.get_total_renewable_energy() * 100000)
+
+class ReeGetterTestPV(unittest.TestCase):
+    '''Test for ReeGetter involving a PV bill with both energy and demand
+    registers.
+    Unlike the above, this has proper mocking and doesn't depend on
+    SQLAlchemy objects.
+    '''
+    # TODO: test_fetch_oltp_data should be moved into here, or another class
+    # that sets up mocks in a similar way.
+
+    def setUp(self):
+        utilbill = Mock()
+        utilbill.period_start = date(2000,1,1)
+        utilbill.period_end = date(2000,2,1)
+        energy_register = Mock(autospec=Register)
+        energy_register.register_binding = 'REG_TOTAL'
+        energy_register.get_active_periods.return_value = {
+            'active_periods_weekday': [(0, 23)],
+            'active_periods_weekend': [(0, 23)],
+            'active_periods_holiday': [(0, 23)],
+        }
+        demand_register = Mock(autospec=Register)
+        demand_register.register_binding = 'REG_DEMAND'
+        demand_register.get_active_periods.return_value = \
+                energy_register.get_active_periods.return_value
+        utilbill.registers = [energy_register, demand_register]
+
+        self.reebill = Mock()
+        self.reebill.utilbill = utilbill
+        self.reebill.get_period.return_value = (date(2000,1,1), date(2000,2,1))
+
+        # reading quantities will get overwritten
+        self.energy_reading = Mock(autospec=Reading)
+        self.energy_reading.register_binding = \
+                energy_register.register_binding
+        self.energy_reading.measure = 'Energy Sold'
+        self.energy_reading.aggregate_function = 'SUM'
+        self.energy_reading.unit = 'kWh'
+        self.energy_reading.conventional_quantity = -1
+        self.energy_reading.renewable_quantity = -2
+        self.demand_reading = Mock()
+        self.demand_reading.register_binding = \
+                demand_register.register_binding
+        self.demand_reading.conventional_quantity = -3
+        self.demand_reading.renewable_quantity = -4
+        self.demand_reading.measure = 'Demand'
+        self.demand_reading.aggregate_function = 'MAX'
+        self.demand_reading.unit = 'kWD'
+        self.reebill.readings = [self.energy_reading, self.demand_reading]
+
+        self.monguru = Mock(autospec=Monguru)
+        self.install = Mock(autospec=SkyInstall)
+        self.install.get_annotations.return_value = []
+
+        # 1 BTU of energy consumed per day, 2 kWD of demand every day
+        mock_facts_doc = Mock(autospec=CubeDocument)
+        mock_facts_doc.energy_sold = 1
+        mock_facts_doc.demand = 2
+        self.monguru.get_data_for_hour.return_value = mock_facts_doc
+
+        splinter = Mock()
+        splinter._guru = self.monguru
+        splinter.get_install_obj_for.return_value = self.install
+        self.ree_getter = fbd.RenewableEnergyGetter(splinter, None)
+
+    def test_set_renewable_energy_readings_pv(self):
+        self.ree_getter.update_renewable_readings(self.install.name,
+                                                  self.reebill)
+        def btu_to_kwh(x):
+            return x * 0.00029307107
+
+        start, end = self.reebill.get_period()
+        expected_total_energy_sold = btu_to_kwh(1 * (end - start).days)
+        expected_max_demand = 2
+
+        self.reebill.set_renewable_energy_reading.assert_has_calls([
+            call(self.energy_reading.register_binding,
+                 expected_total_energy_sold),
+            call(self.demand_reading.register_binding, expected_max_demand),
+        ])
