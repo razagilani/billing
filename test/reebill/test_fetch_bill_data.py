@@ -162,6 +162,8 @@ class FetchTest(unittest.TestCase):
                 get_energy_for_hour(date(2012,3,28), [19,20]))
 
 
+    @unittest.skip('Obsolete feature that was never used; would have to be '
+                   'completely rewritten to get it working.')
     def test_fetch_interval_meter_data(self):
         '''Realistic test of loading interval meter data with an entire utility
         bill date range. Tests lack of errors but not correctness.'''
@@ -237,6 +239,7 @@ class ReeGetterTestPV(unittest.TestCase):
                 energy_register.register_binding
         self.energy_reading.measure = 'Energy Sold'
         self.energy_reading.aggregate_function = 'SUM'
+        self.energy_reading.get_aggregation_function.return_value = sum
         self.energy_reading.unit = 'kWh'
         self.energy_reading.conventional_quantity = -1
         self.energy_reading.renewable_quantity = -2
@@ -247,6 +250,7 @@ class ReeGetterTestPV(unittest.TestCase):
         self.demand_reading.renewable_quantity = -4
         self.demand_reading.measure = 'Demand'
         self.demand_reading.aggregate_function = 'MAX'
+        self.demand_reading.get_aggregation_function.return_value = max
         self.demand_reading.unit = 'kWD'
         self.reebill.readings = [self.energy_reading, self.demand_reading]
 
@@ -268,11 +272,8 @@ class ReeGetterTestPV(unittest.TestCase):
     def test_set_renewable_energy_readings_pv(self):
         self.ree_getter.update_renewable_readings(self.install.name,
                                                   self.reebill)
-        def btu_to_kwh(x):
-            return x * 0.00029307107
-
         start, end = self.reebill.get_period()
-        expected_total_energy_sold = btu_to_kwh(1 * (end - start).days)
+        expected_total_energy_sold = 1 * (end - start).days * 24
         expected_max_demand = 2
 
         self.reebill.set_renewable_energy_reading.assert_has_calls([
