@@ -126,7 +126,7 @@ class WebResource(object):
                 port=config.get('aws_s3', 'port'),
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
-        self.billupload = BillUpload(s3_connection)
+        self.billUpload = BillUpload(s3_connection)
 
         # create a RateStructureDAO
         self.ratestructure_dao = RateStructureDAO(logger=self.logger)
