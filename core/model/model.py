@@ -324,10 +324,6 @@ class UtilBill(Base):
     # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
 
-    # _ids of Mongo documents
-    document_id = Column(String(24))
-    uprs_document_id = Column(String(24))
-
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
     billing_address = relationship('Address', uselist=False, cascade='all',
