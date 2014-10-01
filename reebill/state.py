@@ -472,9 +472,6 @@ class UtilbillReebill(Base):
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
-    document_id = Column(String(24))
-    # TODO remove this
-    uprs_document_id = Column(String(24))  #indicates the rate structure data
 
     # there is no delete cascade in this 'relationship' because a UtilBill
     # should not be deleted when a UtilbillReebill is deleted.
