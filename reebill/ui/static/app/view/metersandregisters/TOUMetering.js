@@ -15,6 +15,13 @@ Ext.define('ReeBill.view.TOUMetering', {
         margin: '0 0 5 0',
         style: {display: 'block'}
     },{
+        xtype: 'label',
+        text: 'The active periods have not been set for one or more register. Use the sliders to enter the active periods and press save below.',
+        margin: '0 0 5 0',
+        style: {display: 'block', color: 'red'},
+        hidden: true,
+        id: 'TOUMeteringWarningLabel'
+    },{
         xtype: 'fieldset',
         title: 'Active Periods',
         defaults: {
@@ -23,32 +30,21 @@ Ext.define('ReeBill.view.TOUMetering', {
         },
         collapsible: false,
         items: [{
-            xtype: 'multislider',
+            xtype: 'dynamicmultislider',
             width: 200,
-            values: [5, 9, 17, 21],
             increment: 1,
             minValue: 0,
             maxValue: 23,
             fieldLabel: 'Weekdays',
             id: 'TOUMeteringSliderWeekdays'
         },{
-            xtype: 'multislider',
+            xtype: 'dynamicmultislider',
             width: 200,
-            values: [5, 9, 17, 21],
             increment: 1,
             minValue: 0,
             maxValue: 23,
             fieldLabel: 'Weekends',
             id: 'TOUMeteringSliderWeekends'
-        },{
-            xtype: 'multislider',
-            width: 200,
-            values: [5, 9, 17, 21],
-            increment: 1,
-            minValue: 0,
-            maxValue: 23,
-            fieldLabel: 'Hollidays',
-            id: 'TOUMeteringSliderHollidays'
         }]
     }],
 

@@ -1,6 +1,9 @@
-from billing import init_config
-init_config(filepath='test/tstsettings.cfg')
+from billing.test import init_test_config
+from billing.core.model.model import UtilBill, Customer
 
+init_test_config()
+
+from billing import config
 from os.path import realpath, join, dirname
 import json
 import unittest
@@ -9,15 +12,14 @@ from datetime import date, datetime, timedelta
 import subprocess
 import os
 from os.path import realpath, join, dirname
+from billing.reebill.state import ReeBill
 
 from mock import Mock
 from sqlalchemy.orm.exc import NoResultFound
 from skyliner.sky_handlers import cross_range
-from billing.processing.state import ReeBill, Customer, UtilBill, Register, \
-    Utility
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.exc import BillStateError, FormulaSyntaxError, NoSuchBillException, \
-    ConfirmAdjustment, ProcessedBillError, IssuedBillError
+    ConfirmAdjustment, ProcessedBillError, IssuedBillError, NotIssuable
 from billing.test import testing_utils
 from testfixtures.tempdirectory import TempDirectory
 
@@ -53,7 +55,7 @@ class ProcessTest(TestCaseWithSetup, testing_utils.TestCase):
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
         self.process.upload_utility_bill(account, 'gas', start, end,
-                                         StringIO("test"), 'january.pdf')
+                                         StringIO("test"))
         utilbills_data, count = self.process.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
@@ -486,6 +488,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # two should not be issuable until one_doc is issued
         self.assertRaises(BillStateError, self.process.issue, acc, 2)
+        self.assertRaises(NotIssuable, self.process.issue_and_mail, False, acc, 2)
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
@@ -496,15 +499,25 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEquals(True, one.processed)
         self.assertEquals(True, self.state_db.is_issued(acc, 1))
         self.assertEquals((one.issue_date + timedelta(30)).date(), one.due_date)
+        # make a correction on reebill #1. this time 20 therms of renewable
+        # energy instead of 10 were consumed.
+        self.process.ree_getter.quantity = 20
+        self.process.new_version(acc, 1)
 
         customer = self.state_db.get_customer(acc)
         two.email_recipient = 'test1@example.com, test2@exmaple.com'
 
         # issue and email two
         self.process.reebill_file_handler.render_max_version.return_value = 2
-        self.process.issue_and_mail(False, account=acc, sequence=2,
+        # issuing a reebill that has corrections with apply_corrections False raises ConfirmAdjustment Exception
+        self.assertRaises(ConfirmAdjustment, self.process.issue_and_mail,False, account=acc, sequence=2,
                                     recipients=two.email_recipient)
-
+        #ValueError is Raised if an issued Bill is issued again
+        self.assertRaises(ValueError, self.process.issue_and_mail,True, account=acc, sequence=1,
+                                    recipients=two.email_recipient)
+        self.process.toggle_reebill_processed(acc, 2, True)
+        self.assertEqual(True, two.processed)
+        self.process.issue_and_mail(True, processed=True)
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
         self.assertEquals(True, two.processed)
@@ -718,9 +731,9 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                              'total_error': 8.8,
                              }], self.process.get_reebill_metadata_json('99999')):
             self.assertDictContainsSubset(x, y)
-
-
-
+        # when you issue a bill and it has corrections applying to it, and you don't specify apply_corrections=True,
+        # it raises an exception ConfirmAdjustment
+        self.assertRaises(ConfirmAdjustment ,self.process.issue_and_mail, False, account=acc, sequence=2)
 
         # when you make a bill processed and it has corrections applying to it, and you don't specify apply_corrections=True,
         # it raises an exception ConfirmAdjustment
@@ -742,12 +755,14 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # When toggle_reebill_processed is called for a processed reebill, reebill becomes unprocessed
         self.process.toggle_reebill_processed(acc, 2, apply_corrections=False)
         self.assertEqual(reebill.processed, False)
-        # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
+
         self.process.issue(acc, reebill.sequence, issue_date=datetime(2012,3,10))
         self.assertRaises(IssuedBillError, self.process.bind_renewable_energy, acc, reebill.sequence)
+        # when toggle_reebill_processed is called for issued reebill it raises IssuedBillError
         self.assertRaises(IssuedBillError,
                           self.process.toggle_reebill_processed, acc, reebill.sequence,
                           apply_corrections=False)
+
 
     def test_create_first_reebill(self):
         '''Test creating the first utility bill and reebill for an account,
@@ -1509,6 +1524,38 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(22, reebill_1.payment_received)
         self.assertEqual(30, reebill_2.payment_received)
 
+    def test_payments(self):
+        '''tests creating, updating, deleting and retrieving payments'''
+        account = '99999'
+        self.process.upload_utility_bill(account, 'gas', date(2000, 1, 1),
+                                         date(2000, 2, 1), StringIO('January'))
+        # create a reebill
+        reebill = self.process.roll_reebill(account,
+                                              start_date=date(2000, 1, 1))
+
+        # 1 payment applied today at 1:00, 1 payment applied at 2:00
+        self.process.create_payment(account, datetime(2000, 1, 1, 1), 'one', 10)
+        self.process.create_payment(account, datetime(2000, 1, 1, 2), 'two', 12)
+
+        #self.process.compute_reebill(account, 1)
+
+        payments = self.process.get_payments(account)
+        self.assertEqual(len(payments), 2)
+        self.assertEqual(payments[0]['credit'], 10)
+        self.assertEqual(payments[1]['credit'], 12)
+        self.process.update_payment(payments[0]['id'], payments[0]['date_applied'], 'changed credit', 20)
+        payments = self.process.get_payments(account)
+        self.assertEqual(payments[0]['credit'], 20)
+        self.process.delete_payment(payments[0]['id'])
+        self.assertEqual(len(self.process.get_payments(account)), 1)
+
+         # 1st reebill has the only payment applied to it,
+        self.process.compute_reebill(account, 1)
+        self.process.issue(account, 1)
+        payment = self.process.get_payments(account)[0]
+        self.assertRaises(IssuedBillError, self.process.update_payment, payment['id'], payment['date_applied'], 'update', 20)
+        self.assertRaises(IssuedBillError, self.process.delete_payment, payment['id'])
+
     def test_tou_metering(self):
         # TODO: possibly move to test_fetch_bill_data
         account = '99999'
@@ -1537,22 +1584,32 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # modify registers of this utility bill so they are TOU
         u = self.session.query(UtilBill).join(Customer). \
             filter_by(account='99999').one()
-        active_periods_str = json.dumps({
+        active_periods = {
             'active_periods_weekday': [[9, 9]],
             'active_periods_weekend': [[11, 11]],
-            'active_periods_holiday': [[13, 13]]
+        }
+
+        r = self.process.new_register(u.id, {})
+        self.process.update_register(r.id, {
+            'description': 'time-of-use register',
+            'quantity': 0,
+            'quantity_units': 'btu',
+            'identifier': 'test2',
+            'estimated': False,
+            'reg_type': 'tou',
+            'register_binding': 'TOU',
+            'meter_identifier': '',
+            'active_periods': json.dumps(active_periods),
         })
-        self.session.add(Register(u, 'time-of-use register', 0, 'btu',
-                                  'test2', False, 'tou', 'TOU', active_periods_str, ''))
         self.process.roll_reebill(account, start_date=date(2000, 1, 1))
 
         # the total energy consumed over the 3 non-0 days is
         # 3 * (0 + 2 + ... + 23) = 23 * 24 / 2 = 276.
-        # when only the hours 9, 11, and 13 are included, the total is just
-        # 9 + 11 + 13 = 33.
+        # when only the hours 9 and 11 are included, the total is just
+        # 9 + 11 + 11 = 33.
         total_renewable_btu = 23 * 24 / 2. * 3
         total_renewable_therms = total_renewable_btu / 1e5
-        tou_renewable_btu = 9 + 11 + 13
+        tou_renewable_btu = 9 + 11 + 11
 
         # check reading of the reebill corresponding to the utility register
         total_reading, tou_reading = self.session.query(ReeBill).one().readings

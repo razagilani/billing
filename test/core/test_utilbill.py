@@ -9,8 +9,9 @@ from datetime import date
 from unittest import TestCase
 
 from billing.exc import RSIError
-from billing.processing.state import UtilBill, Customer, Session, Charge,\
-    Address, Register, Utility, Payment
+from billing.core.model import UtilBill, Customer, Session, Charge,\
+    Address, Register, Utility
+from billing.reebill.state import Payment
 
 class UtilBillTest(TestCase):
 

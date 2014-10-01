@@ -1,9 +1,13 @@
+from billing.test import init_test_config
+init_test_config()
+
 from StringIO import StringIO
 from datetime import date
 import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
-from processing.state import UtilBill, Customer, Session
+from billing.core.model import UtilBill
+from billing.core.model.model import Session, Customer, Utility, Address
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 
@@ -218,11 +222,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # account
         utilbill_path = join(dirname(realpath(__file__)), 'data',
                              'utility_bill.pdf')
+
+
         with open(utilbill_path) as file1:
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 1, 1),
                                              date(2012, 2, 1), file1,
-                                             'january.pdf',
                                              utility='pepco',
                                              rate_class='Residential-R')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
@@ -257,7 +262,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 2, 1),
                                              date(2012, 3, 1), file2,
-                                             'february.abc')
+                                             utility='pepco')
         utilbills_data, _ = self.process.get_all_utilbills_json(
             account, 0,
             30)
@@ -292,7 +297,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # 3rd bill "estimated", without a file
         self.process.upload_utility_bill(account, 'gas',
                                          date(2012, 3, 1), date(2012, 4, 1),
-                                         None, None,
+                                         None,
                                          state=UtilBill.Estimated,
                                          utility='washgas',
                                          rate_class='DC Non Residential Non Heat')
@@ -345,8 +350,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         with open(utilbill_path) as file4:
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 4, 1),
-                                             date(2012, 5, 1), file4,
-                                             'august')
+                                             date(2012, 5, 1), file4)
 
         utilbills_data, count = self.process.get_all_utilbills_json(
             account, 0, 30)
@@ -376,26 +380,26 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             id, state = obj['id'], obj['state']
             u = self.state_db.get_utilbill_by_id(id)
             if state == 'Final':
-                self.process.billupload.get_utilbill_file_path(u)
-            else:
-                with self.assertRaises(IOError):
-                    self.process.billupload.get_utilbill_file_path(u)
+                key_name = self.billupload._get_key_name(u)
+                key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
+                key_obj.get_contents_as_string()
 
         # delete utility bills
         ids = [obj['id'] for obj in utilbills_data]
 
-        _, new_path = self.process.delete_utility_bill_by_id(ids[3])
+        self.process.delete_utility_bill_by_id(ids[3])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(3, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[2])
+
+        self.process.delete_utility_bill_by_id(ids[2])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[1])
+
+        self.process.delete_utility_bill_by_id(ids[1])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
-        _, new_path = self.process.delete_utility_bill_by_id(ids[0])
+
+        self.process.delete_utility_bill_by_id(ids[0])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 

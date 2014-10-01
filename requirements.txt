@@ -34,3 +34,4 @@ tsort==0.0.1
 wsgiref==0.1.2
 xlwt==0.7.4
 boto==2.32.1
+testfixtures

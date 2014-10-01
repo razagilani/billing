@@ -1,3 +1,6 @@
+from billing.test import init_test_config
+init_test_config()
+
 import sys
 import unittest
 from datetime import date
@@ -9,13 +12,15 @@ import mongoengine
 
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
-from billing.processing import rate_structure2, journal
-from billing.processing.process import Process
-from billing.processing.state import StateDB, Customer, Session, UtilBill, \
-    Register, Address, Utility
-from billing.processing.billupload import BillUpload
-from billing.processing.bill_mailer import Mailer
-from billing.processing.fetch_bill_data import RenewableEnergyGetter
+from billing.core import rate_structure
+from billing.reebill import journal
+from billing.reebill.process import Process
+from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
+    Register, Address
+from billing.core.model import Utility
+from billing.core.billupload import BillUpload
+from billing.reebill.bill_mailer import Mailer
+from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
 
@@ -39,7 +44,7 @@ def init_logging():
 
 init_logging()
 
-from billing.processing.render import ReebillFileHandler
+from billing.reebill.render import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
@@ -206,6 +211,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         from billing import config
 
         logger = logging.getLogger('test')
+        init_config('test/tstsettings.cfg')
+        self.config = config
 
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
@@ -217,7 +224,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.rate_structure_dao = rate_structure2.RateStructureDAO(
+        self.rate_structure_dao = rate_structure.RateStructureDAO(
                 logger=logger)
 
         # TODO: 64956642 do not hard code nexus names
@@ -247,10 +254,16 @@ class TestCaseWithSetup(test_utils.TestCase):
                 'primus': '1788 Massachusetts Ave.',
                 },
         ])
-
-        bill_mailer = Mailer({
-            # TODO 64956668
-        })
+        mailer_opts = dict(self.config.items("mailer"))
+        bill_mailer = Mailer(
+                mailer_opts['mail_from'],
+                mailer_opts['originator'],
+                mailer_opts['password'],
+                mailer_opts['template_file_name'],
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
+                mailer_opts['bcc_list']
+        )
 
         self.temp_dir = TempDirectory()
         reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
@@ -261,7 +274,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         self.process = Process(self.state_db, self.rate_structure_dao,
                 self.billupload, self.nexus_util, bill_mailer, reebill_file_handler,
-                ree_getter, journal_dao, splinter=self.splinter, logger=logger)
+                ree_getter, journal_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                             alias='journal')

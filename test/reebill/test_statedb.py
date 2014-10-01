@@ -2,18 +2,16 @@
 Currently the only one is StateDB.
 '''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+from billing.core.model.model import Utility
+
 init_logging()
-
-
-
-
 import unittest
 from datetime import date, datetime
 from sqlalchemy.orm.exc import NoResultFound
 from billing import init_config, init_model
-from billing.processing import state
-from billing.processing.state import Customer, UtilBill, ReeBill, Session, \
-    Address, Utility
+from billing.reebill import state
+from billing.core.model import Customer, UtilBill, Session, Address
+from billing.reebill.state import ReeBill
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',

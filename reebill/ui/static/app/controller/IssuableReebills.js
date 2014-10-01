@@ -122,9 +122,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                     var reebill_corrections = '';
                     Ext.each(obj.reebills, function (reebill) {
                         if (reebill.adjustment != undefined) {
-                            reebill_corrections +='Reebill from account ' + reebill.reebill.account+
-                                     ' with sequence ' + reebill.reebill.sequence +
-                                      ' with corrections '  + reebill.unissued_corrections[0] +
+                            reebill_corrections +='Reebill from account ' + reebill.account+
+                                     ' with sequence ' + reebill.sequence +
+                                      ' with corrections '  + reebill.corrections +
                                     ' will be applied to this bill as an adjusment of $'
                                     + reebill.adjustment + '. Are you sure you want to issue it?' + '</br>'
 
@@ -140,10 +140,10 @@ Ext.define('ReeBill.controller.IssuableReebills', {
                                         var reebills = new Array();
                                         Ext.each(obj.reebills, function (reebill) {
                                             if (reebill.adjustment != undefined)
-                                                reebill.reebill.apply_corrections = true;
+                                                reebill.apply_corrections = true;
                                             reebills.push(reebill.reebill);
                                         });
-                                        var params = Ext.encode(reebills);
+                                        var params = Ext.encode(obj.reebills);
                                         var json_data = {reebills: params}
                                         Ext.Ajax.request({
                                             url: url,

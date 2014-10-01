@@ -3,7 +3,7 @@ import hashlib
 from boto.s3.connection import S3Connection
 import os
 from billing import config
-from billing.processing.state import Session, UtilBill
+from billing.core.model import Session, UtilBill
 
 HASH_CHUNK_SIZE = 1024 ** 2
 class BillUpload(object):

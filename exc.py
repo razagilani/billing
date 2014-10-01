@@ -112,3 +112,8 @@ class ConfirmAdjustment(Exception):
         self.correction_sequences = correction_sequences
         self.total_adjustment = total_adjustment
 
+class ConfirmAdjustments(Exception):
+    def __init__(self, corrections):
+        super(ConfirmAdjustment, self).__init__()
+        self.corrections = corrections
+

@@ -6,14 +6,13 @@ from billing import init_model
 from boto.exception import S3ResponseError
 from StringIO import StringIO
 from boto.s3.bucket import Bucket
-from processing.state import UtilBill, Customer, Utility, Address
+from billing.core.model import UtilBill, Customer, Address, Session, Utility
 import unittest
-from billing.processing.billupload import BillUpload
+from billing.core.billupload import BillUpload
 from billing import config
 import os
 import subprocess
 from mock import Mock
-from billing.processing.state import Session
 from datetime import date
 from os.path import join
 
