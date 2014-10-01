@@ -4,10 +4,9 @@ from operator import itemgetter
 import pymongo
 import tablib
 import traceback
-from billing.processing import state
+from billing.reebill import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
-from billing.processing.state import UtilBill, ReeBill, Customer
 from billing.exc import *
 
 import pprint
@@ -323,6 +322,8 @@ class Exporter(object):
                 if end_date:
                     if period_end <= end_date:
                         reebill_in_period = True
+                    else:
+                        reebill_in_period = False
                 if (begin_date or end_date) and not reebill_in_period:
                     continue
 

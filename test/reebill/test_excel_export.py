@@ -1,13 +1,13 @@
 #!/usr/bin/env python2
 from copy import deepcopy
-from billing.processing.excel_export import Exporter
-from billing.processing.state import (
-    StateDB, ReeBill, Payment, ReeBillCharge, Reading, UtilBill, Address,
-    Charge, Register)
 from datetime import date, datetime
 import unittest
+
 import mock
 
+from billing.reebill.excel_export import Exporter
+from billing.core.model import UtilBill, Register, Charge
+from billing.reebill.state import StateDB, ReeBill, Payment
 
 class ExporterTest(unittest.TestCase):
 

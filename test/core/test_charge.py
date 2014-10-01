@@ -1,6 +1,7 @@
 from datetime import date
+from mock import Mock
 
-from billing.processing.state import Charge, UtilBill, Customer, Address, \
+from billing.core.model import Charge, UtilBill, Customer, Address, \
     ChargeEvaluation
 from billing.exc import FormulaError
 from test import testing_utils
@@ -19,13 +20,13 @@ class ChargeUnitTests(testing_utils.TestCase):
     """Unit Tests for the :class:`billing.processing.state.Charge` class"""
 
     def setUp(self):
-        bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
+        self.bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                                  'nobody@example.com', 'FB Test Utility',
                                  'FB Test Rate Class', Address(), Address()),
                         UtilBill.Complete, 'gas', 'utility', 'rate class',
                         Address(), Address(), period_start=date(2000, 1, 1),
                         period_end=date(2000, 2, 1))
-        self.charge_params = dict(utilbill=bill,
+        self.charge_params = dict(utilbill=self.bill,
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
                                   quantity=0.0,
@@ -86,7 +87,6 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.assertRaises(SyntaxError, Charge.formula_variables, self.charge)
 
     def test_evaluate(self):
-
         evaluation = Charge.evaluate(self.charge, self.context)
         self.assertEqual(evaluation.quantity, 4)
         self.assertEqual(evaluation.total, 24)
@@ -100,4 +100,20 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_does_not_raise_on_bad_input_raise_exception_false(self):
         self.charge.quantity_formula = '^)%I$#*4'
         Charge.evaluate(self.charge, self.context)
+
+    def test_evaluate_blank(self):
+        '''Test that empty quantity_formula is equivalent to 0.
+        '''
+        c = Charge(self.bill, '', '', 2, 'kWh', 3, 'X', 6,
+                   quantity_formula='')
+        self.assertEqual(0, c.evaluate({}).quantity)
+
+        # when update=False, old value is preserved
+        self.assertEqual(2, c.quantity)
+        self.assertEqual(6, c.total)
+
+        # when update=False, old value is replaced with new value
+        self.assertEqual(0, c.evaluate({}, update=True).quantity)
+        self.assertEqual(0, c.quantity)
+        self.assertEqual(0, c.total)
 
