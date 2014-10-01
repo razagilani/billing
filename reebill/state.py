@@ -590,6 +590,16 @@ class Reading(Base):
     def hypothetical_quantity(self):
         return self.conventional_quantity + self.renewable_quantity
 
+    def get_aggregation_function(self):
+        '''Return the function for aggregating renewable energy values
+        (float, float -> float), based on the 'aggregate_function' database
+        column.
+        '''
+        if self.aggregate_function == 'SUM':
+            return sum
+        if self.aggregate_function == 'MAX':
+            return max
+
 class Payment(Base):
     __tablename__ = 'payment'
 
