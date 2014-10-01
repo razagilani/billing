@@ -76,7 +76,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('9d50228c79b48ce8f9dbc211c0fd532945a4475c',
+        self.assertEqual('9434884bde4ef59f6460449b03659fd83dabc735',
                 filtered_pdf_hash)
 
         # delete the file
