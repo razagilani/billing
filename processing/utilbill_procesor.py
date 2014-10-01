@@ -1,17 +1,22 @@
 from datetime import datetime, timedelta
-from billing import config
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session
+
+from billing.processing.state import UtilBill, UtilBillLoader, Address, Charge, Register, Session
 from billing.exc import NoSuchBillException
+from processing.state import MYSQLDB_DATETIME_MIN
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
+from billing.processing.state import Customer, UtilBill, ReeBill, \
+    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
+    Payment, Utility
 
 
 class UtilbillProcessor(object):
-    def __init__(self, rate_structure_dao, billupload, nexus_util,
+    def __init__(self, rate_structure_dao, billupload, nexus_util, journal_dao,
                  logger=None):
         self.rate_structure_dao = rate_structure_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.logger = logger
+        self.journal_dao = journal_dao
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given

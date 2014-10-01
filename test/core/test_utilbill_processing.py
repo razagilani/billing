@@ -1,9 +1,13 @@
+from billing.test import init_test_config
+init_test_config()
+
 from StringIO import StringIO
 from datetime import date
 import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
 from billing.core.model import UtilBill
+from billing.core.model.model import Session, Customer, Utility, Address
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 
@@ -48,8 +52,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # Upload a utility bill and check it persists and fetches
         self.process.upload_utility_bill('88888', 'gas',
                                          date(2013, 1, 1), date(2013, 2, 1),
-                                         StringIO('January 2013'),
-                                         'january.pdf')
+                                         StringIO('January 2013'))
         utilbills_data = self.process.get_all_utilbills_json('88888',
                                                              0, 30)[0]
 
@@ -117,9 +120,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill = self.process.upload_utility_bill('99999',
                                                     'Gas', date(2013, 1, 1),
                                                     date(2013, 2, 1),
-                                                    StringIO(
-                                                        'January 2013'),
-                                                    'january.pdf',
+                                                    StringIO('January 2013'),
                                                     total=100)
 
         doc = self.process.get_all_utilbills_json('99999', 0, 30)[0][0]
@@ -127,7 +128,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                                     1)
         assert utilbill.period_end == doc['period_end'] == date(2013, 2, 1)
         assert utilbill.service == doc['service'] == 'Gas'
-        assert utilbill.utility == doc['utility'] == 'Test Utility Company Template'
+        assert utilbill.utility.name == doc['utility'] == 'Test Utility Company Template'
         assert utilbill.target_total == 100
         assert utilbill.rate_class == doc['rate_class'] == 'Test Rate Class Template'
 
@@ -154,7 +155,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # check that file really exists at the expected path
         # (get_utilbill_file_path also checks for existence)
-        bill_file_path = self.billupload.get_utilbill_file_path(utilbill)
+        key_name = self.billupload._get_key_name(utilbill)
+        key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
+        self.assertEqual('January 2013', key_obj.get_contents_as_string())
 
         # change end date
         self.process.update_utilbill_metadata(utilbill.id,
@@ -175,7 +178,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # change utility name
         self.process.update_utilbill_metadata(utilbill.id,
                                               utility='BGE')
-        self.assertEqual('BGE', utilbill.utility)
+        self.assertEqual('BGE', utilbill.utility.name)
 
         # change rate class
         self.process.update_utilbill_metadata(utilbill.id,
@@ -200,6 +203,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         to BillUpload).'''
         account = '99999'
 
+        s = Session()
+        customer = s.query(Customer).filter_by(account=account).one()
+
         # validation of dates
         bad_dates = [
             (date(2000,1,1), date(2000,1,1,)),
@@ -208,19 +214,20 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         for start, end in bad_dates:
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(
-                    account, 'electric', start, end, StringIO(), 'january.pdf',
-                    utility='pepco', rate_class='Residential-R')
+                    account, 'electric', start, end, StringIO(),
+                    utility=customer.fb_utility, rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
         # account
         utilbill_path = join(dirname(realpath(__file__)), 'data',
                              'utility_bill.pdf')
+
+
         with open(utilbill_path) as file1:
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 1, 1),
                                              date(2012, 2, 1), file1,
-                                             'january.pdf',
                                              utility='pepco',
                                              rate_class='Residential-R')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
@@ -255,7 +262,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 2, 1),
                                              date(2012, 3, 1), file2,
-                                             'february.abc')
+                                             utility='pepco')
         utilbills_data, _ = self.process.get_all_utilbills_json(
             account, 0,
             30)
@@ -290,7 +297,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # 3rd bill "estimated", without a file
         self.process.upload_utility_bill(account, 'gas',
                                          date(2012, 3, 1), date(2012, 4, 1),
-                                         None, None,
+                                         None,
                                          state=UtilBill.Estimated,
                                          utility='washgas',
                                          rate_class='DC Non Residential Non Heat')
@@ -343,8 +350,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         with open(utilbill_path) as file4:
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 4, 1),
-                                             date(2012, 5, 1), file4,
-                                             'august')
+                                             date(2012, 5, 1), file4)
 
         utilbills_data, count = self.process.get_all_utilbills_json(
             account, 0, 30)
@@ -374,26 +380,26 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             id, state = obj['id'], obj['state']
             u = self.state_db.get_utilbill_by_id(id)
             if state == 'Final':
-                self.process.billupload.get_utilbill_file_path(u)
-            else:
-                with self.assertRaises(IOError):
-                    self.process.billupload.get_utilbill_file_path(u)
+                key_name = self.billupload._get_key_name(u)
+                key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
+                key_obj.get_contents_as_string()
 
         # delete utility bills
         ids = [obj['id'] for obj in utilbills_data]
 
-        _, new_path = self.process.delete_utility_bill_by_id(ids[3])
+        self.process.delete_utility_bill_by_id(ids[3])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(3, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[2])
+
+        self.process.delete_utility_bill_by_id(ids[2])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(2, count)
-        self.assertTrue(os.access(new_path, os.F_OK))
-        _, new_path = self.process.delete_utility_bill_by_id(ids[1])
+
+        self.process.delete_utility_bill_by_id(ids[1])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(1, count)
-        _, new_path = self.process.delete_utility_bill_by_id(ids[0])
+
+        self.process.delete_utility_bill_by_id(ids[0])
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
@@ -467,13 +473,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # (note that period dates are not exactly aligned)
         self.process.upload_utility_bill(acc_a, 'gas',
                                          date(2000, 1, 1), date(2000, 2, 1), StringIO('January 2000 A'),
-                                         'january-a.pdf', total=0, state=UtilBill.Complete)
+                                         total=0, state=UtilBill.Complete)
         self.process.upload_utility_bill(acc_b, 'gas',
                                          date(2000, 1, 1), date(2000, 2, 1), StringIO('January 2000 B'),
-                                         'january-b.pdf', total=0, state=UtilBill.Complete)
+                                         total=0, state=UtilBill.Complete)
         self.process.upload_utility_bill(acc_c, 'gas',
                                          date(2000, 1, 1), date(2000, 2, 1), StringIO('January 2000 C'),
-                                         'january-c.pdf', total=0, state=UtilBill.Complete)
+                                         total=0, state=UtilBill.Complete)
 
         id_a = next(obj['id'] for obj in self.process.get_all_utilbills_json(
             acc_a, 0, 30)[0])
@@ -527,7 +533,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # create utility bill and reebill #2 for A
         self.process.upload_utility_bill(acc_a,
                                          'gas', date(2000, 2, 1), date(2000, 3, 1),
-                                         StringIO('February 2000 A'), 'february-a.pdf', total=0,
+                                         StringIO('February 2000 A'), total=0,
                                          state=UtilBill.Complete)
         id_a_2 = [obj for obj in self.process.get_all_utilbills_json(
             acc_a, 0, 30)][0][0]['id']
@@ -589,7 +595,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # NOTE Process._generate_docs_for_new_utility_bill requires utility
         # and rate_class arguments to match those of the template
         self.process.upload_utility_bill('99999', 'gas', date(2013, 5, 6),
-                                         date(2013, 7, 8), StringIO('A Water Bill'), 'waterbill.pdf',
+                                         date(2013, 7, 8), StringIO('A Water Bill'),
                                          utility='washgas', rate_class='some rate structure')
         utilbill_data = self.process.get_all_utilbills_json(
             '99999', 0, 30)[0][0]

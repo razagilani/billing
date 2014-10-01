@@ -1,3 +1,6 @@
+from billing.test import init_test_config
+init_test_config()
+
 from datetime import date
 from errno import ENOENT
 from unittest import TestCase

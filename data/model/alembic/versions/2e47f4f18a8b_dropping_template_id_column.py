@@ -21,7 +21,6 @@ def upgrade():
     op.alter_column('reebill_charge', 'a_rate',
             existing_type=sa.Float, name='rate')
     op.drop_column('reebill_charge', 'h_rate')
-
 def downgrade():
     op.add_column(u'customer', sa.Column('utilbill_template_id',
                                     mysql.VARCHAR(length=24), nullable=False))
