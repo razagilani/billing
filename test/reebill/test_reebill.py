@@ -1,8 +1,6 @@
 import unittest
 from datetime import date
 
-from mock import Mock
-
 from billing.core.model import UtilBill, Address, \
     Charge, Register, Session, Customer
 from billing.reebill.state import ReeBill
@@ -100,3 +98,9 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual('Energy Sold', self.reebill.readings[0].measure)
         self.assertEqual('SUM', self.reebill.readings[0].aggregate_function)
         self.assertEqual(0, self.reebill.readings[0].renewable_quantity)
+
+    def test_reading(self):
+        reading = self.reebill.readings[0]
+        self.assertIs(sum, reading.get_aggregation_function())
+        reading.aggregate_function = 'MAX'
+        self.assertIs(max, reading.get_aggregation_function())
