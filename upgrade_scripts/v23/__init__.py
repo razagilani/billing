@@ -110,5 +110,9 @@ def upgrade():
 
     log.info('Upgrading schema to revision 18a02dea5969')
     alembic_upgrade('18a02dea5969')
+
+    log.info('Upgrading schema to revision 3566e62e7af3')
+    alembic_upgrade('3566e62e7af3')
+
     log.info('Upgrade Complete')
 
