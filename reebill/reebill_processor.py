@@ -1,35 +1,29 @@
 import os
 import traceback
 import re
-import errno
 from datetime import datetime, timedelta
 
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from billupload import ACCOUNT_NAME_REGEX
-from billing.processing.state import Customer, UtilBill, ReeBill, \
-    ReeBillCharge, Address, Session, \
-    Payment, MYSQLDB_DATETIME_MIN
+from billing.core.billupload import ACCOUNT_NAME_REGEX
+from billing.core.model import (Customer, UtilBill, Address, Session,
+                           MYSQLDB_DATETIME_MIN)
+from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
 
 
 class ReebillProcessor(object):
-    def __init__(self, state_db, rate_structure_dao, billupload,
-            nexus_util, bill_mailer, reebill_file_handler,
-            ree_getter, journal_dao, splinter=None, logger=None):
+    def __init__(self, state_db, nexus_util, bill_mailer, reebill_file_handler,
+                 ree_getter, journal_dao, logger=None):
         self.state_db = state_db
-        self.rate_structure_dao = rate_structure_dao
-        self.billupload = billupload
         self.nexus_util = nexus_util
         self.bill_mailer = bill_mailer
         self.ree_getter = ree_getter
         self.reebill_file_handler = reebill_file_handler
-        self.splinter = splinter
-        self.monguru = None if splinter is None else splinter.get_monguru()
         self.logger = logger
         self.journal_dao = journal_dao
 
@@ -42,13 +36,25 @@ class ReebillProcessor(object):
     def update_payment(self, id, date_applied, description, credit):
         session = Session()
         payment = session.query(Payment).filter_by(id=id).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be changed after they are applied to an issued reebill')
         payment.date_applied = date_applied
         payment.description = description
         payment.credit = credit
 
     def delete_payment(self, oid):
         '''Wrapper to delete_payment method in state.py'''
+        session = Session()
+        payment = session.query(Payment).filter_by(id=oid).one()
+        if payment.reebill_id is not None:
+            raise IssuedBillError('payments cannot be deleted after they are applied to an issued reebill')
         self.state_db.delete_payment(oid)
+
+    def get_payments(self, account):
+        '''Wrapper to state_db.payments'''
+        payments = self.state_db.payments(account)
+        return [payment.column_dict() for payment in payments]
+
 
     def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and
@@ -476,6 +482,7 @@ class ReebillProcessor(object):
         #Late charges can only be positive
         return (reebill.late_charge_rate) * max(0, source_balance)
 
+    # TODO: this method is not used anywhere but it probably should be.
     def get_outstanding_balance(self, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
         (or the account's last issued reebill when 'sequence' is not given)
@@ -793,57 +800,44 @@ class ReebillProcessor(object):
                 sequence is None and account is None and recipients is None)
             bills = [{'account': account, 'sequence': sequence,
                       'mailto': recipients}]
-
-
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
             # sum of adjustments that have to be made so the client can create
             # a confirmation message
-
             unissued_corrections = self.get_unissued_corrections(bill['account'])
             if len(unissued_corrections) > 0 and not apply_corrections:
                 # The user has confirmed to issue unissued corrections.
-                return {
-                    'success': False,
-                    'unissued_corrections': [c[0] for c in
-                                             unissued_corrections]}
-
-            result = {'issued': []}
+                sequences = [sequence for sequence, _, _
+                            in unissued_corrections]
+                total_adjustment = sum(adjustment
+                            for _, _, adjustment in unissued_corrections)
+                raise ConfirmAdjustment(sequences, total_adjustment)
             # Let's issue
             if len(unissued_corrections) > 0:
                 assert apply_corrections is True
                 try:
                     self.issue_corrections(bill['account'], bill['sequence'])
-                except Exception, e:
+                except Exception as e:
                     self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill['account'], bill['sequence'],
                         e.__class__.__name__),) + e.args)
                     raise
-                for cor in unissued_corrections:
-                    result['issued'].append((
-                        bill['account'], cor[0],
-                        self.state_db.max_version(bill['account'], cor[0])
-                    ))
-
             try:
                 if not processed:
                     self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
-                result['issued'].append((
-                    bill['account'], bill['sequence'], 0, bill['mailto']))
             except Exception, e:
                 self.logger.error(('Error when issuing reebill %s-%s: %s' %(
                         bill['account'], bill['sequence'],
                         e.__class__.__name__),) + e.args)
                 raise
-
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
             recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                recipient_list)
-        return result
+        return bills
 
     def update_bill_email_recipient(self, account, sequence, recepients):
         """ Finds a particular reebill by account and sequence,

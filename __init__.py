@@ -29,8 +29,8 @@ def init_config(filepath='settings.cfg', fp=None):
         log.debug('Reading configuration fp')
         config.readfp(fp)
     else:
-        log.debug('Reading configuration file %s' % filepath)
         absolute_path = path.join(dirname(realpath(__file__)), filepath)
+        log.debug('Reading configuration file %s' % absolute_path)
         config.read(absolute_path)
     
     if not config.has_section('main'):
@@ -50,7 +50,7 @@ def init_logging(path='settings.cfg'):
 def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
     """
-    from billing.processing.state import Session, Base, check_schema_revision
+    from billing.core.model import Session, Base, check_schema_revision
     from sqlalchemy import create_engine
     import logging
     log = logging.getLogger(__name__)

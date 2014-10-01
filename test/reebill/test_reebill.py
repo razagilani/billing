@@ -3,9 +3,9 @@ from datetime import date
 
 from mock import Mock
 
-from billing.processing.state import ReeBill, Customer, UtilBill, Address, \
-    Charge, Register, Session
-
+from billing.core.model import UtilBill, Address, \
+    Charge, Register, Session, Customer
+from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):
