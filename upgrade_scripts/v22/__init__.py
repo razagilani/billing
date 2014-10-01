@@ -18,9 +18,9 @@ from bson.objectid import ObjectId
 
 from upgrade_scripts import alembic_upgrade
 from billing import config, init_model
-from billing.processing.state import Session
-from processing.state import Register, UtilBill, Address, Customer,\
-        ReeBill, Payment, MYSQLDB_DATETIME_MIN
+from billing.core.model import (Session, Register, UtilBill, Address, Customer,
+        MYSQLDB_DATETIME_MIN)
+from billing.reebill.state import ReeBill, Payment
 
 
 log = logging.getLogger(__name__)
