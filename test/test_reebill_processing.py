@@ -1,7 +1,9 @@
 from billing.test import init_test_config
+init_test_config()
+
 from billing.core.model.model import UtilBill, Customer
 
-init_test_config()
+
 
 from billing import config
 from os.path import realpath, join, dirname

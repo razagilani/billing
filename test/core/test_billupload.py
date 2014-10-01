@@ -26,7 +26,7 @@ class BillUploadTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.fakes3_process.terminate()
+        cls.fakes3_process.kill()
         cls.fakes3_process.wait()
 
     def setUp(self):
