@@ -438,7 +438,7 @@ class ReebillsResource(RESTResource):
     def handle_post(self, account, *vpath, **params):
         """ Handles Reebill creation """
         params = cherrypy.request.json
-        start_date = params.get('period_start')
+        start_date = params['period_start'] if params['period_start'] else None
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
         reebill = self.process.roll_reebill(account, start_date=start_date)
