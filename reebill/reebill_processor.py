@@ -559,13 +559,14 @@ class ReebillProcessor(object):
             raise ValueError('Unknown service type "%s"' % service_type)
 
         session = Session()
-        try:
-            last_utility_bill = session.query(UtilBill)\
-                    .join(Customer).filter(Customer.account == template_account)\
-                    .order_by(desc(UtilBill.period_end)).first()
-        except NoSuchBillException:
-            utility = template_account.fb_utility
-            rate_class = template_account.fb_rate_class
+        template_customer = session.query(Customer).filter_by(
+                account=template_account).one()
+        last_utility_bill = session.query(UtilBill)\
+                .join(Customer).filter(UtilBill.customer==template_customer)\
+                .order_by(desc(UtilBill.period_end)).first()
+        if last_utility_bill is None:
+            utility = template_customer.fb_utility_name
+            rate_class = template_customer.fb_rate_class
         else:
             utility = last_utility_bill.utility
             rate_class = last_utility_bill.rate_class
