@@ -80,6 +80,58 @@ class ExporterTest(unittest.TestCase):
             self.assertEqual(row, correct_data[indx])
         self.assertEqual(len(dataset), len(correct_data))
 
+    def test_account_charges_sheet(self):
+        def make_utilbill():
+            result = mock.Mock(autospec=UtilBill)
+            result.period_start = datetime(2013, 5, 3)
+            result.period_end = datetime(2013, 6, 4)
+            result.state = UtilBill.Complete
+            return result
+
+        def make_charge(group, desc, number):
+            result = mock.Mock(autospec=Charge)
+            result.total = number
+            result.group = group
+            result.description = desc
+            return result
+
+        def make_reebill(seq):
+            result = mock.Mock(autospec=ReeBill)
+            result.sequence = seq
+            ub = make_utilbill()
+            result.utilbills = [ub]
+            result.utilbill = ub
+            return result
+
+        r1 = make_reebill(1)
+        r1.utilbill.charges = [make_charge(x,y,z) for x,y,z in [
+            ('Group1', "Description1", 1.11),
+            ('Group1', "Description2", 2.22),
+            ('Group2', "Description3", 3.33),
+        ]]
+        r2 = make_reebill(2)
+        r2.utilbill.charges = [make_charge(x,y,z) for x,y,z in [
+            ('Group1', "Description1", 4.44),
+            ('Group2', "Description2", 5.55),
+            ('Group2', "Description3", 6.66),
+        ]]
+
+        dataset = self.exp.get_account_charges_sheet('999999', [r1, r2])
+        correct_data = [('999999', 1, '2013-05-03', '2013-06-04', '2013-05',
+                         'No', '1.11', '2.22', '3.33', ''),
+                        ('999999', 2, '2013-05-03', '2013-06-04', '2013-05',
+                         'No', '4.44', '', '6.66', '5.55')]
+        headers = ['Account', 'Sequence', 'Period Start', 'Period End',
+                   'Billing Month', 'Estimated', 'Group1: Description1',
+                   'Group1: Description2', 'Group2: Description3',
+                   'Group2: Description2']
+        self.assertEqual(headers, dataset.headers)
+        for indx, row in enumerate(dataset):
+            self.assertEqual(row, correct_data[indx])
+        self.assertEqual(len(dataset), len(correct_data))
+
+
+
     def test_get_energy_usage_sheet(self):
         def make_charge(number):
             result = mock.Mock(autospec=Charge)

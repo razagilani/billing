@@ -5,6 +5,7 @@ import pymongo
 import tablib
 import traceback
 from billing.reebill import state
+from billing.reebill.state import UtilBill
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
 from billing.exc import *
@@ -31,104 +32,87 @@ class Exporter(object):
         '''
         Writes an Excel spreadsheet to output_file containing utility bills for
         the given account. If 'account' is not given, writes one sheet for each
-        account. If neither 'start_date' nor 'end_date' is given, all utility
-        bills for the given account(s) are output. If only 'start_date' is
-        given, all utility bills after that date are output. If only 'end_date'
-        are given, all utility bills before that date are output.
+        account.
         '''
         book = tablib.Databook()
         if account == None:
-            for acc in sorted(self.state_db.listAccounts()):
-                book.add_sheet(
-                    self.get_account_charges_sheet(acc,
-                                                   start_date=start_date,
-                                                   end_date=end_date))
+            for acc in self.state_db.listAccounts():
+                reebills = self.state_db.listReebills(0, 100000, acc,
+                                                      'sequence', 'ASC')[0]
+                book.add_sheet(self.get_account_charges_sheet(
+                    acc, reebills, start_date, end_date))
         else:
-            book.add_sheet(
-                self.get_account_charges_sheet(account,
-                                               start_date=start_date,
-                                               end_date=end_date))
+            reebills = self.state_db.listReebills(0, 100000, account,
+                                                  'sequence', 'ASC')[0]
+            book.add_sheet(self.get_account_charges_sheet(
+                account, reebills, start_date, end_date))
         output_file.write(book.xls)
 
-    def get_account_charges_sheet(self, account, start_date=None,
-                                  end_date=None):
+    def get_account_charges_sheet(self, account, reebills, start_date,
+                                  end_date):
         '''
         Returns a tablib Dataset consisting of all actual and hypothetical
-        charges for all utility bills belonging to 'account'. Format: account &
-        sequence in first 2 columns, later columns are charge names (i.e. pairs
-        of charge group + charge description) in pairs (hypothetical and
-        actual) with values wherever charges having those names occur. Utility
-        bills with errors are skipped and an error message is printed. If either
-        'start_date' or 'end_date' are included, they restrict the set of data
-        returned based on their comparison to the fetched ReeBills'
-        'period_start' and 'period_end' properties.
+        charges for all utility bills associates with 'reebills'.
+
+        Rows:
+            Reebills
+        Columns:
+            'Account', 'Reebill Sequence', 'Period Start', 'Period End',
+            'Estimated Billing Month', 'Utility Estimated (Yes or No)',
+            '<Charge Group>: <Charge Description>' for each charge associated
+            with the utility bill
         '''
-        # each account gets its own sheet. 1st 2 columns are account, sequence
         dataset = tablib.Dataset(title=account)
         dataset.headers = ['Account', 'Sequence', 'Period Start', 'Period End',
                            'Billing Month', 'Estimated']
 
-        for sequence in sorted(self.state_db.listSequences(account)):
-            reebill = self.state_db.get_reebill(account, sequence)
-
-            # load utilbill from mysql to find out if the bill was
-            # (utility-)estimated
+        for reebill in reebills:
+            # Skip old reebills that are based on two utility bills
             if not len(reebill.utilbills) == 1:
-                continue    # Skip old reebills that are based
-                            # on two utility bills
+                continue
             assert len(reebill.utilbills) == 1
-            utilbill = reebill.utilbills[0]
-            estimated = utilbill.state == UtilBill.UtilityEstimated
+            utilbill = reebill.utilbill
 
-            # new row. initially contains 6 columns: account, sequence, start,
-            # end, fuzzy month, estimated?
-            row = [
-                account,
-                sequence,
-                utilbill.period_start.strftime(dateutils.ISO_8601_DATE),
-                utilbill.period_end.strftime(dateutils.ISO_8601_DATE),
-                # TODO rich hypothesizes that for utilities, the fuzzy "billing
-                # month" is the month in which the billing period ends
-                approximate_month(utilbill.period_start,
-                                  utilbill.period_end).strftime('%Y-%m'),
-                'Yes' if estimated else 'No'
-            ]
-            # pad row with blank cells to match dataset width
-            row.extend([''] * (dataset.width - len(row)))
-
-            # get all charges from this bill
-            try:
-                actual_charges = sorted(utilbill.charges,
-                                        key=lambda c: c.description)
-            except KeyError as e:
-                print >> sys.stderr, ('%s-%s ERROR %s: %s' % (account,
-                        sequence, e.message, traceback.format_exc()))
+            in_period = None
+            if start_date:
+                in_period = utilbill.period_start >= start_date
+            if end_date:
+                in_period = utilbill.period_end <= end_date \
+                            and in_period is not False
+            if (start_date or end_date) and in_period is False:
                 continue
 
-            # write each actual and hypothetical charge in a separate column,
-            # creating new columns when necessary
-            for charge in actual_charges:
-                column_name = '%s: %s' % (charge['group'],
-                        charge.get('description', 'Error: No Description Found!'))
-                total = charge.get('total', 0)
+            # A new row consists of the header columns + 'padding' to get
+            # a dataset with the same number of columns in every row
+            row = [
+                account,
+                reebill.sequence,
+                utilbill.period_start.strftime(dateutils.ISO_8601_DATE),
+                utilbill.period_end.strftime(dateutils.ISO_8601_DATE),
+                approximate_month(
+                    utilbill.period_start,
+                    utilbill.period_end
+                ).strftime('%Y-%m'),
+                'Yes' if utilbill.state == UtilBill.UtilityEstimated else 'No'
+            ] + [''] * (dataset.width - 6)
 
-                if column_name in dataset.headers:
-                    # Column already exists. Is there already something in the
-                    # cell?
-                    col_idx = dataset.headers.index(column_name)
-                    if row[col_idx] == '':
-                        row[col_idx] = ("%.2f" % total)
-                    else:
-                        row[col_idx] = ('ERROR: duplicate charge name'
-                                                '"%s"') % column_name
+            # write each charge in a separate column,creating new columns
+            # when necessary
+            for charge in sorted(utilbill.charges, key=lambda c: c.description):
+                column_name = '%s: %s' % (charge.group, charge.description)
+
+                if dataset.height == 0:
+                    dataset.headers.append(column_name)
+                    row.append(("%.2f" % charge.total))
+                elif column_name not in dataset.headers:
+                    dataset.append_col([''] * dataset.height,
+                                       header=column_name)
+                    row.append(("%.2f" % charge.total))
                 else:
-                    # Add a new column 'column_name'
-                    if dataset.height == 0:
-                        dataset.headers.append(column_name)
-                    else:
-                        dataset.append_col([''] * dataset.height,
-                                           header=column_name)
-                    row.append(("%.2f" % total))
+                    col_idx = dataset.headers.index(column_name)
+                    row[col_idx] = "%.2f" % charge.total if row[col_idx] == '' \
+                        else 'ERROR: duplicate charge name %s' % column_name
+
             dataset.append(row)
         return dataset
 
@@ -315,16 +299,13 @@ class Exporter(object):
 
                 # if the user has chosen a begin and/or end date *and* this
                 # reebill falls outside of its bounds, skip to the next one
-                reebill_in_period = False
+                in_period = None
                 if begin_date:
-                    if period_start >= begin_date:
-                        reebill_in_period = True
+                    in_period = utilbill.period_start >= begin_date
                 if end_date:
-                    if period_end <= end_date:
-                        reebill_in_period = True
-                    else:
-                        reebill_in_period = False
-                if (begin_date or end_date) and not reebill_in_period:
+                    in_period = utilbill.period_end <= end_date \
+                                and in_period is not False
+                if (begin_date or end_date) and in_period is False:
                     continue
 
                 # iterate the payments and find the ones that apply.

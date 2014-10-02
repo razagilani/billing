@@ -823,7 +823,7 @@ class ReportsResource(WebResource):
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export_account_charges(buf, account)
+            exporter.export_account_charges(buf, account, begin_date, end_date)
 
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
