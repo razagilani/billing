@@ -106,9 +106,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.create_new_account('77777', 'New Account', 'thermal',
                 0.6, 0.2, billing_address, service_address, '88888')
         self.process.create_new_account('66666', 'New Account', 'thermal',
-            0.6, 0.2, billing_address, service_address, '88888')
+                0.6, 0.2, billing_address, service_address, '77777')
 
-        # Try rolling a reebill for a new account that has no utility bills uploaded yet
+        # Try creating a reebill for a new account that has no utility bills
+        # uploaded yet
         self.assertRaises(NoResultFound, self.process.roll_reebill,
                           '777777', start_date=date(2013, 2, 1))
 
