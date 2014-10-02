@@ -32,6 +32,16 @@ Ext.define('ReeBill.store.IssuableReebills', {
     sorters: [{
         property: 'account', 
         direction: 'ASC'
-    }]
+    }],
+
+    getProccessedReebillsCount: function(){
+        var count = 0;
+        this.each(function(record){
+            if(record.get('processed') === true){
+              count += 1;
+            }
+        }, this);
+        return count;
+    }
 
 });
