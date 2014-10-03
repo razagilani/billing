@@ -1070,7 +1070,9 @@ else:
     cherrypy.config.update({
         'environment': 'embedded',
         'tools.sessions.on': True,
-        'tools.sessions.timeout': 240
+        'tools.sessions.timeout': 240,
+        'request.show_tracebacks': True
+
     })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
