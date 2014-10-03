@@ -2,10 +2,10 @@
 from billing import config
 import os
 from boto.s3.connection import S3Connection
-from billing.processing.state import UtilBill
+from billing.core.model import UtilBill
 import hashlib, logging
 from glob import glob
-from processing.billupload import BillUpload
+from billing.core.billupload import BillUpload
 
 log = logging.getLogger(__name__)
 
