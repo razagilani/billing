@@ -3,6 +3,8 @@ import traceback
 import re
 import errno
 from datetime import datetime, timedelta
+from processing.reebill_processor import MYSQLDB_DATETIME_MIN
+from processing.state import Session, Payment, ReeBill, Customer, ReeBillCharge, UtilBill, Address
 
 from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_

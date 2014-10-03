@@ -1,3 +1,4 @@
+import smtplib
 from billing.test import init_test_config
 init_test_config()
 
@@ -255,13 +256,13 @@ class TestCaseWithSetup(test_utils.TestCase):
                 },
         ])
         mailer_opts = dict(self.config.items("mailer"))
+        server = smtplib.SMTP(mailer_opts['smtp_host'], mailer_opts['smtp_port'])
         bill_mailer = Mailer(
                 mailer_opts['mail_from'],
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
+                server,
                 mailer_opts['bcc_list']
         )
 

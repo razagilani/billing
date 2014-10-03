@@ -1,4 +1,5 @@
 from os.path import dirname, realpath, join
+import smtplib
 from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
@@ -194,12 +195,12 @@ class WebResource(object):
         self.reebill_file_handler = render.ReebillFileHandler(
                 self.config.get('bill', 'billpath'))
         mailer_opts = dict(self.config.items("mailer"))
+        server = smtplib.SMTP(mailer_opts['smtp_host'], mailer_opts['smtp_port'])
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
+                server,
                 mailer_opts['bcc_list'])
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
