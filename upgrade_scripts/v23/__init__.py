@@ -14,7 +14,7 @@ from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
-from billing.processing.state import Session, Company, Customer, Utility, \
+from billing.core.model.model import Session, Company, Customer, Utility, \
     Address, UtilBill
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
