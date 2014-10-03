@@ -86,10 +86,12 @@ Ext.define('ReeBill.controller.Accounts', {
 
                     // Find the correct filter record
                     var filterRecord = prefStore.getOrCreate('filtername', 'none');
-                    var filter = filterStore.getAt(
-                        filterStore.find('value',
-                            filterRecord.get('value')));
-
+                    var filter = filterStore.findRecord('value', filterRecord.get('value'));
+                    if(filter == null){
+                        filterRecord.set('value', 'none');
+                        filter = filterStore.findRecord('value', 'none');
+                    }
+                    
                     // apply the filter
                     store.getProxy().data = Ext.Array.filter(allRecords, filter.get('filter').filterFn);
                 }
