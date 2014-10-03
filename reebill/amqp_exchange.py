@@ -4,7 +4,7 @@ from billing import init_config, init_model, init_logging, config
 from os.path import dirname, realpath, join
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
-init_config(filename=p)
+init_config(filepath=p)
 init_model()
 
 from billing.mq.simple import SimpleExchange
@@ -53,7 +53,11 @@ def process_utility(name, utility_provider_guid):
         s.add(utility)
     s.commit()
 
-xl = SimpleExchange(config.get('amqp', 'exchange'),
-                    handlers=[process_utility_bill,
-                              process_utility])
-xl.listen()
+def run_exchange():
+    xl = SimpleExchange(config.get('amqp', 'exchange'),
+                        handlers=[process_utility_bill,
+                                  process_utility])
+    xl.listen()
+
+if __name__ == '__main__':
+    run_exchange()
