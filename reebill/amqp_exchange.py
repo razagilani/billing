@@ -1,14 +1,15 @@
-from sqlalchemy.sql.expression import desc
-
-from billing import init_config, init_model, init_logging, config
+from billing import init_config, init_model, init_logging
 from os.path import dirname, realpath, join
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
 init_logging(path=p)
 init_config(filepath=p)
 init_model()
 
+from billing import config
+
+from sqlalchemy.sql.expression import desc
 from billing.mq.simple import SimpleExchange
-from billing.processing.state import Customer, UtilBill, Session, Utility, \
+from billing.core.model import Customer, UtilBill, Session, Utility, \
     Address
 
 
