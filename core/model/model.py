@@ -194,12 +194,14 @@ class Company(Base):
     address_id = Column(Integer, ForeignKey('address.id'))
 
     name = Column(String(1000))
+    guid = Column(String(36))
     discriminator = Column(String(50))
     address = relationship("Address")
 
-    def __init__(self, name, address):
+    def __init__(self, name, address, guid):
         self.name = name
         self.address = address
+        self.guid = guid
 
     __mapper_args__ = {'polymorphic_on': discriminator}
 
@@ -213,10 +215,10 @@ class Utility(Company):
 
     #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
 
-    def __init__(self, name, address, rate_classes=[]):
+    def __init__(self, name, address, guid, rate_classes=[]):
         """Construct a :class:`Utility` instance"""
         assert rate_classes == []
-        super(Utility, self).__init__(name, address)
+        super(Utility, self).__init__(name, address, guid)
 
 
 class Customer(Base):

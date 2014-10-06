@@ -1,10 +1,11 @@
 import sys
 import os.path as path
+from os.path import dirname, realpath
 
 __version__ = '21'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
-           'initialize', 'config', 'update_path']
+           'initialize', 'config']
 
 config = None
 
@@ -18,7 +19,6 @@ def init_config(filepath='settings.cfg', fp=None):
     """
     from billing.data.validation import configuration as vns
     from billing.lib.config import ValidatedConfigParser
-    from os.path import dirname, realpath
     import logging
 
     log = logging.getLogger(__name__)
@@ -39,10 +39,11 @@ def init_config(filepath='settings.cfg', fp=None):
     log.debug('Initialized configuration')
 
 
-def init_logging(path='settings.cfg'):
+def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
     import logging, logging.config
-    logging.config.fileConfig(path)
+    absolute_path = path.join(dirname(realpath(__file__)), filepath)
+    logging.config.fileConfig(absolute_path)
     log = logging.getLogger(__name__)
     log.debug('Initialized logging')
 
