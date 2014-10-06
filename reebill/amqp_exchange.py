@@ -1,7 +1,7 @@
 from billing import init_config, init_model, init_logging
 from os.path import dirname, realpath, join
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(path=p)
+init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
@@ -49,8 +49,8 @@ def process_utility(name, utility_provider_guid):
         utility.name = name
     else:
         utility = Utility(name=name,
-                          guid=utility_provider_guid,
-                          address=Address())
+                          address=Address(),
+                          guid=utility_provider_guid)
         s.add(utility)
     s.commit()
 
