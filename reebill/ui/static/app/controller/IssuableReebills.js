@@ -41,7 +41,9 @@ Ext.define('ReeBill.controller.IssuableReebills', {
             },
             load: function(store) {
                 var grid = this.getIssuableReebillsGrid();
+                var pButton = this.getIssueProcessedButton();
                 grid.setLoading(false);
+                pButton.setDisabled(store.getProccessedReebillsCount() === 0);
             },
             scope: this
         });
