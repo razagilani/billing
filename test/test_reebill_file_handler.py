@@ -59,15 +59,24 @@ class ReebillFileHandlerTest(TestCase):
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time (current date, and some mysterious bytes)
         path = self.file_handler.get_file_path(self.reebill)
+        line_filters = [
+            lambda prev_line, cur_line: cur_line.startswith(
+                    ' /CreationDate (D:'),
+            lambda prev_line, cur_line: prev_line.startswith(
+                    ' % ReportLab generated PDF document -- digest '
+                    '(http://www.reportlab.com)'),
+            lambda prev_line, cur_line: cur_line.startswith("%% 'fontFile'"),
+            lambda prev_line, cur_line: cur_line.startswith('! 0000'),
+            lambda prev_line, cur_line: prev_line.startswith('  startxref'),
+        ]
         with open(path, 'rb') as pdf_file:
             filtered_lines, prev_line = [], ''
             while True:
                 line = pdf_file.readline()
+                print line
                 if line == '':
                     break
-                if not (line.startswith(' /CreationDate (D:') or
-                        prev_line.startswith(' % ReportLab generated PDF '
-                        'document -- digest (http://www.reportlab.com)')):
+                if not any(f(prev_line, line) for f in line_filters):
                     filtered_lines.append(line)
                 prev_line = line
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
@@ -76,7 +85,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('2d248a8da2152f3b8f02a748f353e0f7ba155312',
+        self.assertEqual('c6eb0cf1f0fa0d3df4a57c9f49bb862574546ef2',
                 filtered_pdf_hash)
 
         # delete the file
