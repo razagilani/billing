@@ -116,7 +116,8 @@ class ExporterTest(unittest.TestCase):
             ('Group2', "Description3", 6.66),
         ]]
 
-        dataset = self.exp.get_account_charges_sheet('999999', [r1, r2])
+        dataset = self.exp.get_account_charges_sheet('999999', [r1, r2],
+                                                     None, None)
         correct_data = [('999999', 1, '2013-05-03', '2013-06-04', '2013-05',
                          'No', '1.11', '2.22', '3.33', ''),
                         ('999999', 2, '2013-05-03', '2013-06-04', '2013-05',
