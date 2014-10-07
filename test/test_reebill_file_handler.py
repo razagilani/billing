@@ -73,7 +73,6 @@ class ReebillFileHandlerTest(TestCase):
             filtered_lines, prev_line = [], ''
             while True:
                 line = pdf_file.readline()
-                print line
                 if line == '':
                     break
                 if not any(f(prev_line, line) for f in line_filters):
