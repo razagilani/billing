@@ -1045,7 +1045,7 @@ if __name__ == '__main__':
     cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
     # WSGI Mode
-    ui_root = join(dirname(realpath(__file__)), '/ui')
+    ui_root = join(dirname(realpath(__file__)), 'ui')
     cherrypy_conf = {
         '/': {
             'tools.sessions.on': True,
