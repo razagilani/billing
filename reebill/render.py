@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from operator import attrgetter
 import sys
 import os
 from datetime import datetime
@@ -125,6 +126,9 @@ class ReebillFileHandler(object):
                 raise
 
     def _generate_document(self, reebill):
+        # charges must be sorted by group in order for 'groupby' to work below
+        sorted_charges = sorted(reebill.charges, key=attrgetter('group'))
+
         def get_utilbill_register_data_for_reebill_reading(reading):
             utilbill = reading.reebill.utilbill
             try:
@@ -201,8 +205,8 @@ class ReebillFileHandler(object):
                     'rate': charge.rate,
                     'total': charge.h_total
                 } for charge in charges]
-            for group_name, charges in groupby(reebill.charges,
-                                               key=lambda c: c.group)},
+            for group_name, charges in groupby(sorted_charges,
+                                               key=attrgetter('group'))},
         }
 
     def render(self, reebill):
