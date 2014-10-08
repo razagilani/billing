@@ -1,15 +1,15 @@
 # app level
-$username = "reebill-stage"
+$username = "reebill-dev"
 $app = "reebill"
-$env = "stage"
+$env = "dev"
 
-deploy::app_user {'appuser':
+host::app_user {'appuser':
     app        => $app,
     env        => $env,
 }
 
-deploy::aws_standard_packages {'std_packages':}
-deploy::wsgi_setup {'wsgi':}
+host::aws_standard_packages {'std_packages':}
+host::wsgi_setup {'wsgi':}
 
 package { 'httpd':
     ensure  => installed
@@ -30,13 +30,16 @@ file { "/var/local/${username}/www":
     ensure      => directory,
     owner       => $username,
     group       => $username,
-    require => Deploy::App_user['appuser']
+    require => Host::App_user['appuser']
 }
 file { "/db-${env}":
     ensure      => directory,
     owner       => $username,
     group       => $username,
 }
+#file { "/etc/httpd/conf.d/${username}.conf":
+#    ensure => file,
+#    source => "puppet:///modules/conf/vhosts/reebill-shareddev.vhost"
+#}
 
-# apache vhost setup
 # full crontab?
