@@ -404,7 +404,7 @@ class ThermalBillDoc(BillDoc):
 
 
         # Customer service address Frame
-        serviceAddressF = Frame(371, 570, 227, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+        serviceAddressF = Frame(371, 570, 227, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
 
         # Staples envelope (for bill send)
         # #10 (4-1/8" (297pt)  x 9-1/2")
@@ -414,7 +414,7 @@ class ThermalBillDoc(BillDoc):
 
         # Customer billing address frame
         #billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
-        billingAddressF = Frame(78, 600, 390, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+        billingAddressF = Frame(38, 570, 330, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
         # section 2/3
 
