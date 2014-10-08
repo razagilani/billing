@@ -191,8 +191,8 @@ class ReeBill(Base):
         bill registers."""
         s = Session.object_session(self)
         for reading in self.readings:
-            s.expunge(reading)
             self.readings.remove(reading)
+            s.expunge(reading)
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
