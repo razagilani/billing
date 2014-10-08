@@ -310,8 +310,8 @@ class UtilBill(Base):
     state = Column(Integer, nullable=False)
     service = Column(String(45), nullable=False)
     rate_class = Column(String(255), nullable=False)
-    period_start = Column(Date, nullable=False)
-    period_end = Column(Date, nullable=False)
+    period_start = Column(Date)
+    period_end = Column(Date)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
