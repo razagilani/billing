@@ -1008,24 +1008,23 @@ if __name__ == '__main__':
     class CherryPyRoot(object):
         reebill = app
 
-    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui/'
+    ui_root = join(dirname(realpath(__file__)), 'ui')
     cherrypy_conf = {
         '/': {
             'tools.sessions.on': True,
-            # 'tools.staticdir.root': '/',
             'request.methods_with_bodies': ('POST', 'PUT', 'DELETE')
         },
         '/reebill/login.html': {
             'tools.staticfile.on': True,
-            'tools.staticfile.filename': ui_root + "login.html"
+            'tools.staticfile.filename': join(ui_root, "login.html")
         },
         '/reebill/index.html': {
             'tools.staticfile.on': True,
-            'tools.staticfile.filename': ui_root + "index.html"
+            'tools.staticfile.filename': join(ui_root, "index.html")
         },
         '/reebill/static': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': ui_root + "static"
+            'tools.staticdir.dir': join(ui_root, "static")
         },
         '/utilitybills': {
             'tools.staticdir.on': True,
@@ -1045,7 +1044,8 @@ if __name__ == '__main__':
                                      stream=sys.stdout)
     cherrypy.quickstart(CherryPyRoot(), "/", config=cherrypy_conf)
 else:
-    ui_root = os.path.dirname(os.path.realpath(__file__))+'/ui'
+    # WSGI Mode
+    ui_root = join(dirname(realpath(__file__)), '/ui')
     cherrypy_conf = {
         '/': {
             'tools.sessions.on': True,
@@ -1054,19 +1054,22 @@ else:
         },
         '/login.html': {
             'tools.staticfile.on': True,
-            'tools.staticfile.filename': ui_root + "/login.html"
+            'tools.staticfile.filename': join(ui_root, "login.html")
         },
         '/index.html': {
             'tools.staticfile.on': True,
-            'tools.staticfile.filename': ui_root + "/index.html"
+            'tools.staticfile.filename': join(ui_root, "index.html")
         },
         '/static': {
             'tools.staticdir.on': True,
             'tools.staticdir.dir': 'static'
+        },
+        '/static/revision.txt': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': join(ui_root, "../../revision.txt")
         }
 
     }
-    # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
         'tools.sessions.on': True,
@@ -1078,5 +1081,5 @@ else:
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start()
         atexit.register(cherrypy.engine.stop)
-    app = ReebillWSGI()
-    application = cherrypy.Application(app, script_name=None, config=cherrypy_conf)
+    application = cherrypy.Application(
+        ReebillWSGI(), script_name=None, config=cherrypy_conf)
