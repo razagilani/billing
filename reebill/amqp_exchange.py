@@ -35,9 +35,9 @@ def process_utility_bill(utility_provider_guid, account_number,
     ub = UtilBill(customer, UtilBill.Complete, getattr(prev, 'service', ''),
                   utility, getattr(prev, 'rate_class', ''),
                   Address.from_other(prev.billing_address) if \
-                      prev.billing_address else Address(),
+                      prev else Address(),
                   Address.from_other(prev.service_address) if \
-                      prev.service_address else Address(),
+                      prev else Address(),
                   sha256_hexdigest=sha256_hexdigest)
     s.add(ub)
     s.commit()
