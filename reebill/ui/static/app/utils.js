@@ -17,13 +17,37 @@ var utils = function() {
             }
 
             Ext.getStore(storeName).rejectChanges();
-            Ext.MessageBox.show({
+            var win = Ext.create('Ext.window.Window', {
+                modal: true,
+                autoScroll: true,
+                width: 850,
+                maxHeight: 650,
+                cls: 'messageBoxOverflow',
                 title: "Server error - " + response.status + " - " + statusText,
-                msg: responseText,
-                icon: Ext.MessageBox.ERROR,
-                buttons: Ext.Msg.OK,
-                cls: cls
+                layout     : {
+                    type  : 'hbox',
+                    align : 'stetch'
+                },
+                items      : [
+                    {
+                        html : response.responseText,
+                        flex : 1
+                    }
+                ],
+                bbar: [
+                    '->', {
+                        xtype: 'button',
+                        text: 'Close',
+                        listeners:{
+                            click: function(){
+                                win.close();
+                            }
+                        }
+                    }, '->'
+                ]
             });
+            win.show();
+            win.center();
         }
     };
 

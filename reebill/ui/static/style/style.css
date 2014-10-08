@@ -38,8 +38,12 @@
     color: red;
 }
 
-.messageBoxOverflow .x-box-inner .x-box-inner {
+.messageBoxOverflow #traceback {
     overflow: auto;
+}
+
+.messageBoxOverflow .x-panel-body-default{
+    padding: 5px;
 }
 
 .x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
