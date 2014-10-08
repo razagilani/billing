@@ -49,7 +49,8 @@ def read_initial_table_data(table_name, session):
 def create_utilities(session):
     for utility_name in utility_names:
         empty_address = Address('', '', '', '', '')
-        utility_company = Utility(utility_name, empty_address)
+        empty_guid = ''
+        utility_company = Utility(utility_name, empty_address, empty_guid)
         session.add(utility_company)
     session.flush()
 

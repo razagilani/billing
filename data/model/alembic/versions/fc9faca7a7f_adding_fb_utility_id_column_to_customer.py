@@ -19,7 +19,7 @@ def upgrade():
     op.add_column('customer', sa.Column('fb_utility_id', sa.Integer(), nullable=True))
     op.add_column('utilbill', sa.Column('utility_id', sa.Integer(), nullable=True))
     op.add_column('utilbill', sa.Column('sha256_hexdigest', sa.String(length=64), nullable=True))
-    op.add_column('company', sa.Column('guid', sa.String(length=36, nullable=False)))
+    op.add_column('company', sa.Column('guid', sa.String(length=36), nullable=False))
 
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')

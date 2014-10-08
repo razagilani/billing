@@ -6,7 +6,7 @@ from billing import init_config, init_model, init_logging
 
 # TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(path=p)
+init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
