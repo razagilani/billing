@@ -43,7 +43,12 @@ class ReebillFileHandlerTest(TestCase):
                           1, 10, 20),
             ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution', 30, 40,
                           'kWh', 1, 30, 40),
-            ]
+            # charges are not in group order to make sure they are sorted
+            # before grouping; otherwise some charges could be omitted
+            # (this was bug #80340044)
+            ReeBillCharge(self.reebill, 'C', 'Example Charge C', 'Supply', 50, 60,
+                          'kWh', 1, 50, 60),
+        ]
 
         self.file_handler.render(self.reebill)
         # TODO: this seems to not always remove the directory?
@@ -84,7 +89,7 @@ class ReebillFileHandlerTest(TestCase):
         # supposed to be different. the only way to do it is to manually verify
         # that the PDF looks right, then get its actual hash and paste it here
         # to make sure it stays that way.
-        self.assertEqual('90f9df51277313f7375f1dc11cff6fbe2a071bba',
+        self.assertEqual('4e1479c9d8e863f41bc616fddb6656c6cbef4ca3',
                 filtered_pdf_hash)
 
         # delete the file
