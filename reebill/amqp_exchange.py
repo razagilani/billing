@@ -15,7 +15,7 @@ from billing.core.model import Customer, UtilBill, Session, Utility, \
 
 def process_utility_bill(utility_provider_guid, account_number,
                         sha256_hexdigest):
-    """
+    """Receives a utility bill from Acquisitor over AMQP
     :param utility_provider_guid: the GUID of the utility company
     :param account_number: the account number at the utility company
     :param sha256_hexdigest: the hexdigest of the utilbill PDF
@@ -43,6 +43,7 @@ def process_utility_bill(utility_provider_guid, account_number,
     s.commit()
 
 def process_utility(name, utility_provider_guid):
+    """Receives the utility from XBill over AMQP"""
     s = Session()
     utility = s.query(Utility).filter_by(guid=utility_provider_guid).first()
     if utility:
