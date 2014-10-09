@@ -7,7 +7,7 @@ init_test_config()
 from datetime import date
 from StringIO import StringIO
 from mock import Mock, call
-from processing.state import Address, Customer, UtilBill, Register, ReeBill
+from billing.reebill.state import Address, Customer, UtilBill, Register, ReeBill
 from testfixtures import TempDirectory
 
 

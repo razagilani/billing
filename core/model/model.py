@@ -19,7 +19,7 @@ import tsort
 from alembic.migration import MigrationContext
 
 import traceback
-from billing.exc import NoSuchBillException, FormulaSyntaxError
+from billing.exc import NoSuchBillException, FormulaSyntaxError, ProcessedBillError
 
 from billing.exc import FormulaError
 from exc import DatabaseError
@@ -510,6 +510,11 @@ class UtilBill(Base):
         # all charges should be computed before the exception is raised
         if raise_exception and exception:
             raise exception
+
+    def editable(self):
+        if self.processed:
+            raise ProcessedBillError('Processed utilbill cannot be edited')
+        return True
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this

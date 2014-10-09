@@ -374,7 +374,7 @@ Ext.define('ReeBill.controller.Reebills', {
          var selected = selections[0];
          selected.data.apply_corrections = false;
          var account = this.getAccountsGrid().getSelectionModel().getSelection();
-         this.makeIssueRequest('http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
+         this.makeIssueRequest.call(this, 'http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
          /*selected.beginEdit();
          selected.set('action', 'setProcessed');
          selected.set('action_value', !selected.get('processed'));
@@ -382,7 +382,7 @@ Ext.define('ReeBill.controller.Reebills', {
      },
 
      makeIssueRequest: function(url, billRecord, account){
-        //var me = this;
+        var me = this;
         //var store = me.getIssuableReebillsStore();
         var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
         var params = {reebill: Ext.encode(billRecord.data),
@@ -401,10 +401,28 @@ Ext.define('ReeBill.controller.Reebills', {
         };
         var successFunc = function(response){
             // Wait for the bill to be issued before reloading the store
-           var obj = Ext.JSON.decode(response.responseText);
+            var obj = Ext.JSON.decode(response.responseText);
             Ext.defer(function(){
-                store.reload();
-                waitMask.hide();
+                store.loadPage(1, {
+                    scope: me,
+                    callback: function(){
+                        /*
+                        this is being done in the following way because of the bug reported here
+                        http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
+                        this bug is fixed in extjs 4.2.3 and higher
+                         */
+                        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+                        var node = this.getReebillsStore().find('id', selections[0].getId());
+                        this.getReebillsGrid().getSelectionModel().deselectAll();
+                        this.getReebillsGrid().getSelectionModel().select(node);
+                        selections = this.getReebillsGrid().getSelectionModel().getSelection();
+                        var processed = selections[0].get('processed');
+                        this.getDeleteReebillButton().setDisabled(processed);
+                        this.getBindREOffsetButton().setDisabled(processed);
+                        this.getComputeReebillButton().setDisabled(processed);
+                        waitMask.hide();
+                    }
+                });
             }, 1000);
         }
 
@@ -452,7 +470,8 @@ Ext.define('ReeBill.controller.Reebills', {
                                             method: 'POST',
                                             params: params,
                                             failure: failureFunc,
-                                            success: successFunc
+                                            success: successFunc,
+                                            scope: this
                                         });
                                         waitMask.show();
                                         }
@@ -466,7 +485,10 @@ Ext.define('ReeBill.controller.Reebills', {
                 }
 
             },
-            failure: failureFunc
+            failure: function() {
+                failureFunc(this)
+            },
+            scope: this
         });
      },
 
@@ -512,7 +534,6 @@ Ext.define('ReeBill.controller.Reebills', {
                 'Service Start Date',
                 'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
                 function(button, text){
-                    console.log(this);
                     if(button === 'ok'){
                         var controller = this;
                         controller._lastCreateNextDate = text;
