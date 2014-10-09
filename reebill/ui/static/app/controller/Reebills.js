@@ -164,17 +164,22 @@ Ext.define('ReeBill.controller.Reebills', {
      * Handle the row selection.
      */
     handleRowSelect: function() {
+        console.log('reebill rowselect');
         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
-
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+        if (!selections.length) {
+            this.getDeleteReebillButton().setDisabled(true);
+            this.getBindREOffsetButton().setDisabled(true);
+            this.getComputeReebillButton().setDisabled(true);
+            this.getToggleReebillProcessedButton().setDisabled(true);
+            this.getUpdateReadingsButton().setDisabled(true);
+            this.getRenderPdfButton().setDisabled(true);
+            this.getCreateNewVersionButton().setDisabled(true);
+            this.getSequentialAccountInformationForm().setDisabled(true);
+            this.getUploadIntervalMeterForm().setDisabled(true);
+            return
+        }
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
-
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
         var processed = selected.get('processed')
@@ -473,70 +478,68 @@ Ext.define('ReeBill.controller.Reebills', {
     /**
       * Handle the create new version button.
       */
-     handleCreateNewVersion: function() {
-         var store = this.getReebillsStore();
+    handleCreateNewVersion: function() {
+        var store = this.getReebillsStore();
+        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+        if (!selections.length)
+            return;
+        var selected = selections[0];
 
-         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-         if (!selections.length)
-             return;
+        var waitMask = new Ext.LoadMask(Ext.getBody(),
+            { msg: 'Creating new version. Please wait...' });
+        selected.set('action', 'newversion');
+        waitMask.show();
 
-         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-         if (!selectedAccounts.length)
-             return;
+        // We have to reload the store, because the new version will be a
+        // completely new Reebill, with a new id
+        Ext.Function.defer(function(){
+            store.reload({
+                callback: function(){
+                   waitMask.hide();
+                }
+            });
+            this.getReebillsGrid().setLoading(false);
+        }, 1000, this);
+    },
 
-         var selected = selections[0];
-
-         var waitMask = new Ext.LoadMask(Ext.getBody(),
-             { msg: 'Creating new version. Please wait...' });
-         selected.set('action', 'newversion');
-         waitMask.show();
-
-         // We have to releoad the store, because the new version will be a
-         // completely new Reebill, with a new id
-         Ext.Function.defer(function(){
-             store.reload();
-             waitMask.hide();
-         }, 1000, this);
-     },
-
-     /**
-      * Handle the create next version button.
-      */
-     handleCreateNext: function() {
-         var store = this.getReebillsStore();
-         if(store.count() === 0){
-            if(this._lastCreateNextDate === undefined){
-                this._lastCreateNextDate = ''
-            }
-            Ext.Msg.prompt(
-                'Service Start Date',
-                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
-                function(button, text){
-                    console.log(this);
-                    if(button === 'ok'){
-                        var controller = this;
-                        controller._lastCreateNextDate = text;
-                        if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
-                            store.insert(0, {period_start: text});
-                        }else{
-                            Ext.Msg.alert(
-                                'Invalid Date',
-                                'Please enter a date in the format (YYYY-MM-DD)',
-                                function(){
-                                    controller.handleCreateNext();
-                                }
-                            )
-                        }
-                    }
-                },
-                this,
-                false,
-                this._lastCreateNextDate
-            )
-         }else{
-            store.insert(0, {issued:false});
-         }
-     },
+    /**
+     * Handle the create next reebill button.
+     */
+    handleCreateNext: function() {
+        var store = this.getReebillsStore();
+        if(store.count() === 0){
+           if(this._lastCreateNextDate === undefined){
+               this._lastCreateNextDate = ''
+           }
+           Ext.Msg.prompt(
+               'Service Start Date',
+               'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
+               function(button, text){
+                   console.log(this);
+                   if(button === 'ok'){
+                       var controller = this;
+                       controller._lastCreateNextDate = text;
+                       if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
+                           store.insert(0, {period_start: text});
+                       }else{
+                           Ext.Msg.alert(
+                               'Invalid Date',
+                               'Please enter a date in the format (YYYY-MM-DD)',
+                               function(){
+                                   controller.handleCreateNext();
+                               }
+                           )
+                       }
+                   }
+               },
+               this,
+               false,
+               this._lastCreateNextDate
+           )
+        }else{
+           store.insert(0, {issued:false});
+        }
+    },
 
      /**
       * Loads the ReeBillVersionsStore

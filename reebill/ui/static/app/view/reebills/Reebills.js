@@ -128,19 +128,23 @@ Ext.define('ReeBill.view.Reebills', {
         },'-',{
             xtype: 'button',
             text: 'Bind RE&E Offset',
-            action: 'bindREOffset'
+            action: 'bindREOffset',
+            disabled: true
         },{
             xtype: 'button',
             text: 'Compute',
-            action: 'computeReebill'
+            action: 'computeReebill',
+            disabled: true
         },{
             xtype: 'button',
             text: 'Update Readings',
-            action: 'updateReadings'
+            action: 'updateReadings',
+            disabled: true
         },{
             xtype: 'button',
             text: 'Toggle Processed',
-            action: 'toggleReebillProcessed'
+            action: 'toggleReebillProcessed',
+            disabled: true
         },'-',{
             xtype: 'button',
             text: 'Render PDF',
@@ -150,7 +154,8 @@ Ext.define('ReeBill.view.Reebills', {
             xtype: 'button',
             text: 'Mail',
             iconCls: 'silk-email',
-            action: 'email'
+            action: 'email',
+            disabled: true
         }]
     }],
 
