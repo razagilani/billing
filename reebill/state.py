@@ -18,6 +18,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
     UtilBill, Customer
+from billing.util.monthmath import Month
 
 __all__ = [
     'Payment',
@@ -990,6 +991,54 @@ class StateDB(object):
         session = Session()
         return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
+    def sequences_in_month(self, account, year, month):
+        '''Returns a list of sequences of all reebills whose periods contain
+        ANY days within the given month. The list is empty if the month
+        precedes the period of the account's first issued reebill, or if the
+        account has no issued reebills at all. When 'sequence' exceeds the last
+        sequence for the account, bill periods are assumed to correspond
+        exactly to calendar months. This is NOT related to the approximate
+        billing month.'''
+        # get all reebills whose periods contain any days in this month, and
+        # their sequences (there should be at most 3)
+        session = Session()
+        query_month = Month(year, month)
+        sequences_for_month = session.query(ReeBill.sequence).join(UtilBill) \
+            .filter(UtilBill.period_start >= query_month.first,
+                    UtilBill.period_end <= query_month.last).all()
+
+        # get sequence of last reebill and the month in which its period ends,
+        # which will be useful below
+        last_sequence = self.state_db.last_sequence(account)
+
+        # if there's at least one sequence, return the list of sequences. but
+        # if query_month is the month in which the account's last reebill ends,
+        # and that period does not perfectly align with the end of the month,
+        # also include the sequence of an additional hypothetical reebill whose
+        # period would cover the end of the month.
+        if sequences_for_month != []:
+            last_end = self.state_db.get_reebill(last_sequence
+            ).period_end
+            if Month(last_end) == query_month and last_end \
+                    < (Month(last_end) + 1).first:
+                sequences_for_month.append(last_sequence + 1)
+            return sequences_for_month
+
+        # if there are no sequences in this month because the query_month
+        # precedes the first reebill's start, or there were never any reebills
+        # at all, return []
+        if last_sequence == 0 or query_month.last < \
+                self.state_db.get_reebill(account, 1).get_period()[0]:
+            return []
+
+        # now query_month must exceed the month in which the account's last
+        # reebill ends. return the sequence determined by counting real months
+        # after the approximate month of the last bill (there is only one
+        # sequence in this case)
+        last_reebill_end = self.state_db.get_reebill(account,
+                                                     last_sequence).get_period()[1]
+        return [last_sequence + (query_month - Month(last_reebill_end))]
+
     def list_utilbills(self, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
@@ -1078,4 +1127,24 @@ class StateDB(object):
             Payment.date_received).all()
         return payments
 
+    # TODO: this method is not used anywhere but it probably should be.
+    def get_outstanding_balance(self, account, sequence=None):
+        '''Returns the balance due of the reebill given by account and sequence
+        (or the account's last issued reebill when 'sequence' is not given)
+        minus the sum of all payments that have been made since that bill was
+        issued. Returns 0 if total payments since the issue date exceed the
+        balance due, or if no reebill has ever been issued for the customer.'''
+        # get balance due of last reebill
+        if sequence == None:
+            sequence = self.last_issued_sequence(account)
+        if sequence == 0:
+            return 0
+        reebill = self.get_reebill(sequence)
+
+        if reebill.issue_date == None:
+            return 0
+
+        # result cannot be negative
+        return max(0, reebill.balance_due -
+                   self.get_total_payment_since(account, reebill.issue_date))
 

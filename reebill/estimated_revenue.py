@@ -378,7 +378,7 @@ class EstimatedRevenue(object):
         total, count = 0, 0
         for month in months_of_past_year():
             for account in self.state_db.listAccounts(session):
-                sequences = self.process.sequences_in_month(session,
+                sequences = self.state_db.sequences_in_month(session,
                         account, month.year, month.month)
                 for sequence in sequences:
                     # don't use default rates when computing the average, because
