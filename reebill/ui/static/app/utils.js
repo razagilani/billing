@@ -6,14 +6,13 @@ var utils = function() {
         /* Creates a function which rejects changes in the store storeName and
          shows and appropriate error message box */
         return function (proxy, response, operation) {
+            var statusText, responseText;
             if (response.status === 0) {
-                var statusText = 'Connection Refused';
-                var responseText = 'The server has refused the connection!';
-                var cls = ''
+                statusText = 'Connection Refused';
+                responseText = 'The server has refused the connection!';
             } else {
-                var statusText = response.statusText;
-                var responseText = response.responseText;
-                var cls = 'messageBoxOverflow'
+                statusText = response.statusText;
+                responseText = response.responseText;
             }
 
             Ext.getStore(storeName).rejectChanges();
@@ -30,20 +29,9 @@ var utils = function() {
                 },
                 items      : [
                     {
-                        html : response.responseText,
+                        html : responseText,
                         flex : 1
                     }
-                ],
-                bbar: [
-                    '->', {
-                        xtype: 'button',
-                        text: 'Close',
-                        listeners:{
-                            click: function(){
-                                win.close();
-                            }
-                        }
-                    }, '->'
                 ]
             });
             win.show();
