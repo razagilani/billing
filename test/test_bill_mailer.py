@@ -28,6 +28,8 @@ class BillMailerTest(TestCase):
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
                 server,
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
                 mailer_opts['bcc_list']
         )
         merge_fields = {
