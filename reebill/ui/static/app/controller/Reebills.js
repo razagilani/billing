@@ -164,7 +164,6 @@ Ext.define('ReeBill.controller.Reebills', {
      * Handle the row selection.
      */
     handleRowSelect: function() {
-        console.log('reebill rowselect');
         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
         if (!selections.length) {
             this.getDeleteReebillButton().setDisabled(true);
