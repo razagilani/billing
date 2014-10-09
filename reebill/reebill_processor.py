@@ -605,51 +605,6 @@ class ReebillProcessor(object):
         # store email recipient in the bill
         reebill.email_recipient = reebill.customer.bill_email_recipient
 
-    def reebill_report_altitude(self):
-        session = Session()
-        rows = []
-        total_count = 0
-        customer_id = None
-        for reebill in session.query(ReeBill).\
-                filter(ReeBill.issue_date != None).\
-                order_by(ReeBill.customer_id).all():
-            total_count += 1
-            savings = reebill.ree_value - reebill.ree_charge
-            if reebill.customer_id != customer_id:
-                cumulative_savings = 0
-                customer_id = reebill.customer_id
-            cumulative_savings += savings
-            row = {}
-            actual_total = reebill.utilbill.get_total_charges()
-            hypothetical_total = reebill.get_total_hypothetical_charges()
-            total_ree = reebill.get_total_renewable_energy()
-            row['account'] = reebill.customer.account
-            row['sequence'] = reebill.sequence
-            row['billing_address'] = reebill.billing_address
-            row['service_address'] = reebill.service_address
-            row['issue_date'] = reebill.issue_date
-            row['period_begin'] = reebill.utilbill.period_start
-            row['period_end'] = reebill.utilbill.period_end
-            row['actual_charges'] = actual_total
-            row['hypothetical_charges'] = hypothetical_total
-            row['total_ree'] = total_ree
-            row['average_rate_unit_ree'] = 0 if total_ree == 0 else \
-                (hypothetical_total - actual_total) / total_ree
-            row['ree_value'] = reebill.ree_value
-            row['prior_balance'] = reebill.prior_balance
-            row['balance_forward'] = reebill.balance_forward
-            row['total_adjustment'] = reebill.total_adjustment
-            row['payment_applied'] = reebill.payment_received
-            row['ree_charges'] = reebill.ree_charge
-            row['late_charges'] = reebill.late_charge
-            row['late_charges'] = reebill.late_charge
-            row['balance_due'] = reebill.balance_due
-            row['discount_rate'] = reebill.discount_rate
-            row['savings'] = savings
-            row['cumulative_savings'] = cumulative_savings
-            rows.append(row)
-        return rows, total_count
-
     def update_reebill_readings(self, account, sequence):
         '''Replace the readings of the reebill given by account, sequence
         with a new set of readings that matches the reebill's utility bill.
