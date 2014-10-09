@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import mimetypes
 import os
+import smtplib
 from jinja2 import Template
 from billing.util.email_util import send_email
 
@@ -18,7 +19,7 @@ class Mailer(object):
     '''
 
     def __init__(self, mail_from, originator, password, template_html,
-                server, bcc_list=None):
+                server, port, host, bcc_list=None):
         '''
         :param mail_from: email address fdrom which emails are sent out
         :param originator: more descriptive email address for use as sender
@@ -31,6 +32,8 @@ class Mailer(object):
         self._originator = originator
         self._password = password
         self.server = server
+        self.host = host,
+        self.port = port
         self._bcc_list = bcc_list
         self.template_html = template_html
 
@@ -105,6 +108,7 @@ class Mailer(object):
         #container.attach(part1)
         # grr... outlook seems to display the plain message first. wtf.
         container.attach(part2)
+        self.server.connect(self.host, self.port)
 
         self.server.ehlo()
         self.server.starttls()

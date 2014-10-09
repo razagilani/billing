@@ -195,12 +195,14 @@ class WebResource(object):
         self.reebill_file_handler = render.ReebillFileHandler(
                 self.config.get('bill', 'billpath'))
         mailer_opts = dict(self.config.items("mailer"))
-        server = smtplib.SMTP(mailer_opts['smtp_host'], mailer_opts['smtp_port'])
+        server = smtplib.SMTP()
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
                 server,
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
                 mailer_opts['bcc_list'])
 
         self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
