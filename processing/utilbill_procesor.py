@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta
 
-from billing.processing.state import UtilBill, UtilBillLoader, Address, Charge, Register, Session
+from billing.core.model import UtilBill, Session, \
+    UtilBillLoader, Charge
 from billing.exc import NoSuchBillException
-from processing.state import MYSQLDB_DATETIME_MIN
+
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
-from billing.processing.state import Customer, UtilBill, ReeBill, \
-    UtilBillLoader, ReeBillCharge, Address, Charge, Register, Reading, Session, \
-    Payment, Utility
+from billing.reebill.state import Address, Register
 
 
 class UtilbillProcessor(object):

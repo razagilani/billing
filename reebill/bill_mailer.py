@@ -19,7 +19,7 @@ class Mailer(object):
     '''
 
     def __init__(self, mail_from, originator, password, template_html,
-                server, port, host, bcc_list=None):
+                server, host, port, bcc_list=None):
         '''
         :param mail_from: email address fdrom which emails are sent out
         :param originator: more descriptive email address for use as sender
@@ -32,7 +32,7 @@ class Mailer(object):
         self._originator = originator
         self._password = password
         self.server = server
-        self.host = host,
+        self.host = host
         self.port = port
         self._bcc_list = bcc_list
         self.template_html = template_html

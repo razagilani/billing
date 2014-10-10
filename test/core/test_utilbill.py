@@ -346,3 +346,27 @@ class UtilBillTest(TestCase):
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                 "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
+
+    def test_processed_utility_bills(self):
+        '''
+        test for making sure processed bills cannot be edited
+        '''
+        utility = Utility('utility', Address(), '')
+        customer = Customer('someone', '99999', 0.3, 0.1,
+                'nobody@example.com', utility, 'rate class',
+                Address(), Address())
+        utilbill = UtilBill(customer, UtilBill.Complete,
+                'gas', utility, 'rate class', Address(), Address(),
+                period_start=date(2000,1,1), period_end=date(2000,2,1))
+        utilbill.registers = [Register(utilbill, '', 150,
+                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.charges = [
+            Charge(utilbill, '', '', 0, 'kWh', 1, 'A', 0,
+                    quantity_formula='REG_TOTAL.quantity'),
+            Charge(utilbill, '', '', 0, 'kWh', 3, 'B', 0,
+                    quantity_formula='2'),
+            # this has an error
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+                    quantity_formula='1/0'),
+        ]
+        Session().add(utilbill)
