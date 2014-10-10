@@ -703,6 +703,10 @@ class UtilBillLoader(object):
         '''
         self._session = session
 
+    def get_utilbill_by_id(self, utilbill_id):
+        '''Return utilbill with the given id.'''
+        return self._session.query(UtilBill).filter_by(id=utilbill_id).one()
+
     def load_real_utilbills(self, **kwargs):
         '''Returns a cursor of UtilBill objects matching the criteria given
         by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
