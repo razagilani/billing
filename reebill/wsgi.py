@@ -37,6 +37,7 @@ from billing.reebill import journal, render
 from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
+from billing.core.model import UtilBill
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 
@@ -574,23 +575,21 @@ class ReebillsResource(RESTResource):
     @cherrypy.expose
     @cherrypy.tools.authenticate_ajax()
     @db_commit
-    def toggle_processed(self, reebill, account, **params):
-        reebill_json = json.loads(reebill)
-        account_json = json.loads(account)
-        account = account_json['account']
-        sequence, version = reebill_json['sequence'], reebill_json['version']
-        apply_corrections = reebill_json['apply_corrections']
+    def toggle_processed(self, **params):
+        params = cherrypy.request.params
+        print params
+        r = self.state_db.get_reebill_by_id(int(params['reebill']))
         try:
-            self.process.toggle_reebill_processed(account, sequence,
-                    apply_corrections)
+            self.process.toggle_reebill_processed(
+                r.customer.account, r.sequence,
+                params['apply_corrections'] == 'true')
         except ConfirmAdjustment as e:
-            return json.dumps({
-                'reebill': reebill_json,
+            return self.dumps({
                 'unissued_corrections': e.correction_sequences,
                 'adjustment': e.total_adjustment,
                 'corrections': True
             })
-        return json.dumps({'success': True})
+        return self.dumps({'success': True, 'reebill': r.column_dict()})
 
 class UtilBillResource(RESTResource):
 
@@ -608,7 +607,6 @@ class UtilBillResource(RESTResource):
         total_charges = float(params['total_charges'])
         begin_date = datetime.strptime(params['begin_date'], '%Y-%m-%d').date()
         end_date = datetime.strptime(params['end_date'], '%Y-%m-%d').date()
-        UtilBill.validate_utilbill_period(begin_date, end_date)
 
         # NOTE 'fileobj.file' is always a CherryPy object; if no
         # file was specified, 'fileobj.file' will be None

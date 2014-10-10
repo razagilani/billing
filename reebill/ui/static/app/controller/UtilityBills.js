@@ -146,7 +146,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 store.reload();
             },
             failure: function(form, action) {
-                Ext.Msg.alert('Error', 'Error uploading utility bill.')
+                utils.makeServerExceptionWindow(
+                    'Unknown', 'Error', action.response.responseXML.body.innerHTML);
             }
         }); 
     },
