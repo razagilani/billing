@@ -216,15 +216,6 @@ class ReeBill(Base):
                 if r.register_binding in utilbill_register_bindings]
         session.flush()
 
-    def get_renewable_energy_reading(self, register_binding):
-        assert isinstance(register_binding, basestring)
-        try:
-            reading = next(r for r in self.readings
-                           if r.register_binding == register_binding)
-        except StopIteration:
-            raise ValueError('Unknown register binding "%s"' % register_binding)
-        return reading.renewable_quantity
-
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
         whose 'register_binding' matches 'binding'.
