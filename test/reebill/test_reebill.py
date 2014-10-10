@@ -9,7 +9,7 @@ from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):
-        washgas = Utility('washgas', Address('', '', '', '', ''))
+        washgas = Utility('washgas', Address('', '', '', '', ''), '')
 
         customer = Customer('someone', '11111', 0.5, 0.1,
                             'example@example.com', washgas,
