@@ -25,6 +25,15 @@ Ext.define('ReeBill.controller.Charges', {
         ref: 'removeCharge',
         selector: '[action=removeCharge]'
     },{
+        ref: 'regenerateCharge',
+        selector: '[action=regenerateCharge]'
+    },{
+        ref: 'newCharge',
+        selector: '[action=newCharge]'
+    },{
+        ref: 'recomputeCharges',
+        selector: '[action=recomputeCharges]'
+    },{
         ref: 'formulaField',
         selector: 'formulaField'
     },{
@@ -79,6 +88,11 @@ Ext.define('ReeBill.controller.Charges', {
     handleActivate: function() {
         var store = this.getChargesStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var processed = selectedBill.get('processed');
+        this.getRemoveCharge().setDisabled(processed);
+        this.getNewCharge().setDisabled(processed);
+        this.getRegenerateCharge().setDisabled(processed);
+        this.getRecomputeCharges().setDisabled(processed);
         var field = this.getFormulaField();
         var groupTextField = this.getGroupTextField();
 
@@ -124,9 +138,11 @@ Ext.define('ReeBill.controller.Charges', {
      * Handle the row selection.
      */
     handleRowSelect: function() {
+        var selectedAccount = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
-        this.getRemoveCharge().setDisabled(!hasSelections);
+        var processed = selectedAccount.get('processed');
+        this.getRemoveCharge().setDisabled(!hasSelections || processed);
 
         // Set group in GroupTextField
         if(hasSelections && selected !== undefined){

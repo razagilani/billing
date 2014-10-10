@@ -179,19 +179,16 @@ Ext.define('ReeBill.controller.Reebills', {
         var issued = selected.get('issued');
         var processed = selected.get('processed')
 
-        this.getDeleteReebillButton().setDisabled(issued);
-        this.getDeleteReebillButton().setDisabled(processed);
-        this.getBindREOffsetButton().setDisabled(issued);
-        this.getBindREOffsetButton().setDisabled(processed);
-        this.getComputeReebillButton().setDisabled(issued);
-        this.getComputeReebillButton().setDisabled(processed);
+        this.getDeleteReebillButton().setDisabled(issued || processed);
+        this.getBindREOffsetButton().setDisabled(issued || processed);
+        this.getComputeReebillButton().setDisabled(issued || processed);
         this.getToggleReebillProcessedButton().setDisabled(issued);
-        this.getUpdateReadingsButton().setDisabled(issued);
+        this.getUpdateReadingsButton().setDisabled(issued || processed);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
         this.initializeUploadIntervalMeterForm();
-        this.getUploadIntervalMeterForm().setDisabled(issued);
+        this.getUploadIntervalMeterForm().setDisabled(issued || processed);
     },
 
     /**
