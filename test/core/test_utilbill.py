@@ -44,7 +44,7 @@ class UtilBillTest(TestCase):
         self.assertEqual(None, c.error)
 
     def test_add_charge(self):
-        utility = Utility('utility', Address())
+        utility = Utility('utility', Address(), '')
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', utility,
                 'FB Test Rate Class', Address(), Address()),
@@ -92,7 +92,7 @@ class UtilBillTest(TestCase):
                 'nobody@example.com', 'FB Test Utility',
                 'FB Test Rate Class', Address(), Address()),
                 UtilBill.Complete, 'gas',
-                Utility('utility', Address()), 'rate class',
+                Utility('utility', Address(), ''), 'rate class',
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
         register = Register(utilbill, "ABCDEF description", 150, 'therms',
@@ -276,7 +276,7 @@ class UtilBillTest(TestCase):
         self.assertEqual(0, utilbill.get_total_charges())
 
     def test_compute_charges_independent(self):
-        utility = Utility('utility', Address())
+        utility = Utility('utility', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, 'rate class',
                 Address(), Address())
@@ -309,7 +309,7 @@ class UtilBillTest(TestCase):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
-        utility = Utility('utility', Address())
+        utility = Utility('utility', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, 'rate class',
                 Address(), Address())

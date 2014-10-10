@@ -719,6 +719,8 @@ class Charge(Base):
         :param formula: a `quantity_formula`
         :param context: map of binding name to `Evaluation`
         """
+        if formula == '':
+            return 0
         try:
             return eval(formula, {}, context)
         except SyntaxError:
