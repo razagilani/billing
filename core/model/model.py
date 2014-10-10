@@ -390,7 +390,7 @@ class UtilBill(Base):
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
+        while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
         charge = Charge(utilbill=self,
                         description="New Charge - Insert description here",
@@ -398,7 +398,7 @@ class UtilBill(Base):
                         quantity=0.0,
                         quantity_units="",
                         rate=0.0,
-                        rsi_binding="New RSI #%s" % n,
+                        rsi_binding="New Charge %s" % n,
                         total=0.0)
         session.add(charge)
         registers = self.registers
