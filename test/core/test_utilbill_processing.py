@@ -4,6 +4,7 @@ import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
 from billing.core.model import UtilBill
+from billing.core.model import Session
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 
@@ -373,7 +374,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # estimated one)
         for obj in utilbills_data:
             id, state = obj['id'], obj['state']
-            u = self.state_db.get_utilbill_by_id(id)
+            u = Session().query(UtilBill).filter_by(id=id).one()
             if state == 'Final':
                 self.process.billupload.get_utilbill_file_path(u)
             else:

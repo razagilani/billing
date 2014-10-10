@@ -379,20 +379,6 @@ class ReeBill(Base):
             context[charge.rsi_binding] = evaluation
         self.replace_charges_with_context_evaluations(context)
 
-    def document_id_for_utilbill(self, utilbill):
-        '''Returns the id (string) of the "frozen" utility bill document in
-        Mongo corresponding to the given utility bill which is attached to this
-        reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.document_id for ubrb in self._utilbill_reebills if
-                    ubrb.utilbill == utilbill)
-
-    def uprs_id_for_utilbill(self, utilbill):
-        '''Returns the id (string) of the "frozen" UPRS document in Mongo
-        corresponding to the given utility bill which is attached to this
-        reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
-                    if ubrb.utilbill == utilbill)
-
     @property
     def total(self):
         '''The sum of all charges on this bill that do not come from other
@@ -412,9 +398,6 @@ class ReeBill(Base):
         '''Returns sum of "hypothetical" versions of all charges.
         '''
         return sum(charge.h_total for charge in self.charges)
-
-    def get_service_address_formatted(self):
-        return str(self.service_address)
 
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first ReeBillCharge object found belonging to this
@@ -670,20 +653,6 @@ class StateDB(object):
     def get_customer(self, account):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
-
-    def get_utilbill(self, account, service, start, end):
-        session = Session()
-        customer = session.query(Customer) \
-            .filter(Customer.account == account).one()
-        return session.query(UtilBill) \
-            .filter(UtilBill.customer_id == customer.id) \
-            .filter(UtilBill.service == service) \
-            .filter(UtilBill.period_start == start) \
-            .filter(UtilBill.period_end == end).one()
-
-    def get_utilbill_by_id(self, ubid):
-        session = Session()
-        return session.query(UtilBill).filter(UtilBill.id == ubid).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer

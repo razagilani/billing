@@ -14,6 +14,10 @@ class UtilbillProcessor(object):
         self.nexus_util = nexus_util
         self.logger = logger
 
+    # TODO this method might be replaced by the UtilbillLoader method
+    def _get_utilbill(self, utilbill_id):
+        return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
+
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
         by  'utilbill_id' (MySQL id)."""
@@ -93,7 +97,7 @@ class UtilbillProcessor(object):
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
         charge = utilbill.add_charge()
         self.compute_utility_bill(utilbill_id)
         return charge
@@ -139,7 +143,7 @@ class UtilbillProcessor(object):
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if target_total is not None:
             utilbill.target_total = target_total
 
@@ -320,7 +324,7 @@ class UtilbillProcessor(object):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         session = Session()
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         for charge in utilbill.charges:
             session.delete(charge)
         utilbill.charges = []
@@ -333,7 +337,7 @@ class UtilbillProcessor(object):
         Also updates some keys in the document that are duplicates of columns
         in the MySQL table.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         utilbill.compute_charges()
         return utilbill
 
