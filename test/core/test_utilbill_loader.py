@@ -19,7 +19,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         blank_address = Address()
         customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', Utility('Test Utility',
-                            Address()), 'FB Test Rate Class', blank_address,
+                            Address(), ''), 'FB Test Rate Class', blank_address,
                             blank_address)
         self.session.add(customer)
         self.session.commit()
@@ -36,7 +36,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
     def test_get_last_real_utilbill(self):
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
-        pepco = Utility('pepco', Address())
+        pepco = Utility('pepco', Address(), '')
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',

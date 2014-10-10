@@ -31,7 +31,7 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        test_utility = Utility('FB Test Utility Name', blank_address)
+        test_utility = Utility('FB Test Utility Name', blank_address, '')
         self.customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', test_utility,
                             'FB Test Rate Class', blank_address, blank_address)
@@ -65,7 +65,7 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
-        fb_test_utility = Utility('FB Test Utility', Address())
+        fb_test_utility = Utility('FB Test Utility', Address(), '')
         self.session.add(Customer('someone', '11111', 0.5, 0.1,
                 'customer1@example.com', fb_test_utility,
                 'FB Test Rate Class', Address(), Address()))
@@ -266,7 +266,7 @@ class StateDBTest(TestCaseWithSetup):
         # Attach two utilitybills with out addresses but with rate class to one
         # of the customers, and one utilbill with empty rateclass but with
         # address to the other customer
-        washgas = Utility('washgas', Address())
+        washgas = Utility('washgas', Address(), '')
         gas_bill_1 = UtilBill(customer1, 0, 'gas', washgas,
                 'DC Non Residential Non Heat', empty_address, empty_address,
                 period_start=date(2000, 1, 1), period_end=date(2000, 2, 1),

@@ -74,6 +74,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleRowSelect: function(combo, recs) {
         var hasSelections = recs.length > 0;
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        var processed = selected.get('processed')
         //console.log(selected[0].get('processed'));
         this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
         this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
@@ -84,7 +85,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
                 hasReebill = true;
         });
 
-        this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill);
+        this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
     },
 
     /**
@@ -166,7 +167,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     /**
-     * Handle the compute button being clicked.
+     * Handle the delete button being clicked.
      */
     handleDelete: function() {
         var scope = this,
