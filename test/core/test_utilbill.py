@@ -8,7 +8,7 @@ from billing import init_model
 from datetime import date
 from unittest import TestCase
 
-from billing.exc import RSIError
+from billing.exc import RSIError, ProcessedBillError
 from billing.core.model import UtilBill, Customer, Session, Charge,\
     Address, Register, Utility
 from billing.reebill.state import Payment
@@ -369,4 +369,8 @@ class UtilBillTest(TestCase):
             Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
                     quantity_formula='1/0'),
         ]
+        self.assertTrue(utilbill.editable())
         Session().add(utilbill)
+        utilbill.processed = True
+        self.assertRaises(ProcessedBillError, utilbill.compute_charges())
+        self.assertRaises(ProcessedBillError, utilbill.editable)
