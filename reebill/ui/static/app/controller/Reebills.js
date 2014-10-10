@@ -187,12 +187,12 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getBindREOffsetButton().setDisabled(issued || processed);
         this.getComputeReebillButton().setDisabled(issued || processed);
         this.getToggleReebillProcessedButton().setDisabled(issued);
-        this.getUpdateReadingsButton().setDisabled(issued);
+        this.getUpdateReadingsButton().setDisabled(issued || processed);
         this.getRenderPdfButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
         this.initializeUploadIntervalMeterForm();
-        this.getUploadIntervalMeterForm().setDisabled(issued);
+        this.getUploadIntervalMeterForm().setDisabled(issued || processed);
     },
 
     /**
