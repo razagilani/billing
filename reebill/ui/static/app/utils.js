@@ -2,6 +2,29 @@
  * Created by thoffmann on 9/9/14.
  */
 var utils = function() {
+    var makeServerExceptionWindow = function(statusCode, statusText, content){
+        var win = Ext.create('Ext.window.Window', {
+            modal: true,
+            autoScroll: true,
+            width: 850,
+            maxHeight: 650,
+            cls: 'messageBoxOverflow',
+            title: "Server error - " + statusCode + " - " + statusText,
+            layout     : {
+                type  : 'hbox',
+                align : 'stetch'
+            },
+            items      : [
+                {
+                    html : content,
+                    flex : 1
+                }
+            ]
+        });
+        win.show();
+        win.center();
+    };
+
     var makeProxyExceptionHandler = function(storeName) {
         /* Creates a function which rejects changes in the store storeName and
          shows and appropriate error message box */
@@ -16,28 +39,12 @@ var utils = function() {
             }
 
             Ext.getStore(storeName).rejectChanges();
-            var win = Ext.create('Ext.window.Window', {
-                modal: true,
-                autoScroll: true,
-                width: 850,
-                maxHeight: 650,
-                cls: 'messageBoxOverflow',
-                title: "Server error - " + response.status + " - " + statusText,
-                layout     : {
-                    type  : 'hbox',
-                    align : 'stetch'
-                },
-                items      : [
-                    {
-                        html : responseText,
-                        flex : 1
-                    }
-                ]
-            });
-            win.show();
-            win.center();
+            makeServerExceptionWindow(response.status, statusText, responseText)
         }
     };
 
-    return {makeProxyExceptionHandler: makeProxyExceptionHandler};
+    return {
+        makeProxyExceptionHandler: makeProxyExceptionHandler,
+        makeServerExceptionWindow: makeServerExceptionWindow
+    };
 }();

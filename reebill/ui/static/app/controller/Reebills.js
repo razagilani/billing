@@ -358,118 +358,70 @@ Ext.define('ReeBill.controller.Reebills', {
          store.resumeAutoSync();
      },
 
-     /**
-       * Handle the toggle processed button.
-       */
-     handleToggleReebillProcessed: function(){
-         var store = this.getReebillsStore();
-
-         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-         if (!selections.length)
-             return;
-
-         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-         if (!selectedAccounts.length)
-             return;
-
-         var selected = selections[0];
-         selected.data.apply_corrections = false;
-         var account = this.getAccountsGrid().getSelectionModel().getSelection();
-         this.makeIssueRequest('http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
-         /*selected.beginEdit();
-         selected.set('action', 'setProcessed');
-         selected.set('action_value', !selected.get('processed'));
-         selected.endEdit();*/
-     },
-
-     makeIssueRequest: function(url, billRecord, account){
-        //var me = this;
-        //var store = me.getIssuableReebillsStore();
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {reebill: Ext.encode(billRecord.data),
-                    account: Ext.encode(account[0].data)}
+    /**
+      * Handle the toggle processed button.
+      */
+    handleToggleReebillProcessed: function(){
+        var me = this;
         var store = this.getReebillsStore();
+        var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        var url = 'http://'+window.location.host+'/reebill/reebills/toggle_processed'
 
+        var params = {
+            reebill: selected.get('id'),
+            apply_corrections: false
+        };
         var failureFunc = function(response){
             waitMask.hide();
-            Ext.MessageBox.show({
-                title: "Server error - " + response.status + " - " + response.statusText,
-                msg:  response.responseText,
-                icon: Ext.MessageBox.ERROR,
-                buttons: Ext.Msg.OK,
-                cls: 'messageBoxOverflow'
-            });
+            utils.makeServerExceptionWindow(response.status, response.statusText, response.responseText);
         };
-        var successFunc = function(response){
-            // Wait for the bill to be issued before reloading the store
-           var obj = Ext.JSON.decode(response.responseText);
-            Ext.defer(function(){
-                store.reload();
-                waitMask.hide();
-            }, 1000);
-        }
-
-        /*if(billRecord !== undefined){
-            params.account = billRecord.get('account');
-            params.sequence = billRecord.get('sequence');
-            params.mailto = billRecord.get('mailto');
-        }*/
 
         waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
-            reebill: params,
             method: 'POST',
-            success: function(response){
+            failure: failureFunc,
+            success: function (response) {
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
-                    var reebill_corrections = '';
-                        if (obj.adjustment != undefined) {
-                            Ext.each(obj.unissued_corrections, function(correction) {
-                                reebill_corrections += 'Reebill from account ' + obj.reebill.account +
-                                    ' with sequence ' + obj.reebill.sequence +
-                                    ' with corrections ' + correction +
-                                    ' will be applied to this bill as an adjusment of $'
-                                    + obj.adjustment + ', which would also become processed.' +
-                                    'Do you want to make this correction processed?' + '</br>'
+                    var msg = Ext.String.format("Corrections {0} will be applied to this bill for a total adjustment of ${1}. </br></br> Do you want to mark this bill as processed and apply these corrections?",
+                        obj.unissued_corrections, obj.adjustment
+                    );
+                    Ext.MessageBox.confirm("Confirmation Required", msg, function (answer) {
+                        if (answer == 'yes') {
+                            params.apply_corrections = true;
+                            Ext.Ajax.request({
+                                url: url,
+                                method: 'POST',
+                                params: params,
+                                failure: failureFunc,
+                                success: function(){
+                                    // We have to reload the store here because
+                                    // multiple records are updated when applying
+                                    // corrections
+                                    store.reload({callback:function(){
+                                        waitMask.hide();
+                                        me.handleRowSelect();
+                                    }});
+                                }
                             });
-
+                            waitMask.show();
                         }
-
-                    Ext.MessageBox.confirm(
-                                'There are corrections with this reebill',reebill_corrections,
-
-                                function (answer) {
-                                    if (answer == 'yes') {
-                                            if (obj.adjustment != undefined)
-                                                obj.reebill.apply_corrections = true;
-
-                                        var params = {reebill: Ext.encode(obj.reebill),
-                                                    account: Ext.encode(account[0].data)}
-                                        Ext.Ajax.request({
-                                            url: url,
-                                            method: 'POST',
-                                            params: params,
-                                            failure: failureFunc,
-                                            success: successFunc
-                                        });
-                                        waitMask.show();
-                                        }
-
-                                });
-                    store.reload();
+                    });
+                }else if(obj.success === true){
+                    store.suspendAutoSync();
+                    selected.set(obj.reebill);
+                    selected.commit();
+                    store.resumeAutoSync();
+                    me.handleRowSelect();
+                    waitMask.hide();
                 }
-                else
-                {
-                    successFunc(response);
-                }
-
-            },
-            failure: failureFunc
+            }
         });
-     },
+    },
 
     /**
       * Handle the create new version button.
