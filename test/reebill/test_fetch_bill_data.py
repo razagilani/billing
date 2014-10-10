@@ -162,22 +162,6 @@ class FetchTest(unittest.TestCase):
                 get_energy_for_hour(date(2012,3,28), [19,20]))
 
 
-    @unittest.skip('Obsolete feature that was never used; would have to be '
-                   'completely rewritten to get it working.')
-    def test_fetch_interval_meter_data(self):
-        '''Realistic test of loading interval meter data with an entire utility
-        bill date range. Tests lack of errors but not correctness.'''
-        # generate example csv file whose time range exactly matches the bill
-        # period
-        csv_file = StringIO()
-        start, end = self.reebill.get_period()
-        make_big_interval_meter_test_csv(start, end, csv_file)
-        # writing the file puts the file pointer at the end, so move it back
-        csv_file.seek(0)
-
-        self.ree_getter.fetch_interval_meter_data(self.reebill, csv_file)
-
-
     def test_fetch_oltp_data_simple(self):
         '''Put energy in a bill with a simple "total" register, and make sure
         the register contains the right amount of energy.

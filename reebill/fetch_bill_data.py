@@ -108,30 +108,6 @@ class RenewableEnergyGetter(object):
                         'register "%s" in %s') % (reading.register_binding,
                         reebill))
 
-    def fetch_interval_meter_data(self, reebill, csv_file,
-            timestamp_column=0, energy_column=1,
-            energy_unit='btu', timestamp_format=dateutils.ISO_8601_DATETIME):
-        '''Update hypothetical quantities of registers in reebill with
-        interval-meter energy values from csv_file. If meter_identifier is given,
-        energy will only go in shadow registers of meters with that identifier.
-        '''
-        energy_function = self.get_interval_meter_data_source(csv_file,
-                timestamp_column=timestamp_column, energy_column=energy_column,
-                timestamp_format=timestamp_format, energy_unit=energy_unit)
-        results = self._usage_data_to_virtual_register(reebill.utilbill,
-                reebill.readings[0], )
-        for binding, quantity in results:
-            assert isinstance(binding, basestring)
-            assert isinstance(quantity, (float, int))
-            try:
-                reebill.set_renewable_energy_reading(binding, quantity)
-            except RegisterError:
-                # ignore any registers that exist in the utility bill
-                # but don't have corresponding readings in the reebill
-                self._logger.info(('In update_renewable_readings: skipped '
-                                   'register "%s" in %s') % (binding, reebill))
-
-
     # NOTE this is used only by fetch_interval_meter_data, which is obsolete.
     def get_interval_meter_data_source(self, csv_file, timestamp_column=0,
             energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
