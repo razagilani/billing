@@ -33,7 +33,7 @@ from billing.reebill import process, state, fetch_bill_data as fbd
 from billing.core.rate_structure import RateStructureDAO
 from billing.core.model import Session
 from billing.core.billupload import BillUpload
-from billing.reebill import journal, render
+from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
@@ -186,7 +186,7 @@ class WebResource(object):
             )
 
         # create a ReebillRenderer
-        self.reebill_file_handler = render.ReebillFileHandler(
+        self.reebill_file_handler = reebill_file_handler.ReebillFileHandler(
                 self.config.get('bill', 'billpath'))
         mailer_opts = dict(self.config.items("mailer"))
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
