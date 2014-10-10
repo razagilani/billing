@@ -122,14 +122,14 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        uc = Utility('Test Utility Company Template', ca1)
+        uc = Utility('Test Utility Company Template', ca1, '')
 
         ca2 = Address('Test Other Utilco Address',
                       '123 Utilco Street',
                       'Utilco City',
                       'XX', '12345')
 
-        other_uc = Utility('Other Utility', ca1)
+        other_uc = Utility('Other Utility', ca1, '')
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
                          ub_sa2, ub_ba2, uc, ca1, ca2, other_uc])
@@ -262,6 +262,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
+                mailer_opts['smtp_host'],
+                mailer_opts['smtp_port'],
                 server,
                 mailer_opts['bcc_list']
         )

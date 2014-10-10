@@ -38,6 +38,7 @@ from billing.reebill import journal, render
 from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
 from billing.reebill.excel_export import Exporter
+from billing.core.model import UtilBill
 
 user_dao = UserDAO(**dict(config.items('mongodb')))
 

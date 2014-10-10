@@ -880,7 +880,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.update_charge({
                                        'quantity_formula': '1 + ',
                                        'rsi_binding': 'some_rsi'
-                                   }, charge_id=charge.id)
+                                   }, charge_id=charge.id, utilbill_id=utilbill_id)
         with self.assertRaises(FormulaSyntaxError):
             self.process.compute_reebill(account, 1, version=1)
 
@@ -1025,7 +1025,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.update_charge(dict(rsi_binding='THE_CHARGE',
             quantity_formula="REG_TOTAL.quantity",
             quantity_units='therms', rate=1,
-            group='All Charges'), charge_id=charge.id)
+            group='All Charges'), charge_id=charge.id, utilbill_id=u1.id)
 
         self.process.update_utilbill_metadata(u1.id,
                                               processed=True)

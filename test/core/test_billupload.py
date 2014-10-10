@@ -64,7 +64,7 @@ class BillUploadTest(unittest.TestCase):
         """The UtilBill should be deleted when delete_utilbill_pdf_from_S3 is
         called, as long as there is only one UtilBill instance persisted
         having the given sha256_hexdigest"""
-        fb_utility = Utility('some_utility', Address())
+        fb_utility = Utility('some_utility', Address(), '')
         ub = UtilBill(Customer('', '', 0.0, 0.0, '',
                                fb_utility, 'rate_class', Address(), Address()),
                       0, 'gas', fb_utility, 'test_rate_class', Address(),
@@ -97,7 +97,7 @@ class BillUploadTest(unittest.TestCase):
 
         s = Session()
         for x in range(2):
-            fb_utility = Utility('some_utility', Address())
+            fb_utility = Utility('some_utility', Address(), '')
             ub = UtilBill(Customer('', str(x), 0.0, 0.0, '',
                                    fb_utility, 'rate_class', Address(), Address()),
                           0, 'gas', fb_utility, 'test_rate_class', Address(),
@@ -123,7 +123,7 @@ class BillUploadTest(unittest.TestCase):
         self.assertEqual('test_file_data', key_obj.get_contents_as_string())
 
     def test_upload_utilbill_pdf_to_s3(self):
-        fb_utility = Utility('some_utility', Address())
+        fb_utility = Utility('some_utility', Address(), '')
         s = Session()
         ub = UtilBill(Customer('', 'test', 0.0, 0.0, '',
                                fb_utility, 'rate_class', Address(), Address()),

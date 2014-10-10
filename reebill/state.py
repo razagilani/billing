@@ -675,7 +675,7 @@ class StateDB(object):
         try:
             utility = session.query(Utility).filter_by(name=utility_name).one()
         except NoResultFound:
-            utility = Utility(utility_name, Address('', '', '', '', ''))
+            utility = Utility(utility_name, Address('', '', '', '', ''), '')
         return utility
 
     def get_utilbill_by_id(self, ubid):

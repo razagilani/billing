@@ -4,7 +4,7 @@ import re
 import errno
 from datetime import datetime, timedelta
 from billing.reebill.reebill_processor import MYSQLDB_DATETIME_MIN
-from core.model import Session
+from billing.core.model import Session
 from billing.reebill.state import Payment, ReeBill, Customer, ReeBillCharge, UtilBill, Address
 
 from sqlalchemy.sql import desc, functions
