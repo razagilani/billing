@@ -165,12 +165,14 @@ Ext.define('ReeBill.controller.Charges', {
         if (!selectedBill || !selectedBill.length)
             return;
 
+        store.suspendAutoSync();
         store.add({'name': 'New RSI'});
         store.sync({success:function(batch){
             var record = batch.operations[0].records[0];
             var plugin = this.getChargesGrid().findPlugin('cellediting');
             plugin.startEdit(record, 2);
         }, scope: this});
+        store.resumeAutoSync();
     },
 
     /**
