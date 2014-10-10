@@ -297,12 +297,6 @@ class UtilBill(Base):
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
 
-    @property
-    def bindings(self):
-        """Returns all bindings across both charges and registers"""
-        return set([c.rsi_binding for c in self.charges] +
-                   [r.register_binding for r in self.registers])
-
     @staticmethod
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
@@ -372,19 +366,6 @@ class UtilBill(Base):
 
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
-
-    def sequence_version_json(self):
-        '''Returns a list of dictionaries describing reebill versions attached
-        to this utility bill. Each element is of the form {"sequence":
-        sequence, "version": version}. The elements are sorted by sequence and
-        by version within the same sequence.
-        '''
-        return sorted(
-            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version,
-              'issue_date': ur.reebill.issue_date}
-             for ur in self._utilbill_reebills),
-            key=lambda element: (element['sequence'], element['version'])
-        )
 
     def add_charge(self):
         session = Session.object_session(self)
