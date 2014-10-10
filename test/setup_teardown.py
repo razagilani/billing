@@ -38,7 +38,7 @@ def init_logging():
 
 init_logging()
 
-from billing.reebill.render import ReebillFileHandler
+from billing.reebill.reebill_file_handler import ReebillFileHandler
 from testfixtures import TempDirectory
 
 
