@@ -725,6 +725,8 @@ class ReebillProcessor(object):
                                recipient_list)
         return bills
 
+    # TODO this method has no test coverage. maybe combine it into
+    # update_sequential_account_info and add to the test for that
     def update_bill_email_recipient(self, account, sequence, recepients):
         """ Finds a particular reebill by account and sequence,
             finds the connected customer and updates the customer's default
