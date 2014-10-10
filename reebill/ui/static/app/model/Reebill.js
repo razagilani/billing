@@ -34,7 +34,9 @@ Ext.define('ReeBill.model.Reebill', {
         {name: 'late_charge_rate'},
         {name: 'manual_adjustment'},
         {name: 'billing_address'},
+        {name: 'billing_address_id'},
         {name: 'service_address'},
+        {name: 'service_address_id'},
         {name: 'processed'},
         // Data for Issuable Reebills
         {name: 'mailto'},
