@@ -30,7 +30,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 def round_for_display(x, places=2):
     '''Rounds the float 'x' for display as dollars according to the previous
-    behavior in render.py using Decimals, which was to round to the nearest
+    behavior in reebill_file_handler.py using Decimals, which was to round to the nearest
     cent (.005 up to .01). If 'places' is given, a different number of decimal
     places can be used.
     '''

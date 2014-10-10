@@ -9,7 +9,7 @@ from testfixtures import TempDirectory
 from billing.core.model import Address, Customer, UtilBill, \
     Register
 from billing.reebill.state import ReeBill, ReeBillCharge
-from billing.reebill.render import ReebillFileHandler
+from billing.reebill.reebill_file_handler import ReebillFileHandler
 
 
 class ReebillFileHandlerTest(TestCase):
