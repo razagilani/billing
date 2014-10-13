@@ -184,7 +184,20 @@ def backup_mongo_collection_local(collection_name, file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
+def _recreate_mysql_db(root_password):
+    '''Drop and re-create MySQL database because mysqldump only includes drop
+    commands for tables that already exist in the backup.
+    '''
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
+    stdin, _, check_exit_status = run_command(command)
+    stdin.write('drop database %s;' % db_params['db'])
+    stdin.write('create database %s;' % db_params['db'])
+    stdin.close()
+    check_exit_status()
+
 def restore_mysql_s3(bucket, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
@@ -203,6 +216,7 @@ def restore_mysql_s3(bucket, root_password):
     check_exit_status()
 
 def restore_mysql_local(dump_file_path, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
