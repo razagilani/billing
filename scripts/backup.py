@@ -164,6 +164,9 @@ def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    print 'created S3 key %s/%s version %s at %s' % (
+            s3_key.bucket.name, s3_key.name, s3_key.version_id,
+            s3_key.last_modified)
 
 def backup_mysql_local(file_path):
     command = MYSQLDUMP_COMMAND % db_params
@@ -304,7 +307,7 @@ def get_bucket(bucket_name, access_key, secret_key):
 
 def backup(args):
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
+    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
