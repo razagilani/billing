@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 from operator import attrgetter
-import sys
 import os
 from datetime import datetime
 from argparse import ArgumentParser
-import logging
-from collections import deque
-from itertools import groupby, chain
-import csv
+from itertools import groupby
 from errno import EEXIST, ENOENT
 
 from pyPdf import PdfFileWriter, PdfFileReader
@@ -22,6 +18,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
 
 # Important for currency formatting
 import locale
