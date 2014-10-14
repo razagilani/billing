@@ -76,7 +76,7 @@ class ReebillFileHandler(object):
 
     # TODO this will be set by type of energy service
     # see https://www.pivotaltracker.com/story/show/78497806
-    PDF_SKIN_NAME = 'nextility_pv'
+    PDF_SKIN_NAME = 'nextility_swh'
 
     @staticmethod
     def _ensure_directory_exists(path):
