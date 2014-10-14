@@ -23,7 +23,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
-
 # Important for currency formatting
 import locale
 locale.setlocale(locale.LC_ALL, '')
@@ -70,13 +69,8 @@ def concat_pdfs(in_paths, out_path):
 class ReebillFileHandler(object):
     '''Methods for working with Reebill PDF files.
     '''
-
     TEMPLATE_DIR = 'reebill_templates'
     FILE_NAME_FORMAT = '%(account)s_%(sequence)04d.pdf'
-
-    # TODO this will be set by type of energy service
-    # see https://www.pivotaltracker.com/story/show/78497806
-    PDF_SKIN_NAME = 'nextility_swh'
 
     @staticmethod
     def _ensure_directory_exists(path):
@@ -209,6 +203,18 @@ class ReebillFileHandler(object):
                                                key=attrgetter('group'))},
         }
 
+    def _get_skin_directory_name_for_account(self, account):
+        '''Return name of the directory in which "skins" (image files) to be
+        used in bill PDFs for the given account are stored.
+        '''
+        from billing import config
+        if account in config.get('reebillrendering', 'teva_accounts').split():
+            return 'teva'
+        else:
+            # TODO this will be set by type of energy service
+            # see https://www.pivotaltracker.com/story/show/78497806
+            return 'nextility_swh'
+
     def render(self, reebill):
         '''Create a PDF of the given :class:`ReeBill`.
         '''
@@ -218,7 +224,8 @@ class ReebillFileHandler(object):
         document = self._generate_document(reebill)
         ThermalBillDoc().render([document], dir_path,
                 file_name, ReebillFileHandler.TEMPLATE_DIR,
-                ReebillFileHandler.PDF_SKIN_NAME)
+                self._get_skin_directory_name_for_account(
+                        reebill.customer.account))
 
 class BillDoc(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
