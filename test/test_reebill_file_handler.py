@@ -1,6 +1,5 @@
 from datetime import date
 from errno import ENOENT
-import shutil
 from unittest import TestCase
 from hashlib import sha1
 import os.path
@@ -12,6 +11,7 @@ from billing.core.model import Address, Customer, UtilBill, \
 from billing.reebill.state import ReeBill, ReeBillCharge
 from billing.reebill.reebill_file_handler import ReebillFileHandler
 from billing import init_config
+
 init_config(filepath='test/tstsettings.cfg')
 
 class ReebillFileHandlerTest(TestCase):
