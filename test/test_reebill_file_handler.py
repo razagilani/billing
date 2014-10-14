@@ -1,5 +1,6 @@
 from datetime import date
 from errno import ENOENT
+import shutil
 from unittest import TestCase
 from hashlib import sha1
 import os.path
@@ -85,11 +86,15 @@ class ReebillFileHandlerTest(TestCase):
         whether the PDF file matches the expected value will tell you when
         something is broken but it won't tell you what's broken.
         '''
+        # check the case where the directory for the PDF already exists by
+        # creating it before calling 'render'
+        path = self.file_handler.get_file_path(self.reebill)
+        os.makedirs(os.path.dirname(path))
+
         self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
         # that are different every time
-        path = self.file_handler.get_file_path(self.reebill)
         with open(path, 'rb') as pdf_file:
             filtered_lines = self._filter_pdf_file(pdf_file)
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
@@ -116,7 +121,8 @@ class ReebillFileHandlerTest(TestCase):
 
     def test_render_teva(self):
         '''Render a bill using the "skin" (directory containing image files)
-        called "teva".
+        called "teva". This also checks the creation of the directory to
+        contain the PDF because it doesn't exist when 'render' is called.
         '''
         # tstsettings.cfg specifies that if the customer's account number is
         # this one, it willl get the "teva" images on its bill PDFs.
