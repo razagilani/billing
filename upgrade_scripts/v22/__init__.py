@@ -19,7 +19,7 @@ from bson.objectid import ObjectId
 from upgrade_scripts import alembic_upgrade
 from billing import config, init_model
 from billing.core.model import (Session, Register, UtilBill, Address, Customer,
-        MYSQLDB_DATETIME_MIN)
+        MYSQLDB_DATETIME_MIN, Charge)
 from billing.reebill.state import ReeBill, Payment
 
 
@@ -192,6 +192,24 @@ def set_customer_service_type(s):
         else:
             customer.service = None
 
+def fill_in_charges_quantity_units(s):
+    for charge in s.query(Charge).all():
+        if charge.quantity_units in (None, '', 'None', 'Therms'):
+            if charge.utilbill.service == 'gas':
+                charge.quantity_units = 'therms'
+            elif charge.utilbill.service == 'electric':
+                charge.quantity_units = 'kWh'
+            else:
+                # replace None with '' because at least it's non-null
+                charge.utilbill.service = '';
+        elif charge.quantity_units.lower() == 'ccf':
+            charge.quantity_units = 'therms'
+        # how could these ever have worked?
+        elif charge.quantity_units == 'REG_TOTAL.quantityunits':
+            charge.quantity_units = 'therms'
+        elif charge.quantity_units == 'Unit':
+            charge.quantity_units = 'dollars'
+
 def upgrade():
     log.info('Beginning upgrade to version 22')
 
@@ -211,6 +229,8 @@ def upgrade():
     copy_registers_from_mongo(session)
     log.info('Copying RSIs from mongo')
     copy_rsis_from_mongo(session)
+    log.info('Filling in missing values for charge.quantity_units')
+    fill_in_charges_quantity_units(session)
     log.info('Committing data migration to database')
     session.commit()
 
