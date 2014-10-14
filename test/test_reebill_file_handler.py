@@ -10,7 +10,8 @@ from billing.core.model import Address, Customer, UtilBill, \
     Register
 from billing.reebill.state import ReeBill, ReeBillCharge
 from billing.reebill.reebill_file_handler import ReebillFileHandler
-
+from billing import init_config
+init_config(filepath='test/tstsettings.cfg')
 
 class ReebillFileHandlerTest(TestCase):
     def setUp(self):
@@ -54,6 +55,31 @@ class ReebillFileHandlerTest(TestCase):
         # TODO: this seems to not always remove the directory?
         self.temp_dir.cleanup()
 
+    def _filter_pdf_file(self, pdf_file):
+        '''Read 'pdf_file' and return a list of lines from the file excluding
+        parts where ReportLab puts data that are different every time (current
+        date, font file paths, and some mysterious bytes).
+        '''
+        line_filters = [
+            lambda prev_line, cur_line: cur_line.startswith(
+                ' /CreationDate (D:'),
+            lambda prev_line, cur_line: prev_line.startswith(
+                ' % ReportLab generated PDF document -- digest '
+                '(http://www.reportlab.com)'),
+            lambda prev_line, cur_line: cur_line.startswith("% 'fontFile"),
+            lambda prev_line, cur_line: cur_line.startswith('0000'),
+            lambda prev_line, cur_line: prev_line.startswith('startxref'),
+        ]
+        filtered_lines, prev_line = [], ''
+        while True:
+            line = pdf_file.readline()
+            if line == '':
+                break
+            if not any(f(prev_line, line) for f in line_filters):
+                filtered_lines.append(line)
+            prev_line = line
+        return filtered_lines
+
     def test_render_delete(self):
         '''Simple test of creating and deleting a reebill PDF file. Checking
         whether the PDF file matches the expected value will tell you when
@@ -62,27 +88,10 @@ class ReebillFileHandlerTest(TestCase):
         self.file_handler.render(self.reebill)
 
         # get hash of the PDF file, excluding certain parts where ReportLab puts data
-        # that are different every time (current date, and some mysterious bytes)
+        # that are different every time
         path = self.file_handler.get_file_path(self.reebill)
-        line_filters = [
-            lambda prev_line, cur_line: cur_line.startswith(
-                    ' /CreationDate (D:'),
-            lambda prev_line, cur_line: prev_line.startswith(
-                    ' % ReportLab generated PDF document -- digest '
-                    '(http://www.reportlab.com)'),
-            lambda prev_line, cur_line: cur_line.startswith("% 'fontFile"),
-            lambda prev_line, cur_line: cur_line.startswith('0000'),
-            lambda prev_line, cur_line: prev_line.startswith('startxref'),
-        ]
         with open(path, 'rb') as pdf_file:
-            filtered_lines, prev_line = [], ''
-            while True:
-                line = pdf_file.readline()
-                if line == '':
-                    break
-                if not any(f(prev_line, line) for f in line_filters):
-                    filtered_lines.append(line)
-                prev_line = line
+            filtered_lines = self._filter_pdf_file(pdf_file)
         filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
 
         # NOTE this will need to be updated whenever the PDF is actually
@@ -104,3 +113,27 @@ class ReebillFileHandlerTest(TestCase):
 
         # unless ignore_missing == True
         self.file_handler.delete_file(self.reebill, ignore_missing=True)
+
+    def test_render_teva(self):
+        '''Render a bill using the "skin" (directory containing image files)
+        called "teva".
+        '''
+        # tstsettings.cfg specifies that if the customer's account number is
+        # this one, it willl get the "teva" images on its bill PDFs.
+        self.reebill.customer.account = 'teva'
+        self.file_handler.render(self.reebill)
+
+        # get hash of the PDF file, excluding certain parts where ReportLab puts data
+        # that are different every time
+        path = self.file_handler.get_file_path(self.reebill)
+        with open(path, 'rb') as pdf_file:
+            filtered_lines = self._filter_pdf_file(pdf_file)
+        filtered_pdf_hash = sha1(''.join(filtered_lines)).hexdigest()
+
+        # NOTE this will need to be updated whenever the PDF is actually
+        # supposed to be different. the only way to do it is to manually verify
+        # that the PDF looks right, then get its actual hash and paste it here
+        # to make sure it stays that way.
+        self.assertEqual('f479f2a1661fd48dc1107a27e254003b481065bd',
+                         filtered_pdf_hash)
+
