@@ -53,10 +53,6 @@ Ext.define('ReeBill.controller.Accounts', {
                     grid.setLoading(false);
                 }
             },
-            add: function(){
-                var accountForm = this.getAccountForm();
-                accountForm.getForm().reset();
-            },
             scope: this
         });
 
@@ -161,14 +157,8 @@ Ext.define('ReeBill.controller.Accounts', {
         var store = this.getAccountsStore();
 
         var memoryStore = this.getAccountsMemoryStore();
-        memoryStore.on('load', function(){
-                            console.log('memory store load')
-        }, this);
-
         if (accountForm.getForm().isValid()) {
             var values = accountForm.getForm().getValues();
-            console.log(values);
-
             store.suspendAutoSync();
             store.add(values);
             if (!makeAnotherAccount) {
@@ -179,7 +169,6 @@ Ext.define('ReeBill.controller.Accounts', {
                         var filterRec = filterStore.findRecord('value', filter);
                         var accountRec = batch.operations[0].records[0];
                         var memoryStore = this.getAccountsMemoryStore();
-                        console.log('batch:', batch, options, filter, filterRec, accountRec);
 
                         // Test if the current filter would filter out the newly
                         // created account and if yes, set the filter to none
@@ -195,6 +184,9 @@ Ext.define('ReeBill.controller.Accounts', {
                         });
                         memoryStore.loadPage(1);
                         accountsGrid.getSelectionModel().select([accountRec]);
+
+                        var accountForm = this.getAccountForm();
+                        accountForm.getForm().reset();
                     },
                     callback: function(){
                         store.resumeAutoSync();
