@@ -79,9 +79,6 @@ Ext.define('ReeBill.controller.Charges', {
     handleActivate: function() {
         var store = this.getChargesStore();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var field = this.getFormulaField();
-        var groupTextField = this.getGroupTextField();
-
         if (!selectedBill)
             return;
 
@@ -90,9 +87,8 @@ Ext.define('ReeBill.controller.Charges', {
         };
         store.reload();
 
-        // Disable Text Fields on Activate
-        field.setDisabled(true);
-        groupTextField.setDisabled(true);
+        this.getChargesGrid().getSelectionModel().deselectAll();
+        this.updateTextFields();
     },
 
     /**
@@ -125,21 +121,10 @@ Ext.define('ReeBill.controller.Charges', {
      */
     handleRowSelect: function() {
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
         this.getRemoveCharge().setDisabled(!hasSelections);
-
-        // Set group in GroupTextField
-        if(hasSelections && selected !== undefined){
-            this.updateTextFields();
-            var field = this.getFormulaField();
-            field.setDisabled(false);
-            field.setValue(selected.get('quantity_formula'));
-        }
-
+        this.updateTextFields();
         this.getChargesGrid().focus();
      },
-
-
 
     /**
      * Update the GroupTextField
@@ -148,10 +133,19 @@ Ext.define('ReeBill.controller.Charges', {
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
+        var groupTextField = this.getGroupTextField();
+        var formulaField = this.getFormulaField();
+
         if(hasSelections && selected !== undefined){
-            var groupTextField = this.getGroupTextField();
             groupTextField.setDisabled(false);
             groupTextField.setValue(selected.get('group'));
+            formulaField.setDisabled(false);
+            formulaField.setValue(selected.get('quantity_formula'));
+        }else{
+            groupTextField.setDisabled(true);
+            groupTextField.setValue('');
+            formulaField.setDisabled(true);
+            formulaField.setValue('');
         }
     },
 
@@ -173,6 +167,7 @@ Ext.define('ReeBill.controller.Charges', {
             plugin.startEdit(record, 2);
         }, scope: this});
         store.resumeAutoSync();
+        this.updateTextFields();
     },
 
     /**
@@ -186,6 +181,7 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         store.remove(selected);
+        this.updateTextFields();
     },
 
     /**
@@ -203,6 +199,7 @@ Ext.define('ReeBill.controller.Charges', {
             grid.setLoading(false);
         }, scope: this});
         store.resumeAutoSync();
+        this.updateTextFields();
     },
 
     /**
@@ -220,5 +217,6 @@ Ext.define('ReeBill.controller.Charges', {
             grid.setLoading(false);
         }, scope: this});
         store.resumeAutoSync();
+        this.updateTextFields();
     }
 });
