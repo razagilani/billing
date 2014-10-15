@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from billing import config
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session
+from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier
 from billing.exc import NoSuchBillException, ProcessedBillError
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -139,7 +139,7 @@ class UtilbillProcessor(object):
 
     def update_utilbill_metadata(self, utilbill_id, period_start=None,
                                  period_end=None, service=None, target_total=None, utility=None,
-                                 rate_class=None, processed=None):
+                                 supplier=None, rate_class=None, processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -155,6 +155,9 @@ class UtilbillProcessor(object):
 
             if utility is not None:
                 utilbill.utility = self.state_db.get_create_utility(utility)
+
+            if supplier is not None:
+                utilbill.supplier = self.state_db.get_create_supplier(supplier)
 
             if rate_class is not None:
                 utilbill.rate_class = rate_class
@@ -340,6 +343,7 @@ class UtilbillProcessor(object):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
+        session = Session()
         utilbills, total_count = self.state_db.list_utilbills(account,
                                                               start, limit)
         data = [ub.column_dict() for ub in utilbills]

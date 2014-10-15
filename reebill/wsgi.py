@@ -659,7 +659,7 @@ class UtilBillResource(RESTResource):
                 elif k == 'service':
                     update_args[k] = v.lower()
                 elif k in ('target_total', 'utility',
-                           'rate_class', 'processed'):
+                           'rate_class', 'processed', 'supplier'):
                     update_args[k] = v
 
             result = self.process.update_utilbill_metadata(

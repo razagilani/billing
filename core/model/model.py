@@ -35,6 +35,7 @@ __all__ = [
     'MYSQLDB_DATETIME_MIN',
     'Register',
     'Session',
+    'Supplier',
     'Utility',
     'UtilBill',
     'UtilBillLoader',
@@ -207,7 +208,15 @@ class Company(Base):
 
 
 class Supplier(Company):
+    __tablename__ = 'supplier'
     __mapper_args__ = {'polymorphic_identity': 'supplier'}
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey('company.id'))
+    name = Column(String(1000), nullable=False)
+
+    def __init__(self, name, address, guid):
+        super(Supplier, self).__init__(name, address, guid)
+        self.name = name
 
 
 class Utility(Company):
@@ -243,14 +252,18 @@ class Customer(Base):
     # "fb_" = to be assigned to the customer's first-created utility bill
     fb_rate_class = Column(String(255), nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False, )
+        nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
+    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
+        nullable=False)
 
+    fb_supplier = relationship('Supplier', uselist=False, cascade='all',
+        primaryjoin='Customer.fb_supplier_id==Supplier.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
-        primaryjoin='Customer.fb_service_address_id==Address.id')
+    primaryjoin='Customer.fb_service_address_id==Address.id')
 
     fb_utility = relationship('Utility')
     def get_discount_rate(self):
@@ -305,6 +318,8 @@ class UtilBill(Base):
         nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'),
+        nullable=False)
     utility_id = Column(Integer, ForeignKey('company.id'))
 
     state = Column(Integer, nullable=False)
@@ -326,8 +341,10 @@ class UtilBill(Base):
     # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
 
-    customer = relationship("Customer", backref=backref('utilbills',
+    customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
+    supplier = relationship('Supplier', uselist=False, cascade='all',
+        primaryjoin='UtilBill.supplier_id==Supplier.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
@@ -540,6 +557,7 @@ class UtilBill(Base):
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
                      ('utility', self.utility.name),
+                     ('supplier', self.supplier.name),
                      ('state', self.state_name()),
                      ('pdf_url', self.pdf_url)])
 

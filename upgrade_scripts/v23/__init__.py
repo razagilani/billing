@@ -8,6 +8,7 @@ import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
 from boto.s3.connection import S3Connection
+from sqlalchemy import func
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
 from upgrade_scripts import alembic_upgrade
@@ -15,7 +16,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill
+    Address, UtilBill, Supplier
 from billing.core.model.model import Company
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
@@ -79,7 +80,43 @@ def migrate_utilbill_utility(utilbill_data, session):
             log.error("Could not locate company with name '%s' for utilbill %s"
                       % (utility_name, utility_bill.id))
 
+def set_fb_utility_id(session):
+    for customer in session.query(Customer):
+        first_bill = session.query(UtilBill)\
+            .filter(UtilBill.customer == customer)\
+            .order_by(UtilBill.period_start)\
+            .first()
+        if first_bill:
+            log.debug('Setting fb_utility_id to %s for customer id %s' %
+                  (first_bill.utility_id, customer.id))
+            customer.fb_utility_id = first_bill.utility_id
 
+def set_supplier_ids(session):
+    for company in session.query(Company).all():
+        c_supplier = Supplier(company.name, company.address, company.guid)
+        session.add(c_supplier)
+        session.flush()
+        session.refresh(c_supplier)
+    for customer in session.query(Customer).all():
+        if customer.fb_utility_id:
+            utility = session.query(Utility).\
+                filter(Utility.id==customer.fb_utility_id).\
+                first()
+            supplier_id = session.query(Supplier).\
+                filter(Supplier.name==utility.name).\
+                first().id
+            log.debug('Setting supplier_id to %s for customer id %s' %
+                  (supplier_id, customer.id))
+            customer.fb_supplier_id = supplier_id
+    for bill in session.query(UtilBill).all():
+        if bill.utility:
+            utility_name = bill.utility.name
+            supplier = session.query(Supplier).\
+                filter(Supplier.name==utility_name).\
+                first().id
+            log.debug('Setting supplier_id to %s for utility bill id %s' %
+                  (supplier, bill.id))
+            bill.supplier_id = supplier
 
 def upgrade():
 
@@ -105,16 +142,20 @@ def upgrade():
     migrate_utilbill_utility(utilbill_data, session)
 
     log.info('Uploading utilbills to AWS')
-    upload_utilbills_to_aws(session)
+    #upload_utilbills_to_aws(session)
+
+    log.info('Setting up fb_utility_id')
+    set_fb_utility_id(session)
+
+    log.info('setting up supplier ids')
+    set_supplier_ids(session)
 
     log.info('Committing to database')
     session.commit()
-
-    log.info('Upgrading schema to revision 18a02dea5969')
-    alembic_upgrade('18a02dea5969')
 
     log.info('Upgrading schema to revision 3566e62e7af3')
     alembic_upgrade('3566e62e7af3')
 
     log.info('Upgrade Complete')
+
 

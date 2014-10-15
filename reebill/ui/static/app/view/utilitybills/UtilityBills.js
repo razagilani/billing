@@ -126,6 +126,14 @@ Ext.define('ReeBill.view.UtilityBills', {
         },
         width: 100
     },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        editor: {
+            xtype: 'textfield',
+            allowBlank: false
+        },
+        width: 100
+    },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         editor: {

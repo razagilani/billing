@@ -18,7 +18,7 @@ import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility
+    UtilBill, Customer, Utility, Supplier
 from billing import config
 
 __all__ = [
@@ -677,6 +677,14 @@ class StateDB(object):
         except NoResultFound:
             utility = Utility(utility_name, Address('', '', '', '', ''), '')
         return utility
+
+    def get_create_supplier(self, supplier_name):
+        session = Session()
+        try:
+            supplier = session.query(Supplier).filter_by(name=supplier_name).one()
+        except NoResultFound:
+            supplier = Supplier(supplier_name, Address('', '', '', '', ''), '')
+        return supplier
 
     def get_utilbill_by_id(self, ubid):
         session = Session()
