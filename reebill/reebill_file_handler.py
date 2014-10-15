@@ -22,6 +22,8 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 # Important for currency formatting
 import locale
+from exc import InvalidParameter
+
 locale.setlocale(locale.LC_ALL, '')
 
 def round_for_display(x, places=2):
@@ -66,7 +68,6 @@ def concat_pdfs(in_paths, out_path):
 class ReebillFileHandler(object):
     '''Methods for working with Reebill PDF files.
     '''
-    TEMPLATE_DIR = 'reebill_templates'
     FILE_NAME_FORMAT = '%(account)s_%(sequence)04d.pdf'
 
     @staticmethod
@@ -81,12 +82,22 @@ class ReebillFileHandler(object):
             if e.errno == EEXIST:
                 pass
 
-    def __init__(self, output_dir_path):
-        ''':param output_dir_path: directory where reebill PDF files are
-        stored.
-        :param skin_name: name of "skin" to be used when rendering PDFs
+    def __init__(self, template_dir_path, output_dir_path, teva_accounts):
         '''
+        :param template_dir_path: path of directory where
+        "templates" and fonts are stored, RELATIVE to billing directory.
+        :param output_dir_path: absolute path of directory where reebill PDF
+        files are stored.
+        :param teva accounts: list of customer accounts (strings) that should
+        have PDFs with the "teva" PDF format instead of the normal one.
+        '''
+        base_path = os.path.dirname(os.path.dirname(__file__))
+        self._template_dir_path = os.path.join(base_path, template_dir_path)
+        if not os.access(self._template_dir_path, os.R_OK):
+            raise InvalidParameter('Path "%s" is not readable' %
+                                   self._template_dir_path)
         self._pdf_dir_path = output_dir_path
+        self._teva_accounts = teva_accounts
 
     def get_file_name(self, reebill):
         '''Return name of the PDF file associated with the given :class:`ReeBill`
@@ -204,8 +215,7 @@ class ReebillFileHandler(object):
         '''Return name of the directory in which "skins" (image files) to be
         used in bill PDFs for the given account are stored.
         '''
-        from billing import config
-        if account in config.get('reebillrendering', 'teva_accounts').split():
+        if account in self._teva_accounts:
             return 'teva'
         else:
             # TODO this will be set by type of energy service
@@ -220,7 +230,7 @@ class ReebillFileHandler(object):
         dir_path, file_name = os.path.split(path)
         document = self._generate_document(reebill)
         ThermalBillDoc().render([document], dir_path,
-                file_name, ReebillFileHandler.TEMPLATE_DIR,
+                file_name, self._template_dir_path,
                 self._get_skin_directory_name_for_account(
                         reebill.customer.account))
 
