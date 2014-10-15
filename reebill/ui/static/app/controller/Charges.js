@@ -192,15 +192,33 @@ Ext.define('ReeBill.controller.Charges', {
      * Handle the regenerate button being clicked.
      */
     handleRegenerate: function() {
+        var grid = this.getChargesGrid();
+        grid.setLoading(true);
+        var store = this.getUtilityBillsStore();
+        store.suspendAutoSync();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'regenerate_charges');
+        store.sync({success:function(batch){
+            this.getChargesStore().reload();
+            grid.setLoading(false);
+        }, scope: this});
+        store.resumeAutoSync();
     },
 
     /**
      * Handle the recompute button being clicked.
      */
     handleRecompute: function() {
+        var grid = this.getChargesGrid();
+        grid.setLoading(true);
+        var store = this.getUtilityBillsStore();
+        store.suspendAutoSync();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'compute');
+        store.sync({success:function(batch){
+            this.getChargesStore().reload();
+            grid.setLoading(false);
+        }, scope: this});
+        store.resumeAutoSync();
     }
 });
