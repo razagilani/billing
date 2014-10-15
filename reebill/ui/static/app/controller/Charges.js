@@ -209,7 +209,16 @@ Ext.define('ReeBill.controller.Charges', {
      * Handle the recompute button being clicked.
      */
     handleRecompute: function() {
+        var grid = this.getChargesGrid();
+        grid.setLoading(true);
+        var store = this.getUtilityBillsStore();
+        store.suspendAutoSync();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'compute');
+        store.sync({success:function(batch){
+            this.getChargesStore().reload();
+            grid.setLoading(false);
+        }, scope: this});
+        store.resumeAutoSync();
     }
 });
