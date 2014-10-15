@@ -255,7 +255,10 @@ class TestCaseWithSetup(test_utils.TestCase):
         )
 
         self.temp_dir = TempDirectory()
-        reebill_file_handler = ReebillFileHandler(self.temp_dir.path)
+        reebill_file_handler = ReebillFileHandler(
+                config.get('reebillrendering', 'template_directory'),
+                config.get('bill', 'billpath'),
+                config.get('reebillrendering', 'teva_accounts'))
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 

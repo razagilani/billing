@@ -187,7 +187,9 @@ class WebResource(object):
 
         # create a ReebillRenderer
         self.reebill_file_handler = reebill_file_handler.ReebillFileHandler(
-                self.config.get('bill', 'billpath'))
+                self.config.get('reebillrendering', 'template_directory'),
+                self.config.get('bill', 'billpath'),
+                self.config.get('reebillrendering', 'teva_accounts'))
         mailer_opts = dict(self.config.items("mailer"))
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
                 mailer_opts['originator'],
