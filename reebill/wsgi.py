@@ -558,7 +558,6 @@ class ReebillsResource(RESTResource):
     @db_commit
     def toggle_processed(self, **params):
         params = cherrypy.request.params
-        print params
         r = self.state_db.get_reebill_by_id(int(params['reebill']))
         try:
             self.process.toggle_reebill_processed(
