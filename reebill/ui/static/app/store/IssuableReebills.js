@@ -1,0 +1,37 @@
+Ext.define('ReeBill.store.IssuableReebills', {
+    extend: 'Ext.data.SyncStore',
+    memoryStore: 'IssuableReebillsMemory',
+    model: 'ReeBill.model.Reebill',
+
+    autoLoad: false,
+    autoSync: true,
+
+	proxy: {
+        type: 'rest',
+        url: 'http://'+window.location.host+'/reebill/issuable',
+
+        simpleSortMode: true,
+        pageParam: false,
+        startParam: false,
+        sortParam: false,
+        limitParam: false,
+
+		reader: {
+			type: 'json',
+			root: 'rows',
+			totalProperty: 'results'
+		},
+
+        listeners:{
+            exception: utils.makeProxyExceptionHandler('IssuableReebills'),
+            scope: this
+        }
+
+	},
+
+    sorters: [{
+        property: 'account', 
+        direction: 'ASC'
+    }]
+
+});
