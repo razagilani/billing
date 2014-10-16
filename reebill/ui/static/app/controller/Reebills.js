@@ -175,6 +175,7 @@ Ext.define('ReeBill.controller.Reebills', {
             this.getCreateNewVersionButton().setDisabled(true);
             this.getSequentialAccountInformationForm().setDisabled(true);
             this.getUploadIntervalMeterForm().setDisabled(true);
+            this.getEmailButton().setDisabled(true);
             return
         }
 
@@ -189,6 +190,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getToggleReebillProcessedButton().setDisabled(issued);
         this.getUpdateReadingsButton().setDisabled(issued || processed);
         this.getRenderPdfButton().setDisabled(false);
+        this.getEmailButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
         this.initializeUploadIntervalMeterForm();
