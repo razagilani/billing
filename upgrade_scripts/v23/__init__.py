@@ -28,7 +28,7 @@ db = client[config.get('mongodb', 'database')]
 
 
 utility_names = ['Pepco',
-                 'Washgas',
+                 'Washington Gas',
                  'Piedmont',
                  'Peco',
                  'BGE',
@@ -54,6 +54,7 @@ def create_utilities(session):
         utility_company = Utility(utility_name, empty_address, empty_guid)
         session.add(utility_company)
     session.flush()
+    session.commit()
 
 def migrate_customer_fb_utility(customer_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
@@ -71,7 +72,9 @@ def migrate_customer_fb_utility(customer_data, session):
 def migrate_utilbill_utility(utilbill_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for utility_bill in session.query(UtilBill).all():
-        utility_name = utilbill_data[utility_bill.id]['utility'].lower()
+        utility_name = utilbill_data[utility_bill.id]['utility'].lower() \
+        if utilbill_data[utility_bill.id]['utility'].lower()!='washgas' \
+            else 'Washington Gas'.lower()
         log.debug('Setting utility to %s for utilbill id %s' %
                   (utility_name, utility_bill.id))
         try:
