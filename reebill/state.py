@@ -2,6 +2,7 @@
 Utility functions to interact with state database
 """
 from datetime import datetime, date
+from itertools import chain
 import logging
 import traceback
 
@@ -209,8 +210,15 @@ class ReeBill(Base):
         session = Session.object_session(self)
         for r in self.readings:
             session.delete(r)
-        utilbill_register_bindings = [r.register_binding for r in
-                                      self.utilbill.registers]
+
+        # this works even when len(self.utilbills) == 0, which is currently
+        # happening in a test but should never actually happen in real life
+        # TODO replace with
+        # [r.register_binding for r in self.utilbill.registers]
+        utilbill_register_bindings = list(chain.from_iterable(
+                (r.register_binding for r in u.registers)
+                for u in self.utilbills))
+
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
@@ -404,8 +412,8 @@ class ReeBill(Base):
             'mailto': self.customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
-            'billing_address': self.billing_address.column_dict(),
-            'service_address': self.service_address.column_dict(),
+            'billing_address': self.billing_address.to_dict(),
+            'service_address': self.service_address.to_dict(),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
@@ -705,6 +713,21 @@ class StateDB(object):
             discount_rate=current_max_version_reebill.discount_rate,
             late_charge_rate=current_max_version_reebill.late_charge_rate,
             utilbills=current_max_version_reebill.utilbills)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = Address.from_other(
+                current_max_version_reebill.billing_address)
+        new_reebill.service_address = Address.from_other(
+                current_max_version_reebill.service_address)
+        new_reebill.discount_rate = current_max_version_reebill.discount_rate
+        new_reebill.late_charge_rate = \
+                current_max_version_reebill.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.update_readings_from_reebill(
+                current_max_version_reebill.readings)
+
         for ur in new_reebill._utilbill_reebills:
             ur.document_id, ur.uprs_id, = None, None
 
