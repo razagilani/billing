@@ -47,13 +47,14 @@ def clean_up_units(session):
         (Charge, 'quantity_units'),
         (Reading, 'unit'),
         (ReeBillCharge, 'quantity_unit'),
-    ]
-    for obj in session.query(cls).all():
-        current_value = getattr(obj, attr)
-        if current_value in  ('Ccf', None, ''):
-            setattr(obj, attr, 'therms')
-        elif current_value is None:
-            setattr(obj, attr, '')
+    ]:
+        log.debug('Cleaning up units in %s.%s' % (cls, attr))
+        for obj in session.query(cls).all():
+            current_value = getattr(obj, attr)
+            if current_value in (None, ''):
+                setattr(obj, attr, 'dollars')
+            if current_value.lower() == 'ccf':
+                setattr(obj, attr, 'therms')
 
 def read_initial_table_data(table_name, session):
     meta = MetaData()

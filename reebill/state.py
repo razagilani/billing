@@ -11,14 +11,15 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
+        Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier
+    UtilBill, Customer, Utility, Supplier, UNITS
 from billing import config
 
 __all__ = [
@@ -514,7 +515,7 @@ class ReeBillCharge(Base):
     group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -555,7 +556,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*UNITS), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
