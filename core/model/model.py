@@ -575,12 +575,20 @@ class Register(Base):
 
     __tablename__ = 'register'
 
+    # allowed units for register quantities
+    PHYSICAL_UNITS = [
+        'kWh',
+        'KWD',
+        'therms',
+        'MMBTU',
+    ]
+
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*UNITS), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
@@ -640,8 +648,10 @@ class Register(Base):
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
-
     __tablename__ = 'charge'
+
+    # allowed units for "quantity" field of charges
+    CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -649,7 +659,7 @@ class Charge(Base):
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*UNITS), nullable=False)
+    unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float, nullable=False)

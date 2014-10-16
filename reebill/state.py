@@ -19,7 +19,7 @@ import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier, UNITS
+    UtilBill, Customer, Utility, Supplier, Charge
 from billing import config
 
 __all__ = [
@@ -515,7 +515,7 @@ class ReeBillCharge(Base):
     group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    unit = Column(Enum(*UNITS), nullable=False)
+    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
@@ -556,7 +556,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(Enum(*UNITS), nullable=False)
+    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
