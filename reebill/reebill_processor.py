@@ -106,8 +106,8 @@ class ReebillProcessor(object):
     def get_sequential_account_info(self, account, sequence):
         reebill = self.state_db.get_reebill(account, sequence)
         return {
-            'billing_address': reebill.billing_address.column_dict(),
-            'service_address': reebill.service_address.column_dict(),
+            'billing_address': reebill.billing_address.to_dict(),
+            'service_address': reebill.service_address.to_dict(),
             'discount_rate': reebill.discount_rate,
             'late_charge_rate': reebill.late_charge_rate,
         }
