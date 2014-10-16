@@ -20,6 +20,13 @@ def upgrade():
     op.add_column('utilbill', sa.Column('utility_id', sa.Integer(), nullable=True))
     op.add_column('utilbill', sa.Column('sha256_hexdigest', sa.String(length=64), nullable=True))
     op.add_column('company', sa.Column('guid', sa.String(length=36), nullable=False))
+    op.alter_column('utilbill', 'period_end',
+           existing_type=sa.DATE(),
+           nullable=True)
+    op.alter_column('utilbill', 'period_start',
+           existing_type=sa.DATE(),
+           nullable=True)
+
     op.create_table('supplier',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=True),
@@ -36,6 +43,12 @@ def downgrade():
     op.drop_column('utilbill', 'utility_id')
     op.drop_column('utilbill', 'sha256_hexdigest')
     op.drop_column('company', 'guid')
+    op.alter_column('utilbill', 'period_end',
+           existing_type=sa.DATE(),
+           nullable=False)
     op.drop_table('supplier')
     op.drop_column('utilbill', 'supplier_id')
     op.drop_column('customer', 'fb_supplier_id')
+    op.alter_column('utilbill', 'period_start',
+           existing_type=sa.DATE(),
+           nullable=False)
