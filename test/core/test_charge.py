@@ -29,7 +29,7 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
                                   quantity=0.0,
-                                  quantity_units='therms',
+                                  unit='therms',
                                   rsi_binding='SOME_RSI',
                                   total=0.0,
                                   quantity_formula="SOME_VAR.quantity * 2",

@@ -36,6 +36,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'UNITS',
     'Utility',
     'UtilBill',
     'UtilBillLoader',
@@ -46,6 +47,14 @@ __all__ = [
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
+
+UNITS = [
+    'kWh',
+    'dollars',
+    'KWD',
+    'therms',
+    'MMBTU',
+]
 
 Session = scoped_session(sessionmaker())
 
@@ -571,7 +580,7 @@ class Register(Base):
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    unit = Column(String(255), nullable=False)
+    unit = Column(Enum(*UNITS), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
@@ -640,7 +649,7 @@ class Charge(Base):
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    unit = Column(String(255), nullable=False)
+    unit = Column(Enum(*UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float, nullable=False)
