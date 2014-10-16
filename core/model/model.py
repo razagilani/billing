@@ -158,6 +158,10 @@ class Address(Base):
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
 
+    def column_dict(self):
+        raise NotImplementedError
+
+    # TODO rename to column_dict
     def to_dict(self):
         return {
             #'id': self.id,
