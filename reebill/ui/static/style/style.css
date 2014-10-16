@@ -69,3 +69,7 @@
     position: relative !important;
     margin-right: 5px !important;
 }
+
+.x-datepicker{
+    width: 200px !important;
+}

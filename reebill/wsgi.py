@@ -716,7 +716,7 @@ class PaymentsResource(RESTResource):
 
     def handle_post(self, account, *vpath, **params):
         d = cherrypy.request.json['date_received']
-        d = datetime.strptime(d, '%Y-%m-%dT%H:%M:%S')
+        d = datetime.strptime(d, '%Y-%m-%d %H:%M:%S')
         print "\n\n\n\n", d, type(d)
         new_payment = self.process.create_payment(account, d, "New Entry", 0, d)
         return True, {"rows": new_payment.column_dict(), 'results': 1}
