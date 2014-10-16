@@ -456,7 +456,7 @@ class UtilBill(Base):
                         description="New Charge - Insert description here",
                         group="",
                         quantity=0.0,
-                        quantity_units="",
+                        unit="",
                         rate=0.0,
                         rsi_binding="New RSI #%s" % n,
                         total=0.0)
@@ -571,7 +571,7 @@ class Register(Base):
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    quantity_units = Column(String(255), nullable=False)
+    unit = Column(String(255), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
@@ -583,7 +583,7 @@ class Register(Base):
 
     utilbill = relationship("UtilBill", backref='registers')
 
-    def __init__(self, utilbill, description, quantity, quantity_units,
+    def __init__(self, utilbill, description, quantity, unit,
                  identifier, estimated, reg_type, register_binding,
                  active_periods, meter_identifier):
         """Construct a new :class:`.Register`.
@@ -591,7 +591,7 @@ class Register(Base):
         :param utilbill: The :class:`.UtilBill` on which the register appears
         :param description: A description of the register
         :param quantity: The register quantity
-        :param quantity_units: The units of the quantity (i.e. Therms/kWh)
+        :param unit: The units of the quantity (i.e. Therms/kWh)
         :param identifier: ??
         :param estimated: Boolean; whether the indicator is an estimation.
         :param reg_type:
@@ -602,7 +602,7 @@ class Register(Base):
         self.utilbill = utilbill
         self.description = description
         self.quantity = quantity
-        self.quantity_units = quantity_units
+        self.unit = unit
         self.identifier = identifier
         self.estimated = estimated
         self.reg_type = reg_type
@@ -640,7 +640,7 @@ class Charge(Base):
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    quantity_units = Column(String(255), nullable=False)
+    unit = Column(String(255), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float, nullable=False)
@@ -680,7 +680,7 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, description, group, quantity, quantity_units,
+    def __init__(self, utilbill, description, group, quantity, unit,
                  rate, rsi_binding, total, quantity_formula="", has_charge=True,
                  shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
@@ -689,7 +689,7 @@ class Charge(Base):
         :param description: A description of the charge.
         :param group: The charge group
         :param quantity: The quantity consumed
-        :param quantity_units: The units of the quantity (i.e. Therms/kWh)
+        :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rate: The charge per unit of quantity
         :param rsi_binding: The rate structure item corresponding to the charge
         :param total: The total charge (equal to rate * quantity)
@@ -699,12 +699,12 @@ class Charge(Base):
         :param shared:
         :param roundrule:
         """
-        assert quantity_units is not None
+        assert unit is not None
         self.utilbill = utilbill
         self.description = description
         self.group = group
         self.quantity = quantity
-        self.quantity_units = quantity_units
+        self.unit = unit
         self.rate = rate
         self.rsi_binding = rsi_binding
         self.total = total
@@ -722,7 +722,7 @@ class Charge(Base):
                    other.description,
                    other.group,
                    other.quantity,
-                   other.quantity_units,
+                   other.unit,
                    other.rate,
                    other.rsi_binding,
                    other.total,

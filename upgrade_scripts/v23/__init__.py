@@ -11,12 +11,13 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
+from reebill.state import Reading, ReeBillCharge
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier
+    Address, UtilBill, Supplier, Register, Charge
 from billing.core.model.model import Company
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
@@ -39,6 +40,20 @@ utility_names = ['Pepco',
                  'Scana Energy Marketing',
                  'PG&E']
 
+
+def clean_up_units(session):
+    for cls, attr in [
+        (Register, 'quantity_units'),
+        (Charge, 'quantity_units'),
+        (Reading, 'unit'),
+        (ReeBillCharge, 'quantity_unit'),
+    ]
+    for obj in session.query(cls).all():
+        current_value = getattr(obj, attr)
+        if current_value in  ('Ccf', None, ''):
+            setattr(obj, attr, 'therms')
+        elif current_value is None:
+            setattr(obj, attr, '')
 
 def read_initial_table_data(table_name, session):
     meta = MetaData()
@@ -119,9 +134,12 @@ def set_supplier_ids(session):
             bill.supplier_id = supplier
 
 def upgrade():
-
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
+
+    init_model(schema_revision='fc9faca7a7f')
+    session = Session()
+    clean_up_units(session)
 
     log.info('Upgrading schema to revision fc9faca7a7f')
     alembic_upgrade('fc9faca7a7f')
