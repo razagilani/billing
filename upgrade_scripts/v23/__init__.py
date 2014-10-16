@@ -52,7 +52,14 @@ def clean_up_units(session):
         for obj in session.query(cls).all():
             current_value = getattr(obj, attr)
             if current_value in (None, ''):
-                setattr(obj, attr, 'dollars')
+                if cls in (Charge, ReeBillCharge):
+                    setattr(obj, attr, 'dollars')
+                elif obj.utilbill.service == 'gas':
+                    setattr(obj, attr, 'therms')
+                elif obj.utilbill.service == 'electric':
+                    setattr(obj, attr, 'kWh')
+                else:
+                    raise ValueError
             if current_value.lower() == 'ccf':
                 setattr(obj, attr, 'therms')
 
