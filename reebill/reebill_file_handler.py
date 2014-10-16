@@ -41,30 +41,6 @@ def format_for_display(x, places=2):
     '''
     return ('%%.%sf' % places) % round_for_display(x, places)
 
-def concat_pdfs(in_paths, out_path):
-    '''Concatenates all PDF files given in 'in_paths', writing the output file
-    at 'out_path'.'''
-    # pyPdf requires all input files to remain open when the output file is
-    # written, so "with" can't be used. stackoverflow also says that pyPdf uses
-    # file() instead of open(), even though file() is supposed to be bad and
-    # will be removed from python.
-    in_files = [file(path) for path in in_paths]
-
-    # concatenate all input files into the writer object
-    writer = PdfFileWriter()
-    for in_file in in_files:
-        reader = PdfFileReader(in_file)
-        for i in range(reader.numPages):
-            writer.addPage(reader.getPage(i))
-
-    # write output file
-    with open(out_path, 'wb') as out_file:
-        writer.write(out_file)
-
-    # close all the input files
-    for in_file in in_files:
-        in_file.close()
-
 class ReebillFileHandler(object):
     '''Methods for working with Reebill PDF files.
     '''
