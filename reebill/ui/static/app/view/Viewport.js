@@ -231,7 +231,7 @@ Ext.define('ReeBill.view.Viewport', {
                     },'->',{
                         xtype: 'tbtext',
                         name: 'revisionTBLabel',
-                        text: 'Revision String'
+                        text: VERSION.date + ' ' + VERSION.user + ' ' + VERSION.version + ' ' + VERSION.deploy_env
                     },'->',{
                         xtype: 'tbtext',
                         name: 'accountTBLabel',

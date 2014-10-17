@@ -50,19 +50,6 @@ Ext.define('ReeBill.controller.BottomBar', {
             },
             'grid[id=utilityBillsGrid]': {
                 selectionchange: this.handleUtilityBillSelect
-            },
-        });
-
-        Ext.Ajax.request({
-            url: window.location.origin + '/reebill/static/revision.txt',
-            success: function(response){
-                var obj = Ext.JSON.decode(response.responseText);
-                var label = me.getRevisionTBLabel();
-                label.setText(obj.date + ' ' + obj.user + ' ' + obj.version + ' ' + obj.deploy_env);
-            },
-            failure: function(){
-                var label = me.getRevisionTBLabel();
-                label.setText('Version Information Not Found');
             }
         });
 
@@ -74,7 +61,6 @@ Ext.define('ReeBill.controller.BottomBar', {
             scope: this
         });
     },
-
 
     /**
      * Handle the account selection.

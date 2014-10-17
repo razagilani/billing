@@ -3,7 +3,7 @@ Ext.define('Ext.ux.DateTimeMenu', {
 	  
 	  alias: 'widget.datetimemenu',
 	  
-	  requires: ['Ext.ux.DateTimePicker'],
+	  //requires: ['Ext.ux.DateTimePicker'],
 	  
 	  hideOnClick: true,
 	  pickerId: null,

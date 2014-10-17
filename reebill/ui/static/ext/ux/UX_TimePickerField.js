@@ -7,7 +7,7 @@ Ext.define('Ext.ux.form.TimePickerField', {
 	  extend: 'Ext.form.field.Base',
 	  alias: 'widget.timepicker',
 	  alternateClassName: 'Ext.form.field.TimePickerField',
-	  requires: ['Ext.form.field.Number'],
+	  //requires: ['Ext.form.field.Number'],
 
 	  // 隐藏BaseField的输入框 , hidden basefield's input
 	  inputType: 'hidden',

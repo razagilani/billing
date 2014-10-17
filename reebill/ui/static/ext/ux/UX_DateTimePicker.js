@@ -9,7 +9,7 @@ Ext.define('Ext.ux.DateTimePicker', {
 	  alias: 'widget.datetimepicker',
 	  todayText: '现在',
 	  timeLabel: '时间',
-	  requires: ['Ext.ux.form.TimePickerField'],
+	  //requires: ['Ext.ux.form.TimePickerField'],
 
 	  initComponent: function() {
 		  // keep time part for value
