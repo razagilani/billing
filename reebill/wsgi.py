@@ -75,7 +75,7 @@ def check_authentication():
         credentials = cookie['c'].value if 'c' in cookie else None
         username = cookie['username'].value if 'username' in cookie else None
 
-        user = user_dao.load_by_session_token(credentials)
+        user = user_dao.load_by_session_token(credentials) if credentials else None
         if user is None:
             logger.info('Remember Me login attempt failed:'
                         ' username "%s"' % username)
