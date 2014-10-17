@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 USAGE="
 Usage: $0 -n -s PRODHOST TOENV MYSQLPASSWORD

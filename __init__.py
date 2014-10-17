@@ -9,11 +9,11 @@ __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
 config = None
 
 
-def init_config(filename='settings.cfg', fp=None):
+def init_config(filepath='settings.cfg', fp=None):
     """Sets `billing.config` to an instance of 
     :class:`billing.lib.config.ValidatedConfigParser`.
     
-    :param filename: The configuration file path; default `settings.cfg`.
+    :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
     from billing.data.validation import configuration as vns
@@ -29,8 +29,10 @@ def init_config(filename='settings.cfg', fp=None):
         log.debug('Reading configuration fp')
         config.readfp(fp)
     else:
-        log.debug('Reading configuration file %s' % filename)
-        config.read(filename)
+        absolute_path = path.join(dirname(realpath(__file__)), filepath)
+        log.debug('Reading configuration file %s' % absolute_path)
+        config.read(absolute_path)
+    
     if not config.has_section('main'):
         config.add_section('main')
     config.set('main', 'appdir', dirname(realpath(__file__)))
@@ -45,20 +47,23 @@ def init_logging(path='settings.cfg'):
     log.debug('Initialized logging')
 
 
-def init_model(uri=None):
+def init_model(uri=None, schema_revision=None):
     """Initializes the sqlalchemy data model. 
     """
-    from billing.processing.state import Session, Base, check_schema_revision
+    from billing.core.model import Session, Base, check_schema_revision
     from sqlalchemy import create_engine
     import logging
     log = logging.getLogger(__name__)
 
+
     uri = uri if uri else config.get('statedb', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
+    Session.rollback()
+    Session.remove()
     engine = create_engine(uri)
     Session.configure(bind=engine)
     Base.metadata.bind = engine
-    check_schema_revision()
+    check_schema_revision(schema_revision=schema_revision)
     log.debug('Initialized sqlalchemy model')
 
 def initialize():

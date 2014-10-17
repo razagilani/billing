@@ -2,16 +2,22 @@
 
 import deploy.fab_common as common
 from fabric.api import task as fabtask
+from fabric.api import env
 
 #
 # fab create_reebill_revision common.deploy_interactive -R skyline_internal_prod
 #
+env.roledefs.update({
+    'skyline-internal-prod': ['skyline-internal-prod'],
+    'skyline-internal-stage': ['skyline-internal-stage'],
+})
 
 #
 # Configurations that are specific to this app
 #
 common.CommonFabTask.update_deployment_configs({
     "dev": {
+        "deploy_version":"3", 
         "app_name":"reebill-dev", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-dev", 
@@ -29,12 +35,15 @@ common.CommonFabTask.update_deployment_configs({
             "mydoc": "/tmp",
         },
         "config_files": [
-            ("conf/settings-dev-template.cfg", "/var/local/reebill-dev/billing/settings.cfg"),
-            ("conf/alembic-dev.ini", "/var/local/reebill-dev/billing/alembic.ini"),
+            ("conf/configs/settings-dev-template.cfg", "/var/local/reebill-dev/billing/settings.cfg"),
+            ("conf/configs/alembic-dev.ini", "/var/local/reebill-dev/billing/alembic.ini"),
             ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-dev/billing/skyliner/config.yaml"),
+        ],
+        "makefiles":[
         ],
     },
     "stage": {
+        "deploy_version":"3", 
         "app_name":"reebill-stage", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-stage", 
@@ -52,12 +61,15 @@ common.CommonFabTask.update_deployment_configs({
             "mydoc": "/tmp",
         },
         "config_files": [
-            ("conf/settings-stage-template.cfg", "/var/local/reebill-stage/billing/settings.cfg"),
-            ("conf/alembic-stage.ini", "/var/local/reebill-stage/billing/alembic.ini"),
+            ("conf/configs/settings-stage-template.cfg", "/var/local/reebill-stage/billing/settings.cfg"),
+            ("conf/configs/alembic-stage.ini", "/var/local/reebill-stage/billing/alembic.ini"),
             ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-stage/billing/skyliner/config.yaml"),
+        ],
+        "makefiles":[
         ],
     },
     "prod": {
+        "deploy_version":"3", 
         "app_name":"reebill-prod", 
         # TODO rename os_user to app_os_user for clarity and differentiation from host_os_configs
         "os_user":"reebill-prod", 
@@ -75,9 +87,11 @@ common.CommonFabTask.update_deployment_configs({
             "mydoc": "/tmp",
         },
         "config_files": [
-            ("conf/settings-prod-template.cfg", "/var/local/reebill-prod/billing/settings.cfg"),
-            ("conf/alembic-prod.ini", "/var/local/reebill-prod/billing/alembic.ini"),
+            ("conf/configs/settings-prod-template.cfg", "/var/local/reebill-prod/billing/settings.cfg"),
+            ("conf/configs/alembic-prod.ini", "/var/local/reebill-prod/billing/alembic.ini"),
             ("skyliner/cfg_tmpl.yaml", "/var/local/reebill-prod/billing/skyliner/config.yaml"),
+        ],
+        "makefiles":[
         ],
     },
 })
