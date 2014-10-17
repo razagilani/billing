@@ -302,8 +302,8 @@ class UtilbillProcessor(object):
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
 
-        if utility_bill.is_attached():
-            raise ValueError("Can't delete an attached utility bill.")
+        if utility_bill.is_attached() or utility_bill.processed:
+            raise ValueError("Can't delete an attached or processed utility bill.")
 
         if utility_bill.editable():
             self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
