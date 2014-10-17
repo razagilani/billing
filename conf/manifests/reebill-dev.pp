@@ -37,9 +37,9 @@ file { "/db-${env}":
     owner       => $username,
     group       => $username,
 }
-#file { "/etc/httpd/conf.d/${username}.conf":
-#    ensure => file,
-#    source => "puppet:///modules/conf/vhosts/reebill-shareddev.vhost"
-#}
+file { "/etc/httpd/conf.d/${username}.conf":
+    ensure => file,
+    source => "puppet:///modules/conf/vhosts/reebill-shareddev.vhost"
+}
 
 # full crontab?
