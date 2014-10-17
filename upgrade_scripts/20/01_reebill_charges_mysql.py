@@ -7,7 +7,7 @@ import pymongo
 import mongoengine
 import MySQLdb
 from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Address
-from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
+from billing.processing.rate_structure import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 from billing.processing.state import Session
 
@@ -26,7 +26,7 @@ create table if not exists reebill_charge (
     a_quantity float not null,
     h_quantity float not null,
     quantity_unit varchar(1000) not null,
-    a_rate float not null,
+    rate float not null,
     h_rate float not null,
     a_total float not null,
     h_total float not null,

@@ -9,7 +9,7 @@ from sys import stderr
 import pymongo
 import MySQLdb
 from billing.processing.state import StateDB, Customer, ReeBill, ReeBillCharge, Session
-from billing.processing.rate_structure2 import RateStructureDAO, RateStructure
+from billing.processing.rate_structure import RateStructureDAO, RateStructure
 from billing.processing.mongo import ReebillDAO
 from itertools import chain
 
