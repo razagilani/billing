@@ -395,7 +395,7 @@ class UtilBill(Base):
     }
 
     # TODO remove uprs_id, doc_id
-    def __init__(self, customer, state, service, utility, rate_class,
+    def __init__(self, customer, state, service, utility, supplier, rate_class,
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
@@ -420,6 +420,7 @@ class UtilBill(Base):
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
         self.sha256_hexdigest = sha256_hexdigest
+        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
