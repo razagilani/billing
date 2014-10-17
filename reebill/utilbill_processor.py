@@ -181,7 +181,7 @@ class UtilbillProcessor(object):
 
     def upload_utility_bill(self, account, service, begin_date,
             end_date, bill_file, utility=None, rate_class=None,
-            total=0, state=UtilBill.Complete):
+            total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -253,13 +253,15 @@ class UtilbillProcessor(object):
 
         utility = self.state_db.get_create_utility(utility) if utility else \
             getattr(predecessor, 'utility', None)
+        supplier = self.state_db.get_create_supplier(supplier) if supplier else \
+            getattr(predecessor, 'supplier', None)
         rate_class = rate_class if rate_class else \
             getattr(predecessor, 'rate_class', "")
 
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, rate_class,
+        new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
                                 period_start=begin_date, period_end=end_date,
