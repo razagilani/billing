@@ -37,10 +37,10 @@ file { "/db-${env}":
     owner       => $username,
     group       => $username,
 }
-#file { "/etc/httpd/conf.d/${username}.conf":
-#    ensure => file,
-#    source => "puppet:///modules/conf/vhosts/reebill-prod.vhost"
-#}
+file { "/etc/httpd/conf.d/${username}.conf":
+    ensure => file,
+    source => "puppet:///modules/conf/vhosts/reebill-prod.conf"
+}
 
 # apache vhost setup
 # full crontab?
