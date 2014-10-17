@@ -74,18 +74,27 @@ Ext.define('ReeBill.controller.UtilityBills', {
     handleRowSelect: function(combo, recs) {
         var hasSelections = recs.length > 0;
         var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
-        var processed = selected.get('processed')
-        //console.log(selected[0].get('processed'));
-        this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
-        this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+        if (selected != null)
+        {
+            var processed = selected.get('processed')
+            //console.log(selected[0].get('processed'));
+            this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
-        var hasReebill = false;
-        Ext.each(recs, function(rec) {
-            if (rec.get('reebills').length > 0)
-                hasReebill = true;
-        });
+            var hasReebill = false;
+            Ext.each(recs, function (rec) {
+                if (rec.get('reebills').length > 0)
+                    hasReebill = true;
+            });
 
-        this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
+            this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
+    }
+        else
+        {
+            this.getUtilbillCompute().setDisabled(true);
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            this.getUtilbillRemove().setDisabled(!hasSelections);
+        }
     },
 
     /**
@@ -197,17 +206,8 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         if (!selected)
             return;
-        /*
-        this is being done in the following way because of the bug reported here
-        http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
-        this bug is fixed in extjs 4.2.3 and higher
-        */
         selected.set('processed', !selected.get('processed'));
-        var node = this.getUtilityBillsStore().find('id', selected.getId());
-        this.getUtilityBillsGrid().getSelectionModel().deselectAll();
-        this.getUtilityBillsGrid().getSelectionModel().select(node);
-        selections = this.getUtilityBillsGrid().getSelectionModel().getSelection();
-        var processed = selections[0].get('processed');
+        var processed = selected.get('processed');
         this.getUtilbillCompute().setDisabled(processed);
     }
 
