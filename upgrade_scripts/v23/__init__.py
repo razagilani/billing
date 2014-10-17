@@ -17,7 +17,6 @@ from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
     Address, UtilBill, Supplier
-from billing.core.model.model import Company
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)

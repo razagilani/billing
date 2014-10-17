@@ -104,7 +104,7 @@ class UtilbillProcessor(object):
         """Modify the charge given by charge_id
         by setting key-value pairs to match the dictionary 'fields'."""
         assert charge_id or utilbill_id and rsi_binding
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self.state_db.get_utilbill_by_id(fields['utilbill_id'])
         if utilbill.editable():
             session = Session()
             charge = session.query(Charge).filter(Charge.id == charge_id).one() \
