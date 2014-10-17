@@ -90,14 +90,33 @@ Ext.define('ReeBill.controller.UtilityBills', {
      * Handle the panel being activated.
      */
     handleActivate: function() {
-        var selected = this.getAccountsGrid().getSelectionModel().getSelection();
+        var selectedAccount = this.getAccountsGrid().getSelectionModel().getSelection();
         var store = this.getUtilityBillsStore();
 
-        if (!selected || !selected.length)
+        if (!selectedAccount || !selectedAccount.length)
             return;
 
-        store.getProxy().setExtraParam('account', selected[0].get('account'));
-        store.reload();
+        var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection();
+        var selectedNode;
+        if (!selectedBill || !selectedBill.length) {
+            selectedNode = -1;
+        }else{
+            selectedNode = store.find('id', selectedBill[0].getId());
+        }
+        console.log(selectedNode);
+        store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
+        store.reload({
+            scope: this,
+            callback: function(){
+                /*
+                this is being done in the following way because of the bug reported here
+                http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
+                this bug is fixed in extjs 4.2.3 and higher
+                 */
+                this.getUtilityBillsGrid().getSelectionModel().deselectAll();
+                this.getUtilityBillsGrid().getSelectionModel().select(selectedNode);
+            }
+        });
     },
 
     /**
