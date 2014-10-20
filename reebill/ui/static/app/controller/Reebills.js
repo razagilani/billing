@@ -144,19 +144,38 @@ Ext.define('ReeBill.controller.Reebills', {
         var reebillsGrid = this.getReebillsGrid();
         var uploadIntervalMeterForm = this.getUploadIntervalMeterForm();
         var sequentialAccountInformationForm = this.getSequentialAccountInformationForm();
+        var store = this.getReebillsStore();
 
         if (!selectedAccount.length)
             return;
 
-        // required for GET & POST
-        this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
+        store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
         this.getReebillsGrid().expand();
         sequentialAccountInformationForm.setDisabled(true);
         uploadIntervalMeterForm.setDisabled(true);
-        this.getReebillsStore().loadPage(1, {callback: function() {
-            var selections = reebillsGrid.getSelectionModel().getSelection();
-            sequentialAccountInformationForm.setDisabled(!selections.length);
-            uploadIntervalMeterForm.setDisabled(!selections.length);
+
+        /*
+        this is being done in the following way because of the bug reported here
+        http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
+        this bug is fixed in extjs 4.2.3 and higher
+         */
+        var selectedBill = this.getReebillsGrid().getSelectionModel().getSelection();
+        var selectedNode;
+        if (!selectedBill || !selectedBill.length) {
+            selectedNode = -1;
+        }else{
+            selectedNode = store.find('id', selectedBill[0].getId());
+        }
+
+        store.reload({
+            scope: this,
+            callback: function() {
+                this.getReebillsGrid().getSelectionModel().deselectAll();
+                this.getReebillsGrid().getSelectionModel().select(selectedNode);
+
+                var selections = reebillsGrid.getSelectionModel().getSelection();
+                sequentialAccountInformationForm.setDisabled(!selections.length);
+                uploadIntervalMeterForm.setDisabled(!selections.length);
         }});
     },
 

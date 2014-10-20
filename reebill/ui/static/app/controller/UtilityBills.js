@@ -103,7 +103,6 @@ Ext.define('ReeBill.controller.UtilityBills', {
         }else{
             selectedNode = store.find('id', selectedBill[0].getId());
         }
-        console.log(selectedNode);
         store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
         store.reload({
             scope: this,
