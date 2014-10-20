@@ -687,7 +687,7 @@ class ReebillProcessor(object):
             assert not (
                 sequence is None and account is None and recipients is None)
             bills = [{'account': account, 'sequence': sequence,
-                      'mailto': recipients}]
+                      'email_recipient': recipients}]
         for bill in bills:
             # If there are unissued corrections and the user has not confirmed
             # to issue them, we will return a list of those corrections and the
@@ -712,7 +712,13 @@ class ReebillProcessor(object):
                         e.__class__.__name__),) + e.args)
                     raise
             try:
-                if not processed:
+                session = Session()
+                the_actual_reebill_object = (session.query(ReeBill)
+                        .join(Customer)
+                        .filter(Customer.account==bill['account'])
+                        .filter(ReeBill.sequence==bill['sequence'])
+                        .order_by(desc(ReeBill.version)).first())
+                if not the_actual_reebill_object.processed:
                     self.compute_reebill(bill['account'], bill['sequence'])
                 self.issue(bill['account'], bill['sequence'])
             except Exception, e:
@@ -722,7 +728,13 @@ class ReebillProcessor(object):
                 raise
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
-            recipient_list = [rec.strip() for rec in bill['mailto'].split(',')]
+            if bill['email_recipient'] is None:
+                # this is not supposed to be allowed but somehow it happens
+                # in a test
+                recipient_list = ['']
+            else:
+                recipient_list = [rec.strip() for rec in
+                                  bill['email_recipient'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                recipient_list)
         return bills
