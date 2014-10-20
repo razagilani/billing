@@ -93,6 +93,7 @@ class ReebillTest(unittest.TestCase):
         # removing a register
         self.utilbill.registers.remove(self.utilbill.registers[0])
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
+        self.assertEqual(1, len(self.reebill.readings))
         self.assertEqual(new_register.register_binding,
                          self.reebill.readings[0].register_binding)
         self.assertEqual(new_register.quantity,
