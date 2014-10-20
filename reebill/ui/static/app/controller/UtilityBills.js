@@ -73,17 +73,28 @@ Ext.define('ReeBill.controller.UtilityBills', {
      */
     handleRowSelect: function(combo, recs) {
         var hasSelections = recs.length > 0;
+        var selected = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
+        if (selected != null)
+        {
+            var processed = selected.get('processed')
+            //console.log(selected[0].get('processed'));
+            this.getUtilbillCompute().setDisabled(!hasSelections || selected.get('processed'));
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
 
-        this.getUtilbillCompute().setDisabled(!hasSelections);
-        this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            var hasReebill = false;
+            Ext.each(recs, function (rec) {
+                if (rec.get('reebills').length > 0)
+                    hasReebill = true;
+            });
 
-        var hasReebill = false;
-        Ext.each(recs, function(rec) {
-            if (rec.get('reebills').length > 0)
-                hasReebill = true;
-        });
-
-        this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill);
+            this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
+    }
+        else
+        {
+            this.getUtilbillCompute().setDisabled(true);
+            this.getUtilbillToggleProcessed().setDisabled(!hasSelections);
+            this.getUtilbillRemove().setDisabled(!hasSelections);
+        }
     },
 
     /**
@@ -185,7 +196,7 @@ Ext.define('ReeBill.controller.UtilityBills', {
     },
 
     /**
-     * Handle the compute button being clicked.
+     * Handle the delete button being clicked.
      */
     handleDelete: function() {
         var scope = this,
@@ -215,8 +226,9 @@ Ext.define('ReeBill.controller.UtilityBills', {
 
         if (!selected)
             return;
-
         selected.set('processed', !selected.get('processed'));
+        var processed = selected.get('processed');
+        this.getUtilbillCompute().setDisabled(processed);
     }
 
 });

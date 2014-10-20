@@ -7,7 +7,13 @@ Ext.define('ReeBill.view.UtilityBills', {
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
-            clicksToEdit: 2
+            clicksToEdit: 2,
+            listeners: {
+                beforeedit: function (e, editor) {
+                    if (editor.record.get('processed'))
+                        return false;
+                }
+            }
         })
     ],
 
@@ -114,6 +120,14 @@ Ext.define('ReeBill.view.UtilityBills', {
     },{
         header: 'Utility',
         dataIndex: 'utility',
+        editor: {
+            xtype: 'textfield',
+            allowBlank: false
+        },
+        width: 100
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
         editor: {
             xtype: 'textfield',
             allowBlank: false
