@@ -4,19 +4,21 @@ from datetime import date
 from mock import Mock
 
 from billing.core.model import UtilBill, Address, \
-    Charge, Register, Session, Utility, Customer
+    Charge, Register, Session, Utility, Customer, Supplier
 from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):
         washgas = Utility('washgas', Address('', '', '', '', ''), '')
+        supplier = Supplier('supplier', Address(), '')
 
         customer = Customer('someone', '11111', 0.5, 0.1,
-                            'example@example.com', washgas,
+                            'example@example.com', washgas, supplier,
                             'Test Rate Class',
                             Address(), Address())
 
         self.utilbill = UtilBill(customer, UtilBill.Complete, 'gas', washgas,
+                                 supplier,
                                  'DC Non Residential Non Heat',
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1),

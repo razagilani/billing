@@ -52,9 +52,9 @@ class FetchTest(unittest.TestCase):
     def setUp(self):
         customer = Customer('someone', '12345', 0.5, 0.1,
                 '000000000000000000000000', 'example@example.com',
-                'DC Non Residential Non Heat', Address(), Address())
+                'DC Non Residential Non Heat', 'supplier', Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete, 'gas', 'washgas',
-                'DC Non Residential Non Heat', Address(), Address(),
+                'supplier', 'DC Non Residential Non Heat', Address(), Address(),
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', 0, 'therms', False,

@@ -4,7 +4,7 @@ from datetime import date
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import init_config, init_model
 from billing.core.model import Customer, UtilBill, Session, \
-    Address, UtilBillLoader, Utility
+    Address, UtilBillLoader, Utility, Supplier
 from billing.exc import NoSuchBillException
 
 
@@ -19,7 +19,8 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         blank_address = Address()
         customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', Utility('Test Utility',
-                            Address(), ''), 'FB Test Rate Class', blank_address,
+                            Address(), ''), Supplier('Test Supplier', Address(),
+                            ''), 'FB Test Rate Class', blank_address,
                             blank_address)
         self.session.add(customer)
         self.session.commit()
@@ -36,7 +37,9 @@ class UtilbillLoaderTest(TestCaseWithSetup):
     def test_get_last_real_utilbill(self):
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
+        supplier = customer.fb_supplier
         pepco = Utility('pepco', Address(), '')
+        other_supplier = Supplier('Other Supplier', Address(), '')
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
@@ -44,7 +47,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # one bill
         empty_address = Address()
-        gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas,
+        gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas, supplier,
                               'DC Non Residential Non Heat', empty_address, empty_address,
                               period_start=date(2000,1,1), period_end=date(2000,2,1))
         self.session.add(gas_bill_1)
@@ -56,7 +59,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2000,1,31))
 
         # two bills
-        electric_bill = UtilBill(customer, 0, 'electric', pepco,
+        electric_bill = UtilBill(customer, 0, 'electric', pepco, other_supplier,
                                  'whatever', empty_address, empty_address,
                                  period_start=date(2000,1,2), period_end=date(2000,2,2))
         self.assertEqual(electric_bill,

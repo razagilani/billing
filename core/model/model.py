@@ -266,6 +266,7 @@ class Customer(Base):
     primaryjoin='Customer.fb_service_address_id==Address.id')
 
     fb_utility = relationship('Utility')
+
     def get_discount_rate(self):
         return self.discountrate
 
@@ -279,8 +280,8 @@ class Customer(Base):
         self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
-                 bill_email_recipient, fb_utility, fb_rate_class,
-                 fb_billing_address, fb_service_address):
+                bill_email_recipient, fb_utility, fb_supplier,
+                fb_rate_class, fb_billing_address, fb_service_address):
         """Construct a new :class:`.Customer`.
         :param name: The name of the customer.
         :param account:
@@ -290,6 +291,8 @@ class Customer(Base):
         address for skyline-generated bills
         :fb_utility: The :class:`.Utility` to be assigned to the the first
         `UtilityBill` associated with this customer.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this customer
         :fb_rate_class": "first bill rate class" (see fb_utility_name)
         :fb_billing_address: (as previous)
         :fb_service address: (as previous)
@@ -300,6 +303,7 @@ class Customer(Base):
         self.latechargerate = late_charge_rate
         self.bill_email_recipient = bill_email_recipient
         self.fb_utility = fb_utility
+        self.fb_supplier = fb_supplier
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address

@@ -104,15 +104,14 @@ class UtilbillProcessor(object):
         """Modify the charge given by charge_id
         by setting key-value pairs to match the dictionary 'fields'."""
         assert charge_id or utilbill_id and rsi_binding
-        utilbill = self.state_db.get_utilbill_by_id(fields['utilbill_id'])
+        session = Session()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+            if charge_id else \
+            session.query(Charge). \
+                filter(Charge.utilbill_id == utilbill_id). \
+                filter(Charge.rsi_binding == rsi_binding).one()
+        utilbill = self.state_db.get_utilbill_by_id(charge.utilbill.id)
         if utilbill.editable():
-            session = Session()
-            charge = session.query(Charge).filter(Charge.id == charge_id).one() \
-                if charge_id else \
-                session.query(Charge). \
-                    filter(Charge.utilbill_id == utilbill_id). \
-                    filter(Charge.rsi_binding == rsi_binding).one()
-
             for k, v in fields.iteritems():
                 if k not in Charge.column_names():
                     raise AttributeError("Charge has no attribute '%s'" % k)
