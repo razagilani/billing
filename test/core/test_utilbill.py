@@ -8,18 +8,20 @@ from billing import init_model
 from datetime import date
 from unittest import TestCase
 
-from billing.exc import RSIError
+from billing.exc import RSIError, ProcessedBillError
 from billing.core.model import UtilBill, Customer, Session, Charge,\
-    Address, Register
+    Address, Register, Utility, Supplier
+from billing.reebill.state import Payment
 
 class UtilBillTest(TestCase):
 
     def setUp(self):
         init_model()
         session = Session()
+        session.query(Register).delete()
         session.query(UtilBill).delete()
+        session.query(Payment).delete()
         session.query(Customer).delete()
-
 
     def tearDown(self):
         Session.remove()
@@ -43,19 +45,18 @@ class UtilBillTest(TestCase):
         self.assertEqual(None, c.error)
 
     def test_add_charge(self):
-
-
+        utility = Utility('utility', Address(), '')
+        supplier = Supplier('supplier', Address(), '')
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
-                'nobody@example.com', 'FB Test Utility',
+                'nobody@example.com', utility, supplier,
                 'FB Test Rate Class', Address(), Address()),
-                UtilBill.Complete, 'gas', 'utility', 'rate class',
-                Address(), Address(), period_start=date(2000, 1, 1),
-                period_end=date(2000, 2, 1))
+                UtilBill.Complete, 'gas', utility, supplier,
+                'rate class', Address(), Address(),
+                period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
 
         session = Session()
         session.add(utilbill)
         session.flush()
-
 
         self.assertEqual(utilbill.registers, [])
 
@@ -91,8 +92,10 @@ class UtilBillTest(TestCase):
     def test_compute(self):
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', 'FB Test Utility',
-                'FB Test Rate Class', Address(), Address()),
-                UtilBill.Complete, 'gas', 'utility', 'rate class',
+                'FB Test Supplier', 'FB Test Rate Class',
+                Address(), Address()), UtilBill.Complete, 'gas',
+                Utility('utility', Address(), ''),
+                Supplier('supplier', Address(), ''), 'rate class',
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
         register = Register(utilbill, "ABCDEF description", 150, 'therms',
@@ -267,21 +270,25 @@ class UtilBillTest(TestCase):
         '''Compute utility bill with no charges.
         '''
         customer = Customer('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'rate class',
-                Address(), Address())
+                'nobody@example.com', 'utility', 'supplier',
+                'rate class', Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address())
+                'gas', 'utility', 'supplier', 'rate class',
+                Address(), Address())
         utilbill.compute_charges()
         self.assertEqual([], utilbill.charges)
         self.assertEqual(0, utilbill.get_total_charges())
 
     def test_compute_charges_independent(self):
+        utility = Utility('utility', Address(), '')
+        supplier = Supplier('supplier', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'rate class',
-                Address(), Address())
+                'nobody@example.com', utility, supplier,
+                'rate class', Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address(),
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
+                'gas', utility, supplier, 'rate class',
+                Address(), Address(), period_start=date(2000,1,1),
+                period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '', 150,
                 'kWh', '', False, "total", "REG_TOTAL", '', '')]
         utilbill.charges = [
@@ -308,12 +315,15 @@ class UtilBillTest(TestCase):
         '''Test computing charges whose dependencies form a cycle.
         All such charges should have errors.
         '''
+        utility = Utility('utility', Address(), '')
+        supplier = Supplier('supplier', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
-                'nobody@example.com', 'utility', 'rate class',
-                Address(), Address())
+                'nobody@example.com', utility, supplier,
+                'rate class', Address(), Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', 'utility', 'rate class', Address(), Address(),
-                period_start=date(2000,1,1), period_end=date(2000,2,1))
+                'gas', utility, supplier, 'rate class', Address(),
+                Address(), period_start=date(2000,1,1),
+                period_end=date(2000,2,1))
         utilbill.charges = [
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
@@ -344,3 +354,33 @@ class UtilBillTest(TestCase):
         self.assert_error(utilbill.get_charge_by_rsi_binding('D'),
                 "Error: name 'A' is not defined")
         self.assert_charge_values(2, 3, utilbill.get_charge_by_rsi_binding('E'))
+
+    def test_processed_utility_bills(self):
+        '''
+        test for making sure processed bills cannot be edited
+        '''
+        utility = Utility('utility', Address(), '')
+        supplier = Supplier('supplier', Address(), '')
+        customer = Customer('someone', '99999', 0.3, 0.1,
+                'nobody@example.com', utility, supplier,
+                'rate class', Address(), Address())
+        utilbill = UtilBill(customer, UtilBill.Complete,
+                'gas', utility, supplier, 'rate class', Address(),
+                Address(), period_start=date(2000,1,1),
+                period_end=date(2000,2,1))
+        utilbill.registers = [Register(utilbill, '', 150,
+                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.charges = [
+            Charge(utilbill, '', '', 0, 'kWh', 1, 'A', 0,
+                    quantity_formula='REG_TOTAL.quantity'),
+            Charge(utilbill, '', '', 0, 'kWh', 3, 'B', 0,
+                    quantity_formula='2'),
+            # this has an error
+            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+                    quantity_formula='1/0'),
+        ]
+        self.assertTrue(utilbill.editable())
+        Session().add(utilbill)
+        utilbill.processed = True
+        self.assertRaises(ProcessedBillError, utilbill.compute_charges())
+        self.assertRaises(ProcessedBillError, utilbill.editable)
