@@ -6,7 +6,7 @@ from billing import init_model
 from boto.exception import S3ResponseError
 from StringIO import StringIO
 from boto.s3.bucket import Bucket
-from billing.core.model import UtilBill, Customer, Address, Session, Utility
+from billing.core.model import UtilBill, Customer, Address, Session, Utility, Supplier
 import unittest
 from billing.core.billupload import BillUpload
 from billing import config
@@ -65,10 +65,12 @@ class BillUploadTest(unittest.TestCase):
         called, as long as there is only one UtilBill instance persisted
         having the given sha256_hexdigest"""
         fb_utility = Utility('some_utility', Address(), '')
+        fb_supplier = Supplier('some_supplier', Address(), '')
         ub = UtilBill(Customer('', '', 0.0, 0.0, '',
-                               fb_utility, 'rate_class', Address(), Address()),
-                      0, 'gas', fb_utility, 'test_rate_class', Address(),
-                      Address(), period_start=date(2014, 1, 1),
+                               fb_utility, fb_supplier, 'rate_class', Address(),
+                               Address()),
+                      0, 'gas', fb_utility, fb_supplier, 'test_rate_class',
+                      Address(), Address(), period_start=date(2014, 1, 1),
                       period_end=date(2012, 1, 31))
         ub.sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
 
@@ -98,10 +100,12 @@ class BillUploadTest(unittest.TestCase):
         s = Session()
         for x in range(2):
             fb_utility = Utility('some_utility', Address(), '')
+            fb_supplier = Supplier('some_supplier', Address(), '')
             ub = UtilBill(Customer('', str(x), 0.0, 0.0, '',
-                                   fb_utility, 'rate_class', Address(), Address()),
-                          0, 'gas', fb_utility, 'test_rate_class', Address(),
-                          Address(), period_start=date(2014, 1, 1),
+                                   fb_utility, fb_supplier, 'rate_class', Address(),
+                                   Address()),
+                          0, 'gas', fb_utility, fb_supplier, 'test_rate_class',
+                          Address(), Address(), period_start=date(2014, 1, 1),
                           period_end=date(2012, 1, 31))
             ub.sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
             s.add(ub)
@@ -124,11 +128,13 @@ class BillUploadTest(unittest.TestCase):
 
     def test_upload_utilbill_pdf_to_s3(self):
         fb_utility = Utility('some_utility', Address(), '')
+        fb_supplier = Supplier('some_supplier', Address(), '')
         s = Session()
         ub = UtilBill(Customer('', 'test', 0.0, 0.0, '',
-                               fb_utility, 'rate_class', Address(), Address()),
-                      0, 'gas', fb_utility, 'test_rate_class', Address(),
-                      Address(), period_start=date(2014, 1, 1),
+                               fb_utility, fb_supplier, 'rate_class', Address(),
+                               Address()),
+                      0, 'gas', fb_utility, fb_supplier, 'test_rate_class',
+                      Address(), Address(), period_start=date(2014, 1, 1),
                       period_end=date(2012, 1, 31))
         ub.sha256_hexdigest = '000000f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         s.add(ub)

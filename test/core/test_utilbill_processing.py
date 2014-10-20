@@ -218,7 +218,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(
                     account, 'electric', start, end, StringIO(),
-                    utility=customer.fb_utility, rate_class='Residential-R')
+                    utility=customer.fb_utility, supplier=customer.fb_supplier,
+                    rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
@@ -232,6 +233,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                              date(2012, 1, 1),
                                              date(2012, 2, 1), file1,
                                              utility='pepco',
+                                             supplier = 'supplier',
                                              rate_class='Residential-R')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
@@ -265,7 +267,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 2, 1),
                                              date(2012, 3, 1), file2,
-                                             utility='pepco')
+                                             utility='pepco',
+                                             supplier='supplier')
         utilbills_data, _ = self.process.get_all_utilbills_json(
             account, 0,
             30)
@@ -303,7 +306,9 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          None,
                                          state=UtilBill.Estimated,
                                          utility='washgas',
-                                         rate_class='DC Non Residential Non Heat')
+                                         supplier='supplier',
+                                         rate_class='DC Non Residential Non Heat'
+                                         )
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
         dictionaries = [{

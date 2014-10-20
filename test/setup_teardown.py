@@ -13,7 +13,7 @@ import mongoengine
 
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
-from billing.core import rate_structure
+from billing.core import rate_structure, Supplier
 from billing.reebill import journal
 from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
@@ -57,8 +57,8 @@ class TestCaseWithSetup(test_utils.TestCase):
     @staticmethod
     def truncate_tables(session):
         for t in ["utilbill_reebill", "register", "utilbill", "payment",
-                  "reebill", "customer", "company", "charge", "address",
-                  "reading", "reebill_charge"]:
+                  "reebill", "customer", "supplier", "company", "charge",
+                  "address", "reading", "reebill_charge"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -123,6 +123,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'XX', '12345')
 
         uc = Utility('Test Utility Company Template', ca1, '')
+        supplier = Supplier('Test Supplier', ca1, '')
 
         ca2 = Address('Test Other Utilco Address',
                       '123 Utilco Street',
@@ -130,22 +131,24 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'XX', '12345')
 
         other_uc = Utility('Other Utility', ca1, '')
+        other_supplier = Supplier('Other Supplier', ca1, '')
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,
-                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc])
+                        ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
+                        other_supplier])
         session.flush()
 
         session.add(Customer('Test Customer', '99999', .12, .34,
-                             'example@example.com', uc,
+                             'example@example.com', uc, supplier,
                              'Test Rate Class Template', fa_ba1, fa_sa1))
 
         #Template Customer aka "Template Account" in UI
         c2 = Customer('Test Customer 2', '100000', .12, .34,
-                             'example2@example.com', uc,
+                             'example2@example.com', uc, supplier,
                              'Test Rate Class Template', fa_ba2, fa_sa2)
         session.add(c2)
 
-        u1 = UtilBill(c2, UtilBill.Complete, 'gas', uc,
+        u1 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
                              'Test Rate Class Template',  ub_ba1, ub_sa1,
                              account_number='Acct123456',
                              period_start=date(2012, 1, 1),
@@ -154,7 +157,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 2, 3),
                              processed=True)
 
-        u2 = UtilBill(c2, UtilBill.Complete, 'gas', uc,
+        u2 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
                              'Test Rate Class Template', ub_ba2, ub_sa2,
                              account_number='Acct123456',
                              period_start=date(2012, 2, 1),
@@ -183,7 +186,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'XX',
                      '12345')
         c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
-                             'example2@example.com', other_uc,
+                             'example2@example.com', other_uc, other_supplier,
                              'Other Rate Class', c4ba, c4sa)
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
@@ -196,7 +199,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
-        u = UtilBill(c4, UtilBill.Complete, 'gas', other_uc,
+        u = UtilBill(c4, UtilBill.Complete, 'gas', other_uc, other_supplier,
                          'Other Rate Class',  ub_ba, ub_sa,
                          account_number='Acct123456',
                          period_start=date(2012, 1, 1),

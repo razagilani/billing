@@ -565,13 +565,15 @@ class ReebillProcessor(object):
                     .order_by(desc(UtilBill.period_end)).first()
         except NoSuchBillException:
             utility = template_account.fb_utility
+            supplier = template_account.fb_supplier
             rate_class = template_account.fb_rate_class
         else:
             utility = last_utility_bill.utility
+            supplier = last_utility_bill.supplier
             rate_class = last_utility_bill.rate_class
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                'example@example.com', utility, rate_class,
+                'example@example.com', utility, supplier, rate_class,
                 Address(billing_address['addressee'],
                         billing_address['street'],
                         billing_address['city'],

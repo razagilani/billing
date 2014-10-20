@@ -21,10 +21,12 @@ class ChargeUnitTests(testing_utils.TestCase):
     def setUp(self):
         bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                                  'nobody@example.com', 'FB Test Utility',
-                                 'FB Test Rate Class', Address(), Address()),
-                        UtilBill.Complete, 'gas', 'utility', 'rate class',
-                        Address(), Address(), period_start=date(2000, 1, 1),
-                        period_end=date(2000, 2, 1))
+                                 'FB Test Supplier', 'FB Test Rate Class',
+                                 Address(), Address()), UtilBill.Complete,
+                                 'gas', 'utility', 'supplier', 'rate class',
+                                 Address(), Address(),
+                                 period_start=date(2000, 1, 1),
+                                 period_end=date(2000, 2, 1))
         self.charge_params = dict(utilbill=bill,
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
