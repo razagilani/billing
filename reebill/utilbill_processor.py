@@ -305,13 +305,11 @@ class UtilbillProcessor(object):
         session = Session()
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
-        
-        # TODO maybe this is redudant with editable() below
-        if utility_bill.is_attached() or utility_bill.processed:
+
+        if utility_bill.is_attached() or not utility_bill.editable():
             raise ValueError("Can't delete an attached or processed utility bill.")
 
-        if utility_bill.editable():
-            self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
+        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -319,7 +317,7 @@ class UtilbillProcessor(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-        return utility_bill
+        return utility_bill, utility_bill.pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
