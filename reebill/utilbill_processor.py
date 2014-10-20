@@ -152,8 +152,10 @@ class UtilbillProcessor(object):
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
-        try:
-            utilbill.editable()
+        #toggle processed state of utility bill
+        if processed is not None:
+                utilbill.processed = processed
+        if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
 
@@ -177,13 +179,6 @@ class UtilbillProcessor(object):
             utilbill.period_start = period_start
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
-            if processed is not None:
-                utilbill.processed = processed
-            else:
-                utilbill.processed = False
-        except ProcessedBillError:
-            if processed is not None:
-                utilbill.processed = processed
         return  utilbill
 
     def upload_utility_bill(self, account, service, begin_date,
@@ -310,13 +305,11 @@ class UtilbillProcessor(object):
         session = Session()
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
-        
-        # TODO maybe this is redudant with editable() below
-        if utility_bill.is_attached() or utility_bill.processed:
+
+        if utility_bill.is_attached() or not utility_bill.editable():
             raise ValueError("Can't delete an attached or processed utility bill.")
 
-        if utility_bill.editable():
-            self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
+        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -324,7 +317,7 @@ class UtilbillProcessor(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-        return utility_bill
+        return utility_bill, utility_bill.pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
