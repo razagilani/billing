@@ -2,6 +2,7 @@ import sys
 import unittest
 from datetime import date
 import logging
+from mock import Mock
 
 import mongoengine
 
@@ -244,15 +245,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                 },
         ])
         mailer_opts = dict(self.config.items("mailer"))
-        bill_mailer = Mailer(
-                mailer_opts['mail_from'],
-                mailer_opts['originator'],
-                mailer_opts['password'],
-                mailer_opts['template_file_name'],
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
-                mailer_opts['bcc_list']
-        )
+        bill_mailer = Mock()
 
         self.temp_dir = TempDirectory()
         reebill_file_handler = ReebillFileHandler(
