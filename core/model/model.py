@@ -5,7 +5,6 @@ Also contains some related classes that do not correspond to database tables.
 import ast
 from datetime import datetime
 import json
-
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -19,9 +18,12 @@ from sqlalchemy.ext.declarative import declarative_base
 import tsort
 from alembic.migration import MigrationContext
 
-from billing.exc import NoSuchBillException, FormulaSyntaxError
+import traceback
+from billing.exc import NoSuchBillException, FormulaSyntaxError, ProcessedBillError
+
 from billing.exc import FormulaError
 from exc import DatabaseError
+
 __all__ = [
     'Address',
     'Base',
@@ -32,6 +34,8 @@ __all__ = [
     'MYSQLDB_DATETIME_MIN',
     'Register',
     'Session',
+    'Supplier',
+    'Utility',
     'UtilBill',
     'UtilBillLoader',
     'check_schema_revision',
@@ -69,7 +73,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '6446c51511c'
+_schema_revision = '3566e62e7af3'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -119,11 +123,11 @@ class Address(Base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True)
-    addressee = Column(String, nullable=False)
-    street = Column(String, nullable=False)
-    city = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    postal_code = Column(String, nullable=False)
+    addressee = Column(String(1000), nullable=False)
+    street = Column(String(1000), nullable=False)
+    city = Column(String(1000), nullable=False)
+    state = Column(String(1000), nullable=False)
+    postal_code = Column(String(1000), nullable=False)
 
     def __init__(self, addressee='', street='', city='', state='',
                  postal_code=''):
@@ -187,6 +191,48 @@ class Address(Base):
                    other_address.postal_code)
 
 
+class Company(Base):
+    __tablename__ = 'company'
+
+    id = Column(Integer, primary_key=True)
+    address_id = Column(Integer, ForeignKey('address.id'))
+
+    name = Column(String(1000))
+    guid = Column(String(36))
+    discriminator = Column(String(50))
+    address = relationship("Address")
+
+    def __init__(self, name, address, guid):
+        self.name = name
+        self.address = address
+        self.guid = guid
+
+    __mapper_args__ = {'polymorphic_on': discriminator}
+
+
+class Supplier(Company):
+    __tablename__ = 'supplier'
+    __mapper_args__ = {'polymorphic_identity': 'supplier'}
+    id = Column(Integer, primary_key=True)
+    company_id = Column(Integer, ForeignKey('company.id'))
+    name = Column(String(1000), nullable=False)
+
+    def __init__(self, name, address, guid):
+        super(Supplier, self).__init__(name, address, guid)
+        self.name = name
+
+
+class Utility(Company):
+    __mapper_args__ = {'polymorphic_identity': 'utility'}
+
+    #TODO: rate_class = add SQLAlchemy class for RateClass and form relationship
+
+    def __init__(self, name, address, guid, rate_classes=[]):
+        """Construct a :class:`Utility` instance"""
+        assert rate_classes == []
+        super(Utility, self).__init__(name, address, guid)
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -195,27 +241,34 @@ class Customer(Base):
     SERVICE_TYPES = ('thermal', 'pv')
 
     id = Column(Integer, primary_key=True)
-    account = Column(String, nullable=False)
-    name = Column(String)
+    fb_utility_id = Column(Integer, ForeignKey('company.id'))
+
+    account = Column(String(45), nullable=False)
+    name = Column(String(45))
     discountrate = Column(Float(asdecimal=False), nullable=False)
     latechargerate = Column(Float(asdecimal=False), nullable=False)
-    bill_email_recipient = Column(String, nullable=False)
+    bill_email_recipient = Column(String(1000), nullable=False)
 
     # null means brokerage-only customer
     service = Column(Enum(*SERVICE_TYPES))
 
     # "fb_" = to be assigned to the customer's first-created utility bill
-    fb_utility_name = Column(String(255), nullable=False)
     fb_rate_class = Column(String(255), nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
-        nullable=False, )
+        nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
+    fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
+        nullable=False)
 
+    fb_supplier = relationship('Supplier', uselist=False,
+        primaryjoin='Customer.fb_supplier_id==Supplier.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
-        primaryjoin='Customer.fb_service_address_id==Address.id')
+    primaryjoin='Customer.fb_service_address_id==Address.id')
+
+    fb_utility = relationship('Utility')
 
     def get_discount_rate(self):
         return self.discountrate
@@ -230,8 +283,8 @@ class Customer(Base):
         self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
-                 bill_email_recipient, fb_utility_name, fb_rate_class,
-                 fb_billing_address, fb_service_address):
+                bill_email_recipient, fb_utility, fb_supplier,
+                fb_rate_class, fb_billing_address, fb_service_address):
         """Construct a new :class:`.Customer`.
         :param name: The name of the customer.
         :param account:
@@ -239,9 +292,10 @@ class Customer(Base):
         :param late_charge_rate:
         :param bill_email_recipient: The customer receiving email
         address for skyline-generated bills
-        :fb_utility_name: The "first bill utility name" to be assigned
-         as the name of the utility company on the first `UtilityBill`
-         associated with this customer.
+        :fb_utility: The :class:`.Utility` to be assigned to the the first
+        `UtilityBill` associated with this customer.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this customer
         :fb_rate_class": "first bill rate class" (see fb_utility_name)
         :fb_billing_address: (as previous)
         :fb_service address: (as previous)
@@ -251,7 +305,8 @@ class Customer(Base):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
         self.bill_email_recipient = bill_email_recipient
-        self.fb_utility_name = fb_utility_name
+        self.fb_utility = fb_utility
+        self.fb_supplier = fb_supplier
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
@@ -270,36 +325,46 @@ class UtilBill(Base):
         nullable=False)
     service_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
+    supplier_id = Column(Integer, ForeignKey('supplier.id'),
+        nullable=False)
+    utility_id = Column(Integer, ForeignKey('company.id'))
 
     state = Column(Integer, nullable=False)
-    service = Column(String, nullable=False)
-    utility = Column(String, nullable=False)
-    rate_class = Column(String, nullable=False)
-    period_start = Column(Date, nullable=False)
-    period_end = Column(Date, nullable=False)
+    service = Column(String(45), nullable=False)
+    rate_class = Column(String(255), nullable=False)
+    period_start = Column(Date)
+    period_end = Column(Date)
 
     # optional, total of charges seen in PDF: user knows the bill was processed
     # correctly when the calculated total matches this number
     target_total = Column(Float)
 
     date_received = Column(DateTime)
-    account_number = Column(String, nullable=False)
+    account_number = Column(String(1000), nullable=False)
+    sha256_hexdigest = Column(String(64))
 
     # whether this utility bill is considered "done" by the user--mainly
     # meaning that its rate structure and charges are supposed to be accurate
     # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
 
-    # _ids of Mongo documents
-    document_id = Column(String)
-    uprs_document_id = Column(String)
-
-    customer = relationship("Customer", backref=backref('utilbills',
+    customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
+    supplier = relationship('Supplier', uselist=False,
+        primaryjoin='UtilBill.supplier_id==Supplier.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.service_address_id==Address.id')
+    utility = relationship('Utility')
+
+    @property
+    def pdf_url(self):
+        # TODO fix this by moving the method to another class which can be
+        # initialized with the bucket name (and S3 URL)
+        from billing import config
+        return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
+               (config.get('bill', 'bucket'), self.sha256_hexdigest)
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -334,11 +399,11 @@ class UtilBill(Base):
     }
 
     # TODO remove uprs_id, doc_id
-    def __init__(self, customer, state, service, utility, rate_class,
+    def __init__(self, customer, state, service, utility, supplier, rate_class,
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
-                 reebill=None):
+                 reebill=None, sha256_hexdigest=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.Estimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -358,6 +423,8 @@ class UtilBill(Base):
         self.processed = processed
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
+        self.sha256_hexdigest = sha256_hexdigest
+        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
@@ -453,6 +520,11 @@ class UtilBill(Base):
         if raise_exception and exception:
             raise exception
 
+    def editable(self):
+        if self.processed:
+            return False
+        return True
+
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first Charge object found belonging to this
         ReeBill whose 'rsi_binding' matches 'binding'.
@@ -467,19 +539,19 @@ class UtilBill(Base):
                 if charge.total is not None)
 
     def column_dict(self):
-        the_dict = super(UtilBill, self).column_dict()
-        reebills = [ur.reebill.column_dict() for ur in self._utilbill_reebills]
-        the_dict.update({
-            'account': self.customer.account,
-            'service': 'Unknown' if self.service is None
-                                else self.service.capitalize(),
-            'total_charges': self.target_total,
-            'computed_total': self.get_total_charges() if self.state <
-                                UtilBill.Hypothetical else None,
-            'reebills': reebills,
-            'state': self.state_name()
-        })
-        return the_dict
+        return dict(super(UtilBill, self).column_dict().items() +
+                    [('account', self.customer.account),
+                     ('service', 'Unknown' if self.service is None
+                                           else self.service.capitalize()),
+                     ('total_charges', self.target_total),
+                     ('computed_total', self.get_total_charges() if self.state <
+                                        UtilBill.Hypothetical else None),
+                     ('reebills', [ur.reebill.column_dict() for ur
+                                   in self._utilbill_reebills]),
+                     ('utility', self.utility.name),
+                     ('supplier', self.supplier.name),
+                     ('state', self.state_name()),
+                     ('pdf_url', self.pdf_url)])
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -696,6 +768,14 @@ class Charge(Base):
             self.error = None if evaluation.exception is None else \
                 evaluation.exception.message
         return evaluation
+
+    def get_create_utility(self, utility_name):
+        session = Session()
+        try:
+            utility = session.query(Utility).filter_by(name=utility_name).one()
+        except NoResultFound:
+            utility = Utility(utility_name, Address('', '', '', '', ''))
+        return utility
 
 class UtilBillLoader(object):
     '''Data access object for utility bills, used to hide database details
