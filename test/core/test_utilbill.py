@@ -383,4 +383,4 @@ class UtilBillTest(TestCase):
         Session().add(utilbill)
         utilbill.processed = True
         self.assertRaises(ProcessedBillError, utilbill.compute_charges())
-        self.assertRaises(ProcessedBillError, utilbill.editable)
+        self.assertFalse(utilbill.editable())

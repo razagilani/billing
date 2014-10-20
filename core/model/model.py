@@ -522,7 +522,7 @@ class UtilBill(Base):
 
     def editable(self):
         if self.processed:
-            raise ProcessedBillError('Processed utilbill cannot be edited')
+            return False
         return True
 
     def get_charge_by_rsi_binding(self, binding):
