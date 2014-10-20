@@ -1,11 +1,12 @@
 from os.path import dirname, realpath, join
-
+import smtplib
+from boto.s3.connection import S3Connection
 from billing import init_config, init_model, init_logging
 
 
 # TODO: is it necessary to specify file path?
 p = join(dirname(dirname(realpath(__file__))), 'settings.cfg')
-init_logging(path=p)
+init_logging(filepath=p)
 init_config(filepath=p)
 init_model()
 
@@ -120,8 +121,14 @@ class WebResource(object):
         self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(logger=self.logger)
 
-        # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config, self.logger)
+        s3_connection = S3Connection(
+                config.get('aws_s3', 'aws_access_key_id'),
+                config.get('aws_s3', 'aws_secret_access_key'),
+                is_secure=config.get('aws_s3', 'is_secure'),
+                port=config.get('aws_s3', 'port'),
+                host=config.get('aws_s3', 'host'),
+                calling_format=config.get('aws_s3', 'calling_format'))
+        self.billUpload = BillUpload(s3_connection)
 
         # create a RateStructureDAO
         self.ratestructure_dao = RateStructureDAO(logger=self.logger)
@@ -191,16 +198,17 @@ class WebResource(object):
                 self.config.get('bill', 'billpath'),
                 self.config.get('reebillrendering', 'teva_accounts'))
         mailer_opts = dict(self.config.items("mailer"))
+        server = smtplib.SMTP()
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
                 mailer_opts['originator'],
                 mailer_opts['password'],
                 mailer_opts['template_file_name'],
+                server,
                 mailer_opts['smtp_host'],
                 mailer_opts['smtp_port'],
                 mailer_opts['bcc_list'])
 
-        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter,
-                                                    self.logger)
+        self.ree_getter = fbd.RenewableEnergyGetter(self.splinter, self.logger)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(
@@ -596,7 +604,6 @@ class UtilBillResource(RESTResource):
             UtilBill.Estimated
         self.process.upload_utility_bill(
             account, service, begin_date, end_date, fileobj.file,
-            fileobj.filename if fileobj.file else None,
             total=total_charges, state=billstate, utility=None, rate_class=None)
 
         # Since this is initated by an Ajax request, we will still have to
@@ -628,7 +635,7 @@ class UtilBillResource(RESTResource):
                 elif k == 'service':
                     update_args[k] = v.lower()
                 elif k in ('target_total', 'utility',
-                           'rate_class', 'processed'):
+                           'rate_class', 'processed', 'supplier'):
                     update_args[k] = v
 
             result = self.process.update_utilbill_metadata(

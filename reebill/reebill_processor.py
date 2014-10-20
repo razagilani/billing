@@ -7,13 +7,13 @@ from sqlalchemy.sql import desc, functions
 from sqlalchemy import not_, and_
 from sqlalchemy import func
 
-from billing.core.billupload import ACCOUNT_NAME_REGEX
 from billing.core.model import (Customer, UtilBill, Address, Session,
                            MYSQLDB_DATETIME_MIN)
 from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
+from processing.reebill_procesor import ACCOUNT_NAME_REGEX
 
 
 class ReebillProcessor(object):
@@ -543,14 +543,16 @@ class ReebillProcessor(object):
                 .join(Customer).filter(UtilBill.customer==template_customer)\
                 .order_by(desc(UtilBill.period_end)).first()
         if last_utility_bill is None:
-            utility = template_customer.fb_utility_name
+            utility = template_customer.fb_utility
+            supplier = template_customer.fb_supplier
             rate_class = template_customer.fb_rate_class
         else:
             utility = last_utility_bill.utility
+            supplier = last_utility_bill.supplier
             rate_class = last_utility_bill.rate_class
 
         new_customer = Customer(name, account, discount_rate, late_charge_rate,
-                'example@example.com', utility, rate_class,
+                'example@example.com', utility, supplier, rate_class,
                 Address(billing_address['addressee'],
                         billing_address['street'],
                         billing_address['city'],
