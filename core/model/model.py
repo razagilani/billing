@@ -258,7 +258,7 @@ class Customer(Base):
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
 
-    fb_supplier = relationship('Supplier', uselist=False, cascade='all',
+    fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='Customer.fb_supplier_id==Supplier.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
@@ -347,7 +347,7 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
-    supplier = relationship('Supplier', uselist=False, cascade='all',
+    supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
