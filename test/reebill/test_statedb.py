@@ -2,6 +2,8 @@
 Currently the only one is StateDB.
 '''
 from billing.test.setup_teardown import init_logging, TestCaseWithSetup
+from billing.core.model.model import Utility, Supplier
+
 init_logging()
 import unittest
 from datetime import date, datetime
@@ -29,9 +31,12 @@ class StateDBTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
+        test_utility = Utility('FB Test Utility Name', blank_address, '')
+        test_supplier = Supplier('FB Test Suplier', blank_address, '')
         self.customer = Customer('Test Customer', 99999, .12, .34,
-                            'example@example.com', 'FB Test Utility Name',
-                            'FB Test Rate Class', blank_address, blank_address)
+                            'example@example.com', test_utility,
+                            test_supplier, 'FB Test Rate Class',
+                            blank_address, blank_address)
         self.session.add(self.customer)
         self.session.commit()
         self.state_db = state.StateDB()
@@ -62,11 +67,13 @@ class StateDBTest(TestCaseWithSetup):
                 acc, seq, version=10)
 
         # adding versions of bills for other accounts should have no effect
+        fb_test_utility = Utility('FB Test Utility', Address(), '')
+        fb_test_supplier = Supplier('FB Test Supplier', Address(), '')
         self.session.add(Customer('someone', '11111', 0.5, 0.1,
-                'customer1@example.com', 'FB Test Utility',
+                'customer1@example.com', fb_test_utility, fb_test_supplier,
                 'FB Test Rate Class', Address(), Address()))
         self.session.add(Customer('someone', '22222', 0.5, 0.1,
-                'customer2@example.com', 'FB Test Utility',
+                'customer2@example.com', fb_test_utility, fb_test_supplier,
                 'FB Test Rate Class', Address(), Address()))
         session.add(ReeBill(self.state_db.get_customer('11111'), 1))
         session.add(ReeBill(self.state_db.get_customer('11111'), 2))
@@ -243,8 +250,9 @@ class StateDBTest(TestCaseWithSetup):
         # Create 2 customers
         customer1 = self.session.query(Customer).one()
         customer2 = Customer('Test Customer', 99998, .12, .34,
-                            'example@example.com', 'FB Test Utility Name',
-                            'FB Test Rate Class', empty_address, empty_address)
+                            'example@example.com', customer1.fb_utility,
+                            customer1.fb_supplier, 'FB Test Rate Class',
+                            empty_address, empty_address)
         self.session.add(customer2)
         self.session.commit()
 
@@ -262,14 +270,16 @@ class StateDBTest(TestCaseWithSetup):
         # Attach two utilitybills with out addresses but with rate class to one
         # of the customers, and one utilbill with empty rateclass but with
         # address to the other customer
-        gas_bill_1 = UtilBill(customer1, 0, 'gas', 'washgas',
+        washgas = Utility('washgas', Address(), '')
+        supplier = Supplier('supplier', Address(), '')
+        gas_bill_1 = UtilBill(customer1, 0, 'gas', washgas, supplier,
                 'DC Non Residential Non Heat', empty_address, empty_address,
                 period_start=date(2000, 1, 1), period_end=date(2000, 2, 1),
                 processed=True)
-        gas_bill_2 = UtilBill(customer1, 0, 'gas', 'washgas',
+        gas_bill_2 = UtilBill(customer1, 0, 'gas', washgas, supplier,
                 'DC Non Residential Non Heat', empty_address, empty_address,
                 period_start=date(2000, 3, 1), period_end=date(2000, 4, 1))
-        gas_bill_3 = UtilBill(customer2, 0, 'gas', 'washgas',
+        gas_bill_3 = UtilBill(customer2, 0, 'gas', washgas, supplier,
                 '', fake_address, fake_address,
                 period_start=date(2000, 4, 1), period_end=date(2000, 5, 1),
                 processed=True)
@@ -295,7 +305,7 @@ class StateDBTest(TestCaseWithSetup):
         # Now Attach a reebill to one and issue it , and a utilbill with a
         # different rateclass to the other
         reebill = ReeBill(customer1, 1, 0, utilbills=[gas_bill_1])
-        gas_bill_4 = UtilBill(customer2, 0, 'gas', 'washgas',
+        gas_bill_4 = UtilBill(customer2, 0, 'gas', washgas, supplier,
                 'New Rateclass', fake_address, fake_address,
                 period_start=date(2000, 5, 1), period_end=date(2000, 6, 1),
                 processed=True)
