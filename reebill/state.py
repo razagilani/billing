@@ -192,9 +192,10 @@ class ReeBill(Base):
         """Deletes and replaces the readings using the corresponding utility
         bill registers."""
         s = Session.object_session(self)
-        for reading in self.readings:
-            self.readings.remove(reading)
-            s.expunge(reading)
+
+        while len(self.readings) > 0:
+            del self.readings[0]
+            #s.expunge(reading)
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
