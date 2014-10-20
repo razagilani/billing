@@ -417,9 +417,14 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertEqual(0, three.balance_forward)
         self.assertEqual(0, three.balance_due)
 
-        # issue #2 and #3
-        self.process.issue(acc, 2, datetime(2000, 5, 15))
-        self.process.issue(acc, 3, datetime(2000, 5, 15))
+        self.process.update_sequential_account_info(acc, 2, processed=True)
+        self.process.update_sequential_account_info(acc, 3, processed=True)
+
+        # issue #2 and #3, using two different methods
+        self.process.issue_and_mail(True, account=acc, sequence=2,
+                                    processed=False)
+        self.process.issue_and_mail(True,account=acc, sequence=3,
+                                    processed=True)
 
         # #2 is still correct, and #3 should be too because it was
         # automatically recomputed before issuing
