@@ -656,6 +656,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'corrections': '-',
                                           }, reebill_metadata[0])
 
+        account_info_v0 = self.process.get_sequential_account_info('99999', 1)
+
         # create 2nd reebill, leaving it unissued
         self.process.ree_getter.quantity = 0
         self.process.roll_reebill(acc)
@@ -709,6 +711,11 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                              'total_error': 8.8,
                              }], self.process.get_reebill_metadata_json('99999')):
             self.assertDictContainsSubset(x, y)
+
+        # all "sequential account info" gets copied from one version to the next
+        account_info_v1 = self.process.get_sequential_account_info('99999', 1)
+        self.assertEqual(account_info_v0, account_info_v1)
+
         # when you issue a bill and it has corrections applying to it, and you don't specify apply_corrections=True,
         # it raises an exception ConfirmAdjustment
         self.assertRaises(ConfirmAdjustment ,self.process.issue_and_mail, False, account=acc, sequence=2)
