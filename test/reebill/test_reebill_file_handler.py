@@ -1,3 +1,6 @@
+from billing.test import init_test_config
+init_test_config()
+
 from datetime import date
 from errno import ENOENT
 from unittest import TestCase
@@ -29,7 +32,7 @@ class ReebillFileHandlerTest(TestCase):
         sa = Address(addressee='Service Addressee', street='456 Test Ave.',
                      city='Washington', state='DC', postal_code='12345')
         c = Customer('Test Customer', '00001', 0.2, 0.1, 'test@example.com',
-                     'Test Utility', 'Test Rate Class', ba, sa)
+                     'Test Utility', 'Test Supplier', 'Test Rate Class', ba, sa)
         ba2 = Address.from_other(ba)
         ba2.addressee = 'Reebill Billing Addressee'
         sa2 = Address.from_other(sa)
@@ -38,8 +41,9 @@ class ReebillFileHandlerTest(TestCase):
         ba2.addressee = 'Utility Billing Addressee'
         sa3 = Address.from_other(sa)
         ba2.addressee = 'Utility Service Addressee'
-        u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Rate Class', ba3, sa3,
-                     period_start=date(2000,1,1), period_end=date(2000,2,1))
+        u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
+            'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
+            period_end=date(2000,2,1))
         u.registers = [Register(u, 'All energy', 100, 'therms', 'REGID',
                                 False, 'total', 'REG_TOTAL', [], 'METERID')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
