@@ -152,8 +152,10 @@ class UtilbillProcessor(object):
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
-        try:
-            utilbill.editable()
+        #toggle processed state of utility bill
+        if processed is not None:
+                utilbill.processed = processed
+        if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
 
@@ -177,13 +179,6 @@ class UtilbillProcessor(object):
             utilbill.period_start = period_start
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
-            if processed is not None:
-                utilbill.processed = processed
-            else:
-                utilbill.processed = False
-        except ProcessedBillError:
-            if processed is not None:
-                utilbill.processed = processed
         return  utilbill
 
     def upload_utility_bill(self, account, service, begin_date,
