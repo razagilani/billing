@@ -112,6 +112,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'rate': 1
                                    }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
+
     def test_list_account_status(self):
         count, data = self.process.list_account_status()
         self.assertEqual(3, count)
