@@ -109,8 +109,10 @@ class ReeBill(Base):
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
-    charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
-    readings = relationship('Reading', backref='reebill', cascade='all')
+    charges = relationship('ReeBillCharge', backref='reebill',
+                           cascade='all, delete-orphan')
+    readings = relationship('Reading', backref='reebill',
+                            cascade='all, delete-orphan')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                  late_charge_rate=None, billing_address=None,
@@ -194,8 +196,11 @@ class ReeBill(Base):
         s = Session.object_session(self)
 
         while len(self.readings) > 0:
+            # using the cascade setting "all, delete-orphan" deletes
+            # the reading from the session when it gets dissasociated from
+            # its parent. otherwise it would be necessary to call
+            # s.expunge(elf.readings[0]).
             del self.readings[0]
-            #s.expunge(reading)
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
