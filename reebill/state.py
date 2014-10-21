@@ -376,11 +376,23 @@ class ReeBill(Base):
         for charge in self.charges:
             session.delete(charge)
         context = {r.register_binding: Evaluation(r.hypothetical_quantity)
-                   for r in self.readings}
+                        for r in self.readings}
+        # every Reading for which there is no corresponding Register has an
+        # effective renewable_quantity of 0, or hyothetical_quantity equal to
+        # the quantity of the corresponding register. This is used when
+        # computing a reebill that does not have a reading for every utility
+        # bill register, where some of the utility bill's charges depend on the
+        # value of that register.
+        all_registers_context = dict({r.register_binding: Evaluation(
+                    r.quantity) for r in self.utilbill.registers}, **context)
         for charge in self.utilbill.ordered_charges():
             evaluation = charge.evaluate(context, update=False)
             if evaluation.exception is not None:
-                raise evaluation.exception
+                # TODO: this is a wasteful and confusing way of doing this
+                evaluation = charge.evaluate(all_registers_context,
+                                             update=False)
+                if evaluation.exception is not None:
+                    raise evaluation.exception
             context[charge.rsi_binding] = evaluation
         self.replace_charges_with_context_evaluations(context)
 
