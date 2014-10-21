@@ -588,6 +588,9 @@ class Reading(Base):
             return sum
         if self.aggregate_function == 'MAX':
             return max
+        else:
+            raise ValueError('Unknown aggregation function "%s"' %
+                             self.aggregate_function)
 
 class Payment(Base):
     __tablename__ = 'payment'

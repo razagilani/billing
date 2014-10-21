@@ -100,7 +100,14 @@ class ReebillTest(unittest.TestCase):
         self.assertEqual(0, self.reebill.readings[0].renewable_quantity)
 
     def test_reading(self):
+        '''Test some method calls on the Reading class.
+        '''
         reading = self.reebill.readings[0]
         self.assertIs(sum, reading.get_aggregation_function())
+
         reading.aggregate_function = 'MAX'
         self.assertIs(max, reading.get_aggregation_function())
+
+        reading.aggregate_function = ''
+        with self.assertRaises(ValueError):
+            reading.get_aggregation_function()
