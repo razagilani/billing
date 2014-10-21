@@ -726,8 +726,11 @@ class ReebillProcessor(object):
                 raise
             # Let's mail!
             # Recepients can be a comma seperated list of email addresses
-            recipient_list = [rec.strip() for rec in
-                              bill['email_recipient'].split(',')]
+            if bill['email_recipient'] is None:
+                recipient_list = ['']
+            else:
+                recipient_list = [rec.strip() for rec in
+                                  bill['email_recipient'].split(',')]
             self.mail_reebills(bill['account'], [bill['sequence']],
                                recipient_list)
         return bills
