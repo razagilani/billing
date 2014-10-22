@@ -348,18 +348,16 @@ class ReeBill(Base):
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
 
-    def replace_charges_with_context_evaluations(self, context):
+    def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
-        :param context: a dictionary of binding: `Evaluation`
+        :param evaluations: a dictionary of binding: `Evaluation`
         """
-        for binding in set([r.register_binding for r in self.readings]):
-            del context[binding]
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
         self.charges = []
         charge_dct = {c.rsi_binding: c for c in self.utilbill.charges}
-        for binding, evaluation in context.iteritems():
+        for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
                 quantity_units = '' if charge.quantity_units is None else charge.quantity_units
@@ -375,14 +373,25 @@ class ReeBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
-        context = {r.register_binding: Evaluation(r.hypothetical_quantity)
-                   for r in self.readings}
+
+        # compute the utility bill charges in a context where the quantity
+        # of each Register that has a corresponding Reading is replaced by
+        # the hypothetical_quantity of the Reading. a Register that has no
+        # corresponding Reading may still be necessary for calculating the
+        # charges, so the actual quantity of that register is used.
+        context = {r.register_binding: Evaluation(r.quantity)
+                   for r in self.utilbill.registers}
+        context.update({r.register_binding: Evaluation(r.hypothetical_quantity)
+                        for r in self.readings})
+
+        evaluated_charges = {}
         for charge in self.utilbill.ordered_charges():
             evaluation = charge.evaluate(context, update=False)
             if evaluation.exception is not None:
                 raise evaluation.exception
             context[charge.rsi_binding] = evaluation
-        self.replace_charges_with_context_evaluations(context)
+            evaluated_charges[charge.rsi_binding] = evaluation
+        self._replace_charges_with_evaluations(evaluated_charges)
 
     @property
     def total(self):
