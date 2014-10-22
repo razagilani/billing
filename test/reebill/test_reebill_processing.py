@@ -429,9 +429,8 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # issue #2 and #3, using two different methods
         # (the second is the equivalent of "Issue All Processed Reebills" in
         # the UI)
-        self.process.issue_and_mail(True, account=acc, sequence=2,
-                                    processed=False)
-        self.process.issue_and_mail(True, processed=True)
+        self.process.issue_and_mail(True, account=acc, sequence=2)
+        self.process.issue_processed_and_mail(True)
 
         # #2 is still correct, and #3 should be too because it was
         # automatically recomputed before issuing
@@ -503,7 +502,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                     recipients=two.email_recipient)
         self.process.toggle_reebill_processed(acc, 2, True)
         self.assertEqual(True, two.processed)
-        self.process.issue_and_mail(True, processed=True)
+        self.process.issue_processed_and_mail(True)
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
         self.assertEquals(True, two.processed)
@@ -549,7 +548,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         one.email_recipient = 'one@example.com, one@gmail.com'
 
         # issue and email one
-        self.process.issue_and_mail(False, processed=True)
+        self.process.issue_processed_and_mail(False)
 
         self.assertEquals(True, one.issued)
         self.assertEquals(True, one.processed)
@@ -561,7 +560,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # issue and email two
         self.process.reebill_file_handler.render_max_version.return_value = 2
-        self.process.issue_and_mail(False, processed=True)
+        self.process.issue_processed_and_mail(False)
 
         # re-load from mongo to see updated issue date and due date
         self.assertEquals(True, two.issued)
