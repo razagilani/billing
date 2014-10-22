@@ -56,6 +56,7 @@ class ReebillProcessor(object):
         return [payment.column_dict() for payment in payments]
 
 
+    # TODO rename this to something that makes sense
     def get_hypothetical_matched_charges(self, reebill_id):
         """Gets all hypothetical charges from a reebill for a service and
         matches the actual charge to each hypotheitical charge

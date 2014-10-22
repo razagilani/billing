@@ -110,6 +110,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'rate': 1
                                    }, utilbill_id=utilbill.id, rsi_binding='New Charge 1')
         self.process.compute_utility_bill(utilbill.id)  # updates charge values
+
     def test_list_account_status(self):
         count, data = self.process.list_account_status()
         self.assertEqual(3, count)
@@ -978,6 +979,10 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # get original balance of reebill 4 before applying corrections
         #four = self.state_db.get_reebill(session, acc, 4)
+        # we sometimes see this error message being printed at some point in
+        # this call:
+        # /Users/dan/.virtualenvs/b/lib/python2.7/site-packages/sqlalchemy/orm/persistence.py:116: SAWarning: DELETE statement on table 'reebill_charge' expected to delete 1 row(s); 0 were matched.  Please set confirm_deleted_rows=False within the mapper configuration to prevent this warning.
+        # it doesn't always happen and doesn't always happen in the same place.
         p.compute_reebill(acc, 4)
 
         # apply corrections to un-issued reebill 4. reebill 4 should be
@@ -1809,5 +1814,82 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertRaises(ValueError,
                           self.process.delete_utility_bill_by_id,
                           utilbills_data[0]['id'])
+
+    def test_two_registers_one_reading(self):
+        '''Test the situation where a utiltiy bill has 2 registers, but its
+        reebill has only one reading corresponding to the first register,
+        so only that register gets offset by renewable energy. This has been
+        done in cases where there are two "total" registers that get added
+        together to measure total energy, and sometimes users have created two
+        registers to represent two different utility meter reads that occurred
+        within one billing period, with different pricing applied to each one,
+        and want to avoid charging the customer for twice as much renewable
+        energy as they actually consumed. (This is not strictly correct because
+        the energy would be priced differently depending on which part of the
+        period it was consumed in.)
+        '''
+        # utility bill with 2 registers
+        self.process.upload_utility_bill('99999', 'gas', date(2000,1,1),
+                                         date(2000,2,1), StringIO('test'),
+                                         'january.pdf')
+        utilbill_id = self.process.get_all_utilbills_json(
+                '99999', 0, 30)[0][0]['id']
+        def add_2nd_register():
+            self.process.new_register(utilbill_id, {})
+            register_id = self.process.get_registers_json(utilbill_id)[1]['id']
+            self.process.update_register(register_id,
+                    {'register_binding': 'REG_2'})
+        add_2nd_register()
+
+        # the utility bill must have some charges that depend on both
+        # registers' values
+        self.process.add_charge(utilbill_id)
+        self.process.update_charge({
+                'rsi_binding': 'A',
+                'quantity_formula': 'REG_TOTAL.quantity',
+                'rate': 1
+        }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
+        self.process.add_charge(utilbill_id)
+        self.process.update_charge({
+                'rsi_binding': 'B',
+                'quantity_formula': 'REG_2.quantity',
+                'rate': 1
+        }, utilbill_id=utilbill_id, rsi_binding='New Charge 1')
+
+        reebill = self.process.roll_reebill('99999', start_date=date(2000,1,1))
+
+        # verify reebill has 2 readings (currently there is no way to do
+        # this through the UI)
+        self.assertEqual(2, len(reebill.readings))
+
+        # remove 2nd register from utility bill
+        register_id = self.process.get_registers_json(utilbill_id)[1]['id']
+        self.process.delete_register(register_id)
+        self.assertEqual(1, len(self.process.get_registers_json(utilbill_id)))
+
+        # "update readings" and verify that the reebill has only one reading
+        self.process.update_reebill_readings('99999', 1)
+        self.assertEqual(1, len(reebill.readings))
+
+        self.process.bind_renewable_energy('99999', 1)
+        energy_1 = (self.process.get_reebill_metadata_json('99999')[0]
+                  ['ree_quantity'])
+
+        # re-add register 2 to utility bill
+        add_2nd_register()
+        self.assertEqual(2, len(self.process.get_registers_json(utilbill_id)))
+
+        self.process.compute_utility_bill(utilbill_id)
+        self.process.compute_reebill('99999', 1)
+        self.process.bind_renewable_energy('99999', 1)
+        self.process.compute_utility_bill(utilbill_id)
+        self.process.compute_reebill('99999', 1)
+        energy_2 = (self.process.get_reebill_metadata_json('99999')[0]
+                    ['ree_quantity'])
+
+        # the total amount of renewable energy should be the same as it was
+        # when there was only one register
+        self.assertEqual(energy_1, energy_2)
+
 if __name__ == '__main__':
     unittest.main()
