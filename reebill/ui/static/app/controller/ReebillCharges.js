@@ -29,7 +29,6 @@ Ext.define('ReeBill.controller.ReebillCharges', {
                 activate: this.handleActivate
             },
             'combo[name=reeBillChargesVersions]': {
-                change: this.loadCharges,
                 select: this.loadCharges
             }
         });
@@ -59,16 +58,11 @@ Ext.define('ReeBill.controller.ReebillCharges', {
 
          // Set store parameters for ReebillVersions
          var versionStore = this.getReeBillVersionsStore();
-         var params = {
+         versionStore.getProxy().extraParams = {
              account: account,
              sequence: sequence
-         }
-         versionStore.getProxy().extraParams = params;
-
-         // Only reload if the store doens't already contain bills of the current accounts/sequence
-         var record = versionStore.getAt(0)
-         if(record === undefined || record.get('account') !== account || record.get('sequence') !== sequence)
-            versionStore.reload();
+         };
+         versionStore.reload();
     },
 
     /**
