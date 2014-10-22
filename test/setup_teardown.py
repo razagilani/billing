@@ -57,9 +57,9 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     @staticmethod
     def truncate_tables(session):
-        for t in ["utilbill_reebill", "register", "utilbill", "payment",
-                  "reebill", "customer", "supplier", "company", "charge",
-                  "address", "reading", "reebill_charge"]:
+        for t in ["utilbill_reebill", "register", "payment", "reebill",
+                  "charge", "utilbill",  "reading", "reebill_charge",
+                  "customer", "supplier", "company", "address"]:
             session.execute("delete from %s" % t)
         session.commit()
 
