@@ -348,17 +348,16 @@ class ReeBill(Base):
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
 
-    # TODO this should br private
-    def replace_charges_with_context_evaluations(self, context):
+    def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
-        :param context: a dictionary of binding: `Evaluation`
+        :param evaluations: a dictionary of binding: `Evaluation`
         """
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
         self.charges = []
         charge_dct = {c.rsi_binding: c for c in self.utilbill.charges}
-        for binding, evaluation in context.iteritems():
+        for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
                 quantity_units = '' if charge.quantity_units is None else charge.quantity_units
@@ -392,7 +391,7 @@ class ReeBill(Base):
                 raise evaluation.exception
             context[charge.rsi_binding] = evaluation
             evaluated_charges[charge.rsi_binding] = evaluation
-        self.replace_charges_with_context_evaluations(evaluated_charges)
+        self._replace_charges_with_evaluations(evaluated_charges)
 
     @property
     def total(self):
