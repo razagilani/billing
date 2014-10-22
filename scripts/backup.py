@@ -307,7 +307,7 @@ def get_bucket(bucket_name, access_key, secret_key):
 
 def backup(args):
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME))
+    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))
