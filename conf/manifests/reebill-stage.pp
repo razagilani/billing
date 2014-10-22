@@ -1,11 +1,12 @@
 # app level
 $username = "reebill-stage"
-$app = "reebill"
+$app = "billing"
 $env = "stage"
 
 host::app_user {'appuser':
     app        => $app,
     env        => $env,
+    username   => $username,
 }
 
 host::aws_standard_packages {'std_packages':}
