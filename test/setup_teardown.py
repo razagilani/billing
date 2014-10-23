@@ -1,4 +1,5 @@
 from shutil import rmtree
+import subprocess
 from boto.s3.connection import S3Connection
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -56,6 +57,28 @@ from testfixtures import TempDirectory
 class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
+
+    @classmethod
+    def setUpClass(cls):
+        from billing import config
+        # create root directory on the filesystem for the FakeS3 server,
+        # and inside it, a directory to be used as an "S3 bucket".
+        cls.fakes3_root_dir = TempDirectory()
+        bucket_name = config.get('bill', 'bucket')
+        make_directories_if_necessary(join(cls.fakes3_root_dir.path,
+                                           bucket_name))
+
+        # start FakeS3 as a subprocess
+        fakes3_args = ['fakes3', '--port', '4567', '--root',
+                   cls.fakes3_root_dir.path]
+        cls.fakes3_process = subprocess.Popen(fakes3_args)
+        assert cls.fakes3_process.poll() is None
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fakes3_process.kill()
+        cls.fakes3_process.wait()
+        cls.fakes3_root_dir.cleanup()
 
     @staticmethod
     def truncate_tables(session):
@@ -219,16 +242,6 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         logger = logging.getLogger('test')
 
-        # TODO: use testfixtures.TempDirectory for this save it as an
-        # instance variable, and clean it up in tearDown or tearDownClass
-        fakes3_root = '/tmp/fakes3_test'
-
-        # create directory on the filesystem to be used by the FakeS3 server
-        # as an "S3 bucket"
-        self.fakes3_bucket_absolute_path = join(fakes3_root,
-                                           config.get('bill', 'bucket'))
-        make_directories_if_necessary(self.fakes3_bucket_absolute_path)
-
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
@@ -316,7 +329,6 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.truncate_tables(self.session)
         Session.remove()
 
-        rmtree(self.fakes3_bucket_absolute_path)
         self.temp_dir.cleanup()
 
 
