@@ -14,7 +14,6 @@ class BillUpload(object):
         ''':param connection: boto.s3.S3Connection
         '''
         self._connection = connection
-        self._create_amazon_bucket()
 
     @classmethod
     def from_config(cls):
@@ -43,9 +42,6 @@ class BillUpload(object):
     @staticmethod
     def _get_key_name(utilbill):
         return utilbill.sha256_hexdigest
-
-    def _create_amazon_bucket(self):
-        self._connection.create_bucket(config.get('bill', 'bucket'))
 
     def _get_amazon_bucket(self):
         return self._connection.get_bucket(config.get('bill', 'bucket'))
