@@ -32,7 +32,7 @@ from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import process, state, fetch_bill_data as fbd
 from billing.core.rate_structure import RateStructureDAO
-from billing.core.model import Session
+from billing.core.model import Session, UtilBillLoader
 from billing.core.billupload import BillUpload
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
@@ -108,8 +108,14 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
-        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
-        cache = json.load(open(cache_file)) if cache_file != "" else None
+        cache_file_path = self.config.get('skyline_backend',
+                                      'nexus_offline_cache_file')
+        with open(cache_file_path) as cache_file:
+            text = cache_file.read()
+        if text == '':
+            cache = []
+        else:
+            cache = json.load(text)
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
@@ -128,7 +134,10 @@ class WebResource(object):
                 port=config.get('aws_s3', 'port'),
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
-        self.billUpload = BillUpload(s3_connection)
+        utilbill_loader = UtilBillLoader(Session())
+        self.billUpload = BillUpload(s3_connection,
+                                     config.get('bill', 'bucket'),
+                                     utilbill_loader)
 
         # create a RateStructureDAO
         self.ratestructure_dao = RateStructureDAO(logger=self.logger)

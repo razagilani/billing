@@ -18,7 +18,7 @@ from os.path import join
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import rate_structure
-from billing.core.model import Supplier
+from billing.core.model import Supplier, UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
@@ -252,7 +252,10 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   host=config.get('aws_s3', 'host'),
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
-        self.billupload = BillUpload(s3_connection)
+        utilbill_loader = UtilBillLoader(Session())
+        self.billupload = BillUpload(s3_connection,
+                                     config.get('bill', 'bucket'),
+                                     utilbill_loader)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
