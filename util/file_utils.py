@@ -10,6 +10,9 @@ def make_directories_if_necessary(absolute_path):
     '''
     # this will probably only work on Unix because it assumes the root path is
     # the path separator character.
+    if not absolute_path.startswith(sep):
+        raise ValueError('Invalid path "%s": an absolute path is required' %
+                         absolute_path)
     if absolute_path == sep:
         return
 

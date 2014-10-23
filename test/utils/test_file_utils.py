@@ -28,6 +28,10 @@ class FileUtilsTest(TestCase):
             make_directories_if_necessary(path)
             self.assertTrue(access(path, F_OK))
 
+        # error: relative path
+        with self.assertRaises(ValueError):
+            make_directories_if_necessary('a/b')
+
         # error: parent is not a directory
         with self.assertRaises(OSError) as e:
             make_directories_if_necessary('/dev/null/x')
