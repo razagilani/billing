@@ -10,10 +10,13 @@ class BillUpload(object):
     '''Utility bill file handler. TODO: rename.
     '''
 
-    def __init__(self, connection):
+    def __init__(self, connection, bucket_name):
         ''':param connection: boto.s3.S3Connection
+        :param bucket_name: name of S3 bucket where utility bill files are
+        stored
         '''
         self._connection = connection
+        self._bucket_name = bucket_name
 
     @classmethod
     def from_config(cls):
@@ -44,7 +47,7 @@ class BillUpload(object):
         return utilbill.sha256_hexdigest
 
     def _get_amazon_bucket(self):
-        return self._connection.get_bucket(config.get('bill', 'bucket'))
+        return self._connection.get_bucket(self._bucket_name)
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
         """Removes the pdf file associated with utilbill from s3.
