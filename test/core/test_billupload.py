@@ -1,5 +1,7 @@
-from boto.s3.connection import S3Connection
 from test import init_test_config
+# TODO rewrite this; it was accidentally deleted
+from billing.util.file_utils import make_directories_if_necessary
+
 init_test_config()
 
 from billing import init_model
@@ -21,6 +23,10 @@ class BillUploadTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         tmp_dir = join('/', 'tmp', 'fakes3_test')
+        bucket_name = config.get('bill', 'bucket')
+        path = join(tmp_dir, bucket_name)
+        make_directories_if_necessary(path)
+
         s3_args = ['fakes3', '--port', '4567', '--root', tmp_dir]
         cls.fakes3_process = subprocess.Popen(s3_args)
 
@@ -139,7 +145,6 @@ class BillUploadTest(unittest.TestCase):
         ub.sha256_hexdigest = '000000f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         s.add(ub)
         s.flush()
-
 
         self.bu.upload_utilbill_pdf_to_s3(ub, StringIO('test_file_upload'))
         key_name = self.bu._get_key_name(ub)
