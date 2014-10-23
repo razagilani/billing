@@ -1,5 +1,8 @@
-import smtplib
+from shutil import rmtree
+from boto.s3.connection import S3Connection
 from billing.test import init_test_config
+from billing.util.file_utils import make_directories_if_necessary
+
 init_test_config()
 
 import sys
@@ -7,10 +10,10 @@ import unittest
 from datetime import date
 import logging
 from mock import Mock
-from boto.s3.connection import S3Connection
 
 import mongoengine
 
+from os.path import join
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import rate_structure
@@ -21,7 +24,6 @@ from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.core.model import Utility
 from billing.core.billupload import BillUpload
-from billing.reebill.bill_mailer import Mailer
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -217,10 +219,27 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         logger = logging.getLogger('test')
 
+        # TODO: use testfixtures.TempDirectory for this save it as an
+        # instance variable, and clean it up in tearDown or tearDownClass
+        fakes3_root = '/tmp/fakes3_test'
+
+        # create directory on the filesystem to be used by the FakeS3 server
+        # as an "S3 bucket"
+        self.fakes3_bucket_absolute_path = join(fakes3_root,
+                                           config.get('bill', 'bucket'))
+        make_directories_if_necessary(self.fakes3_bucket_absolute_path)
+
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
-        self.billupload = BillUpload.from_config()
+        s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                  config.get('aws_s3', 'aws_secret_access_key'),
+                                  is_secure=config.get('aws_s3', 'is_secure'),
+                                  port=config.get('aws_s3', 'port'),
+                                  host=config.get('aws_s3', 'host'),
+                                  calling_format=config.get('aws_s3',
+                                                            'calling_format'))
+        self.billupload = BillUpload(s3_connection)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -297,7 +316,10 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.truncate_tables(self.session)
         Session.remove()
 
+        rmtree(self.fakes3_bucket_absolute_path)
         self.temp_dir.cleanup()
+
+
 
 if __name__ == '__main__':
     unittest.main()
