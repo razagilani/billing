@@ -351,3 +351,7 @@ class UtilbillProcessor(object):
                                                               start, limit)
         data = [ub.column_dict() for ub in utilbills]
         return data, total_count
+
+    def get_all_suppliers_json(self):
+        session = Session()
+        return [s.column_dict() for s in session.query(Supplier).all()]
