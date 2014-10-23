@@ -720,6 +720,12 @@ class SuppliersResource(RESTResource):
         suppliers = self.process.get_all_suppliers_json()
         return True, {'rows': suppliers, 'results': len(suppliers)}
 
+class UtilitiesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        utilities = self.process.get_all_utilities_json()
+        return True, {'rows': utilities, 'results': len(utilities)}
+
 
 class PaymentsResource(RESTResource):
 
@@ -914,6 +920,7 @@ class ReebillWSGI(WebResource):
     preferences = PreferencesResource()
     issuable = IssuableReebills()
     suppliers = SuppliersResource()
+    utilities = UtilitiesResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()
