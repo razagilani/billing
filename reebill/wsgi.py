@@ -108,8 +108,14 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
-        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
-        cache = json.load(open(cache_file)) if cache_file != "" else None
+        cache_file_path = self.config.get('skyline_backend',
+                                      'nexus_offline_cache_file')
+        with open(cache_file_path) as cache_file:
+            text = cache_file.read()
+        if text == '':
+            cache = []
+        else:
+            cache = json.load(text)
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
