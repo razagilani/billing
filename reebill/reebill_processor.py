@@ -13,7 +13,7 @@ from billing.reebill.state import (ReeBill, ReeBillCharge, Payment)
 from billing.util.monthmath import Month
 from billing.exc import IssuedBillError, NotIssuable, \
     NoSuchBillException, ConfirmAdjustment, FormulaError
-from processing.reebill_procesor import ACCOUNT_NAME_REGEX
+from billing.reebill.utilbill_processor import ACCOUNT_NAME_REGEX
 
 
 class ReebillProcessor(object):
