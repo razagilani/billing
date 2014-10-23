@@ -1,3 +1,4 @@
+from boto.s3.connection import S3Connection
 from test import init_test_config
 # TODO rewrite this; it was accidentally deleted
 from billing.util.file_utils import make_directories_if_necessary
@@ -36,7 +37,14 @@ class BillUploadTest(unittest.TestCase):
         cls.fakes3_process.wait()
 
     def setUp(self):
-        self.bu = BillUpload.from_config()
+        connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                  config.get('aws_s3', 'aws_secret_access_key'),
+                                  is_secure=config.get('aws_s3', 'is_secure'),
+                                  port=config.get('aws_s3', 'port'),
+                                  host=config.get('aws_s3', 'host'),
+                                  calling_format=config.get('aws_s3',
+                                                            'calling_format'))
+        self.bu = BillUpload(connection)
         init_model()
 
     def test_compute_hexdigest(self):
