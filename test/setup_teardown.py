@@ -252,7 +252,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   host=config.get('aws_s3', 'host'),
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
-        self.billupload = BillUpload(s3_connection)
+        self.billupload = BillUpload(s3_connection,
+                                     config.get('bill', 'bucket'))
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
