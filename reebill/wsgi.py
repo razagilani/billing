@@ -373,7 +373,6 @@ class IssuableReebills(RESTResource):
         bills = json.loads(reebills)
         reebills_with_corrections = []
         for bill in bills:
-            print bill
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             try:
@@ -409,16 +408,17 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        bills = self.process.issue_and_mail(apply_corrections=True, processed=True)
+        bills = self.process.issue_processed_and_mail(apply_corrections=True)
         for bill in bills:
             version = self.state_db.max_version(bill['account'], bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'], bill['sequence'], version,
-                    applied_sequence=bill['sequence'] if version != 0 else None)
+                    cherrypy.session['user'], bill['account'], bill['sequence'],
+                    version, applied_sequence=bill['sequence']
+                if version != 0 else None)
             if version == 0:
                 journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'], bill['sequence'],
-                    bill['mailto'])
+                        cherrypy.session['user'], bill['account'],
+                        bill['sequence'], bill['mailto'])
         return self.dumps({'success': True,
                     'issued': bills})
 
