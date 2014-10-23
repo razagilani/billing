@@ -2,20 +2,16 @@
 These tests should not connect to a network or database.
 '''
 from StringIO import StringIO
-from datetime import date
 import unittest
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from mock import Mock
-
 from boto.s3.bucket import Bucket
 
 from billing import init_model
-from billing.core.model import UtilBill, Customer, Address, Session, Utility, Supplier, \
-    UtilBillLoader
+from billing.core.model import UtilBill, UtilBillLoader
 from billing.core.billupload import BillUpload
-
 from test import init_test_config
 
 init_test_config()
@@ -88,25 +84,12 @@ class BillUploadTest(unittest.TestCase):
         delete_utilbill_pdf_from_S3 is called, if there are two UtilBill
         instances persisted having the given sha256_hexdigest"""
         sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
-        s = Session()
-        for x in range(2):
-            fb_utility = Utility('some_utility', Address(), '')
-            fb_supplier = Supplier('some_supplier', Address(), '')
-            ub = UtilBill(Customer('', str(x), 0.0, 0.0, '',
-                                   fb_utility, fb_supplier, 'rate_class', Address(),
-                                   Address()),
-                          0, 'gas', fb_utility, fb_supplier, 'test_rate_class',
-                          Address(), Address(), period_start=date(2014, 1, 1),
-                          period_end=date(2012, 1, 31))
-            ub.sha256_hexdigest = sha256_hexdigest
-            s.add(ub)
-        s.flush()
-
+        ub = Mock(autospec=UtilBill)
+        ub.sha256_hexdigest = sha256_hexdigest
         key_name = self.bu._get_key_name(ub)
 
-        utilbill = Mock(autospec=UtilBill)
         test_file = StringIO('test_file_data')
-        self.bu.upload_utilbill_pdf_to_s3(utilbill, test_file)
+        self.bu.upload_utilbill_pdf_to_s3(ub, test_file)
 
         #Ensure we've uploaded the file correctly
         self.bucket.new_key.assert_called_once_with(key_name)
