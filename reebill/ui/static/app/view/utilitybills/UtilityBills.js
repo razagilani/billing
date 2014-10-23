@@ -121,8 +121,15 @@ Ext.define('ReeBill.view.UtilityBills', {
         header: 'Utility',
         dataIndex: 'utility',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Utilities',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 10,
+            minChars: 1
         },
         width: 100
     },{
