@@ -1,6 +1,7 @@
+import json
 from datetime import datetime, timedelta
 from billing import config
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier
+from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility
 from billing.exc import NoSuchBillException, ProcessedBillError
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -13,6 +14,10 @@ class UtilbillProcessor(object):
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.logger = logger
+
+    # TODO this method might be replaced by the UtilbillLoader method
+    def _get_utilbill(self, utilbill_id):
+        return UtilBillLoader(Session()).get_utilbill_by_id(utilbill_id)
 
     def get_utilbill_charges_json(self, utilbill_id):
         """Returns a list of dictionaries of charges for the utility bill given
@@ -64,18 +69,21 @@ class UtilbillProcessor(object):
         #Register to be updated
         register = session.query(Register).filter(
             Register.id == register_id).one()
-        utilbill_id = register.utilbill_id
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        if utilbill.editable():
-            for k in ['description', 'quantity', 'quantity_units',
-                      'identifier', 'estimated', 'reg_type', 'register_binding',
-                      'active_periods', 'meter_identifier']:
-                val = rows.get(k, getattr(register, k))
-                self.logger.debug("Setting attribute %s on register %s to %s" %
-                                  (k, register.id, val))
-                setattr(register, k, val)
-            self.logger.debug("Commiting changes to register %s" % register.id)
-            self.compute_utility_bill(register.utilbill_id)
+
+        for k in ['description', 'quantity', 'quantity_units',
+                  'identifier', 'estimated', 'reg_type', 'register_binding',
+                  'meter_identifier']:
+            val = rows.get(k, getattr(register, k))
+            self.logger.debug("Setting attribute %s on register %s to %s" %
+                              (k, register.id, val))
+            setattr(register, k, val)
+        if 'active_periods' in rows and rows['active_periods'] is not None:
+            active_periods_str = json.dumps(rows['active_periods'])
+            self.logger.debug("Setting attribute active_periods on register"
+                              " %s to %s" % (register.id, active_periods_str))
+            register.active_periods = active_periods_str
+        self.logger.debug("Commiting changes to register %s" % register.id)
+        self.compute_utility_bill(register.utilbill_id)
         return register
 
     def delete_register(self, register_id):
@@ -85,7 +93,7 @@ class UtilbillProcessor(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             session.delete(register)
             session.commit()
@@ -93,7 +101,7 @@ class UtilbillProcessor(object):
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             charge = utilbill.add_charge()
             self.compute_utility_bill(utilbill_id)
@@ -104,15 +112,14 @@ class UtilbillProcessor(object):
         """Modify the charge given by charge_id
         by setting key-value pairs to match the dictionary 'fields'."""
         assert charge_id or utilbill_id and rsi_binding
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        session = Session()
+        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
+            if charge_id else \
+            session.query(Charge). \
+                filter(Charge.utilbill_id == utilbill_id). \
+                filter(Charge.rsi_binding == rsi_binding).one()
+        utilbill = self._get_utilbill(charge.utilbill.id)
         if utilbill.editable():
-            session = Session()
-            charge = session.query(Charge).filter(Charge.id == charge_id).one() \
-                if charge_id else \
-                session.query(Charge). \
-                    filter(Charge.utilbill_id == utilbill_id). \
-                    filter(Charge.rsi_binding == rsi_binding).one()
-
             for k, v in fields.iteritems():
                 if k not in Charge.column_names():
                     raise AttributeError("Charge has no attribute '%s'" % k)
@@ -125,7 +132,7 @@ class UtilbillProcessor(object):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         assert charge_id or utilbill_id and rsi_binding
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             session = Session()
             charge = session.query(Charge).filter(Charge.id == charge_id).one() \
@@ -144,9 +151,11 @@ class UtilbillProcessor(object):
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
-        try:
-            utilbill.editable()
+        utilbill = self._get_utilbill(utilbill_id)
+        #toggle processed state of utility bill
+        if processed is not None:
+                utilbill.processed = processed
+        if utilbill.editable():
             if target_total is not None:
                 utilbill.target_total = target_total
 
@@ -170,18 +179,11 @@ class UtilbillProcessor(object):
             utilbill.period_start = period_start
             utilbill.period_end = period_end
             self.compute_utility_bill(utilbill.id)
-            if processed is not None:
-                utilbill.processed = processed
-            else:
-                utilbill.processed = False
-        except ProcessedBillError:
-            if processed is not None:
-                utilbill.processed = processed
         return  utilbill
 
     def upload_utility_bill(self, account, service, begin_date,
             end_date, bill_file, utility=None, rate_class=None,
-            total=0, state=UtilBill.Complete):
+            total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -253,13 +255,15 @@ class UtilbillProcessor(object):
 
         utility = self.state_db.get_create_utility(utility) if utility else \
             getattr(predecessor, 'utility', None)
+        supplier = self.state_db.get_create_supplier(supplier) if supplier else \
+            getattr(predecessor, 'supplier', None)
         rate_class = rate_class if rate_class else \
             getattr(predecessor, 'rate_class', "")
 
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, rate_class,
+        new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
                                 period_start=begin_date, period_end=end_date,
@@ -302,11 +306,10 @@ class UtilbillProcessor(object):
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
 
-        if utility_bill.is_attached():
-            raise ValueError("Can't delete an attached utility bill.")
+        if utility_bill.is_attached() or not utility_bill.editable():
+            raise ValueError("Can't delete an attached or processed utility bill.")
 
-        if utility_bill.editable():
-            self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
+        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -314,13 +317,13 @@ class UtilbillProcessor(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-        return utility_bill
+        return utility_bill, utility_bill.pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         session = Session()
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             for charge in utilbill.charges:
                 session.delete(charge)
@@ -334,7 +337,7 @@ class UtilbillProcessor(object):
         Also updates some keys in the document that are duplicates of columns
         in the MySQL table.
         '''
-        utilbill = self.state_db.get_utilbill_by_id(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             utilbill.compute_charges()
         return utilbill
@@ -348,3 +351,11 @@ class UtilbillProcessor(object):
                                                               start, limit)
         data = [ub.column_dict() for ub in utilbills]
         return data, total_count
+
+    def get_all_suppliers_json(self):
+        session = Session()
+        return [s.column_dict() for s in session.query(Supplier).all()]
+
+    def get_all_utilities_json(self):
+        session = Session()
+        return [u.column_dict() for u in session.query(Utility).all()]

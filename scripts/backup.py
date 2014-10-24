@@ -164,6 +164,9 @@ def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    print 'created S3 key %s/%s version %s at %s' % (
+            s3_key.bucket.name, s3_key.name, s3_key.version_id,
+            s3_key.last_modified)
 
 def backup_mysql_local(file_path):
     command = MYSQLDUMP_COMMAND % db_params
@@ -184,7 +187,20 @@ def backup_mongo_collection_local(collection_name, file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
+def _recreate_mysql_db(root_password):
+    '''Drop and re-create MySQL database because mysqldump only includes drop
+    commands for tables that already exist in the backup.
+    '''
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
+    stdin, _, check_exit_status = run_command(command)
+    stdin.write('drop database %s;' % db_params['db'])
+    stdin.write('create database %s;' % db_params['db'])
+    stdin.close()
+    check_exit_status()
+
 def restore_mysql_s3(bucket, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
@@ -203,6 +219,7 @@ def restore_mysql_s3(bucket, root_password):
     check_exit_status()
 
 def restore_mysql_local(dump_file_path, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
@@ -290,7 +307,7 @@ def get_bucket(bucket_name, access_key, secret_key):
 
 def backup(args):
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
+    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))

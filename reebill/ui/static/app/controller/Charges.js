@@ -93,9 +93,6 @@ Ext.define('ReeBill.controller.Charges', {
         this.getNewCharge().setDisabled(processed);
         this.getRegenerateCharge().setDisabled(processed);
         this.getRecomputeCharges().setDisabled(processed);
-        var field = this.getFormulaField();
-        var groupTextField = this.getGroupTextField();
-
         if (!selectedBill)
             return;
 
@@ -104,9 +101,8 @@ Ext.define('ReeBill.controller.Charges', {
         };
         store.reload();
 
-        // Disable Text Fields on Activate
-        field.setDisabled(true);
-        groupTextField.setDisabled(true);
+        this.getChargesGrid().getSelectionModel().deselectAll();
+        this.updateTextFields();
     },
 
     /**
@@ -140,22 +136,11 @@ Ext.define('ReeBill.controller.Charges', {
     handleRowSelect: function() {
         var selectedAccount = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
-        var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
         var processed = selectedAccount.get('processed');
         this.getRemoveCharge().setDisabled(!hasSelections || processed);
-
-        // Set group in GroupTextField
-        if(hasSelections && selected !== undefined){
-            this.updateTextFields();
-            var field = this.getFormulaField();
-            field.setDisabled(false);
-            field.setValue(selected.get('quantity_formula'));
-        }
-
+        this.updateTextFields();
         this.getChargesGrid().focus();
      },
-
-
 
     /**
      * Update the GroupTextField
@@ -164,10 +149,19 @@ Ext.define('ReeBill.controller.Charges', {
         var hasSelections = this.getUtilityBillsGrid().getSelectionModel().getSelection().length > 0;
         var selected = this.getChargesGrid().getSelectionModel().getSelection()[0];
 
+        var groupTextField = this.getGroupTextField();
+        var formulaField = this.getFormulaField();
+
         if(hasSelections && selected !== undefined){
-            var groupTextField = this.getGroupTextField();
             groupTextField.setDisabled(false);
             groupTextField.setValue(selected.get('group'));
+            formulaField.setDisabled(false);
+            formulaField.setValue(selected.get('quantity_formula'));
+        }else{
+            groupTextField.setDisabled(true);
+            groupTextField.setValue('');
+            formulaField.setDisabled(true);
+            formulaField.setValue('');
         }
     },
 
@@ -181,12 +175,15 @@ Ext.define('ReeBill.controller.Charges', {
         if (!selectedBill || !selectedBill.length)
             return;
 
+        store.suspendAutoSync();
         store.add({'name': 'New RSI'});
         store.sync({success:function(batch){
             var record = batch.operations[0].records[0];
             var plugin = this.getChargesGrid().findPlugin('cellediting');
             plugin.startEdit(record, 2);
         }, scope: this});
+        store.resumeAutoSync();
+        this.updateTextFields();
     },
 
     /**
@@ -200,21 +197,42 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         store.remove(selected);
+        this.updateTextFields();
     },
 
     /**
      * Handle the regenerate button being clicked.
      */
     handleRegenerate: function() {
+        var grid = this.getChargesGrid();
+        grid.setLoading(true);
+        var store = this.getUtilityBillsStore();
+        store.suspendAutoSync();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'regenerate_charges');
+        store.sync({success:function(batch){
+            this.getChargesStore().reload();
+            grid.setLoading(false);
+        }, scope: this});
+        store.resumeAutoSync();
+        this.updateTextFields();
     },
 
     /**
      * Handle the recompute button being clicked.
      */
     handleRecompute: function() {
+        var grid = this.getChargesGrid();
+        grid.setLoading(true);
+        var store = this.getUtilityBillsStore();
+        store.suspendAutoSync();
         var selectedBill = this.getUtilityBillsGrid().getSelectionModel().getSelection()[0];
         selectedBill.set('action', 'compute');
+        store.sync({success:function(batch){
+            this.getChargesStore().reload();
+            grid.setLoading(false);
+        }, scope: this});
+        store.resumeAutoSync();
+        this.updateTextFields();
     }
 });

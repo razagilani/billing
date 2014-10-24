@@ -23,7 +23,6 @@ from billing.exc import NoSuchBillException, FormulaSyntaxError, ProcessedBillEr
 
 from billing.exc import FormulaError
 from exc import DatabaseError
-from billing import config
 
 __all__ = [
     'Address',
@@ -172,6 +171,10 @@ class Address(Base):
     def __str__(self):
         return '%s, %s, %s' % (self.street, self.city, self.state)
 
+    def column_dict(self):
+        raise NotImplementedError
+
+    # TODO rename to column_dict
     def to_dict(self):
         return {
             #'id': self.id,
@@ -267,7 +270,7 @@ class Customer(Base):
     fb_supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
 
-    fb_supplier = relationship('Supplier', uselist=False, cascade='all',
+    fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='Customer.fb_supplier_id==Supplier.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
@@ -275,6 +278,7 @@ class Customer(Base):
     primaryjoin='Customer.fb_service_address_id==Address.id')
 
     fb_utility = relationship('Utility')
+
     def get_discount_rate(self):
         return self.discountrate
 
@@ -288,8 +292,8 @@ class Customer(Base):
         self.latechargerate = value
 
     def __init__(self, name, account, discount_rate, late_charge_rate,
-                 bill_email_recipient, fb_utility, fb_rate_class,
-                 fb_billing_address, fb_service_address):
+                bill_email_recipient, fb_utility, fb_supplier,
+                fb_rate_class, fb_billing_address, fb_service_address):
         """Construct a new :class:`.Customer`.
         :param name: The name of the customer.
         :param account:
@@ -299,6 +303,8 @@ class Customer(Base):
         address for skyline-generated bills
         :fb_utility: The :class:`.Utility` to be assigned to the the first
         `UtilityBill` associated with this customer.
+        :fb_supplier: The :class: 'Supplier' to be assigned to the first
+        'UtilityBill' associated with this customer
         :fb_rate_class": "first bill rate class" (see fb_utility_name)
         :fb_billing_address: (as previous)
         :fb_service address: (as previous)
@@ -309,6 +315,7 @@ class Customer(Base):
         self.latechargerate = late_charge_rate
         self.bill_email_recipient = bill_email_recipient
         self.fb_utility = fb_utility
+        self.fb_supplier = fb_supplier
         self.fb_rate_class = fb_rate_class
         self.fb_billing_address = fb_billing_address
         self.fb_service_address = fb_service_address
@@ -352,7 +359,7 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
-    supplier = relationship('Supplier', uselist=False, cascade='all',
+    supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
@@ -362,14 +369,11 @@ class UtilBill(Base):
 
     @property
     def pdf_url(self):
+        # TODO fix this by moving the method to another class which can be
+        # initialized with the bucket name (and S3 URL)
+        from billing import config
         return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
                (config.get('bill', 'bucket'), self.sha256_hexdigest)
-
-    @property
-    def bindings(self):
-        """Returns all bindings across both charges and registers"""
-        return set([c.rsi_binding for c in self.charges] +
-                   [r.register_binding for r in self.registers])
 
     @staticmethod
     def validate_utilbill_period(start, end):
@@ -404,7 +408,7 @@ class UtilBill(Base):
     }
 
     # TODO remove uprs_id, doc_id
-    def __init__(self, customer, state, service, utility, rate_class,
+    def __init__(self, customer, state, service, utility, supplier, rate_class,
                  billing_address, service_address, account_number='',
                  period_start=None, period_end=None, doc_id=None, uprs_id=None,
                  target_total=0, date_received=None, processed=False,
@@ -429,6 +433,7 @@ class UtilBill(Base):
         self.document_id = doc_id
         self.uprs_document_id = uprs_id
         self.sha256_hexdigest = sha256_hexdigest
+        self.supplier = supplier
 
     def state_name(self):
         return self.__class__._state_descriptions[self.state]
@@ -442,33 +447,19 @@ class UtilBill(Base):
     def is_attached(self):
         return len(self._utilbill_reebills) > 0
 
-    def sequence_version_json(self):
-        '''Returns a list of dictionaries describing reebill versions attached
-        to this utility bill. Each element is of the form {"sequence":
-        sequence, "version": version}. The elements are sorted by sequence and
-        by version within the same sequence.
-        '''
-        return sorted(
-            ({'sequence': ur.reebill.sequence, 'version': ur.reebill.version,
-              'issue_date': ur.reebill.issue_date}
-             for ur in self._utilbill_reebills),
-            key=lambda element: (element['sequence'], element['version'])
-        )
-
     def add_charge(self):
         session = Session.object_session(self)
         all_rsi_bindings = set([c.rsi_binding for c in self.charges])
         n = 1
-        while ('New RSI #%s' % n) in all_rsi_bindings:
+        while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
         charge = Charge(utilbill=self,
+                        rsi_binding="New Charge %s" % n,
+                        rate=0.0,
                         description="New Charge - Insert description here",
                         group="",
-                        quantity=0.0,
                         unit="",
-                        rate=0.0,
-                        rsi_binding="New RSI #%s" % n,
-                        total=0.0)
+                        )
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
@@ -539,7 +530,7 @@ class UtilBill(Base):
 
     def editable(self):
         if self.processed:
-            raise ProcessedBillError('Processed utilbill cannot be edited')
+            return False
         return True
 
     def get_charge_by_rsi_binding(self, binding):
@@ -699,19 +690,15 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, description, group, quantity, unit,
-                 rate, rsi_binding, total, quantity_formula="", has_charge=True,
-                 shared=False, roundrule=""):
+    def __init__(self, utilbill, rsi_binding, rate, description='', group='', unit='', quantity_formula="",
+            has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
         :param group: The charge group
-        :param quantity: The quantity consumed
         :param unit: The units of the quantity (i.e. Therms/kWh)
-        :param rate: The charge per unit of quantity
         :param rsi_binding: The rate structure item corresponding to the charge
-        :param total: The total charge (equal to rate * quantity)
 
         :param quantity_formula: The RSI quantity formula
         :param has_charge:
@@ -722,15 +709,13 @@ class Charge(Base):
         self.utilbill = utilbill
         self.description = description
         self.group = group
-        self.quantity = quantity
         self.unit = unit
-        self.rate = rate
         self.rsi_binding = rsi_binding
-        self.total = total
 
         self.quantity_formula = quantity_formula
         self.has_charge = has_charge
         self.shared = shared
+        self.rate=rate
         self.roundrule = roundrule
 
     @classmethod
@@ -738,13 +723,11 @@ class Charge(Base):
         """Constructs a charge copying the formulas and data
         from the other charge, but does not set the utilbill"""
         return cls(None,
+                   other.rsi_binding,
+                   other.rate,
                    other.description,
                    other.group,
-                   other.quantity,
                    other.unit,
-                   other.rate,
-                   other.rsi_binding,
-                   other.total,
                    quantity_formula=other.quantity_formula,
                    has_charge=other.has_charge,
                    shared=other.shared,
@@ -814,6 +797,10 @@ class UtilBillLoader(object):
         '''
         self._session = session
 
+    def get_utilbill_by_id(self, utilbill_id):
+        '''Return utilbill with the given id.'''
+        return self._session.query(UtilBill).filter_by(id=utilbill_id).one()
+
     def load_real_utilbills(self, **kwargs):
         '''Returns a cursor of UtilBill objects matching the criteria given
         by **kwargs. Only "real" utility bills (i.e. UtilBill objects with
@@ -851,3 +838,8 @@ class UtilBillLoader(object):
             raise NoSuchBillException
         return result
 
+    def count_utilbills_with_hash(self, hash):
+        '''Return the number of utility bills having the given SHA-265 hash.
+        '''
+        return self._session.query(UtilBill).filter_by(
+                sha256_hexdigest=hash).count()

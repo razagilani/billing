@@ -10,11 +10,14 @@ class BillUpload(object):
     '''Utility bill file handler. TODO: rename.
     '''
 
-    def __init__(self, connection):
+    def __init__(self, connection, bucket_name, utilbill_loader):
         ''':param connection: boto.s3.S3Connection
+        :param bucket_name: name of S3 bucket where utility bill files are
+        stored
         '''
         self._connection = connection
-        self._create_amazon_bucket()
+        self._bucket_name = bucket_name
+        self._utilbill_loader = utilbill_loader
 
     @classmethod
     def from_config(cls):
@@ -44,19 +47,15 @@ class BillUpload(object):
     def _get_key_name(utilbill):
         return utilbill.sha256_hexdigest
 
-    def _create_amazon_bucket(self):
-        self._connection.create_bucket(config.get('bill', 'bucket'))
-
     def _get_amazon_bucket(self):
-        return self._connection.get_bucket(config.get('bill', 'bucket'))
+        return self._connection.get_bucket(self._bucket_name)
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
         """Removes the pdf file associated with utilbill from s3.
         """
-        session = Session()
         # TODO: fail if count is not 1?
-        if session.query(UtilBill).filter_by(
-                sha256_hexdigest=utilbill.sha256_hexdigest).count() == 1:
+        if self._utilbill_loader.count_utilbills_with_hash(
+                utilbill.sha256_hexdigest) == 1:
             key_name = BillUpload._get_key_name(utilbill)
             key = self._get_amazon_bucket().get_key(key_name)
             key.delete()
