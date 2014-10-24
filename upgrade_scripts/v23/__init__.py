@@ -149,7 +149,11 @@ def upgrade():
 
     init_model(schema_revision='6446c51511c')
     session = Session()
+    # TODO: this can't work because the SQLAlchemy code expects the column
+    # names to be the new ones, not the old ones
     clean_up_units(session)
+
+    alembic_upgrade('37863ab171d1')
 
     log.info('Upgrading schema to revision fc9faca7a7f')
     alembic_upgrade('fc9faca7a7f')
