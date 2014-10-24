@@ -11,7 +11,9 @@ import smtplib
 from jinja2 import Template
 from billing.util.email_util import send_email
 
-TEMPLATE_FILE_NAME = 'issue_email_template.html'
+TEMPLATE_FILE_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    '..', 'reebill', 'reebill_templates', 'issue_email_template.html')
 
 class Mailer(object):
     '''
@@ -48,8 +50,7 @@ class Mailer(object):
         subject = "Nextility: Your Monthly Bill for %s" % (merge_fields["street"])
         attachment_paths = [os.path.join(bill_path, file_name) for file_name in
                 bill_files]
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..',
-            'reebill', 'ui', self.template_html)) as template_file:
+        with open(TEMPLATE_FILE_PATH) as template_file:
             template_html = template_file.read()
             '''send_email(self._mail_from, recipients, subject, self._originator, self._password,
                     self._smtp_host,

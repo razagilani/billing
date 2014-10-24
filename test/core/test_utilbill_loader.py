@@ -4,7 +4,7 @@ from datetime import date
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing import init_config, init_model
 from billing.core.model import Customer, UtilBill, Session, \
-    Address, UtilBillLoader, Utility
+    Address, UtilBillLoader, Utility, Supplier
 from billing.exc import NoSuchBillException
 
 
@@ -17,11 +17,12 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.session = Session()
         TestCaseWithSetup.truncate_tables(self.session)
         blank_address = Address()
-        customer = Customer('Test Customer', 99999, .12, .34,
+        self.customer = Customer('Test Customer', 99999, .12, .34,
                             'example@example.com', Utility('Test Utility',
-                            Address(), ''), 'FB Test Rate Class', blank_address,
+                            Address(), ''), Supplier('Test Supplier', Address(),
+                            ''), 'FB Test Rate Class', blank_address,
                             blank_address)
-        self.session.add(customer)
+        self.session.add(self.customer)
         self.session.commit()
 
         self.session = Session()
@@ -36,7 +37,9 @@ class UtilbillLoaderTest(TestCaseWithSetup):
     def test_get_last_real_utilbill(self):
         customer = self.session.query(Customer).one()
         washington_gas = customer.fb_utility
+        supplier = customer.fb_supplier
         pepco = Utility('pepco', Address(), '')
+        other_supplier = Supplier('Other Supplier', Address(), '')
 
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999',
@@ -44,7 +47,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
 
         # one bill
         empty_address = Address()
-        gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas,
+        gas_bill_1 = UtilBill(customer, 0, 'gas', washington_gas, supplier,
                               'DC Non Residential Non Heat', empty_address, empty_address,
                               period_start=date(2000,1,1), period_end=date(2000,2,1))
         self.session.add(gas_bill_1)
@@ -56,7 +59,7 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2000,1,31))
 
         # two bills
-        electric_bill = UtilBill(customer, 0, 'electric', pepco,
+        electric_bill = UtilBill(customer, 0, 'electric', pepco, other_supplier,
                                  'whatever', empty_address, empty_address,
                                  period_start=date(2000,1,2), period_end=date(2000,2,2))
         self.assertEqual(electric_bill,
@@ -110,6 +113,31 @@ class UtilbillLoaderTest(TestCaseWithSetup):
         self.assertRaises(NoSuchBillException,
                           self.ubl.get_last_real_utilbill, '99999', date(2000,3,1))
 
+    def test_count_utilbills_with_hash(self):
+        hash = '01234567890abcdef'
+        self.assertEqual(0, self.ubl.count_utilbills_with_hash(hash))
+
+        self.session.add(
+            UtilBill(self.customer, 0, 'gas', self.customer.fb_utility,
+                     self.customer.fb_supplier, 'DC Non Residential Non Heat',
+                     Address(), Address(), period_start=date(2000, 1, 1),
+                     period_end=date(2000, 2, 1), sha256_hexdigest=hash))
+        self.assertEqual(1, self.ubl.count_utilbills_with_hash(hash))
+
+        self.session.add(
+            UtilBill(self.customer, 0, 'gas', self.customer.fb_utility,
+                     self.customer.fb_supplier, 'DC Non Residential Non Heat',
+                     Address(), Address(), period_start=date(2000, 2, 1),
+                     period_end=date(2000, 3, 1), sha256_hexdigest=hash))
+        self.assertEqual(2, self.ubl.count_utilbills_with_hash(hash))
+
+        self.session.add(
+            UtilBill(self.customer, 0, 'gas', self.customer.fb_utility,
+                     self.customer.fb_supplier, 'DC Non Residential Non Heat',
+                     Address(), Address(), period_start=date(2000, 3, 1),
+                     period_end=date(2000, 4, 1),
+                     sha256_hexdigest='somethingelse'))
+        self.assertEqual(2, self.ubl.count_utilbills_with_hash(hash))
 
 if __name__ == '__main__':
     unittest.main()

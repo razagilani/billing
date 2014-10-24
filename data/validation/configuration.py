@@ -70,7 +70,7 @@ class authentication(Schema):
     authenticate = StringBool()
     
 class reebillrendering(Schema):
-    template_directory = Directory()
+    template_directory = String()
     default_template = String()
     teva_accounts = String()
     

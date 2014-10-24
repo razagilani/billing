@@ -76,7 +76,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                     'rate': 1, 'rsi_binding': 'A',
                                     'description':'a'},
                                    utilbill_id=utilbill_data['id'],
-                                   rsi_binding='New RSI #1')
+                                   rsi_binding='New Charge 1')
 
         ubdata = self.process.get_all_utilbills_json('88888', 0, 30)[0][0]
         self.assertDictContainsSubset({
@@ -109,9 +109,10 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.create_new_account('77777', 'New Account', 'thermal',
                 0.6, 0.2, billing_address, service_address, '88888')
         self.process.create_new_account('66666', 'New Account', 'thermal',
-            0.6, 0.2, billing_address, service_address, '88888')
+                0.6, 0.2, billing_address, service_address, '77777')
 
-        # Try rolling a reebill for a new account that has no utility bills uploaded yet
+        # Try creating a reebill for a new account that has no utility bills
+        # uploaded yet
         self.assertRaises(NoResultFound, self.process.roll_reebill,
                           '777777', start_date=date(2013, 2, 1))
 
@@ -218,7 +219,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             with self.assertRaises(ValueError):
                 self.process.upload_utility_bill(
                     account, 'electric', start, end, StringIO(),
-                    utility=customer.fb_utility, rate_class='Residential-R')
+                    utility=customer.fb_utility, supplier=customer.fb_supplier,
+                    rate_class='Residential-R')
 
         # one utility bill
         # service, utility, rate_class are different from the template
@@ -232,6 +234,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                              date(2012, 1, 1),
                                              date(2012, 2, 1), file1,
                                              utility='pepco',
+                                             supplier = 'supplier',
                                              rate_class='Residential-R')
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
@@ -240,6 +243,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'state': 'Final',
                                           'service': 'Electric',
                                           'utility': 'pepco',
+                                          'supplier': 'supplier',
                                           'rate_class': 'Residential-R',
                                           'period_start': date(2012, 1, 1),
                                           'period_end': date(2012, 2, 1),
@@ -265,7 +269,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 2, 1),
                                              date(2012, 3, 1), file2,
-                                             utility='pepco')
+                                             utility='pepco',
+                                             supplier='supplier')
         utilbills_data, _ = self.process.get_all_utilbills_json(
             account, 0,
             30)
@@ -273,6 +278,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'state': 'Final',
                             'service': 'Electric',
                             'utility': 'pepco',
+                            'supplier': 'supplier',
                             'rate_class': 'Residential-R',
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
@@ -285,6 +291,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'state': 'Final',
                             'service': 'Electric',
                             'utility': 'pepco',
+                            'supplier': 'supplier',
                             'rate_class': 'Residential-R',
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
@@ -303,13 +310,16 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                          None,
                                          state=UtilBill.Estimated,
                                          utility='washgas',
-                                         rate_class='DC Non Residential Non Heat')
+                                         supplier='supplier',
+                                         rate_class='DC Non Residential Non Heat'
+                                         )
         utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
                                                                 30)
         dictionaries = [{
                             'state': 'Estimated',
                             'service': 'Gas',
                             'utility': 'washgas',
+                            'supplier': 'supplier',
                             'rate_class': 'DC Non Residential Non Heat',
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
@@ -323,6 +333,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'state': 'Final',
                             'service': 'Electric',
                             'utility': 'pepco',
+                            'supplier': 'supplier',
                             'rate_class': 'Residential-R',
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
@@ -335,6 +346,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             'state': 'Final',
                             'service': 'Electric',
                             'utility': 'pepco',
+                            'supplier': 'supplier',
                             'rate_class': 'Residential-R',
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
@@ -367,6 +379,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'state': 'Final',
                                           'service': 'Electric',
                                           'utility': 'pepco',
+                                          'supplier': 'supplier',
                                           'rate_class': 'Residential-R',
                                           'period_start': date(2012, 4, 1),
                                           'period_end': date(2012, 5, 1),
@@ -381,7 +394,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # estimated one)
         for obj in utilbills_data:
             id, state = obj['id'], obj['state']
-            u = self.state_db.get_utilbill_by_id(id)
+            u = Session().query(UtilBill).filter_by(id=id).one()
             if state == 'Final':
                 key_name = self.billupload._get_key_name(u)
                 key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
@@ -504,7 +517,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'rate': 11.2,
                                        'shared': True,
                                        'group': 'A',
-                                       }, utilbill_id=id_a, rsi_binding='New RSI #1')
+                                       }, utilbill_id=id_a, rsi_binding='New Charge 1')
         self.process.update_charge({
                                        'rsi_binding': 'NOT_SHARED',
                                        'description': 'System Charge',
@@ -512,7 +525,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'rate': 3,
                                        'shared': False,
                                        'group': 'B',
-                                       }, utilbill_id=id_a, rsi_binding='New RSI #2')
+                                       }, utilbill_id=id_a, rsi_binding='New Charge 2')
         for i in (id_b, id_c):
             self.process.add_charge(i)
             self.process.add_charge(i)
@@ -523,7 +536,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'rate': 220.16,
                                            'shared': True,
                                            'group': 'C',
-                                           }, utilbill_id=i, rsi_binding='New RSI #1')
+                                           }, utilbill_id=i, rsi_binding='New Charge 1')
             self.process.update_charge({
                                            'rsi_binding': 'PGC',
                                            'description': 'Purchased Gas Charge',
@@ -531,7 +544,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                            'rate': 0.7563,
                                            'shared': True,
                                            'group': 'D',
-                                           }, utilbill_id=i, rsi_binding='New RSI #2')
+                                           }, utilbill_id=i, rsi_binding='New Charge 2')
 
         # create utility bill and reebill #2 for A
         self.process.upload_utility_bill(acc_a,
@@ -574,7 +587,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '750.10197727',
                                        'rate': 0.03059,
                                        'shared': True
-                                   }, utilbill_id=id_a_2, rsi_binding='New RSI #1')
+                                   }, utilbill_id=id_a_2, rsi_binding='New Charge 1')
 
         # create B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
         # the latter are more numerous, but A-1 should outweigh them
@@ -646,7 +659,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_units':'kWh'
                                    },
                                    utilbill_id=utilbill_data['id'],
-                                   rsi_binding='New RSI #1')
+                                   rsi_binding='New Charge 1')
 
         self.process.add_charge(utilbill_data['id'])
         self.process.update_charge({
@@ -657,7 +670,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_units':'therms',
                                        'group': 'All Charges',
                                        'shared': False
-                                   }, utilbill_id=utilbill_data['id'], rsi_binding='New RSI #1')
+                                   }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
 
         # compute_utility_bill should update the document to match
         self.process.compute_utility_bill(utilbill_data['id'])
@@ -746,7 +759,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         for fields in example_charge_fields:
             self.process.add_charge(utilbill_id)
             self.process.update_charge(fields, utilbill_id=utilbill_id,
-                                       rsi_binding="New RSI #1")
+                                       rsi_binding="New Charge 1")
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
