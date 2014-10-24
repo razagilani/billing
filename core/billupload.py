@@ -1,14 +1,17 @@
 #!/usr/bin/python
 import hashlib
-from boto.s3.connection import S3Connection
-import os
-from billing import config
-from billing.core.model import Session, UtilBill
 
-HASH_CHUNK_SIZE = 1024 ** 2
+from boto.s3.connection import S3Connection
+
+from billing import config
+
+
 class BillUpload(object):
-    '''Utility bill file handler. TODO: rename.
+    '''This class handles everything related to utility bill files, which are
+    now stored in Amazon S3.
+    TODO: rename.
     '''
+    HASH_CHUNK_SIZE = 1024 ** 2
 
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
@@ -34,14 +37,14 @@ class BillUpload(object):
                                 calling_format=config.get('aws_s3',
                                                           'calling_format')))
 
-    @staticmethod
-    def compute_hexdigest(file):
+    @classmethod
+    def compute_hexdigest(cls, file):
         '''Return SHA-256 hash of the given file (must be seekable).
         '''
         hash_function = hashlib.sha256()
         position = file.tell()
         while True:
-            data = file.read(HASH_CHUNK_SIZE)
+            data = file.read(cls.HASH_CHUNK_SIZE)
             hash_function.update(data)
             if data == '':
                 break
