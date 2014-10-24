@@ -32,7 +32,7 @@ from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import process, state, fetch_bill_data as fbd
 from billing.core.rate_structure import RateStructureDAO
-from billing.core.model import Session
+from billing.core.model import Session, UtilBillLoader
 from billing.core.billupload import BillUpload
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
@@ -108,8 +108,14 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
-        cache_file = self.config.get('skyline_backend', 'nexus_offline_cache_file')
-        cache = json.load(open(cache_file)) if cache_file != "" else None
+        cache_file_path = self.config.get('skyline_backend',
+                                      'nexus_offline_cache_file')
+        with open(cache_file_path) as cache_file:
+            text = cache_file.read()
+        if text == '':
+            cache = []
+        else:
+            cache = json.load(text)
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
@@ -128,7 +134,10 @@ class WebResource(object):
                 port=config.get('aws_s3', 'port'),
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
-        self.billUpload = BillUpload(s3_connection)
+        utilbill_loader = UtilBillLoader(Session())
+        self.billUpload = BillUpload(s3_connection,
+                                     config.get('bill', 'bucket'),
+                                     utilbill_loader)
 
         # create a RateStructureDAO
         self.ratestructure_dao = RateStructureDAO(logger=self.logger)
@@ -373,7 +382,6 @@ class IssuableReebills(RESTResource):
         bills = json.loads(reebills)
         reebills_with_corrections = []
         for bill in bills:
-            print bill
             account, sequence = bill['account'], int(bill['sequence'])
             recipient_list = bill['recipients']
             try:
@@ -409,16 +417,17 @@ class IssuableReebills(RESTResource):
     @db_commit
     def issue_processed_and_mail(self, **kwargs):
         params = cherrypy.request.params
-        bills = self.process.issue_and_mail(apply_corrections=True, processed=True)
+        bills = self.process.issue_processed_and_mail(apply_corrections=True)
         for bill in bills:
             version = self.state_db.max_version(bill['account'], bill['sequence'])
             journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], bill['account'], bill['sequence'], version,
-                    applied_sequence=bill['sequence'] if version != 0 else None)
+                    cherrypy.session['user'], bill['account'], bill['sequence'],
+                    version, applied_sequence=bill['sequence']
+                if version != 0 else None)
             if version == 0:
                 journal.ReeBillMailedEvent.save_instance(
-                        cherrypy.session['user'], bill['account'], bill['sequence'],
-                    bill['mailto'])
+                        cherrypy.session['user'], bill['account'],
+                        bill['sequence'], bill['mailto'])
         return self.dumps({'success': True,
                     'issued': bills})
 
@@ -714,6 +723,19 @@ class ChargesResource(RESTResource):
         return True, {}
 
 
+class SuppliersResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        suppliers = self.process.get_all_suppliers_json()
+        return True, {'rows': suppliers, 'results': len(suppliers)}
+
+class UtilitiesResource(RESTResource):
+
+    def handle_get(self, *vpath, **params):
+        utilities = self.process.get_all_utilities_json()
+        return True, {'rows': utilities, 'results': len(utilities)}
+
+
 class PaymentsResource(RESTResource):
 
     def handle_get(self, account, start, limit, *vpath, **params):
@@ -906,6 +928,8 @@ class ReebillWSGI(WebResource):
     reports = ReportsResource()
     preferences = PreferencesResource()
     issuable = IssuableReebills()
+    suppliers = SuppliersResource()
+    utilities = UtilitiesResource()
 
     @cherrypy.expose
     @cherrypy.tools.authenticate()

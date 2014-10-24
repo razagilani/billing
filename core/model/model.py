@@ -444,14 +444,8 @@ class UtilBill(Base):
         n = 1
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
-        charge = Charge(utilbill=self,
-                        description="New Charge - Insert description here",
-                        group="",
-                        quantity=0.0,
-                        quantity_units="",
-                        rate=0.0,
-                        rsi_binding="New Charge %s" % n,
-                        total=0.0)
+        charge = Charge(utilbill=self, rsi_binding="New Charge %s" % n,
+                        description="New Charge - Insert description here", group="", quantity_units="")
         session.add(charge)
         registers = self.registers
         charge.quantity_formula = '' if len(registers) == 0 else \
@@ -672,19 +666,15 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, description, group, quantity, quantity_units,
-                 rate, rsi_binding, total, quantity_formula="", has_charge=True,
-                 shared=False, roundrule=""):
+    def __init__(self, utilbill, rsi_binding, description='', group='', quantity_units='', quantity_formula="",
+            has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
         :param group: The charge group
-        :param quantity: The quantity consumed
         :param quantity_units: The units of the quantity (i.e. Therms/kWh)
-        :param rate: The charge per unit of quantity
         :param rsi_binding: The rate structure item corresponding to the charge
-        :param total: The total charge (equal to rate * quantity)
 
         :param quantity_formula: The RSI quantity formula
         :param has_charge:
@@ -695,11 +685,8 @@ class Charge(Base):
         self.utilbill = utilbill
         self.description = description
         self.group = group
-        self.quantity = quantity
         self.quantity_units = quantity_units
-        self.rate = rate
         self.rsi_binding = rsi_binding
-        self.total = total
 
         self.quantity_formula = quantity_formula
         self.has_charge = has_charge
@@ -828,3 +815,8 @@ class UtilBillLoader(object):
             raise NoSuchBillException
         return result
 
+    def count_utilbills_with_hash(self, hash):
+        '''Return the number of utility bills having the given SHA-265 hash.
+        '''
+        return self._session.query(UtilBill).filter_by(
+                sha256_hexdigest=hash).count()

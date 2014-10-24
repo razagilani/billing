@@ -1,26 +1,30 @@
-import smtplib
+from shutil import rmtree
+import subprocess
+from boto.s3.connection import S3Connection
 from billing.test import init_test_config
+from billing.util.file_utils import make_directories_if_necessary
+
 init_test_config()
 
 import sys
 import unittest
 from datetime import date
 import logging
-from boto.s3.connection import S3Connection
+from mock import Mock
 
 import mongoengine
 
+from os.path import join
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import rate_structure
-from billing.core.model import Supplier
+from billing.core.model import Supplier, UtilBillLoader
 from billing.reebill import journal
 from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.core.model import Utility
 from billing.core.billupload import BillUpload
-from billing.reebill.bill_mailer import Mailer
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -54,11 +58,33 @@ class TestCaseWithSetup(test_utils.TestCase):
     '''Contains setUp/tearDown code for all test cases that need to use ReeBill
     databases.'''
 
+    @classmethod
+    def setUpClass(cls):
+        from billing import config
+        # create root directory on the filesystem for the FakeS3 server,
+        # and inside it, a directory to be used as an "S3 bucket".
+        cls.fakes3_root_dir = TempDirectory()
+        bucket_name = config.get('bill', 'bucket')
+        make_directories_if_necessary(join(cls.fakes3_root_dir.path,
+                                           bucket_name))
+
+        # start FakeS3 as a subprocess
+        fakes3_args = ['fakes3', '--port', '4567', '--root',
+                   cls.fakes3_root_dir.path]
+        cls.fakes3_process = subprocess.Popen(fakes3_args)
+        assert cls.fakes3_process.poll() is None
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fakes3_process.kill()
+        cls.fakes3_process.wait()
+        cls.fakes3_root_dir.cleanup()
+
     @staticmethod
     def truncate_tables(session):
-        for t in ["utilbill_reebill", "register", "utilbill", "payment",
-                  "reebill", "customer", "supplier", "company", "charge",
-                  "address", "reading", "reebill_charge"]:
+        for t in ["utilbill_reebill", "register", "payment", "reebill",
+                  "charge", "utilbill",  "reading", "reebill_charge",
+                  "customer", "supplier", "company", "address"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -219,7 +245,17 @@ class TestCaseWithSetup(test_utils.TestCase):
         # TODO most or all of these dependencies do not need to be instance
         # variables because they're not accessed outside __init__
         self.state_db = StateDB(logger)
-        self.billupload = BillUpload.from_config()
+        s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                  config.get('aws_s3', 'aws_secret_access_key'),
+                                  is_secure=config.get('aws_s3', 'is_secure'),
+                                  port=config.get('aws_s3', 'port'),
+                                  host=config.get('aws_s3', 'host'),
+                                  calling_format=config.get('aws_s3',
+                                                            'calling_format'))
+        utilbill_loader = UtilBillLoader(Session())
+        self.billupload = BillUpload(s3_connection,
+                                     config.get('bill', 'bucket'),
+                                     utilbill_loader)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -257,17 +293,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                 },
         ])
         mailer_opts = dict(config.items("mailer"))
-        server = smtplib.SMTP(mailer_opts['smtp_host'], mailer_opts['smtp_port'])
-        bill_mailer = Mailer(
-                mailer_opts['mail_from'],
-                mailer_opts['originator'],
-                mailer_opts['password'],
-                mailer_opts['template_file_name'],
-                mailer_opts['smtp_host'],
-                mailer_opts['smtp_port'],
-                server,
-                mailer_opts['bcc_list']
-        )
+        bill_mailer = Mock()
 
         self.temp_dir = TempDirectory()
         reebill_file_handler = ReebillFileHandler(
@@ -307,6 +333,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         Session.remove()
 
         self.temp_dir.cleanup()
+
+
 
 if __name__ == '__main__':
     unittest.main()
