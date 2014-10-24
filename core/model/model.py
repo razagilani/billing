@@ -444,9 +444,12 @@ class UtilBill(Base):
         n = 1
         while ('New Charge %s' % n) in all_rsi_bindings:
             n += 1
-        charge = Charge(utilbill=self, rsi_binding="New Charge %s" % n,
+        charge = Charge(utilbill=self,
                         rsi_binding="New Charge %s" % n,
                         rate=0.0,
+                        description="New Charge - Insert description here",
+                        group="",
+                        quantity_units="",
                         )
         session.add(charge)
         registers = self.registers
@@ -693,6 +696,7 @@ class Charge(Base):
         self.quantity_formula = quantity_formula
         self.has_charge = has_charge
         self.shared = shared
+        self.rate=rate
         self.roundrule = roundrule
 
     @classmethod
