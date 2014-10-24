@@ -348,6 +348,12 @@ class UtilBill(Base):
     # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
 
+    # date when a process was run to extract data from the bill file to fill in
+    # data automatically. (note this is different from data scraped from the
+    # utility web site, because that can only be done while the bill is being
+    # downloaded and can't take into account information from other sources.)
+    date_scraped = Column(DateTime)
+
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
     supplier = relationship('Supplier', uselist=False,
