@@ -557,7 +557,7 @@ class UtilBill(Base):
                      ('utility', self.utility.name),
                      ('supplier', self.supplier.name),
                      ('state', self.state_name()),
-                     ('pdf_url', self.pdf_url)])
+                     ])
 
 class Register(Base):
     """A register reading on a utility bill"""
