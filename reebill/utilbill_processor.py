@@ -318,7 +318,9 @@ class UtilbillProcessor(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-        return utility_bill, utility_bill.pdf_url
+
+        pdf_url = self.billupload.get_s3_url(utility_bill)
+        return utility_bill, pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.

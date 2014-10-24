@@ -256,9 +256,12 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
         utilbill_loader = UtilBillLoader(Session())
+        # TODO make this entire URL configurable instead of just the parts
+        url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
+                config.get('aws_s3', 'host'))
         self.billupload = BillUpload(s3_connection,
                                      config.get('bill', 'bucket'),
-                                     utilbill_loader)
+                                     utilbill_loader, url_format)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
