@@ -35,8 +35,11 @@ def upgrade():
     op.add_column('utilbill',
     sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
     op.add_column('customer',
-    sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
-)
+        sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
+    )
+
+    op.add_column('utilbill', sa.Column('date_scraped', sa.DateTime,
+                                        nullable=True))
 
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')
