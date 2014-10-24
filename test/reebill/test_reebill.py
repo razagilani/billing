@@ -27,10 +27,10 @@ class ReebillTest(unittest.TestCase):
                                 register_binding='REG_TOTAL')
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge(self.utilbill, 'A', 2, 'a', 'All Charges', 'therms',
-                   quantity_formula='REG_TOTAL.quantity'),
-            Charge(self.utilbill, 'B', 1, 'b', 'All Charges','therms',
-                   quantity_formula='1', has_charge=False),
+            Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity', 'a',
+                   'All Charges', 'therms'),
+            Charge(self.utilbill, 'B', 1, '1', 'b', 'All Charges','therms',
+                   has_charge=False),
         ]
 
         self.reebill = ReeBill(customer, 1, discount_rate=0.5,

@@ -447,9 +447,10 @@ class UtilBill(Base):
         charge = Charge(utilbill=self,
                         rsi_binding="New Charge %s" % n,
                         rate=0.0,
+                        quantity_formula='',
+                        quantity_units="",
                         description="New Charge - Insert description here",
                         group="",
-                        quantity_units="",
                         )
         session.add(charge)
         registers = self.registers
@@ -671,7 +672,7 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, rsi_binding, rate, description='', group='', quantity_units='', quantity_formula="",
+    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', quantity_units='',
             has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
@@ -706,10 +707,10 @@ class Charge(Base):
         return cls(None,
                    other.rsi_binding,
                    other.rate,
+                   other.quantity_formula,
                    other.description,
                    other.group,
                    other.quantity_units,
-                   quantity_formula=other.quantity_formula,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)
