@@ -182,8 +182,8 @@ class UtilBillTest(TestCase):
                 rate=1,
             ),
         ]
-        utilbill.charges = [Charge(utilbill, "Insert description here", "",
-                0.0, c['quantity_units'], c['rate'], c['rsi_binding'], 0.0,
+        utilbill.charges = [Charge(utilbill, c['rsi_binding'], c['rate'],
+                "Insert description here", "", c['quantity_units'],
                 quantity_formula=c['quantity']) for c in charges]
 
         get = utilbill.get_charge_by_rsi_binding
@@ -292,12 +292,12 @@ class UtilBillTest(TestCase):
         utilbill.registers = [Register(utilbill, '', 150,
                 'kWh', '', False, "total", "REG_TOTAL", '', '')]
         utilbill.charges = [
-            Charge(utilbill, '', '', 0, 'kWh', 1, 'A', 0,
+            Charge(utilbill, 'A', 1, '', '', 'kWh',
                     quantity_formula='REG_TOTAL.quantity'),
-            Charge(utilbill, '', '', 0, 'kWh', 3, 'B', 0,
+            Charge(utilbill, 'B', 3, '', '', 'kWh',
                     quantity_formula='2'),
             # this has an error
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+            Charge(utilbill, 'C', 0, '', '', 'kWh',
                     quantity_formula='1/0'),
         ]
         Session().add(utilbill)
@@ -328,18 +328,18 @@ class UtilBillTest(TestCase):
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
             # theoretically both could be computed.
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'A', 0,
+            Charge(utilbill, 'A', 0, '', '', 'kWh',
                     quantity_formula='B.quantity'),
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'B', 0,
+            Charge(utilbill, 'B', 0, '', '', 'kWh',
                     quantity_formula='A.rate'),
             # C depends on itself
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+            Charge(utilbill, 'C', 0, '', '', 'kWh',
                     quantity_formula='C.total'),
             # D depends on A, which has a circular dependency with B. it should
             # not be computable because A is not computable.
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'D', 0,
+            Charge(utilbill, 'D', 0, '', '', 'kWh',
                     quantity_formula='A.total'),
-            Charge(utilbill, '', '', 0, 'kWh', 3, 'E', 0,
+            Charge(utilbill, 'E', 3, '', '', 'kWh',
                     quantity_formula='2'),
         ]
         Session().add(utilbill)
@@ -371,12 +371,12 @@ class UtilBillTest(TestCase):
         utilbill.registers = [Register(utilbill, '', 150,
                 'kWh', '', False, "total", "REG_TOTAL", '', '')]
         utilbill.charges = [
-            Charge(utilbill, '', '', 0, 'kWh', 1, 'A', 0,
+            Charge(utilbill, 'A', 1, '', '', 'kWh',
                     quantity_formula='REG_TOTAL.quantity'),
-            Charge(utilbill, '', '', 0, 'kWh', 3, 'B', 0,
+            Charge(utilbill, 'B', 3, '', '', 'kWh',
                     quantity_formula='2'),
             # this has an error
-            Charge(utilbill, '', '', 0, 'kWh', 0, 'C', 0,
+            Charge(utilbill, 'C', 0, '', '', 'kWh',
                     quantity_formula='1/0'),
         ]
         self.assertTrue(utilbill.editable())
