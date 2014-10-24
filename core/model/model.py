@@ -574,9 +574,9 @@ class Register(Base):
 
     utilbill = relationship("UtilBill", backref='registers')
 
-    def __init__(self, utilbill, description, quantity, quantity_units,
-                 identifier, estimated, reg_type, register_binding,
-                 active_periods, meter_identifier):
+    def __init__(self, utilbill, description, identifier,
+                estimated, reg_type, active_periods, meter_identifier,
+                quantity=0.0, quantity_units='',register_binding=''):
         """Construct a new :class:`.Register`.
 
         :param utilbill: The :class:`.UtilBill` on which the register appears

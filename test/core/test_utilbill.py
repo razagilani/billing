@@ -66,11 +66,13 @@ class UtilBillTest(TestCase):
 
         session.delete(charge)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL"),
-                              Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
-            "GHIJKL")]
+        utilbill.registers = [Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL", quantity=150,
+            quantity_units='therms', register_binding='REG_TOTAL'),
+                              Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL",
+            quantity=150, quantity_units='therms',
+            register_binding='SOME_OTHER_BINDING')]
 
         charge = utilbill.add_charge()
         self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
@@ -81,9 +83,9 @@ class UtilBillTest(TestCase):
         for register in utilbill.registers:
             session.delete(register)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
-            "GHIJKL")]
+        utilbill.registers = [Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL", quantity=150,
+            quantity_units='therms', register_binding='SOME_OTHER_BINDING')]
         charge = utilbill.add_charge()
         self.assertEqual(charge.quantity_formula, "SOME_OTHER_BINDING", "The "
             " quantity formula should be 'SOME_OTHER_BINDING' when no registers"
@@ -98,8 +100,10 @@ class UtilBillTest(TestCase):
                 Supplier('supplier', Address(), ''), 'rate class',
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
-        register = Register(utilbill, "ABCDEF description", 150, 'therms',
-                "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL")
+        register = Register(utilbill, "ABCDEF description",
+                "ABCDEF", False, "total", None, "GHIJKL",
+                quantity=150, quantity_units='therms',
+                register_binding='REG_TOTAL')
         utilbill.registers = [register]
         charges = [
             dict(
@@ -289,8 +293,10 @@ class UtilBillTest(TestCase):
                 'gas', utility, supplier, 'rate class',
                 Address(), Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', 150,
-                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.registers = [Register(utilbill, '',
+                '', False, "total", '', '',
+                quantity=150, quantity_units='kWh',
+                register_binding='REG_TOTAL')]
         utilbill.charges = [
             Charge(utilbill, 'A', 1, '', '', 'kWh',
                     quantity_formula='REG_TOTAL.quantity'),
@@ -368,8 +374,10 @@ class UtilBillTest(TestCase):
                 'gas', utility, supplier, 'rate class', Address(),
                 Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', 150,
-                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.registers = [Register(utilbill, '',
+                '', False, "total", '', '',
+                quantity=150, quantity_units='kWh',
+                register_binding='REG_TOTAL')]
         utilbill.charges = [
             Charge(utilbill, 'A', 1, '', '', 'kWh',
                     quantity_formula='REG_TOTAL.quantity'),
