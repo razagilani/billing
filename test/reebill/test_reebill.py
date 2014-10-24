@@ -26,9 +26,9 @@ class ReebillTest(unittest.TestCase):
                                  False, 'total', 'REG_TOTAL', [], '')
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge(self.utilbill, 'a', 'All Charges', 0, 'therms',
-                   2, 'A', 0, quantity_formula='REG_TOTAL.quantity'),
-            Charge(self.utilbill, 'b', 'All Charges', 0, 'therms', 1, 'B', 0,
+            Charge(self.utilbill, 'A', 2, 'a', 'All Charges', 'therms',
+                   quantity_formula='REG_TOTAL.quantity'),
+            Charge(self.utilbill, 'B', 1, 'b', 'All Charges','therms',
                    quantity_formula='1', has_charge=False),
         ]
 
