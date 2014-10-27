@@ -1,5 +1,6 @@
 from shutil import rmtree
 import subprocess
+from time import sleep
 from boto.s3.connection import S3Connection
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -72,6 +73,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         fakes3_args = ['fakes3', '--port', '4567', '--root',
                    cls.fakes3_root_dir.path]
         cls.fakes3_process = subprocess.Popen(fakes3_args)
+
+        # make sure FakeS3 is actually running (and did not immediately exit
+        # because, for example, another instance of it is already
+        # running and occupying the same port)
+        sleep(0.5)
         assert cls.fakes3_process.poll() is None
 
     @classmethod
@@ -322,6 +328,10 @@ class TestCaseWithSetup(test_utils.TestCase):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil."""
+        # make sure FakeS3 server is still running (in theory one of the
+        # tests or some other process could cause it to exit)
+        assert self.__class__.fakes3_process.poll() is None
+
         init_config('test/tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs
