@@ -110,12 +110,15 @@ class WebResource(object):
         # create a NexusUtil
         cache_file_path = self.config.get('skyline_backend',
                                       'nexus_offline_cache_file')
-        with open(cache_file_path) as cache_file:
-            text = cache_file.read()
-        if text == '':
-            cache = []
+        if cache_file_path == '':
+            cache = None
         else:
-            cache = json.load(text)
+            with open(cache_file_path) as cache_file:
+                text = cache_file.read()
+            if text == '':
+                cache = []
+            else:
+                cache = json.load(text)
         self.nexus_util = NexusUtil(self.config.get('skyline_backend',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
