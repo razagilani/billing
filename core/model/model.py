@@ -233,6 +233,20 @@ class Utility(Company):
         super(Utility, self).__init__(name, address, guid)
 
 
+class RateClass(Base):
+    __tablename__ = 'rate_class'
+
+    id = Column(Integer, primary_key=True)
+    utility_id = Column(Integer, ForeignKey('company.id'))
+    name = Column(String(255), nullable=False)
+
+    utility = relationship('Utility')
+
+    def __init__(self, name, utility_id):
+        self.name = name
+        self.utility_id = utility_id
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -253,7 +267,8 @@ class Customer(Base):
     service = Column(Enum(*SERVICE_TYPES))
 
     # "fb_" = to be assigned to the customer's first-created utility bill
-    fb_rate_class = Column(String(255), nullable=False)
+    fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+        nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
@@ -263,6 +278,8 @@ class Customer(Base):
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='Customer.fb_supplier_id==Supplier.id')
+    fb_rate_class = relationship('RateClass', uselist=False,
+        primaryjoin='Customer.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
@@ -328,10 +345,11 @@ class UtilBill(Base):
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
     utility_id = Column(Integer, ForeignKey('company.id'))
+    rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+        nullable=False)
 
     state = Column(Integer, nullable=False)
     service = Column(String(45), nullable=False)
-    rate_class = Column(String(255), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
 
@@ -352,6 +370,8 @@ class UtilBill(Base):
             order_by=id))
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
+    rateclass = relationship('RateClass', uselist=False,
+        primaryjoin='UtilBill.rate_class_id==RateClass.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',

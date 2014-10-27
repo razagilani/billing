@@ -8,7 +8,7 @@ import any other code that that expects an initialized data model without first
 calling :func:`.billing.init_model`.
 """
 from boto.s3.connection import S3Connection
-from sqlalchemy import func
+from sqlalchemy import func, distinct
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
 from upgrade_scripts import alembic_upgrade
@@ -16,7 +16,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier
+    Address, UtilBill, Supplier, RateClass
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
@@ -120,6 +120,31 @@ def set_supplier_ids(session):
                   (supplier, bill.id))
             bill.supplier_id = supplier
 
+def create_rate_classes(session):
+    utilbills = session.execute("select distinct rate_class, utility_id from utilbill")
+
+    for bill in utilbills:
+        log.debug('Creating RateClass object with name %s and utility_id %s'
+                  %(bill['rate_class'], bill['utility_id']))
+        rate_class = RateClass(bill['rate_class'], bill['utility_id'])
+        session.add(rate_class)
+    session.flush()
+
+def set_rate_class_ids(session):
+    utilbills = session.query(UtilBill).all()
+    for bill in utilbills:
+        u_rate_class = session.query(RateClass).filter(RateClass.utility_id==bill.utility_id).first()
+        log.debug('setting rate_class_id to %s for utilbill with id %s'
+                  %(u_rate_class.id, bill.id))
+        bill.rate_class_id = u_rate_class.id
+    customers = session.query(Customer).all()
+    for customer in customers:
+        c_rate_class = session.query(RateClass).filter(RateClass.utility_id==customer.fb_utility_id).first()
+        log.debug('setting rate_class_id to %s for customer with id %s'
+                  %(c_rate_class.id, customer.id))
+        customer.fb_rate_class_id = c_rate_class.id
+
+
 def upgrade():
 
     cf = config.get('aws_s3', 'calling_format')
@@ -155,8 +180,24 @@ def upgrade():
     log.info('Committing to database')
     session.commit()
 
+    log.info('Upgrading schema to revision 18a02dea5969')
+    alembic_upgrade('18a02dea5969')
+
     log.info('Upgrading schema to revision 3566e62e7af3')
     alembic_upgrade('3566e62e7af3')
+
+
+    log.info('creating rate_classes')
+    create_rate_classes(session)
+
+    log.info('setting up rate_class ids for Customer an UtilBill records')
+    set_rate_class_ids(session)
+
+    log.info('Comitting to Database')
+    session.commit()
+
+    log.info('Upgrading to schema 4bc721447593')
+    alembic_upgrade('4bc721447593')
 
     log.info('Upgrade Complete')
 

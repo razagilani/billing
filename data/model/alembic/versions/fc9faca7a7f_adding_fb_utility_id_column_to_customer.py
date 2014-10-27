@@ -37,6 +37,15 @@ def upgrade():
     op.add_column('customer',
     sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
 )
+    op.create_table('rate_class',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=True),
+    sa.Column('utility_id', sa.Integer(),sa.ForeignKey('company.id')),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.add_column('customer', sa.Column('fb_rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
+    op.add_column('utilbill', sa.Column('rate_class_id', sa.Integer(), sa.ForeignKey('rate_class.id')))
+
 
 def downgrade():
     op.drop_column('customer', 'fb_utility_id')
@@ -52,3 +61,6 @@ def downgrade():
     op.alter_column('utilbill', 'period_start',
            existing_type=sa.DATE(),
            nullable=False)
+    op.drop_table('rate_class')
+    op.drop_column('customer', 'fb_rate_class_id')
+    op.drop_column('utilbill', 'rate_class_id')
