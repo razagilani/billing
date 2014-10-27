@@ -35,8 +35,11 @@ def upgrade():
     op.add_column('utilbill',
     sa.Column('supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id')))
     op.add_column('customer',
-    sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
-)
+        sa.Column('fb_supplier_id', sa.INTEGER, sa.ForeignKey('supplier.id'))
+    )
+
+    op.add_column('utilbill', sa.Column('date_scraped', sa.DateTime,
+                                        nullable=True))
     op.create_table('rate_class',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=True),
