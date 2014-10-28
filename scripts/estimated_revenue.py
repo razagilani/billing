@@ -35,7 +35,7 @@ OUTPUT_XLS_FILE_NAME = 'estimated_revenue_report.xls'
 LOG_FILE_NAME = 'estimated_revenue.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
-# For BillUpload
+# For BillFileHandler
 # default name of log file (config file can override this)
 BILL_UPLOAD_LOG_FILE_NAME = 'bill_upload.log'
 

@@ -6,7 +6,7 @@ from boto.s3.connection import S3Connection
 from billing import config
 
 
-class BillUpload(object):
+class BillFileHandler(object):
     '''This class handles everything related to utility bill files, which are
     now stored in Amazon S3.
     TODO: rename.
@@ -70,7 +70,7 @@ class BillUpload(object):
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
                 utilbill.sha256_hexdigest) == 1:
-            key_name = BillUpload._get_key_name(utilbill)
+            key_name = BillFileHandler._get_key_name(utilbill)
             key = self._get_amazon_bucket().get_key(key_name)
             key.delete()
 
@@ -79,7 +79,7 @@ class BillUpload(object):
         :param utilbill: a :class:`billing.process.state.UtilBill`
         :param file: a file
         """
-        utilbill.sha256_hexdigest = BillUpload.compute_hexdigest(file)
+        utilbill.sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
         key_name = self._get_key_name(utilbill)
         key = self._get_amazon_bucket().new_key(key_name)
         key.set_contents_from_file(file)
