@@ -25,7 +25,7 @@ from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.core.model import Utility
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -265,7 +265,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # TODO make this entire URL configurable instead of just the parts
         url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
                 config.get('aws_s3', 'host'))
-        self.billupload = BillUpload(s3_connection,
+        self.billupload = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)
 

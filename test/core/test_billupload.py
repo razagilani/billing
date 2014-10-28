@@ -11,7 +11,7 @@ from boto.s3.bucket import Bucket
 
 from billing import init_model
 from billing.core.model import UtilBill, UtilBillLoader
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 from test import init_test_config
 
 init_test_config()
@@ -32,7 +32,7 @@ class BillUploadTest(unittest.TestCase):
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
 
         url_format = 'https://example.com/utilbill/%(bucket_name)s/%(key_name)s'
-        self.bu = BillUpload(connection, bucket_name, self.utilbill_loader,
+        self.bu = BillFileHandler(connection, bucket_name, self.utilbill_loader,
                              url_format)
         init_model()
 

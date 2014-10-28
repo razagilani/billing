@@ -33,7 +33,7 @@ from billing.reebill.bill_mailer import Mailer
 from billing.reebill import process, state, fetch_bill_data as fbd
 from billing.core.rate_structure import RateStructureDAO
 from billing.core.model import Session, UtilBillLoader
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
 from billing.reebill.users import UserDAO
 from billing.exc import Unauthenticated, IssuedBillError, ConfirmAdjustment
@@ -138,7 +138,7 @@ class WebResource(object):
         # TODO make this entire URL configurable instead of just the parts
         url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
                 config.get('aws_s3', 'host'))
-        self.billUpload = BillUpload(s3_connection,
+        self.billUpload = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)
 
