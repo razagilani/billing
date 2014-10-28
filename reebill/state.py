@@ -19,7 +19,7 @@ import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier
+    UtilBill, Customer, Utility, Supplier, RateClass
 from billing import config
 from billing.util.monthmath import Month
 
@@ -686,6 +686,14 @@ class StateDB(object):
         except NoResultFound:
             supplier = Supplier(supplier_name, Address('', '', '', '', ''), '')
         return supplier
+
+    def get_create_rate_class(self, rate_class_name, utility):
+        session = Session()
+        try:
+            rate_class = session.query(RateClass).filter_by(name=rate_class_name).one()
+        except NoResultFound:
+            rate_class = RateClass(rate_class_name, utility)
+        return rate_class
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
