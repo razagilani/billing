@@ -48,14 +48,14 @@ class UtilbillProcessor(object):
             r = Register(
                 utility_bill,
                 "Insert description",
-                0,
-                "therms",
                 row.get('register_id', "Insert register ID here"),
                 False,
                 "total",
-                "Insert register binding here",
                 None,
-                row.get('meter_id', ""))
+                row.get('meter_id', ""),
+                quantity=0,
+                quantity_units="therms",
+                register_binding="Insert register binding here")
             session.add(r)
             session.flush()
             return r
@@ -278,12 +278,13 @@ class UtilbillProcessor(object):
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
             for register in predecessor.registers if predecessor else []:
                 session.add(Register(new_utilbill, register.description,
-                                     0, register.quantity_units,
                                      register.identifier, False,
                                      register.reg_type,
-                                     register.register_binding,
                                      register.active_periods,
-                                     register.meter_identifier))
+                                     register.meter_identifier,
+                                     quantity=0,
+                                     quantity_units=register.quantity_units,
+                                     register_binding=register.register_binding))
         session.flush()
         if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
@@ -317,7 +318,9 @@ class UtilbillProcessor(object):
         for register in utility_bill.registers:
             session.delete(register)
         session.delete(utility_bill)
-        return utility_bill, utility_bill.pdf_url
+
+        pdf_url = self.billupload.get_s3_url(utility_bill)
+        return utility_bill, pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.

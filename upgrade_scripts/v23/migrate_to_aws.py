@@ -5,7 +5,7 @@ from boto.s3.connection import S3Connection
 from billing.core.model import UtilBill
 import hashlib, logging
 from glob import glob
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ def upload_utilbills_to_aws(session):
     """
     Uploads utilbills to AWS
     """
-    bu = BillUpload.from_config()
+    bu = BillFileHandler.from_config()
     bucket = bu._get_amazon_bucket()
     upload_count = 0
     for utilbill in session.query(UtilBill).all():

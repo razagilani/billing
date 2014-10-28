@@ -22,14 +22,15 @@ class ReebillTest(unittest.TestCase):
                                  period_end=date(2000, 2, 1),
                                  billing_address=Address(),
                                  service_address=Address())
-        self.register = Register(self.utilbill, '', 100, 'therms', '',
-                                 False, 'total', 'REG_TOTAL', [], '')
+        self.register = Register(self.utilbill, '', '', False, 'total',
+                                [], '', quantity=100, quantity_units='therms',
+                                register_binding='REG_TOTAL')
         self.utilbill.registers = [self.register]
         self.utilbill.charges = [
-            Charge(self.utilbill, 'A', 2, 'a', 'All Charges', 'therms',
-                   quantity_formula='REG_TOTAL.quantity'),
-            Charge(self.utilbill, 'B', 1, 'b', 'All Charges','therms',
-                   quantity_formula='1', has_charge=False),
+            Charge(self.utilbill, 'A', 2, 'REG_TOTAL.quantity', 'a',
+                   'All Charges', 'therms'),
+            Charge(self.utilbill, 'B', 1, '1', 'b', 'All Charges','therms',
+                   has_charge=False),
         ]
 
         self.reebill = ReeBill(customer, 1, discount_rate=0.5,
@@ -71,8 +72,9 @@ class ReebillTest(unittest.TestCase):
 
     def test_replace_readings_from_utility_bill_registers(self):
         # adding a register
-        new_register = Register(self.utilbill, '', 200, 'kWh', '',
-                 False, 'total', 'NEW_REG', [], '')
+        new_register = Register(self.utilbill, '', '',
+                 False, 'total', [], '',quantity=200,
+                 quantity_units='kWh', register_binding='NEW_REG')
         self.reebill.replace_readings_from_utility_bill_registers(self.utilbill)
 
         reading_0, reading_1 = self.reebill.readings

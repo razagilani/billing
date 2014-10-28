@@ -66,11 +66,13 @@ class UtilBillTest(TestCase):
 
         session.delete(charge)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL"),
-                              Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
-            "GHIJKL")]
+        utilbill.registers = [Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL", quantity=150,
+            quantity_units='therms', register_binding='REG_TOTAL'),
+                              Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL",
+            quantity=150, quantity_units='therms',
+            register_binding='SOME_OTHER_BINDING')]
 
         charge = utilbill.add_charge()
         self.assertEqual(charge.quantity_formula, "REG_TOTAL.quantity", "The "
@@ -81,9 +83,9 @@ class UtilBillTest(TestCase):
         for register in utilbill.registers:
             session.delete(register)
 
-        utilbill.registers = [Register(utilbill, "ABCDEF description", 150,
-            'therms', "ABCDEF", False, "total", "SOME_OTHER_BINDING", None,
-            "GHIJKL")]
+        utilbill.registers = [Register(utilbill, "ABCDEF description",
+            "ABCDEF", False, "total", None, "GHIJKL", quantity=150,
+            quantity_units='therms', register_binding='SOME_OTHER_BINDING')]
         charge = utilbill.add_charge()
         self.assertEqual(charge.quantity_formula, "SOME_OTHER_BINDING", "The "
             " quantity formula should be 'SOME_OTHER_BINDING' when no registers"
@@ -98,8 +100,10 @@ class UtilBillTest(TestCase):
                 Supplier('supplier', Address(), ''), 'rate class',
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
-        register = Register(utilbill, "ABCDEF description", 150, 'therms',
-                "ABCDEF", False, "total", "REG_TOTAL", None, "GHIJKL")
+        register = Register(utilbill, "ABCDEF description",
+                "ABCDEF", False, "total", None, "GHIJKL",
+                quantity=150, quantity_units='therms',
+                register_binding='REG_TOTAL')
         utilbill.registers = [register]
         charges = [
             dict(
@@ -183,8 +187,8 @@ class UtilBillTest(TestCase):
             ),
         ]
         utilbill.charges = [Charge(utilbill, c['rsi_binding'], c['rate'],
-                "Insert description here", "", c['quantity_units'],
-                quantity_formula=c['quantity']) for c in charges]
+                c['quantity'], "Insert description here", "",
+                c['quantity_units']) for c in charges]
 
         get = utilbill.get_charge_by_rsi_binding
 
@@ -289,16 +293,16 @@ class UtilBillTest(TestCase):
                 'gas', utility, supplier, 'rate class',
                 Address(), Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', 150,
-                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.registers = [Register(utilbill, '',
+                '', False, "total", '', '',
+                quantity=150, quantity_units='kWh',
+                register_binding='REG_TOTAL')]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, '', '', 'kWh',
-                    quantity_formula='REG_TOTAL.quantity'),
-            Charge(utilbill, 'B', 3, '', '', 'kWh',
-                    quantity_formula='2'),
+            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity',
+                   '', '', 'kWh'),
+            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
             # this has an error
-            Charge(utilbill, 'C', 0, '', '', 'kWh',
-                    quantity_formula='1/0'),
+            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
@@ -328,19 +332,14 @@ class UtilBillTest(TestCase):
             # circular dependency between A and B: A depends on B's "quantity"
             # and B depends on A's "rate", which is not allowed even though
             # theoretically both could be computed.
-            Charge(utilbill, 'A', 0, '', '', 'kWh',
-                    quantity_formula='B.quantity'),
-            Charge(utilbill, 'B', 0, '', '', 'kWh',
-                    quantity_formula='A.rate'),
+            Charge(utilbill, 'A', 0, 'B.quantity', '', '', 'kWh'),
+            Charge(utilbill, 'B', 0, 'A.rate', '', '', 'kWh'),
             # C depends on itself
-            Charge(utilbill, 'C', 0, '', '', 'kWh',
-                    quantity_formula='C.total'),
+            Charge(utilbill, 'C', 0, 'C.total', '', '', 'kWh'),
             # D depends on A, which has a circular dependency with B. it should
             # not be computable because A is not computable.
-            Charge(utilbill, 'D', 0, '', '', 'kWh',
-                    quantity_formula='A.total'),
-            Charge(utilbill, 'E', 3, '', '', 'kWh',
-                    quantity_formula='2'),
+            Charge(utilbill, 'D', 0, 'A.total', '', '', 'kWh'),
+            Charge(utilbill, 'E', 3, '2', '', '', 'kWh'),
         ]
         Session().add(utilbill)
         utilbill.compute_charges()
@@ -368,16 +367,15 @@ class UtilBillTest(TestCase):
                 'gas', utility, supplier, 'rate class', Address(),
                 Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', 150,
-                'kWh', '', False, "total", "REG_TOTAL", '', '')]
+        utilbill.registers = [Register(utilbill, '',
+                '', False, "total", '', '',
+                quantity=150, quantity_units='kWh',
+                register_binding='REG_TOTAL')]
         utilbill.charges = [
-            Charge(utilbill, 'A', 1, '', '', 'kWh',
-                    quantity_formula='REG_TOTAL.quantity'),
-            Charge(utilbill, 'B', 3, '', '', 'kWh',
-                    quantity_formula='2'),
+            Charge(utilbill, 'A', 1, 'REG_TOTAL.quantity', '', '', 'kWh'),
+            Charge(utilbill, 'B', 3, '2', '', '', 'kWh'),
             # this has an error
-            Charge(utilbill, 'C', 0, '', '', 'kWh',
-                    quantity_formula='1/0'),
+            Charge(utilbill, 'C', 0, '1/0', '', '', 'kWh'),
         ]
         self.assertTrue(utilbill.editable())
         Session().add(utilbill)

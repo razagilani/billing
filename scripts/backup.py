@@ -160,10 +160,19 @@ def run_command(command):
             raise CalledProcessError(status, command)
     return process.stdin, process.stdout, check_exit_status
 
+def _refresh_s3_key(key):
+    '''Return a new boto.s3.key.Key object so it reflects what is actually in
+    s3 corresponding to the given Key object. If a new version has been
+    created, this must be called in order for key.version_id and
+    key.last_modified to be correct.
+    '''
+    return key.bucket.get_key(key.name)
+
 def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    s3_key = _refresh_s3_key(s3_key)
     print 'created S3 key %s/%s version %s at %s' % (
             s3_key.bucket.name, s3_key.name, s3_key.version_id,
             s3_key.last_modified)
@@ -179,6 +188,10 @@ def backup_mongo_collection(collection_name, s3_key):
             host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    s3_key = _refresh_s3_key(s3_key)
+    print 'created S3 key %s/%s version %s at %s' % (
+        s3_key.bucket.name, s3_key.name, s3_key.version_id,
+        s3_key.last_modified)
 
 def backup_mongo_collection_local(collection_name, file_path):
     command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),

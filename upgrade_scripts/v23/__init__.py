@@ -40,27 +40,108 @@ utility_names = ['Pepco',
                  'PG&E']
 
 
+# def clean_up_units(session):
+#     for cls, attr in [
+#         (Register, 'quantity_units'),
+#         (Charge, 'quantity_units'),
+#         (Reading, 'unit'),
+#         (ReeBillCharge, 'quantity_unit'),
+#     ]:
+#         log.debug('Cleaning up units in %s.%s' % (cls, attr))
+#         for obj in session.query(cls).all():
+#             current_value = getattr(obj, attr)
+#             if current_value in (None, ''):
+#                 if cls in (Charge, ReeBillCharge):
+#                     setattr(obj, attr, 'dollars')
+#                 elif obj.utilbill.service == 'gas':
+#                     setattr(obj, attr, 'therms')
+#                 elif obj.utilbill.service == 'electric':
+#                     setattr(obj, attr, 'kWh')
+#                 else:
+#                     raise ValueError
+#             if current_value.lower() == 'ccf':
+#                 setattr(obj, attr, 'therms')
+
 def clean_up_units(session):
-    for cls, attr in [
-        (Register, 'quantity_units'),
-        (Charge, 'quantity_units'),
-        (Reading, 'unit'),
-        (ReeBillCharge, 'quantity_unit'),
+    # get rid of nulls to prepare for other updates
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('charge', 'quantity_units'),
+        ('reading', 'unit'),
+        ('reebill_charge', 'quantity_unit'),
     ]:
-        log.debug('Cleaning up units in %s.%s' % (cls, attr))
-        for obj in session.query(cls).all():
-            current_value = getattr(obj, attr)
-            if current_value in (None, ''):
-                if cls in (Charge, ReeBillCharge):
-                    setattr(obj, attr, 'dollars')
-                elif obj.utilbill.service == 'gas':
-                    setattr(obj, attr, 'therms')
-                elif obj.utilbill.service == 'electric':
-                    setattr(obj, attr, 'kWh')
-                else:
-                    raise ValueError
-            if current_value.lower() == 'ccf':
-                setattr(obj, attr, 'therms')
+        session.execute('update %(table)s set %(col)s = "" where %(col)s '
+                        'is null' % dict(table=table, col=col))
+
+
+    # for charges, default unit is "dollars"
+    command = ('update %(table)s '
+               'set %(col)s = "%(newvalue)s" where %(col)s = "%(oldvalue)s" ')
+    for table, col in [
+        ('charge', 'quantity_units'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        session.execute(command % dict(table=table, col=col, oldvalue='',
+                                       newvalue='dollars', condition=''))
+
+    # replace many nonsensical units with a likely unit for the given bill,
+    # either therms or kWh depending on energy type. also "ccf" should
+    # replaced by therms, and variant names for the same unit should be
+    # corrected.
+    command = ('update %(table)s %(join)s '
+               'set %(col)s = "%(newvalue)s" where %(col)s = "%(oldvalue)s" '
+               '%(condition)s')
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('reading', 'unit'),
+        ('charge', 'quantity_units'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        params = dict(table=table, col=col, condition='')
+        if table in ('reading', 'reebill_charge'):
+            params['join'] = ('join reebill on %s.reebill_id = reebill.id '
+                'join utilbill_reebill '
+                'on reebill.id = utilbill_reebill.reebill_id '
+                'join utilbill on utilbill_reebill.utilbill_id = utilbill.id '
+                % table)
+        else:
+            params['join'] = 'join utilbill on utilbill_id = utilbill.id'
+        session.execute(command % dict(params, oldvalue='Ccf',
+                                       newvalue='therms'))
+        session.execute(command % dict(params, oldvalue='kW', newvalue='kWD'))
+        session.execute(command % dict(params, oldvalue='KWD', newvalue='kWD'))
+        for invalid_unit in [
+            '',
+            'REG_TOTAL.quantityunits',
+            'Unit',
+            'Therms',
+            'None',
+        ]:
+            session.execute(command % dict(params, oldvalue=invalid_unit,
+                                           newvalue='therms',
+                                           condition='and service = "gas"'))
+            session.execute(command % dict(params, oldvalue=invalid_unit,
+                                           newvalue='kWh',
+                                           condition='and service = "electric"'))
+
+    # check that all resulting units are valid
+    valid_units = [
+        'kWh',
+        'dollars',
+        'kWD',
+        'therms',
+        'MMBTU',
+    ]
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('charge', 'quantity_units'),
+        ('reading', 'unit'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        values = list(x[0] for x in session.execute(
+                'select distinct %s from %s' % (col, table)))
+        assert all(v in valid_units for v in values)
+    session.commit()
 
 def read_initial_table_data(table_name, session):
     meta = MetaData()
@@ -149,10 +230,7 @@ def upgrade():
 
     init_model(schema_revision='6446c51511c')
     session = Session()
-    # TODO: this can't work because the SQLAlchemy code expects the column
-    # names to be the new ones, not the old ones
     clean_up_units(session)
-
     alembic_upgrade('37863ab171d1')
 
     log.info('Upgrading schema to revision fc9faca7a7f')

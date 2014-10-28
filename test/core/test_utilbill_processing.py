@@ -204,7 +204,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
     def test_upload_utility_bill(self):
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
-        to BillUpload).'''
+        to BillFileHandler).'''
         account = '99999'
 
         s = Session()

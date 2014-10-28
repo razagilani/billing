@@ -1,5 +1,6 @@
 from shutil import rmtree
 import subprocess
+from time import sleep
 from boto.s3.connection import S3Connection
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -24,7 +25,7 @@ from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
     Register, Address
 from billing.core.model import Utility
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill.fetch_bill_data import RenewableEnergyGetter
 from nexusapi.nexus_util import MockNexusUtil
 from skyliner.mock_skyliner import MockSplinter, MockSkyInstall
@@ -72,6 +73,11 @@ class TestCaseWithSetup(test_utils.TestCase):
         fakes3_args = ['fakes3', '--port', '4567', '--root',
                    cls.fakes3_root_dir.path]
         cls.fakes3_process = subprocess.Popen(fakes3_args)
+
+        # make sure FakeS3 is actually running (and did not immediately exit
+        # because, for example, another instance of it is already
+        # running and occupying the same port)
+        sleep(0.5)
         assert cls.fakes3_process.poll() is None
 
     @classmethod
@@ -192,10 +198,13 @@ class TestCaseWithSetup(test_utils.TestCase):
                              date_received=date(2011, 3, 3),
                              processed=True)
 
-        u1r1 = Register(u1, "test description", 123.45, "therms", "M60324",
-                      False, "total", "REG_TOTAL", None, "M60324")
-        u2r1 = Register(u2, "test description", 123.47, "therms", "M60324",
-                      False, "total", "REG_TOTAL", None, "M60324")
+        u1r1 = Register(u1, "test description", "M60324",
+                      False, "total", None, "M60324",quantity=123.45,
+                      quantity_units='therms', register_binding="REG_TOTAL")
+        u2r1 = Register(u2, "test description", "M60324",
+                      False, "total", None, "M60324",
+                      quantity=123.45, quantity_units="therms",
+                      register_binding='REG_TOTAL')
 
         session.add_all([u1r1, u2r1])
         session.commit()
@@ -253,9 +262,12 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
         utilbill_loader = UtilBillLoader(Session())
-        self.billupload = BillUpload(s3_connection,
+        # TODO make this entire URL configurable instead of just the parts
+        url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
+                config.get('aws_s3', 'host'))
+        self.billupload = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
-                                     utilbill_loader)
+                                     utilbill_loader, url_format)
 
         mock_install_1 = MockSkyInstall(name='example-1')
         mock_install_2 = MockSkyInstall(name='example-2')
@@ -316,6 +328,10 @@ class TestCaseWithSetup(test_utils.TestCase):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil."""
+        # make sure FakeS3 server is still running (in theory one of the
+        # tests or some other process could cause it to exit)
+        assert self.__class__.fakes3_process.poll() is None
+
         init_config('test/tstsettings.cfg')
         init_model()
         self.maxDiff = None # show detailed dict equality assertion diffs

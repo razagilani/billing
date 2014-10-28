@@ -50,7 +50,7 @@ MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
 UNITS = [
     'kWh',
     'dollars',
-    'KWD',
+    'kWD',
     'therms',
     'MMBTU',
 ]
@@ -357,6 +357,12 @@ class UtilBill(Base):
     # and can be relied upon for rate structure prediction
     processed = Column(Integer, nullable=False)
 
+    # date when a process was run to extract data from the bill file to fill in
+    # data automatically. (note this is different from data scraped from the
+    # utility web site, because that can only be done while the bill is being
+    # downloaded and can't take into account information from other sources.)
+    date_scraped = Column(DateTime)
+
     customer = relationship("Customer", backref=backref('utilbill',
             order_by=id))
     supplier = relationship('Supplier', uselist=False,
@@ -456,6 +462,8 @@ class UtilBill(Base):
         charge = Charge(utilbill=self,
                         rsi_binding="New Charge %s" % n,
                         rate=0.0,
+                        quantity_formula='',
+                        quantity_units="",
                         description="New Charge - Insert description here",
                         group="",
                         unit="",
@@ -569,7 +577,7 @@ class Register(Base):
     # allowed units for register quantities
     PHYSICAL_UNITS = [
         'kWh',
-        'KWD',
+        'kWD',
         'therms',
         'MMBTU',
     ]
@@ -591,9 +599,9 @@ class Register(Base):
 
     utilbill = relationship("UtilBill", backref='registers')
 
-    def __init__(self, utilbill, description, quantity, unit,
-                 identifier, estimated, reg_type, register_binding,
-                 active_periods, meter_identifier):
+    def __init__(self, utilbill, description, identifier, unit,
+                estimated, reg_type, active_periods, meter_identifier,
+                quantity=0.0, quantity_units='',register_binding=''):
         """Construct a new :class:`.Register`.
 
         :param utilbill: The :class:`.UtilBill` on which the register appears
@@ -690,7 +698,7 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, rsi_binding, rate, description='', group='', unit='', quantity_formula="",
+    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', unit='',
             has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
@@ -725,10 +733,10 @@ class Charge(Base):
         return cls(None,
                    other.rsi_binding,
                    other.rate,
+                   other.quantity_formula,
                    other.description,
                    other.group,
                    other.unit,
-                   quantity_formula=other.quantity_formula,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)
