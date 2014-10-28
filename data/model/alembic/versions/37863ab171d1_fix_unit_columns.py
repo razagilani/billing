@@ -22,7 +22,6 @@ def upgrade():
         'therms',
         'MMBTU',
     ]
-    import ipdb; ipdb.set_trace()
     op.alter_column('register', 'quantity_units', new_column_name='unit',
                     type_=sa.Enum(*units), nullable=False)
     op.alter_column('charge', 'quantity_units', new_column_name='unit',
