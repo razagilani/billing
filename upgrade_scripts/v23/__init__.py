@@ -40,28 +40,6 @@ utility_names = ['Pepco',
                  'PG&E']
 
 
-# def clean_up_units(session):
-#     for cls, attr in [
-#         (Register, 'quantity_units'),
-#         (Charge, 'quantity_units'),
-#         (Reading, 'unit'),
-#         (ReeBillCharge, 'quantity_unit'),
-#     ]:
-#         log.debug('Cleaning up units in %s.%s' % (cls, attr))
-#         for obj in session.query(cls).all():
-#             current_value = getattr(obj, attr)
-#             if current_value in (None, ''):
-#                 if cls in (Charge, ReeBillCharge):
-#                     setattr(obj, attr, 'dollars')
-#                 elif obj.utilbill.service == 'gas':
-#                     setattr(obj, attr, 'therms')
-#                 elif obj.utilbill.service == 'electric':
-#                     setattr(obj, attr, 'kWh')
-#                 else:
-#                     raise ValueError
-#             if current_value.lower() == 'ccf':
-#                 setattr(obj, attr, 'therms')
-
 def clean_up_units(session):
     # get rid of nulls to prepare for other updates
     for table, col in [
