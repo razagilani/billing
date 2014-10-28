@@ -47,10 +47,11 @@ def read_initial_table_data(table_name, session):
     return {row['id']: row for row in result}
 
 def create_utilities(session):
-    for utility_name in utility_names:
+    bill_utilities = session.execute("select distinct utility from utilbill");
+    for bill_utility in bill_utilities:
         empty_address = Address('', '', '', '', '')
         empty_guid = ''
-        utility_company = Utility(utility_name, empty_address, empty_guid)
+        utility_company = Utility(bill_utility['utility'], empty_address, empty_guid)
         session.add(utility_company)
     session.flush()
     session.commit()
@@ -71,13 +72,15 @@ def migrate_customer_fb_utility(customer_data, session):
 def migrate_utilbill_utility(utilbill_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for utility_bill in session.query(UtilBill).all():
-        utility_name = utilbill_data[utility_bill.id]['utility'].lower() \
-        if utilbill_data[utility_bill.id]['utility'].lower()!='washgas' \
-            else 'Washington Gas'.lower()
+        utility_name = utilbill_data[utility_bill.id]['utility'].lower()
+        '''if utilbill_data[utility_bill.id]['utility'].lower()!='washgas' \
+            else 'Washington Gas'.lower()'''
         log.debug('Setting utility to %s for utilbill id %s' %
                   (utility_name, utility_bill.id))
         try:
             utility_bill.utility = company_map[utility_name]
+            if utility_bill.utility.name == 'washgas':
+                utility_bill.utility.name = 'washington gas'
         except KeyError:
             log.error("Could not locate company with name '%s' for utilbill %s"
                       % (utility_name, utility_bill.id))
@@ -92,6 +95,7 @@ def set_fb_utility_id(session):
             log.debug('Setting fb_utility_id to %s for customer id %s' %
                   (first_bill.utility_id, customer.id))
             customer.fb_utility_id = first_bill.utility_id
+    session.commit()
 
 def set_supplier_ids(session):
     for company in session.query(Company).all():
@@ -126,7 +130,8 @@ def create_rate_classes(session):
     for bill in utilbills:
         log.debug('Creating RateClass object with name %s and utility_id %s'
                   %(bill['rate_class'], bill['utility_id']))
-        rate_class = RateClass(bill['rate_class'], bill['utility_id'])
+        utility = session.query(Utility).filter(Utility.id==bill['utility_id']).one()
+        rate_class = RateClass(bill['rate_class'], utility)
         session.add(rate_class)
     session.flush()
 
@@ -140,10 +145,12 @@ def set_rate_class_ids(session):
     customers = session.query(Customer).all()
     for customer in customers:
         c_rate_class = session.query(RateClass).filter(RateClass.utility_id==customer.fb_utility_id).first()
-        log.debug('setting rate_class_id to %s for customer with id %s'
+        if c_rate_class is None:
+            customer.fb_rate_class_id = Session.query(RateClass).first().id
+        else:
+            log.debug('setting rate_class_id to %s for customer with id %s'
                   %(c_rate_class.id, customer.id))
-        customer.fb_rate_class_id = c_rate_class.id
-
+            customer.fb_rate_class_id = c_rate_class.id
 
 def upgrade():
 

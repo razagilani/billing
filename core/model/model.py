@@ -35,6 +35,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'RateClass',
     'Utility',
     'UtilBill',
     'UtilBillLoader',
@@ -242,9 +243,9 @@ class RateClass(Base):
 
     utility = relationship('Utility')
 
-    def __init__(self, name, utility_id):
+    def __init__(self, name, utility):
         self.name = name
-        self.utility_id = utility_id
+        self.utility = utility
 
 
 class Customer(Base):
@@ -376,7 +377,7 @@ class UtilBill(Base):
             order_by=id))
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
-    rateclass = relationship('RateClass', uselist=False,
+    rate_class = relationship('RateClass', uselist=False,
         primaryjoin='UtilBill.rate_class_id==RateClass.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
@@ -576,6 +577,7 @@ class UtilBill(Base):
                                    in self._utilbill_reebills]),
                      ('utility', self.utility.name),
                      ('supplier', self.supplier.name),
+                     ('rate_class', self.rate_class.name),
                      ('state', self.state_name()),
                      ])
 
