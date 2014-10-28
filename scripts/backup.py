@@ -164,6 +164,9 @@ def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    # "refresh" the key so its version ID and modification date are correct
+    # when reported below
+    s3_key = s3_key.bucket.get_key(s3_key.name)
     print 'created S3 key %s/%s version %s at %s' % (
             s3_key.bucket.name, s3_key.name, s3_key.version_id,
             s3_key.last_modified)
