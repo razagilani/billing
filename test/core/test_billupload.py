@@ -11,7 +11,7 @@ from boto.s3.bucket import Bucket
 
 from billing import init_model
 from billing.core.model import UtilBill, UtilBillLoader
-from billing.core.billupload import BillUpload
+from billing.core.bill_file_handler import BillFileHandler
 from test import init_test_config
 
 init_test_config()
@@ -31,12 +31,22 @@ class BillUploadTest(unittest.TestCase):
 
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
 
-        self.bu = BillUpload(connection, bucket_name, self.utilbill_loader)
+        url_format = 'https://example.com/utilbill/%(bucket_name)s/%(key_name)s'
+        self.bu = BillFileHandler(connection, bucket_name, self.utilbill_loader,
+                             url_format)
         init_model()
 
     def test_compute_hexdigest(self):
         self.assertEqual(self.bu.compute_hexdigest(StringIO('asdf')),
             'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b')
+
+    def test_get_s3_url(self):
+        ub = Mock(autospec=UtilBill)
+        the_hash = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        ub.sha256_hexdigest = the_hash
+        expected = 'https://example.com/utilbill/%s/%s' % (self.bucket.name,
+                                                          the_hash)
+        self.assertEqual(expected, self.bu.get_s3_url(ub))
 
     def test_utilbill_key_name(self):
         ub = Mock()
