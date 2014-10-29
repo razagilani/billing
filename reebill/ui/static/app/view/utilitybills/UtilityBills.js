@@ -151,8 +151,15 @@ Ext.define('ReeBill.view.UtilityBills', {
         header: 'Rate Class',
         dataIndex: 'rate_class',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'RateClasses',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay: 10,
+            minChars: 1
         },
         width: 125,
         flex: 1
