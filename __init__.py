@@ -1,4 +1,3 @@
-import sys
 import os.path as path
 from os.path import dirname, realpath
 
@@ -18,7 +17,7 @@ def init_config(filepath='settings.cfg', fp=None):
     :param fp: A configuration file pointer to be used in place of filename
     """
     from billing.data.validation import configuration as vns
-    from billing.lib.config import ValidatedConfigParser
+    from config import ValidatedConfigParser
     import logging
 
     log = logging.getLogger(__name__)
