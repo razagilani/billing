@@ -17,7 +17,7 @@ def init_config(filepath='settings.cfg', fp=None):
     :param fp: A configuration file pointer to be used in place of filename
     """
     from billing.data.validation import configuration as vns
-    from config import ValidatedConfigParser
+    from util.validated_config_parser import ValidatedConfigParser
     import logging
 
     log = logging.getLogger(__name__)
