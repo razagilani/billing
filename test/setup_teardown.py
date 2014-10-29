@@ -199,11 +199,12 @@ class TestCaseWithSetup(test_utils.TestCase):
                              processed=True)
 
         u1r1 = Register(u1, "test description", "M60324",
-                      False, "total", None, "M60324",quantity=123.45,
-                      quantity_units='therms', register_binding="REG_TOTAL")
+                        'therms', False, "total", None, "M60324",
+                        quantity=123.45,
+                        register_binding="REG_TOTAL")
         u2r1 = Register(u2, "test description", "M60324",
-                      False, "total", None, "M60324",
-                      quantity=123.45, quantity_units="therms",
+                      'therms', False, "total", None, "M60324",
+                      quantity=123.45,
                       register_binding='REG_TOTAL')
 
         session.add_all([u1r1, u2r1])
