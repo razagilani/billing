@@ -1829,8 +1829,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         '''
         # utility bill with 2 registers
         self.process.upload_utility_bill('99999', 'gas', date(2000,1,1),
-                                         date(2000,2,1), StringIO('test'),
-                                         'january.pdf')
+                                         date(2000,2,1), StringIO('test'))
         utilbill_id = self.process.get_all_utilbills_json(
                 '99999', 0, 30)[0][0]['id']
         def add_2nd_register():

@@ -228,7 +228,6 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill_path = join(dirname(realpath(__file__)), 'data',
                              'utility_bill.pdf')
 
-
         with open(utilbill_path) as file1:
             self.process.upload_utility_bill(account, 'electric',
                                              date(2012, 1, 1),
@@ -423,7 +422,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         account = '99999'
         self.process.upload_utility_bill(account, 'gas',
                                          date(2012, 1, 1), date(2012, 2, 1),
-                                         StringIO("A PDF"), 'january.pdf')
+                                         StringIO("A PDF"))
         address = self.process.get_service_address(account)
         self.assertEqual('12345', address['postal_code'])
         self.assertEqual('Test City', address['city'])
@@ -594,7 +593,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # because weight decreases quickly with distance.
         self.process.upload_utility_bill(acc_b, 'gas',
                                          date(2000, 2, 5), date(2000, 3, 5), StringIO('February 2000 B'),
-                                         'february-b.pdf', total=0, state=UtilBill.Complete)
+                                         total=0, state=UtilBill.Complete)
         self.assertEqual(set(['RIGHT_OF_WAY']), set(r['rsi_binding'] for r in
                                                     self.process.get_utilbill_charges_json(id_a_2)))
 
@@ -710,7 +709,8 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         account = '99999'
         # create utility bill and reebill
         self.process.upload_utility_bill(account, 'gas', date(2012, 1, 1),
-                                         date(2012, 2, 1), StringIO('January 2012'), 'january.pdf')
+                                         date(2012, 2, 1),
+                                         StringIO('January 2012'))
         utilbill_id = self.process.get_all_utilbills_json(
             account, 0, 30)[0][0]['id']
 
@@ -800,7 +800,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # create utility bill in MySQL, Mongo, and filesystem (and make
         # sure it exists all 3 places)
         self.process.upload_utility_bill(account, 'gas', start, end,
-                                         StringIO("test"), 'january.pdf')
+                                         StringIO("test"))
         utilbills_data, count = self.process.get_all_utilbills_json(
             account, 0, 30)
         self.assertEqual(1, count)
@@ -842,8 +842,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.new_version(account, 1)
         self.process.upload_utility_bill(account, 'gas',
                                          date(2012, 2, 1), date(2012, 3, 1),
-                                         StringIO("test"),
-                                         'january-electric.pdf')
+                                         StringIO("test"))
         # TODO this may not accurately reflect the way reebills get
         # attached to different utility bills; see
         # https://www.pivotaltracker.com/story/show/51935657
