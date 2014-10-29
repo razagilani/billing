@@ -31,7 +31,7 @@ from billing.nexusapi.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.reebill.bill_mailer import Mailer
 from billing.reebill import process, state, fetch_bill_data as fbd
-from billing.core.rate_structure import RateStructureDAO
+from billing.core.pricing import FuzzyPricingModel
 from billing.core.model import Session, UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
 from billing.reebill import journal, reebill_file_handler
@@ -145,8 +145,9 @@ class WebResource(object):
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)
 
-        # create a RateStructureDAO
-        self.ratestructure_dao = RateStructureDAO(logger=self.logger)
+        # create a FuzzyPricingModel
+        self.ratestructure_dao = FuzzyPricingModel(utilbill_loader,
+                                                   logger=self.logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
