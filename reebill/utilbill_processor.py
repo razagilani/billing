@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timedelta
 from billing import config
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility
+from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
+    RateClass
 from billing.exc import NoSuchBillException, ProcessedBillError
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
@@ -362,3 +363,7 @@ class UtilbillProcessor(object):
     def get_all_utilities_json(self):
         session = Session()
         return [u.column_dict() for u in session.query(Utility).all()]
+
+    def get_all_rate_classes_json(self):
+        session = Session()
+        return [r.column_dict() for r in session.query(RateClass).all()]
