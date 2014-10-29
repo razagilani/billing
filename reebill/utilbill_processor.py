@@ -275,7 +275,7 @@ class UtilbillProcessor(object):
             self.billupload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao. \
-                get_predicted_charges(new_utilbill, UtilBillLoader(session))
+                get_predicted_charges(new_utilbill)
             for register in predecessor.registers if predecessor else []:
                 session.add(Register(new_utilbill, register.description,
                                      register.identifier,
@@ -333,7 +333,7 @@ class UtilbillProcessor(object):
                 session.delete(charge)
             utilbill.charges = []
             utilbill.charges = self.rate_structure_dao. \
-                get_predicted_charges(utilbill, UtilBillLoader(session))
+                get_predicted_charges(utilbill)
         return self.compute_utility_bill(utilbill_id)
 
     def compute_utility_bill(self, utilbill_id):

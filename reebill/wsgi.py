@@ -146,7 +146,8 @@ class WebResource(object):
                                      utilbill_loader, url_format)
 
         # create a FuzzyPricingModel
-        self.ratestructure_dao = FuzzyPricingModel(logger=self.logger)
+        self.ratestructure_dao = FuzzyPricingModel(utilbill_loader,
+                                                   logger=self.logger)
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
