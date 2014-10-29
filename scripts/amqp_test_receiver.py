@@ -1,4 +1,4 @@
-from billing.lib.amqp import ExchangeListener
+from core.amqp import ExchangeListener
 
 def handler_key(message):
     print 'whee got message: %s' % message

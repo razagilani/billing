@@ -1,4 +1,4 @@
-from billing.lib.amqp import ExchangePublisher
+from core.amqp import ExchangePublisher
 
 xp = ExchangePublisher('mikes_exchange')
 
