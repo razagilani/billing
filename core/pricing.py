@@ -6,25 +6,8 @@ from billing.exc import NoSuchBillException
 from billing.core.model import Charge
 
 
-# minimum normlized score for an RSI to get included in a probable RS
-# (between 0 and 1)
-RSI_PRESENCE_THRESHOLD = 0.5
-
-def _manhattan_distance(p1, p2):
-    # note that 15-day offset is a 30-day distance, 30-day offset is a
-    # 60-day difference
-    delta_begin = abs(p1[0] - p2[0]).days
-    delta_end = abs(p1[1] - p2[1]).days
-    return delta_begin + delta_end
-
-def _exp_weight_with_min(a, b, minimum):
-    '''Exponentially-decreasing weight function with a minimum value so it's
-    always nonnegative.'''
-    return lambda x: max(a**(x * b), minimum)
-
-class RateStructureDAO(object):
-    '''Loads and saves RateStructure objects. Also responsible for generating
-    predicted UPRSs based on existing ones.
+class PricingModel(object):
+    '''Responsible for determining what charges are on a given utility bill.
     '''
     def __init__(self, logger=None):
         ''''
@@ -35,11 +18,36 @@ class RateStructureDAO(object):
         # to avoid checking if it's None
         self.logger = logger
 
+    # TODO move utilbill_loader into FuzzyPricingModel.__init__
+    def get_predicted_charges(self, utilbill, utilbill_loader):
+        raise NotImplementedError('Subclasses should override this')
+
+class FuzzyPricingModel(PricingModel):
+    '''A pricing model that guesses what charges are going to be on a given
+    utility bill by looking at other bills for the same rate class whose period
+    dates are "near" that bill.
+    '''
+    # minimum normlized score for a charge to get included in a bill
+    # (between 0 and 1)
+    RSI_PRESENCE_THRESHOLD = 0.5
+
+    @staticmethod
+    def _manhattan_distance(p1, p2):
+        # note that 15-day offset is a 30-day distance, 30-day offset is a
+        # 60-day difference
+        delta_begin = abs(p1[0] - p2[0]).days
+        delta_end = abs(p1[1] - p2[1]).days
+        return delta_begin + delta_end
+
+    @staticmethod
+    def _exp_weight_with_min(a, b, minimum):
+        '''Exponentially-decreasing weight function with a minimum value so it's
+        always nonnegative.'''
+        return lambda x: max(a**(x * b), minimum)
+
     def _get_probable_shared_charges(self, utilbill_loader, utility, service,
-            rate_class, period, distance_func=_manhattan_distance,
-            weight_func=_exp_weight_with_min(0.5, 7, 0.000001),
-            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False,
-            verbose=False):
+            rate_class, period, threshold=RSI_PRESENCE_THRESHOLD,
+            ignore=lambda x: False, verbose=False):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
         instances, each of which is unattached to any
         :py:class:`proessing.state.UtilBill`.
@@ -51,6 +59,9 @@ class RateStructureDAO(object):
         included.
         :param ignore: an optional function to exclude UPRSs from the input data
         """
+        distance_func=self.__class__._manhattan_distance
+        weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
+
         all_utilbills = [utilbill for utilbill in
                          utilbill_loader.load_real_utilbills(
                             service=service,
