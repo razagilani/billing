@@ -1,6 +1,9 @@
 import os.path as path
 from os.path import dirname, realpath
 
+import configuration as vns
+
+
 __version__ = '21'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
@@ -16,7 +19,6 @@ def init_config(filepath='settings.cfg', fp=None):
     :param filepath: The configuration file path; default `settings.cfg`.
     :param fp: A configuration file pointer to be used in place of filename
     """
-    from billing.data.validation import configuration as vns
     from util.validated_config_parser import ValidatedConfigParser
     import logging
 
