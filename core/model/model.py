@@ -35,7 +35,6 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
-    'UNITS',
     'Utility',
     'UtilBill',
     'UtilBillLoader',
@@ -46,14 +45,6 @@ __all__ = [
 # query to mean "the beginning of time" causes a strptime failure, so this
 # value should be used instead.
 MYSQLDB_DATETIME_MIN = datetime(1900, 1, 1)
-
-UNITS = [
-    'kWh',
-    'dollars',
-    'kWD',
-    'therms',
-    'MMBTU',
-]
 
 Session = scoped_session(sessionmaker())
 
@@ -463,10 +454,9 @@ class UtilBill(Base):
                         rsi_binding="New Charge %s" % n,
                         rate=0.0,
                         quantity_formula='',
-                        quantity_units="",
                         description="New Charge - Insert description here",
                         group="",
-                        unit="",
+                        unit="dollars",
                         )
         session.add(charge)
         registers = self.registers
@@ -576,10 +566,11 @@ class Register(Base):
 
     # allowed units for register quantities
     PHYSICAL_UNITS = [
-        'kWh',
-        'kWD',
-        'therms',
+        'BTU',
         'MMBTU',
+        'kWD',
+        'kWh',
+        'therms',
     ]
 
     id = Column(Integer, primary_key=True)
@@ -601,7 +592,7 @@ class Register(Base):
 
     def __init__(self, utilbill, description, identifier, unit,
                 estimated, reg_type, active_periods, meter_identifier,
-                quantity=0.0, quantity_units='',register_binding=''):
+                quantity=0.0, register_binding=''):
         """Construct a new :class:`.Register`.
 
         :param utilbill: The :class:`.UtilBill` on which the register appears

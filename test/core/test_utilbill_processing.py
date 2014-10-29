@@ -656,7 +656,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'quantity_formula': '2',
                                        'rate': 3,
                                        'group': 'All Charges',
-                                       'quantity_units':'kWh'
+                                       'unit':'kWh'
                                    },
                                    utilbill_id=utilbill_data['id'],
                                    rsi_binding='New Charge 1')
@@ -667,7 +667,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                        'description':'not shared',
                                        'quantity_formula': '6',
                                        'rate': 7,
-                                       'quantity_units':'therms',
+                                       'unit':'therms',
                                        'group': 'All Charges',
                                        'shared': False
                                    }, utilbill_id=utilbill_data['id'], rsi_binding='New Charge 1')
@@ -683,7 +683,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             {
                                 'rsi_binding': 'A',
                                 'quantity': 2,
-                                'quantity_units': 'kWh',
+                                'unit': 'kWh',
                                 'rate': 3,
                                 'total': 6,
                                 'description': 'UPRS only',
@@ -692,7 +692,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                 }, {
                                 'rsi_binding': 'B',
                                 'quantity': 6,
-                                'quantity_units': 'therms',
+                                'unit': 'therms',
                                 'rate': 7,
                                 'total': 42,
                                 'description': 'not shared',
@@ -732,7 +732,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                  quantity_formula='1'),
             dict(rsi_binding='DELIVERY_TAX',
                  rate=0.07777,
-                 quantity_units='therms',
+                 unit='therms',
                  quantity_formula='REG_TOTAL.quantity'),
             dict(rate=.2935,
                  rsi_binding='DISTRIBUTION_CHARGE',

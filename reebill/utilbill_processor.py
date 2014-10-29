@@ -49,12 +49,12 @@ class UtilbillProcessor(object):
                 utility_bill,
                 "Insert description",
                 row.get('register_id', "Insert register ID here"),
+                'therms',
                 False,
                 "total",
                 None,
                 row.get('meter_id', ""),
                 quantity=0,
-                quantity_units="therms",
                 register_binding="Insert register binding here")
             session.add(r)
             session.flush()
@@ -70,7 +70,7 @@ class UtilbillProcessor(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
 
-        for k in ['description', 'quantity', 'quantity_units',
+        for k in ['description', 'quantity', 'unit',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
                   'meter_identifier']:
             val = rows.get(k, getattr(register, k))
@@ -278,12 +278,13 @@ class UtilbillProcessor(object):
                 get_predicted_charges(new_utilbill, UtilBillLoader(session))
             for register in predecessor.registers if predecessor else []:
                 session.add(Register(new_utilbill, register.description,
-                                     register.identifier, False,
+                                     register.identifier,
+                                     register.unit,
+                                     False,
                                      register.reg_type,
                                      register.active_periods,
                                      register.meter_identifier,
                                      quantity=0,
-                                     quantity_units=register.quantity_units,
                                      register_binding=register.register_binding))
         session.flush()
         if new_utilbill.state < UtilBill.Hypothetical:

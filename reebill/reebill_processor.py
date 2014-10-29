@@ -67,7 +67,7 @@ class ReebillProcessor(object):
             'description': reebill_charge.description,
             'actual_quantity': reebill_charge.a_quantity,
             'quantity': reebill_charge.h_quantity,
-            'quantity_units': reebill_charge.quantity_unit,
+            'unit': reebill_charge.unit,
             'rate': reebill_charge.rate,
             'actual_total': reebill_charge.a_total,
             'total': reebill_charge.h_total,

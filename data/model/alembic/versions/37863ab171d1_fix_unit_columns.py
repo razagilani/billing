@@ -21,6 +21,7 @@ def upgrade():
         'KWD',
         'therms',
         'MMBTU',
+        'BTU',
     ]
     op.alter_column('register', 'quantity_units', new_column_name='unit',
                     type_=sa.Enum(*units), nullable=False)
