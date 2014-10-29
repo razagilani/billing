@@ -33,7 +33,7 @@ class ChargeUnitTests(testing_utils.TestCase):
                                   rate=6,
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
-                                  quantity_units='therms',
+                                  unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
                                   has_charge=True,
                                   shared=False,

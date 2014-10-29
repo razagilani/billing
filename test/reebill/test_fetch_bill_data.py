@@ -60,8 +60,8 @@ class FetchTest(unittest.TestCase):
                 'supplier', 'DC Non Residential Non Heat', Address(), Address(),
                 period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
-        utilbill.registers = [Register(utilbill, '', False, '', 'total', '',
-                '', quantity=0, quantity_units='therms',
+        utilbill.registers = [Register(utilbill, '', '', 'therms', False,
+                'total', '', '', quantity=0,
                 register_binding='REG_TOTAL')]
         self.reebill = ReeBill(customer, 1, utilbills=[utilbill])
         self.reebill.replace_readings_from_utility_bill_registers(utilbill)

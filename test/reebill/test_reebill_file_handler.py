@@ -44,23 +44,22 @@ class ReebillFileHandlerTest(TestCase):
         u = UtilBill(c, UtilBill.Complete, 'electric', 'Test Utility', 'Test Supplier',
             'Test Rate Class', ba3, sa3, period_start=date(2000,1,1),
             period_end=date(2000,2,1))
-        u.registers = [Register(u, 'All energy', 'REGID', False, 'total',
-                                [], 'METERID', quantity=100,
-                                quantity_units='therms',
+        u.registers = [Register(u, 'All energy', 'REGID', 'therms', False,
+                                'total', [], 'METERID', quantity=100,
                                 register_binding='REG_TOTAL')]
         self.reebill = ReeBill(c, 1, discount_rate=0.3, late_charge_rate=0.1,
                     billing_address=ba, service_address=sa, utilbills=[u])
         self.reebill.replace_readings_from_utility_bill_registers(u)
         self.reebill.charges = [
-            ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply', 10, 20, 'kWh',
-                          1, 10, 20),
+            ReeBillCharge(self.reebill, 'A', 'Example Charge A', 'Supply',
+                          10, 20, 'therms', 1, 10, 20),
             ReeBillCharge(self.reebill, 'B', 'Example Charge B', 'Distribution', 30, 40,
-                          'kWh', 1, 30, 40),
+                          'therms', 1, 30, 40),
             # charges are not in group order to make sure they are sorted
             # before grouping; otherwise some charges could be omitted
             # (this was bug #80340044)
             ReeBillCharge(self.reebill, 'C', 'Example Charge C', 'Supply', 50, 60,
-                          'kWh', 1, 50, 60),
+                          'therms', 1, 50, 60),
         ]
 
         self.file_handler.render(self.reebill)

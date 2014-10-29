@@ -23,7 +23,7 @@ class RateStructureDAOTest(unittest.TestCase):
                                       quantity_formula='',
                                       description="",
                                       group='a',
-                                      quantity_units='therms',
+                                      unit='therms',
                                       shared=True,
                                       has_charge=True)
         self.charge_b_unshared = Charge(utilbill=None,
@@ -32,7 +32,7 @@ class RateStructureDAOTest(unittest.TestCase):
                                         quantity_formula='',
                                         description="",
                                         group='c',
-                                        quantity_units='therms',
+                                        unit='therms',
                                         shared=False,
                                         has_charge=True)
         self.charge_b_shared = Charge(utilbill=None,
@@ -41,7 +41,7 @@ class RateStructureDAOTest(unittest.TestCase):
                                       quantity_formula='',
                                       description="",
                                       group='b',
-                                      quantity_units='therms',
+                                      unit='therms',
                                       shared=True,
                                       has_charge=True)
         self.charge_c_unshared = Charge(utilbill=None,
@@ -50,7 +50,7 @@ class RateStructureDAOTest(unittest.TestCase):
                                         quantity_formula='',
                                         description="",
                                         group='d',
-                                        quantity_units='therms',
+                                        unit='therms',
                                         shared=False,
                                         has_charge=False)
 

@@ -192,7 +192,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.update_charge({
                                        'rsi_binding': 'THE_CHARGE',
                                        'quantity_formula': 'REG_TOTAL.quantity',
-                                       'quantity_units': 'therms',
+                                       'unit': 'therms',
                                        'rate': 1,
                                        'group': 'All Charges',
                                        }, utilbill_id=u.id, rsi_binding='New Charge 1')
@@ -1019,7 +1019,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         charge = self.process.add_charge(u1.id)
         self.process.update_charge(dict(rsi_binding='THE_CHARGE',
                                         quantity_formula="REG_TOTAL.quantity",
-                                        quantity_units='therms', rate=1,
+                                        unit='therms', rate=1,
                                         group='All Charges'), charge_id=charge.id)
 
         self.process.update_utilbill_metadata(u1.id,
@@ -1596,7 +1596,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.process.update_register(r.id, {
             'description': 'time-of-use register',
             'quantity': 0,
-            'quantity_units': 'btu',
+            'unit': 'btu',
             'identifier': 'test2',
             'estimated': False,
             'reg_type': 'tou',
@@ -1670,7 +1670,7 @@ class ReebillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                  quantity_formula='1'),
             dict(rsi_binding='DELIVERY_TAX',
                  rate=0.07777,
-                 quantity_units='therms',
+                 unit='therms',
                  quantity_formula='REG_TOTAL.quantity'),
             dict(rate=.2935,
                  rsi_binding='DISTRIBUTION_CHARGE',

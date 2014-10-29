@@ -12,14 +12,15 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
+        Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier, RateClass
+    UtilBill, Customer, Utility, Supplier, RateClass, Charge
 from billing import config
 from billing.util.monthmath import Month
 
@@ -207,7 +208,7 @@ class ReeBill(Base):
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
-                                  register.quantity_units)
+                                  register.unit)
             self.readings.append(new_reading)
 
     def update_readings_from_reebill(self, reebill_readings):
@@ -363,10 +364,10 @@ class ReeBill(Base):
         for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
-                quantity_units = '' if charge.quantity_units is None else charge.quantity_units
+                unit = '' if charge.unit is None else charge.unit
                 session.add(ReeBillCharge(self, binding, charge.description,
                         charge.group, charge.quantity, evaluation.quantity,
-                        quantity_units, charge.rate, charge.total,
+                        charge.unit, charge.rate, charge.total,
                         evaluation.total))
 
     def compute_charges(self):
@@ -512,20 +513,20 @@ class ReeBillCharge(Base):
     group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    quantity_unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
     def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, quantity_unit, rate, a_total, h_total):
-        assert quantity_unit is not None
+                 h_quantity, unit, rate, a_total, h_total):
+        assert unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
-        self.quantity_unit = quantity_unit
+        self.unit = unit
         self.rate = rate
         self.a_total, self.h_total = a_total, h_total
 
@@ -553,7 +554,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):

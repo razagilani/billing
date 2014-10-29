@@ -11,12 +11,13 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func, distinct
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
+from reebill.state import Reading, ReeBillCharge
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier, RateClass
+    Address, UtilBill, Supplier, RateClass, Charge
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,87 @@ utility_names = ['Pepco',
                  'Scana Energy Marketing',
                  'PG&E']
 
+
+def clean_up_units(session):
+    # get rid of nulls to prepare for other updates
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('charge', 'quantity_units'),
+        ('reading', 'unit'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        session.execute('update %(table)s set %(col)s = "" where %(col)s '
+                        'is null' % dict(table=table, col=col))
+
+
+    # for charges, default unit is "dollars"
+    command = ('update %(table)s '
+               'set %(col)s = "%(newvalue)s" where %(col)s = "%(oldvalue)s" ')
+    for table, col in [
+        ('charge', 'quantity_units'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        session.execute(command % dict(table=table, col=col, oldvalue='',
+                                       newvalue='dollars', condition=''))
+
+    # replace many nonsensical units with a likely unit for the given bill,
+    # either therms or kWh depending on energy type. also "ccf" should
+    # replaced by therms, and variant names for the same unit should be
+    # corrected.
+    command = ('update %(table)s %(join)s '
+               'set %(col)s = "%(newvalue)s" where %(col)s = "%(oldvalue)s" '
+               '%(condition)s')
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('reading', 'unit'),
+        ('charge', 'quantity_units'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        params = dict(table=table, col=col, condition='')
+        if table in ('reading', 'reebill_charge'):
+            params['join'] = ('join reebill on %s.reebill_id = reebill.id '
+                'join utilbill_reebill '
+                'on reebill.id = utilbill_reebill.reebill_id '
+                'join utilbill on utilbill_reebill.utilbill_id = utilbill.id '
+                % table)
+        else:
+            params['join'] = 'join utilbill on utilbill_id = utilbill.id'
+        session.execute(command % dict(params, oldvalue='Ccf',
+                                       newvalue='therms'))
+        session.execute(command % dict(params, oldvalue='kW', newvalue='kWD'))
+        session.execute(command % dict(params, oldvalue='KWD', newvalue='kWD'))
+        for invalid_unit in [
+            '',
+            'REG_TOTAL.quantityunits',
+            'Unit',
+            'Therms',
+            'None',
+        ]:
+            session.execute(command % dict(params, oldvalue=invalid_unit,
+                                           newvalue='therms',
+                                           condition='and service = "gas"'))
+            session.execute(command % dict(params, oldvalue=invalid_unit,
+                                           newvalue='kWh',
+                                           condition='and service = "electric"'))
+
+    # check that all resulting units are valid
+    valid_units = [
+        'kWh',
+        'dollars',
+        'kWD',
+        'therms',
+        'MMBTU',
+    ]
+    for table, col in [
+        ('register', 'quantity_units'),
+        ('charge', 'quantity_units'),
+        ('reading', 'unit'),
+        ('reebill_charge', 'quantity_unit'),
+    ]:
+        values = list(x[0] for x in session.execute(
+                'select distinct %s from %s' % (col, table)))
+        assert all(v in valid_units for v in values)
+    session.commit()
 
 def read_initial_table_data(table_name, session):
     meta = MetaData()
@@ -153,9 +235,13 @@ def set_rate_class_ids(session):
             customer.fb_rate_class_id = c_rate_class.id
 
 def upgrade():
-
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
+
+    init_model(schema_revision='6446c51511c')
+    session = Session()
+    clean_up_units(session)
+    alembic_upgrade('37863ab171d1')
 
     log.info('Upgrading schema to revision fc9faca7a7f')
     alembic_upgrade('fc9faca7a7f')

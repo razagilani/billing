@@ -475,9 +475,9 @@ class UtilBill(Base):
                         rsi_binding="New Charge %s" % n,
                         rate=0.0,
                         quantity_formula='',
-                        quantity_units="",
                         description="New Charge - Insert description here",
                         group="",
+                        unit="dollars",
                         )
         session.add(charge)
         registers = self.registers
@@ -579,19 +579,28 @@ class UtilBill(Base):
                      ('supplier', self.supplier.name),
                      ('rate_class', self.rate_class.name),
                      ('state', self.state_name()),
-                     ])
+                     ('pdf_url', self.pdf_url)])
 
 class Register(Base):
     """A register reading on a utility bill"""
 
     __tablename__ = 'register'
 
+    # allowed units for register quantities
+    PHYSICAL_UNITS = [
+        'BTU',
+        'MMBTU',
+        'kWD',
+        'kWh',
+        'therms',
+    ]
+
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
 
     description = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    quantity_units = Column(String(255), nullable=False)
+    unit = Column(Enum(*PHYSICAL_UNITS), nullable=False)
     identifier = Column(String(255), nullable=False)
     estimated = Column(Boolean, nullable=False)
     # "reg_type" field seems to be unused (though "type" values include
@@ -603,15 +612,15 @@ class Register(Base):
 
     utilbill = relationship("UtilBill", backref='registers')
 
-    def __init__(self, utilbill, description, identifier,
+    def __init__(self, utilbill, description, identifier, unit,
                 estimated, reg_type, active_periods, meter_identifier,
-                quantity=0.0, quantity_units='',register_binding=''):
+                quantity=0.0, register_binding=''):
         """Construct a new :class:`.Register`.
 
         :param utilbill: The :class:`.UtilBill` on which the register appears
         :param description: A description of the register
         :param quantity: The register quantity
-        :param quantity_units: The units of the quantity (i.e. Therms/kWh)
+        :param unit: The units of the quantity (i.e. Therms/kWh)
         :param identifier: ??
         :param estimated: Boolean; whether the indicator is an estimation.
         :param reg_type:
@@ -622,7 +631,7 @@ class Register(Base):
         self.utilbill = utilbill
         self.description = description
         self.quantity = quantity
-        self.quantity_units = quantity_units
+        self.unit = unit
         self.identifier = identifier
         self.estimated = estimated
         self.reg_type = reg_type
@@ -651,8 +660,10 @@ class Register(Base):
 class Charge(Base):
     """Represents a specific charge item on a utility bill.
     """
-
     __tablename__ = 'charge'
+
+    # allowed units for "quantity" field of charges
+    CHARGE_UNITS = Register.PHYSICAL_UNITS + ['dollars']
 
     id = Column(Integer, primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), nullable=False)
@@ -660,7 +671,7 @@ class Charge(Base):
     description = Column(String(255), nullable=False)
     group = Column(String(255), nullable=False)
     quantity = Column(Float, nullable=False)
-    quantity_units = Column(String(255), nullable=False)
+    unit = Column(Enum(*CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     rsi_binding = Column(String(255), nullable=False)
     total = Column(Float, nullable=False)
@@ -700,14 +711,14 @@ class Charge(Base):
             return [var for var in var_names if not Charge.is_builtin(var)]
         return list(var_names)
 
-    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', quantity_units='',
+    def __init__(self, utilbill, rsi_binding, rate, quantity_formula, description='', group='', unit='',
             has_charge=True, shared=False, roundrule=""):
         """Construct a new :class:`.Charge`.
 
         :param utilbill: A :class:`.UtilBill` instance.
         :param description: A description of the charge.
         :param group: The charge group
-        :param quantity_units: The units of the quantity (i.e. Therms/kWh)
+        :param unit: The units of the quantity (i.e. Therms/kWh)
         :param rsi_binding: The rate structure item corresponding to the charge
 
         :param quantity_formula: The RSI quantity formula
@@ -715,11 +726,11 @@ class Charge(Base):
         :param shared:
         :param roundrule:
         """
-        assert quantity_units is not None
+        assert unit is not None
         self.utilbill = utilbill
         self.description = description
         self.group = group
-        self.quantity_units = quantity_units
+        self.unit = unit
         self.rsi_binding = rsi_binding
 
         self.quantity_formula = quantity_formula
@@ -738,7 +749,7 @@ class Charge(Base):
                    other.quantity_formula,
                    other.description,
                    other.group,
-                   other.quantity_units,
+                   other.unit,
                    has_charge=other.has_charge,
                    shared=other.shared,
                    roundrule=other.roundrule)
