@@ -134,17 +134,20 @@ def create_rate_classes(session):
         rate_class = RateClass(bill['rate_class'], utility)
         session.add(rate_class)
     session.flush()
+    session.commit()
 
-def set_rate_class_ids(session):
+def set_rate_class_ids(session, utilbill_data, customer_data):
     utilbills = session.query(UtilBill).all()
     for bill in utilbills:
-        u_rate_class = session.query(RateClass).filter(RateClass.utility_id==bill.utility_id).first()
+        u_rate_class = session.query(RateClass).join(UtilBill, RateClass.utility_id==bill.utility_id).\
+            filter(RateClass.name==utilbill_data[bill.id]['rate_class']).first()
         log.debug('setting rate_class_id to %s for utilbill with id %s'
                   %(u_rate_class.id, bill.id))
         bill.rate_class_id = u_rate_class.id
     customers = session.query(Customer).all()
     for customer in customers:
-        c_rate_class = session.query(RateClass).filter(RateClass.utility_id==customer.fb_utility_id).first()
+        c_rate_class = session.query(RateClass).join(Customer, RateClass.utility_id==customer.fb_utility_id).\
+            filter(RateClass.name==customer_data[customer.id]['fb_rate_class']).first()
         if c_rate_class is None:
             customer.fb_rate_class_id = Session.query(RateClass).first().id
         else:
@@ -198,7 +201,7 @@ def upgrade():
     create_rate_classes(session)
 
     log.info('setting up rate_class ids for Customer an UtilBill records')
-    set_rate_class_ids(session)
+    set_rate_class_ids(session, utilbill_data, customer_data)
 
     log.info('Comitting to Database')
     session.commit()
