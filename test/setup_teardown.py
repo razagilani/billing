@@ -281,8 +281,8 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.rate_structure_dao = pricing.FuzzyPricingModel(
-                logger=logger)
+        self.rate_structure_dao = pricing.FuzzyPricingModel(utilbill_loader,
+                                                            logger=logger)
 
         # TODO: 64956642 do not hard code nexus names
         self.nexus_util = MockNexusUtil([

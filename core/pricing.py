@@ -18,8 +18,7 @@ class PricingModel(object):
         # to avoid checking if it's None
         self.logger = logger
 
-    # TODO move utilbill_loader into FuzzyPricingModel.__init__
-    def get_predicted_charges(self, utilbill, utilbill_loader):
+    def get_predicted_charges(self, utilbill):
         raise NotImplementedError('Subclasses should override this')
 
 class FuzzyPricingModel(PricingModel):
@@ -45,7 +44,17 @@ class FuzzyPricingModel(PricingModel):
         always nonnegative.'''
         return lambda x: max(a**(x * b), minimum)
 
-    def _get_probable_shared_charges(self, utilbill_loader, utility, service,
+    def __init__(self, utilbill_loader, logger=None):
+        '''
+        'utilbill_loader': an object that has a 'load_utilbills' method
+        returning an iterable of state.UtilBills matching criteria given as
+        keyword arguments (see state.UtilBillLoader). For testing, this can be
+        replaced with a mock object.
+        '''
+        super(FuzzyPricingModel, self).__init__(logger)
+        self._utilbill_loader = utilbill_loader
+
+    def _get_probable_shared_charges(self, utility, service,
             rate_class, period, threshold=RSI_PRESENCE_THRESHOLD,
             ignore=lambda x: False, verbose=False):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
@@ -63,7 +72,7 @@ class FuzzyPricingModel(PricingModel):
         weight_func=self.__class__._exp_weight_with_min(0.5, 7, 0.000001)
 
         all_utilbills = [utilbill for utilbill in
-                         utilbill_loader.load_real_utilbills(
+                         self._utilbill_loader.load_real_utilbills(
                             service=service,
                             utility=utility,
                             rate_class=rate_class,
@@ -129,7 +138,7 @@ class FuzzyPricingModel(PricingModel):
                 result.append(Charge.formulas_from_other(charge))
         return result
 
-    def get_predicted_charges(self, utilbill, utilbill_loader):
+    def get_predicted_charges(self, utilbill):
         """Constructs and returns a list of :py:class:`processing.state.Charge`
         instances, each of which is unattached to any
         :py:class:`proessing.state.UtilBill`.
@@ -138,19 +147,15 @@ class FuzzyPricingModel(PricingModel):
         be present on the utilbill.
 
         :utilbill: a :class:`processing.state.UtilBill` instance
-        'utilbill_loader': an object that has a 'load_utilbills' method
-        returning an iterable of state.UtilBills matching criteria given as
-        keyword arguments (see state.UtilBillLoader). For testing, this can be
-        replaced with a mock object.
         """
-        result = self._get_probable_shared_charges(utilbill_loader,
-                utilbill.utility, utilbill.service, utilbill.rate_class,
+        result = self._get_probable_shared_charges(utilbill.utility,
+                utilbill.service, utilbill.rate_class,
                 (utilbill.period_start, utilbill.period_end),
                 ignore=lambda ub:ub.id == utilbill.id)
 
         # add any charges from the predecessor that are not already there
         try:
-            predecessor = utilbill_loader.get_last_real_utilbill(
+            predecessor = self._utilbill_loader.get_last_real_utilbill(
                     utilbill.customer.account, utilbill.period_start,
                     service=utilbill.service, utility=utilbill.utility,
                     rate_class=utilbill.rate_class, processed=True)

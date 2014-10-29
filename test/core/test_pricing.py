@@ -77,10 +77,10 @@ class FuzzyPricingModelTest(unittest.TestCase):
                                    self.charge_b_unshared]
 
         self.utilbill_3.charges = [self.charge_b_shared]
-        self.dao = FuzzyPricingModel()
+        self.utilbill_loader = Mock()
+        self.dao = FuzzyPricingModel(self.utilbill_loader)
 
     def test_get_predicted_charges(self):
-        utilbill_loader = Mock()
 
         # utility bill for which to predict a rate structure, using the
         # ones created in setUp
@@ -100,45 +100,48 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # FuzzyPricingModel
         def raise_nsbe(*args, **kwargs):
             raise NoSuchBillException
-        utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
-        utilbill_loader.load_real_utilbills.return_value = []
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.get_last_real_utilbill.assert_called_once_with(
+        self.utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe
+        self.utilbill_loader.load_real_utilbills.return_value = []
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.get_last_real_utilbill.assert_called_once_with(
                 u.customer.account, u.period_start,
                 service=u.service, utility=u.utility,
                 rate_class=u.rate_class, processed=True)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([], rs)
 
         # with only the 1st utility bill (containing rsi_a_shared and
         # rsi_b_unshared), only rsi_a_shared should appear in the result
-        utilbill_loader.reset_mock()
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1]
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        self.utilbill_loader.reset_mock()
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1]
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([self.charge_a_shared], rs)
 
         # with 2 existing utility bills processed, predicted rate structure
         # includes both A (shared) and B (shared)
-        utilbill_loader.reset_mock()
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+        self.utilbill_loader.reset_mock()
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
 
         # with 3 processed utility bills
-        utilbill_loader.reset_mock()
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+        self.utilbill_loader.reset_mock()
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         # see explanation in setUp for why rsi_a_shared and rsi_b_shared
@@ -147,12 +150,13 @@ class FuzzyPricingModelTest(unittest.TestCase):
 
         # the same is true when the period of 'u' starts after the period of
         # the existing bills
-        utilbill_loader.reset_mock()
+        self.utilbill_loader.reset_mock()
         u.period_start, u.period_end = date(2000,2,1), date(2000,3,1)
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1,
                 self.utilbill_2, self.utilbill_3]
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared], rs)
@@ -160,14 +164,16 @@ class FuzzyPricingModelTest(unittest.TestCase):
         # however, when u belongs to the same account as an existing bill,
         # and that bill meets the requirements to be its "predecessor",
         # un-shared RSIs from the "predecessor" of u also get included.
-        utilbill_loader.reset_mock()
+        self.utilbill_loader.reset_mock()
         u.customer.account = '10001'
-        utilbill_loader.load_real_utilbills.return_value = [self.utilbill_1,
+        self.utilbill_loader.load_real_utilbills.return_value = [
+            self.utilbill_1,
                                             self.utilbill_2, self.utilbill_3]
-        utilbill_loader.get_last_real_utilbill.side_effect = None
-        utilbill_loader.get_last_real_utilbill.return_value = self.utilbill_1
-        rs = self.dao.get_predicted_charges(u, utilbill_loader)
-        utilbill_loader.load_real_utilbills.assert_called_once_with(
+        self.utilbill_loader.get_last_real_utilbill.side_effect = None
+        self.utilbill_loader.get_last_real_utilbill.return_value = \
+            self.utilbill_1
+        rs = self.dao.get_predicted_charges(u)
+        self.utilbill_loader.load_real_utilbills.assert_called_once_with(
                 service='gas', utility='washgas', rate_class='whatever',
                 processed=True)
         self.assertEqual([self.charge_a_shared, self.charge_b_shared,
