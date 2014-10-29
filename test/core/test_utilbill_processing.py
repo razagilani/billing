@@ -131,7 +131,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         assert utilbill.service == doc['service'] == 'Gas'
         assert utilbill.utility.name == doc['utility'] == 'Test Utility Company Template'
         assert utilbill.target_total == 100
-        assert utilbill.rate_class == doc['rate_class'] == 'Test Rate Class Template'
+        assert utilbill.rate_class.name == doc['rate_class'] == 'Test Rate Class Template'
 
         # invalid date ranges
         self.assertRaises(ValueError,
@@ -184,7 +184,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         # change rate class
         self.process.update_utilbill_metadata(utilbill.id,
                                               rate_class='something else')
-        self.assertEqual('something else', utilbill.rate_class)
+        self.assertEqual('something else', utilbill.rate_class.name)
 
         # change processed state
         self.process.update_utilbill_metadata(utilbill.id,

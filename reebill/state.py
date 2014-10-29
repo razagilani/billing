@@ -7,7 +7,7 @@ from itertools import chain
 import logging
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, aliased
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
@@ -20,7 +20,7 @@ import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier, Charge
+    UtilBill, Customer, Utility, Supplier, RateClass, Charge
 from billing import config
 from billing.util.monthmath import Month
 
@@ -688,6 +688,14 @@ class StateDB(object):
             supplier = Supplier(supplier_name, Address('', '', '', '', ''), '')
         return supplier
 
+    def get_create_rate_class(self, rate_class_name, utility):
+        session = Session()
+        try:
+            rate_class = session.query(RateClass).filter_by(name=rate_class_name).one()
+        except NoResultFound:
+            rate_class = RateClass(rate_class_name, utility)
+        return rate_class
+
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
@@ -854,17 +862,19 @@ class StateDB(object):
         .filter(UtilBill.processed == 1)\
         .group_by(UtilBill.customer_id)\
         .subquery()
+        rate_class = aliased(RateClass)
 
         q = session.query(Customer.account,
                           Utility.name,
-                          Customer.fb_rate_class,
+                          RateClass.name,
                           Customer.fb_service_address,
                           sequence_sq.c.max_sequence,
                           version_sq.c.max_version,
                           version_sq.c.issue_date,
-                          UtilBill.rate_class,
+                          rate_class.name,
                           Address,
                           processed_utilbill_sq.c.max_period_end_processed)\
+        .outerjoin(RateClass, RateClass.id==Customer.fb_rate_class_id)\
         .outerjoin(Utility, Utility.id == Customer.fb_utility_id)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
@@ -873,6 +883,7 @@ class StateDB(object):
         .outerjoin(UtilBill, and_(
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
+        .outerjoin(rate_class, rate_class.id == UtilBill.rate_class_id)\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
         .outerjoin(processed_utilbill_sq,
                    Customer.id == processed_utilbill_sq.c.customer_id)\

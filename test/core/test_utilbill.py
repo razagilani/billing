@@ -10,7 +10,7 @@ from unittest import TestCase
 
 from billing.exc import RSIError, ProcessedBillError
 from billing.core.model import UtilBill, Customer, Session, Charge,\
-    Address, Register, Utility, Supplier
+    Address, Register, Utility, Supplier, RateClass
 from billing.reebill.state import Payment
 
 class UtilBillTest(TestCase):
@@ -49,9 +49,9 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address(), '')
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
-                'FB Test Rate Class', Address(), Address()),
-                UtilBill.Complete, 'gas', utility, supplier,
-                'rate class', Address(), Address(),
+                RateClass('FB Test Rate Class',utility), Address(),
+                Address()), UtilBill.Complete, 'gas', utility, supplier,
+                RateClass('rate class', utility), Address(), Address(),
                 period_start=date(2000, 1, 1), period_end=date(2000, 2, 1))
 
         session = Session()
@@ -91,12 +91,15 @@ class UtilBillTest(TestCase):
             " have a register binding named 'REG_TOTAL'")
 
     def test_compute(self):
+        fb_utility = Utility('FB Test Utility', '', '')
+        utility = Utility('utility', Address(), '')
         utilbill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
-                'nobody@example.com', 'FB Test Utility',
-                'FB Test Supplier', 'FB Test Rate Class',
+                'nobody@example.com', fb_utility,
+                'FB Test Supplier',
+                RateClass('FB Test Rate Class', fb_utility),
                 Address(), Address()), UtilBill.Complete, 'gas',
-                Utility('utility', Address(), ''),
-                Supplier('supplier', Address(), ''), 'rate class',
+                utility, Supplier('supplier', Address(), ''),
+                RateClass('rate class', utility),
                 Address(), Address(), period_start=date(2000, 1, 1),
                 period_end=date(2000, 2, 1))
         register = Register(utilbill, "ABCDEF description",
@@ -287,9 +290,10 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
-                'rate class', Address(), Address())
+                RateClass('rate class', utility), Address(),
+                Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', utility, supplier, 'rate class',
+                'gas', utility, supplier, RateClass('rate class', utility),
                 Address(), Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '',
@@ -322,10 +326,11 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
-                'rate class', Address(), Address())
+                RateClass('rate class', utility), Address(),
+                Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', utility, supplier, 'rate class', Address(),
-                Address(), period_start=date(2000,1,1),
+                'gas', utility, supplier, RateClass('rate class', utility)
+                , Address(), Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill.charges = [
             # circular dependency between A and B: A depends on B's "quantity"
@@ -361,10 +366,11 @@ class UtilBillTest(TestCase):
         supplier = Supplier('supplier', Address(), '')
         customer = Customer('someone', '99999', 0.3, 0.1,
                 'nobody@example.com', utility, supplier,
-                'rate class', Address(), Address())
+                RateClass('rate class', utility), Address(),
+                Address())
         utilbill = UtilBill(customer, UtilBill.Complete,
-                'gas', utility, supplier, 'rate class', Address(),
-                Address(), period_start=date(2000,1,1),
+                'gas', utility, supplier, RateClass('rate class', utility),
+                Address(), Address(), period_start=date(2000,1,1),
                 period_end=date(2000,2,1))
         utilbill.registers = [Register(utilbill, '',
                 '', 'kWh', False, "total", '', '',

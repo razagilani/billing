@@ -19,7 +19,7 @@ from os.path import join
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import rate_structure
-from billing.core.model import Supplier, UtilBillLoader
+from billing.core.model import Supplier, UtilBillLoader, RateClass
 from billing.reebill import journal
 from billing.reebill.process import Process
 from billing.reebill.state import StateDB, Customer, Session, UtilBill, \
@@ -90,7 +90,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     def truncate_tables(session):
         for t in ["utilbill_reebill", "register", "payment", "reebill",
                   "charge", "utilbill",  "reading", "reebill_charge",
-                  "customer", "supplier", "company", "address"]:
+                  "customer", "rate_class", "supplier", "company", "address"]:
             session.execute("delete from %s" % t)
         session.commit()
 
@@ -169,19 +169,22 @@ class TestCaseWithSetup(test_utils.TestCase):
                         ub_sa2, ub_ba2, uc, ca1, ca2, other_uc, supplier,
                         other_supplier])
         session.flush()
-
+        rate_class = RateClass('Test Rate Class Template', uc)
         session.add(Customer('Test Customer', '99999', .12, .34,
                              'example@example.com', uc, supplier,
-                             'Test Rate Class Template', fa_ba1, fa_sa1))
+                             rate_class,
+                             fa_ba1, fa_sa1))
 
         #Template Customer aka "Template Account" in UI
         c2 = Customer('Test Customer 2', '100000', .12, .34,
                              'example2@example.com', uc, supplier,
-                             'Test Rate Class Template', fa_ba2, fa_sa2)
+                             rate_class,
+                             fa_ba2, fa_sa2)
         session.add(c2)
 
         u1 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
-                             'Test Rate Class Template',  ub_ba1, ub_sa1,
+                             rate_class,
+                             ub_ba1, ub_sa1,
                              account_number='Acct123456',
                              period_start=date(2012, 1, 1),
                              period_end=date(2012, 1, 31),
@@ -190,7 +193,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                              processed=True)
 
         u2 = UtilBill(c2, UtilBill.Complete, 'gas', uc, supplier,
-                             'Test Rate Class Template', ub_ba2, ub_sa2,
+                             rate_class,
+                             ub_ba2, ub_sa2,
                              account_number='Acct123456',
                              period_start=date(2012, 2, 1),
                              period_end=date(2012, 2, 28),
@@ -221,9 +225,10 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
+        other_rate_class = RateClass('Other Rate Class', other_uc)
         c4 = Customer('Test Customer 3 No Rate Strucutres', '100001', .12, .34,
                              'example2@example.com', other_uc, other_supplier,
-                             'Other Rate Class', c4ba, c4sa)
+                             other_rate_class, c4ba, c4sa)
 
         ub_sa = Address('Test Customer 3 UB 1 Service',
                      '123 Test Street',
@@ -235,8 +240,9 @@ class TestCaseWithSetup(test_utils.TestCase):
                      'Test City',
                      'XX',
                      '12345')
+
         u = UtilBill(c4, UtilBill.Complete, 'gas', other_uc, other_supplier,
-                         'Other Rate Class',  ub_ba, ub_sa,
+                         other_rate_class, ub_ba, ub_sa,
                          account_number='Acct123456',
                          period_start=date(2012, 1, 1),
                          period_end=date(2012, 1, 31),

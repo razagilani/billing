@@ -2,22 +2,22 @@ import unittest
 from datetime import date
 
 from billing.core.model import UtilBill, Address, \
-    Charge, Register, Session, Utility, Customer, Supplier
+    Charge, Register, Session, Utility, Customer, Supplier, RateClass
 from billing.reebill.state import ReeBill
 
 class ReebillTest(unittest.TestCase):
     def setUp(self):
         washgas = Utility('washgas', Address('', '', '', '', ''), '')
         supplier = Supplier('supplier', Address(), '')
-
+        c_rate_class = RateClass('Test Rate Class', washgas)
         customer = Customer('someone', '11111', 0.5, 0.1,
                             'example@example.com', washgas, supplier,
-                            'Test Rate Class',
+                            c_rate_class,
                             Address(), Address())
-
+        u_rate_class = RateClass('DC Non Residential Non Heat', washgas)
         self.utilbill = UtilBill(customer, UtilBill.Complete, 'gas', washgas,
                                  supplier,
-                                 'DC Non Residential Non Heat',
+                                 u_rate_class,
                                  period_start=date(2000, 1, 1),
                                  period_end=date(2000, 2, 1),
                                  billing_address=Address(),

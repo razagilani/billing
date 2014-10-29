@@ -169,7 +169,7 @@ class UtilbillProcessor(object):
                 utilbill.supplier = self.state_db.get_create_supplier(supplier)
 
             if rate_class is not None:
-                utilbill.rate_class = rate_class
+                utilbill.rate_class = self.state_db.get_create_rate_class(rate_class, utilbill.utility)
 
 
             period_start = period_start if period_start else utilbill.period_start
@@ -257,8 +257,8 @@ class UtilbillProcessor(object):
             getattr(predecessor, 'utility', None)
         supplier = self.state_db.get_create_supplier(supplier) if supplier else \
             getattr(predecessor, 'supplier', None)
-        rate_class = rate_class if rate_class else \
-            getattr(predecessor, 'rate_class', "")
+        rate_class = self.state_db.get_create_rate_class(rate_class, utility) if rate_class else \
+            getattr(predecessor, 'rate_class', None)
 
         # delete any existing bill with same service and period but less-final
         # state

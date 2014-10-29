@@ -35,6 +35,7 @@ __all__ = [
     'Register',
     'Session',
     'Supplier',
+    'RateClass',
     'Utility',
     'UtilBill',
     'UtilBillLoader',
@@ -73,7 +74,7 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 
-_schema_revision = '3566e62e7af3'
+_schema_revision = '4bc721447593'
 def check_schema_revision(schema_revision=None):
     """Checks to see whether the database schema revision matches the
     revision expected by the model metadata.
@@ -233,6 +234,20 @@ class Utility(Company):
         super(Utility, self).__init__(name, address, guid)
 
 
+class RateClass(Base):
+    __tablename__ = 'rate_class'
+
+    id = Column(Integer, primary_key=True)
+    utility_id = Column(Integer, ForeignKey('company.id'))
+    name = Column(String(255), nullable=False)
+
+    utility = relationship('Utility')
+
+    def __init__(self, name, utility):
+        self.name = name
+        self.utility = utility
+
+
 class Customer(Base):
     __tablename__ = 'customer'
 
@@ -253,7 +268,8 @@ class Customer(Base):
     service = Column(Enum(*SERVICE_TYPES))
 
     # "fb_" = to be assigned to the customer's first-created utility bill
-    fb_rate_class = Column(String(255), nullable=False)
+    fb_rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+        nullable=False)
     fb_billing_address_id = Column(Integer, ForeignKey('address.id'),
         nullable=False)
     fb_service_address_id = Column(Integer, ForeignKey('address.id'),
@@ -263,6 +279,8 @@ class Customer(Base):
 
     fb_supplier = relationship('Supplier', uselist=False,
         primaryjoin='Customer.fb_supplier_id==Supplier.id')
+    fb_rate_class = relationship('RateClass', uselist=False,
+        primaryjoin='Customer.fb_rate_class_id==RateClass.id')
     fb_billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='Customer.fb_billing_address_id==Address.id')
     fb_service_address = relationship('Address', uselist=False, cascade='all',
@@ -328,10 +346,11 @@ class UtilBill(Base):
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
     utility_id = Column(Integer, ForeignKey('company.id'))
+    rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
+        nullable=False)
 
     state = Column(Integer, nullable=False)
     service = Column(String(45), nullable=False)
-    rate_class = Column(String(255), nullable=False)
     period_start = Column(Date)
     period_end = Column(Date)
 
@@ -358,6 +377,8 @@ class UtilBill(Base):
             order_by=id))
     supplier = relationship('Supplier', uselist=False,
         primaryjoin='UtilBill.supplier_id==Supplier.id')
+    rate_class = relationship('RateClass', uselist=False,
+        primaryjoin='UtilBill.rate_class_id==RateClass.id')
     billing_address = relationship('Address', uselist=False, cascade='all',
         primaryjoin='UtilBill.billing_address_id==Address.id')
     service_address = relationship('Address', uselist=False, cascade='all',
@@ -556,6 +577,7 @@ class UtilBill(Base):
                                    in self._utilbill_reebills]),
                      ('utility', self.utility.name),
                      ('supplier', self.supplier.name),
+                     ('rate_class', self.rate_class.name),
                      ('state', self.state_name()),
                      ('pdf_url', self.pdf_url)])
 
