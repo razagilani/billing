@@ -4,11 +4,11 @@ import unittest
 
 from mock import Mock
 
-from billing.core.rate_structure import RateStructureDAO
+from billing.core.pricing import FuzzyPricingModel
 from billing.core.model import Charge
 from billing.exc import NoSuchBillException
 
-class RateStructureDAOTest(unittest.TestCase):
+class FuzzyPricingModelTest(unittest.TestCase):
     def setUp(self):
         # 3 rate structures, two containing B shared and one containing B
         # unshared. If unshared RSIs count as "absent", B is more absent than
@@ -77,7 +77,7 @@ class RateStructureDAOTest(unittest.TestCase):
                                    self.charge_b_unshared]
 
         self.utilbill_3.charges = [self.charge_b_shared]
-        self.dao = RateStructureDAO()
+        self.dao = FuzzyPricingModel()
 
     def test_get_predicted_charges(self):
         utilbill_loader = Mock()
@@ -97,7 +97,7 @@ class RateStructureDAOTest(unittest.TestCase):
         # with no processed utility bills, predicted rate structure is empty.
         # note that since 'utilbill_loader' is used, actually loading the
         # utility bills with the given attributes is outside the scope of
-        # RateStructureDAO
+        # FuzzyPricingModel
         def raise_nsbe(*args, **kwargs):
             raise NoSuchBillException
         utilbill_loader.get_last_real_utilbill.side_effect = raise_nsbe

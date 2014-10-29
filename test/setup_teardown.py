@@ -18,7 +18,7 @@ import mongoengine
 from os.path import join
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
-from billing.core import rate_structure
+from billing.core import pricing
 from billing.core.model import Supplier, UtilBillLoader, RateClass
 from billing.reebill import journal
 from billing.reebill.process import Process
@@ -281,7 +281,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         self.splinter = MockSplinter(deterministic=True,
                 installs=[mock_install_1, mock_install_2])
 
-        self.rate_structure_dao = rate_structure.RateStructureDAO(
+        self.rate_structure_dao = pricing.FuzzyPricingModel(
                 logger=logger)
 
         # TODO: 64956642 do not hard code nexus names
@@ -333,7 +333,7 @@ class TestCaseWithSetup(test_utils.TestCase):
 
     def setUp(self):
         """Sets up "test" databases in Mongo and MySQL, and crates DAOs:
-        ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
+        ReebillDAO, FuzzyPricingModel, StateDB, Splinter, Process,
         NexusUtil."""
         # make sure FakeS3 server is still running (in theory one of the
         # tests or some other process could cause it to exit)
