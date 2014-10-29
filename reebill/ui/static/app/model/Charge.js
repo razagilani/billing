@@ -6,7 +6,7 @@ Ext.define('ReeBill.model.Charge', {
         {name: 'rsi_binding'},
         {name: 'description'},
         {name: 'quantity'},
-        {name: 'quantity_units'},
+        {name: 'unit'},
         {name: 'rate', type: 'float'},
         {name: 'total', type: 'float'},
         {name: 'error'},
