@@ -73,7 +73,7 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         width: 150,
     },{
         header: 'Units',
-        dataIndex: 'quantity_units',
+        dataIndex: 'unit',
         width: 100,
         sortable: true,
         editor: {
