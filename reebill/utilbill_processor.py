@@ -354,7 +354,8 @@ class UtilbillProcessor(object):
         session = Session()
         utilbills, total_count = self.state_db.list_utilbills(account,
                                                               start, limit)
-        data = [ub.column_dict() for ub in utilbills]
+        data = [dict(ub.column_dict(), pdf_url=self.billupload.get_s3_url(ub))
+                for ub in utilbills]
         return data, total_count
 
     def get_all_suppliers_json(self):
