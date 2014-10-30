@@ -71,17 +71,33 @@ def upload_utilbills_to_aws(session):
     """
     Uploads utilbills to AWS
     """
-    bu = BillFileHandler.from_config()
+    s3_connection = S3Connection(config.get('aws_s3', 'aws_access_key_id'),
+                                 config.get('aws_s3', 'aws_secret_access_key'),
+                                 is_secure=config.get('aws_s3', 'is_secure'),
+                                 port=config.get('aws_s3', 'port'),
+                                 host=config.get('aws_s3', 'host'),
+                                 calling_format=config.get('aws_s3',
+                                                           'calling_format'))
+    utilbill_loader = None
+    url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+        config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
+    bu = BillFileHandler(s3_connection, config.get('bill', 'bucket'),
+                                      utilbill_loader, url_format)
     bucket = bu._get_amazon_bucket()
     upload_count = 0
     for utilbill in session.query(UtilBill).all():
         try:
             local_file_path = get_utilbill_file_path(utilbill)
-            sha256_hexdigest = get_hash(local_file_path)
+            with open(local_file_path) as local_file:
+                sha256_hexdigest = bu.compute_hexdigest(local_file)
         except IOError:
             log.error('Local pdf file for utilbill id %s not found' % \
                       utilbill.id)
             continue
+
+        # put file hash in database
+        utilbill.sha256_hexdigest = sha256_hexdigest
+
         log.debug('Uploading pdf for utilbill id %s file path %s hexdigest %s'
                   % (utilbill.id, local_file_path, sha256_hexdigest))
         upload_count += 1
@@ -89,3 +105,15 @@ def upload_utilbills_to_aws(session):
         full_key_name = os.path.join('utilbill', sha256_hexdigest)
         key = bucket.new_key(full_key_name)
         key.set_contents_from_filename(local_file_path)
+
+if __name__ == '__main__':
+    # for testing in development environment
+    from billing import init_config, init_model, init_logging
+    init_config()
+    init_model()
+    init_logging()
+    from billing import config
+    from billing.core.model import Session
+    session = Session()
+    upload_utilbills_to_aws(session)
+    session.commit()
