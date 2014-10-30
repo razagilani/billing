@@ -4,7 +4,7 @@ import hashlib
 from boto.s3.connection import S3Connection
 
 from billing import config
-from core.model import UtilBill
+from billing.core.model import UtilBill
 
 
 class BillFileHandler(object):
@@ -64,7 +64,7 @@ class BillFileHandler(object):
         Return empty string for a UtilBill that has no file.
         '''
         # some bills have no file and therefore no URL
-        if utilbill.state != UtilBill.Complete:
+        if utilbill.state > UtilBill.Complete:
             return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
                                       key_name=self._get_key_name(utilbill))
