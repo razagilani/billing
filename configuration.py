@@ -2,8 +2,9 @@
 """
 from boto.s3.connection import OrdinaryCallingFormat, S3Connection
 from formencode.schema import Schema
-from formencode.validators import StringBool, String, URL, Int, Email, OneOf
-from formencode.compound import All
+from formencode.validators import (StringBool, String, URL, Int, Number, Email,
+                                   OneOf, Empty)
+from formencode.compound import All, Any
 from os.path import isdir
 from formencode.api import FancyValidator, Invalid
 
@@ -94,6 +95,11 @@ class aws_s3(Schema):
     calling_format = All(CallingFormat(),
                          OneOf(['OrdinaryCallingFormat',
                                 'DefaultCallingFormat']))
+    # optional settings for boto HTTP requests
+    # note: empty values get converted to None
+    num_retries = Any(validators=[Number(), Empty()])
+    max_retry_delay = Any(validators=[Number(), Empty()])
+    http_socket_timeout = Any(validators=[Number(), Empty()])
 
 #Logging
 
