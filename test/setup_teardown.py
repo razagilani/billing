@@ -1,6 +1,7 @@
 from shutil import rmtree
 import subprocess
 from time import sleep
+import boto
 from boto.s3.connection import S3Connection
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary

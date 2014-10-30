@@ -39,6 +39,22 @@ def init_config(filepath='settings.cfg', fp=None):
     config.set('main', 'appdir', dirname(realpath(__file__)))
     log.debug('Initialized configuration')
 
+    # set boto's options for AWS HTTP requests according to the aws_s3
+    # section of the config file.
+    # it is necessary to override boto's defaults because the default
+    # behavior is to repeat every request 6 times with an extremely long
+    # timeout and extremely long interval between attempts, making it hard to
+    # tell when the server is not responding.
+    # this will override ~/.boto and/or /etc/boto.cfg if they exist (though we
+    # should not have those files).
+    import boto
+    if not boto.config.has_section('Boto'):
+        boto.config.add_section('Boto')
+    for key in ['num_retries', 'max_retry_delay', 'http_socket_timeout']:
+        value = config.get('aws_s3', key)
+        if value is not None:
+            boto.config.set('Boto', key, str(value))
+
 
 def init_logging(filepath='settings.cfg'):
     """Initializes logging"""
