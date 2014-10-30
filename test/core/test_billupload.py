@@ -44,9 +44,14 @@ class BillUploadTest(unittest.TestCase):
         ub = Mock(autospec=UtilBill)
         the_hash = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         ub.sha256_hexdigest = the_hash
+        ub.state = UtilBill.Complete
         expected = 'https://example.com/%s/utilbill/%s' % (self.bucket.name,
                                                           the_hash)
         self.assertEqual(expected, self.bu.get_s3_url(ub))
+
+        ub.state = UtilBill.Estimated
+        self.assertEqual('', self.bu.get_s3_url(ub))
+
 
     def test_utilbill_key_name(self):
         ub = Mock()
