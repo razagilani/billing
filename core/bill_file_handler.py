@@ -4,6 +4,7 @@ import hashlib
 from boto.s3.connection import S3Connection
 
 from billing import config
+from core.model import UtilBill
 
 
 class BillFileHandler(object):
@@ -53,16 +54,20 @@ class BillFileHandler(object):
 
     @staticmethod
     def _get_key_name(utilbill):
-        return utilbill.sha256_hexdigest
+        return 'utilbill/' + utilbill.sha256_hexdigest
 
     def _get_amazon_bucket(self):
         return self._connection.get_bucket(self._bucket_name)
 
     def get_s3_url(self, utilbill):
         '''Return URL for the file corresponding to the given utility bill.
+        Return empty string for a UtilBill that has no file.
         '''
+        # some bills have no file and therefore no URL
+        if utilbill.state != UtilBill.Complete:
+            return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
-                                      key_name=utilbill.sha256_hexdigest)
+                                      key_name=self._get_key_name(utilbill))
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
         """Removes the pdf file associated with utilbill from s3.

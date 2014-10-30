@@ -71,6 +71,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                                            bucket_name))
 
         # start FakeS3 as a subprocess
+        # TODO: host should be set according to config file
         fakes3_args = ['fakes3', '--port', '4567', '--root',
                    cls.fakes3_root_dir.path]
         cls.fakes3_process = subprocess.Popen(fakes3_args)
@@ -271,8 +272,8 @@ class TestCaseWithSetup(test_utils.TestCase):
                                                             'calling_format'))
         utilbill_loader = UtilBillLoader(Session())
         # TODO make this entire URL configurable instead of just the parts
-        url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
-                config.get('aws_s3', 'host'))
+        url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.billupload = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)

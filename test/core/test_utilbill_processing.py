@@ -1,3 +1,4 @@
+import requests
 from billing.test import init_test_config
 init_test_config()
 
@@ -235,8 +236,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                              utility='pepco',
                                              supplier = 'supplier',
                                              rate_class='Residential-R')
-        utilbills_data, _ = self.process.get_all_utilbills_json(account, 0,
-                                                                30)
+            # save file contents to compare later
+            file1.seek(0)
+            file_content = file1.read()
+
+        utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
 
         self.assertDictContainsSubset({
                                           'state': 'Final',
@@ -261,6 +265,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             utilbills_data[0]['id'])
         self.assertEqual([], charges)
 
+        # check that the file is accessible
+        url = utilbills_data[0]['pdf_url']
+        response = requests.get(url)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(file_content, response.content)
+
         # second bill: default utility and rate class are chosen
         # when those arguments are not given, and non-standard file
         # extension is used
@@ -270,9 +280,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                              date(2012, 3, 1), file2,
                                              utility='pepco',
                                              supplier='supplier')
-        utilbills_data, _ = self.process.get_all_utilbills_json(
-            account, 0,
-            30)
+        utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
         dictionaries = [{
                             'state': 'Final',
                             'service': 'Electric',

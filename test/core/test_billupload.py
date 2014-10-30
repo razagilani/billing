@@ -31,7 +31,7 @@ class BillUploadTest(unittest.TestCase):
 
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
 
-        url_format = 'https://example.com/utilbill/%(bucket_name)s/%(key_name)s'
+        url_format = 'https://example.com/%(bucket_name)s/%(key_name)s'
         self.bu = BillFileHandler(connection, bucket_name, self.utilbill_loader,
                              url_format)
         init_model()
@@ -44,18 +44,18 @@ class BillUploadTest(unittest.TestCase):
         ub = Mock(autospec=UtilBill)
         the_hash = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         ub.sha256_hexdigest = the_hash
-        expected = 'https://example.com/utilbill/%s/%s' % (self.bucket.name,
+        expected = 'https://example.com/%s/utilbill/%s' % (self.bucket.name,
                                                           the_hash)
         self.assertEqual(expected, self.bu.get_s3_url(ub))
 
     def test_utilbill_key_name(self):
         ub = Mock()
         ub.sha256_hexdigest = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
-        expected = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        expected = 'utilbill/' + ub.sha256_hexdigest
         self.assertEqual(self.bu._get_key_name(ub), expected)
 
     def test_upload_to_s3(self):
-        key_name = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
+        key_name = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         test_file = StringIO('asdf')
 
         utilbill = Mock(autospec=UtilBill)
