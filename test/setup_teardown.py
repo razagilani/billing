@@ -271,7 +271,6 @@ class TestCaseWithSetup(test_utils.TestCase):
                                   calling_format=config.get('aws_s3',
                                                             'calling_format'))
         utilbill_loader = UtilBillLoader(Session())
-        # TODO make this entire URL configurable instead of just the parts
         url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.billupload = BillFileHandler(s3_connection,

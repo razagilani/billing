@@ -138,9 +138,11 @@ class WebResource(object):
                 host=config.get('aws_s3', 'host'),
                 calling_format=config.get('aws_s3', 'calling_format'))
         utilbill_loader = UtilBillLoader(Session())
-        # TODO make this entire URL configurable instead of just the parts
-        url_format = 'https://%s/%%(bucket_name)s/utilbill/%%(key_name)s' % (
-                config.get('aws_s3', 'host'))
+        # TODO: ugly. maybe put entire url_format in config file.
+        url_format = '%s://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
+                'https' if config.get('aws_s3', 'is_secure') is True else
+                'http', config.get('aws_s3', 'host'),
+                config.get('aws_s3', 'port'))
         self.billUpload = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)
