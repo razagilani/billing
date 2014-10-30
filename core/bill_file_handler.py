@@ -89,4 +89,3 @@ class BillFileHandler(object):
         key = self._get_amazon_bucket().new_key(key_name)
         key.set_contents_from_file(file)
 
-    # TODO: this should go away when recent changes are merged
