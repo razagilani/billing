@@ -29,16 +29,6 @@ class BillFileHandler(object):
         self._url_format = url_format
 
     @classmethod
-    def from_config(cls):
-        return cls(S3Connection(config.get('aws_s3', 'aws_access_key_id'),
-                                config.get('aws_s3', 'aws_secret_access_key'),
-                                is_secure=config.get('aws_s3', 'is_secure'),
-                                port=config.get('aws_s3', 'port'),
-                                host=config.get('aws_s3', 'host'),
-                                calling_format=config.get('aws_s3',
-                                                          'calling_format')))
-
-    @classmethod
     def compute_hexdigest(cls, file):
         '''Return SHA-256 hash of the given file (must be seekable).
         '''
