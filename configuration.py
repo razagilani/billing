@@ -1,4 +1,5 @@
 """Validation logic for the configuration file.
+TODO: find someplace to put this other than the root directory.
 """
 from boto.s3.connection import OrdinaryCallingFormat, S3Connection
 from formencode.schema import Schema
