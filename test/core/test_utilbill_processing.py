@@ -1,14 +1,15 @@
 import requests
+
 from billing.test import init_test_config
+
 init_test_config()
 
 from StringIO import StringIO
 from datetime import date
-import os
 from os.path import join, dirname, realpath
 from sqlalchemy.orm.exc import NoResultFound
 from billing.core.model import UtilBill
-from billing.core.model.model import Session, Customer, Utility, Address
+from billing.core.model.model import Session, Customer
 from test import testing_utils
 from test.setup_teardown import TestCaseWithSetup
 

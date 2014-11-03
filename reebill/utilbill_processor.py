@@ -1,9 +1,10 @@
 import json
 from datetime import datetime, timedelta
-from billing import config
+
 from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
     RateClass
-from billing.exc import NoSuchBillException, ProcessedBillError
+from billing.exc import NoSuchBillException
+
 
 ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
@@ -136,18 +137,21 @@ class UtilbillProcessor(object):
         utilbill = self._get_utilbill(utilbill_id)
         if utilbill.editable():
             session = Session()
-            charge = session.query(Charge).filter(Charge.id == charge_id).one() \
-                if charge_id else \
-                session.query(Charge). \
-                    filter(Charge.utilbill_id == utilbill_id). \
-                    filter(Charge.rsi_binding == rsi_binding).one()
+            if charge_id:
+                charge = session.query(Charge)\
+                    .filter(Charge.id == charge_id).one()
+            else:
+                charge = session.query(Charge)\
+                    .filter(Charge.utilbill_id == utilbill_id)\
+                    .filter(Charge.rsi_binding == rsi_binding).one()
             session.delete(charge)
             self.compute_utility_bill(charge.utilbill_id)
             session.expire(charge.utilbill)
 
-    def update_utilbill_metadata(self, utilbill_id, period_start=None,
-                                 period_end=None, service=None, target_total=None, utility=None,
-                                 supplier=None, rate_class=None, processed=None):
+    def update_utilbill_metadata(
+            self, utilbill_id, period_start=None, period_end=None, service=None,
+            target_total=None, utility=None, supplier=None, rate_class=None,
+            processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
@@ -170,10 +174,11 @@ class UtilbillProcessor(object):
                 utilbill.supplier = self.state_db.get_create_supplier(supplier)
 
             if rate_class is not None and isinstance(rate_class, basestring):
-                utilbill.rate_class = self.state_db.get_create_rate_class(rate_class, utilbill.utility)
+                utilbill.rate_class = self.state_db.get_create_rate_class(
+                    rate_class, utilbill.utility)
 
-
-            period_start = period_start if period_start else utilbill.period_start
+            period_start = period_start if period_start else \
+                utilbill.period_start
             period_end = period_end if period_end else utilbill.period_end
 
             UtilBill.validate_utilbill_period(period_start, period_end)
@@ -293,8 +298,8 @@ class UtilbillProcessor(object):
         return new_utilbill
 
     def get_service_address(self, account):
-        return UtilBillLoader(Session()).get_last_real_utilbill(account,
-                                                                datetime.utcnow()).service_address.to_dict()
+        return UtilBillLoader(Session()).get_last_real_utilbill(
+            account, datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -351,11 +356,11 @@ class UtilbillProcessor(object):
         # result is a list of dictionaries of the form {account: account
         # number, name: full name, period_start: date, period_end: date,
         # sequence: reebill sequence number (if present)}
-        session = Session()
         utilbills, total_count = self.state_db.list_utilbills(account,
                                                               start, limit)
-        data = [dict(ub.column_dict(), pdf_url=self.bill_file_handler.get_s3_url(ub))
-               for ub in utilbills]
+        data = [dict(ub.column_dict(),
+                     pdf_url=self.bill_file_handler.get_s3_url(ub))
+                for ub in utilbills]
         return data, total_count
 
     def get_all_suppliers_json(self):
