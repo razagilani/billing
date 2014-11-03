@@ -74,7 +74,7 @@ def init_model(uri=None, schema_revision=None):
     log = logging.getLogger(__name__)
 
 
-    uri = uri if uri else config.get('statedb', 'uri')
+    uri = uri if uri else config.get('db', 'uri')
     log.debug('Intializing sqlalchemy model with uri %s' % uri)
     Session.rollback()
     Session.remove()
