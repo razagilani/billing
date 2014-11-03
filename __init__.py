@@ -1,7 +1,7 @@
 import os.path as path
 from os.path import dirname, realpath
 
-import configuration as vns
+import configuration as config_file_schema
 
 
 __version__ = '23'
@@ -25,7 +25,7 @@ def init_config(filepath='settings.cfg', fp=None):
     log = logging.getLogger(__name__)
     
     global config
-    config = ValidatedConfigParser(vns)
+    config = ValidatedConfigParser(config_file_schema)
     if fp:
         log.debug('Reading configuration fp')
         config.readfp(fp)
