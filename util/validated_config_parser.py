@@ -8,14 +8,14 @@ class ValidatedConfigParser(RawConfigParser):
     """A ConfigParser class with built-in validation logic and type conversion.
     """
     
-    def __init__(self, vns, **kwargs):
+    def __init__(self, config_file_schema, **kwargs):
         """Construct a new :class:`.ValidatedConfigParser`.
         
-        :param vns: A namespace containing formencode Schemas for each
+        :param config_file_schema: A namespace containing formencode Schemas for each
          config file section. If a schema does not exist for a given section, 
          the section values are read as strings without validation/conversion.
         """
-        self._vns = vns
+        self._vns = config_file_schema
         RawConfigParser.__init__(self, **kwargs)
 
     def schema_dict(self):

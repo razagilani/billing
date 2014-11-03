@@ -9,7 +9,7 @@ from unittest import TestCase
 from glob import glob
 from os.path import dirname, join, realpath
 
-from billing import configuration as vns
+from billing import configuration as config_file_schema
 from billing.util.validated_config_parser import ValidatedConfigParser
 
 
@@ -17,7 +17,7 @@ class TestValidateConfigs(TestCase):
     def setUp(self):
         root_path = dirname(dirname(realpath(__file__)))
         self.file_paths = glob(join(root_path, 'conf', 'configs', '*.cfg'))
-        self.config_parser = ValidatedConfigParser(vns)
+        self.config_parser = ValidatedConfigParser(config_file_schema)
 
     def test_validate_configs(self):
         for path in self.file_paths:
