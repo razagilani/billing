@@ -578,7 +578,6 @@ class UtilBill(Base):
                      ('utility', self.utility.column_dict()),
                      ('supplier', self.supplier.column_dict()),
                      ('rate_class', self.rate_class.column_dict()),
-                     ('state', self.state_name())])
                      ('state', self.state_name()),
                      ('pdf_url', self.pdf_url)])
 
