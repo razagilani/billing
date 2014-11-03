@@ -2,6 +2,7 @@
 TODO: find someplace to put this other than the root directory.
 """
 from boto.s3.connection import OrdinaryCallingFormat, S3Connection
+from formencode.exc import FERuntimeWarning
 from formencode.schema import Schema
 from formencode.validators import (StringBool, String, URL, Int, Number, Email,
                                    OneOf, Empty)
@@ -10,14 +11,28 @@ from os.path import isdir
 from formencode.api import FancyValidator, Invalid
 
 
+class InvalidDirectoryPath(Invalid):
+    '''Special exception for directory paths, because errors about these are
+    ignored when validating config files meant for deployment on a different
+    host.
+    '''
+
 class TCPPort(Int):
     min = 1
     max = 65535
 
-class Directory(FancyValidator):
-    def _convert_to_python(self, value, state):
-        if isdir(value): return value
-        raise Invalid("Please specify a valid directory", value, state)
+# class Directory(FancyValidator):
+#     def _convert_to_python(self, value, state):
+#         if isdir(value): return value
+#         raise InvalidDirectoryPath("Please specify a valid directory",
+#                                    value, state)
+class Directory(String):
+    # existence of directory paths has to be ignored in order to check
+    # validity of a config file while not running on the host where those
+    # directories exist.
+    # also note that it is not possible to use a custom subclass of
+    # Invalid because formencode will catch it and re-raise Invalid.
+    pass
 
 class CallingFormat(FancyValidator):
     def _convert_to_python(self, value, state):
