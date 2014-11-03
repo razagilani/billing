@@ -9,10 +9,10 @@ ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
 
 
 class UtilbillProcessor(object):
-    def __init__(self, rate_structure_dao, billupload, nexus_util,
+    def __init__(self, rate_structure_dao, bill_file_handler, nexus_util,
                  logger=None):
         self.rate_structure_dao = rate_structure_dao
-        self.billupload = billupload
+        self.bill_file_handler = bill_file_handler
         self.nexus_util = nexus_util
         self.logger = logger
 
@@ -273,7 +273,7 @@ class UtilbillProcessor(object):
         session.flush()
 
         if bill_file is not None:
-            self.billupload.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
+            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao. \
                 get_predicted_charges(new_utilbill)
@@ -312,7 +312,7 @@ class UtilbillProcessor(object):
         if utility_bill.is_attached() or not utility_bill.editable():
             raise ValueError("Can't delete an attached or processed utility bill.")
 
-        self.billupload.delete_utilbill_pdf_from_s3(utility_bill)
+        self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -321,7 +321,7 @@ class UtilbillProcessor(object):
             session.delete(register)
         session.delete(utility_bill)
 
-        pdf_url = self.billupload.get_s3_url(utility_bill)
+        pdf_url = self.bill_file_handler.get_s3_url(utility_bill)
         return utility_bill, pdf_url
 
     def regenerate_uprs(self, utilbill_id):
@@ -354,7 +354,7 @@ class UtilbillProcessor(object):
         session = Session()
         utilbills, total_count = self.state_db.list_utilbills(account,
                                                               start, limit)
-        data = [dict(ub.column_dict(), pdf_url=self.billupload.get_s3_url(ub))
+        data = [dict(ub.column_dict(), pdf_url=self.bill_file_handler.get_s3_url(ub))
                 for ub in utilbills]
         return data, total_count
 
