@@ -65,7 +65,7 @@ class TestCaseWithSetup(test_utils.TestCase):
     def check_fakes3_process(cls):
         exit_status = cls.fakes3_process.poll()
         if exit_status is not None:
-            raise CalledProcessError(exit_status, ' '.join(cls.fakes3_command))
+            raise CalledProcessError(exit_status, cls.fakes3_command)
 
     @classmethod
     def setUpClass(cls):
@@ -78,10 +78,9 @@ class TestCaseWithSetup(test_utils.TestCase):
                                            bucket_name))
 
         # start FakeS3 as a subprocess
-        # TODO: host should be set according to config file
-        cls.fakes3_command = ['fakes3', '--port', '4567', '--root',
-                   cls.fakes3_root_dir.path]
-        cls.fakes3_process = Popen(cls.fakes3_command)
+        cls.fakes3_command = 'fakes3 --port %s --root %s' % (
+            config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
+        cls.fakes3_process = Popen(cls.fakes3_command.split())
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
