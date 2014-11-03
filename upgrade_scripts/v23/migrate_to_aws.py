@@ -81,7 +81,7 @@ def upload_utilbills_to_aws(session):
     utilbill_loader = None
     url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
         config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
-    bu = BillFileHandler(s3_connection, config.get('bill', 'bucket'),
+    bu = BillFileHandler(s3_connection, config.get('aws_s3', 'bucket'),
                                       utilbill_loader, url_format)
     bucket = bu._get_amazon_bucket()
     upload_count = 0
