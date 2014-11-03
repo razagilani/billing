@@ -4,7 +4,7 @@ from os.path import dirname, realpath
 import configuration as vns
 
 
-__version__ = '21'
+__version__ = '23'
 
 __all__ = ['util', 'processing', 'init_logging', 'init_config', 'init_model',
            'initialize', 'config']
