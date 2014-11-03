@@ -66,7 +66,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # create root directory on the filesystem for the FakeS3 server,
         # and inside it, a directory to be used as an "S3 bucket".
         cls.fakes3_root_dir = TempDirectory()
-        bucket_name = config.get('bill', 'bucket')
+        bucket_name = config.get('aws_s3', 'bucket')
         make_directories_if_necessary(join(cls.fakes3_root_dir.path,
                                            bucket_name))
 
@@ -274,7 +274,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         url_format = 'http://%s:%s/%%(bucket_name)s/%%(key_name)s' % (
                 config.get('aws_s3', 'host'), config.get('aws_s3', 'port'))
         self.billupload = BillFileHandler(s3_connection,
-                                     config.get('bill', 'bucket'),
+                                     config.get('aws_s3', 'bucket'),
                                      utilbill_loader, url_format)
 
         mock_install_1 = MockSkyInstall(name='example-1')
@@ -317,9 +317,8 @@ class TestCaseWithSetup(test_utils.TestCase):
 
         self.temp_dir = TempDirectory()
         reebill_file_handler = ReebillFileHandler(
-                config.get('reebillrendering', 'template_directory'),
-                config.get('bill', 'billpath'),
-                config.get('reebillrendering', 'teva_accounts'))
+                config.get('reebill', 'reebill_file_path'),
+                config.get('reebill', 'teva_accounts'))
 
         ree_getter = RenewableEnergyGetter(self.splinter, logger)
 

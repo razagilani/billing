@@ -1,6 +1,8 @@
 """Validation logic for the configuration file.
+TODO: find someplace to put this other than the root directory.
 """
 from boto.s3.connection import OrdinaryCallingFormat, S3Connection
+from formencode.exc import FERuntimeWarning
 from formencode.schema import Schema
 from formencode.validators import (StringBool, String, URL, Int, Number, Email,
                                    OneOf, Empty)
@@ -9,14 +11,28 @@ from os.path import isdir
 from formencode.api import FancyValidator, Invalid
 
 
+class InvalidDirectoryPath(Invalid):
+    '''Special exception for directory paths, because errors about these are
+    ignored when validating config files meant for deployment on a different
+    host.
+    '''
+
 class TCPPort(Int):
     min = 1
     max = 65535
 
-class Directory(FancyValidator):
-    def _convert_to_python(self, value, state):
-        if isdir(value): return value
-        raise Invalid("Please specify a valid directory", value, state)
+# class Directory(FancyValidator):
+#     def _convert_to_python(self, value, state):
+#         if isdir(value): return value
+#         raise InvalidDirectoryPath("Please specify a valid directory",
+#                                    value, state)
+class Directory(String):
+    # existence of directory paths has to be ignored in order to check
+    # validity of a config file while not running on the host where those
+    # directories exist.
+    # also note that it is not possible to use a custom subclass of
+    # Invalid because formencode will catch it and re-raise Invalid.
+    pass
 
 class CallingFormat(FancyValidator):
     def _convert_to_python(self, value, state):
@@ -26,30 +42,40 @@ class CallingFormat(FancyValidator):
             return S3Connection.DefaultCallingFormat
         raise Invalid('Please specify a valid calling format.')
 
-class runtime(Schema):
-    integrate_nexus = StringBool()
+class reebill(Schema):
+    # host and port for running ReeBill web app with built-in server
+    socket_port = TCPPort()
+    socket_host = String()
+
+    # whether users must log in
+    authenticate = StringBool()
     sessions_key = String()
-    mock_skyliner = StringBool()
-    
-class skyline_backend(Schema):    
+
+    # databases for getting renewable energy data
     oltp_url = URL()
     olap_host = String()
     olap_database = String()
+    mock_skyliner = StringBool()
+
+    # ways to access the database of alternate customer names
     nexus_db_host = String()
     nexus_web_host = String()
     nexus_offline_cache_file = String()
+    reebill_file_path = Directory()
 
-class http(Schema):
-    socket_port = TCPPort()
-    socket_host = String()
-    
-class bill(Schema):
-    utilitybillpath = String()
-    billpath = String()
-    utility_bill_trash_directory = String()
-    bucket = String()
+    # account numbers for bills whose PDFs are rendered using the "teva" format
+    teva_accounts = String()
 
-class statedb(Schema):
+class reebillreconciliation(Schema):
+    log_directory = Directory()
+    report_directory = Directory()
+
+class reebillestimatedrevenue(Schema):
+    log_directory = Directory()
+    report_directory = Directory()
+
+class db(Schema):
+    # MySQL database
     uri = String()
     echo = StringBool()
 
@@ -59,6 +85,7 @@ class mongodb(Schema):
     port = TCPPort()
 
 class mailer(Schema):
+    # sending reebill emails to customers
     smtp_host = String()
     smtp_port = TCPPort()
     originator = Email()
@@ -67,26 +94,12 @@ class mailer(Schema):
     password = String()
     template_file_name = String()
     
-class authentication(Schema):
-    authenticate = StringBool()
-    
-class reebillrendering(Schema):
-    template_directory = String()
-    default_template = String()
-    teva_accounts = String()
-    
-class reebillreconciliation(Schema):
-    log_directory = Directory()
-    report_directory = Directory()
-    
-class reebillestimatedrevenue(Schema):
-    log_directory = Directory()
-    report_directory = Directory()
-
 class amqp(Schema):
     exchange = String()
 
 class aws_s3(Schema):
+    # utility bill file storage in Amazon S3
+    bucket = String()
     aws_access_key_id = String()
     aws_secret_access_key = String()
     host = String()

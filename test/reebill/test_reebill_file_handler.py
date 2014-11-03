@@ -21,11 +21,9 @@ class ReebillFileHandlerTest(TestCase):
     def setUp(self):
         from billing import config
         self.temp_dir = TempDirectory()
-#        self.file_handler = ReebillFileHandler(self.temp_dir.path)
         self.file_handler = ReebillFileHandler(
-                config.get('reebillrendering', 'template_directory'),
                 self.temp_dir.path,
-                config.get('reebillrendering', 'teva_accounts'))
+                config.get('reebill', 'teva_accounts'))
 
         ba = Address(addressee='Billing Addressee', street='123 Example St.',
                      city='Washington', state='DC', postal_code='01234')

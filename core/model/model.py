@@ -579,8 +579,7 @@ class UtilBill(Base):
                      ('utility', self.utility.column_dict()),
                      ('supplier', self.supplier.column_dict()),
                      ('rate_class', self.rate_class.column_dict()),
-                     ('state', self.state_name()),
-                     ('pdf_url', self.pdf_url)])
+                     ('state', self.state_name())])
 
 class Register(Base):
     """A register reading on a utility bill"""
@@ -861,7 +860,7 @@ class UtilBillLoader(object):
         return result
 
     def count_utilbills_with_hash(self, hash):
-        '''Return the number of utility bills having the given SHA-265 hash.
+        '''Return the number of utility bills having the given SHA-256 hash.
         '''
         return self._session.query(UtilBill).filter_by(
                 sha256_hexdigest=hash).count()

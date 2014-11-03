@@ -64,7 +64,7 @@ cherrypy.tools.authenticate_ajax = cherrypy.Tool(
 
 def check_authentication():
     logger = logging.getLogger('reebill')
-    if not config.get('authentication', 'authenticate'):
+    if not config.get('reebill', 'authenticate'):
         if 'user' not in cherrypy.session:
             cherrypy.session['user'] = UserDAO.default_user
     if 'user' not in cherrypy.session:
@@ -108,8 +108,7 @@ class WebResource(object):
         self.logger = logging.getLogger('reebill')
 
         # create a NexusUtil
-        cache_file_path = self.config.get('skyline_backend',
-                                      'nexus_offline_cache_file')
+        cache_file_path = self.config.get('reebill', 'nexus_offline_cache_file')
         if cache_file_path == '':
             cache = None
         else:
@@ -119,7 +118,7 @@ class WebResource(object):
                 cache = []
             else:
                 cache = json.load(text)
-        self.nexus_util = NexusUtil(self.config.get('skyline_backend',
+        self.nexus_util = NexusUtil(self.config.get('reebill',
                                                     'nexus_web_host'),
                                     offline_cache=cache)
 
@@ -127,7 +126,6 @@ class WebResource(object):
         self.user_dao = UserDAO(**dict(self.config.items('mongodb')))
 
         # create an instance representing the database
-        self.statedb_config = dict(self.config.items("statedb"))
         self.state_db = state.StateDB(logger=self.logger)
 
         s3_connection = S3Connection(
@@ -144,7 +142,7 @@ class WebResource(object):
                 'http', config.get('aws_s3', 'host'),
                 config.get('aws_s3', 'port'))
         self.bill_file_handler = BillFileHandler(s3_connection,
-                                     config.get('bill', 'bucket'),
+                                     config.get('aws_s3', 'bucket'),
                                      utilbill_loader, url_format)
 
         # create a FuzzyPricingModel
@@ -164,47 +162,43 @@ class WebResource(object):
 
         # set the server sessions key which is used to return credentials
         # in a client side cookie for the 'rememberme' feature
-        if self.config.get('runtime', 'sessions_key'):
-            self.sessions_key = self.config.get('runtime', 'sessions_key')
+        if self.config.get('reebill', 'sessions_key'):
+            self.sessions_key = self.config.get('reebill', 'sessions_key')
 
         # create a Splinter
-        if self.config.get('runtime', 'mock_skyliner'):
+        if self.config.get('reebill', 'mock_skyliner'):
             self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
-                self.config.get('skyline_backend', 'oltp_url'),
-                skykit_host=self.config.get('skyline_backend', 'olap_host'),
-                skykit_db=self.config.get('skyline_backend', 'olap_database'),
-                olap_cache_host=self.config.get('skyline_backend', 'olap_host'),
-                olap_cache_db=self.config.get('skyline_backend',
-                                              'olap_database'),
+                self.config.get('reebill', 'oltp_url'),
+                skykit_host=self.config.get('reebill', 'olap_host'),
+                skykit_db=self.config.get('reebill', 'olap_database'),
+                olap_cache_host=self.config.get('reebill', 'olap_host'),
+                olap_cache_db=self.config.get('reebill', 'olap_database'),
                 monguru_options={
-                    'olap_cache_host': self.config.get('skyline_backend',
-                                                       'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend',
+                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
+                    'olap_cache_db': self.config.get('reebill',
                                                      'olap_database'),
                     'cartographer_options': {
-                        'olap_cache_host': self.config.get('skyline_backend',
+                        'olap_cache_host': self.config.get('reebill',
                                                            'olap_host'),
-                        'olap_cache_db': self.config.get('skyline_backend',
+                        'olap_cache_db': self.config.get('reebill',
                                                          'olap_database'),
                         'measure_collection': 'skymap',
                         'install_collection': 'skyit_installs',
-                        'nexus_host': self.config.get('skyline_backend',
+                        'nexus_host': self.config.get('reebill',
                                                       'nexus_db_host'),
                         'nexus_db': 'nexus',
                         'nexus_collection': 'skyline',
                     },
                 },
                 cartographer_options={
-                    'olap_cache_host': self.config.get('skyline_backend',
-                                                       'olap_host'),
-                    'olap_cache_db': self.config.get('skyline_backend',
+                    'olap_cache_host': self.config.get('reebill', 'olap_host'),
+                    'olap_cache_db': self.config.get('reebill',
                                                      'olap_database'),
                     'measure_collection': 'skymap',
                     'install_collection': 'skyit_installs',
-                    'nexus_host': self.config.get('skyline_backend',
-                                                  'nexus_db_host'),
+                    'nexus_host': self.config.get('reebill', 'nexus_db_host'),
                     'nexus_db': 'nexus',
                     'nexus_collection': 'skyline',
                 },
@@ -212,9 +206,8 @@ class WebResource(object):
 
         # create a ReebillRenderer
         self.reebill_file_handler = reebill_file_handler.ReebillFileHandler(
-                self.config.get('reebillrendering', 'template_directory'),
-                self.config.get('bill', 'billpath'),
-                self.config.get('reebillrendering', 'teva_accounts'))
+                self.config.get('reebill', 'reebill_file_path'),
+                self.config.get('reebill', 'teva_accounts'))
         mailer_opts = dict(self.config.items("mailer"))
         server = smtplib.SMTP()
         self.bill_mailer = Mailer(mailer_opts['mail_from'],
@@ -235,16 +228,10 @@ class WebResource(object):
             self.ree_getter, self.journal_dao, logger=self.logger)
 
         # determine whether authentication is on or off
-        self.authentication_on = self.config.get('authentication',
-                                                 'authenticate')
+        self.authentication_on = self.config.get('reebill', 'authenticate')
 
-        self.reconciliation_log_dir = self.config.get(
-            'reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get(
             'reebillreconciliation', 'report_directory')
-
-        self.estimated_revenue_log_dir = self.config.get(
-            'reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get(
             'reebillestimatedrevenue', 'report_directory')
 
@@ -493,9 +480,6 @@ class ReebillsResource(RESTResource):
         rtn = None
 
         if action == 'bindree':
-            if self.config.get('runtime', 'integrate_nexus') is False:
-                raise ValueError("Nexus is not integrated")
-
             self.process.bind_renewable_energy(account, sequence)
             reebill = self.state_db.get_reebill(account, sequence)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
@@ -1067,19 +1051,16 @@ if __name__ == '__main__':
             'tools.staticdir.on': True,
             'tools.staticdir.dir': join(ui_root, "static")
         },
-        '/utilitybills': {
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': app.config.get('bill', 'utilitybillpath')
-        },
         '/reebills': {
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': app.config.get('bill', 'billpath')
+            'tools.staticdir.dir': app.config.get('reebill',
+                                                  'reebill_file_path')
         }
     }
 
     cherrypy.config.update({
-        'server.socket_host': app.config.get("http", "socket_host"),
-        'server.socket_port': app.config.get("http", "socket_port")})
+        'server.socket_host': app.config.get("reebill", "socket_host"),
+        'server.socket_port': app.config.get("reebill", "socket_port")})
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
                                      stream=sys.stdout)

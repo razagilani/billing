@@ -1,22 +1,20 @@
 #!/usr/bin/python
 import hashlib
 
-from boto.s3.connection import S3Connection
-
-from billing import config
 from billing.core.model import UtilBill
 
 
 class BillFileHandler(object):
     '''This class handles everything related to utility bill files, which are
-    now stored in Amazon S3.
-    TODO: rename.
+    stored in Amazon S3.
     '''
     HASH_CHUNK_SIZE = 1024 ** 2
 
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
         :param bucket_name: name of S3 bucket where utility bill files are
+        :param utilbill_loader: UtilBillLoader object to access the utility
+        bill database.
         :param url_format: format string for URL where utility bill files can
         be accessed, e.g.
         "https://s3.amazonaws.com/%(bucket_name)s/utilbill/%(key_name)s"
@@ -50,8 +48,9 @@ class BillFileHandler(object):
         return self._connection.get_bucket(self._bucket_name)
 
     def get_s3_url(self, utilbill):
-        '''Return URL for the file corresponding to the given utility bill.
-        Return empty string for a UtilBill that has no file.
+        '''Return a URL to access the file corresponding to the given utility
+        bill. Return empty string for a UtilBill that has no file or whose
+        sha256_hexdigest is None or "".
         '''
         # some bills have no file and therefore no URL
         if utilbill.state > UtilBill.Complete:
@@ -64,7 +63,8 @@ class BillFileHandler(object):
                                       key_name=self._get_key_name(utilbill))
 
     def delete_utilbill_pdf_from_s3(self, utilbill):
-        """Removes the pdf file associated with utilbill from s3.
+        """Removes the pdf file associated with utilbill from s3 (unless
+        there are any other UtilBills referring to the same file).
         """
         # TODO: fail if count is not 1?
         if self._utilbill_loader.count_utilbills_with_hash(
@@ -76,7 +76,7 @@ class BillFileHandler(object):
     def upload_utilbill_pdf_to_s3(self, utilbill, file):
         """Uploads the pdf file to amazon s3
         :param utilbill: a :class:`billing.process.state.UtilBill`
-        :param file: a file
+        :param file: a seekable file
         """
         utilbill.sha256_hexdigest = BillFileHandler.compute_hexdigest(file)
         key_name = self._get_key_name(utilbill)
