@@ -74,7 +74,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # TODO: host should be set according to config file
         fakes3_args = ['fakes3', '--port', '4567', '--root',
                    cls.fakes3_root_dir.path]
-        cls.fakes3_process = subprocess.Popen(fakes3_args)
+        cls.fakes3_process = subprocess.Popen(fakes3_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
