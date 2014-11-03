@@ -10,6 +10,7 @@ from mock import Mock
 import mongoengine
 
 from boto.s3.connection import S3Connection
+import subprocess
 
 from billing.test import init_test_config
 from billing.util.file_utils import make_directories_if_necessary
@@ -80,7 +81,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         # start FakeS3 as a subprocess
         cls.fakes3_command = 'fakes3 --port %s --root %s' % (
             config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
-        cls.fakes3_process = Popen(cls.fakes3_command.split())
+        cls.fakes3_process = Popen(cls.fakes3_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
