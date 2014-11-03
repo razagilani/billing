@@ -1,5 +1,5 @@
 
-from .test_billupload import BillFileHandlerTest
+from .test_bill_file_handler import BillFileHandlerTest
 from .test_charge import ChargeUnitTests
 from .test_pricing import FuzzyPricingModelTest
 from .test_utilbill import UtilBillTest
