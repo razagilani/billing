@@ -345,7 +345,8 @@ class UtilBill(Base):
         nullable=False)
     supplier_id = Column(Integer, ForeignKey('supplier.id'),
         nullable=False)
-    utility_id = Column(Integer, ForeignKey('company.id'))
+    utility_id = Column(Integer, ForeignKey('company.id'),
+        nullable=False)
     rate_class_id = Column(Integer, ForeignKey('rate_class.id'),
         nullable=False)
 
