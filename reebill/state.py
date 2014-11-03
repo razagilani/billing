@@ -680,6 +680,10 @@ class StateDB(object):
             utility = Utility(utility, Address('', '', '', '', ''), '')
         return utility
 
+    def get_utility(self, name):
+        session = Session()
+        return session.query(Utility).filter(Utility.name == name).one()
+
     def get_create_supplier(self, supplier):
         session = Session()
         try:
@@ -688,6 +692,10 @@ class StateDB(object):
             supplier = Supplier(supplier, Address('', '', '', '', ''), '')
         return supplier
 
+    def get_supplier(self, name):
+        session = Session()
+        return session.query(Supplier).filter(Supplier.name == name).one()
+
     def get_create_rate_class(self, rate_class, utility):
         session = Session()
         try:
@@ -695,6 +703,10 @@ class StateDB(object):
         except NoResultFound:
             rate_class = RateClass(rate_class, utility)
         return rate_class
+
+    def get_rate_class(self, name):
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name == name).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
