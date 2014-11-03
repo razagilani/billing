@@ -851,7 +851,7 @@ class UtilBillLoader(object):
         return result
 
     def count_utilbills_with_hash(self, hash):
-        '''Return the number of utility bills having the given SHA-265 hash.
+        '''Return the number of utility bills having the given SHA-256 hash.
         '''
         return self._session.query(UtilBill).filter_by(
                 sha256_hexdigest=hash).count()
