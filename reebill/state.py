@@ -672,28 +672,28 @@ class StateDB(object):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
 
-    def get_create_utility(self, utility_name):
+    def get_create_utility(self, utility):
         session = Session()
         try:
-            utility = session.query(Utility).filter_by(name=utility_name).one()
+            utility = session.query(Utility).filter_by(name=utility).one()
         except NoResultFound:
-            utility = Utility(utility_name, Address('', '', '', '', ''), '')
+            utility = Utility(utility, Address('', '', '', '', ''), '')
         return utility
 
-    def get_create_supplier(self, supplier_name):
+    def get_create_supplier(self, supplier):
         session = Session()
         try:
-            supplier = session.query(Supplier).filter_by(name=supplier_name).one()
+            supplier = session.query(Supplier).filter_by(name=supplier).one()
         except NoResultFound:
-            supplier = Supplier(supplier_name, Address('', '', '', '', ''), '')
+            supplier = Supplier(supplier, Address('', '', '', '', ''), '')
         return supplier
 
-    def get_create_rate_class(self, rate_class_name, utility):
+    def get_create_rate_class(self, rate_class, utility):
         session = Session()
         try:
-            rate_class = session.query(RateClass).filter_by(name=rate_class_name).one()
+            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
         except NoResultFound:
-            rate_class = RateClass(rate_class_name, utility)
+            rate_class = RateClass(rate_class, utility)
         return rate_class
 
     def max_version(self, account, sequence):
