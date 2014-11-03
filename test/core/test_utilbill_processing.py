@@ -61,8 +61,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         utilbill_data = utilbills_data[0]
         self.assertDictContainsSubset({'state': 'Final',
                                        'service': 'Gas',
-                                       'utility': 'Test Utility Company Template',
-                                       'rate_class': 'Test Rate Class Template',
+                                       'utility': self.state_db.
+                                            get_utility('Test Utility Company Template').
+                                            column_dict(),
+                                       'rate_class': self.state_db.
+                                            get_rate_class('Test Rate Class Template').
+                                            column_dict(),
                                        'period_start': date(2013, 1, 1),
                                        'period_end': date(2013, 2, 1),
                                        'total_charges': 0.0,
@@ -86,11 +90,15 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 2, 1),
                                           'period_start': date(2013, 1, 1),
                                           'processed': 0,
-                                          'rate_class': 'Test Rate Class Template',
+                                          'rate_class': self.state_db.
+                                            get_rate_class('Test Rate Class Template').
+                                            column_dict(),
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': 'Test Utility Company Template',
+                                          'utility': self.state_db.
+                                            get_utility('Test Utility Company Template').
+                                            column_dict(),
                                           }, ubdata)
 
         # nothing should exist for account 99999
@@ -130,9 +138,11 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                                                     1)
         assert utilbill.period_end == doc['period_end'] == date(2013, 2, 1)
         assert utilbill.service == doc['service'] == 'Gas'
-        assert utilbill.utility.name == doc['utility'] == 'Test Utility Company Template'
+        assert utilbill.utility.name == doc['utility']['name'] == \
+               'Test Utility Company Template'
         assert utilbill.target_total == 100
-        assert utilbill.rate_class.name == doc['rate_class'] == 'Test Rate Class Template'
+        assert utilbill.rate_class.name == doc['rate_class']['name'] == \
+               'Test Rate Class Template'
 
         # invalid date ranges
         self.assertRaises(ValueError,
@@ -245,9 +255,15 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({
                                           'state': 'Final',
                                           'service': 'Electric',
-                                          'utility': 'pepco',
-                                          'supplier': 'supplier',
-                                          'rate_class': 'Residential-R',
+                                          'utility': self.state_db.
+                                            get_utility('pepco').
+                                            column_dict(),
+                                          'supplier': self.state_db.
+                                            get_supplier('supplier').
+                                            column_dict(),
+                                          'rate_class': self.state_db.
+                                            get_rate_class('Residential-R').
+                                            column_dict(),
                                           'period_start': date(2012, 1, 1),
                                           'period_end': date(2012, 2, 1),
                                           'total_charges': 0,
@@ -284,9 +300,12 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         dictionaries = [{
                             'state': 'Final',
                             'service': 'Electric',
-                            'utility': 'pepco',
-                            'supplier': 'supplier',
-                            'rate_class': 'Residential-R',
+                            'utility': self.state_db.
+                                get_utility('pepco').column_dict(),
+                            'supplier': self.state_db.
+                                get_supplier('supplier').column_dict(),
+                            'rate_class': self.state_db.
+                                get_rate_class('Residential-R').column_dict(),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -297,9 +316,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Electric',
-                            'utility': 'pepco',
-                            'supplier': 'supplier',
-                            'rate_class': 'Residential-R',
+                            'utility': self.state_db.
+                                get_utility('pepco').column_dict(),
+                            'supplier': self.state_db.
+                                get_supplier('supplier').column_dict(),
+                            'rate_class': self.state_db.
+                                get_rate_class('Residential-R').
+                                column_dict(),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -325,9 +348,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         dictionaries = [{
                             'state': 'Estimated',
                             'service': 'Gas',
-                            'utility': 'washgas',
-                            'supplier': 'supplier',
-                            'rate_class': 'DC Non Residential Non Heat',
+                            'utility': self.state_db.
+                                get_utility('washgas').column_dict(),
+                            'supplier': self.state_db.
+                                get_supplier('supplier').column_dict(),
+                            'rate_class': self.state_db.
+                                get_rate_class('DC Non Residential Non Heat').
+                                column_dict(),
                             'period_start': date(2012, 3, 1),
                             'period_end': date(2012, 4,
                                                1),
@@ -339,9 +366,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Electric',
-                            'utility': 'pepco',
-                            'supplier': 'supplier',
-                            'rate_class': 'Residential-R',
+                            'utility': self.state_db.
+                                get_utility('pepco').column_dict(),
+                            'supplier': self.state_db.
+                                get_supplier('supplier').column_dict(),
+                            'rate_class': self.state_db.
+                                get_rate_class('Residential-R').
+                                column_dict(),
                             'period_start': date(2012, 2, 1),
                             'period_end': date(2012, 3, 1),
                             'total_charges': 0,
@@ -352,9 +383,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                             }, {
                             'state': 'Final',
                             'service': 'Electric',
-                            'utility': 'pepco',
-                            'supplier': 'supplier',
-                            'rate_class': 'Residential-R',
+                            'utility': self.state_db.
+                                get_utility('pepco').column_dict(),
+                            'supplier': self.state_db.
+                                get_supplier('supplier').column_dict(),
+                            'rate_class': self.state_db.
+                                get_rate_class('Residential-R').
+                                column_dict(),
                             'period_start': date(2012, 1, 1),
                             'period_end': date(2012, 2, 1),
                             'total_charges': 0,
@@ -385,9 +420,13 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         self.assertDictContainsSubset({
                                           'state': 'Final',
                                           'service': 'Electric',
-                                          'utility': 'pepco',
-                                          'supplier': 'supplier',
-                                          'rate_class': 'Residential-R',
+                                          'utility': self.state_db.
+                                            get_utility('pepco').column_dict(),
+                                          'supplier': self.state_db.
+                                            get_supplier('supplier').column_dict(),
+                                          'rate_class': self.state_db.
+                                            get_rate_class('Residential-R').
+                                            column_dict(),
                                           'period_start': date(2012, 4, 1),
                                           'period_end': date(2012, 5, 1),
                                           'total_charges': 0,
@@ -628,12 +667,14 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
                                           'period_end': date(2013, 7, 8),
                                           'period_start': date(2013, 5, 6),
                                           'processed': 0,
-                                          'rate_class': 'some rate structure',
+                                          'rate_class': self.state_db.
+                                      get_rate_class('some rate structure').column_dict(),
                                           'reebills': [],
                                           'service': 'Gas',
                                           'state': 'Final',
                                           'total_charges': 0.0,
-                                          'utility': 'washgas',
+                                          'utility': self.state_db.
+                                      get_utility('washgas').column_dict(),
                                           }, utilbill_data)
 
         # doc = self.process.get_utilbill_doc(session, utilbill_data['id'])
