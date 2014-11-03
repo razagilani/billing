@@ -122,16 +122,35 @@ Ext.define('ReeBill.view.UtilityBills', {
         dataIndex: 'utility',
         editor: {
             xtype: 'combo',
+            id: 'utility_combo',
             store: 'Utilities',
             displayField: 'name',
             valueField: 'name',
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay : 10,
-            minChars: 1
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'utility');
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('utility').name);
+                }
+            }
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('utility').name;
+        }
     },{
         header: 'Supplier',
         dataIndex: 'supplier',
@@ -143,10 +162,28 @@ Ext.define('ReeBill.view.UtilityBills', {
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay : 10,
-            minChars: 1
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'supplier');
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('supplier').name);
+                }
+            }
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('supplier').name;
+        }
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -158,11 +195,37 @@ Ext.define('ReeBill.view.UtilityBills', {
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay: 10,
-            minChars: 1
+            typeAheadDelay: 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'rate_class');
+                    }
+                },
+                beforeselect: {
+                    fn: function(combo, record, index){
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        this.store.clearFilter(true);
+                        this.store.filter('utility_id', selected.id);
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('rate_class').name);
+                }
+            }
         },
         width: 125,
-        flex: 1
+        flex: 1,
+        renderer: function(value, metaData, record) {
+            return record.get('rate_class').name;
+        }
     }],
 
     dockedItems: [{
