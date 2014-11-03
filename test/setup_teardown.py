@@ -1,22 +1,24 @@
-from shutil import rmtree
-import subprocess
-from time import sleep
-import boto
-from boto.s3.connection import S3Connection
-from billing.test import init_test_config
-from billing.util.file_utils import make_directories_if_necessary
-
-init_test_config()
-
 import sys
 import unittest
 from datetime import date
 import logging
-from mock import Mock
+from os.path import join
+from subprocess import CalledProcessError, Popen
+from time import sleep
 
+from mock import Mock
 import mongoengine
 
-from os.path import join
+from boto.s3.connection import S3Connection
+import subprocess
+
+from billing.test import init_test_config
+from billing.util.file_utils import make_directories_if_necessary
+
+
+init_test_config()
+
+
 from billing import init_config, init_model
 from billing.test import testing_utils as test_utils
 from billing.core import pricing
@@ -61,6 +63,12 @@ class TestCaseWithSetup(test_utils.TestCase):
     databases.'''
 
     @classmethod
+    def check_fakes3_process(cls):
+        exit_status = cls.fakes3_process.poll()
+        if exit_status is not None:
+            raise CalledProcessError(exit_status, cls.fakes3_command)
+
+    @classmethod
     def setUpClass(cls):
         from billing import config
         # create root directory on the filesystem for the FakeS3 server,
@@ -71,16 +79,15 @@ class TestCaseWithSetup(test_utils.TestCase):
                                            bucket_name))
 
         # start FakeS3 as a subprocess
-        # TODO: host should be set according to config file
-        fakes3_args = ['fakes3', '--port', '4567', '--root',
-                   cls.fakes3_root_dir.path]
-        cls.fakes3_process = subprocess.Popen(fakes3_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        cls.fakes3_command = 'fakes3 --port %s --root %s' % (
+            config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
+        cls.fakes3_process = Popen(cls.fakes3_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
         # running and occupying the same port)
         sleep(0.5)
-        assert cls.fakes3_process.poll() is None
+        cls.check_fakes3_process()
 
     @classmethod
     def tearDownClass(cls):
@@ -337,7 +344,7 @@ class TestCaseWithSetup(test_utils.TestCase):
         NexusUtil."""
         # make sure FakeS3 server is still running (in theory one of the
         # tests or some other process could cause it to exit)
-        assert self.__class__.fakes3_process.poll() is None
+        self.__class__.check_fakes3_process()
 
         init_config('test/tstsettings.cfg')
         init_model()
