@@ -385,6 +385,14 @@ class UtilBill(Base):
         primaryjoin='UtilBill.service_address_id==Address.id')
     utility = relationship('Utility')
 
+    @property
+    def pdf_url(self):
+        # TODO fix this by moving the method to another class which can be
+        # initialized with the bucket name (and S3 URL)
+        from billing import config
+        return 'https://s3.amazonaws.com/%s/utilbill/%s' % \
+               (config.get('bill', 'bucket'), self.sha256_hexdigest)
+
     @staticmethod
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
@@ -567,10 +575,12 @@ class UtilBill(Base):
                                         UtilBill.Hypothetical else None),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
-                     ('utility', self.utility.name),
-                     ('supplier', self.supplier.name),
-                     ('rate_class', self.rate_class.name),
+                     ('utility', self.utility.column_dict()),
+                     ('supplier', self.supplier.column_dict()),
+                     ('rate_class', self.rate_class.column_dict()),
                      ('state', self.state_name())])
+                     ('state', self.state_name()),
+                     ('pdf_url', self.pdf_url)])
 
 class Register(Base):
     """A register reading on a utility bill"""
