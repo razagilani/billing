@@ -88,6 +88,10 @@ Ext.define('ReeBill.controller.UtilityBills', {
             });
 
             this.getUtilbillRemove().setDisabled(!hasSelections || hasReebill || processed);
+            var utility = selected.data.utility;
+            rate_class_store = Ext.getStore("RateClasses");
+            rate_class_store.clearFilter(true);
+            rate_class_store.filter('utility_id', utility.id);
     }
         else
         {

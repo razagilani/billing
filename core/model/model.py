@@ -575,9 +575,9 @@ class UtilBill(Base):
                                         UtilBill.Hypothetical else None),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
-                     ('utility', self.utility.name),
-                     ('supplier', self.supplier.name),
-                     ('rate_class', self.rate_class.name),
+                     ('utility', self.utility.column_dict()),
+                     ('supplier', self.supplier.column_dict()),
+                     ('rate_class', self.rate_class.column_dict()),
                      ('state', self.state_name()),
                      ('pdf_url', self.pdf_url)])
 

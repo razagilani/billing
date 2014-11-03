@@ -163,13 +163,13 @@ class UtilbillProcessor(object):
             if service is not None:
                 utilbill.service = service
 
-            if utility is not None:
+            if utility is not None and isinstance(utility, basestring):
                 utilbill.utility = self.state_db.get_create_utility(utility)
 
-            if supplier is not None:
+            if supplier is not None and isinstance(supplier, basestring):
                 utilbill.supplier = self.state_db.get_create_supplier(supplier)
 
-            if rate_class is not None:
+            if rate_class is not None and isinstance(rate_class, basestring):
                 utilbill.rate_class = self.state_db.get_create_rate_class(rate_class, utilbill.utility)
 
 
