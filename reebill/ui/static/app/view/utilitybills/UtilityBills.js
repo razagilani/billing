@@ -170,6 +170,11 @@ Ext.define('ReeBill.view.UtilityBills', {
                         selected = utility_grid.getSelectionModel().getSelection()[0];
                         selected.set('action', 'supplier');
                     }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('supplier').name);
                 }
             }
         },
@@ -205,6 +210,11 @@ Ext.define('ReeBill.view.UtilityBills', {
                         this.store.clearFilter(true);
                         this.store.filter('utility_id', selected.id);
                     }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('rate_class').name);
                 }
             }
         },
