@@ -13,6 +13,8 @@ class BillFileHandler(object):
     def __init__(self, connection, bucket_name, utilbill_loader, url_format):
         ''':param connection: boto.s3.S3Connection
         :param bucket_name: name of S3 bucket where utility bill files are
+        :param utilbill_loader: UtilBillLoader object to access the utility
+        bill database.
         :param url_format: format string for URL where utility bill files can
         be accessed, e.g.
         "https://s3.amazonaws.com/%(bucket_name)s/utilbill/%(key_name)s"
