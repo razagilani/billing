@@ -56,6 +56,10 @@ class BillFileHandler(object):
         # some bills have no file and therefore no URL
         if utilbill.state > UtilBill.Complete:
             return ''
+        # some utility bills lack a file even they're supposed to due to bad
+        # data. see https://skylineinnovations.atlassian.net/browse/BILL-5744
+        if utilbill.sha256_hexdigest in (None, ''):
+            return ''
         return self._url_format % dict(bucket_name=self._bucket_name,
                                       key_name=self._get_key_name(utilbill))
 
