@@ -35,7 +35,7 @@ def get_utilbill_file_path(utilbill, extension=None):
 
     # path to the bill file (in its original format):
     # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-    save_directory = config.get('bill', 'utilitybillpath')
+    save_directory = config.get('reebill', 'utilitybillpath')
     path_without_extension = os.path.join(save_directory,
             str(utilbill.customer.account), str(utilbill.id))
 
