@@ -143,7 +143,7 @@ class WebResource(object):
                 'https' if config.get('aws_s3', 'is_secure') is True else
                 'http', config.get('aws_s3', 'host'),
                 config.get('aws_s3', 'port'))
-        self.billUpload = BillFileHandler(s3_connection,
+        self.bill_file_handler = BillFileHandler(s3_connection,
                                      config.get('bill', 'bucket'),
                                      utilbill_loader, url_format)
 
@@ -231,7 +231,7 @@ class WebResource(object):
         # create one Process object to use for all related bill processing
         self.process = process.Process(
             self.state_db, self.ratestructure_dao,
-            self.billUpload, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
+            self.bill_file_handler, self.nexus_util, self.bill_mailer, self.reebill_file_handler,
             self.ree_getter, self.journal_dao, logger=self.logger)
 
         # determine whether authentication is on or off

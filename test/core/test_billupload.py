@@ -1,4 +1,4 @@
-'''Unit tests for core.billupload.BillUpload.
+'''Unit tests for core.bill_file_handler.BillFileHandler.
 These tests should not connect to a network or database.
 '''
 from StringIO import StringIO
@@ -17,7 +17,7 @@ from test import init_test_config
 init_test_config()
 
 
-class BillUploadTest(unittest.TestCase):
+class BillFileHandlerTest(unittest.TestCase):
 
     def setUp(self):
         bucket_name = 'test-bucket'
@@ -32,12 +32,12 @@ class BillUploadTest(unittest.TestCase):
         self.utilbill_loader = Mock(autospec=UtilBillLoader)
 
         url_format = 'https://example.com/%(bucket_name)s/%(key_name)s'
-        self.bu = BillFileHandler(connection, bucket_name, self.utilbill_loader,
-                             url_format)
+        self.bfh = BillFileHandler(connection, bucket_name,
+                                   self.utilbill_loader, url_format)
         init_model()
 
     def test_compute_hexdigest(self):
-        self.assertEqual(self.bu.compute_hexdigest(StringIO('asdf')),
+        self.assertEqual(self.bfh.compute_hexdigest(StringIO('asdf')),
             'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b')
 
     def test_get_s3_url(self):
@@ -47,24 +47,24 @@ class BillUploadTest(unittest.TestCase):
         ub.state = UtilBill.Complete
         expected = 'https://example.com/%s/utilbill/%s' % (self.bucket.name,
                                                           the_hash)
-        self.assertEqual(expected, self.bu.get_s3_url(ub))
+        self.assertEqual(expected, self.bfh.get_s3_url(ub))
 
         ub.state = UtilBill.Estimated
-        self.assertEqual('', self.bu.get_s3_url(ub))
+        self.assertEqual('', self.bfh.get_s3_url(ub))
 
 
     def test_utilbill_key_name(self):
         ub = Mock()
         ub.sha256_hexdigest = 'f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         expected = 'utilbill/' + ub.sha256_hexdigest
-        self.assertEqual(self.bu._get_key_name(ub), expected)
+        self.assertEqual(self.bfh._get_key_name(ub), expected)
 
     def test_upload_to_s3(self):
         key_name = 'utilbill/f0e4c2f76c58916ec258f246851bea091d14d4247a2fc3e18694461b1816e13b'
         test_file = StringIO('asdf')
 
         utilbill = Mock(autospec=UtilBill)
-        self.bu.upload_utilbill_pdf_to_s3(utilbill, test_file)
+        self.bfh.upload_utilbill_pdf_to_s3(utilbill, test_file)
 
         self.bucket.new_key.assert_called_once_with(key_name)
         self.key.set_contents_from_file.assert_called_once_with(test_file)
@@ -77,17 +77,17 @@ class BillUploadTest(unittest.TestCase):
         ub = Mock(autospec=UtilBill)
         ub.sha256_hexdigest = sha256_hexdigest
 
-        key_name = self.bu._get_key_name(ub)
+        key_name = self.bfh._get_key_name(ub)
 
         test_file = StringIO('test_file_data')
-        self.bu.upload_utilbill_pdf_to_s3(ub, test_file)
+        self.bfh.upload_utilbill_pdf_to_s3(ub, test_file)
 
         #Ensure we've uploaded the file
         self.bucket.new_key.assert_called_once_with(key_name)
         self.key.set_contents_from_file.assert_called_once_with(test_file)
 
         self.utilbill_loader.count_utilbills_with_hash.return_value = 1
-        self.bu.delete_utilbill_pdf_from_s3(ub)
+        self.bfh.delete_utilbill_pdf_from_s3(ub)
 
         #Ensure the file is gone
         self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
@@ -101,17 +101,17 @@ class BillUploadTest(unittest.TestCase):
         sha256_hexdigest = 'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
         ub = Mock(autospec=UtilBill)
         ub.sha256_hexdigest = sha256_hexdigest
-        key_name = self.bu._get_key_name(ub)
+        key_name = self.bfh._get_key_name(ub)
 
         test_file = StringIO('test_file_data')
-        self.bu.upload_utilbill_pdf_to_s3(ub, test_file)
+        self.bfh.upload_utilbill_pdf_to_s3(ub, test_file)
 
         #Ensure we've uploaded the file correctly
         self.bucket.new_key.assert_called_once_with(key_name)
         self.key.set_contents_from_file.assert_called_once_with(test_file)
 
         self.utilbill_loader.count_utilbills_with_hash.return_value = 2
-        self.bu.delete_utilbill_pdf_from_s3(ub)
+        self.bfh.delete_utilbill_pdf_from_s3(ub)
 
         #Ensure the file is *still in S3* even though we have called delete
         self.utilbill_loader.count_utilbills_with_hash.assert_called_once_with(
