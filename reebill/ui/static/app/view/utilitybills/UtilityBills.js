@@ -129,7 +129,7 @@ Ext.define('ReeBill.view.UtilityBills', {
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay : 10,
+            typeAheadDelay : 1,
             minChars: 1,
             listeners: {
                 blur: {
@@ -162,7 +162,7 @@ Ext.define('ReeBill.view.UtilityBills', {
             forceSelection: false,
             typeAhead: true,
             typeAheadDelay : 10,
-            minChars: 10,
+            minChars: 1,
             listeners: {
                 blur: {
                     fn: function (combo) {
