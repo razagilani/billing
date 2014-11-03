@@ -37,7 +37,7 @@ MONGO_COLLECTIONS = ['users', 'journal']
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
-db_uri = config.get('statedb', 'uri')
+db_uri = config.get('db', 'uri')
 m = re.match(r'^mysql://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
