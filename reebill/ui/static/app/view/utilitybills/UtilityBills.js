@@ -140,7 +140,9 @@ Ext.define('ReeBill.view.UtilityBills', {
                     }
                 },
                 focus: function(combo) {
-                  combo.store.loadData();
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('utility').name);
                 }
             }
         },
