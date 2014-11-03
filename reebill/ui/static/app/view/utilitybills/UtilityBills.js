@@ -130,6 +130,7 @@ Ext.define('ReeBill.view.UtilityBills', {
             forceSelection: false,
             typeAhead: true,
             typeAheadDelay : 1,
+            autoSelect: false,
             minChars: 1,
             listeners: {
                 blur: {
@@ -161,7 +162,8 @@ Ext.define('ReeBill.view.UtilityBills', {
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay : 10,
+            typeAheadDelay : 1,
+            autoSelect: false,
             minChars: 1,
             listeners: {
                 blur: {
@@ -193,7 +195,8 @@ Ext.define('ReeBill.view.UtilityBills', {
             triggerAction: 'all',
             forceSelection: false,
             typeAhead: true,
-            typeAheadDelay: 10,
+            typeAheadDelay: 1,
+            autoSelect: false,
             minChars: 1,
             listeners: {
                 blur: {
