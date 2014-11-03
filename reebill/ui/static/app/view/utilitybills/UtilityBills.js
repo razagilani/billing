@@ -206,12 +206,12 @@ Ext.define('ReeBill.view.UtilityBills', {
                         selected.set('action', 'rate_class');
                     }
                 },
-                beforeselect: {
+                expand: {
                     fn: function(combo, record, index){
                         utility_grid = combo.findParentByType('grid');
                         selected = utility_grid.getSelectionModel().getSelection()[0];
                         this.store.clearFilter(true);
-                        this.store.filter('utility_id', selected.id);
+                        this.store.filter('utility_id', selected.get('utility').id);
                     }
                 },
                 focus: function(combo) {
