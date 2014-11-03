@@ -122,6 +122,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         dataIndex: 'utility',
         editor: {
             xtype: 'combo',
+            id: 'utility_combo',
             store: 'Utilities',
             displayField: 'name',
             valueField: 'name',
@@ -129,9 +130,24 @@ Ext.define('ReeBill.view.UtilityBills', {
             forceSelection: false,
             typeAhead: true,
             typeAheadDelay : 10,
-            minChars: 1
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'utility');
+                    }
+                },
+                focus: function(combo) {
+                  combo.store.loadData();
+                }
+            }
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('utility').name;
+        }
     },{
         header: 'Supplier',
         dataIndex: 'supplier',
@@ -144,9 +160,21 @@ Ext.define('ReeBill.view.UtilityBills', {
             forceSelection: false,
             typeAhead: true,
             typeAheadDelay : 10,
-            minChars: 1
+            minChars: 10,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'supplier');
+                    }
+                }
+            }
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('supplier').name;
+        }
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
@@ -159,10 +187,30 @@ Ext.define('ReeBill.view.UtilityBills', {
             forceSelection: false,
             typeAhead: true,
             typeAheadDelay: 10,
-            minChars: 1
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'rate_class');
+                    }
+                },
+                beforeselect: {
+                    fn: function(combo, record, index){
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        this.store.clearFilter(true);
+                        this.store.filter('utility_id', selected.id);
+                    }
+                }
+            }
         },
         width: 125,
-        flex: 1
+        flex: 1,
+        renderer: function(value, metaData, record) {
+            return record.get('rate_class').name;
+        }
     }],
 
     dockedItems: [{
