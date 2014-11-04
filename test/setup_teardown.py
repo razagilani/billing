@@ -79,9 +79,13 @@ class TestCaseWithSetup(test_utils.TestCase):
                                            bucket_name))
 
         # start FakeS3 as a subprocess
+        # redirect both stdout and stderr because it prints all its log
+        # messages to both
         cls.fakes3_command = 'fakes3 --port %s --root %s' % (
             config.get('aws_s3', 'port'), cls.fakes3_root_dir.path)
-        cls.fakes3_process = Popen(cls.fakes3_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        cls.fakes3_process = Popen(cls.fakes3_command.split(),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
 
         # make sure FakeS3 is actually running (and did not immediately exit
         # because, for example, another instance of it is already
