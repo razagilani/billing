@@ -167,7 +167,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        uc = Utility('Test Utility Company Template', ca1, '')
+        uc = Utility('Test Utility Company Template', ca1, 'a')
         supplier = Supplier('Test Supplier', ca1, '')
 
         ca2 = Address('Test Other Utilco Address',
@@ -175,7 +175,7 @@ class TestCaseWithSetup(test_utils.TestCase):
                       'Utilco City',
                       'XX', '12345')
 
-        other_uc = Utility('Other Utility', ca1, '')
+        other_uc = Utility('Other Utility', ca1, 'b')
         other_supplier = Supplier('Other Supplier', ca1, '')
 
         session.add_all([fa_ba1, fa_sa1, fa_ba2, fa_sa2, ub_sa1, ub_ba1,

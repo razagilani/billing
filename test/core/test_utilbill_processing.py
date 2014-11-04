@@ -462,6 +462,42 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
         _, count = self.process.get_all_utilbills_json(account, 0, 30)
         self.assertEqual(0, count)
 
+    def test_upload_utility_bill_existing_file(self):
+        account = '99999'
+
+        # file is assumed to already exist in S3, so put it there
+        file = StringIO('example')
+        file_hash = self.process.bill_file_handler.compute_hexdigest(file)
+        s = Session()
+        customer = s.query(Customer).filter_by(account=account).one()
+        u = UtilBill(customer, UtilBill.Complete, 'electric',
+                     customer.fb_utility, customer.fb_supplier,
+                     customer.fb_rate_class, customer.fb_billing_address,
+                     customer.fb_service_address)
+        self.process.bill_file_handler.upload_utilbill_pdf_to_s3(u, file)
+
+        # this was added in setUp
+        utility_guid = 'a'
+
+        self.process.upload_utility_bill_existing_file(account, utility_guid,
+                                                       file_hash)
+
+        utilbills_data, _ = self.process.get_all_utilbills_json(account, 0, 30)
+        self.assertDictContainsSubset({
+            'state': 'Final',
+            'service': 'Electric',
+            'utility': customer.fb_utility.column_dict(),
+            'supplier': customer.fb_supplier.column_dict(),
+            'rate_class': customer.fb_rate_class.column_dict(),
+            'period_start': None,
+            'period_end': None,
+            'total_charges': 0,
+            'computed_total': 0,
+            'processed': 0,
+            'account': '99999',
+            'reebills': []
+        }, utilbills_data[0])
+
     def test_get_service_address(self):
         account = '99999'
         self.process.upload_utility_bill(account, StringIO("A PDF"),

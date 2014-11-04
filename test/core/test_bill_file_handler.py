@@ -64,6 +64,7 @@ class BillFileHandlerTest(unittest.TestCase):
 
     def test_upload_to_s3(self):
         key_name = 'utilbill/' + self.file_hash
+
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
         self.bucket.new_key.assert_called_once_with(key_name)

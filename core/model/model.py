@@ -575,13 +575,16 @@ class UtilBill(Base):
                      ('service', 'Unknown' if self.service is None
                                            else self.service.capitalize()),
                      ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges() if self.state <
+                     ('computed_total', self.get_total_charges()if self.state <
                                         UtilBill.Hypothetical else None),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
-                     ('utility', self.utility.column_dict()),
-                     ('supplier', self.supplier.column_dict()),
-                     ('rate_class', self.rate_class.column_dict()),
+                     ('utility', (self.utility.column_dict() if self.utility
+                                  else None)),
+                     ('supplier', (self.supplier.column_dict() if
+                                   self.supplier else None)),
+                     ('rate_class', (self.rate_class.column_dict() if
+                                     self.rate_class else None)),
                      ('state', self.state_name())])
 
 class Register(Base):

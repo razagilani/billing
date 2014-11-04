@@ -187,32 +187,11 @@ class UtilbillProcessor(object):
             self.compute_utility_bill(utilbill.id)
         return  utilbill
 
-    def upload_utility_bill(self, account, bill_file, start=None, end=None,
+    def _create_utilbill_in_db(self, account, start=None, end=None,
                             service='', utility=None, rate_class=None,
                             total=0, state=UtilBill.Complete, supplier=None):
-        """Uploads `bill_file` with the name `file_name` as a utility bill for
-        the given account, service, and dates. If this is the newest or
-        oldest utility bill for the given account and service, "estimated"
-        utility bills will be added to cover the gap between this bill's period
-        and the previous newest or oldest one respectively. The total of all
-        charges on the utility bill may be given.
-
-        Returns the newly created UtilBill object.
-
-        Currently 'utility' and 'rate_class' are ignored in favor of the
-        predecessor's (or template's) values; see
-        https://www.pivotaltracker.com/story/show/52495771
-        """
         # validate arguments
         UtilBill.validate_utilbill_period(start, end)
-        if bill_file is None and state in (UtilBill.UtilityEstimated,
-                                           UtilBill.Complete):
-            raise ValueError(("A file is required for a complete or "
-                              "utility-estimated utility bill"))
-        if bill_file is not None and state in (UtilBill.Hypothetical,
-                                               UtilBill.Estimated):
-            raise ValueError("Hypothetical or Estimated utility bills "
-                             "can't have a file")
 
         session = Session()
 
@@ -223,7 +202,7 @@ class UtilbillProcessor(object):
         customer = self.state_db.get_customer(account)
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
-                account, start, service=service)
+                account, end=start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -234,20 +213,23 @@ class UtilbillProcessor(object):
 
             q = session.query(UtilBill). \
                 filter_by(rate_class=customer.fb_rate_class). \
-                filter_by(utility=customer.fb_utility).\
+                filter_by(utility=customer.fb_utility). \
                 filter_by(processed=True). \
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
-            next_ub = q.filter(UtilBill.period_start >= start). \
+            # find "closest" or most recent utility bill to copy data from
+            if start is None:
+                next_ub = None
+                prev_ub = q.order_by(UtilBill.period_start.desc()).first()
+            else:
+                next_ub = q.filter(UtilBill.period_start >= start). \
                 order_by(UtilBill.period_start).first()
-            prev_ub = q.filter(UtilBill.period_start <= start). \
-                order_by(UtilBill.period_start.desc()).first()
-
+                prev_ub = q.filter(UtilBill.period_start <= start). \
+                    order_by(UtilBill.period_start.desc()).first()
             next_distance = (next_ub.period_start - start).days if next_ub \
                 else float('inf')
             prev_distance = (start - prev_ub.period_start).days if prev_ub \
-                else float('inf')
-
+                and start else float('inf')
             predecessor = None if next_distance == prev_distance == float('inf') \
                 else prev_ub if prev_distance < next_distance else next_ub
 
@@ -280,8 +262,6 @@ class UtilbillProcessor(object):
         session.add(new_utilbill)
         session.flush()
 
-        if bill_file is not None:
-            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao. \
                 get_predicted_charges(new_utilbill)
@@ -298,6 +278,68 @@ class UtilbillProcessor(object):
         session.flush()
         if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
+
+        return new_utilbill
+
+    def upload_utility_bill(self, account, bill_file, start=None, end=None,
+                            service=None, utility=None, rate_class=None,
+                            total=0, state=UtilBill.Complete, supplier=None):
+        """Uploads `bill_file` with the name `file_name` as a utility bill for
+        the given account, service, and dates. If this is the newest or
+        oldest utility bill for the given account and service, "estimated"
+        utility bills will be added to cover the gap between this bill's period
+        and the previous newest or oldest one respectively. The total of all
+        charges on the utility bill may be given.
+
+        Returns the newly created UtilBill object.
+
+        Currently 'utility' and 'rate_class' are ignored in favor of the
+        predecessor's (or template's) values; see
+        https://www.pivotaltracker.com/story/show/52495771
+        """
+        # file-dependent validation
+        if bill_file is None and state in (UtilBill.UtilityEstimated,
+                                           UtilBill.Complete):
+            raise ValueError(("A file is required for a complete or "
+                              "utility-estimated utility bill"))
+        if bill_file is not None and state in (UtilBill.Hypothetical,
+                                               UtilBill.Estimated):
+            raise ValueError("Hypothetical or Estimated utility bills "
+                             "can't have a file")
+
+        # create in database
+        new_utilbill = self._create_utilbill_in_db(
+            account, start=start, end=end, service=service, utility=utility,
+            rate_class=rate_class, total=total, state=state, supplier=supplier)
+
+        # upload the file
+        if bill_file is not None:
+            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill,
+                                                             bill_file)
+        return new_utilbill
+
+    def upload_utility_bill_existing_file(self, account, utility_guid,
+                                  sha256_hexdigest):
+        '''Create a utility bill in the database corresponding to a file that
+        has already been stored in S3.
+        :param account: Nextility customer account number.
+        :param utility_guid: specifies which utility this bill is for.
+        :param sha256_hexdigest: SHA-256 hash of the existing file,
+        which should also be (part of) the file name and sufficient to
+        determine which existing file goes with this bill.
+        '''
+        s = Session()
+
+        # of all the UtilBill fields, only utility is known
+        utility = s.query(Utility).filter_by(guid=utility_guid).one()
+        new_utilbill = self._create_utilbill_in_db(account, utility=utility)
+
+        # set hexdigest of the file (this would normally be done by
+        # BillFileHandler.uppad_utilbill_pdf_to_s3)
+        new_utilbill.sha256_hexdigest = sha256_hexdigest
+
+        self.bill_file_handler.check_file_exists(new_utilbill)
+
         return new_utilbill
 
     def get_service_address(self, account):
