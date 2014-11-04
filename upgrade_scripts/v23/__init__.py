@@ -237,6 +237,11 @@ def set_rate_class_ids(session, utilbill_data, customer_data):
                   %(c_rate_class.id, customer.id))
             customer.fb_rate_class_id = c_rate_class.id
 
+def delete_hypothetical_utility_bills(session):
+    # UtilBill.Hypothetical == 3, but that name can't be used because it
+    # has been removed from the code
+    session.query(UtilBill).filter_by(state=3).delete()
+
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
     log.info('Beginning upgrade to version 23')
@@ -288,6 +293,8 @@ def upgrade():
 
     log.info('setting up rate_class ids for Customer an UtilBill records')
     set_rate_class_ids(session, utilbill_data, customer_data)
+
+    delete_hypothetical_utility_bills(session)
 
     log.info('Comitting to Database')
     session.commit()
