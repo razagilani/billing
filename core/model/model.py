@@ -836,18 +836,19 @@ class UtilBillLoader(object):
             cursor = cursor.filter(getattr(UtilBill, key) == value)
         return cursor
 
-    def get_last_real_utilbill(self, account, end, service=None, utility=None,
-                rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill whose
-        end date is before/on 'end', optionally with the given service,
-        utility, rate class, and 'processed' status.
+    def get_last_real_utilbill(self, account, end=None, service=None,
+                               utility=None, rate_class=None, processed=None):
+        '''Returns the latest-ending non-Hypothetical UtilBill, optionally
+        limited to those whose end date is before/on 'end', and optionally with
+        the given service, utility, rate class, and 'processed' status.
         '''
         customer = self._session.query(Customer).filter_by(account=account) \
             .one()
         cursor = self._session.query(UtilBill) \
             .filter(UtilBill.customer == customer) \
-            .filter(UtilBill.state != UtilBill.Hypothetical) \
-            .filter(UtilBill.period_end <= end)
+            .filter(UtilBill.state != UtilBill.Hypothetical)
+        if end is not None:
+            cursor = cursor.filter(UtilBill.period_end <= end)
         if service is not None:
             cursor = cursor.filter(UtilBill.service == service)
         if utility is not None:
