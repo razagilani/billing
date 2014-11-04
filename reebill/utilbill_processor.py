@@ -204,12 +204,7 @@ class UtilbillProcessor(object):
         https://www.pivotaltracker.com/story/show/52495771
         """
         # validate arguments
-        if end <= start:
-            raise ValueError("Start date %s must precede end date %s" %
-                             (start, end))
-        if end - start > timedelta(days=365):
-            raise ValueError(("Utility bill period %s to %s is longer than "
-                              "1 year") % (start, end))
+        UtilBill.validate_utilbill_period(start, end)
         if bill_file is None and state in (UtilBill.UtilityEstimated,
                                            UtilBill.Complete):
             raise ValueError(("A file is required for a complete or "
