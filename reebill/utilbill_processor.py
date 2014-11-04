@@ -187,8 +187,8 @@ class UtilbillProcessor(object):
             self.compute_utility_bill(utilbill.id)
         return  utilbill
 
-    def upload_utility_bill(self, account, service, begin_date,
-            end_date, bill_file, utility=None, rate_class=None,
+    def upload_utility_bill(self, account, service, start,
+            end, bill_file, utility=None, rate_class=None,
             total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
@@ -204,12 +204,12 @@ class UtilbillProcessor(object):
         https://www.pivotaltracker.com/story/show/52495771
         """
         # validate arguments
-        if end_date <= begin_date:
+        if end <= start:
             raise ValueError("Start date %s must precede end date %s" %
-                             (begin_date, end_date))
-        if end_date - begin_date > timedelta(days=365):
+                             (start, end))
+        if end - start > timedelta(days=365):
             raise ValueError(("Utility bill period %s to %s is longer than "
-                              "1 year") % (begin_date, end_date))
+                              "1 year") % (start, end))
         if bill_file is None and state in (UtilBill.UtilityEstimated,
                                            UtilBill.Complete):
             raise ValueError(("A file is required for a complete or "
@@ -228,7 +228,7 @@ class UtilbillProcessor(object):
         customer = self.state_db.get_customer(account)
         try:
             predecessor = UtilBillLoader(session).get_last_real_utilbill(
-                account, begin_date, service=service)
+                account, start, service=service)
             billing_address = predecessor.billing_address
             service_address = predecessor.service_address
         except NoSuchBillException as e:
@@ -243,14 +243,14 @@ class UtilbillProcessor(object):
                 filter_by(processed=True). \
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
-            next_ub = q.filter(UtilBill.period_start >= begin_date). \
+            next_ub = q.filter(UtilBill.period_start >= start). \
                 order_by(UtilBill.period_start).first()
-            prev_ub = q.filter(UtilBill.period_start <= begin_date). \
+            prev_ub = q.filter(UtilBill.period_start <= start). \
                 order_by(UtilBill.period_start.desc()).first()
 
-            next_distance = (next_ub.period_start - begin_date).days if next_ub \
+            next_distance = (next_ub.period_start - start).days if next_ub \
                 else float('inf')
-            prev_distance = (begin_date - prev_ub.period_start).days if prev_ub \
+            prev_distance = (start - prev_ub.period_start).days if prev_ub \
                 else float('inf')
 
             predecessor = None if next_distance == prev_distance == float('inf') \
@@ -272,7 +272,7 @@ class UtilbillProcessor(object):
         new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
-                                period_start=begin_date, period_end=end_date,
+                                period_start=start, period_end=end,
                                 target_total=total, date_received=datetime.utcnow().date())
         session.add(new_utilbill)
         session.flush()
