@@ -187,9 +187,9 @@ class UtilbillProcessor(object):
             self.compute_utility_bill(utilbill.id)
         return  utilbill
 
-    def upload_utility_bill(self, account, service, bill_file, start=None,
-                            end=None, utility=None, rate_class=None, total=0,
-                            state=UtilBill.Complete, supplier=None):
+    def upload_utility_bill(self, account, bill_file, start=None, end=None,
+                            service='', utility=None, rate_class=None,
+                            total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -254,6 +254,13 @@ class UtilbillProcessor(object):
             billing_address = customer.fb_billing_address
             service_address = customer.fb_service_address
 
+        if service is None:
+            if predecessor is None:
+                # TODO: this is not a good choice for "service". it should
+                # probably belong to the Customer or UtilityAccount object.
+                service = ''
+            else:
+                service = predecessor.service
         utility = self.state_db.get_create_utility(utility) if utility else \
             getattr(predecessor, 'utility', None)
         supplier = self.state_db.get_create_supplier(supplier) if supplier else \
@@ -264,11 +271,12 @@ class UtilbillProcessor(object):
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
-                                Address.from_other(billing_address),
+        new_utilbill = UtilBill(customer, state, service, utility, supplier,
+                                rate_class, Address.from_other(billing_address),
                                 Address.from_other(service_address),
                                 period_start=start, period_end=end,
-                                target_total=total, date_received=datetime.utcnow().date())
+                                target_total=total,
+                                date_received=datetime.utcnow().date())
         session.add(new_utilbill)
         session.flush()
 

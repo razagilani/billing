@@ -604,8 +604,8 @@ class UtilBillResource(RESTResource):
 
         billstate = UtilBill.Complete if fileobj.file else \
             UtilBill.Estimated
-        self.process.upload_utility_bill(account, service, fileobj.file,
-                                         begin_date, end_date, utility=None,
+        self.process.upload_utility_bill(account, fileobj.file, begin_date,
+                                         end_date, service, utility=None,
                                          rate_class=None, total=total_charges,
                                          state=billstate)
 
