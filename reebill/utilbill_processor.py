@@ -187,9 +187,9 @@ class UtilbillProcessor(object):
             self.compute_utility_bill(utilbill.id)
         return  utilbill
 
-    def upload_utility_bill(self, account, service, start,
-            end, bill_file, utility=None, rate_class=None,
-            total=0, state=UtilBill.Complete, supplier=None):
+    def upload_utility_bill(self, account, service, bill_file, start=None,
+                            end=None, utility=None, rate_class=None, total=0,
+                            state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
