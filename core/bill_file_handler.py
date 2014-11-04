@@ -1,7 +1,9 @@
 #!/usr/bin/python
 import hashlib
+import requests
 
 from billing.core.model import UtilBill
+from exc import MissingFileError
 
 
 class BillFileHandler(object):
@@ -62,6 +64,15 @@ class BillFileHandler(object):
         return self._url_format % dict(bucket_name=self._bucket_name,
                                       key_name=self._get_key_name(utilbill))
 
+    def check_file_exists(self, utilbill):
+        '''Raise a MissingFileError if the S3 key corresponding to 'utilbill'
+        does not exist.
+        '''
+        key_name = self._get_key_name(utilbill)
+        key = self._get_amazon_bucket().get_key(key_name)
+        if key is None:
+            raise MissingFileError('Key "%s" does not exist' % key_name)
+
     def delete_utilbill_pdf_from_s3(self, utilbill):
         """Removes the pdf file associated with utilbill from s3 (unless
         there are any other UtilBills referring to the same file).
@@ -74,7 +85,8 @@ class BillFileHandler(object):
             key.delete()
 
     def upload_utilbill_pdf_to_s3(self, utilbill, file):
-        """Uploads the pdf file to amazon s3
+        """Uploads the pdf file to amazon s3. also sets the
+        'UtilBill.sha256_hexdigest' attribute according to the file.
         :param utilbill: a :class:`billing.process.state.UtilBill`
         :param file: a seekable file
         """
