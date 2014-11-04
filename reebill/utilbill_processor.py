@@ -214,8 +214,7 @@ class UtilbillProcessor(object):
             q = session.query(UtilBill). \
                 filter_by(rate_class=customer.fb_rate_class). \
                 filter_by(utility=customer.fb_utility). \
-                filter_by(processed=True). \
-                filter(UtilBill.state != UtilBill.Hypothetical)
+                filter_by(processed=True)
 
             # find "closest" or most recent utility bill to copy data from
             if start is None:
@@ -262,23 +261,20 @@ class UtilbillProcessor(object):
         session.add(new_utilbill)
         session.flush()
 
-        if state < UtilBill.Hypothetical:
-            new_utilbill.charges = self.rate_structure_dao. \
-                get_predicted_charges(new_utilbill)
-            for register in predecessor.registers if predecessor else []:
-                session.add(Register(new_utilbill, register.description,
-                                     register.identifier,
-                                     register.unit,
-                                     False,
-                                     register.reg_type,
-                                     register.active_periods,
-                                     register.meter_identifier,
-                                     quantity=0,
-                                     register_binding=register.register_binding))
+        new_utilbill.charges = self.rate_structure_dao. \
+            get_predicted_charges(new_utilbill)
+        for register in predecessor.registers if predecessor else []:
+            session.add(Register(new_utilbill, register.description,
+                                 register.identifier,
+                                 register.unit,
+                                 False,
+                                 register.reg_type,
+                                 register.active_periods,
+                                 register.meter_identifier,
+                                 quantity=0,
+                                 register_binding=register.register_binding))
         session.flush()
-        if new_utilbill.state < UtilBill.Hypothetical:
-            self.compute_utility_bill(new_utilbill.id)
-
+        self.compute_utility_bill(new_utilbill.id)
         return new_utilbill
 
     def upload_utility_bill(self, account, bill_file, start=None, end=None,
@@ -302,10 +298,8 @@ class UtilbillProcessor(object):
                                            UtilBill.Complete):
             raise ValueError(("A file is required for a complete or "
                               "utility-estimated utility bill"))
-        if bill_file is not None and state in (UtilBill.Hypothetical,
-                                               UtilBill.Estimated):
-            raise ValueError("Hypothetical or Estimated utility bills "
-                             "can't have a file")
+        if bill_file is not None and state == UtilBill.Estimated:
+            raise ValueError("Estimated utility bills can't have a file")
 
         # create in database
         new_utilbill = self._create_utilbill_in_db(

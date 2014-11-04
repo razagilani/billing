@@ -106,13 +106,6 @@ class UtilbillLoaderTest(TestCaseWithSetup):
                           end=date(2000,1,31), utility=washington_gas,
                           rate_class=rateclass2)
 
-        # hypothetical utility bills are always ignored
-        gas_bill_1.state = UtilBill.Hypothetical
-        electric_bill.state = UtilBill.Hypothetical
-        self.assertRaises(NoSuchBillException,
-                          self.ubl.get_last_real_utilbill, '99999',
-                          date(2000,3,1))
-
     def test_count_utilbills_with_hash(self):
         hash = '01234567890abcdef'
         self.assertEqual(0, self.ubl.count_utilbills_with_hash(hash))

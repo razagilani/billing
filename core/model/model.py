@@ -419,14 +419,13 @@ class UtilBill(Base):
     # many bills there are in a given period of time), and if it does exist,
     # its actual dates will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
-    Complete, UtilityEstimated, Estimated, Hypothetical = range(4)
+    Complete, UtilityEstimated, Estimated = range(3)
 
     # human-readable names for utilbill states (used in UI)
     _state_descriptions = {
         Complete: 'Final',
         UtilityEstimated: 'Utility Estimated',
         Estimated: 'Estimated',
-        Hypothetical: 'Missing'
     }
 
     # TODO remove uprs_id, doc_id
@@ -575,8 +574,7 @@ class UtilBill(Base):
                      ('service', 'Unknown' if self.service is None
                                            else self.service.capitalize()),
                      ('total_charges', self.target_total),
-                     ('computed_total', self.get_total_charges()if self.state <
-                                        UtilBill.Hypothetical else None),
+                     ('computed_total', self.get_total_charges()),
                      ('reebills', [ur.reebill.column_dict() for ur
                                    in self._utilbill_reebills]),
                      ('utility', (self.utility.column_dict() if self.utility
@@ -841,15 +839,14 @@ class UtilBillLoader(object):
 
     def get_last_real_utilbill(self, account, end=None, service=None,
                                utility=None, rate_class=None, processed=None):
-        '''Returns the latest-ending non-Hypothetical UtilBill, optionally
-        limited to those whose end date is before/on 'end', and optionally with
+        '''Returns the latest-ending UtilBill, optionally limited to those
+        whose end date is before/on 'end', and optionally with
         the given service, utility, rate class, and 'processed' status.
         '''
         customer = self._session.query(Customer).filter_by(account=account) \
             .one()
         cursor = self._session.query(UtilBill) \
-            .filter(UtilBill.customer == customer) \
-            .filter(UtilBill.state != UtilBill.Hypothetical)
+            .filter(UtilBill.customer == customer)
         if end is not None:
             cursor = cursor.filter(UtilBill.period_end <= end)
         if service is not None:
