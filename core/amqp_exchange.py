@@ -24,10 +24,13 @@ def process_utility_bill(utility_provider_guid, account_number,
 
     utility = s.query(Utility).filter_by(guid=utility_provider_guid).one()
 
+    # TODO: use of 'account_number' argument does not match docstring
+    # https://skylineinnovations.atlassian.net/browse/BILL-5757
     customer = s.query(Customer).filter_by(account=account_number).first()
     customer = customer if customer else Customer('', account_number, 0, 0, '',
         utility, '', Address(), Address())
 
+    # TODO replace with UtilbillLoader.get_last_real_utilbill
     prev = s.query(UtilBill).filter_by(customer=customer).\
         filter_by(state=UtilBill.Complete).\
         order_by(desc(UtilBill.period_start)).first()
