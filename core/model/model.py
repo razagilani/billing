@@ -398,7 +398,10 @@ class UtilBill(Base):
     def validate_utilbill_period(start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
         as a utility bill period: "reasonable" means start < end and (end -
-        start) < 1 year.'''
+        start) < 1 year. Does nothing if either period date is None.
+        '''
+        if None in (start, end):
+            return
         if start >= end:
             raise ValueError('Utility bill start date must precede end')
         if (end - start).days > 365:
