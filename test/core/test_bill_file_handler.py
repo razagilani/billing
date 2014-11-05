@@ -72,9 +72,6 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.sha256_hexdigest = None
         self.bfh.get_s3_url(self.utilbill)
 
-    def test_utilbill_key_name(self):
-        self.assertEqual(self.bfh._get_key_name(self.utilbill), self.key_name)
-
     def test_upload_to_s3(self):
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
