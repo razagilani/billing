@@ -11,6 +11,7 @@ from mock import Mock
 
 from billing.core.model import UtilBill, UtilBillLoader
 from billing.core.bill_file_handler import BillFileHandler
+from exc import MissingFileError
 
 
 class BillFileHandlerTest(unittest.TestCase):
@@ -34,6 +35,7 @@ class BillFileHandlerTest(unittest.TestCase):
         self.file = StringIO('test_file_data')
         self.file_hash = \
             'ab5c23a2b20284db26ae474c1d633dd9a3d76340036ab69097cf3274cf50a937'
+        self.key_name = 'utilbill/' + self.file_hash
         self.utilbill = Mock(autospec=UtilBill)
         self.utilbill.sha256_hexdigest = self.file_hash
         self.utilbill.state = UtilBill.Complete
@@ -50,6 +52,18 @@ class BillFileHandlerTest(unittest.TestCase):
         self.utilbill.state = UtilBill.Estimated
         self.assertEqual('', self.bfh.get_s3_url(self.utilbill))
 
+    def test_check_file_exists(self):
+        # success
+        self.bfh.check_file_exists(self.utilbill)
+        self.bucket.get_key.assert_called_once_with(self.key_name)
+
+        # failure
+        self.bucket.reset_mock()
+        self.bucket.get_key.return_value = None
+        with self.assertRaises(MissingFileError):
+            self.bfh.check_file_exists(self.utilbill)
+        self.bucket.get_key.assert_called_once_with(self.key_name)
+
     def test_url_for_missing_files(self):
         # it doesn't matter what the URL is, only that it gets returned
         # without an error
@@ -59,15 +73,12 @@ class BillFileHandlerTest(unittest.TestCase):
         self.bfh.get_s3_url(self.utilbill)
 
     def test_utilbill_key_name(self):
-        expected = 'utilbill/' + self.file_hash
-        self.assertEqual(self.bfh._get_key_name(self.utilbill), expected)
+        self.assertEqual(self.bfh._get_key_name(self.utilbill), self.key_name)
 
     def test_upload_to_s3(self):
-        key_name = 'utilbill/' + self.file_hash
-
         self.bfh.upload_utilbill_pdf_to_s3(self.utilbill, self.file)
 
-        self.bucket.new_key.assert_called_once_with(key_name)
+        self.bucket.new_key.assert_called_once_with(self.key_name)
         self.key.set_contents_from_file.assert_called_once_with(self.file)
 
     def test_delete_utilbill_pdf_from_s3_one_utilbill(self):
