@@ -17,7 +17,7 @@ import logging
 from pymongo import MongoClient
 from billing import config, init_model
 from billing.core.model.model import Session, Company, Customer, Utility, \
-    Address, UtilBill, Supplier, RateClass, Charge
+    Address, UtilBill, Supplier, RateClass, UtilityAccount, ReeBillCustomer
 from billing.upgrade_scripts.v23.migrate_to_aws import upload_utilbills_to_aws
 
 log = logging.getLogger(__name__)
@@ -138,16 +138,47 @@ def create_utilities(session):
     session.flush()
     session.commit()
 
+def create_utility_accounts(session, customer_data):
+    customers = session.query(Customer).all()
+    for customer in customers:
+        if customer.service is None:
+            utility_account = UtilityAccount(customer.name,
+                                             customer.account,
+                                             customer.fb_utility,
+                                             customer.fb_supplier,
+                                             customer.fb_rate_class,
+                                             customer.fb_billing_address,
+                                             customer.fb_service_address)
+            session.add(utility_account)
+        else:
+            utility_account = UtilityAccount(customer.name,
+                                             customer.account,
+                                             customer.fb_utility,
+                                             customer.fb_supplier,
+                                             customer.fb_rate_class,
+                                             customer.fb_billing_address,
+                                             customer.fb_service_address)
+            reebill_customer = ReeBillCustomer(customer.name,
+                                               customer.discountrate,
+                                               customer.latechargerate,
+                                               customer.service,
+                                               customer.bill_email_recipient,
+                                               utility_account)
+            session.add(utility_account)
+            session.add(reebill_customer)
+    session.flush()
+    session.commit()
+
 def migrate_customer_fb_utility(customer_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for customer in session.query(Customer).all():
         fb_utility_name = customer_data[customer.id]['fb_utility_name'].lower()
-        log.debug('Setting fb_utility to %s for customer id %s' %
+        log.debug('Setting fb_utility to %s for utility_account id %s' %
                   (fb_utility_name, customer.id))
         try:
-            customer.fb_company = company_map[fb_utility_name]
+            customer.fb_utility = company_map[fb_utility_name]
         except KeyError:
-            log.error("Could not locate company with name '%s' for customer %s" %
+            log.error("Could not locate company with name '%s' for utility_account %s" %
                       (fb_utility_name, customer.id))
 
 
@@ -170,11 +201,11 @@ def migrate_utilbill_utility(utilbill_data, session):
 def set_fb_utility_id(session):
     for customer in session.query(Customer):
         first_bill = session.query(UtilBill)\
-            .filter(UtilBill.customer == customer)\
+            .filter(UtilBill.utility_account == customer)\
             .order_by(UtilBill.period_start)\
             .first()
         if first_bill:
-            log.debug('Setting fb_utility_id to %s for customer id %s' %
+            log.debug('Setting fb_utility_id to %s for utility_account id %s' %
                   (first_bill.utility_id, customer.id))
             customer.fb_utility_id = first_bill.utility_id
     session.commit()
@@ -190,21 +221,21 @@ def set_supplier_ids(session):
             utility = session.query(Utility).\
                 filter(Utility.id==customer.fb_utility_id).\
                 first()
-            supplier_id = session.query(Supplier).\
+            supplier = session.query(Supplier).\
                 filter(Supplier.name==utility.name).\
-                first().id
-            log.debug('Setting supplier_id to %s for customer id %s' %
-                  (supplier_id, customer.id))
-            customer.fb_supplier_id = supplier_id
+                first()
+            log.debug('Setting supplier_id to %s for utility_account id %s' %
+                  (supplier, customer.id))
+            customer.fb_supplier = supplier
     for bill in session.query(UtilBill).all():
         if bill.utility:
             utility_name = bill.utility.name
             supplier = session.query(Supplier).\
                 filter(Supplier.name==utility_name).\
-                first().id
+                first()
             log.debug('Setting supplier_id to %s for utility bill id %s' %
                   (supplier, bill.id))
-            bill.supplier_id = supplier
+            bill.supplier = supplier
 
 def create_rate_classes(session):
     utilbills = session.execute("select distinct rate_class, utility_id from utilbill")
@@ -225,17 +256,21 @@ def set_rate_class_ids(session, utilbill_data, customer_data):
             filter(RateClass.name==utilbill_data[bill.id]['rate_class']).first()
         log.debug('setting rate_class_id to %s for utilbill with id %s'
                   %(u_rate_class.id, bill.id))
+        bill.rate_class = u_rate_class
         bill.rate_class_id = u_rate_class.id
     customers = session.query(Customer).all()
     for customer in customers:
         c_rate_class = session.query(RateClass).join(Customer, RateClass.utility_id==customer.fb_utility_id).\
             filter(RateClass.name==customer_data[customer.id]['fb_rate_class']).first()
         if c_rate_class is None:
+            customer.fb_rate_class = Session.query(RateClass).first()
             customer.fb_rate_class_id = Session.query(RateClass).first().id
         else:
-            log.debug('setting rate_class_id to %s for customer with id %s'
+            log.debug('setting rate_class_id to %s for utility_account with id %s'
                   %(c_rate_class.id, customer.id))
+            customer.fb_rate_class = c_rate_class
             customer.fb_rate_class_id = c_rate_class.id
+    session.commit()
 
 def upgrade():
     cf = config.get('aws_s3', 'calling_format')
@@ -243,22 +278,22 @@ def upgrade():
 
     init_model(schema_revision='6446c51511c')
     session = Session()
-    clean_up_units(session)
-    alembic_upgrade('37863ab171d1')
-
-    log.info('Upgrading schema to revision fc9faca7a7f')
-    alembic_upgrade('fc9faca7a7f')
-    init_model(schema_revision='fc9faca7a7f')
-
-    session = Session()
     log.info('Reading initial customers data')
     customer_data = read_initial_table_data('customer', session)
     utilbill_data = read_initial_table_data('utilbill', session)
+    clean_up_units(session)
+    alembic_upgrade('37863ab171d1')
 
+    log.info('Upgrading schema to revision 507c0437a7f8')
+    alembic_upgrade('507c0437a7f8')
+    init_model(schema_revision='507c0437a7f8')
+
+    session =Session()
     log.info('Creating utilities')
     create_utilities(session)
 
-    log.info('Migrating customer fb utilbill')
+
+    log.info('Migrating utility_account fb utilbill')
     migrate_customer_fb_utility(customer_data, session)
 
     log.info('Migration utilbill utility')
@@ -282,18 +317,22 @@ def upgrade():
     log.info('Upgrading schema to revision 3566e62e7af3')
     alembic_upgrade('3566e62e7af3')
 
-
     log.info('creating rate_classes')
     create_rate_classes(session)
 
-    log.info('setting up rate_class ids for Customer an UtilBill records')
+    log.info('setting up rate_class ids for Customer and UtilBill records')
     set_rate_class_ids(session, utilbill_data, customer_data)
+
+    log.info('creating utility_accounts and reebill_customers')
+    create_utility_accounts(session, customer_data)
 
     log.info('Comitting to Database')
     session.commit()
 
     log.info('Upgrading to schema 4bc721447593')
     alembic_upgrade('4bc721447593')
+
+
 
     log.info('Upgrade Complete')
 
