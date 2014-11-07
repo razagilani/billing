@@ -282,7 +282,6 @@ def upgrade():
     log.info('Upgrading schema to revision 3566e62e7af3')
     alembic_upgrade('3566e62e7af3')
 
-
     log.info('creating rate_classes')
     create_rate_classes(session)
 
