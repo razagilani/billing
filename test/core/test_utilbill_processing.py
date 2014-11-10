@@ -168,7 +168,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
 
         # check that file really exists at the expected path
         # (get_utilbill_file_path also checks for existence)
-        key_name = self.billupload._get_key_name(utilbill)
+        key_name = self.billupload._get_key_name_for_utilbill(utilbill)
         key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
         self.assertEqual('January 2013', key_obj.get_contents_as_string())
 
@@ -439,7 +439,7 @@ class UtilbillProcessingTest(TestCaseWithSetup, testing_utils.TestCase):
             id, state = obj['id'], obj['state']
             u = Session().query(UtilBill).filter_by(id=id).one()
             if state == 'Final':
-                key_name = self.billupload._get_key_name(u)
+                key_name = self.billupload._get_key_name_for_utilbill(u)
                 key_obj = self.billupload._get_amazon_bucket().get_key(key_name)
                 key_obj.get_contents_as_string()
 

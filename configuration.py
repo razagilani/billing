@@ -99,7 +99,11 @@ class mailer(Schema):
     template_file_name = String()
     
 class amqp(Schema):
+    # parameters for receiving utility bills via AMQP--should be named something
+    # more specific if additional AMQP stuff needs to go in this file
+    host = String()
     exchange = String()
+    queue = String()
 
 class aws_s3(Schema):
     # utility bill file storage in Amazon S3
