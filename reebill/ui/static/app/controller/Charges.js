@@ -176,7 +176,13 @@ Ext.define('ReeBill.controller.Charges', {
             return;
 
         store.suspendAutoSync();
-        store.add({'name': 'New RSI'});
+        store.add({
+            rsi_binding: 'New RSI',
+            description: 'Enter Description',
+            rate: 0,
+            unit: 'dollars',
+            utilbill_id: selectedBill[0].internalId
+        });
         store.sync({success:function(batch){
             var record = batch.operations[0].records[0];
             var plugin = this.getChargesGrid().findPlugin('cellediting');

@@ -721,8 +721,8 @@ class ChargesResource(RESTResource):
         c = self.process.update_charge(row, charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 
-    def handle_post(self, utilbill_id, *vpath, **params):
-        c = self.process.add_charge(utilbill_id)
+    def handle_post(self, *vpath, **params):
+        c = self.process.add_charge(**cherrypy.request.json)
         return True, {'rows': c.column_dict(),  'results': 1}
 
     def handle_delete(self, charge_id, *vpath, **params):
