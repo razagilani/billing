@@ -688,10 +688,8 @@ class RegistersResource(RESTResource):
         registers_json = self.process.get_registers_json(utilbill_id)
         return True, {"rows": registers_json, 'results': len(registers_json)}
 
-    def handle_post(self, utilbill_id, *vpath, **params):
-        new_register = cherrypy.request.json
-        r = self.process.new_register(utilbill_id, new_register)
-
+    def handle_post(self, *vpath, **params):
+        r = self.process.new_register(**cherrypy.request.json)
         return True, {"rows": r.column_dict(), 'results': 1}
 
     def handle_put(self, register_id, *vpath, **params):
