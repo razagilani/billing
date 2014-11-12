@@ -86,10 +86,19 @@ Ext.define('ReeBill.view.Charges', {
     },{
         header: 'Units',
         sortable: true,
-        dataIndex: 'quantity_units',
+        dataIndex: 'unit',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'Units',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
+            triggerAction: 'all',
+            valueField: 'value',
+            displayField: 'name',
+            queryMode: 'local',
+            forceSelection: true,
+            selectOnFocus: true
         },
         width: 70
     },{

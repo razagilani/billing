@@ -3,22 +3,25 @@ Utility functions to interact with state database
 """
 from datetime import datetime, date
 from itertools import chain
-import logging
-import traceback
 
+import logging
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, aliased
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
+        Enum
 from sqlalchemy.ext.associationproxy import association_proxy
+
+import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer
+    UtilBill, Customer, Utility, Supplier, RateClass, Charge
+from billing import config
 from billing.util.monthmath import Month
 
 __all__ = [
@@ -30,6 +33,7 @@ __all__ = [
     ]
 
 log = logging.getLogger(__name__)
+
 
 class ReeBill(Base):
     __tablename__ = 'reebill'
@@ -46,7 +50,7 @@ class ReeBill(Base):
     balance_due = Column(Float, nullable=False)
     balance_forward = Column(Float, nullable=False)
     discount_rate = Column(Float, nullable=False)
-    due_date = Column(Date, nullable=False)
+    due_date = Column(Date)
     late_charge_rate = Column(Float, nullable=False)
     late_charge = Column(Float, nullable=False)
     total_adjustment = Column(Float, nullable=False)
@@ -55,7 +59,7 @@ class ReeBill(Base):
     prior_balance = Column(Float, nullable=False)
     ree_value = Column(Float, nullable=False)
     ree_savings = Column(Float, nullable=False)
-    email_recipient = Column(String, nullable=True)
+    email_recipient = Column(String(1000), nullable=True)
     processed = Column(Boolean, default=False)
 
     billing_address_id = Column(Integer, ForeignKey('address.id'),
@@ -204,7 +208,7 @@ class ReeBill(Base):
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
-                                  register.quantity_units)
+                                  register.unit)
             self.readings.append(new_reading)
 
     def update_readings_from_reebill(self, reebill_readings):
@@ -360,10 +364,10 @@ class ReeBill(Base):
         for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
-                quantity_units = '' if charge.quantity_units is None else charge.quantity_units
+                unit = '' if charge.unit is None else charge.unit
                 session.add(ReeBillCharge(self, binding, charge.description,
                         charge.group, charge.quantity, evaluation.quantity,
-                        quantity_units, charge.rate, charge.total,
+                        charge.unit, charge.rate, charge.total,
                         evaluation.total))
 
     def compute_charges(self):
@@ -467,9 +471,6 @@ class UtilbillReebill(Base):
 
     reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
     utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
-    document_id = Column(String)
-    # TODO remove this
-    uprs_document_id = Column(String)  #indicates the rate structure data
 
     # there is no delete cascade in this 'relationship' because a UtilBill
     # should not be deleted when a UtilbillReebill is deleted.
@@ -505,27 +506,27 @@ class ReeBillCharge(Base):
 
     id = Column(Integer, primary_key=True)
     reebill_id = Column(Integer, ForeignKey('reebill.id', ondelete='CASCADE'))
-    rsi_binding = Column(String, nullable=False)
-    description = Column(String, nullable=False)
+    rsi_binding = Column(String(1000), nullable=False)
+    description = Column(String(1000), nullable=False)
     # NOTE alternate name is required because you can't have a column called
     # "group" in MySQL
-    group = Column(String, name='group_name', nullable=False)
+    group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    quantity_unit = Column(String, nullable=False)
+    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
     def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, quantity_unit, rate, a_total, h_total):
-        assert quantity_unit is not None
+                 h_quantity, unit, rate, a_total, h_total):
+        assert unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
-        self.quantity_unit = quantity_unit
+        self.unit = unit
         self.rate = rate
         self.a_total, self.h_total = a_total, h_total
 
@@ -539,11 +540,11 @@ class Reading(Base):
     reebill_id = Column(Integer, ForeignKey('reebill.id'))
 
     # identifies which utility bill register this corresponds to
-    register_binding = Column(String, nullable=False)
+    register_binding = Column(String(1000), nullable=False)
 
     # name of measure in OLAP database to use for getting renewable energy
     # quantity
-    measure = Column(String, nullable=False)
+    measure = Column(String(1000), nullable=False)
 
     # actual reading from utility bill
     conventional_quantity = Column(Float, nullable=False)
@@ -551,9 +552,9 @@ class Reading(Base):
     # renewable energy offsetting the above
     renewable_quantity = Column(Float, nullable=False)
 
-    aggregate_function = Column(String, nullable=False)
+    aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(String, nullable=False)
+    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
@@ -606,10 +607,10 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    reebill_id = Column(Integer, ForeignKey('reebill.id'), nullable=False)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'))
     date_received = Column(DateTime, nullable=False)
     date_applied = Column(DateTime, nullable=False)
-    description = Column(String)
+    description = Column(String(45))
     credit = Column(Float)
 
     customer = relationship("Customer", backref=backref('payments',
@@ -670,6 +671,42 @@ class StateDB(object):
     def get_customer(self, account):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
+
+    def get_create_utility(self, utility):
+        session = Session()
+        try:
+            utility = session.query(Utility).filter_by(name=utility).one()
+        except NoResultFound:
+            utility = Utility(utility, Address('', '', '', '', ''), '')
+        return utility
+
+    def get_utility(self, name):
+        session = Session()
+        return session.query(Utility).filter(Utility.name == name).one()
+
+    def get_create_supplier(self, supplier):
+        session = Session()
+        try:
+            supplier = session.query(Supplier).filter_by(name=supplier).one()
+        except NoResultFound:
+            supplier = Supplier(supplier, Address('', '', '', '', ''), '')
+        return supplier
+
+    def get_supplier(self, name):
+        session = Session()
+        return session.query(Supplier).filter(Supplier.name == name).one()
+
+    def get_create_rate_class(self, rate_class, utility):
+        session = Session()
+        try:
+            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
+        except NoResultFound:
+            rate_class = RateClass(rate_class, utility)
+        return rate_class
+
+    def get_rate_class(self, name):
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name == name).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -837,17 +874,20 @@ class StateDB(object):
         .filter(UtilBill.processed == 1)\
         .group_by(UtilBill.customer_id)\
         .subquery()
+        rate_class = aliased(RateClass)
 
         q = session.query(Customer.account,
-                          Customer.fb_utility_name,
-                          Customer.fb_rate_class,
+                          Utility.name,
+                          RateClass.name,
                           Customer.fb_service_address,
                           sequence_sq.c.max_sequence,
                           version_sq.c.max_version,
                           version_sq.c.issue_date,
-                          UtilBill.rate_class,
+                          rate_class.name,
                           Address,
                           processed_utilbill_sq.c.max_period_end_processed)\
+        .outerjoin(RateClass, RateClass.id==Customer.fb_rate_class_id)\
+        .outerjoin(Utility, Utility.id == Customer.fb_utility_id)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
                    sequence_sq.c.max_sequence == version_sq.c.sequence))\
@@ -855,6 +895,7 @@ class StateDB(object):
         .outerjoin(UtilBill, and_(
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
+        .outerjoin(rate_class, rate_class.id == UtilBill.rate_class_id)\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
         .outerjoin(processed_utilbill_sq,
                    Customer.id == processed_utilbill_sq.c.customer_id)\

@@ -49,7 +49,7 @@ Ext.define('ReeBill.view.ReebillCharges', {
         width: 150
     },{
         header: 'Units',
-        dataIndex: 'quantity_units',
+        dataIndex: 'unit',
         width: 120
     },{
         header: 'Rate',

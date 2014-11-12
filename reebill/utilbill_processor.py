@@ -1,16 +1,19 @@
 import json
 from datetime import datetime, timedelta
 
-from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, \
-    Register, Session
+from billing.core.model import UtilBill, UtilBillLoader, Address, Charge, Register, Session, Supplier, Utility, \
+    RateClass
 from billing.exc import NoSuchBillException
 
 
+ACCOUNT_NAME_REGEX = '[0-9a-z]{5}'
+
+
 class UtilbillProcessor(object):
-    def __init__(self, rate_structure_dao, billupload, nexus_util,
+    def __init__(self, rate_structure_dao, bill_file_handler, nexus_util,
                  logger=None):
         self.rate_structure_dao = rate_structure_dao
-        self.billupload = billupload
+        self.bill_file_handler = bill_file_handler
         self.nexus_util = nexus_util
         self.logger = logger
 
@@ -43,20 +46,21 @@ class UtilbillProcessor(object):
         """
         session = Session()
         utility_bill = session.query(UtilBill).filter_by(id=utilbill_id).one()
-        r = Register(
-            utility_bill,
-            "Insert description",
-            0,
-            "therms",
-            row.get('register_id', "Insert register ID here"),
-            False,
-            "total",
-            "Insert register binding here",
-            None,
-            row.get('meter_id', ""))
-        session.add(r)
-        session.flush()
-        return r
+        if utility_bill.editable():
+            r = Register(
+                utility_bill,
+                "Insert description",
+                row.get('register_id', "Insert register ID here"),
+                'therms',
+                False,
+                "total",
+                None,
+                row.get('meter_id', ""),
+                quantity=0,
+                register_binding="Insert register binding here")
+            session.add(r)
+            session.flush()
+            return r
 
     def update_register(self, register_id, rows):
         """Updates fields in the register given by 'register_id'
@@ -68,7 +72,7 @@ class UtilbillProcessor(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
 
-        for k in ['description', 'quantity', 'quantity_units',
+        for k in ['description', 'quantity', 'unit',
                   'identifier', 'estimated', 'reg_type', 'register_binding',
                   'meter_identifier']:
             val = rows.get(k, getattr(register, k))
@@ -91,15 +95,18 @@ class UtilbillProcessor(object):
         register = session.query(Register).filter(
             Register.id == register_id).one()
         utilbill_id = register.utilbill_id
-        session.delete(register)
-        session.commit()
-        self.compute_utility_bill(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            session.delete(register)
+            session.commit()
+            self.compute_utility_bill(utilbill_id)
 
     def add_charge(self, utilbill_id):
         """Add a new charge to the given utility bill."""
-        utilbill = Session().query(UtilBill).filter_by(id=utilbill_id).one()
-        charge = utilbill.add_charge()
-        self.compute_utility_bill(utilbill_id)
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            charge = utilbill.add_charge()
+            self.compute_utility_bill(utilbill_id)
         return charge
 
     def update_charge(self, fields, charge_id=None, utilbill_id=None,
@@ -113,65 +120,76 @@ class UtilbillProcessor(object):
             session.query(Charge). \
                 filter(Charge.utilbill_id == utilbill_id). \
                 filter(Charge.rsi_binding == rsi_binding).one()
-
-        for k, v in fields.iteritems():
-            if k not in Charge.column_names():
-                raise AttributeError("Charge has no attribute '%s'" % k)
-            setattr(charge, k, v)
-        session.flush()
-        self.compute_utility_bill(charge.utilbill.id)
+        utilbill = self._get_utilbill(charge.utilbill.id)
+        if utilbill.editable():
+            for k, v in fields.iteritems():
+                if k not in Charge.column_names():
+                    raise AttributeError("Charge has no attribute '%s'" % k)
+                setattr(charge, k, v)
+            session.flush()
+            self.compute_utility_bill(charge.utilbill.id)
         return charge
 
     def delete_charge(self, charge_id=None, utilbill_id=None, rsi_binding=None):
         """Delete the charge given by 'rsi_binding' in the given utility
         bill."""
         assert charge_id or utilbill_id and rsi_binding
-        session = Session()
-        charge = session.query(Charge).filter(Charge.id == charge_id).one() \
-            if charge_id else \
-            session.query(Charge). \
-                filter(Charge.utilbill_id == utilbill_id). \
-                filter(Charge.rsi_binding == rsi_binding).one()
-        session.delete(charge)
-        self.compute_utility_bill(charge.utilbill_id)
-        session.expire(charge.utilbill)
+        utilbill = self._get_utilbill(utilbill_id)
+        if utilbill.editable():
+            session = Session()
+            if charge_id:
+                charge = session.query(Charge)\
+                    .filter(Charge.id == charge_id).one()
+            else:
+                charge = session.query(Charge)\
+                    .filter(Charge.utilbill_id == utilbill_id)\
+                    .filter(Charge.rsi_binding == rsi_binding).one()
+            session.delete(charge)
+            self.compute_utility_bill(charge.utilbill_id)
+            session.expire(charge.utilbill)
 
-    def update_utilbill_metadata(self, utilbill_id, period_start=None,
-                                 period_end=None, service=None, target_total=None, utility=None,
-                                 rate_class=None, processed=None):
+    def update_utilbill_metadata(
+            self, utilbill_id, period_start=None, period_end=None, service=None,
+            target_total=None, utility=None, supplier=None, rate_class=None,
+            processed=None):
         """Update various fields for the utility bill having the specified
         `utilbill_id`. Fields that are not None get updated to new
         values while other fields are unaffected.
         """
         utilbill = self._get_utilbill(utilbill_id)
-        if target_total is not None:
-            utilbill.target_total = target_total
-
-        if service is not None:
-            utilbill.service = service
-
-        if utility is not None:
-            utilbill.utility = utility
-
-        if rate_class is not None:
-            utilbill.rate_class = rate_class
-
+        #toggle processed state of utility bill
         if processed is not None:
-            utilbill.processed = processed
+                utilbill.processed = processed
+        if utilbill.editable():
+            if target_total is not None:
+                utilbill.target_total = target_total
 
-        period_start = period_start if period_start else utilbill.period_start
-        period_end = period_end if period_end else utilbill.period_end
+            if service is not None:
+                utilbill.service = service
 
-        UtilBill.validate_utilbill_period(period_start, period_end)
-        utilbill.period_start = period_start
-        utilbill.period_end = period_end
+            if utility is not None and isinstance(utility, basestring):
+                utilbill.utility = self.state_db.get_create_utility(utility)
 
-        self.compute_utility_bill(utilbill.id)
+            if supplier is not None and isinstance(supplier, basestring):
+                utilbill.supplier = self.state_db.get_create_supplier(supplier)
+
+            if rate_class is not None and isinstance(rate_class, basestring):
+                utilbill.rate_class = self.state_db.get_create_rate_class(
+                    rate_class, utilbill.utility)
+
+            period_start = period_start if period_start else \
+                utilbill.period_start
+            period_end = period_end if period_end else utilbill.period_end
+
+            UtilBill.validate_utilbill_period(period_start, period_end)
+            utilbill.period_start = period_start
+            utilbill.period_end = period_end
+            self.compute_utility_bill(utilbill.id)
         return  utilbill
 
     def upload_utility_bill(self, account, service, begin_date,
-                            end_date, bill_file, file_name, utility=None, rate_class=None,
-                            total=0, state=UtilBill.Complete):
+            end_date, bill_file, utility=None, rate_class=None,
+            total=0, state=UtilBill.Complete, supplier=None):
         """Uploads `bill_file` with the name `file_name` as a utility bill for
         the given account, service, and dates. If this is the newest or
         oldest utility bill for the given account and service, "estimated"
@@ -221,7 +239,7 @@ class UtilbillProcessor(object):
 
             q = session.query(UtilBill). \
                 filter_by(rate_class=customer.fb_rate_class). \
-                filter_by(utility=customer.fb_utility_name). \
+                filter_by(utility=customer.fb_utility).\
                 filter_by(processed=True). \
                 filter(UtilBill.state != UtilBill.Hypothetical)
 
@@ -241,15 +259,17 @@ class UtilbillProcessor(object):
             billing_address = customer.fb_billing_address
             service_address = customer.fb_service_address
 
-        utility = utility if utility else getattr(predecessor, 'utility', "")
-
-        rate_class = rate_class if rate_class else \
-            getattr(predecessor, 'rate_class', "")
+        utility = self.state_db.get_create_utility(utility) if utility else \
+            getattr(predecessor, 'utility', None)
+        supplier = self.state_db.get_create_supplier(supplier) if supplier else \
+            getattr(predecessor, 'supplier', None)
+        rate_class = self.state_db.get_create_rate_class(rate_class, utility) if rate_class else \
+            getattr(predecessor, 'rate_class', None)
 
         # delete any existing bill with same service and period but less-final
         # state
         customer = self.state_db.get_customer(account)
-        new_utilbill = UtilBill(customer, state, service, utility, rate_class,
+        new_utilbill = UtilBill(customer, state, service, utility, supplier, rate_class,
                                 Address.from_other(billing_address),
                                 Address.from_other(service_address),
                                 period_start=begin_date, period_end=end_date,
@@ -258,36 +278,28 @@ class UtilbillProcessor(object):
         session.flush()
 
         if bill_file is not None:
-            # if there is a file, get the Python file object and name
-            # string from CherryPy, and pass those to BillUpload to upload
-            # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billupload.upload(new_utilbill, account,
-                                                   bill_file, file_name)
-            if not upload_result:
-                # TODO there is no test coverage for this situation; fix that
-                # after utility bill files are stored in S3
-                raise IOError('File upload failed: %s %s %s' % (
-                    account, new_utilbill.id, file_name))
-        session.flush()
+            self.bill_file_handler.upload_utilbill_pdf_to_s3(new_utilbill, bill_file)
         if state < UtilBill.Hypothetical:
             new_utilbill.charges = self.rate_structure_dao. \
-                get_predicted_charges(new_utilbill, UtilBillLoader(session))
+                get_predicted_charges(new_utilbill)
             for register in predecessor.registers if predecessor else []:
                 session.add(Register(new_utilbill, register.description,
-                                     0, register.quantity_units,
-                                     register.identifier, False,
+                                     register.identifier,
+                                     register.unit,
+                                     False,
                                      register.reg_type,
-                                     register.register_binding,
                                      register.active_periods,
-                                     register.meter_identifier))
+                                     register.meter_identifier,
+                                     quantity=0,
+                                     register_binding=register.register_binding))
         session.flush()
         if new_utilbill.state < UtilBill.Hypothetical:
             self.compute_utility_bill(new_utilbill.id)
         return new_utilbill
 
     def get_service_address(self, account):
-        return UtilBillLoader(Session()).get_last_real_utilbill(account,
-                                                                datetime.utcnow()).service_address.to_dict()
+        return UtilBillLoader(Session()).get_last_real_utilbill(
+            account, datetime.utcnow()).service_address.to_dict()
 
     def delete_utility_bill_by_id(self, utilbill_id):
         """Deletes the utility bill given by its MySQL id 'utilbill_id' (if
@@ -302,14 +314,10 @@ class UtilbillProcessor(object):
         utility_bill = session.query(UtilBill).filter(
             UtilBill.id == utilbill_id).one()
 
-        if utility_bill.is_attached():
-            raise ValueError("Can't delete an attached utility bill.")
+        if utility_bill.is_attached() or not utility_bill.editable():
+            raise ValueError("Can't delete an attached or processed utility bill.")
 
-        try:
-            path = self.billupload.delete_utilbill_file(utility_bill)
-        except IOError:
-            # file never existed or could not be found
-            path = None
+        self.bill_file_handler.delete_utilbill_pdf_from_s3(utility_bill)
 
         # TODO use cascade instead if possible
         for charge in utility_bill.charges:
@@ -318,18 +326,20 @@ class UtilbillProcessor(object):
             session.delete(register)
         session.delete(utility_bill)
 
-        return utility_bill, path
+        pdf_url = self.bill_file_handler.get_s3_url(utility_bill)
+        return utility_bill, pdf_url
 
     def regenerate_uprs(self, utilbill_id):
         '''Resets the UPRS of this utility bill to match the predicted one.
         '''
         session = Session()
         utilbill = self._get_utilbill(utilbill_id)
-        for charge in utilbill.charges:
-            session.delete(charge)
-        utilbill.charges = []
-        utilbill.charges = self.rate_structure_dao. \
-            get_predicted_charges(utilbill, UtilBillLoader(session))
+        if utilbill.editable():
+            for charge in utilbill.charges:
+                session.delete(charge)
+            utilbill.charges = []
+            utilbill.charges = self.rate_structure_dao. \
+                get_predicted_charges(utilbill)
         return self.compute_utility_bill(utilbill_id)
 
     def compute_utility_bill(self, utilbill_id):
@@ -338,7 +348,8 @@ class UtilbillProcessor(object):
         in the MySQL table.
         '''
         utilbill = self._get_utilbill(utilbill_id)
-        utilbill.compute_charges()
+        if utilbill.editable():
+            utilbill.compute_charges()
         return utilbill
 
     def get_all_utilbills_json(self, account, start=None, limit=None):
@@ -347,5 +358,19 @@ class UtilbillProcessor(object):
         # sequence: reebill sequence number (if present)}
         utilbills, total_count = self.state_db.list_utilbills(account,
                                                               start, limit)
-        data = [ub.column_dict() for ub in utilbills]
+        data = [dict(ub.column_dict(),
+                     pdf_url=self.bill_file_handler.get_s3_url(ub))
+                for ub in utilbills]
         return data, total_count
+
+    def get_all_suppliers_json(self):
+        session = Session()
+        return [s.column_dict() for s in session.query(Supplier).all()]
+
+    def get_all_utilities_json(self):
+        session = Session()
+        return [u.column_dict() for u in session.query(Utility).all()]
+
+    def get_all_rate_classes_json(self):
+        session = Session()
+        return [r.column_dict() for r in session.query(RateClass).all()]

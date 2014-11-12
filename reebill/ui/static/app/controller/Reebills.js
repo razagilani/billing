@@ -484,7 +484,6 @@ Ext.define('ReeBill.controller.Reebills', {
                'Service Start Date',
                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
                function(button, text){
-                   console.log(this);
                    if(button === 'ok'){
                        var controller = this;
                        controller._lastCreateNextDate = text;

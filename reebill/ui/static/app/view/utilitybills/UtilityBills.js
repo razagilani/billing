@@ -7,7 +7,13 @@ Ext.define('ReeBill.view.UtilityBills', {
     
     plugins: [
         Ext.create('Ext.grid.plugin.CellEditing', {
-            clicksToEdit: 2
+            clicksToEdit: 2,
+            listeners: {
+                beforeedit: function (e, editor) {
+                    if (editor.record.get('processed'))
+                        return false;
+                }
+            }
         })
     ],
 
@@ -61,7 +67,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         width: 100,
         renderer: function(value) {
             return Ext.util.Format.date(value, 'Y-m-d');
-        },
+        }
     },{
         header: 'Total',
         dataIndex: 'target_total',
@@ -106,7 +112,7 @@ Ext.define('ReeBill.view.UtilityBills', {
         tooltip: "<b>Processed:</b> This bill's rate structure and charges are correct and will be used to predict the rate structures of other bills.<br /><b>Unprocessed:</b> This bill will be ingnored when predicting the rate structures of other bills.<br />",
         renderer: function(value) {
             return value ? 'Yes' : 'No';                    
-        },
+        }
     },{
         header: 'State',
         dataIndex: 'state',
@@ -115,19 +121,111 @@ Ext.define('ReeBill.view.UtilityBills', {
         header: 'Utility',
         dataIndex: 'utility',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            id: 'utility_combo',
+            store: 'Utilities',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'utility');
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('utility').name);
+                }
+            }
         },
-        width: 100
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('utility').name;
+        }
+    },{
+        header: 'Supplier',
+        dataIndex: 'supplier',
+        editor: {
+            xtype: 'combo',
+            store: 'Suppliers',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay : 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'supplier');
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('supplier').name);
+                }
+            }
+        },
+        width: 100,
+        renderer: function(value, metaData, record) {
+            return record.get('supplier').name;
+        }
     },{
         header: 'Rate Class',
         dataIndex: 'rate_class',
         editor: {
-            xtype: 'textfield',
-            allowBlank: false
+            xtype: 'combo',
+            store: 'RateClasses',
+            displayField: 'name',
+            valueField: 'name',
+            triggerAction: 'all',
+            forceSelection: false,
+            typeAhead: true,
+            typeAheadDelay: 1,
+            autoSelect: false,
+            minChars: 1,
+            listeners: {
+                blur: {
+                    fn: function (combo) {
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        selected.set('action', 'rate_class');
+                    }
+                },
+                expand: {
+                    fn: function(combo, record, index){
+                        utility_grid = combo.findParentByType('grid');
+                        selected = utility_grid.getSelectionModel().getSelection()[0];
+                        this.store.clearFilter(true);
+                        this.store.filter('utility_id', selected.get('utility').id);
+                    }
+                },
+                focus: function(combo) {
+                    utility_grid = combo.findParentByType('grid');
+                    selected = utility_grid.getSelectionModel().getSelection()[0];
+                    combo.setValue(selected.get('rate_class').name);
+                }
+            }
         },
         width: 125,
-        flex: 1
+        flex: 1,
+        renderer: function(value, metaData, record) {
+            return record.get('rate_class').name;
+        }
     }],
 
     dockedItems: [{

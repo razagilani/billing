@@ -35,8 +35,7 @@ Ext.define('ReeBill.controller.Viewer', {
             return
         }
         var viewer = this.getUtilityBillViewer();
-        viewer.setSrc(window.location.origin + '/utilitybills/' + bill.get('account') + '/' + bill.get('id') + '.pdf');
-
+        viewer.setSrc(bill.get('pdf_url'));
     },
 
     handleUtilityBillDeselect: function(){
