@@ -11,7 +11,7 @@ from boto.s3.connection import S3Connection
 from sqlalchemy import func, distinct
 from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.schema import MetaData, Table
-from reebill.state import Reading, ReeBillCharge
+from reebill.state import Reading, ReeBillCharge, Payment, ReeBill
 from upgrade_scripts import alembic_upgrade
 import logging
 from pymongo import MongoClient
@@ -149,6 +149,10 @@ def create_utility_accounts(session, customer_data):
                                              customer.fb_rate_class,
                                              customer.fb_billing_address,
                                              customer.fb_service_address)
+            utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
+            for utilbill in utilbills:
+                utilbill.utility_account = utility_account
+                utilbill.customer = None
             session.add(utility_account)
         else:
             utility_account = UtilityAccount(customer.name,
@@ -164,8 +168,26 @@ def create_utility_accounts(session, customer_data):
                                                customer.service,
                                                customer.bill_email_recipient,
                                                utility_account)
+            utilbills = session.query(UtilBill).join(Customer, UtilBill.customer==customer).all()
+            for utilbill in utilbills:
+                utilbill.utility_account = utility_account
+                utilbill.customer = None
+            payments = session.query(Payment).join(Customer, Payment.customer==customer).all()
+            for payment in payments:
+                payment.reebill_customer = reebill_customer
+                payment.customer = None
+            reebills = session.query(ReeBill).join(Customer, ReeBill.customer==customer).all()
+            for reebill in reebills:
+                reebill.reebill_customer = reebill_customer
+                reebill.customer = None
             session.add(utility_account)
             session.add(reebill_customer)
+        customer.fb_rate_class = None
+        customer.fb_supplier = None
+        customer.fb_billing_address = None
+        customer.fb_service_address = None
+    for customer in session.query(Customer).all():
+        session.delete(customer)
     session.flush()
     session.commit()
 
@@ -186,8 +208,6 @@ def migrate_utilbill_utility(utilbill_data, session):
     company_map = {c.name.lower(): c for c in session.query(Company).all()}
     for utility_bill in session.query(UtilBill).all():
         utility_name = utilbill_data[utility_bill.id]['utility'].lower()
-        '''if utilbill_data[utility_bill.id]['utility'].lower()!='washgas' \
-            else 'Washington Gas'.lower()'''
         log.debug('Setting utility to %s for utilbill id %s' %
                   (utility_name, utility_bill.id))
         try:
@@ -241,8 +261,8 @@ def create_rate_classes(session):
     utilbills = session.execute("select distinct rate_class, utility_id from utilbill")
 
     for bill in utilbills:
-        log.debug('Creating RateClass object with name %s and utility_id %s'
-                  %(bill['rate_class'], bill['utility_id']))
+        '''log.debug('Creating RateClass object with name %s and utility_id %s'
+                  %(bill['rate_class'], bill['utility_id']))'''
         utility = session.query(Utility).filter(Utility.id==bill['utility_id']).one()
         rate_class = RateClass(bill['rate_class'], utility)
         session.add(rate_class)
@@ -300,7 +320,7 @@ def upgrade():
     migrate_utilbill_utility(utilbill_data, session)
 
     log.info('Uploading utilbills to AWS')
-    upload_utilbills_to_aws(session)
+    #upload_utilbills_to_aws(session)
 
     log.info('Setting up fb_utility_id')
     set_fb_utility_id(session)
