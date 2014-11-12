@@ -78,8 +78,10 @@ Ext.define('ReeBill.view.UtilityBillRegisters', {
         sortable: true,
         editor: {
             xtype: 'combo',
-            name: 'service',
             store: 'Units',
+            allowBlank: false,
+            minChars: 1,
+            typeAhead: true,
             triggerAction: 'all',
             valueField: 'value',
             displayField: 'name',

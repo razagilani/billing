@@ -703,12 +703,12 @@ class RegistersResource(RESTResource):
             assert isinstance(updated_reg['quantity'], (float, int))
 
         register = self.process.update_register(register_id, updated_reg)
-
         return True, {"rows": register.column_dict(), 'results': 1}
 
     def handle_delete(self, register_id, *vpath, **params):
         self.process.delete_register(register_id)
         return True, {}
+
 
 class ChargesResource(RESTResource):
 
@@ -717,8 +717,8 @@ class ChargesResource(RESTResource):
         return True, {'rows': charges, 'results': len(charges)}
 
     def handle_put(self, charge_id, *vpath, **params):
-        row = cherrypy.request.json
-        c = self.process.update_charge(row, charge_id=charge_id)
+        c = self.process.update_charge(cherrypy.request.json,
+                                       charge_id=charge_id)
         return True, {'rows': c.column_dict(),  'results': 1}
 
     def handle_post(self, utilbill_id, *vpath, **params):
