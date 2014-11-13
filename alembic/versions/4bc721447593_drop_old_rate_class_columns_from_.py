@@ -21,6 +21,12 @@ def upgrade():
     op.drop_constraint('fk_rebill_customer', 'reebill', 'foreignkey')
     op.drop_constraint('fk_utilbill_customer', 'utilbill', 'foreignkey')
     op.drop_table('customer')
+    op.drop_index('fk_utilbill_customer', table_name='utilbill')
+    op.drop_column(u'payment', 'reebill_customer_id')
+    op.drop_index('fk_payment_customer', table_name='payment')
+    op.drop_column(u'reebill', 'reebill_customer_id')
+    op.drop_constraint(u'customer_id', 'reebill')
+    op.drop_index('fk_utilbill_customer', table_name='utilbill')
     op.drop_column('utilbill', 'rate_class')
 
 
