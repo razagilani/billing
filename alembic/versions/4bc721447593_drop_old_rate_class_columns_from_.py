@@ -22,11 +22,12 @@ def upgrade():
     op.drop_constraint('fk_utilbill_customer', 'utilbill', 'foreignkey')
     op.drop_table('customer')
     op.drop_index('fk_utilbill_customer', table_name='utilbill')
-    op.drop_column(u'payment', 'reebill_customer_id')
     op.drop_index('fk_payment_customer', table_name='payment')
-    op.drop_column(u'reebill', 'reebill_customer_id')
-    op.drop_constraint(u'customer_id', 'reebill')
-    op.drop_index('fk_utilbill_customer', table_name='utilbill')
+    op.drop_constraint(u'customer_id', 'reebill', 'unique')
+    op.drop_column('utilbill', 'customer_id')
+    op.drop_column('payment', 'customer_id')
+    op.drop_column('reebill', 'customer_id')
+    op.create_unique_constraint(u'unq_reebill_customer_id', 'reebill', ['reebill_customer_id', 'sequence', 'version'])
     op.drop_column('utilbill', 'rate_class')
 
 
@@ -53,3 +54,4 @@ def downgrade():
     op.add_column('customer', sa.Column('fb_utility_id', sa.Integer(), sa.ForeignKey('company.id')))
     op.add_column('customer', sa.Column('fb_supplier_id', sa.Integer(), sa.ForeignKey('supplier.id')))
     op.add_column('utilbill', sa.Column('rate_class', sa.String(255), nullable=False))
+    op.drop_constraint('reebill_customer_id', 'reebill')
