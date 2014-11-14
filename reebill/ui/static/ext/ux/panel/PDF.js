@@ -44,6 +44,8 @@ Ext.define('Ext.ux.panel.PDF',{
 
     textRenderDelay: 20,
 
+    cache: true,
+
     initComponent: function(){
         var me = this,
             userItems = me.items || [],
@@ -144,8 +146,14 @@ Ext.define('Ext.ux.panel.PDF',{
             });
         };
 
+        var cacheparam;
+        if(!me.cache){
+            cacheparam = '?_bc=' + me._bustCache;
+        }else{
+            cacheparam = '';
+        }
 
-        PDFJS.getDocument(me.src + '?_bc=' + me._bustCache).then(
+        PDFJS.getDocument(me.src + cacheparam).then(
         //success
         function(pdfDoc){
             me._pdfDoc = pdfDoc;

@@ -88,11 +88,9 @@ Ext.define('ReeBill.controller.Journal', {
         }
 
         var title = account ? 'Journal Entries for Account ' + account : 'Journal Entries';
-
         this.getJournalEntriesGrid().setTitle(title);
 
-        if (!account)
-            return;
+        this.getNoteForm().setDisabled(!selectedAccount.length);
 
         store.getProxy().setExtraParam('account', account);
         store.reload();

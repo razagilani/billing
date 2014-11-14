@@ -53,10 +53,6 @@ Ext.define('ReeBill.controller.Accounts', {
                     grid.setLoading(false);
                 }
             },
-            add: function(){
-                var accountForm = this.getAccountForm();
-                accountForm.getForm().reset();
-            },
             scope: this
         });
 
@@ -65,8 +61,8 @@ Ext.define('ReeBill.controller.Accounts', {
             load: function(store, records, successful, eOpts ){
                 // Update the store for sorts
                 var memStore = this.getAccountsMemoryStore();
-                var sortColumn = store.getAt(store.find('key', 'default_account_sort_field')).get('value');
-                var sortDir = store.getAt(store.find('key', 'default_account_sort_direction')).get('value');
+                var sortColumn = store.getOrCreate('default_account_sort_field', 'account').get('value');
+                var sortDir = store.getOrCreate('default_account_sort_direction', 'DESC').get('value');
                 memStore.sort({property: sortColumn, direction: sortDir});
                 memStore.loadPage(1);
 
@@ -85,14 +81,15 @@ Ext.define('ReeBill.controller.Accounts', {
                     var allRecords = accountsStore.getRange();
 
                     // Find the correct filter record
-                    var filterRecord = prefStore.getOrCreate('filtername', 'none')
-                    var filter = filterStore.getAt(
-                        filterStore.find('value',
-                            filterRecord.get('value')));
-
+                    var filterRecord = prefStore.getOrCreate('filtername', 'none');
+                    var filter = filterStore.findRecord('value', filterRecord.get('value'));
+                    if(filter == null){
+                        filterRecord.set('value', 'none');
+                        filter = filterStore.findRecord('value', 'none');
+                    }
+                    
                     // apply the filter
-                    var filteredRecords = Ext.Array.filter(allRecords, filter.get('filter').filterFn)
-                    store.getProxy().data = filteredRecords;
+                    store.getProxy().data = Ext.Array.filter(allRecords, filter.get('filter').filterFn);
                 }
             },
             load: function(store, records, successful, eOpts ){
@@ -136,8 +133,7 @@ Ext.define('ReeBill.controller.Accounts', {
         // and not AccountsMemoryStore
         var memStore = this.getAccountsMemoryStore();
         var prefStore = this.getPreferencesStore();
-        var filter = this.getAccountsFilter().getValue();
-        var filterPrefRec = prefStore.setOrCreate('filtername', newValue);
+        prefStore.setOrCreate('filtername', newValue);
         memStore.loadPage(1);
     },
 
@@ -146,7 +142,7 @@ Ext.define('ReeBill.controller.Accounts', {
      */
     loadNextAccountNumber: function() {
         var newAccountField = this.getAccountForm().down('textfield[name=account]');
-        var store = this.getAccountsStore()
+        var store = this.getAccountsStore();
 
         newAccountField.setValue(store.getNextAccountNumber());
     },
@@ -161,14 +157,8 @@ Ext.define('ReeBill.controller.Accounts', {
         var store = this.getAccountsStore();
 
         var memoryStore = this.getAccountsMemoryStore();
-        memoryStore.on('load', function(){
-                            console.log('memory store load')
-        }, this);
-
         if (accountForm.getForm().isValid()) {
             var values = accountForm.getForm().getValues();
-            console.log(values);
-
             store.suspendAutoSync();
             store.add(values);
             if (!makeAnotherAccount) {
@@ -179,8 +169,6 @@ Ext.define('ReeBill.controller.Accounts', {
                         var filterRec = filterStore.findRecord('value', filter);
                         var accountRec = batch.operations[0].records[0];
                         var memoryStore = this.getAccountsMemoryStore();
-                        var accountsStore = this.getAccountsStore();
-                        console.log('batch:', batch, options, filter, filterRec, accountRec);
 
                         // Test if the current filter would filter out the newly
                         // created account and if yes, set the filter to none
@@ -196,6 +184,9 @@ Ext.define('ReeBill.controller.Accounts', {
                         });
                         memoryStore.loadPage(1);
                         accountsGrid.getSelectionModel().select([accountRec]);
+
+                        var accountForm = this.getAccountForm();
+                        accountForm.getForm().reset();
                     },
                     callback: function(){
                         store.resumeAutoSync();
