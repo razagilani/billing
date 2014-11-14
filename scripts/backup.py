@@ -37,7 +37,7 @@ MONGO_COLLECTIONS = ['users', 'journal']
 
 # extract MySQL connection parameters from connection string in config file
 # eg mysql://root:root@localhost:3306/skyline_dev
-db_uri = config.get('statedb', 'uri')
+db_uri = config.get('db', 'uri')
 m = re.match(r'^mysql://([\w-]+):([\w-]+)+@([\w\d.]+):([0-9]+)/([\w-]+)$', db_uri)
 db_params = dict(zip(['user', 'password', 'host', 'port', 'db'], m.groups()))
 
@@ -160,10 +160,22 @@ def run_command(command):
             raise CalledProcessError(status, command)
     return process.stdin, process.stdout, check_exit_status
 
+def _refresh_s3_key(key):
+    '''Return a new boto.s3.key.Key object so it reflects what is actually in
+    s3 corresponding to the given Key object. If a new version has been
+    created, this must be called in order for key.version_id and
+    key.last_modified to be correct.
+    '''
+    return key.bucket.get_key(key.name)
+
 def backup_mysql(s3_key):
     command = MYSQLDUMP_COMMAND % db_params
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    s3_key = _refresh_s3_key(s3_key)
+    print 'created S3 key %s/%s version %s at %s' % (
+            s3_key.bucket.name, s3_key.name, s3_key.version_id,
+            s3_key.last_modified)
 
 def backup_mysql_local(file_path):
     command = MYSQLDUMP_COMMAND % db_params
@@ -176,6 +188,10 @@ def backup_mongo_collection(collection_name, s3_key):
             host=config.get('mongodb', 'host'), collection=collection_name)
     _, stdout, check_exit_status = run_command(command)
     write_gzipped_to_s3(stdout, s3_key, check_exit_status)
+    s3_key = _refresh_s3_key(s3_key)
+    print 'created S3 key %s/%s version %s at %s' % (
+        s3_key.bucket.name, s3_key.name, s3_key.version_id,
+        s3_key.last_modified)
 
 def backup_mongo_collection_local(collection_name, file_path):
     command = MONGODUMP_COMMAND % dict(db=config.get('mongodb', 'database'),
@@ -184,7 +200,20 @@ def backup_mongo_collection_local(collection_name, file_path):
     with open(file_path,'wb') as out_file:
         write_gzipped_to_file(stdout, out_file)
 
+def _recreate_mysql_db(root_password):
+    '''Drop and re-create MySQL database because mysqldump only includes drop
+    commands for tables that already exist in the backup.
+    '''
+    command = MYSQL_COMMAND % dict(db_params, user='root',
+            password=root_password)
+    stdin, _, check_exit_status = run_command(command)
+    stdin.write('drop database %s;' % db_params['db'])
+    stdin.write('create database %s;' % db_params['db'])
+    stdin.close()
+    check_exit_status()
+
 def restore_mysql_s3(bucket, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
@@ -203,6 +232,7 @@ def restore_mysql_s3(bucket, root_password):
     check_exit_status()
 
 def restore_mysql_local(dump_file_path, root_password):
+    _recreate_mysql_db(root_password)
     command = MYSQL_COMMAND % dict(db_params, user='root',
             password=root_password)
     stdin, _, check_exit_status = run_command(command)
@@ -290,7 +320,7 @@ def get_bucket(bucket_name, access_key, secret_key):
 
 def backup(args):
     bucket = get_bucket(args.bucket, args.access_key, args.secret_key)
-    backup_mysql(Key(bucket, name=MYSQL_BACKUP_FILE_NAME))
+    backup_mysql(bucket.get_key(MYSQL_BACKUP_FILE_NAME, validate=False))
     for collection in MONGO_COLLECTIONS:
         backup_mongo_collection(collection, Key(bucket,
                 name=MONGO_BACKUP_FILE_NAME_FORMAT % collection))

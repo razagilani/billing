@@ -23,7 +23,6 @@ Ext.define('ReeBill.view.Viewport', {
                 region: 'west',
                 xtype: 'pdfpanel',
                 name: 'utilityBillViewer',
-                pageScale: 0.5,
                 collapsible: true,
                 collapsed: false,
                 src: '',
@@ -34,6 +33,7 @@ Ext.define('ReeBill.view.Viewport', {
                 name: 'reebillViewer',
                 collapsible: true,
                 collapsed: true,
+                cache: false,
                 src: '',
                 width: Ext.getBody().getWidth() * 0.3
             },{

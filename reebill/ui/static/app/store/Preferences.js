@@ -39,6 +39,7 @@ Ext.define('ReeBill.store.Preferences', {
         var result = this.find('key', pref);
         if(result === -1){
             result = this.add({key: pref, value: val})[0];
+            this.sync();
         }else{
             result = this.getAt(result);
         }
@@ -50,15 +51,16 @@ Ext.define('ReeBill.store.Preferences', {
      * created first
      */
     setOrCreate: function(pref, val){
+        var result;
         var model = this.find('key', pref);
         if(model === -1){
-            var result = this.add({key: pref, value: val});
+            result = this.add({key: pref, value: val});
         }else{
             model = this.getAt(model);
             model.set('value', val);
-            var result = model;
+            result = model;
         }
-        return model;
+        return result;
     },
 
     sorters: [{

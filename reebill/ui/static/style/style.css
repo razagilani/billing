@@ -38,8 +38,12 @@
     color: red;
 }
 
-.messageBoxOverflow .x-box-inner .x-box-inner {
+.messageBoxOverflow #traceback {
     overflow: auto;
+}
+
+.messageBoxOverflow .x-panel-body-default{
+    padding: 5px;
 }
 
 .x-grid-row-summary .x-grid-cell .x-grid-cell-inner{
@@ -64,4 +68,8 @@
     display: inline-block !important;
     position: relative !important;
     margin-right: 5px !important;
+}
+
+.x-datepicker{
+    width: 200px !important;
 }

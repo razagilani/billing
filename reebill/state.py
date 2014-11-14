@@ -2,24 +2,27 @@
 Utility functions to interact with state database
 """
 from datetime import datetime, date
+from itertools import chain
 
 import logging
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, aliased
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
 from sqlalchemy import func
-from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean
+from sqlalchemy.types import Integer, String, Float, Date, DateTime, Boolean,\
+        Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 
 import traceback
 
 from billing.exc import IssuedBillError, RegisterError, ProcessedBillError
 from billing.core.model import Base, Address, Register, Session, Evaluation, \
-    UtilBill, Customer, Utility, Supplier
+    UtilBill, Customer, Utility, Supplier, RateClass, Charge
 from billing import config
+from billing.util.monthmath import Month
 
 __all__ = [
     'Payment',
@@ -110,8 +113,10 @@ class ReeBill(Base):
         return self.utilbills[0]
 
     # see the following documentation for delete cascade behavior
-    charges = relationship('ReeBillCharge', backref='reebill', cascade='all')
-    readings = relationship('Reading', backref='reebill', cascade='all')
+    charges = relationship('ReeBillCharge', backref='reebill',
+                           cascade='all, delete-orphan')
+    readings = relationship('Reading', backref='reebill',
+                            cascade='all, delete-orphan')
 
     def __init__(self, customer, sequence, version=0, discount_rate=None,
                  late_charge_rate=None, billing_address=None,
@@ -193,13 +198,17 @@ class ReeBill(Base):
         """Deletes and replaces the readings using the corresponding utility
         bill registers."""
         s = Session.object_session(self)
-        for reading in self.readings:
-            s.expunge(reading)
-            self.readings.remove(reading)
+
+        while len(self.readings) > 0:
+            # using the cascade setting "all, delete-orphan" deletes
+            # the reading from the session when it gets dissasociated from
+            # its parent. otherwise it would be necessary to call
+            # s.expunge(elf.readings[0]).
+            del self.readings[0]
         for register in utility_bill.registers:
             new_reading = Reading(register.register_binding, "Energy Sold",
                                   register.quantity, 0, "SUM",
-                                  register.quantity_units)
+                                  register.unit)
             self.readings.append(new_reading)
 
     def update_readings_from_reebill(self, reebill_readings):
@@ -211,21 +220,19 @@ class ReeBill(Base):
         session = Session.object_session(self)
         for r in self.readings:
             session.delete(r)
-        utilbill_register_bindings = [r.register_binding for r in
-                                      self.utilbill.registers]
+
+        # this works even when len(self.utilbills) == 0, which is currently
+        # happening in a test but should never actually happen in real life
+        # TODO replace with
+        # [r.register_binding for r in self.utilbill.registers]
+        utilbill_register_bindings = list(chain.from_iterable(
+                (r.register_binding for r in u.registers)
+                for u in self.utilbills))
+
         self.readings = [Reading(r.register_binding, r.measure, 0,
                 0, r.aggregate_function, r.unit) for r in reebill_readings
                 if r.register_binding in utilbill_register_bindings]
         session.flush()
-
-    def get_renewable_energy_reading(self, register_binding):
-        assert isinstance(register_binding, basestring)
-        try:
-            reading = next(r for r in self.readings
-                           if r.register_binding == register_binding)
-        except StopIteration:
-            raise ValueError('Unknown register binding "%s"' % register_binding)
-        return reading.renewable_quantity
 
     def get_reading_by_register_binding(self, binding):
         '''Returns the first Reading object found belonging to this ReeBill
@@ -345,24 +352,22 @@ class ReeBill(Base):
                 raise ValueError('Unknown energy unit: "%s"' % unit)
         return total_therms
 
-    def replace_charges_with_context_evaluations(self, context):
+    def _replace_charges_with_evaluations(self, evaluations):
         """Replace the ReeBill charges with data from each `Evaluation`.
-        :param context: a dictionary of binding: `Evaluation`
+        :param evaluations: a dictionary of binding: `Evaluation`
         """
-        for binding in set([r.register_binding for r in self.readings]):
-            del context[binding]
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
         self.charges = []
         charge_dct = {c.rsi_binding: c for c in self.utilbill.charges}
-        for binding, evaluation in context.iteritems():
+        for binding, evaluation in evaluations.iteritems():
             charge = charge_dct[binding]
             if charge.has_charge:
-                quantity_units = '' if charge.quantity_units is None else charge.quantity_units
+                unit = '' if charge.unit is None else charge.unit
                 session.add(ReeBillCharge(self, binding, charge.description,
                         charge.group, charge.quantity, evaluation.quantity,
-                        quantity_units, charge.rate, charge.total,
+                        charge.unit, charge.rate, charge.total,
                         evaluation.total))
 
     def compute_charges(self):
@@ -372,28 +377,25 @@ class ReeBill(Base):
         session = Session.object_session(self)
         for charge in self.charges:
             session.delete(charge)
-        context = {r.register_binding: Evaluation(r.hypothetical_quantity)
-                   for r in self.readings}
+
+        # compute the utility bill charges in a context where the quantity
+        # of each Register that has a corresponding Reading is replaced by
+        # the hypothetical_quantity of the Reading. a Register that has no
+        # corresponding Reading may still be necessary for calculating the
+        # charges, so the actual quantity of that register is used.
+        context = {r.register_binding: Evaluation(r.quantity)
+                   for r in self.utilbill.registers}
+        context.update({r.register_binding: Evaluation(r.hypothetical_quantity)
+                        for r in self.readings})
+
+        evaluated_charges = {}
         for charge in self.utilbill.ordered_charges():
             evaluation = charge.evaluate(context, update=False)
             if evaluation.exception is not None:
                 raise evaluation.exception
             context[charge.rsi_binding] = evaluation
-        self.replace_charges_with_context_evaluations(context)
-
-    def document_id_for_utilbill(self, utilbill):
-        '''Returns the id (string) of the "frozen" utility bill document in
-        Mongo corresponding to the given utility bill which is attached to this
-        reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.document_id for ubrb in self._utilbill_reebills if
-                    ubrb.utilbill == utilbill)
-
-    def uprs_id_for_utilbill(self, utilbill):
-        '''Returns the id (string) of the "frozen" UPRS document in Mongo
-        corresponding to the given utility bill which is attached to this
-        reebill. This will be None if this reebill is unissued.'''
-        return next(ubrb.uprs_document_id for ubrb in self._utilbill_reebills
-                    if ubrb.utilbill == utilbill)
+            evaluated_charges[charge.rsi_binding] = evaluation
+        self._replace_charges_with_evaluations(evaluated_charges)
 
     @property
     def total(self):
@@ -415,9 +417,6 @@ class ReeBill(Base):
         '''
         return sum(charge.h_total for charge in self.charges)
 
-    def get_service_address_formatted(self):
-        return str(self.service_address)
-
     def get_charge_by_rsi_binding(self, binding):
         '''Returns the first ReeBillCharge object found belonging to this
         ReeBill whose 'rsi_binding' matches 'binding'.
@@ -432,8 +431,8 @@ class ReeBill(Base):
             'mailto': self.customer.bill_email_recipient,
             'hypothetical_total': self.get_total_hypothetical_charges(),
             'actual_total': self.get_total_actual_charges(),
-            'billing_address': self.billing_address.column_dict(),
-            'service_address': self.service_address.column_dict(),
+            'billing_address': self.billing_address.to_dict(),
+            'service_address': self.service_address.to_dict(),
             'period_start': period_start,
             'period_end': period_end,
             'utilbill_total': sum(u.get_total_charges() for u in self.utilbills),
@@ -514,20 +513,20 @@ class ReeBillCharge(Base):
     group = Column(String(1000), name='group_name', nullable=False)
     a_quantity = Column(Float, nullable=False)
     h_quantity = Column(Float, nullable=False)
-    quantity_unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*Charge.CHARGE_UNITS), nullable=False)
     rate = Column(Float, nullable=False)
     a_total = Column(Float, nullable=False)
     h_total = Column(Float, nullable=False)
 
     def __init__(self, reebill, rsi_binding, description, group, a_quantity,
-                 h_quantity, quantity_unit, rate, a_total, h_total):
-        assert quantity_unit is not None
+                 h_quantity, unit, rate, a_total, h_total):
+        assert unit is not None
         self.reebill = reebill
         self.rsi_binding = rsi_binding
         self.description = description
         self.group = group
         self.a_quantity, self.h_quantity = a_quantity, h_quantity
-        self.quantity_unit = quantity_unit
+        self.unit = unit
         self.rate = rate
         self.a_total, self.h_total = a_total, h_total
 
@@ -555,7 +554,7 @@ class Reading(Base):
 
     aggregate_function = Column(String(15), nullable=False)
 
-    unit = Column(String(1000), nullable=False)
+    unit = Column(Enum(*Register.PHYSICAL_UNITS), nullable=False)
 
     def __init__(self, register_binding, measure, conventional_quantity,
                  renewable_quantity, aggregate_function, unit):
@@ -589,6 +588,19 @@ class Reading(Base):
     @property
     def hypothetical_quantity(self):
         return self.conventional_quantity + self.renewable_quantity
+
+    def get_aggregation_function(self):
+        '''Return the function for aggregating renewable energy values
+        (float, float -> float), based on the 'aggregate_function' database
+        column.
+        '''
+        if self.aggregate_function == 'SUM':
+            return sum
+        if self.aggregate_function == 'MAX':
+            return max
+        else:
+            raise ValueError('Unknown aggregation function "%s"' %
+                             self.aggregate_function)
 
 class Payment(Base):
     __tablename__ = 'payment'
@@ -660,35 +672,41 @@ class StateDB(object):
         session = Session()
         return session.query(Customer).filter(Customer.account == account).one()
 
-    def get_utilbill(self, account, service, start, end):
-        session = Session()
-        customer = session.query(Customer) \
-            .filter(Customer.account == account).one()
-        return session.query(UtilBill) \
-            .filter(UtilBill.customer_id == customer.id) \
-            .filter(UtilBill.service == service) \
-            .filter(UtilBill.period_start == start) \
-            .filter(UtilBill.period_end == end).one()
-
-    def get_create_utility(self, utility_name):
+    def get_create_utility(self, utility):
         session = Session()
         try:
-            utility = session.query(Utility).filter_by(name=utility_name).one()
+            utility = session.query(Utility).filter_by(name=utility).one()
         except NoResultFound:
-            utility = Utility(utility_name, Address('', '', '', '', ''), '')
+            utility = Utility(utility, Address('', '', '', '', ''), '')
         return utility
 
-    def get_create_supplier(self, supplier_name):
+    def get_utility(self, name):
+        session = Session()
+        return session.query(Utility).filter(Utility.name == name).one()
+
+    def get_create_supplier(self, supplier):
         session = Session()
         try:
-            supplier = session.query(Supplier).filter_by(name=supplier_name).one()
+            supplier = session.query(Supplier).filter_by(name=supplier).one()
         except NoResultFound:
-            supplier = Supplier(supplier_name, Address('', '', '', '', ''), '')
+            supplier = Supplier(supplier, Address('', '', '', '', ''), '')
         return supplier
 
-    def get_utilbill_by_id(self, ubid):
+    def get_supplier(self, name):
         session = Session()
-        return session.query(UtilBill).filter(UtilBill.id == ubid).one()
+        return session.query(Supplier).filter(Supplier.name == name).one()
+
+    def get_create_rate_class(self, rate_class, utility):
+        session = Session()
+        try:
+            rate_class = session.query(RateClass).filter_by(name=rate_class).one()
+        except NoResultFound:
+            rate_class = RateClass(rate_class, utility)
+        return rate_class
+
+    def get_rate_class(self, name):
+        session = Session()
+        return session.query(RateClass).filter(RateClass.name == name).one()
 
     def max_version(self, account, sequence):
         # surprisingly, it is possible to filter a ReeBill query by a Customer
@@ -750,6 +768,21 @@ class StateDB(object):
             discount_rate=current_max_version_reebill.discount_rate,
             late_charge_rate=current_max_version_reebill.late_charge_rate,
             utilbills=current_max_version_reebill.utilbills)
+
+        # copy "sequential account info"
+        new_reebill.billing_address = Address.from_other(
+                current_max_version_reebill.billing_address)
+        new_reebill.service_address = Address.from_other(
+                current_max_version_reebill.service_address)
+        new_reebill.discount_rate = current_max_version_reebill.discount_rate
+        new_reebill.late_charge_rate = \
+                current_max_version_reebill.late_charge_rate
+
+        # copy readings (rather than creating one for every utility bill
+        # register, which may not be correct)
+        new_reebill.update_readings_from_reebill(
+                current_max_version_reebill.readings)
+
         for ur in new_reebill._utilbill_reebills:
             ur.document_id, ur.uprs_id, = None, None
 
@@ -841,17 +874,19 @@ class StateDB(object):
         .filter(UtilBill.processed == 1)\
         .group_by(UtilBill.customer_id)\
         .subquery()
+        rate_class = aliased(RateClass)
 
         q = session.query(Customer.account,
                           Utility.name,
-                          Customer.fb_rate_class,
+                          RateClass.name,
                           Customer.fb_service_address,
                           sequence_sq.c.max_sequence,
                           version_sq.c.max_version,
                           version_sq.c.issue_date,
-                          UtilBill.rate_class,
+                          rate_class.name,
                           Address,
                           processed_utilbill_sq.c.max_period_end_processed)\
+        .outerjoin(RateClass, RateClass.id==Customer.fb_rate_class_id)\
         .outerjoin(Utility, Utility.id == Customer.fb_utility_id)\
         .outerjoin(sequence_sq, Customer.id == sequence_sq.c.customer_id)\
         .outerjoin(version_sq, and_(Customer.id == version_sq.c.customer_id,
@@ -860,6 +895,7 @@ class StateDB(object):
         .outerjoin(UtilBill, and_(
             UtilBill.customer_id == utilbill_sq.c.customer_id,
             UtilBill.period_end == utilbill_sq.c.max_period_end))\
+        .outerjoin(rate_class, rate_class.id == UtilBill.rate_class_id)\
         .outerjoin(Address, UtilBill.service_address_id == Address.id)\
         .outerjoin(processed_utilbill_sq,
                    Customer.id == processed_utilbill_sq.c.customer_id)\
@@ -997,6 +1033,54 @@ class StateDB(object):
         session = Session()
         return session.query(ReeBill).filter(ReeBill.id == rbid).one()
 
+    def sequences_in_month(self, account, year, month):
+        '''Returns a list of sequences of all reebills whose periods contain
+        ANY days within the given month. The list is empty if the month
+        precedes the period of the account's first issued reebill, or if the
+        account has no issued reebills at all. When 'sequence' exceeds the last
+        sequence for the account, bill periods are assumed to correspond
+        exactly to calendar months. This is NOT related to the approximate
+        billing month.'''
+        # get all reebills whose periods contain any days in this month, and
+        # their sequences (there should be at most 3)
+        session = Session()
+        query_month = Month(year, month)
+        sequences_for_month = session.query(ReeBill.sequence).join(UtilBill) \
+            .filter(UtilBill.period_start >= query_month.first,
+                    UtilBill.period_end <= query_month.last).all()
+
+        # get sequence of last reebill and the month in which its period ends,
+        # which will be useful below
+        last_sequence = self.state_db.last_sequence(account)
+
+        # if there's at least one sequence, return the list of sequences. but
+        # if query_month is the month in which the account's last reebill ends,
+        # and that period does not perfectly align with the end of the month,
+        # also include the sequence of an additional hypothetical reebill whose
+        # period would cover the end of the month.
+        if sequences_for_month != []:
+            last_end = self.state_db.get_reebill(last_sequence
+            ).period_end
+            if Month(last_end) == query_month and last_end \
+                    < (Month(last_end) + 1).first:
+                sequences_for_month.append(last_sequence + 1)
+            return sequences_for_month
+
+        # if there are no sequences in this month because the query_month
+        # precedes the first reebill's start, or there were never any reebills
+        # at all, return []
+        if last_sequence == 0 or query_month.last < \
+                self.state_db.get_reebill(account, 1).get_period()[0]:
+            return []
+
+        # now query_month must exceed the month in which the account's last
+        # reebill ends. return the sequence determined by counting real months
+        # after the approximate month of the last bill (there is only one
+        # sequence in this case)
+        last_reebill_end = self.state_db.get_reebill(account,
+                                                     last_sequence).get_period()[1]
+        return [last_sequence + (query_month - Month(last_reebill_end))]
+
     def list_utilbills(self, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
@@ -1085,4 +1169,31 @@ class StateDB(object):
             Payment.date_received).all()
         return payments
 
+    def get_payments_for_reebill_id(self, reebill_id):
+        session = Session()
+        payments = session.query(Payment) \
+            .filter(Payment.reebill_id == reebill_id).order_by(
+            Payment.date_received).all()
+        return payments
+
+    # TODO: this method is not used anywhere but it probably should be.
+    def get_outstanding_balance(self, account, sequence=None):
+        '''Returns the balance due of the reebill given by account and sequence
+        (or the account's last issued reebill when 'sequence' is not given)
+        minus the sum of all payments that have been made since that bill was
+        issued. Returns 0 if total payments since the issue date exceed the
+        balance due, or if no reebill has ever been issued for the customer.'''
+        # get balance due of last reebill
+        if sequence == None:
+            sequence = self.last_issued_sequence(account)
+        if sequence == 0:
+            return 0
+        reebill = self.get_reebill(sequence)
+
+        if reebill.issue_date == None:
+            return 0
+
+        # result cannot be negative
+        return max(0, reebill.balance_due -
+                   self.get_total_payment_since(account, reebill.issue_date))
 

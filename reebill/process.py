@@ -7,10 +7,10 @@ class Process(UtilbillProcessor, ReebillProcessor):
     '''Deprecated wrapper around UtilbillProcessor and ReeBillProcessor.
     Uses of this class should be replaced with one of the those.
     '''
-    def __init__(self, state_db, rate_structure_dao, billupload,
+    def __init__(self, state_db, rate_structure_dao, bill_file_handler,
             nexus_util, bill_mailer, reebill_file_handler,
             ree_getter, journal_dao, logger=None):
-        UtilbillProcessor.__init__(self, rate_structure_dao, billupload,
+        UtilbillProcessor.__init__(self, rate_structure_dao, bill_file_handler,
                                    nexus_util, logger=logger)
         ReebillProcessor.__init__(self, state_db, nexus_util, bill_mailer,
                                   reebill_file_handler, ree_getter, journal_dao,

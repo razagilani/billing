@@ -1,4 +1,5 @@
 from datetime import date
+from mock import Mock
 
 from billing.core.model import Charge, UtilBill, Customer, Address, \
     ChargeEvaluation
@@ -19,21 +20,21 @@ class ChargeUnitTests(testing_utils.TestCase):
     """Unit Tests for the :class:`billing.processing.state.Charge` class"""
 
     def setUp(self):
-        bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
+        self.bill = UtilBill(Customer('someone', '98989', 0.3, 0.1,
                                  'nobody@example.com', 'FB Test Utility',
-                                 'FB Test Rate Class', Address(), Address()),
-                        UtilBill.Complete, 'gas', 'utility', 'rate class',
-                        Address(), Address(), period_start=date(2000, 1, 1),
-                        period_end=date(2000, 2, 1))
-        self.charge_params = dict(utilbill=bill,
+                                 'FB Test Supplier', 'FB Test Rate Class',
+                                 Address(), Address()), UtilBill.Complete,
+                                 'gas', 'utility', 'supplier', 'rate class',
+                                 Address(), Address(),
+                                 period_start=date(2000, 1, 1),
+                                 period_end=date(2000, 2, 1))
+        self.charge_params = dict(utilbill=self.bill,
+                                  rsi_binding='SOME_RSI',
+                                  rate=6,
                                   description='SOME_DESCRIPTION',
                                   group='SOME_GROUP',
-                                  quantity=0.0,
-                                  quantity_units='therms',
-                                  rsi_binding='SOME_RSI',
-                                  total=0.0,
+                                  unit='therms',
                                   quantity_formula="SOME_VAR.quantity * 2",
-                                  rate=6,
                                   has_charge=True,
                                   shared=False,
                                   roundrule="rounding")
@@ -86,7 +87,6 @@ class ChargeUnitTests(testing_utils.TestCase):
         self.assertRaises(SyntaxError, Charge.formula_variables, self.charge)
 
     def test_evaluate(self):
-
         evaluation = Charge.evaluate(self.charge, self.context)
         self.assertEqual(evaluation.quantity, 4)
         self.assertEqual(evaluation.total, 24)
@@ -100,4 +100,13 @@ class ChargeUnitTests(testing_utils.TestCase):
     def test_evaluate_does_not_raise_on_bad_input_raise_exception_false(self):
         self.charge.quantity_formula = '^)%I$#*4'
         Charge.evaluate(self.charge, self.context)
+
+    def test_evaluate_blank(self):
+        '''Test that empty quantity_formula is equivalent to 0.
+        '''
+        c = Charge(self.bill, 'X', 3, '', '', '', 'kWh')
+        self.assertEqual(0, c.evaluate({}).quantity)
+        self.assertEqual(0, c.evaluate({}).total)
+
+
 

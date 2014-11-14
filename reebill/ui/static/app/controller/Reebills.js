@@ -144,19 +144,38 @@ Ext.define('ReeBill.controller.Reebills', {
         var reebillsGrid = this.getReebillsGrid();
         var uploadIntervalMeterForm = this.getUploadIntervalMeterForm();
         var sequentialAccountInformationForm = this.getSequentialAccountInformationForm();
+        var store = this.getReebillsStore();
 
         if (!selectedAccount.length)
             return;
 
-        // required for GET & POST
-        this.getReebillsStore().getProxy().setExtraParam('account', selectedAccount[0].get('account'));
+        store.getProxy().setExtraParam('account', selectedAccount[0].get('account'));
         this.getReebillsGrid().expand();
         sequentialAccountInformationForm.setDisabled(true);
         uploadIntervalMeterForm.setDisabled(true);
-        this.getReebillsStore().loadPage(1, {callback: function() {
-            var selections = reebillsGrid.getSelectionModel().getSelection();
-            sequentialAccountInformationForm.setDisabled(!selections.length);
-            uploadIntervalMeterForm.setDisabled(!selections.length);
+
+        /*
+        this is being done in the following way because of the bug reported here
+        http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
+        this bug is fixed in extjs 4.2.3 and higher
+         */
+        var selectedBill = this.getReebillsGrid().getSelectionModel().getSelection();
+        var selectedNode;
+        if (!selectedBill || !selectedBill.length) {
+            selectedNode = -1;
+        }else{
+            selectedNode = store.find('id', selectedBill[0].getId());
+        }
+
+        store.reload({
+            scope: this,
+            callback: function() {
+                this.getReebillsGrid().getSelectionModel().deselectAll();
+                this.getReebillsGrid().getSelectionModel().select(selectedNode);
+
+                var selections = reebillsGrid.getSelectionModel().getSelection();
+                sequentialAccountInformationForm.setDisabled(!selections.length);
+                uploadIntervalMeterForm.setDisabled(!selections.length);
         }});
     },
 
@@ -165,16 +184,21 @@ Ext.define('ReeBill.controller.Reebills', {
      */
     handleRowSelect: function() {
         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-        if (!selections.length)
-            return;
-
-        var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-        if (!selectedAccounts.length)
-            return;
+        if (!selections.length) {
+            this.getDeleteReebillButton().setDisabled(true);
+            this.getBindREOffsetButton().setDisabled(true);
+            this.getComputeReebillButton().setDisabled(true);
+            this.getToggleReebillProcessedButton().setDisabled(true);
+            this.getUpdateReadingsButton().setDisabled(true);
+            this.getRenderPdfButton().setDisabled(true);
+            this.getCreateNewVersionButton().setDisabled(true);
+            this.getSequentialAccountInformationForm().setDisabled(true);
+            this.getUploadIntervalMeterForm().setDisabled(true);
+            this.getEmailButton().setDisabled(true);
+            return
+        }
 
         var selected = selections[0];
-        var selectedAccount = selectedAccounts[0];
-
         var sequence = selected.get('sequence');
         var issued = selected.get('issued');
         var processed = selected.get('processed')
@@ -185,6 +209,7 @@ Ext.define('ReeBill.controller.Reebills', {
         this.getToggleReebillProcessedButton().setDisabled(issued);
         this.getUpdateReadingsButton().setDisabled(issued || processed);
         this.getRenderPdfButton().setDisabled(false);
+        this.getEmailButton().setDisabled(false);
         this.getCreateNewVersionButton().setDisabled(sequence && !issued);
         this.getSequentialAccountInformationForm().setDisabled(false);
         this.initializeUploadIntervalMeterForm();
@@ -354,207 +379,135 @@ Ext.define('ReeBill.controller.Reebills', {
          store.resumeAutoSync();
      },
 
-     /**
-       * Handle the toggle processed button.
-       */
-     handleToggleReebillProcessed: function(){
-         var store = this.getReebillsStore();
-
-         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-         if (!selections.length)
-             return;
-
-         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-         if (!selectedAccounts.length)
-             return;
-
-         var selected = selections[0];
-         selected.data.apply_corrections = false;
-         var account = this.getAccountsGrid().getSelectionModel().getSelection();
-         this.makeIssueRequest.call(this, 'http://'+window.location.host+'/reebill/reebills/toggle_processed', selected, account);
-         /*selected.beginEdit();
-         selected.set('action', 'setProcessed');
-         selected.set('action_value', !selected.get('processed'));
-         selected.endEdit();*/
-     },
-
-     makeIssueRequest: function(url, billRecord, account){
+    /**
+      * Handle the toggle processed button.
+      */
+    handleToggleReebillProcessed: function(){
         var me = this;
-        //var store = me.getIssuableReebillsStore();
-        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
-        var params = {reebill: Ext.encode(billRecord.data),
-                    account: Ext.encode(account[0].data)}
         var store = this.getReebillsStore();
+        var selected = this.getReebillsGrid().getSelectionModel().getSelection()[0];
+        var waitMask = new Ext.LoadMask(Ext.getBody(), { msg: 'Please wait...' });
+        var url = 'http://'+window.location.host+'/reebill/reebills/toggle_processed'
 
+        var params = {
+            reebill: selected.get('id'),
+            apply_corrections: false
+        };
         var failureFunc = function(response){
             waitMask.hide();
-            Ext.MessageBox.show({
-                title: "Server error - " + response.status + " - " + response.statusText,
-                msg:  response.responseText,
-                icon: Ext.MessageBox.ERROR,
-                buttons: Ext.Msg.OK,
-                cls: 'messageBoxOverflow'
-            });
+            utils.makeServerExceptionWindow(response.status, response.statusText, response.responseText);
         };
-        var successFunc = function(response){
-            // Wait for the bill to be issued before reloading the store
-            var obj = Ext.JSON.decode(response.responseText);
-            Ext.defer(function(){
-                store.loadPage(1, {
-                    scope: me,
-                    callback: function(){
-                        /*
-                        this is being done in the following way because of the bug reported here
-                        http://www.sencha.com/forum/showthread.php?261111-4.2.1.x-SelectionModel-in-Grid-returns-incorrect-data/page2
-                        this bug is fixed in extjs 4.2.3 and higher
-                         */
-                        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-                        var node = this.getReebillsStore().find('id', selections[0].getId());
-                        this.getReebillsGrid().getSelectionModel().deselectAll();
-                        this.getReebillsGrid().getSelectionModel().select(node);
-                        selections = this.getReebillsGrid().getSelectionModel().getSelection();
-                        var processed = selections[0].get('processed');
-                        this.getDeleteReebillButton().setDisabled(processed);
-                        this.getBindREOffsetButton().setDisabled(processed);
-                        this.getComputeReebillButton().setDisabled(processed);
-                        waitMask.hide();
-                    }
-                });
-            }, 1000);
-        }
-
-        /*if(billRecord !== undefined){
-            params.account = billRecord.get('account');
-            params.sequence = billRecord.get('sequence');
-            params.mailto = billRecord.get('mailto');
-        }*/
 
         waitMask.show();
         Ext.Ajax.request({
             url: url,
             params: params,
-            reebill: params,
             method: 'POST',
-            success: function(response){
+            failure: failureFunc,
+            success: function (response) {
                 waitMask.hide();
                 var obj = Ext.JSON.decode(response.responseText);
                 if (obj.corrections != undefined) {
-                    var reebill_corrections = '';
-                        if (obj.adjustment != undefined) {
-                            Ext.each(obj.unissued_corrections, function(correction) {
-                                reebill_corrections += 'Reebill from account ' + obj.reebill.account +
-                                    ' with sequence ' + obj.reebill.sequence +
-                                    ' with corrections ' + correction +
-                                    ' will be applied to this bill as an adjusment of $'
-                                    + obj.adjustment + ', which would also become processed.' +
-                                    'Do you want to make this correction processed?' + '</br>'
+                    var msg = Ext.String.format("Corrections {0} will be applied to this bill for a total adjustment of ${1}. </br></br> Do you want to mark this bill as processed and apply these corrections?",
+                        obj.unissued_corrections, obj.adjustment
+                    );
+                    Ext.MessageBox.confirm("Confirmation Required", msg, function (answer) {
+                        if (answer == 'yes') {
+                            params.apply_corrections = true;
+                            Ext.Ajax.request({
+                                url: url,
+                                method: 'POST',
+                                params: params,
+                                failure: failureFunc,
+                                success: function(){
+                                    // We have to reload the store here because
+                                    // multiple records are updated when applying
+                                    // corrections
+                                    store.reload({callback:function(){
+                                        waitMask.hide();
+                                        me.handleRowSelect();
+                                    }});
+                                }
                             });
-
+                            waitMask.show();
                         }
-
-                    Ext.MessageBox.confirm(
-                                'There are corrections with this reebill',reebill_corrections,
-
-                                function (answer) {
-                                    if (answer == 'yes') {
-                                            if (obj.adjustment != undefined)
-                                                obj.reebill.apply_corrections = true;
-
-                                        var params = {reebill: Ext.encode(obj.reebill),
-                                                    account: Ext.encode(account[0].data)}
-                                        Ext.Ajax.request({
-                                            url: url,
-                                            method: 'POST',
-                                            params: params,
-                                            failure: failureFunc,
-                                            success: successFunc,
-                                            scope: this
-                                        });
-                                        waitMask.show();
-                                        }
-
-                                });
-                    store.reload();
+                    });
+                }else if(obj.success === true){
+                    store.suspendAutoSync();
+                    selected.set(obj.reebill);
+                    selected.commit();
+                    store.resumeAutoSync();
+                    me.handleRowSelect();
+                    waitMask.hide();
                 }
-                else
-                {
-                    successFunc(response);
-                }
-
-            },
-            failure: function() {
-                failureFunc(this)
-            },
-            scope: this
+            }
         });
-     },
+    },
 
     /**
       * Handle the create new version button.
       */
-     handleCreateNewVersion: function() {
-         var store = this.getReebillsStore();
+    handleCreateNewVersion: function() {
+        var store = this.getReebillsStore();
+        var selections = this.getReebillsGrid().getSelectionModel().getSelection();
+        if (!selections.length)
+            return;
+        var selected = selections[0];
 
-         var selections = this.getReebillsGrid().getSelectionModel().getSelection();
-         if (!selections.length)
-             return;
+        var waitMask = new Ext.LoadMask(Ext.getBody(),
+            { msg: 'Creating new version. Please wait...' });
+        selected.set('action', 'newversion');
+        waitMask.show();
 
-         var selectedAccounts = this.getAccountsGrid().getSelectionModel().getSelection();
-         if (!selectedAccounts.length)
-             return;
+        // We have to reload the store, because the new version will be a
+        // completely new Reebill, with a new id
+        Ext.Function.defer(function(){
+            store.reload({
+                callback: function(){
+                   waitMask.hide();
+                }
+            });
+            this.getReebillsGrid().setLoading(false);
+        }, 1000, this);
+    },
 
-         var selected = selections[0];
-
-         var waitMask = new Ext.LoadMask(Ext.getBody(),
-             { msg: 'Creating new version. Please wait...' });
-         selected.set('action', 'newversion');
-         waitMask.show();
-
-         // We have to releoad the store, because the new version will be a
-         // completely new Reebill, with a new id
-         Ext.Function.defer(function(){
-             store.reload();
-             waitMask.hide();
-         }, 1000, this);
-     },
-
-     /**
-      * Handle the create next version button.
-      */
-     handleCreateNext: function() {
-         var store = this.getReebillsStore();
-         if(store.count() === 0){
-            if(this._lastCreateNextDate === undefined){
-                this._lastCreateNextDate = ''
-            }
-            Ext.Msg.prompt(
-                'Service Start Date',
-                'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
-                function(button, text){
-                    if(button === 'ok'){
-                        var controller = this;
-                        controller._lastCreateNextDate = text;
-                        if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
-                            store.insert(0, {period_start: text});
-                        }else{
-                            Ext.Msg.alert(
-                                'Invalid Date',
-                                'Please enter a date in the format (YYYY-MM-DD)',
-                                function(){
-                                    controller.handleCreateNext();
-                                }
-                            )
-                        }
-                    }
-                },
-                this,
-                false,
-                this._lastCreateNextDate
-            )
-         }else{
-            store.insert(0, {issued:false});
-         }
-     },
+    /**
+     * Handle the create next reebill button.
+     */
+    handleCreateNext: function() {
+        var store = this.getReebillsStore();
+        if(store.count() === 0){
+           if(this._lastCreateNextDate === undefined){
+               this._lastCreateNextDate = ''
+           }
+           Ext.Msg.prompt(
+               'Service Start Date',
+               'Enter the date (YYYY-MM-DD) on which\n your utility service(s) started',
+               function(button, text){
+                   if(button === 'ok'){
+                       var controller = this;
+                       controller._lastCreateNextDate = text;
+                       if(Ext.Date.parse(text, 'Y-m-d') !== undefined) {
+                           store.insert(0, {period_start: text});
+                       }else{
+                           Ext.Msg.alert(
+                               'Invalid Date',
+                               'Please enter a date in the format (YYYY-MM-DD)',
+                               function(){
+                                   controller.handleCreateNext();
+                               }
+                           )
+                       }
+                   }
+               },
+               this,
+               false,
+               this._lastCreateNextDate
+           )
+        }else{
+           store.insert(0, {issued:false});
+        }
+    },
 
      /**
       * Loads the ReeBillVersionsStore
