@@ -1,4 +1,4 @@
-Ext.define("Ext.locale.en.ux.picker.DateTimePicker", {
+Ext.define("Ext.datetimefield.DateTimePicker", {
 	  override: "Ext.ux.DateTimePicker",
 	  todayText: "Now",
 	  timeLabel: 'Time'
@@ -9,7 +9,7 @@ Ext.define('Ext.ux.DateTimePicker', {
 	  alias: 'widget.datetimepicker',
 	  todayText: '现在',
 	  timeLabel: '时间',
-	  //requires: ['Ext.ux.form.TimePickerField'],
+	  requires: ['Ext.datetimefield.TimePickerField'],
 
 	  initComponent: function() {
 		  // keep time part for value

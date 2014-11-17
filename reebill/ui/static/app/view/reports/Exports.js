@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.Exports', {
+Ext.define('ReeBill.view.reports.Exports', {
     extend: 'Ext.panel.Panel',
 
     title:'Exports',

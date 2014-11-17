@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.SequentialAccountInformation', {
+Ext.define('ReeBill.view.reebills.SequentialAccountInformation', {
     extend: 'Ext.form.Panel',
 
     title: 'Sequential Account Information',

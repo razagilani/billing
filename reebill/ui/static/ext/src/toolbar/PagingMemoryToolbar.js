@@ -1,4 +1,4 @@
-Ext.define('Ext.ux.toolbar.PagingMemoryToolbar', {
+Ext.define('Ext.toolbar.PagingMemoryToolbar', {
 
     extend: 'Ext.toolbar.Paging',
     alias: 'widget.pagingmemorytoolbar',

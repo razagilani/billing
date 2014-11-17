@@ -1,4 +1,4 @@
-Ext.define('Ext.ux.panel.PDF',{
+Ext.define('Ext.panel.PDF',{
     extend: 'Ext.panel.Panel',
 
     alias: 'widget.pdfpanel',

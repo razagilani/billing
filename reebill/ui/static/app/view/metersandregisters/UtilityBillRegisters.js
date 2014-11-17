@@ -1,5 +1,7 @@
-Ext.define('ReeBill.view.UtilityBillRegisters', {
+Ext.define('ReeBill.view.metersandregisters.UtilityBillRegisters', {
     extend: 'Ext.grid.Panel',
+
+    requires: ['ReeBill.store.Units'],
 
     title: 'Utility Bill Registers',
     alias: 'widget.utilityBillRegisters',    

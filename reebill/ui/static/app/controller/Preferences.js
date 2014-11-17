@@ -4,6 +4,10 @@ Ext.define('ReeBill.controller.Preferences', {
     stores: [
         'Preferences'
     ],
+
+    views: [
+        'preferences.CurrencySpinner', 'preferences.Preferences'
+    ],
     
     refs: [{
         ref: 'differenceThresholdSpinner',
@@ -43,28 +47,28 @@ Ext.define('ReeBill.controller.Preferences', {
      * Handle the panel being reset.
      */
     handleResetPreferences: function() {
-        var store = this.getPreferencesStore();
-        var panel = this.getPreferencesPanel();
-        var fields = panel.getForm().getFields();
-        fields.each(function(field){
-            var name = field.getName();
-            var val = field.getValue();
-            var prefRec = store.getOrCreate(name, val);
-            field.setValue(prefRec.get('value'));
-        });
+//        var store = this.getPreferencesStore();
+//        var panel = this.getPreferencesPanel();
+//        var fields = panel.getForm().getFields();
+//        fields.each(function(field){
+//            var name = field.getName();
+//            var val = field.getValue();
+//            var prefRec = store.getOrCreate(name, val);
+//            field.setValue(prefRec.get('value'));
+//        });
     },
 
     /**
      * Handle the submit button clicked
      */
     handleSubmitPreferences: function() {
-        var store = this.getPreferencesStore();
-        var panel = this.getPreferencesPanel();
-        var fields = panel.getForm().getFields();
-        fields.each(function(field){
-            var name = field.getName();
-            var val = field.getValue();
-            store.setOrCreate(name, val);
-        });
+//        var store = this.getPreferencesStore();
+//        var panel = this.getPreferencesPanel();
+//        var fields = panel.getForm().getFields();
+//        fields.each(function(field){
+//            var name = field.getName();
+//            var val = field.getValue();
+//            store.setOrCreate(name, val);
+//        });
     }
 });

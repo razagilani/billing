@@ -2,9 +2,17 @@ Ext.define('ReeBill.controller.Accounts', {
     extend: 'Ext.app.Controller',
 
     stores: [
-        'Accounts', 'AccountsMemory', 'AccountsFilter', 'Preferences'
+        'Accounts',
+        'AccountsMemory',
+        'AccountsFilter',
+        'Preferences'
     ],
-    
+
+    views:[
+        'accounts.Accounts',
+        'accounts.AccountForm',
+    ],
+
     refs: [{
         ref: 'accountForm',
         selector: 'accountForm'
@@ -97,10 +105,8 @@ Ext.define('ReeBill.controller.Accounts', {
                 var accountsStore = this.getAccountsStore();
                 if(prefStore.getRange().length && accountsStore.getRange().length){
                     // Sort
-                    var sortColumnRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_field'));
-                    var sortDirRec = prefStore.getAt(prefStore.find('key', 'default_account_sort_direction'));
-                    sortColumnRec.set('value', store.sorters.items[0].property);
-                    sortDirRec.set('value', store.sorters.items[0].direction);
+                    prefStore.setOrCreate('default_account_sort_field', store.sorters.items[0].property);
+                    prefStore.setOrCreate('default_account_sort_direction', store.sorters.items[0].direction);
                 }
             },
             scope: this

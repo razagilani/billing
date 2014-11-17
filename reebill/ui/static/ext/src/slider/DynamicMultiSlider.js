@@ -1,4 +1,4 @@
-Ext.define('Ext.ux.slider.DynamicMultiSlider', {
+Ext.define('Ext.slider.DynamicMultiSlider', {
 
     extend: 'Ext.slider.Multi',
     alias: 'widget.dynamicmultislider',
