@@ -2,6 +2,13 @@ Ext.define('ReeBill.controller.BottomBar', {
     extend: 'Ext.app.Controller',
 
     stores: ['Preferences'],
+
+    views:[
+        'Viewport',
+        'accounts.Accounts',
+        'accounts.AccountForm',
+        'reebills.Reebills'
+    ],
     
     refs: [{
         ref: 'accountForm',
@@ -55,8 +62,8 @@ Ext.define('ReeBill.controller.BottomBar', {
 
         this.getPreferencesStore().on({
             load: function(store, records, successful, eOpts ){
-                var label = me.getUserTBLabel();
-                label.setText(store.getAt(store.find('key', 'username')).get('value'));
+                var label = this.getUserTBLabel();
+                //label.setText(store.getAt(store.find('key', 'username')).get('value'));
             },
             scope: this
         });

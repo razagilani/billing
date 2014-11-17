@@ -6,7 +6,7 @@ Ext.define('ReeBill.controller.Charges', {
     ],
     
     views:[
-        'Charges'
+        'charges.Charges'
     ],
 
     refs: [{

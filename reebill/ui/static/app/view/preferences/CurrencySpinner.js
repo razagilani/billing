@@ -1,4 +1,4 @@
-Ext.define('Ext.ux.CurrencySpinner', {
+Ext.define('ReeBill.view.preferences.CurrencySpinner', {
     extend: 'Ext.form.field.Spinner',
     alias: 'widget.currencyspinner',
 

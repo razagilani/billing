@@ -1,4 +1,4 @@
-Ext.define('ReeBill.view.Reconciliations', {
+Ext.define('ReeBill.view.reports.Reconciliations', {
     extend: 'Ext.grid.Panel',
 
     title:'Reconcilation Report: reebills with >0.1% difference from OLTP or errors',

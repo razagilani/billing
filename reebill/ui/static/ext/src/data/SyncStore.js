@@ -1,4 +1,5 @@
 Ext.define('Ext.data.SyncStore', {
+    requires : 'Ext.data.Store',
     extend: 'Ext.data.Store',
 
     constructor:function(cnfg) {

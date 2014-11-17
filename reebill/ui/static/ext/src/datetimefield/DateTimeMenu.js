@@ -1,4 +1,4 @@
-Ext.define('Ext.ux.DateTimeMenu', {
+Ext.define('Ext.datetimefield.DateTimeMenu', {
 	  extend: 'Ext.menu.Menu',
 	  
 	  alias: 'widget.datetimemenu',

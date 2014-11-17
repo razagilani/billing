@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.AccountsMemory', {
     extend: 'Ext.data.Store',
-
+    requires: ['ReeBill.model.Account'],
     model: 'ReeBill.model.Account',
     autoLoad: false,
 

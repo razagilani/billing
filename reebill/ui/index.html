@@ -1,37 +1,33 @@
-<!DOCTYPE HTML>
+<!DOCTYPE HTML><html><head profile="http://www.w3.org/2005/10/profile">
 
-<html>
-<head profile="http://www.w3.org/2005/10/profile">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=8" />
 
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=8" />
-    
-    <title>ReeBill</title>
+<title>ReeBill</title>
 
-    <!-- PDF viewer -->
-    <link rel="stylesheet" href="static/ext/lib/pdf.js/TextLayer.css">
-    <script src="static/ext/lib/pdf.js/pdf.js"></script>
-    <script src="static/ext/lib/pdf.js/TextLayerBuilder.js"></script>
-    <script src="static/ext/lib/pdf.js/compatibility.js"></script>
+<!-- PDF viewer -->
+<link rel="stylesheet" href="static/ext/lib/pdf.js/TextLayer.css">
+<script src="static/ext/lib/pdf.js/pdf.js"></script>
+<script src="static/ext/lib/pdf.js/TextLayerBuilder.js"></script>
+<script src="static/ext/lib/pdf.js/compatibility.js"></script>
 
-    <!-- Ext JS Style -->
-    <link rel="stylesheet" type="text/css" href="static/ext/resources/css/ext-all-classic.css">
-    <script type="text/javascript" src="static/ext/ext-all-debug.js"></script>
-    <script type="text/javascript" src="static/ext/src/grid/column/CheckColumn.js"></script>
+<!-- Ext JS Style -->
+<link rel="stylesheet" type="text/css" href="static/ext/resources/css/ext-all-classic.css">
+<script type="text/javascript" src="static/ext/ext-all-dev.js"></script>
+<script type="text/javascript" src="static/ext/src/grid/column/CheckColumn.js"></script>
 
-    <!--Favicons-->
-    <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+<!--Favicons-->
+<link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
 
-    <script type="text/javascript">
-
-        var appendElementToHead = function(type, url, version, loadFn){
+<script type="text/javascript">
+    (function(){
+        var appendElementToHead = function (type, url, version) {
             var el;
-            if(type === 'js'){
+            if (type === 'js') {
                 el = document.createElement('script');
                 el.type = 'text/javascript';
                 el.src = url + '?v=' + version;
-                el.onload = loadFn;
-            }else if(type === 'css'){
+            } else if (type === 'css') {
                 el = document.createElement('link');
                 el.rel = 'stylesheet';
                 el.type = 'text/css';
@@ -41,158 +37,49 @@
         };
 
         var xmlHttp = new XMLHttpRequest();
-        var url = window.location.origin + '/reebill/static/revision.txt?bc='
-                + Math.random()*100000000000000000;
+        var v = Math.random() * 100000000000000000;
+        var url = window.location.origin + '/reebill/static/revision.txt?_dc='
+                + v;
         xmlHttp.open("GET", url, true);
-        xmlHttp.onreadystatechange = function() {
-            if(xmlHttp.readyState == 4) {
+        xmlHttp.onreadystatechange = function () {
+            if (xmlHttp.readyState == 4) {
                 var css = [
                     "static/style/style.css",
                     "static/style/icons.css"
                 ];
 
                 var js = [
-                    // Ext Extensions
-                    "static/ext/ux/panel/PDF.js",
-                    "static/ext/ux/toolbar/pagingmemorytoolbar.js",
-                    "static/ext/src/data/SyncStore.js",
-                    "static/ext/ux/slider/DynamicMultiSlider.js",
-                    "static/ext/ux/UX_TimePickerField.js",
-                    "static/ext/ux/UX_DateTimePicker.js",
-                    "static/ext/ux/UX_DateTimeField.js",
-                    "static/ext/ux/UX_DateTimeMenu.js",
-
-                    // Config & Utils
                     "static/app/config.js",
                     "static/app/utils.js",
-
-                    // Models
-                    "static/app/model/Account.js",
-                    "static/app/model/Charge.js",
-                    "static/app/model/JournalEntry.js",
-                    "static/app/model/Supplier.js",
-                    "static/app/model/RateClass.js",
-                    "static/app/model/Utility.js",
-                    "static/app/model/Payment.js",
-                    "static/app/model/Preference.js",
-                    "static/app/model/Reconciliation.js",
-                    "static/app/model/EstimatedRevenue.js",
-                    "static/app/model/Reebill.js",
-                    "static/app/model/ReebillCharge.js",
-                    "static/app/model/UtilityBill.js",
-                    "static/app/model/UtilityBillRegister.js",
-
-                    //Stores
-                    "static/app/store/AccountsMemory.js",
-                    "static/app/store/IssuableReebillsMemory.js",
-                    "static/app/store/UtilityBillsMemory.js",
-                    "static/app/store/Accounts.js",
-                    "static/app/store/Suppliers.js",
-                    "static/app/store/RateClasses.js",
-                    "static/app/store/Utilities.js",
-                    "static/app/store/AccountsFilter.js",
-                    "static/app/store/IssuableReebills.js",
-                    "static/app/store/JournalEntries.js",
-                    "static/app/store/Payments.js",
-                    "static/app/store/Charges.js",
-                    "static/app/store/Reconciliations.js",
-                    "static/app/store/ReebillCharges.js",
-                    "static/app/store/Reebills.js",
-                    "static/app/store/ServiceTypes.js",
-                    "static/app/store/Services.js",
-                    "static/app/store/Preferences.js",
-                    "static/app/store/Timestamps.js",
-                    "static/app/store/Units.js",
-                    "static/app/store/UtilityBillRegisters.js",
-                    "static/app/store/ReeBillVersions.js",
-                    "static/app/store/UtilityBills.js",
-                    "static/app/store/EstimatedRevenue.js",
-
-                    // Views
-                    "static/app/view/accounts/AccountsCombo.js",
-                    "static/app/view/accounts/AccountForm.js",
-                    "static/app/view/accounts/Accounts.js",
-                    "static/app/view/issuablereebills/IssuableReebills.js",
-                    "static/app/view/journal/JournalEntries.js",
-                    "static/app/view/journal/NoteForm.js",
-                    "static/app/view/metersandregisters/UtilityBillRegisters.js",
-                    "static/app/view/metersandregisters/TOUMetering.js",
-                    "static/app/view/payments/Payments.js",
-                    "static/app/view/charges/GroupTextField.js",
-                    "static/app/view/charges/FormulaField.js",
-                    "static/app/view/charges/Charges.js",
-                    "static/app/view/reebillcharges/ReebillCharges.js",
-                    "static/app/view/reebills/Reebills.js",
-                    "static/app/view/reebills/SequentialAccountInformation.js",
-                    "static/app/view/reebills/ReeBillVersions.js",
-                    "static/app/view/reebills/UploadIntervalMeter.js",
-                    "static/app/view/reports/AccountDatePicker.js",
-                    "static/app/view/reports/Reconciliations.js",
-                    "static/app/view/reports/EstimatedRevenue.js",
-                    "static/app/view/reports/ExportReebill.js",
-                    "static/app/view/utilitybills/UploadUtilityBill.js",
-                    "static/app/view/utilitybills/UtilityBills.js",
-                    "static/app/view/preferences/CurrencySpinner.js",
-                    "static/app/view/preferences/Preferences.js",
-                    "static/app/view/Viewport.js",
-
-                    // Controllers
-                    "static/app/controller/BottomBar.js",
-                    "static/app/controller/Accounts.js",
-                    "static/app/controller/IssuableReebills.js",
-                    "static/app/controller/Journal.js",
-                    "static/app/controller/Payments.js",
-                    "static/app/controller/Charges.js",
-                    "static/app/controller/ReebillCharges.js",
-                    "static/app/controller/Reebills.js",
-                    "static/app/controller/TabPanel.js",
-                    "static/app/controller/UtilityBills.js",
-                    "static/app/controller/UtilityBillRegisters.js",
-                    "static/app/controller/Reports.js",
-                    "static/app/controller/Viewer.js",
-                    "static/app/controller/Preferences.js",
+                    "static/app/app.js"
                 ];
-
-                // Main App
-                var main = "static/app/app.js";
 
                 var ver;
                 try {
                     VERSION = JSON.parse(xmlHttp.responseText);
-                    ver = VERSION.version.substring(0, 12);
-                }catch(err){
+                    VERSION.v = VERSION.version.substring(0, 12);
+                } catch (err) {
                     VERSION = {
                         'version': 'Version Information Not Found',
                         'date': '',
                         'user': '',
-                        'deploy_env': ''
+                        'deploy_env': '',
+                        'v': v
                     };
-                    ver = Math.random()*100000000000000000;
                 }
-                console.log(VERSION, ver);
+                console.log(VERSION, VERSION.v);
 
-                var scriptsLoaded = 0;
-                var onScriptLoad = function(){
-                    scriptsLoaded += 1;
-                    if(scriptsLoaded == js.length){
-                        appendElementToHead('js', main, ver);
-                    }
-                };
-
-                for(var c = 0; c < css.length; c++){
-                    appendElementToHead('css', css[c], ver, onScriptLoad);
+                for (var c = 0; c < css.length; c++) {
+                    appendElementToHead('css', css[c], VERSION.v);
                 }
-                for(var j = 0; j < js.length; j++){
-                    appendElementToHead('js', js[j], ver, onScriptLoad);
+                for (c = 0; c < js.length; c++) {
+                    appendElementToHead('js', js[c], VERSION.v);
                 }
             }
         };
         xmlHttp.send();
+    }());
 
-    </script>
+</script>
 
-</head>
-
-<body>
-</body>
-</html>
+</head><body></body></html>

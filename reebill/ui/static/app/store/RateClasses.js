@@ -1,5 +1,6 @@
 Ext.define('ReeBill.store.RateClasses', {
     extend: 'Ext.data.Store',
+    requires: ['ReeBill.model.RateClass'],
     model: 'ReeBill.model.RateClass',
 
     autoLoad: true,

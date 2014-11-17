@@ -1,6 +1,6 @@
 Ext.define('ReeBill.store.Preferences', {
     extend: 'Ext.data.Store',
-
+    requires: ['ReeBill.model.Preference'],
     model: 'ReeBill.model.Preference',
 
     autoLoad: true,
